@@ -10,4 +10,4 @@ A plugin for building, maintaining, and distilling a persistent, compounding kno
 
 ## Agents
 
-- **wiki_audit**: discover the wiki of the current repository using the `wiki` skill's discovery logic, run the linter, and autonomously fix every issue found — frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages leaking instance content, and clear content violations of the page-type anatomy. Two-phase: assess (lint + semantic audit) → fix loop → re-lint until clean.
+- **wiki_auto_shaper**: discover the wiki of the current repository using the `wiki` skill's discovery logic, run the linter, and autonomously fix every issue found — frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages leaking instance content, and clear content violations of the page-type anatomy. Two-phase: assess (lint + semantic audit) → fix loop → re-lint until clean.
