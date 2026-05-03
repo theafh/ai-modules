@@ -9,14 +9,26 @@ ai-modules/
 ├── .claude-plugin/
 │   └── marketplace.json     # registers the plugins below as a Claude marketplace
 ├── plugins/                 # one subdirectory per plugin
-│   └── knowledge_management/
+│   ├── knowledge_management/
+│   │   ├── .claude-plugin/plugin.json
+│   │   ├── .codex-plugin/plugin.json
+│   │   ├── README.md
+│   │   └── skills/          # one subdirectory per skill, each with SKILL.md
+│   │       ├── wiki/
+│   │       ├── executive_summary/
+│   │       └── spr/
+│   └── ai_dev/
 │       ├── .claude-plugin/plugin.json
 │       ├── .codex-plugin/plugin.json
 │       ├── README.md
-│       └── skills/          # one subdirectory per skill, each with SKILL.md
-│           ├── wiki/
-│           ├── executive_summary/
-│           └── spr/
+│       └── skills/
+│           ├── git_commit/
+│           ├── update_changelog/
+│           ├── ai_instruction_writing/
+│           ├── ai_instruction_formatting/
+│           ├── format_markdown/
+│           ├── format_python/
+│           └── format_rust/
 └── deployment/              # deployment script for installing artefacts globally or per-project
     ├── deployment.sh
     ├── deployment.conf
@@ -27,6 +39,8 @@ ai-modules/
 
 - **knowledge_management**: skills for building, maintaining, and distilling a knowledge base.
   Ships `wiki` (persistent, interlinked markdown notes), `executive_summary` (structured prose summaries), and `spr` (Sparse Priming Representations).
+- **ai_dev**: skills for everyday AI-assisted development.
+  Ships `git_commit`, `update_changelog`, `ai_instruction_writing`, `ai_instruction_formatting`, and the `format_markdown` / `format_python` / `format_rust` style guides.
 
 ## Make targets
 

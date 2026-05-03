@@ -15,6 +15,12 @@
       "source": "./plugins/knowledge_management",
       "description": "Skills for building, maintaining, and distilling a persistent, interlinked knowledge base. Ships the wiki, executive_summary, and spr skills.",
       "version": "1.0.0"
+    },
+    {
+      "name": "ai_dev",
+      "source": "./plugins/ai_dev",
+      "description": "Skills for everyday AI-assisted development: structured git commits, day-grouped changelog maintenance, writing and formatting AI instructions (prompts, rules, skill files, agent definitions), and language style guides for markdown, Python, and Rust.",
+      "version": "1.0.0"
     }
   ]
 }
