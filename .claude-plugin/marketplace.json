@@ -1,0 +1,20 @@
+{
+  "name": "ai-modules",
+  "owner": {
+    "name": "theafh",
+    "email": "andreas.hoffmann@remerge.io"
+  },
+  "metadata": {
+    "description": "ai-modules: personal Claude and Codex plugins",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "knowledge-management",
+      "source": "./plugins/knowledge-management",
+      "description": "Skills for building and maintaining a persistent, interlinked knowledge base. Currently ships the wiki skill.",
+      "version": "1.0.0"
+    }
+  ]
+}
