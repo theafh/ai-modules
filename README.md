@@ -28,16 +28,22 @@ ai-modules/
 - **knowledge_management**: skills for building, maintaining, and distilling a knowledge base.
   Ships `wiki` (persistent, interlinked markdown notes), `executive_summary` (structured prose summaries), and `spr` (Sparse Priming Representations).
 
-## Deploying
+## Make targets
 
-The `deployment/` folder contains `deployment.sh`, which discovers artefacts (agents, commands, skills, hooks) by folder layout and installs them either globally (e.g. `~/.claude/`, `~/.cursor/`) or into a single project's local config.
+Common workflows are wrapped in the [Makefile](Makefile):
 
 ```bash
-./deployment/deployment.sh                                        # show help
-./deployment/deployment.sh --global                               # deploy all to global dirs
-./deployment/deployment.sh --global --dry-run                     # preview
-./deployment/deployment.sh --project-dir /path/to/repo --target claude
-./deployment/deployment.sh --uninstall                            # remove logged artefacts
+make help        # list targets
+make deploy      # deploy artefacts to global config dirs (aliases: global, install)
+make uninstall   # remove previously deployed artefacts
+make lint        # report lint issues across md / json / sh
+make fix         # auto-fix lint issues where possible (markdown only)
 ```
 
-See [deployment/README.md](deployment/README.md) for the full reference.
+For finer-grained control, call `deployment/deployment.sh` directly — see [deployment/README.md](deployment/README.md) for flags like `--dry-run`, `--target`, and `--project-dir`.
+
+### Linting tools
+
+`make lint` and `make fix` use `markdownlint-cli`, `jq`, and `shellcheck` (install via Homebrew on macOS).
+
+Markdown rules live in [.markdownlint.jsonc](.markdownlint.jsonc); inline-HTML checks (`MD033`) are disabled because skill prompts use intentional pseudo-XML.

@@ -1,0 +1,16 @@
+{
+  // Markdownlint config for ai-modules.
+  // https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+  "default": true,
+
+  // Pseudo-XML is used intentionally inside SKILL.md and similar
+  // LLM-consumed prompts (see plugins/.../skills/*/SKILL.md). Allow it.
+  "MD033": false,
+
+  // Prose lines are not wrapped to 80 cols in this repo. Disable
+  // line-length enforcement; rely on the writer's judgment.
+  "MD013": false,
+
+  // First-line H1 is not always present (template fragments, partials).
+  "MD041": false
+}
