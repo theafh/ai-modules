@@ -6,8 +6,9 @@ set -euo pipefail
 #                 for VS Code GitHub Copilot, Cursor, Claude Code,
 #                 OpenAI Codex, Gemini CLI, and Google Antigravity
 #
-# Discovery is folder-based: assets live in top-level folders whose name
-# determines the artifact type (agents/, commands/, skills/, hooks/).
+# Discovery is plugin- and folder-based: artifacts live under
+# plugins/<plugin>/<asset-folder>/ where the asset-folder name determines
+# the artifact type (agents/, commands/, skills/, hooks/).
 # Hidden files and README files are always excluded from discovery.
 #
 # Per-tool deployment configuration is loaded from deployment.conf
@@ -78,12 +79,12 @@ Options:
   -h, --help        Show this help message
 
 Examples:
-  ./scripts/deployment.sh
-  ./scripts/deployment.sh --global
-  ./scripts/deployment.sh --global --dry-run
-  ./scripts/deployment.sh --global --target codex
-  ./scripts/deployment.sh --project-dir /path/to/repo --target claude
-  ./scripts/deployment.sh --uninstall
+  ./deployment/deployment.sh
+  ./deployment/deployment.sh --global
+  ./deployment/deployment.sh --global --dry-run
+  ./deployment/deployment.sh --global --target codex
+  ./deployment/deployment.sh --project-dir /path/to/repo --target claude
+  ./deployment/deployment.sh --uninstall
 USAGE
 }
 
@@ -158,27 +159,23 @@ declare -A ASSET_FOLDERS=(
 
 # ---------------------------------------------------------------------------
 # Discover REPO_ROOT by walking up from SCRIPT_DIR until we find a directory
-# that contains at least one artifact folder (keys of ASSET_FOLDERS). Keeps
-# the script location-independent — works no matter how deeply nested it is.
+# that contains a plugins/ folder. Artifacts live under
+# plugins/<plugin>/<asset-folder>/. Keeps the script location-independent.
 # ---------------------------------------------------------------------------
 REPO_ROOT="$SCRIPT_DIR"
 while [[ "$REPO_ROOT" != "/" ]]; do
-  _found_artifact_folder=false
-  for _folder in "${!ASSET_FOLDERS[@]}"; do
-    if [[ -d "$REPO_ROOT/$_folder" ]]; then
-      _found_artifact_folder=true
-      break
-    fi
-  done
-  $_found_artifact_folder && break
+  if [[ -d "$REPO_ROOT/plugins" ]]; then
+    break
+  fi
   REPO_ROOT="$(dirname "$REPO_ROOT")"
 done
-unset _folder _found_artifact_folder
 
 if [[ "$REPO_ROOT" == "/" ]]; then
-  echo "Error: could not locate repo root from $SCRIPT_DIR — no artifact folder (${!ASSET_FOLDERS[*]}) found in any ancestor." >&2
+  echo "Error: could not locate repo root from $SCRIPT_DIR — no plugins/ folder found in any ancestor." >&2
   exit 1
 fi
+
+PLUGINS_ROOT="${REPO_ROOT}/plugins"
 
 # ---------------------------------------------------------------------------
 # Project-dir mode — validate and resolve
@@ -541,50 +538,58 @@ logged_path_matches_active_targets() {
 }
 
 # ---------------------------------------------------------------------------
-# Folder-based autodiscovery
+# Plugin- and folder-based autodiscovery
 #
-# Scans top-level asset folders (agents/, commands/, skills/, hooks/).
-# The folder name determines the artifact type.
+# Scans plugins/<plugin>/<asset-folder>/ where the asset-folder name
+# (agents/, commands/, skills/, hooks/) determines the artifact type.
 # For skills: each subdirectory containing SKILL.md is one skill artifact.
 # For others: each file in the folder is one artifact.
 # ---------------------------------------------------------------------------
 discover_artifacts() {
   local discovered=()
 
-  for folder in "${!ASSET_FOLDERS[@]}"; do
-    local art_type="${ASSET_FOLDERS[$folder]}"
-    local folder_path="${REPO_ROOT}/${folder}"
+  [[ -d "$PLUGINS_ROOT" ]] || return 0
 
-    # Skip if folder doesn't exist
-    [[ -d "$folder_path" ]] || continue
+  for plugin_dir in "$PLUGINS_ROOT"/*/; do
+    [[ -d "$plugin_dir" ]] || continue
+    local plugin_name
+    plugin_name="$(basename "$plugin_dir")"
 
-    # Skip if type doesn't match filter
-    matches_filter "$art_type" "$TYPE_FILTER" || continue
+    for folder in "${!ASSET_FOLDERS[@]}"; do
+      local art_type="${ASSET_FOLDERS[$folder]}"
+      local folder_path="${plugin_dir}${folder}"
 
-    if [[ "$art_type" == "skill" ]]; then
-      # Skills: each subdirectory with SKILL.md is an artifact
-      for skill_dir in "$folder_path"/*/; do
-        [[ -d "$skill_dir" ]] || continue
-        [[ -f "${skill_dir}SKILL.md" ]] || continue
-        local skill_name
-        skill_name="$(basename "$skill_dir")"
-        local rel_path="${folder}/${skill_name}"
-        discovered+=("${skill_name}|${art_type}|${rel_path}")
-      done
-    else
-      # Agents, commands, hooks: each file is an artifact
-      for f in "$folder_path"/*; do
-        [[ -f "$f" ]] || continue
-        local bname
-        bname="$(basename "$f")"
-        # Skip hidden files and README files
-        [[ "$bname" == .* ]] && continue
-        [[ "${bname^^}" == README* ]] && continue
-        local name_no_ext="${bname%.*}"
-        local rel_path="${folder}/${bname}"
-        discovered+=("${name_no_ext}|${art_type}|${rel_path}")
-      done
-    fi
+      # Skip if folder doesn't exist
+      [[ -d "$folder_path" ]] || continue
+
+      # Skip if type doesn't match filter
+      matches_filter "$art_type" "$TYPE_FILTER" || continue
+
+      if [[ "$art_type" == "skill" ]]; then
+        # Skills: each subdirectory with SKILL.md is an artifact
+        for skill_dir in "$folder_path"/*/; do
+          [[ -d "$skill_dir" ]] || continue
+          [[ -f "${skill_dir}SKILL.md" ]] || continue
+          local skill_name
+          skill_name="$(basename "$skill_dir")"
+          local rel_path="plugins/${plugin_name}/${folder}/${skill_name}"
+          discovered+=("${skill_name}|${art_type}|${rel_path}")
+        done
+      else
+        # Agents, commands, hooks: each file is an artifact
+        for f in "$folder_path"/*; do
+          [[ -f "$f" ]] || continue
+          local bname
+          bname="$(basename "$f")"
+          # Skip hidden files and README files
+          [[ "$bname" == .* ]] && continue
+          [[ "${bname^^}" == README* ]] && continue
+          local name_no_ext="${bname%.*}"
+          local rel_path="plugins/${plugin_name}/${folder}/${bname}"
+          discovered+=("${name_no_ext}|${art_type}|${rel_path}")
+        done
+      fi
+    done
   done
 
   if [[ ${#discovered[@]} -gt 0 ]]; then

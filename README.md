@@ -9,12 +9,14 @@ ai-modules/
 ├── .claude-plugin/
 │   └── marketplace.json     # registers the plugins below as a Claude marketplace
 ├── plugins/                 # one subdirectory per plugin
-│   └── knowledge-management/
+│   └── knowledge_management/
 │       ├── .claude-plugin/plugin.json
 │       ├── .codex-plugin/plugin.json
 │       ├── README.md
 │       └── skills/          # one subdirectory per skill, each with SKILL.md
-│           └── wiki/
+│           ├── wiki/
+│           ├── executive_summary/
+│           └── spr/
 └── deployment/              # deployment script for installing artefacts globally or per-project
     ├── deployment.sh
     ├── deployment.conf
@@ -23,8 +25,8 @@ ai-modules/
 
 ## Plugins
 
-- **knowledge-management** — skills for building and maintaining a personal/team knowledge base.
-  Currently ships the `wiki` skill (persistent, interlinked markdown notes).
+- **knowledge_management** — skills for building, maintaining, and distilling a personal/team knowledge base.
+  Ships `wiki` (persistent, interlinked markdown notes), `executive_summary` (structured prose summaries), and `spr` (Sparse Priming Representations).
 
 ## Deploying
 

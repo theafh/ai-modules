@@ -1,7 +1,8 @@
 {
-  "name": "knowledge-management",
+  "name": "knowledge_management",
   "version": "1.0.0",
   "description": "Skills for building and maintaining a persistent, interlinked knowledge base.",
-  "author": { "name": "theafh" },
+  "author": { "name": "Andreas F. Hoffmann" },
+  "license": "MIT",
   "skills": "./skills/"
 }

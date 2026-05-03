@@ -1,21 +1,21 @@
 # Deployment Script
 
-`scripts/deployment/deployment.sh` deploys repo artifacts into config directories for VS Code GitHub Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, and Google Antigravity. It can deploy to global config dirs or into a single project directory.
+`deployment/deployment.sh` deploys repo artifacts into config directories for VS Code GitHub Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, and Google Antigravity. It can deploy to global config dirs or into a single project directory.
 
-It autodiscovers artifacts by folder layout, backs up only the selected targets (global mode only), records deployed paths in `scripts/deployment/deployed_artefacts.log`, and can uninstall previously deployed artifacts from that log.
+It autodiscovers artifacts by plugin layout, backs up only the selected targets (global mode only), records deployed paths in `deployment/deployed_artefacts.log`, and can uninstall previously deployed artifacts from that log.
 
 ## Run It
 
 Run with no arguments to see help. Pass `--global` to deploy globally, or `--project-dir DIR` to deploy into a single project's local config:
 
 ```bash
-./scripts/deployment/deployment.sh                                        # show help
-./scripts/deployment/deployment.sh --global                               # deploy all to global dirs
-./scripts/deployment/deployment.sh --global --dry-run                     # preview
-./scripts/deployment/deployment.sh --global --type skill --target claude  # filter
-./scripts/deployment/deployment.sh --project-dir /path/to/repo --target claude
-./scripts/deployment/deployment.sh --uninstall                            # remove logged artifacts
-./scripts/deployment/deployment.sh --clear-backups --target cursor,claude
+./deployment/deployment.sh                                        # show help
+./deployment/deployment.sh --global                               # deploy all to global dirs
+./deployment/deployment.sh --global --dry-run                     # preview
+./deployment/deployment.sh --global --type skill --target claude  # filter
+./deployment/deployment.sh --project-dir /path/to/repo --target claude
+./deployment/deployment.sh --uninstall                            # remove logged artifacts
+./deployment/deployment.sh --clear-backups --target cursor,claude
 ```
 
 ## Flags
@@ -35,9 +35,9 @@ If `--target` filters out every app, the script aborts. If discovery finds no ma
 
 ## Artifact Discovery
 
-Discovery is folder-based. Top-level folders define artifact types:
+Discovery is plugin- and folder-based. Artifacts live under `plugins/<plugin>/<asset-folder>/`, where the asset-folder name defines the artifact type:
 
-| Folder | Type | What counts as an artifact |
+| Asset folder | Type | What counts as an artifact |
 | --- | --- | --- |
 | `agents/` | agent | each top-level `*.md` file |
 | `commands/` | command | each top-level `*.md` file |
@@ -46,11 +46,11 @@ Discovery is folder-based. Top-level folders define artifact types:
 
 Hidden files and `README*` files are skipped. The deployed name is the file basename without extension, or the skill directory's basename.
 
-The script walks up from its own location until it finds a directory containing one of these folders, so it works regardless of where it lives in the tree.
+The script walks up from its own location until it finds a directory containing a `plugins/` folder, so it works regardless of where it lives in the tree. Repo-relative paths (e.g. for `deployment.conf` rules and the deploy log) take the form `plugins/<plugin>/<asset-folder>/<artifact>`.
 
 ## Per-Tool Configuration (`deployment.conf`)
 
-`scripts/deployment/deployment.conf` controls what gets deployed where, in robots.txt-style sections:
+`deployment/deployment.conf` controls what gets deployed where, in robots.txt-style sections:
 
 ```text
 #tool                     Section heading: vscode, cursor, claude, codex, gemini, antigravity
@@ -58,7 +58,7 @@ disallow:path             Skip a path (relative to repo root) for this tool. Tra
 replace:path VAR=value    Force a copied (not symlinked) deployment for matching paths and substitute $VAR$ in the deployed copy.
 ```
 
-The current config disallows anything under `legacy/` for every target, so legacy artifacts are kept in the repo but never deployed.
+The current config disallows any path matching `*legacy*` for every target, so any plugin or artifact tagged as legacy is kept in the repo but never deployed.
 
 ## Target Layout
 
@@ -110,7 +110,7 @@ Backups land in `$HOME` as `<name>_YYYYMMDD_HHMMSS`, e.g. `~/.cursor_YYYYMMDD_HH
 
 ## Deploy Log and Uninstall
 
-Every real deploy appends one line per deployed artifact to `scripts/deployment/deployed_artefacts.log` (tab-separated):
+Every real deploy appends one line per deployed artifact to `deployment/deployed_artefacts.log` (tab-separated):
 
 1. deployed path (or `path[key]` for JSON-merge entries)
 2. target id
