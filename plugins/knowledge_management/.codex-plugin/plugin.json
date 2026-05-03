@@ -1,7 +1,7 @@
 {
   "name": "knowledge_management",
   "version": "1.0.0",
-  "description": "Skills for building, maintaining, and distilling a persistent, interlinked knowledge base. Ships the wiki, executive_summary, and spr skills.",
+  "description": "Skills and agents for building, maintaining, and distilling a persistent, interlinked knowledge base. Ships the wiki, executive_summary, and spr skills, and the wiki_audit agent.",
   "author": { "name": "Andreas F. Hoffmann" },
   "license": "MIT",
   "skills": "./skills/"

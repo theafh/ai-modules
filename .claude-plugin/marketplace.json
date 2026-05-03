@@ -13,7 +13,7 @@
     {
       "name": "knowledge_management",
       "source": "./plugins/knowledge_management",
-      "description": "Skills for building, maintaining, and distilling a persistent, interlinked knowledge base. Ships the wiki, executive_summary, and spr skills.",
+      "description": "Skills and agents for building, maintaining, and distilling a persistent, interlinked knowledge base. Ships the wiki, executive_summary, and spr skills, and the wiki_audit agent.",
       "version": "1.0.0"
     },
     {

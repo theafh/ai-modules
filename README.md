@@ -13,6 +13,8 @@ ai-modules/
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── .codex-plugin/plugin.json
 │   │   ├── README.md
+│   │   ├── agents/          # one .md file per agent
+│   │   │   └── wiki_audit.md
 │   │   └── skills/          # one subdirectory per skill, each with SKILL.md
 │   │       ├── wiki/
 │   │       ├── executive_summary/
@@ -37,8 +39,8 @@ ai-modules/
 
 ## Plugins
 
-- **knowledge_management**: skills for building, maintaining, and distilling a knowledge base.
-  Ships `wiki` (persistent, interlinked markdown notes), `executive_summary` (structured prose summaries), and `spr` (Sparse Priming Representations).
+- **knowledge_management**: skills and agents for building, maintaining, and distilling a knowledge base.
+  Ships `wiki` (persistent, interlinked markdown notes), `executive_summary` (structured prose summaries), `spr` (Sparse Priming Representations), and the `wiki_audit` agent (autonomous lint + semantic audit + fix loop for the repo's wiki).
 - **ai_dev**: skills for everyday AI-assisted development.
   Ships `git_commit`, `update_changelog`, `ai_instruction_writing`, `ai_instruction_formatting`, and the `format_markdown` / `format_python` / `format_rust` style guides.
 
