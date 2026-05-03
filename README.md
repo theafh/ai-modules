@@ -1,6 +1,6 @@
 # ai-modules
 
-A collection of Claude and Codex plugins, organised analogously to the `ai-assets` plugin marketplace.
+A collection of professional AI skills, agents, commands, and hooks. Each module is packaged as a plugin (currently Claude Code and OpenAI Codex), and can also be deployed globally into vendor environments such as VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, and Google Antigravity, or scoped to a single project's local config. The deployment script discovers artefacts by plugin layout and installs them where each tool expects them, so the same source of truth lives in one repo.
 
 ## Layout
 
@@ -25,7 +25,7 @@ ai-modules/
 
 ## Plugins
 
-- **knowledge_management** — skills for building, maintaining, and distilling a personal/team knowledge base.
+- **knowledge_management**: skills for building, maintaining, and distilling a knowledge base.
   Ships `wiki` (persistent, interlinked markdown notes), `executive_summary` (structured prose summaries), and `spr` (Sparse Priming Representations).
 
 ## Deploying

@@ -4,7 +4,7 @@
     "name": "Andreas F. Hoffmann"
   },
   "metadata": {
-    "description": "ai-modules: personal Claude and Codex plugins",
+    "description": "A collection of professional AI skills, agents, commands, and hooks, packaged as Claude and Codex plugins and deployable globally across vendors or per project.",
     "version": "1.0.0",
     "license": "MIT",
     "pluginRoot": "./plugins"
