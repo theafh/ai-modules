@@ -1,6 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, and clear content violations of the page-type anatomy. Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
+version: 1.2.0
 model: inherit
 background: false
 effort: high
@@ -27,6 +28,13 @@ Leave the wiki in a state where:
   200 lines without a documented rationale.
 - Procedure pages read as evergreen rules — no proper nouns, dates, paths,
   or task-specific instances surviving from a worked example.
+- The wiki's structural scaffold — `SCHEMA.md` sections, the page-type
+  enum and the directory layout it implies, `index.md` shape, `log.md`
+  preamble, and raw-source frontmatter — aligns with the current
+  canonical structure encoded in `<wiki-skill>/SKILL.md` and
+  `<wiki-skill>/references/template_*.md`. The wiki's own customizations
+  (configured domain, tag taxonomy, declared custom fields, user-added
+  page types) are preserved on top of the canonical baseline.
 - `index.md` lists every page exactly once under its correct section.
 - `log.md` records the audit and the final lint outcome.
 </objective>
@@ -39,7 +47,12 @@ Leave the wiki in a state where:
 - The skill's bundled tools at `<wiki-skill>/scripts/`:
   `discover_wiki.sh`, `init_wiki.sh`, and `lint.py`.
 - The skill's reference docs: `references/lint_checks.md` (severity
-  matrix) and `references/template_schema.md` (canonical schema shape).
+  matrix), `references/template_schema.md` (canonical `SCHEMA.md`
+  shape), `references/template_index.md` (canonical `index.md` shape),
+  and `references/template_log.md` (canonical `log.md` preamble).
+- The skill's own `SKILL.md` for the current page-type enum,
+  three-layer architecture, and per-type page-anatomy table — the
+  authoritative source for canonical scaffold structure.
 - The wiki's own `SCHEMA.md` (page-type enum, custom fields, tag taxonomy,
   domain), `index.md` (catalog), and `log.md` (recent activity).
 </inputs>
@@ -66,6 +79,25 @@ audited before — the schema, taxonomy, or domain may have changed.
    (the `<type>s` directories derived from the schema enum, plus
    `procedures/` if the schema declares it). Build a working set of every
    page that exists on disk.
+6. Read the canonical scaffold references the skill ships with, so the
+   audit has a current baseline to compare the wiki against:
+   - `<wiki-skill>/SKILL.md` — the canonical page-type enum, the
+     three-layer architecture diagram, the "Page Types: Pick by Question"
+     table, and the per-type "Page anatomy" table.
+   - `<wiki-skill>/references/template_schema.md` — the canonical
+     `SCHEMA.md` shape (Domain, Conventions, Frontmatter yaml block,
+     raw/ Frontmatter, Tag Taxonomy, Page Thresholds, Page Types: Pick
+     by Question, per-type page sections, Update Policy).
+   - `<wiki-skill>/references/template_index.md` — the canonical
+     `index.md` header (`Total pages`, `Last updated`) and section list.
+   - `<wiki-skill>/references/template_log.md` — the canonical `log.md`
+     preamble (entry format, action enum, rotation rule).
+
+   Treat these references as the *current baseline* the wiki's scaffold
+   must align with. A wiki built against an older version of the skill
+   will drift from this baseline as the skill evolves; that drift is in
+   scope for the audit. The references are read-as-canonical for
+   comparison only — never edited.
 
 ## Phase 1 — Assess
 
@@ -123,6 +155,47 @@ set and flag each of the following as a Phase 2 issue:
 - **Confidence violations.** A single-source, opinion-heavy, or
   fast-moving page declares `confidence: high`, or omits confidence
   entirely. The schema reserves `high` for multi-source support.
+- **Scaffold drift against the canonical references.** Compare the
+  wiki's own structure against the canonical references read in Phase 0
+  step 6 and flag every gap:
+  - **`SCHEMA.md` sections.** A section that exists in
+    `template_schema.md` is missing from the wiki's `SCHEMA.md`
+    (e.g., `Page Thresholds`, `Page Types: Pick by Question`, the
+    per-type page-anatomy entries, `Update Policy`, the
+    `### raw/ Frontmatter` subsection, the provenance bullet under
+    `## Conventions`).
+  - **Page-type enum drift.** A canonical page type listed in the
+    current `SKILL.md` page-type enum is missing from the wiki's
+    `## Frontmatter` `type:` declaration (e.g., a wiki predating the
+    `procedure` type), and the matching `<type>s/` directory and
+    `index.md` section are missing too.
+  - **Frontmatter field drift.** A canonical frontmatter field is
+    missing from the wiki's `## Frontmatter` yaml block (e.g.,
+    `confidence`, `contested`, `contradictions`, the custom-fields
+    paragraph), or the canonical `raw/` frontmatter shape (`source_url`,
+    `ingested`, `sha256`) is not declared in `### raw/ Frontmatter`.
+  - **`index.md` scaffold drift.** The wiki's `index.md` is missing the
+    canonical header (`Total pages`, `Last updated`), or its sections
+    do not cover every page type the wiki's schema declares, or the
+    section order does not match the canonical type sequence.
+  - **`log.md` preamble drift.** The wiki's `log.md` preamble is
+    missing the canonical entry-format line, action enum, or rotation
+    rule (rotate at 500 entries to `log-YYYY.md`).
+  - **Directory layout drift.** A `<type>s/` directory is missing for
+    a page type the wiki's schema declares, or a `<type>s/` directory
+    exists for a type the schema does not declare, or the `raw/`
+    subtree is missing canonical subdirectories the wiki actually
+    needs (`articles/`, `papers/`, `transcripts/`, `assets/`).
+  - **Raw-source frontmatter drift.** Files under `raw/` are missing
+    the canonical `source_url`, `ingested`, or `sha256` fields the
+    schema's `### raw/ Frontmatter` subsection declares.
+
+  Customizations the wiki author layered on top — domain text in
+  `## Domain`, the wiki's tag taxonomy in `## Tag Taxonomy`, declared
+  custom fields, and user-added page types beyond the canonical
+  enum — are not drift and stay as-is. Drift is the *absence* of
+  current canonical structure, not the *presence* of wiki-specific
+  content.
 
 ### 1c. Compile the issue list
 
@@ -236,6 +309,55 @@ Apply the move that matches the issue:
   skill rules: bullets as `-` only, fenced code blocks declare a
   language, no consecutive blank lines, no trailing punctuation in
   headers, header levels do not skip, single trailing newline.
+- **Scaffold section missing against canonical** → restore the missing
+  section using the matching canonical reference as the source text
+  (`template_schema.md` for `SCHEMA.md` sections, `template_index.md`
+  for `index.md`, `template_log.md` for `log.md`). Preserve every
+  customization the wiki has already made — keep the configured
+  `## Domain` text, the wiki's `## Tag Taxonomy`, and any declared
+  custom fields verbatim, and merge the missing canonical structure
+  around them. When a canonical section already exists in the wiki but
+  its content is older than the reference (e.g., the
+  `## Page Thresholds` section is missing the archive bullet), fold
+  the new guidance in rather than overwriting the user's wording.
+- **Canonical page type missing from the schema enum** → add the type
+  to the `## Frontmatter` yaml block's `type:` declaration in
+  alphabetical order alongside the existing types, create the matching
+  `<type>s/` directory (with a `.gitkeep` if no pages exist there
+  yet), add the matching section to `index.md` in the canonical type
+  sequence, and add the per-type page-anatomy guidance from the
+  canonical template into `SCHEMA.md`. Existing user-added types beyond
+  the canonical set stay; remove a user-added type only when the user
+  has explicitly retired it.
+- **Canonical frontmatter field missing from `SCHEMA.md`** → add the
+  field declaration to the `## Frontmatter` yaml block (e.g.,
+  `confidence: high | medium | low`, `contested: true`,
+  `contradictions: [other-page-slug]`). Existing pages that lack the
+  field are not modified by this fix — they surface separately via the
+  per-page checks in Phase 1b when the field is required.
+- **`### raw/ Frontmatter` missing** → add the subsection to
+  `SCHEMA.md` from the canonical template, with the
+  `source_url`/`ingested`/`sha256` shape and the body-only sha256
+  computation note.
+- **Raw-source frontmatter missing canonical fields** → backfill the
+  missing fields on raw files. Compute `sha256` over the body only
+  (everything after the closing `---`) and record the digest. Edit
+  only the frontmatter; raw bodies stay untouched.
+- **`index.md` scaffold drift** → restore the canonical header
+  (`Total pages: <count>`, `Last updated: <today>`), reorder sections
+  to match the canonical type sequence, and add a section for each
+  page type the wiki's schema declares. Existing entries stay in their
+  sections; only the scaffold around them is aligned.
+- **`log.md` preamble drift** → restore the canonical preamble lines
+  (entry format, action enum, body convention, rotation rule).
+  Existing log entries below the preamble stay as-is.
+- **Directory layout drift** → create the missing `<type>s/` directory
+  for every page type the schema declares (with a `.gitkeep` if
+  empty), and create missing canonical `raw/` subdirectories the wiki
+  needs. When a `<type>s/` directory exists for a type the schema
+  does not declare, surface it as a Phase 1 issue rather than fixing
+  silently — the user must decide whether to add the type to the
+  schema or relocate the pages.
 
 ### Constraints on fixes
 
@@ -301,6 +423,15 @@ Apply the move that matches the issue:
   or merge, which tag to choose), apply the rules in `wiki/SKILL.md`
   and `references/template_schema.md` rather than inventing a local
   convention.
+- Treat scaffold alignment as part of the audit, not a separate task.
+  A wiki built against an older version of the skill will drift from
+  the canonical scaffold (`SCHEMA.md` sections, page-type enum,
+  directory layout, `index.md` shape, `log.md` preamble, raw/
+  frontmatter) as the skill evolves. Bring the scaffold forward to
+  match the current `<wiki-skill>/SKILL.md` and
+  `<wiki-skill>/references/template_*.md`, preserving the wiki's
+  domain, tag taxonomy, declared custom fields, and user-added page
+  types on top. The references are read-as-canonical, never edited.
 - Run for as long as the issue list takes. Large wikis with hundreds of
   pages produce long fix loops; work steadily through every issue and
   do not stop early.
