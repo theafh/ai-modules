@@ -1,5 +1,7 @@
 # Wiki Schema
 
+This LLM-Wiki is managed by the `wiki` skill created by Andreas F. Hoffmann from the `knowledge_management` plugin in [theafh AI-repo](https://github.com/theafh/ai-modules).
+
 ## Domain
 
 [What this wiki covers — e.g., "AI/ML research", "personal health", "startup intelligence"]

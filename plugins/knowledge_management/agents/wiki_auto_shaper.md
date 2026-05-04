@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, and clear content violations of the page-type anatomy. Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.2.0
+version: 1.3.2
 model: inherit
 background: false
 effort: high
@@ -155,47 +155,96 @@ set and flag each of the following as a Phase 2 issue:
 - **Confidence violations.** A single-source, opinion-heavy, or
   fast-moving page declares `confidence: high`, or omits confidence
   entirely. The schema reserves `high` for multi-source support.
-- **Scaffold drift against the canonical references.** Compare the
-  wiki's own structure against the canonical references read in Phase 0
-  step 6 and flag every gap:
-  - **`SCHEMA.md` sections.** A section that exists in
-    `template_schema.md` is missing from the wiki's `SCHEMA.md`
-    (e.g., `Page Thresholds`, `Page Types: Pick by Question`, the
-    per-type page-anatomy entries, `Update Policy`, the
+- **Scaffold drift against the canonical references.** Drive this
+  comparison from a literal line-level diff between each scaffold file
+  and its canonical template — categorical checklists alone miss
+  fine-grained drift like a one-line attribution paragraph between the
+  H1 and the first section, a single new bullet under a heading, a
+  re-worded table cell, or a freshly added yaml field. The diff is the
+  exhaustive change list; the categories below only describe how to
+  classify each hunk.
+
+  ```bash
+  diff -u "$WIKI/SCHEMA.md" "<wiki-skill>/references/template_schema.md"
+  diff -u "$WIKI/index.md"  "<wiki-skill>/references/template_index.md"
+  # log.md: scope the diff to the preamble (everything above the first
+  # `## [YYYY-MM-DD]` entry). The entries below are append-only content
+  # that grows unbounded; a whole-file diff would drown the preamble
+  # scaffold signal in hundreds of accumulated entries.
+  diff -u \
+    <(sed '/^## \[/,$d' "$WIKI/log.md") \
+    <(sed '/^## \[/,$d' "<wiki-skill>/references/template_log.md")
+  ```
+
+  **Lint already covers the prelude/preamble slots deterministically.**
+  Phase 1a's `boilerplate` check enforces verbatim equality of the
+  `SCHEMA.md` prelude (everything above the first `##` heading) and
+  the `log.md` preamble against the canonical templates; any mismatch
+  there is named in the lint output already. The diff procedure here
+  exists to cover everything *below* those slots — `##` sections,
+  page-type enum, frontmatter declarations, directory layout — which
+  the linter does not enforce verbatim.
+
+  Walk every hunk and classify:
+
+  - **Canonical has content the wiki lacks** (a heading, paragraph,
+    sentence, bullet, table row, enum entry, or yaml field) → drift,
+    flag for the matching Phase 2 fix move.
+  - **Wiki has content the canonical lacks** → customization,
+    preserve as-is.
+  - **Same content, different wording, no rule broken** → preserve
+    the wiki's wording.
+  - **Same content, different order, rule broken** (e.g., page-type
+    enum entries, frontmatter fields, or `index.md` sections out of
+    canonical sequence) → reorder per the canonical.
+
+  Configurable zones — the wiki's content inside these is
+  authoritative; only flag drift on the surrounding scaffold:
+
+  - `template_schema.md`: the body of `## Domain`, the body of
+    `## Tag Taxonomy`, declared custom frontmatter fields beyond the
+    canonical set, and user-added page types beyond the canonical
+    enum.
+  - `template_index.md`: the header values (`Total pages: N`,
+    `Last updated: <date>`) and the page entries inside each section.
+  - `template_log.md`: every `## [YYYY-MM-DD] …` entry and its body
+    (out of scope for the scaffold diff entirely — the diff runs on
+    the preamble alone, since entries are append-only content).
+
+  Common kinds of hunk the diff surfaces — these illustrate
+  classification, they are *not* a closed enumeration; the diff
+  catches whatever these examples miss:
+
+  - **`SCHEMA.md` `##`-section gap.** A section, sub-section,
+    paragraph, sentence, or bullet from `template_schema.md` (at or
+    below the first `##` heading) is missing — e.g.,
+    `## Page Thresholds`, the `## Page Types: Pick by Question`
+    table, a per-type page-anatomy entry, `## Update Policy`, the
     `### raw/ Frontmatter` subsection, the provenance bullet under
-    `## Conventions`).
-  - **Page-type enum drift.** A canonical page type listed in the
-    current `SKILL.md` page-type enum is missing from the wiki's
-    `## Frontmatter` `type:` declaration (e.g., a wiki predating the
-    `procedure` type), and the matching `<type>s/` directory and
-    `index.md` section are missing too.
+    `## Conventions`.
+  - **Page-type enum drift.** A canonical type listed in `SKILL.md`'s
+    page-type enum is missing from the wiki's `## Frontmatter` `type:`
+    declaration (e.g., a wiki predating the `procedure` type), and
+    the matching `<type>s/` directory and `index.md` section are
+    missing too.
   - **Frontmatter field drift.** A canonical frontmatter field is
     missing from the wiki's `## Frontmatter` yaml block (e.g.,
     `confidence`, `contested`, `contradictions`, the custom-fields
-    paragraph), or the canonical `raw/` frontmatter shape (`source_url`,
-    `ingested`, `sha256`) is not declared in `### raw/ Frontmatter`.
-  - **`index.md` scaffold drift.** The wiki's `index.md` is missing the
-    canonical header (`Total pages`, `Last updated`), or its sections
-    do not cover every page type the wiki's schema declares, or the
-    section order does not match the canonical type sequence.
-  - **`log.md` preamble drift.** The wiki's `log.md` preamble is
-    missing the canonical entry-format line, action enum, or rotation
-    rule (rotate at 500 entries to `log-YYYY.md`).
-  - **Directory layout drift.** A `<type>s/` directory is missing for
-    a page type the wiki's schema declares, or a `<type>s/` directory
-    exists for a type the schema does not declare, or the `raw/`
-    subtree is missing canonical subdirectories the wiki actually
-    needs (`articles/`, `papers/`, `transcripts/`, `assets/`).
+    paragraph), or the canonical `raw/` frontmatter shape
+    (`source_url`, `ingested`, `sha256`) is not declared in
+    `### raw/ Frontmatter`.
+  - **`index.md` scaffold drift.** The wiki's `index.md` is missing
+    the canonical header (`Total pages`, `Last updated`), its
+    sections do not cover every page type the wiki's schema declares,
+    or the section order does not match the canonical type sequence.
+  - **Directory layout drift.** A `<type>s/` directory is missing
+    for a page type the wiki's schema declares, exists for a type
+    the schema does not declare, or the `raw/` subtree is missing
+    canonical subdirectories the wiki actually needs (`articles/`,
+    `papers/`, `transcripts/`, `assets/`).
   - **Raw-source frontmatter drift.** Files under `raw/` are missing
     the canonical `source_url`, `ingested`, or `sha256` fields the
     schema's `### raw/ Frontmatter` subsection declares.
-
-  Customizations the wiki author layered on top — domain text in
-  `## Domain`, the wiki's tag taxonomy in `## Tag Taxonomy`, declared
-  custom fields, and user-added page types beyond the canonical
-  enum — are not drift and stay as-is. Drift is the *absence* of
-  current canonical structure, not the *presence* of wiki-specific
-  content.
 
 ### 1c. Compile the issue list
 
@@ -432,6 +481,13 @@ Apply the move that matches the issue:
   `<wiki-skill>/references/template_*.md`, preserving the wiki's
   domain, tag taxonomy, declared custom fields, and user-added page
   types on top. The references are read-as-canonical, never edited.
+- Drive scaffold comparison from a mechanical diff, not from an
+  a-priori checklist. A `diff -u` between the wiki's scaffold file and
+  its canonical template enumerates every difference exhaustively,
+  including fine-grained changes the agent's instructions do not name
+  explicitly (one-line paragraphs, single bullets, table cells, new
+  yaml fields). Classify each hunk against the rules in Phase 1b; do
+  not rely on the categorical examples to bound the search.
 - Run for as long as the issue list takes. Large wikis with hundreds of
   pages produce long fix loops; work steadily through every issue and
   do not stop early.

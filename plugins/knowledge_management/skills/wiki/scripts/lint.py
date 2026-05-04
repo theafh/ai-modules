@@ -29,7 +29,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +262,91 @@ def load_taxonomy(wiki: Path) -> set[str] | None:
             if t and " " not in t and not t.startswith("["):
                 tags.add(t)
     return tags or None
+
+
+# ---------------------------------------------------------------------------
+# Verbatim boilerplate (deterministic prelude/preamble enforcement)
+#
+# Some regions of a wiki must match the canonical template byte for byte
+# (e.g., the SCHEMA.md prelude carrying the "managed by the wiki skill"
+# attribution paragraph, or the log.md preamble with its append-only
+# conventions). The agent's diff-driven scaffold audit catches drift in
+# theory but depends on diligence; this check enforces verbatim equality
+# deterministically, so the lint output is the structural source of truth.
+#
+# Add another VerbatimSlot to extend coverage. Each slot pairs a wiki
+# file with its canonical template and an extractor that returns the
+# region to compare. The default extractor returns everything above the
+# first `## ` second-level heading — pluggable for future slots whose
+# verbatim region has a different shape.
+# ---------------------------------------------------------------------------
+
+REFERENCES_DIR = Path(__file__).resolve().parent.parent / "references"
+
+
+def extract_h1_prelude(text: str) -> str:
+    """Return everything from the start of `text` up to (but not including)
+    the first `## ` second-level heading. Trailing newlines are stripped so
+    equal preludes compare equal regardless of trailing whitespace.
+
+    The prelude is the canonical home for "must-stay-verbatim" content like
+    the attribution paragraph in SCHEMA.md or the conventions blockquote in
+    log.md — everything above where configurable section bodies begin.
+    """
+    out: list[str] = []
+    for line in text.splitlines(keepends=True):
+        if line.startswith("## "):
+            break
+        out.append(line)
+    return "".join(out).rstrip("\n")
+
+
+@dataclass(frozen=True)
+class VerbatimSlot:
+    """A region of a wiki file required to match its canonical template."""
+    wiki_file: str
+    template_file: str
+    label: str
+    extract: Callable[[str], str] = extract_h1_prelude
+
+
+VERBATIM_SLOTS: tuple[VerbatimSlot, ...] = (
+    VerbatimSlot(
+        wiki_file="SCHEMA.md",
+        template_file="template_schema.md",
+        label="SCHEMA.md prelude (H1 plus paragraphs above first `##`)",
+    ),
+    VerbatimSlot(
+        wiki_file="log.md",
+        template_file="template_log.md",
+        label="log.md preamble (H1 plus blockquote above first `##`)",
+    ),
+)
+
+
+def check_verbatim_boilerplate(wiki: Path) -> list[Issue]:
+    """Compare each VERBATIM_SLOT region against its canonical template
+    and warn on mismatch. Deterministic and independent of any other
+    check — the agent treats this output as structural source of truth
+    for these slots.
+    """
+    issues: list[Issue] = []
+    for slot in VERBATIM_SLOTS:
+        wiki_path = wiki / slot.wiki_file
+        template_path = REFERENCES_DIR / slot.template_file
+        if not wiki_path.is_file() or not template_path.is_file():
+            continue
+        wiki_region = slot.extract(wiki_path.read_text(encoding="utf-8"))
+        canonical_region = slot.extract(template_path.read_text(encoding="utf-8"))
+        if wiki_region == canonical_region:
+            continue
+        issues.append(Issue(
+            SEV_WARN, "boilerplate", wiki_path,
+            f"{slot.label} differs from canonical "
+            f"references/{slot.template_file}; restore the region verbatim "
+            f"or update the template if the change is intentional",
+        ))
+    return issues
 
 
 # ---------------------------------------------------------------------------
@@ -721,6 +806,7 @@ def main() -> int:
         issues.extend(check_custom_fields(wiki, custom_spec, page_dirs))
         issues.extend(check_markdown_style(wiki, page_dirs))
 
+    issues.extend(check_verbatim_boilerplate(wiki))
     issues.extend(check_log_rotation(wiki))
     issues.extend(check_source_drift(wiki))
 

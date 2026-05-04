@@ -1,14 +1,14 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.6.0
+version: 1.7.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
 
 # Wiki
 
-Based on [Andrej Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+This LLM-Wiki is managed by the `wiki` skill created by Andreas F. Hoffmann from the `knowledge_management` plugin in [theafh AI-repo](https://github.com/theafh/ai-modules).
 
 Unlike traditional RAG (which rediscovers knowledge from scratch per query),
 the wiki compiles knowledge once and keeps it current. Cross-references are
@@ -355,7 +355,9 @@ Findings come in three buckets:
   `index.md`, missing or unparseable `SCHEMA.md` (no extractable type enum).
   Exits 1; must fix.
 - **warn** — orphans, contested pages, source drift, off-taxonomy tags,
-  invalid enum/date values, pages missing from the index.
+  invalid enum/date values, pages missing from the index, verbatim-boilerplate
+  mismatches (e.g., the SCHEMA.md prelude or log.md preamble drifting from
+  the canonical templates in `references/`).
 - **info** — markdown style nits, oversized pages, low-confidence
   single-source pages, unused taxonomy tags, log over 500 entries.
 
