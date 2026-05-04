@@ -42,6 +42,7 @@ Makefile                          # task entry point
 - **Use positive, action-oriented language** in skill prose and instructions. Reference: `plugins/ai_dev/skills/ai_instruction_writing/SKILL.md`.
 - **Keep the toolchain to Make + shell + markdown.** Add new languages, package managers, or build steps only when the user explicitly asks for them.
 - **Match snake_case naming** for skill and plugin directories.
+- **Write deployment-agnostic cross-references.** Skills, agents, commands, and hooks ship through several equal paths — the Claude marketplace, `make deploy` symlinks into user config dirs, `--project-dir` symlinks into a single repo, or in-place use from a checkout. None is canonical, none is the fallback. When an artefact references a sibling, name it directly (`wiki_auto_shaper`, `format_markdown`) and never qualify with the plugin name, the marketplace, or a deployment path. The only safe assumption is that assets bundled in the same plugin tend to be installed together, since the plugin is the unit of distribution; even that is best-effort, since users can opt out per-asset via deployment filters.
 
 ## What this repo is not
 

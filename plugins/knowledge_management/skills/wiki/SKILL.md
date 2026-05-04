@@ -1,7 +1,7 @@
 ---
 name: wiki
-description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, or health-check a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.5.3
+description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
+version: 1.6.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -25,7 +25,7 @@ Use this skill when the user:
 - Asks to create, build, or start a wiki or knowledge base.
 - Asks to ingest, add, or process a source into their wiki.
 - Asks a question that an existing wiki at the discovered location could answer.
-- Asks to lint, audit, or health-check their wiki.
+- Asks to lint, audit, fix, health-check, clean up, or auto-repair their wiki — delegate the work to the `wiki_auto_shaper` agent (see "Lint and Audit").
 - References their wiki, knowledge base, or "notes" in a research context.
 - Asks to capture procedural knowledge — workflows, conventions, runbooks — alongside the wiki's subject pages.
 
@@ -135,8 +135,12 @@ template (domain, tag taxonomy, page-type sections, update policy).
 
 `lint.py` reads the page-type enum from `SCHEMA.md`'s `## Frontmatter` yaml
 block — wikis can extend the type set in their schema without touching the
-script. See "Lint" below for the iteration loop;
-`references/lint_checks.md` has the full check matrix.
+script. See "Lint and Audit" below for the iteration loop;
+`references/lint_checks.md` has the full check matrix. The
+`wiki_auto_shaper` agent wraps `lint.py` with a complete
+assess → fix → verify loop in an isolated context — spawn it when the user
+asks for a broad audit, lint, fix, health-check, clean-up, or auto-repair
+pass over the wiki.
 
 Without access to the scripts, perform discovery inline: `./wiki/` → use it;
 `./.no_wiki` → use `$HOME/wiki`; otherwise ask the user before creating.
@@ -227,7 +231,9 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
      prose that belongs on a wiki page instead.
 
 6. **Run the linter and iterate** — `python3 scripts/lint.py`. Fix every
-   blocking finding before declaring complete. See "Lint" below.
+   blocking finding before declaring complete. This is the narrow
+   post-ingest check; for broad audits across the whole wiki, spawn the
+   `wiki_auto_shaper` agent instead. See "Lint and Audit" below.
 
 7. **Report what changed** to the user — list only files actually created or
    updated, matching what the log entry contains.
@@ -315,10 +321,27 @@ When content is fully superseded or the domain scope changes:
 4. Log the archive action.
 5. Run `python3 scripts/lint.py` to catch any inbound link you missed.
 
-### Lint
+### Lint and Audit
 
-Run after every ingest, archive, schema edit, batch update, or whenever the
-user asks to lint, health-check, or audit:
+Two paths, picked by scope.
+
+**Broad audits — spawn the `wiki_auto_shaper` agent.** When the user asks
+to lint, audit, fix, health-check, clean up, or auto-repair the wiki — or
+the wiki has accumulated drift across many pages — delegate to the
+`wiki_auto_shaper` agent. The agent runs a complete
+assess → fix → verify loop in an isolated context: runs `lint.py`,
+audits the prose for issues the linter cannot see (topic mixing,
+type/anatomy mismatch, procedure-page instance leakage, content violations
+of the page-type anatomy), fixes every blocking and warn finding, splits
+or relocates pages where the schema demands it, re-lints until the wiki is
+clean, appends the audit entry to `log.md`, and reports back a per-file
+change list. Keep that work in the agent rather than running the iteration
+loop inline — the fix loop on a real wiki touches dozens of files and
+displaces conversation context.
+
+**Narrow inline checks — run `lint.py` directly.** After a single ingest,
+a single archive, a schema edit, or a small batch update, run the linter
+in-flow and fix what it surfaces:
 
 ```bash
 python3 scripts/lint.py              # auto-discover ./wiki (or ~/wiki when ./.no_wiki present)
@@ -338,9 +361,10 @@ Findings come in three buckets:
 
 Full check matrix: `references/lint_checks.md`.
 
-**Iteration loop.** Run, fix the highest-severity findings, re-run. Repeat
-until the script exits 0 or only acceptable info-level findings remain.
-Append the outcome to `log.md`:
+**Inline iteration loop.** When the lint scope is narrow (one ingest, one
+archive), run, fix the highest-severity findings, re-run. Repeat until the
+script exits 0 or only acceptable info-level findings remain. Append the
+outcome to `log.md`:
 
 ```text
 ## [YYYY-MM-DD] lint | N blocking, N warn, N info

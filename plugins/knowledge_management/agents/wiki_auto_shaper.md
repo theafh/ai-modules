@@ -1,6 +1,6 @@
 ---
 name: wiki_auto_shaper
-description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, and clear content violations of the page-type anatomy. Use when the user asks to audit, lint, health-check, clean up, or auto-repair their wiki.
+description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, and clear content violations of the page-type anatomy. Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
 model: inherit
 background: false
 effort: high

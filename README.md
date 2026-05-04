@@ -1,6 +1,6 @@
 # ai-modules
 
-A collection of professional AI skills, agents, commands, and hooks. Each module is packaged as a plugin (currently Claude Code and OpenAI Codex), and can also be deployed globally into vendor environments such as VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, and Google Antigravity, or scoped to a single project's local config. The deployment script discovers artefacts by plugin layout and installs them where each tool expects them, so the same source of truth lives in one repo.
+A collection of professional AI skills, agents, commands, and hooks. The same source of truth ships through several equal paths — installed from the bundled Claude Code marketplace, symlinked into vendor config dirs globally by `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity), symlinked into a single repo's local config via `--project-dir`, or used in-place from a checkout. The deployment script discovers artefacts by plugin layout and installs them where each tool expects them.
 
 ## Layout
 
