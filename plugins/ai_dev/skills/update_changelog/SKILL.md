@@ -32,16 +32,19 @@ license: MIT
     <model_authority>The model owns summarization, day-theme composition, category assignment, and status-marker evaluation. Use script output as evidence and execution support.</model_authority>
     <workflow_authority>Treat this skill as the source of truth for `/update_changelog` workflow, output format, and entry style.</workflow_authority>
   </policy>
-  <steps>
-    <step name="resolve_project_name">Resolve `{Project Name}` from the repository directory name, an existing project title in the README's H1, the `name` field of `package.json` or `Cargo.toml`, or another canonical project metadata file.</step>
-    <step name="enumerate_dates">Run `git log --reverse --format='%ad' --date=short --no-merges | sort -u` to list every distinct commit date in the repository, oldest-first. When updating an existing changelog, drop dates already covered by the most recent day section in `CHANGELOG.md`.</step>
-    <step name="ensure_header">If `CHANGELOG.md` does not exist, create it with the header block. If it exists, leave the header in place.</step>
-    <step name="day_loop">For each remaining date, oldest-first:
-      <substep>Run `scripts/prepare_changelog_day.sh YYYY-MM-DD` to fetch that day's context blob in one call. If the script exits 1, skip the date silently.</substep>
-      <substep>Read every `<commit>` and `<file_change>` block. Aggregate related changes into logical entries, choose categories, compose a 2-5 word day theme, and assign status markers by checking each entry against the current state of the codebase.</substep>
-      <substep>Build the day section from the day theme, the entry bullets, and the `- **Files changed:** ...` bullet using the paths from `<files_changed>`. End the section with `---`.</substep>
-      <substep>Insert the completed day section directly after the header block in `CHANGELOG.md`. Flush to disk before composing the next day so prior detail can fall out of working context.</substep>
-    </step>
-    <step name="status_re_evaluation">After all new days are written, re-evaluate status markers on every existing entry section-by-section. Promote `[active]` entries to `[changed later]` when the behavior is still present but has evolved, and to `[superseded]` when later work replaced or removed it. Leave entry text and dates unchanged.</step>
-  </steps>
+  <procedure>
+    <resolve_project_name>Resolve `{Project Name}` from the repository directory name, an existing project title in the README's H1, the `name` field of `package.json` or `Cargo.toml`, or another canonical project metadata file.</resolve_project_name>
+    <enumerate_dates>Run `git log --reverse --format='%ad' --date=short --no-merges | sort -u` to list every distinct commit date in the repository, oldest-first. When updating an existing changelog, drop dates already covered by the most recent day section in `CHANGELOG.md`.</enumerate_dates>
+    <ensure_header>If `CHANGELOG.md` does not exist, create it with the header block. If it exists, leave the header in place.</ensure_header>
+    <day_loop>
+      For each remaining date, oldest-first:
+      <substeps>
+        <substep>Run `scripts/prepare_changelog_day.sh YYYY-MM-DD` to fetch that day's context blob in one call. If the script exits 1, skip the date silently.</substep>
+        <substep>Read every `<commit>` and `<file_change>` block. Aggregate related changes into logical entries, choose categories, compose a 2-5 word day theme, and assign status markers by checking each entry against the current state of the codebase.</substep>
+        <substep>Build the day section from the day theme, the entry bullets, and the `- **Files changed:** ...` bullet using the paths from `<files_changed>`. End the section with `---`.</substep>
+        <substep>Insert the completed day section directly after the header block in `CHANGELOG.md`. Flush to disk before composing the next day so prior detail can fall out of working context.</substep>
+      </substeps>
+    </day_loop>
+    <status_re_evaluation>After all new days are written, re-evaluate status markers on every existing entry section-by-section. Promote `[active]` entries to `[changed later]` when the behavior is still present but has evolved, and to `[superseded]` when later work replaced or removed it. Leave entry text and dates unchanged.</status_re_evaluation>
+  </procedure>
 </update_changelog_skill>
