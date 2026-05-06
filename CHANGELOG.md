@@ -4,6 +4,26 @@ Status markers: `[active]` — described behavior or code is present and current
 
 Entries are grouped strictly by day and kept on their original implementation dates.
 
+## 2026-05-06 — Pseudo-XML linter and ai_dev release
+
+- [active] **Implementation/runtime:** Expanded the `ai_instruction_formatting` skill (v2.0.0 → v3.3.0) with a "File Shape" table covering prose-only, XML-instruction body, tutorial with examples, and mixed-agent shapes; an explicit "Rule Strength" split between mechanical (linter-enforced) rules and stylistic guidance; "Named Tags First" and "Repetition as the Exception" guidance with a unit-vs-anchor decision frame and a canonical repeatable-pair allowlist (`<policy>/<rule>`, `<steps>/<step>`, `<substeps>/<substep>`, `<examples>/<example>`, `<scoring_criteria>/<criterion>`, `<validations>/<validation>`); ASCII snake_case tag-name rules with no attributes and no self-closing tags; a depth-five nesting cap; and a "Mechanical Validation" section pointing at the bundled linter.
+- [active] **Implementation/runtime:** Added `scripts/lint_pseudo_xml.py` to the `ai_instruction_formatting` skill — a standalone linter that auto-detects which of the four file shapes the input follows, parses pseudo-XML in `SKILL.md` and agent files, and emits actionable issues for invalid tag names, attributes, self-closing tags, mismatched and unclosed tags, depth violations, duplicate non-allowlisted siblings, numeric-suffix siblings, frontmatter-vs-directory-name and H1-vs-frontmatter alignment, and trailing-newline hygiene, with info-severity hints at every canonical repetition site so the unit-vs-anchor judgment is made explicitly each time.
+- [active] **Refactor:** Replaced the `update_changelog` skill's `<steps>` block of `<step name="...">` attribute-bearing entries with a `<procedure>` block of self-describing tags (`<resolve_project_name>`, `<enumerate_dates>`, `<ensure_header>`, `<day_loop>` with nested `<substeps>`, `<status_re_evaluation>`), removing every XML attribute from the file.
+- [active] **Refactor:** Bumped the `ai_dev` plugin to 1.0.5 across `.claude-plugin/marketplace.json`, the Claude plugin manifest, and the Codex plugin manifest.
+- **Files changed:** `.claude-plugin/marketplace.json`, `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `plugins/ai_dev/skills/ai_instruction_formatting/SKILL.md`, `plugins/ai_dev/skills/ai_instruction_formatting/scripts/lint_pseudo_xml.py`, `plugins/ai_dev/skills/update_changelog/SKILL.md`
+
+---
+
+## 2026-05-05 — Changelog tooling and skill rewrite
+
+- [active] **Implementation/runtime:** Bootstrapped `CHANGELOG.md` at the repository root with the day-grouped status-marker legend and initial entries for the 2026-05-03 bootstrap and 2026-05-04 wiki-audit-hardening days.
+- [changed later] **Refactor:** Rewrote the `update_changelog` skill (v2.0.0 → v3.0.0) from prose markdown into a pseudo-XML `<update_changelog_skill>` body with explicit `<objective>`, `<tools>`, `<output_contract>`, `<policy>`, and `<steps>` sections, and pointed the workflow at the bundled `prepare_changelog_day.sh` helper.
+- [active] **Implementation/runtime:** Added `scripts/prepare_changelog_day.sh` to the `update_changelog` skill — a single-call helper that emits one structured `<changelog_day>` blob per date with commit subjects and bodies, the deduplicated repo-relative file list, per-file net diffs across the day's first-parent-to-last range, generic placeholders for binary files, and an empty-tree fallback for the repo's root commit.
+- [superseded] **Refactor:** Bumped the `ai_dev` plugin from 1.0.1 to 1.0.2 across the Claude and Codex manifests.
+- **Files changed:** `CHANGELOG.md`, `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `plugins/ai_dev/skills/update_changelog/SKILL.md`, `plugins/ai_dev/skills/update_changelog/scripts/prepare_changelog_day.sh`
+
+---
+
 ## 2026-05-04 — Wiki audit hardening and attribution
 
 - [active] **Docs/specs-only:** Rewrote the README intro to position the Claude marketplace, global `make deploy`, project-scoped `--project-dir`, and in-place checkout as equal distribution paths instead of primary plus fallback.
@@ -12,7 +32,7 @@ Entries are grouped strictly by day and kept on their original implementation da
 - [active] **Implementation/runtime:** Added canonical scaffold-drift checks to the `wiki_auto_shaper` agent for `SCHEMA.md`, `index.md`, `log.md`, the directory layout, and raw-source frontmatter, then retooled them to drive comparisons from a mechanical `diff -u` against canonical templates with preserve/drift hunk classification and configurable authoritative zones (Domain body, Tag Taxonomy, custom frontmatter, custom page types, index headers and entries, log entries).
 - [active] **Implementation/runtime:** Added the `boilerplate` lint check (`check_verbatim_boilerplate` with a `VerbatimSlot` dataclass and a default `extract_h1_prelude` extractor) wired into `lint.py main()`, propagated the canonical "managed by the wiki skill" attribution paragraph through `template_schema.md` between H1 and `## Domain`, and replaced the Karpathy attribution paragraph in the `wiki` skill with the lint-enforced verbatim variant.
 - [active] **Docs/specs-only:** Added a Background section to the `knowledge_management` plugin README crediting Karpathy's LLM Wiki pattern and explaining what the `wiki` skill keeps (compile-once-and-compound), ports (tool-neutral plain markdown), and adds (procedure pages, scripts, the `wiki_auto_shaper` agent, sha256 provenance, schema-driven page-type enum).
-- [active] **Refactor:** Bumped plugin and marketplace versions — `knowledge_management` from 1.0.0 to 1.2.3 across the marketplace and both plugin manifests, `ai_dev` from 1.0.0 to 1.0.1, the `wiki` skill from 1.5.x to 1.7.0, and the `wiki_auto_shaper` agent to 1.3.2.
+- [changed later] **Refactor:** Bumped plugin and marketplace versions — `knowledge_management` from 1.0.0 to 1.2.3 across the marketplace and both plugin manifests, `ai_dev` from 1.0.0 to 1.0.1, the `wiki` skill from 1.5.x to 1.7.0, and the `wiki_auto_shaper` agent to 1.3.2.
 - **Files changed:** `.claude-plugin/marketplace.json`, `CLAUDE.md`, `README.md`, `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `plugins/knowledge_management/.claude-plugin/plugin.json`, `plugins/knowledge_management/.codex-plugin/plugin.json`, `plugins/knowledge_management/README.md`, `plugins/knowledge_management/agents/wiki_auto_shaper.md`, `plugins/knowledge_management/skills/wiki/SKILL.md`, `plugins/knowledge_management/skills/wiki/references/lint_checks.md`, `plugins/knowledge_management/skills/wiki/references/template_schema.md`, `plugins/knowledge_management/skills/wiki/scripts/lint.py`
 
 ---
