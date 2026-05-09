@@ -14,7 +14,7 @@
       "name": "knowledge_management",
       "source": "./plugins/knowledge_management",
       "description": "Skills and agents for building, maintaining, and distilling a persistent, interlinked knowledge base. Ships the wiki, executive_summary, and spr skills, and the wiki_auto_shaper agent.",
-      "version": "1.2.4"
+      "version": "1.2.5"
     },
     {
       "name": "ai_dev",

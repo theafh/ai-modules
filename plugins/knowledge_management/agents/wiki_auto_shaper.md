@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, and clear content violations of the page-type anatomy. Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.3.3
+version: 1.3.4
 model: inherit
 background: false
 effort: high
@@ -69,9 +69,14 @@ audited before — the schema, taxonomy, or domain may have changed.
    exits 1, the wiki path is chosen but unscaffolded — stop and tell the
    user; do not initialize a wiki as part of an audit. If it exits 2,
    `$WIKI` holds the walk-up candidate list (one `AVAILABLE:` /
-   `EXISTING:` entry per line in walk order). Present those candidates
-   to the user, ask which path to use, then re-run discovery against
-   that choice.
+   `EXISTING:` entry per line in walk order). **Mandatory:** present
+   those candidates to the user and ask which path to use — never
+   silently adopt an upstream `EXISTING:` candidate when CWD is an
+   unresolved `AVAILABLE:` level. After the user picks, also offer
+   `.no_wiki` markers for the unchosen `AVAILABLE` candidates between
+   CWD (inclusive) and the chosen path (exclusive), then re-run
+   discovery against that choice. See the wiki skill's "Resolving the
+   Wiki Location" section for the full protocol.
 2. Read `$WIKI/SCHEMA.md` end-to-end. Capture the page-type enum, custom
    field declarations, tag taxonomy, and domain statement. These define
    what is canonical for this wiki.

@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.8.0
+version: 1.8.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -106,16 +106,23 @@ section lists `raw/<kind>/<slug>.md` paths for every source the page draws on.
 
 ## Tools
 
-Three bundled scripts handle discovery, init, and lint:
+Three bundled scripts handle discovery, init, and lint. **Always run
+`discover_wiki.sh` first** — never resolve the wiki path with your own
+inline Python or shell logic; the script is the single source of truth
+for walk-up semantics, and bypassing it is what causes silent upstream
+adoptions.
 
 ```bash
-if WIKI=$(scripts/discover_wiki.sh); then
-    : # auto-resolved — $WIKI is the wiki path
+if output=$(scripts/discover_wiki.sh); then
+    WIKI="$output"                                    # auto-resolved
 else
-    case $? in
-        2) candidates="$WIKI"; ask_user_with "$candidates" ;;  # see workflow
-        *) exit 1 ;;
+    rc=$?
+    case $rc in
+        2) candidates="$output" ;;                    # ambiguous → ASK USER
+        *) exit "$rc" ;;
     esac
+    # On exit 2, follow "Resolving the Wiki Location" below before
+    # touching any wiki file. Do not pick a candidate yourself.
 fi
 [[ -d "$WIKI" ]] || scripts/init_wiki.sh "$WIKI"    # scaffold if missing
 python3 scripts/lint.py                              # health-check
@@ -174,8 +181,65 @@ CWD toward `$HOME`: at each level, treat `<level>/.no_wiki` as "skip", a
 present `<level>/wiki/` as a hit (and stop walking), anything else as a
 creation candidate. Auto-resolve only when the closest non-opted-out level
 already has `wiki/` or every level up through `$HOME` is opted out (use
-`$HOME/wiki`). Otherwise ask the user which candidate to use, following the
-explicit workflow in "Initializing a New Wiki".
+`$HOME/wiki`). Otherwise follow the explicit workflow in
+"Resolving the Wiki Location" — never silently route to an upstream wiki.
+
+## Resolving the Wiki Location (MANDATORY before every wiki operation)
+
+This is **the** discovery flow. **Every** wiki operation — ingest, query,
+update, archive, lint, audit, init — runs it before touching any file in a
+wiki. The rule applies regardless of how the user phrased their request
+("update the wiki", "add a page", "lint", etc.); the operation does not
+begin until this resolves.
+
+**The hard rule.** When `discover_wiki.sh` exits 2, you MUST present the
+candidates and ask the user. Do **not** silently adopt an upstream
+`EXISTING:` candidate when CWD is an unresolved `AVAILABLE:` level — the
+user may want a local wiki for this directory, and silently writing to a
+wiki one or more levels above the current project is a confidentiality and
+scoping mistake. Exit 2 is the script telling you the location is
+**ambiguous**, not a recommendation.
+
+**The flow.**
+
+1. **Run `scripts/discover_wiki.sh`.**
+   - **Exit 0** → the script printed a single resolved path on stdout.
+     Adopt it as `$WIKI`. If the path does not yet exist on disk, init it
+     with `scripts/init_wiki.sh "$WIKI"` before proceeding.
+   - **Exit 2** → stdout is the candidate list (one `AVAILABLE:<path>` or
+     `EXISTING:<path>` per line, in walk order from CWD upward). Continue
+     with step 2. Do not pick a candidate yourself.
+2. **Present every candidate to the user, in walk order**, with the kind
+   spelled out so the choice is unambiguous:
+   - `AVAILABLE` — no wiki at that level yet; selecting it creates one
+     there via `init_wiki.sh`.
+   - `EXISTING` — a wiki already lives at that level; selecting it adopts
+     that wiki for the current operation.
+
+   Ask: **"Which path should host the wiki for this operation?"** Wait
+   for the user's answer.
+3. **Offer `.no_wiki` markers** for the unchosen `AVAILABLE` candidates
+   between CWD (inclusive) and the chosen path (exclusive) — the levels
+   the user walked over to reach their pick. Ask once, covering all of
+   them in a single yes/no:
+
+   > "Drop a `.no_wiki` opt-out marker in `<path-1>`, `<path-2>`, …
+   > so future walks from those subtrees skip straight past?"
+
+   On yes, create an empty `.no_wiki` file at each path. On no, leave
+   them untouched. Levels above the chosen path are not offered markers —
+   the walk-up will short-circuit at the chosen wiki anyway.
+4. **Only now** scaffold (if the chosen path needs it via
+   `init_wiki.sh`) and proceed with the operation against `$WIKI`.
+
+**Common case worth calling out.** CWD has no wiki and no `.no_wiki`,
+but a parent directory does. The script reports
+`AVAILABLE:<CWD>` followed by `EXISTING:<parent>/wiki` and exits 2. The
+correct response is **always** to ask — it is *not* OK to silently use
+the upstream `EXISTING:` wiki. The user may want to (a) create a wiki
+right here, (b) drop a `.no_wiki` here and let the upstream wiki own
+this subtree from now on, or (c) adopt the upstream wiki for this
+session without a marker. They pick.
 
 ## Resuming an Existing Wiki (CRITICAL — do this every session)
 
@@ -198,43 +262,20 @@ For large wikis (100+ pages), also run a quick recursive search (`rg` /
 
 ## Initializing a New Wiki
 
-When the user asks to create or start a wiki — or when `discover_wiki.sh`
-exits 2 during any other operation — run this **explicit, user-facing
-workflow**. The user picks the location; never silently default to CWD or
-`$HOME` once the walk surfaces multiple candidates.
+When the user asks to create or start a wiki, the location-resolution
+flow already covers steps 1–3 (run discovery, present candidates, offer
+`.no_wiki` markers in unchosen levels) — see "Resolving the Wiki
+Location" above. The init-specific steps follow once `$WIKI` is chosen:
 
-1. **Run discovery** with `scripts/discover_wiki.sh`.
-   - **Exit 0** → auto-resolved. `$WIKI` is the wiki path. If it already
-     exists on disk, skip to step 5. If not, jump to step 4.
-   - **Exit 2** → stdout is the candidate list. Continue with step 2.
-2. **Present every candidate to the user, in walk order** (CWD first,
-   ancestors next, `$HOME` last). Annotate each entry with its kind so
-   the user sees what they are picking:
-   - `AVAILABLE:<path>` — no wiki here yet; selecting it creates one.
-   - `EXISTING:<path>` — a wiki already exists here; selecting it adopts
-     that wiki for the current session.
-
-   Ask: "Which path should host the wiki?" Wait for the user's answer.
-3. **Offer `.no_wiki` markers** for the unchosen `AVAILABLE` candidates
-   that sit **between CWD (inclusive) and the chosen path (exclusive)** —
-   the levels the user walked over to reach their pick. Ask once,
-   covering all of them in a single yes/no:
-
-   > "Drop a `.no_wiki` opt-out marker in `<path-1>`, `<path-2>`, …
-   > so future walks from those subtrees skip straight past?"
-
-   On yes, create an empty `.no_wiki` file at each of those paths. On no,
-   leave them untouched. Levels above the chosen path are not offered
-   markers — the walk-up will short-circuit at the chosen wiki anyway.
-4. **Run `init_wiki.sh "$WIKI"`** against the chosen path to scaffold
+1. **Run `init_wiki.sh "$WIKI"`** against the chosen path to scaffold
    `SCHEMA.md`, `index.md`, `log.md`, and the directory tree.
-5. **Customize the schema.** Ask the user what domain the wiki covers —
+2. **Customize the schema.** Ask the user what domain the wiki covers —
    be specific. The freshly initialized `SCHEMA.md` has placeholder text
    in the **Domain** and **Tag Taxonomy** sections. Read
    `references/template_schema.md` for what each section should contain.
    Define 10–20 starting tags before any pages are written, since the
    linter flags off-taxonomy tags.
-6. **Confirm the wiki is ready** and suggest first sources to ingest.
+3. **Confirm the wiki is ready** and suggest first sources to ingest.
 
 ## Core Operations
 
@@ -470,6 +511,7 @@ tail -n 350 "$WIKI/log.md"                    # ~last 20 log entries
 
 Quick-scan reminders. See the named section for full guidance.
 
+- **Resolve before writing** — `discover_wiki.sh` exit 2 means ambiguous, not "use the upstream". Always present candidates and ask the user, even when an `EXISTING:` parent wiki shows up in the list. Silent upstream adoption is a confidentiality and scoping mistake. *(Resolving the Wiki Location)*
 - **Orient first** — read SCHEMA + index + recent log before any operation. *(Resuming)*
 - **`raw/` is read-only** — corrections live in wiki pages, not in the source.
 - **Update navigation** — `index.md` and `log.md` lag → wiki degrades. *(Ingest §5)*
