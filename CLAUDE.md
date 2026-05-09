@@ -24,6 +24,8 @@ Makefile                          # task entry point
 - `make uninstall` — remove deployed artefacts via the deployment log.
 - `./deployment/deployment.sh --global --dry-run` — preview a deploy before applying.
 
+`CHANGELOG.md` is git-history-derived and updated through the `update_changelog` skill (run on demand, not auto). Skip writing CHANGELOG entries by hand and skip including CHANGELOG edits in regular commits — let the skill regenerate the day group from the underlying commits.
+
 ## Editing a skill
 
 1. Edit `plugins/<plugin>/skills/<name>/SKILL.md`. Keep the directory name, the frontmatter `name:`, and the H1 heading aligned.

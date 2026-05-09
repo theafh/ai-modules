@@ -110,7 +110,9 @@ Each type answers a different shape of question. The first five capture
 
 When **summary** and **query** both feel possible, prefer summary — broader
 entry surface. When **procedure** and **concept** feel possible, ask whether
-the page *describes* (concept) or *prescribes* (procedure).
+the page *describes* (concept) or *prescribes* (procedure) — wording a
+description as "rules govern X" leaves it descriptive and keeps it in
+`concepts/`.
 
 ## Entity Pages
 
@@ -175,6 +177,10 @@ naming rules). Procedure pages capture *how-to* knowledge and complement
 the *what/why* knowledge in entity, concept, and comparison pages. They
 are first-class wiki citizens — same frontmatter, same lint, same tag
 and index discipline as content pages.
+
+A procedure page reads as steps an operator follows. Pages that read as
+facts about how a mechanism works — even when worded as "rules govern X"
+— stay descriptive and file as `concept`.
 
 Page anatomy:
 

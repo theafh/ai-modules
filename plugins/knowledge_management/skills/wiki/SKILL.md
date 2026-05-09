@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.8.1
+version: 1.8.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -85,10 +85,44 @@ summary. Question-organized → query. When both work, prefer **summary** —
 broader entry surface. File as **query** only when the question shape itself
 is what makes the answer valuable.
 
-**procedure vs concept.** A page *describing* how a mechanism works (passive,
-explanatory) is a **concept**; a page *prescribing* how an operator should do
-something (active, imperative, actionable) is a **procedure**. "How
-transformers attend" (concept) vs "How to add a new training run" (procedure).
+**procedure vs concept.** Both page types can answer "how"
+questions, but they answer different ones:
+
+- A **concept** answers "how does X work?" or "what is X?" — the
+  reader walks away understanding a feature, mechanism, or design
+  choice the project implements. Concept pages can be deeply
+  technical, can discuss how the system was built and why it was
+  designed a certain way, and can carry rules that constrain
+  authors. Those rules describe *properties* of the system
+  ("errors must live in a closed set", "module folders contain
+  `main.mdl`") — they are facts about how the project is built,
+  not actions a contributor performs.
+- A **procedure** answers "how do I do X?" or "what do I do when
+  Y?" — the reader walks away with the sequence of actions needed
+  to accomplish a specific task. Procedure pages are action lists:
+  open this file, add this variant, implement these methods, run
+  this test.
+
+"How transformers attend" (how does X work → concept) vs "How to
+add a new training run" (how do I do X → procedure). Both contain
+"how". The first describes the system; the second prescribes an
+action sequence.
+
+The trap: a page about how the system works can wear imperative
+voice and operator-facing scaffolding — trigger lists, "must"
+bullets, pitfalls — and still be a concept. Authorial rules that
+describe system properties belong on concept pages even when they
+constrain author behavior. A procedure page is the one that lists
+the actual steps a contributor takes (open file X, add variant Y,
+run command Z). If you are not writing those steps, you are not
+writing a procedure.
+
+Test before you file. Write the question the page answers. "How
+does X work?" or "What is X?" → concept. "How do I do X?" or
+"What do I do when Y?" → procedure. If the answer to "how does
+this page help me?" is "I now understand how the system works",
+that is a concept; if the answer is "I now know the steps to
+take", that is a procedure.
 
 **Page anatomy.** Once the type is picked, write the sections in this order:
 
@@ -355,7 +389,9 @@ different task, with none of today's specifics in it.
 1. **Name the rule.** State the policy in 1–3 sentences using the form
    "When [trigger], do [action], because [reason]." Keep the trigger and
    action operator-neutral; "after every ingest that touches 5+ entities" is a
-   trigger, "the user just asked X" is not.
+   trigger, "the user just asked X" is not. Confirm the page reads as steps
+   for an operator to follow — pages that read as facts about how a
+   mechanism works belong in `concepts/`, even when worded as "rules".
 2. **Strip the instance.** Replace every proper noun, file path, person's
    name, date, error message, command output, and task-specific value with a
    category placeholder, or delete it. Read the page back. If it still reads
@@ -522,6 +558,7 @@ Quick-scan reminders. See the named section for full guidance.
 - **Tags from taxonomy only** — add new tags to SCHEMA first.
 - **Pages stay scannable** — split at >200 lines; deep dives go to dedicated pages.
 - **Generalize procedure pages** — name the rule, strip the instance, hoist worked content to `raw/` sidecars or concept pages. The page reads as a rule on a different task next month, or it isn't a procedure. *(Capture Procedure)*
+- **Procedure or concept?** — file pages an operator reads as steps to follow under `procedures/`; file pages a reader reads as facts about how something works under `concepts/`. Wording the body as "rules govern X" does not turn a description into a procedure. *(Page Types · Capture Procedure)*
 - **Confirm scope** — ingests touching 10+ existing pages need user OK first.
 - **Rotate the log at 500 entries** — `log.md` → `log-YYYY.md`.
 - **Contradictions are explicit** — record both with dates, mark in frontmatter, flag for review.
