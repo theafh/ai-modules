@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, and clear content violations of the page-type anatomy. Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.3.2
+version: 1.3.3
 model: inherit
 background: false
 effort: high
@@ -41,9 +41,11 @@ Leave the wiki in a state where:
 
 <inputs>
 - The wiki path discovered from the current working directory using the
-  `wiki` skill protocol (run `scripts/discover_wiki.sh`; if it exits 2,
-  ask the user once whether to use a local `./wiki/` or the global
-  `~/wiki/` via a `.no_wiki` marker, then proceed).
+  `wiki` skill protocol (run `scripts/discover_wiki.sh`; the script walks
+  up from CWD toward `$HOME`, skipping `.no_wiki`-marked levels and
+  stopping at the first existing `wiki/` it finds. If it exits 2, the
+  candidate list is on stdout — present every candidate to the user in
+  walk order, ask which to use, then proceed).
 - The skill's bundled tools at `<wiki-skill>/scripts/`:
   `discover_wiki.sh`, `init_wiki.sh`, and `lint.py`.
 - The skill's reference docs: `references/lint_checks.md` (severity
@@ -65,8 +67,11 @@ audited before — the schema, taxonomy, or domain may have changed.
 
 1. Discover the wiki: `WIKI=$(scripts/discover_wiki.sh --check)`. If it
    exits 1, the wiki path is chosen but unscaffolded — stop and tell the
-   user; do not initialize a wiki as part of an audit. If it exits 2, ask
-   the user which path to use, then re-run.
+   user; do not initialize a wiki as part of an audit. If it exits 2,
+   `$WIKI` holds the walk-up candidate list (one `AVAILABLE:` /
+   `EXISTING:` entry per line in walk order). Present those candidates
+   to the user, ask which path to use, then re-run discovery against
+   that choice.
 2. Read `$WIKI/SCHEMA.md` end-to-end. Capture the page-type enum, custom
    field declarations, tag taxonomy, and domain statement. These define
    what is canonical for this wiki.

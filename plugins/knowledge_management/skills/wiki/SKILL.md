@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.7.0
+version: 1.8.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -109,22 +109,49 @@ section lists `raw/<kind>/<slug>.md` paths for every source the page draws on.
 Three bundled scripts handle discovery, init, and lint:
 
 ```bash
-WIKI=$(scripts/discover_wiki.sh) || ask_user        # discover (rc=2 if undecided)
+if WIKI=$(scripts/discover_wiki.sh); then
+    : # auto-resolved — $WIKI is the wiki path
+else
+    case $? in
+        2) candidates="$WIKI"; ask_user_with "$candidates" ;;  # see workflow
+        *) exit 1 ;;
+    esac
+fi
 [[ -d "$WIKI" ]] || scripts/init_wiki.sh "$WIKI"    # scaffold if missing
 python3 scripts/lint.py                              # health-check
 ```
 
-`discover_wiki.sh` looks ONLY at the current working directory:
+`discover_wiki.sh` walks up level by level from the current working directory
+toward `$HOME`. At each level:
 
-1. **`./wiki/`** present → use it.
-2. **`./.no_wiki`** marker present → use the global wiki at `~/wiki/`.
-3. **Neither** → exits 2; ask the user which they want, then either create
-   `./wiki/` locally or drop an empty `.no_wiki` and use `~/wiki/`.
+1. **`<level>/.no_wiki`** present → opted out; skip and continue up.
+2. **`<level>/wiki/`** present → record as the existing wiki and STOP walking
+   (the search never crosses an existing wiki).
+3. **Neither** → record as an "available" creation candidate and continue up.
+
+The script auto-resolves on stdout (exit 0) when it can:
+
+- The closest non-opted-out level already has `wiki/` → print that path.
+- Every level visited up through `$HOME` is opted out via `.no_wiki` → print
+  `$HOME/wiki` (the explicit "use the global wiki" chain).
+
+Otherwise the script exits 2 and lists every candidate in walk order on
+stdout, one per line, prefixed with its kind:
+
+```text
+AVAILABLE:/Users/foo/projects/myproject/src
+AVAILABLE:/Users/foo/projects/myproject
+AVAILABLE:/Users/foo/projects
+EXISTING:/Users/foo/wiki        # only as the last entry, if found
+```
+
+When CWD is not at or under `$HOME`, walk-up is disabled and the script
+falls back to the pre-walk-up behavior (`./wiki/`, `./.no_wiki`, or ask).
 
 `.no_wiki` is the explicit opt-out: drop an empty file by that name in any
-directory you do not want a local wiki for, and discovery routes the agent to
-`~/wiki/` instead. Place it at an existing `<wiki-path>/.no_wiki` to retire
-that wiki dir without deleting it.
+directory you do not want a local wiki for, and the walk skips that level.
+Place it at an existing `<wiki-path>/.no_wiki` to retire that wiki dir
+without deleting it.
 
 `init_wiki.sh` materializes `SCHEMA.md`, `index.md`, `log.md`, and the
 standard directory tree from canonical templates in
@@ -142,8 +169,13 @@ assess → fix → verify loop in an isolated context — spawn it when the user
 asks for a broad audit, lint, fix, health-check, clean-up, or auto-repair
 pass over the wiki.
 
-Without access to the scripts, perform discovery inline: `./wiki/` → use it;
-`./.no_wiki` → use `$HOME/wiki`; otherwise ask the user before creating.
+Without access to the scripts, perform discovery inline by walking up from
+CWD toward `$HOME`: at each level, treat `<level>/.no_wiki` as "skip", a
+present `<level>/wiki/` as a hit (and stop walking), anything else as a
+creation candidate. Auto-resolve only when the closest non-opted-out level
+already has `wiki/` or every level up through `$HOME` is opted out (use
+`$HOME/wiki`). Otherwise ask the user which candidate to use, following the
+explicit workflow in "Initializing a New Wiki".
 
 ## Resuming an Existing Wiki (CRITICAL — do this every session)
 
@@ -166,19 +198,43 @@ For large wikis (100+ pages), also run a quick recursive search (`rg` /
 
 ## Initializing a New Wiki
 
-When the user asks to create or start a wiki:
+When the user asks to create or start a wiki — or when `discover_wiki.sh`
+exits 2 during any other operation — run this **explicit, user-facing
+workflow**. The user picks the location; never silently default to CWD or
+`$HOME` once the walk surfaces multiple candidates.
 
-1. Run discovery. If `discover_wiki.sh` exits 2, ask the user: local
-   (`./wiki/`) or global (`./.no_wiki` marker + `~/wiki/`)?
-2. Run `init_wiki.sh "$WIKI"` against the chosen path.
-3. Ask the user what domain the wiki covers — be specific. The freshly
-   initialized `SCHEMA.md` has placeholder text in the **Domain** and
-   **Tag Taxonomy** sections.
-4. Customize `SCHEMA.md` to the domain. Read
+1. **Run discovery** with `scripts/discover_wiki.sh`.
+   - **Exit 0** → auto-resolved. `$WIKI` is the wiki path. If it already
+     exists on disk, skip to step 5. If not, jump to step 4.
+   - **Exit 2** → stdout is the candidate list. Continue with step 2.
+2. **Present every candidate to the user, in walk order** (CWD first,
+   ancestors next, `$HOME` last). Annotate each entry with its kind so
+   the user sees what they are picking:
+   - `AVAILABLE:<path>` — no wiki here yet; selecting it creates one.
+   - `EXISTING:<path>` — a wiki already exists here; selecting it adopts
+     that wiki for the current session.
+
+   Ask: "Which path should host the wiki?" Wait for the user's answer.
+3. **Offer `.no_wiki` markers** for the unchosen `AVAILABLE` candidates
+   that sit **between CWD (inclusive) and the chosen path (exclusive)** —
+   the levels the user walked over to reach their pick. Ask once,
+   covering all of them in a single yes/no:
+
+   > "Drop a `.no_wiki` opt-out marker in `<path-1>`, `<path-2>`, …
+   > so future walks from those subtrees skip straight past?"
+
+   On yes, create an empty `.no_wiki` file at each of those paths. On no,
+   leave them untouched. Levels above the chosen path are not offered
+   markers — the walk-up will short-circuit at the chosen wiki anyway.
+4. **Run `init_wiki.sh "$WIKI"`** against the chosen path to scaffold
+   `SCHEMA.md`, `index.md`, `log.md`, and the directory tree.
+5. **Customize the schema.** Ask the user what domain the wiki covers —
+   be specific. The freshly initialized `SCHEMA.md` has placeholder text
+   in the **Domain** and **Tag Taxonomy** sections. Read
    `references/template_schema.md` for what each section should contain.
-   Define 10–20 starting tags before any pages are written, since the linter
-   flags off-taxonomy tags.
-5. Confirm the wiki is ready and suggest first sources to ingest.
+   Define 10–20 starting tags before any pages are written, since the
+   linter flags off-taxonomy tags.
+6. **Confirm the wiki is ready** and suggest first sources to ingest.
 
 ## Core Operations
 

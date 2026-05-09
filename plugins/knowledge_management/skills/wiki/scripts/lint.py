@@ -37,21 +37,63 @@ from typing import Callable, Iterator
 # ---------------------------------------------------------------------------
 
 def discover_wiki(arg: str | None) -> Path:
+    """Resolve the wiki by walking up from CWD to ``$HOME``.
+
+    Mirrors ``scripts/discover_wiki.sh``: at each level, ``.no_wiki``
+    skips to the parent, ``wiki/`` terminates the walk with a hit, and
+    every other level becomes a creation candidate. Auto-resolves only
+    when the closest non-opted-out level already has ``wiki/`` or when
+    every level up through ``$HOME`` is opted out (use ``$HOME/wiki``).
+    Bails with a hint when the climb leaves multiple creation
+    candidates — lint runs non-interactively, so ambiguity becomes the
+    user's call via an explicit ``--wiki-path``.
+    """
     if arg:
         path = Path(arg).expanduser().resolve()
         if not path.is_dir():
             sys.exit(f"wiki path does not exist: {path}")
         return path
-    cwd = Path.cwd()
-    if (cwd / "wiki").is_dir():
-        return (cwd / "wiki").resolve()
-    if (cwd / ".no_wiki").is_file():
-        home_wiki = Path.home() / "wiki"
+
+    cwd = Path.cwd().resolve()
+    home = Path.home().resolve()
+    under_home = cwd == home or home in cwd.parents
+
+    if under_home:
+        ladder: list[Path] = []
+        level = cwd
+        while True:
+            ladder.append(level)
+            if level == home:
+                break
+            parent = level.parent
+            if parent == level:
+                break
+            level = parent
+    else:
+        ladder = [cwd]
+
+    candidates: list[tuple[str, Path]] = []
+    for level in ladder:
+        if (level / ".no_wiki").is_file():
+            continue
+        if (level / "wiki").is_dir():
+            candidates.append(("existing", (level / "wiki").resolve()))
+            break
+        candidates.append(("available", level))
+
+    if not candidates:
+        home_wiki = home / "wiki"
         if not home_wiki.is_dir():
             sys.exit(f"wiki not found at {home_wiki}; init it before linting")
         return home_wiki
+
+    if candidates[0][0] == "existing":
+        return candidates[0][1]
+
+    listing = "\n  ".join(f"{kind}: {path}" for kind, path in candidates)
     sys.exit(
-        "no wiki/ or .no_wiki in current directory; pass an explicit path"
+        "wiki location is undecided; pass an explicit --wiki-path. "
+        f"walk-up candidates from {cwd} were:\n  {listing}"
     )
 
 
