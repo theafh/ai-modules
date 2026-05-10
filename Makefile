@@ -11,9 +11,10 @@
 
 .DEFAULT_GOAL := help
 
-# File discovery — evaluated once at parse time. Excludes .git and
-# deployment backup directories.
-EXCLUDE     := -path ./.git -prune -o -path './deployment/.deploy-backup-*' -prune -o
+# File discovery — evaluated once at parse time. Excludes .git, deployment
+# backup directories, and the local-only `tests/` regression-harness tree
+# (also in .gitignore — committed lint should not scan transient sandboxes).
+EXCLUDE     := -path ./.git -prune -o -path './deployment/.deploy-backup-*' -prune -o -path ./tests -prune -o
 MD_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.md' -print)
 JSON_FILES  := $(shell find . $(EXCLUDE) -type f -name '*.json' -print)
 SH_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.sh' -print)

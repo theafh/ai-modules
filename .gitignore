@@ -1,4 +1,4 @@
 deployment/deployed_artefacts.log
 deployment/.deploy-backup-*/
 .DS_Store
-wiki-tests/
+tests/
