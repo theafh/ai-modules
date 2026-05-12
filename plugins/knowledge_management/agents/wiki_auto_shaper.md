@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
-description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, and clear content violations of the page-type anatomy. Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.5.2
+description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
+version: 1.5.3
 model: inherit
 background: false
 effort: high
@@ -55,6 +55,13 @@ the audit).
   <index_completeness>
     `index.md` lists every page exactly once under its correct section.
   </index_completeness>
+  <contradictions_surfaced>
+    Pages that make claims contradicting other wiki pages carry
+    `contested: true` and a `contradictions:` frontmatter list naming
+    the disagreeing pages, and both sides are listed in the final
+    report for human review. Contradictions are surfaced, not
+    auto-resolved.
+  </contradictions_surfaced>
   <log_recorded>
     `log.md` records the audit and the final lint outcome.
   </log_recorded>
@@ -294,6 +301,20 @@ the fix move.
     `confidence: high`, or omits confidence entirely. The schema
     reserves `high` for multi-source support.
   </confidence_violation>
+
+  <cross_page_contradiction>
+    Two or more pages in the wiki make claims that disagree on the
+    same subject — factual ("library X released in 2023" vs "library X
+    released in 2024"), definitional (two concept pages defining the
+    same term incompatibly), scope ("we use X for Y" vs "we use Z for
+    Y"), recency (a newer page revises an older page's claim without
+    cross-linking), or recommendation (one procedure prescribes a
+    workflow another procedure forbids). Cross-check during the
+    page-first walk: when a page makes a claim, search the wiki for
+    other pages on the same subject and compare. Flag the contradiction
+    on both pages so the remediate phase can mark both via the
+    contested-page protocol. Do not pick a winner.
+  </cross_page_contradiction>
 
   <scaffold_drift>
 
@@ -590,6 +611,20 @@ affect the same file so each file is opened, read, and rewritten once.
       user can decide. The agent does not resolve contradictions on
       its behalf.
     </fix_contested_page>
+
+    <fix_cross_page_contradiction>
+      Mark both (or all) sides of the contradiction via the
+      contested-page protocol: set `contested: true` on each affected
+      page's frontmatter, add a `contradictions:` list naming the
+      other page slugs, and bump `updated`. Do not edit either page's
+      body to pick a winner, merge the claims, or hedge the wording —
+      that is the human's call. Surface the contradiction in the
+      final report with each page's relevant excerpt and the
+      disagreement dimension (factual / definitional / scope /
+      recency / recommendation) so the user can decide which side to
+      keep, whether both stay as a documented disagreement, or
+      whether one supersedes the other.
+    </fix_cross_page_contradiction>
 
     <fix_stale_page>
       For pages >90 days older than newest cited source: re-read the
