@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, meeting note, internal note, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.9.0
+version: 1.9.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -368,6 +368,7 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
 - Meeting note, interview, spoken-word transcript (podcast, talk) → save to `raw/meetings/`.
 - Internal memo, discussion writeup, ad-hoc observation, internal doc not published externally → save to `raw/notes/`.
 - Pasted text → save to the appropriate `raw/` subdirectory by kind, not by source format.
+- For edge cases (article that embeds a transcript, transcript of a private meeting, paste of unknown provenance, etc.) consult `references/raw_taxonomy.md` — the canonical reference for bucket meanings and classification heuristics.
 - Name files descriptively: `raw/articles/transformer-architecture-2024.md`.
 - Add raw frontmatter (`source_url`, `ingested`, `sha256` of the body —
   body-only). On re-ingest of the same URL: recompute, compare, skip if

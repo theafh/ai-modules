@@ -1,7 +1,7 @@
 ---
 name: wiki_import
 description: Import a specific resource (URL, file, paper, PDF, transcript, meeting note, internal note, paste) into the wiki using a triage-first protocol — capture it as raw source, mine the captured raw for durable knowledge, diff every candidate against the existing wiki, and surface both candidate additions and contradictions with concrete reconciliation suggestions before any wiki-page write. Use when the user points at such a resource and asks to import, integrate, digest, absorb, review-before-adding, or propose-then-add it into their wiki; when they want a triage step on a single source rather than a straight ingest; or whenever a named source should be brought in with a propose-then-act front end.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -14,7 +14,7 @@ license: MIT
   <policy>
     <resolve_first>Resolve `$WIKI` through the `wiki` skill's discovery flow before reading the resource. Honor exit-2 ambiguity by presenting candidates and asking the user.</resolve_first>
     <orient_first>Read `SCHEMA.md`, `index.md`, and roughly the last 350 lines of `log.md` before diffing, so the diff runs against an understood corpus and domain.</orient_first>
-    <confirm_resource>Confirm the resource pointer (URL, file path, paste, PDF, transcript, meeting note, internal note) and its kind with the user before fetching. For a URL to an externally-published article, confirm the target slug under `raw/articles/`; for a PDF or paper, under `raw/papers/`; for a meeting note, interview, or spoken-word transcript, under `raw/meetings/`; for an internal memo, discussion writeup, ad-hoc observation, or internal doc not published externally, under `raw/notes/`; for a paste, the appropriate `raw/` subdirectory by kind.</confirm_resource>
+    <confirm_resource>Confirm the resource pointer (URL, file path, paste, PDF, transcript, meeting note, internal note) and its kind with the user before fetching. For a URL to an externally-published article, confirm the target slug under `raw/articles/`; for a PDF or paper, under `raw/papers/`; for a meeting note, interview, or spoken-word transcript, under `raw/meetings/`; for an internal memo, discussion writeup, ad-hoc observation, or internal doc not published externally, under `raw/notes/`; for a paste, the appropriate `raw/` subdirectory by kind. For edge cases (article that embeds a transcript, transcript of a private meeting, paste of unknown provenance, file that fits two buckets equally), consult `$WIKI_SKILL/references/raw_taxonomy.md` — the canonical reference for bucket meanings and classification heuristics.</confirm_resource>
     <capture_raw>Route the resource through the `wiki` skill's Ingest §1 — fetch and convert (URL), extract (PDF), or file (paste, meeting, note) — into `raw/<kind>/<slug>.md` with the required frontmatter (`source_url`, `ingested`, body-only `sha256`). On re-ingest of the same URL: recompute the body sha256, compare, skip if identical, flag drift if different.</capture_raw>
     <mine_resource>Read the captured raw end to end. Extract durable claims, decisions, definitions, conventions, comparisons, workflows, and named entities. Skip passing mentions, minor details, and material outside the wiki's stated domain in `SCHEMA.md`.</mine_resource>
     <classify>For each candidate, pick a page type from the `wiki` skill's enum and tag it NEW, EXTEND, CONFIRM, or CONFLICT against `$WIKI`. Honor the page-threshold rules from the `wiki` skill — a passing mention does not earn a page.</classify>

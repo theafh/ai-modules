@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.5.3
+version: 1.5.4
 model: inherit
 background: false
 effort: high
@@ -46,8 +46,8 @@ the audit).
     The wiki's structural scaffold — `SCHEMA.md` sections, the
     page-type enum and the directory layout it implies, `index.md`
     shape, `log.md` preamble, and raw-source frontmatter — aligns with
-    the current canonical structure encoded in `<wiki-skill>/SKILL.md`
-    and `<wiki-skill>/references/template_*.md`. The wiki's own
+    the current canonical structure encoded in `$WIKI_SKILL/SKILL.md`
+    and `$WIKI_SKILL/references/template_*.md`. The wiki's own
     customizations (configured domain, tag taxonomy, declared custom
     fields, user-added page types) are preserved on top of the
     canonical baseline.
@@ -77,7 +77,7 @@ the audit).
     to the user in walk order, ask which to use, then proceed).
   </wiki_path>
   <bundled_tools>
-    The skill's bundled tools at `<wiki-skill>/scripts/`:
+    The skill's bundled tools at `$WIKI_SKILL/scripts/`:
     `discover_wiki.sh`, `init_wiki.sh`, and `lint.py`.
   </bundled_tools>
   <reference_docs>
@@ -149,18 +149,26 @@ have audited before — the schema, taxonomy, or domain may have changed.
     Read the canonical scaffold references the skill ships with, so
     the audit has a current baseline to compare the wiki against:
 
-    - `<wiki-skill>/SKILL.md` — the canonical page-type enum, the
+    - `$WIKI_SKILL/SKILL.md` — the canonical page-type enum, the
       three-layer architecture diagram, the "Page Types: Pick by
       Question" table, and the per-type "Page anatomy" table.
-    - `<wiki-skill>/references/template_schema.md` — the canonical
+    - `$WIKI_SKILL/references/template_schema.md` — the canonical
       `SCHEMA.md` shape (Domain, Conventions, Frontmatter yaml block,
       raw/ Frontmatter, Tag Taxonomy, Page Thresholds, Page Types:
       Pick by Question, per-type page sections, Update Policy).
-    - `<wiki-skill>/references/template_index.md` — the canonical
+    - `$WIKI_SKILL/references/template_index.md` — the canonical
       `index.md` header (`Total pages`, `Last updated`) and section
       list.
-    - `<wiki-skill>/references/template_log.md` — the canonical
+    - `$WIKI_SKILL/references/template_log.md` — the canonical
       `log.md` preamble (entry format, action enum, rotation rule).
+    - `$WIKI_SKILL/scripts/init_wiki.sh` — the canonical raw
+      subtree (the `mkdir` calls under `$WIKI/raw/` define the
+      authoritative set of `raw/<kind>/` subdirectories the
+      current skill version creates).
+    - `$WIKI_SKILL/references/raw_taxonomy.md` — the meaning of
+      each canonical `raw/<kind>/` bucket and the classification
+      heuristics that map a source onto the right bucket
+      (consulted when surfacing files for user routing).
 
     Treat these references as the *current baseline* the wiki's
     scaffold must align with. A wiki built against an older version of
@@ -180,7 +188,7 @@ the fix move.
   <run_linter>
 
     ```bash
-    python3 <wiki-skill>/scripts/lint.py "$WIKI"
+    python3 $WIKI_SKILL/scripts/lint.py "$WIKI"
     ```
 
     Capture every finding. Group by severity using the labels emitted
@@ -302,6 +310,40 @@ the fix move.
     reserves `high` for multi-source support.
   </confidence_violation>
 
+  <raw_subtree_drift>
+    The wiki's `raw/` subdirectory layout differs from what
+    `init_wiki.sh` would materialize today. Read the canonical raw
+    subdirectory set from `$WIKI_SKILL/scripts/init_wiki.sh` (the
+    script is the source of truth — it is what materializes a new
+    wiki's raw subtree, and the set evolves with the skill). List
+    the wiki's actual subdirectories under `$WIKI/raw/`. Surface
+    drift in both directions:
+
+    - **Missing canonical subdirectory** — declared by the script,
+      absent in the wiki. Benign: a future ingest of that kind
+      lacks a landing slot. Fix by creating the empty directory.
+    - **Extra subdirectory** — present in the wiki, absent in the
+      canonical set. Two possibilities, both equally likely: a
+      legacy bucket from an older version of the script (e.g.,
+      a single `transcripts/` slot that has since been split), or
+      a deliberate user customization. Do not pick. Surface the
+      directory in the report along with every file inside it
+      (path, `source_url`, first body paragraph) and the current
+      canonical buckets, so the user can decide whether to keep
+      the directory as a customization, relocate its contents
+      into canonical buckets, or retire it. An empty extra
+      directory is informational only.
+
+    Do not hardcode a canonical list in this check — read it from
+    `init_wiki.sh` at audit time so the check stays correct as
+    the script evolves. For the *meaning* of each canonical
+    bucket and the classification criteria that map a file onto
+    the right one, defer to `$WIKI_SKILL/references/raw_taxonomy.md`
+    — quote the relevant bucket descriptions and heuristics from
+    that file in the per-file report so the user has the
+    classification framework at hand when routing.
+  </raw_subtree_drift>
+
   <cross_page_contradiction>
     Two or more pages in the wiki make claims that disagree on the
     same subject — factual ("library X released in 2023" vs "library X
@@ -329,15 +371,15 @@ the fix move.
       to classify each hunk.
 
       ```bash
-      diff -u "$WIKI/SCHEMA.md" "<wiki-skill>/references/template_schema.md"
-      diff -u "$WIKI/index.md"  "<wiki-skill>/references/template_index.md"
+      diff -u "$WIKI/SCHEMA.md" "$WIKI_SKILL/references/template_schema.md"
+      diff -u "$WIKI/index.md"  "$WIKI_SKILL/references/template_index.md"
       # log.md: scope the diff to the preamble (everything above the first
       # `## [YYYY-MM-DD]` entry). The entries below are append-only content
       # that grows unbounded; a whole-file diff would drown the preamble
       # scaffold signal in hundreds of accumulated entries.
       diff -u \
         <(sed '/^## \[/,$d' "$WIKI/log.md") \
-        <(sed '/^## \[/,$d' "<wiki-skill>/references/template_log.md")
+        <(sed '/^## \[/,$d' "$WIKI_SKILL/references/template_log.md")
       ```
     </diff_procedure>
 
@@ -415,11 +457,11 @@ the fix move.
         wiki's schema declares, or the section order does not match
         the canonical type sequence.
       - **Directory layout drift.** A `<type>s/` directory is
-        missing for a page type the wiki's schema declares, exists
-        for a type the schema does not declare, or the `raw/`
-        subtree is missing canonical subdirectories the wiki
-        actually needs (`articles/`, `papers/`, `transcripts/`,
-        `assets/`).
+        missing for a page type the wiki's schema declares, or
+        exists for a type the schema does not declare. The `raw/`
+        subtree is checked separately by `<raw_subtree_drift>` in
+        the assess phase, since the canonical raw layout is
+        defined by `init_wiki.sh` rather than `SCHEMA.md`.
       - **Raw-source frontmatter drift.** Files under `raw/` are
         missing the canonical `source_url`, `ingested`, or `sha256`
         fields the schema's `### raw/ Frontmatter` subsection
@@ -707,12 +749,19 @@ affect the same file so each file is opened, read, and rewritten once.
 
     <fix_directory_layout_drift>
       Create the missing `<type>s/` directory for every page type
-      the schema declares (with a `.gitkeep` if empty), and create
-      missing canonical `raw/` subdirectories the wiki needs. When a
+      the schema declares (with a `.gitkeep` if empty). Create
+      missing canonical `raw/` subdirectories the wiki needs — the
+      canonical set is whatever `init_wiki.sh` materializes today
+      (see `<raw_subtree_drift>` in the assess phase). When a
       `<type>s/` directory exists for a type the schema does not
       declare, surface it as an assess-phase issue rather than
       fixing silently — the user must decide whether to add the
-      type to the schema or relocate the pages.
+      type to the schema or relocate the pages. When an extra
+      subdirectory exists under `raw/` (legacy or user
+      customization), surface it and every file inside in the
+      per-file report and leave it untouched on disk. Raw content
+      is not migrated or deleted by the agent — the user routes
+      those files.
     </fix_directory_layout_drift>
 
   </fix_moves>
@@ -750,7 +799,7 @@ affect the same file so each file is opened, read, and rewritten once.
 
     <do_not_edit_skill_or_scripts>
       Do not edit `wiki/SKILL.md`, the bundled scripts, or the
-      reference docs in `<wiki-skill>/references/` to silence a
+      reference docs in `$WIKI_SKILL/references/` to silence a
       finding. The linter surfaces; the wiki content adapts.
     </do_not_edit_skill_or_scripts>
 
@@ -761,7 +810,7 @@ affect the same file so each file is opened, read, and rewritten once.
 <verify>
 
   <relint_until_clean>
-    Re-run `python3 <wiki-skill>/scripts/lint.py "$WIKI"`. Iterate the
+    Re-run `python3 $WIKI_SKILL/scripts/lint.py "$WIKI"`. Iterate the
     fix loop until the script exits 0 with no blocking or warn
     findings, and only acceptable info-level findings remain. If a
     specific info-level finding is intentional (e.g., a deliberately
@@ -850,8 +899,8 @@ affect the same file so each file is opened, read, and rewritten once.
     the canonical scaffold (`SCHEMA.md` sections, page-type enum,
     directory layout, `index.md` shape, `log.md` preamble, raw/
     frontmatter) as the skill evolves. Bring the scaffold forward to
-    match the current `<wiki-skill>/SKILL.md` and
-    `<wiki-skill>/references/template_*.md`, preserving the wiki's
+    match the current `$WIKI_SKILL/SKILL.md` and
+    `$WIKI_SKILL/references/template_*.md`, preserving the wiki's
     domain, tag taxonomy, declared custom fields, and user-added page
     types on top. The references are read-as-canonical, never edited.
   </scaffold_alignment_is_in_scope>

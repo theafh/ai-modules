@@ -1,7 +1,7 @@
 ---
 name: ai_instruction_formatting
 description: Organize AI-consumed content (prompts, rules, skills, commands, agents, system instructions) into pseudo-XML by wrapping each semantic concern in a dedicated tag for role, policy, inputs, and output contract.
-version: 3.3.0
+version: 3.4.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -168,6 +168,22 @@ When the children inside a section share a generic tag name (e.g., several `<rul
 - **Output contract**, lock the response shape: `<output_contract>`, `<format>`, `<validation>`
 
 When each child already carries its full semantic in its own tag name (e.g., `<commit_message_multi_file>`, `<file_line_quality>`, `<execution_default>`), the section wrapper is optional — the tag name already serves the segmentation that the wrapper would otherwise provide. Apply this guidance as a default for content that benefits from grouping, not as a forced shape.
+
+## Cross-Artefact References
+
+When an artifact references content owned by a different skill, agent, command, or hook, use a delimited placeholder for the path rather than prose. Three orthogonal patterns cover the cases:
+
+| Reference kind | Form | Example |
+| :--- | :--- | :--- |
+| Cross-skill asset path | `$<SLUG>_SKILL/path/within/skill` | `$WIKI_SKILL/references/raw_taxonomy.md` |
+| Sibling artefact name (no path) | bare slug in backticks | `` `wiki_auto_shaper` `` |
+| Within-artifact path | relative path in backticks | `` `references/lint_checks.md` `` |
+
+The `$<SLUG>_SKILL/...` form makes cross-skill paths visually spotable (the `$` sigil stands out from surrounding prose), keeps boundaries unambiguous (the placeholder ends at the next whitespace or path separator), and stays orthogonal to pseudo-XML tags so the two conventions never collide. It is also greppable for tooling — `grep -r '\$[A-Z_]\+_SKILL/'` enumerates every cross-skill dependency in the codebase.
+
+Why the `_SKILL` suffix on the slug: it keeps skill-install paths visually distinct from content/data shell variables that an agent or skill may already define (e.g., `$WIKI` resolved to the user's wiki location is a different thing from `$WIKI_SKILL` resolved to the wiki skill's install location). The suffix is self-documenting — the placeholder identifies as a skill path on sight, with no risk of conflating skill code with the data it operates on.
+
+Apply this convention in `<policy>` lines, `<steps>` instructions, `<output_contract>` entries, reference lists, and any other structured section where the path is the meaningful payload. Free-flowing explanatory prose (e.g., "see the `wiki` skill for the full ingest flow") stays in prose — the rule covers paths, not every mention of a sibling. When in doubt: if the line is telling the model *where to read*, use the placeholder; if it is telling the model *what concept lives elsewhere*, prose is fine.
 
 ## Constraint-First Ordering
 

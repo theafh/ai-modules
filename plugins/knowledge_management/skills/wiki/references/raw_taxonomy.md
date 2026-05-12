@@ -1,0 +1,45 @@
+# Raw Source Taxonomy
+
+Reference for the `raw/` subtree — what each canonical bucket is for, and how to classify a source into one of them. Consulted by the wiki skill on ingest and by the `wiki_auto_shaper` agent when it surfaces extra `raw/<kind>/` subdirectories for the user to route.
+
+The canonical *set* of buckets is whatever `scripts/init_wiki.sh` materializes today (it is the script that creates a new wiki's raw subtree, and the set evolves with the skill). This file defines *what each bucket means* and how to pick between them.
+
+## Buckets
+
+| Bucket | What lives here | Typical `source_url` | Body shape |
+| --- | --- | --- | --- |
+| `raw/articles/` | Externally-published written content — blog posts, news, opinion pieces, vendor write-ups, online essays. | Public URL to the original article. | Long-form prose; one author or editorial voice. |
+| `raw/papers/` | Academic and technical papers — arxiv, conference proceedings, journal articles, vendor white papers, formal technical reports. | Public URL to the PDF or paper page (`arxiv.org/abs/...`, doi, etc.). | Structured prose with abstract, sections, citations. |
+| `raw/meetings/` | Meeting notes, interviews, recorded calls, and spoken-word transcripts — podcasts, talks, conference recordings, video interviews. | Recording URL (YouTube, podcast feed, video host) when external; empty for internal meetings. | Speaker turns, timestamps, Q&A markers, or verbatim spoken language. |
+| `raw/notes/` | Internal memos, discussion writeups, ad-hoc observations, internal docs not published externally. | Typically empty. May point to an internal doc URL the wiki has access to. | Memo / writeup framing; author voice; no speaker turns. |
+| `raw/assets/` | Binary attachments referenced by other raw files — images, diagrams, slide exports, PDFs that are illustrations rather than content. | Optional. | Not text; frontmatter optional. |
+
+## Classification heuristics
+
+Apply in order. The first match wins.
+
+1. **Binary file** (image, slides, diagram, illustration PDF) → `raw/assets/`.
+2. **External `source_url` to a podcast, talk, conference, recorded interview, or video** → `raw/meetings/`.
+3. **External `source_url` to a PDF, arxiv page, or formal paper** → `raw/papers/`.
+4. **External `source_url` to a published article, blog post, news item, vendor write-up, or online essay** → `raw/articles/`.
+5. **No external `source_url`, body framed as speaker turns or a verbatim transcript** → `raw/meetings/` (the spoken-word *medium* is what matters; an internal meeting transcript still belongs here).
+6. **No external `source_url`, body framed as a memo, writeup, observation, or summary** → `raw/notes/`.
+
+## Edge cases and disambiguation
+
+- **A transcript of a private internal meeting** → `raw/meetings/`. The medium (spoken word) determines the bucket; the publication status does not.
+- **A written-up summary of a private meeting** → `raw/notes/`. A summary in the author's voice is a writeup, not the raw spoken record.
+- **An article that embeds an interview transcript** → `raw/articles/`. The primary published form is the article; the embedded transcript is part of it.
+- **A vendor white paper that is also a marketing piece** → `raw/papers/` if it has formal sections and citations; otherwise `raw/articles/`.
+- **A paste of unknown provenance** → classify by *body shape* (prose → articles, transcript → meetings, memo → notes). File the bucket by content kind, not by the fact that it was pasted.
+- **A file that genuinely fits two buckets equally** → surface to the user rather than pick. Forced bucketing makes the source harder to re-find later.
+
+## Adding a new bucket
+
+A new canonical bucket means three coordinated edits, in this order:
+
+1. Add the `mkdir` line to `scripts/init_wiki.sh` so new wikis materialize the bucket.
+2. Add the bucket row to the **Buckets** table above and update the classification heuristics if the new bucket changes precedence.
+3. Run `python3 scripts/lint.py` against a test wiki and confirm no new findings.
+
+The `wiki_auto_shaper` agent reads `init_wiki.sh` to learn the current canonical set and reads this file for the *meaning* of each bucket; both sources update together.
