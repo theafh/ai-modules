@@ -17,6 +17,8 @@ ai-modules/
 │   │   │   └── wiki_auto_shaper.md
 │   │   └── skills/          # one subdirectory per skill, each with SKILL.md
 │   │       ├── wiki/
+│   │       ├── wiki_wrapup/
+│   │       ├── wiki_import/
 │   │       ├── executive_summary/
 │   │       └── spr/
 │   └── ai_dev/
@@ -46,6 +48,8 @@ Each skill is a written procedure the model loads when its trigger fires. Bundli
 Skills and agents for building, maintaining, and distilling a persistent, compounding knowledge base. Everything is plain markdown, readable in any editor or CLI, with no Obsidian or vendor reader required.
 
 - **wiki**: builds and maintains an interlinked markdown wiki. Ingests URLs, articles, papers, PDFs, transcripts, and pastes, and supports query, lint, audit, archive, and reorganise flows. Page types (`entity`, `concept`, `comparison`, `summary`, `query`, `procedure`) are read from `SCHEMA.md`, so wikis extend the taxonomy without touching the linter. Provenance is anchored by footnotes plus `sha256` drift detection on raw sources. Discovery, init, and lint ship as bundled scripts.
+- **wiki_wrapup**: a session-end front end for the `wiki` skill. Mines the visible chat for durable knowledge, diffs each candidate against `$WIKI`, and presents a triage report grouped into new pages, extensions, and contradictions. Each contradiction comes with both excerpts and concrete reconciliation options, and any approved write is handed back to the `wiki` skill so structure, ingest, and lint rules stay consistent.
+- **wiki_import**: a single-resource front end for the `wiki` skill. Takes a specific URL, file, paper, PDF, transcript, or paste, captures it as raw via the wiki skill's Ingest §1, then mines the captured raw and presents the same triage report shape as `wiki_wrapup` (new pages, extensions, contradictions) before any wiki-page write. The raw capture lands immediately; entity, concept, comparison, summary, query, and procedure writes wait for user approval and route back through the `wiki` skill.
 - **executive_summary**: distills a document into structured prose at 10 to 15 percent of the original length, preserving the logic and reasoning chain rather than producing bullet-point keywords.
 - **spr**: converts input text into a Sparse Priming Representation, a compact, markdown-structured set of non-overlapping, informationally dense priming statements designed to let a second LLM reconstruct the source without ever seeing it.
 - **wiki_auto_shaper** *(agent)*: an autonomous two-phase loop over the wiki of the current repo. The first phase assesses (lint plus semantic audit), then a fix loop runs until a re-lint comes back clean. It repairs frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages, procedure pages leaking instance content, and content that drifts from the page-type anatomy.

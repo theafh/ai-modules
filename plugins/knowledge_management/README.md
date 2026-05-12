@@ -5,6 +5,8 @@ A plugin for building, maintaining, and distilling a persistent, compounding kno
 ## Skills
 
 - **wiki**: build and maintain a personal/team wiki by ingesting sources (URLs, articles, papers, PDFs, transcripts, pastes), querying the wiki, linting and auditing, archiving, and reorganising. Use when the user asks to create, build, ingest into, query, or maintain their wiki, knowledge base, or research notes.
+- **wiki_wrapup**: wrap up the current chat session by mining it for durable knowledge, diffing against the existing wiki, and surfacing both candidate additions and contradictions with concrete reconciliation suggestions. Defers all wiki writes to the `wiki` skill. Use when the user asks to wrap up, close, harvest, or persist what was discussed.
+- **wiki_import**: import a single named resource (URL, file, paper, PDF, transcript, paste) into the wiki using a triage-first protocol. Captures the resource as raw, mines it for durable knowledge, diffs every candidate against the existing wiki, and surfaces additions plus contradictions with concrete reconciliation suggestions before any wiki-page write. Defers raw capture, ingest, and lint to the `wiki` skill. Use when the user points at a specific resource and wants a propose-then-act import rather than a straight ingest.
 - **executive_summary**: distill documents, reports, and written content into structured executive-summary prose at 10–15% of the original length, preserving logic and reasoning.
 - **spr**: convert input text into a Sparse Priming Representation (SPR), a compact, markdown-structured set of non-overlapping, informationally dense priming statements for LLM-to-LLM knowledge transfer.
 

@@ -1,6 +1,6 @@
 ---
 name: wiki
-description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
+description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, meeting note, internal note, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
 version: 1.8.5
 author: Andreas F. Hoffmann
 license: MIT
@@ -37,9 +37,10 @@ wiki/
 ├── index.md            # Sectioned content catalog with one-line summaries
 ├── log.md              # Chronological action log (append-only, rotated yearly)
 ├── raw/                # Layer 1: Immutable source material
-│   ├── articles/       # Web articles, clippings
+│   ├── articles/       # Externally-published articles, web clippings
 │   ├── papers/         # PDFs, arxiv papers
-│   ├── transcripts/    # Meeting notes, interviews
+│   ├── meetings/       # Meeting notes, interviews, spoken-word transcripts (podcasts, talks)
+│   ├── notes/          # Internal memos, discussion writeups, ad-hoc observations, internal docs not published externally
 │   └── assets/         # Images, diagrams referenced by sources
 ├── entities/           # Layer 2: Entity pages (people, orgs, products, models)
 ├── concepts/           # Layer 2: Concept/topic pages
@@ -318,13 +319,20 @@ Location" above. The init-specific steps follow once `$WIKI` is chosen:
 When the user provides a source (URL, file, paste), integrate it into the wiki:
 
 1. **Capture the raw source:**
-   - URL → fetch, convert to markdown, save to `raw/articles/`.
-   - PDF → extract text, save to `raw/papers/`.
-   - Pasted text → save to the appropriate `raw/` subdirectory.
+   - URL of an externally-published article → fetch, convert to markdown, save to `raw/articles/`.
+   - PDF / arxiv paper → extract text, save to `raw/papers/`.
+   - Meeting note, interview, spoken-word transcript (podcast, talk) → save to `raw/meetings/`.
+   - Internal memo, discussion writeup, ad-hoc observation, internal doc not published externally → save to `raw/notes/`.
+   - Pasted text → save to the appropriate `raw/` subdirectory by kind, not by source format.
    - Name files descriptively: `raw/articles/transformer-architecture-2024.md`.
    - Add raw frontmatter (`source_url`, `ingested`, `sha256` of the body —
      body-only). On re-ingest of the same URL: recompute, compare, skip if
      identical, flag drift if different.
+   - **Keep cross-references out of the raw body.** A relative `.md`
+     link from one raw file to another is ingester synthesis, not source
+     content (originals cite by URL, not by ingester-picked slugs).
+     File the cross-reference on the wiki page that cites both sources
+     instead.
 
 2. **Discuss takeaways** with the user — what's interesting, what matters
    for the domain. (Skip in automated/cron contexts.)
@@ -550,6 +558,7 @@ Quick-scan reminders. See the named section for full guidance.
 - **Resolve before writing** — `discover_wiki.sh` exit 2 means ambiguous, not "use the upstream". Always present candidates and ask the user, even when an `EXISTING:` parent wiki shows up in the list. Silent upstream adoption is a confidentiality and scoping mistake. *(Resolving the Wiki Location)*
 - **Orient first** — read SCHEMA + index + recent log before any operation. *(Resuming)*
 - **`raw/` is read-only** — corrections live in wiki pages, not in the source.
+- **Cross-references are layer 2, not raw** — synthesis links between sources live on the wiki page that cites both, never inside a raw body. *(Ingest §1)*
 - **Update navigation** — `index.md` and `log.md` lag → wiki degrades. *(Ingest §5)*
 - **Log only what changed** — log entries list files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. *(Ingest §5)*
 - **Page thresholds** — passing mentions don't earn a page. *(`template_schema.md`)*

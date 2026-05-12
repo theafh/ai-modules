@@ -2,7 +2,7 @@
 # init_wiki.sh — create a fresh wiki structure at a given path.
 #
 # Creates SCHEMA.md, index.md, log.md, and the standard directory tree
-# (raw/{articles,papers,transcripts,assets}, entities, concepts,
+# (raw/{articles,papers,meetings,notes,assets}, entities, concepts,
 # comparisons, queries, summaries, procedures). Templates are
 # intentionally minimal — the agent customizes SCHEMA.md (domain, tag
 # taxonomy) after asking the user.
@@ -62,7 +62,8 @@ done
 mkdir -p \
   "$WIKI/raw/articles" \
   "$WIKI/raw/papers" \
-  "$WIKI/raw/transcripts" \
+  "$WIKI/raw/meetings" \
+  "$WIKI/raw/notes" \
   "$WIKI/raw/assets" \
   "$WIKI/entities" \
   "$WIKI/concepts" \
