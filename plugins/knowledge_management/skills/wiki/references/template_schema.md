@@ -69,7 +69,10 @@ sha256: <hex digest of the raw content below the frontmatter>
 
 The `sha256:` lets a future re-ingest of the same URL skip processing when content is unchanged,
 and flag drift when it has changed. Compute over the body only (everything after the closing
-`---`), not the frontmatter itself.
+`---`), not the frontmatter itself. Use `python3 scripts/compute_sha256.py raw/<kind>/<slug>.md`
+to write or refresh the field — the script handles the body-boundary detail correctly and
+keeps the rest of the frontmatter intact. Run it without arguments to refresh every raw file at
+once (it walks the discovered wiki's `raw/` tree).
 
 ## Tag Taxonomy
 

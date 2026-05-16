@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, meeting note, internal note, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.9.1
+version: 1.9.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -251,13 +251,34 @@ begin until this resolves.
 
 <the_hard_rule>
 **The hard rule.** When `discover_wiki.sh` exits 2, you MUST present the
-candidates and ask the user. Do **not** silently adopt an upstream
-`EXISTING:` candidate when CWD is an unresolved `AVAILABLE:` level — the
-user may want a local wiki for this directory, and silently writing to a
-wiki one or more levels above the current project is a confidentiality and
-scoping mistake. Exit 2 is the script telling you the location is
-**ambiguous**, not a recommendation.
+candidates and ask the user, **unless `<adopt_when_user_named_the_path>`
+applies**. Do **not** silently adopt an upstream `EXISTING:` candidate
+when CWD is an unresolved `AVAILABLE:` level — the user may want a local
+wiki for this directory, and silently writing to a wiki one or more
+levels above the current project is a confidentiality and scoping
+mistake. Exit 2 is the script telling you the location is **ambiguous**,
+not a recommendation.
 </the_hard_rule>
+
+<adopt_when_user_named_the_path>
+**Carve-out to `<the_hard_rule>`.** When the user's current request
+explicitly names one of the `AVAILABLE:` or `EXISTING:` paths returned
+by exit 2, adopt that path without prompting and **report the adoption
+in one line** so the auto-choice is observable to the user, e.g.
+
+> `Using $WIKI=/path/to/wiki (per your message).`
+
+The user can correct in the next turn if the match was wrong — silence
+is the failure mode this surface report exists to prevent. Two bounds
+keep this safe:
+
+- **Only adopt a path the script surfaced.** If the user named a path
+  that is not on the exit-2 candidate list, fall back to the full
+  `<the_flow>` — never invent or extrapolate a wiki location.
+- **Only when the user named exactly one candidate in the current
+  request.** If the user named none, or named more than one, present
+  all candidates and ask.
+</adopt_when_user_named_the_path>
 
 <the_flow>
 
@@ -310,11 +331,14 @@ the walk-up will short-circuit at the chosen wiki anyway.
 **Common case worth calling out.** CWD has no wiki and no `.no_wiki`,
 but a parent directory does. The script reports
 `AVAILABLE:<CWD>` followed by `EXISTING:<parent>/wiki` and exits 2. The
-correct response is **always** to ask — it is *not* OK to silently use
-the upstream `EXISTING:` wiki. The user may want to (a) create a wiki
-right here, (b) drop a `.no_wiki` here and let the upstream wiki own
-this subtree from now on, or (c) adopt the upstream wiki for this
-session without a marker. They pick.
+default response is **to ask** — silently routing to the upstream is the
+mistake `<the_hard_rule>` exists to prevent. The user may want to
+(a) create a wiki right here, (b) drop a `.no_wiki` here and let the
+upstream wiki own this subtree from now on, or (c) adopt the upstream
+wiki for this session without a marker. They pick. The single
+exception is `<adopt_when_user_named_the_path>` — when the user's
+current request already named one of the candidates, adopt it and
+report the adoption in one line instead of asking.
 </common_case>
 
 </resolving_the_wiki_location>
@@ -371,8 +395,10 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
 - For edge cases (article that embeds a transcript, transcript of a private meeting, paste of unknown provenance, etc.) consult `references/raw_taxonomy.md` — the canonical reference for bucket meanings and classification heuristics.
 - Name files descriptively: `raw/articles/transformer-architecture-2024.md`.
 - Add raw frontmatter (`source_url`, `ingested`, `sha256` of the body —
-  body-only). On re-ingest of the same URL: recompute, compare, skip if
-  identical, flag drift if different.
+  body-only). Compute and write the hash with
+  `python3 scripts/compute_sha256.py raw/<kind>/<slug>.md` — never invent
+  the value by hand. On re-ingest of the same URL: run the same command,
+  skip if it reports `ok`, flag drift if it reports `update`.
 - **Keep cross-references out of the raw body.** A relative `.md`
   link from one raw file to another is ingester synthesis, not source
   content (originals cite by URL, not by ingester-picked slugs).

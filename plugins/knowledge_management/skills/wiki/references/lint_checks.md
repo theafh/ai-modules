@@ -11,18 +11,20 @@ Reference for `scripts/lint.py` — what each check catches and which severity b
 | links | broken markdown links to `.md` files; orphan pages with zero inbound links |
 | index | wiki pages not referenced in `index.md` |
 | tags | tags used but missing from the `SCHEMA.md` taxonomy; tags in the taxonomy but unused on any page (stale tag detection) |
+| taxonomy style | SCHEMA.md `## Tag Taxonomy` bullets that drift from the canonical `- Label: tag, tag, …` one-line form. Flags emphasis around the category label (`**Label:**`, `*Label:*`, `__Label:__`, `_Label:_`), `*` or `+` used in place of `-`, and soft-wrap continuation lines that split a bullet across physical lines. The loader tolerates all three forms so off-taxonomy warnings don't false-positive, and this check nudges authors back to the canonical form so the leniency stays a safety net. |
 | stale | `updated` more than 90 days older than the newest cited source's `ingested` date |
 | quality | `contested: true`; `confidence: low`; single-source pages with no confidence field set |
-| drift | sha256 mismatch on files in `raw/` |
+| drift | sha256 mismatch on files in `raw/`. The fix path is `python3 scripts/compute_sha256.py <file>` (or no-arg to refresh every raw file); the warning message names the script directly so an agent can act without reinventing the body-hash logic. |
 | size | pages over 200 lines |
 | log | `log.md` over 500 entries (rotate to `log-YYYY.md`) |
 | markdown style | bullet style (`-` only); header level skipping; trailing punctuation in headers; fenced code without language identifier; multiple consecutive blank lines; bare URLs; list-marker spacing; trailing newline (matches the `format_markdown` skill) |
+| wikilink | `[[target]]` or `[[target\|alias]]` wikilink-style references outside of fenced code blocks and inline code. The wiki uses standard markdown links `[text](relative/path.md)` so cross-references resolve in plain renderers and feed the broken-link check; the warning includes a hint suggesting the equivalent markdown form. |
 
 ## Severity buckets
 
 - **blocking** — broken links, missing or malformed frontmatter, missing `index.md`, missing or unparseable `SCHEMA.md`. The script exits 1 while any blocking finding remains.
-- **warn** — orphan pages, contested pages, source drift (sha256 mismatch), off-taxonomy tags, invalid enum or date values, pages missing from the index, verbatim-boilerplate mismatches against the canonical references.
-- **info** — markdown style nits, oversized pages (>200 lines), low-confidence single-source pages, unused taxonomy tags, log over 500 entries.
+- **warn** — orphan pages, contested pages, source drift (sha256 mismatch), off-taxonomy tags, invalid enum or date values, pages missing from the index, verbatim-boilerplate mismatches against the canonical references, `[[wikilink]]` references that should be standard markdown links.
+- **info** — markdown style nits, oversized pages (>200 lines), low-confidence single-source pages, unused taxonomy tags, taxonomy-style drift in SCHEMA.md (emphasis labels, non-`-` bullet markers, soft-wrap continuations), log over 500 entries.
 
 ## Iteration loop
 

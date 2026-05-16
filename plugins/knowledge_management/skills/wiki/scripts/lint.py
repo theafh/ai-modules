@@ -279,10 +279,67 @@ def load_custom_field_spec(wiki: Path) -> dict[str, set[str] | None]:
     return spec
 
 
+_BULLET_MARKERS = ("-", "*", "+")
+_EMPHASIS_RUN = re.compile(r"^[*_]+|[*_]+$")
+
+
+def _coalesce_taxonomy_bullets(section: str) -> list[str]:
+    """Walk the Tag Taxonomy section once and return one joined string per
+    logical bullet. A bullet starts on any line whose first non-whitespace
+    character is `-`, `*`, or `+` followed by whitespace (or end of line).
+    Subsequent non-blank lines that do not themselves start a new bullet are
+    treated as CommonMark soft-wrap continuations and folded into the
+    in-progress bullet. Blank lines and the end of the section flush.
+    """
+    bullets: list[str] = []
+    current: list[str] = []
+
+    def flush() -> None:
+        if current:
+            bullets.append(" ".join(current))
+            current.clear()
+
+    for raw_line in section.splitlines():
+        stripped = raw_line.lstrip()
+        if not stripped:
+            flush()
+            continue
+        is_bullet = (
+            stripped[0] in _BULLET_MARKERS
+            and (len(stripped) == 1 or stripped[1] in (" ", "\t"))
+        )
+        if is_bullet:
+            flush()
+            current.append(stripped[1:].strip())
+        elif current:
+            current.append(stripped)
+    flush()
+    return bullets
+
+
 def load_taxonomy(wiki: Path) -> set[str] | None:
     """Extract the tag taxonomy from SCHEMA.md so off-taxonomy tags can be
     flagged. Returns None when SCHEMA.md is absent or has no taxonomy section
     — the caller treats that as a structural issue.
+
+    The parser tolerates common Markdown variations in the Tag Taxonomy
+    section so SCHEMA authors do not have to coddle it:
+
+    - Emphasis around the category label is stripped on both sides of the
+      colon, so `- **Life domains:**`, `- *Life domains:*`,
+      `- __Life domains:__`, and `- _Life domains:_` parse the same as
+      `- Life domains:`.
+    - Soft-wrapped bullets are folded into one logical bullet before the
+      colon split, so a long taxonomy line broken across physical lines
+      (CommonMark continuation) contributes every tag.
+    - `-`, `*`, and `+` are all accepted as bullet markers regardless of
+      what `format_markdown` says elsewhere — robustness here matters more
+      than style enforcement, since style is flagged by a separate check.
+    - Bullets without a colon contribute no tags (the line has no taxonomy
+      entries to extract) instead of accidentally consuming the label as
+      a tag.
+    - Per-tag cleanup strips surrounding backticks, emphasis markers, and
+      quotes so `` `model` ``, `*model*`, and `'model'` all yield `model`.
     """
     schema = wiki / "SCHEMA.md"
     if not schema.is_file():
@@ -291,19 +348,92 @@ def load_taxonomy(wiki: Path) -> set[str] | None:
     match = re.search(r"##\s+Tag Taxonomy(.+?)(?=\n##\s|\Z)", text, re.DOTALL)
     if not match:
         return None
-    section = match.group(1)
+
     tags: set[str] = set()
-    # Tags appear as bullets like "- Models: model, architecture, benchmark".
-    for line in section.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("-"):
+    for bullet in _coalesce_taxonomy_bullets(match.group(1)):
+        _, sep, body = bullet.partition(":")
+        if not sep:
             continue
-        body = stripped.lstrip("- ").split(":", 1)[-1]
-        for tag in body.split(","):
-            t = tag.strip().strip("`'\"")
+        # The closing emphasis of `**Label:**` lands at the start of `body`
+        # (because the colon sits inside the bold pair); strip it before
+        # splitting on commas.
+        body = _EMPHASIS_RUN.sub("", body.strip()).strip()
+        for raw_tag in body.split(","):
+            t = raw_tag.strip().strip("`*_'\"")
             if t and " " not in t and not t.startswith("["):
                 tags.add(t)
     return tags or None
+
+
+def check_taxonomy_style(wiki: Path) -> list[Issue]:
+    """Surface SCHEMA.md Tag Taxonomy formatting that the loader tolerates
+    but that authors should simplify so the canonical form stays
+    `- Label: tag, tag, …` on one line. The parser leniency in
+    `load_taxonomy` is a safety net, not an endorsement — this check
+    nudges the SCHEMA back toward the plain form so the leniency does not
+    become load-bearing.
+
+    Flags three patterns inside the Tag Taxonomy section:
+
+    - Bullet marker other than `-` (`*` or `+`).
+    - Emphasis around the category label (`**Label:**`, `*Label:*`,
+      `__Label:__`, `_Label:_`, and their combinations).
+    - Soft-wrap continuation lines (a bullet split across physical lines).
+    """
+    schema = wiki / "SCHEMA.md"
+    if not schema.is_file():
+        return []
+    text = schema.read_text(encoding="utf-8")
+    match = re.search(r"##\s+Tag Taxonomy(.+?)(?=\n##\s|\Z)", text, re.DOTALL)
+    if not match:
+        return []
+
+    # Map offsets within the section back to line numbers in SCHEMA.md so
+    # findings point at the line a reader can open directly.
+    section_start_line = text[:match.start(1)].count("\n") + 1
+
+    issues: list[Issue] = []
+    in_bullet = False
+    bullet_start_line = 0
+    for offset, raw_line in enumerate(match.group(1).splitlines()):
+        line_no = section_start_line + offset
+        stripped = raw_line.lstrip()
+        if not stripped:
+            in_bullet = False
+            continue
+        is_bullet = (
+            stripped[0] in _BULLET_MARKERS
+            and (len(stripped) == 1 or stripped[1] in (" ", "\t"))
+        )
+        if is_bullet:
+            marker = stripped[0]
+            if marker != "-":
+                issues.append(Issue(
+                    SEV_INFO, "taxonomy-style", schema,
+                    f"bullet marker {marker!r} in Tag Taxonomy; "
+                    f"use '-' for the canonical taxonomy form",
+                    line=line_no,
+                ))
+            after_marker = stripped[1:].lstrip()
+            label_part = after_marker.split(":", 1)[0]
+            if _EMPHASIS_RUN.search(label_part):
+                issues.append(Issue(
+                    SEV_INFO, "taxonomy-style", schema,
+                    "category label has emphasis (*, **, _, __); "
+                    "use plain `- Label: tag, tag, …` form",
+                    line=line_no,
+                ))
+            in_bullet = True
+            bullet_start_line = line_no
+        elif in_bullet:
+            issues.append(Issue(
+                SEV_INFO, "taxonomy-style", schema,
+                f"soft-wrap continuation of bullet from line "
+                f"{bullet_start_line}; keep each taxonomy entry on a "
+                f"single line so the canonical form is one bullet per line",
+                line=line_no,
+            ))
+    return issues
 
 
 # ---------------------------------------------------------------------------
@@ -645,7 +775,9 @@ def check_source_drift(wiki: Path) -> list[Issue]:
         if recorded != actual:
             issues.append(Issue(
                 SEV_WARN, "drift", raw,
-                f"sha256 mismatch (recorded {recorded[:12]}…, actual {actual[:12]}…)",
+                f"sha256 mismatch (recorded {recorded[:12]}…, actual {actual[:12]}…); "
+                f"run `python3 scripts/compute_sha256.py {raw.name}` to refresh, "
+                f"or re-ingest the source if the body should not have drifted",
             ))
     return issues
 
@@ -663,6 +795,8 @@ HEADER_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 FENCE_RE = re.compile(r"^```(\w*)\s*$")
 LIST_MARKER_RE = re.compile(r"^(\s*-)([^\s])")
 BARE_URL_RE = re.compile(r"(?<![<\(\"\[/])(https?://\S+)")
+WIKILINK_RE = re.compile(r"\[\[([^\[\]\n]+)\]\]")
+INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 
 
 def check_markdown_style(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
@@ -751,6 +885,49 @@ def check_markdown_style(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
                     line=i,
                 ))
                 break  # one finding per line is enough
+
+    return issues
+
+
+def check_wikilink_syntax(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+    """Flag `[[target]]` wikilink-style references — the wiki uses standard
+    markdown links `[text](relative/path.md)` so cross-references resolve in
+    plain renderers and feed the broken-link check. Inline code (`` `...` ``)
+    and fenced code blocks are skipped so bash test syntax and code samples
+    don't false-positive.
+    """
+    issues: list[Issue] = []
+    targets = list(iter_wiki_pages(wiki, page_dirs))
+    for special in SPECIAL_FILES:
+        candidate = wiki / special
+        if candidate.is_file():
+            targets.append(candidate)
+
+    for page in targets:
+        text = page.read_text(encoding="utf-8")
+        if text.startswith("---"):
+            _, body = parse_frontmatter(text)
+        else:
+            body = text
+        in_fence = False
+        for i, line in enumerate(body.splitlines(), start=1):
+            if FENCE_RE.match(line.strip()):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            scrubbed = INLINE_CODE_RE.sub("", line)
+            for match in WIKILINK_RE.finditer(scrubbed):
+                inner = match.group(1)
+                target_part, _, alias_part = inner.partition("|")
+                target_part = target_part.strip()
+                text_part = alias_part.strip() or target_part
+                issues.append(Issue(
+                    SEV_WARN, "wikilink", page,
+                    f"`[[{inner}]]` is not standard markdown; convert to "
+                    f"`[{text_part}](<relative-path-to-{target_part}>.md)`",
+                    line=i,
+                ))
 
     return issues
 
@@ -847,8 +1024,10 @@ def main() -> int:
         issues.extend(check_quality_signals(wiki, page_dirs))
         issues.extend(check_custom_fields(wiki, custom_spec, page_dirs))
         issues.extend(check_markdown_style(wiki, page_dirs))
+        issues.extend(check_wikilink_syntax(wiki, page_dirs))
 
     issues.extend(check_verbatim_boilerplate(wiki))
+    issues.extend(check_taxonomy_style(wiki))
     issues.extend(check_log_rotation(wiki))
     issues.extend(check_source_drift(wiki))
 

@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.5.4
+version: 1.5.5
 model: inherit
 background: false
 effort: high
@@ -78,7 +78,9 @@ the audit).
   </wiki_path>
   <bundled_tools>
     The skill's bundled tools at `$WIKI_SKILL/scripts/`:
-    `discover_wiki.sh`, `init_wiki.sh`, and `lint.py`.
+    `discover_wiki.sh`, `init_wiki.sh`, `lint.py`, and `compute_sha256.py`
+    (the canonical helper for writing or refreshing body-only `sha256:`
+    in raw frontmatter — never reinvent its logic inline).
   </bundled_tools>
   <reference_docs>
     The skill's reference docs: `references/lint_checks.md` (severity
@@ -643,9 +645,10 @@ affect the same file so each file is opened, read, and rewritten once.
     <fix_source_drift>
       Re-read the raw file, compare against the wiki page's claims,
       update the wiki page where the source has materially changed,
-      and recompute the sha256 in the raw file's frontmatter. Do not
-      edit the raw body itself except to re-record what the source
-      now says.
+      and recompute the sha256 in the raw file's frontmatter by running
+      `python3 $WIKI_SKILL/scripts/compute_sha256.py <raw-file>` — do not
+      compute the hash inline or invent it. Do not edit the raw body
+      itself except to re-record what the source now says.
     </fix_source_drift>
 
     <fix_contested_page>
@@ -726,10 +729,11 @@ affect the same file so each file is opened, read, and rewritten once.
     </fix_raw_frontmatter_subsection_missing>
 
     <fix_raw_source_frontmatter_missing>
-      Backfill the missing fields on raw files. Compute `sha256`
-      over the body only (everything after the closing `---`) and
-      record the digest. Edit only the frontmatter; raw bodies stay
-      untouched.
+      Backfill the missing fields on raw files. Write `sha256` by
+      running `python3 $WIKI_SKILL/scripts/compute_sha256.py <raw-file>`
+      — the script handles the body-only boundary correctly and inserts
+      the field if missing. Edit other frontmatter fields directly; raw
+      bodies stay untouched.
     </fix_raw_source_frontmatter_missing>
 
     <fix_index_scaffold_drift>
