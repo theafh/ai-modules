@@ -6,7 +6,7 @@ set -euo pipefail
 case "${1:-}" in
   -h|--help)
     cat <<'USAGE'
-prepare_commit_context.sh — emit one structured context blob for /git_commit.
+prepare_commit_context.sh — write one structured context blob for /git_commit.
 
 Usage:
   prepare_commit_context.sh
@@ -14,7 +14,13 @@ Usage:
 Behavior:
   - Runs from any path inside a git repository.
   - Stages every untracked file so new files are visible in the staged diff.
-  - Prints status, recent commits, and per-file staged/unstaged diffs.
+  - Writes status, recent commits, and per-file staged/unstaged diffs to a
+    file under the system tmp dir (TMPDIR or /tmp). The file path is
+    deterministic so re-running clobbers the previous run.
+  - Prints exactly two lines to stdout: the context file's absolute path,
+    and a one-line consumption directive telling the consumer to Read the
+    whole file. This keeps stdout small regardless of changeset size so
+    no agent harness ever truncates or persists it separately.
   - Prints generic placeholders for binary diffs.
   - Handles paths with embedded newlines, tabs, or other special characters
     by routing every path list through NUL-delimited git output.
@@ -157,21 +163,34 @@ print_new_files() {
   printf '</staged_new_files>\n'
 }
 
-printf '<commit_context>\n'
-printf '<repo_root>%s</repo_root>\n' "$repo_root"
+ctx_dir="${TMPDIR:-/tmp}"
+ctx_dir="${ctx_dir%/}"
+ctx_file="$ctx_dir/git_commit_context.txt"
 
-print_command_output "status_after_staging_new_files" \
-  git status --short --untracked-files=all
+{
+  printf '<commit_context>\n'
+  printf '<repo_root>%s</repo_root>\n' "$repo_root"
 
-print_command_output "recent_commits" \
-  git --no-pager log --oneline -8
+  print_command_output "status_after_staging_new_files" \
+    git status --short --untracked-files=all
 
-print_new_files
+  print_command_output "recent_commits" \
+    git --no-pager log --oneline -8
 
-print_file_loop "staged"
-print_file_loop "unstaged"
+  print_new_files
 
-printf '<commit_message_instruction>\n'
-printf "Write the commit message from this context. For multiple files, use one concise summary sentence followed by one line per changed file in the format \`file name -> concrete change\`.\n"
-printf '</commit_message_instruction>\n'
-printf '</commit_context>\n'
+  print_file_loop "staged"
+  print_file_loop "unstaged"
+
+  printf '<commit_message_instruction>\n'
+  printf "Write the commit message from this context. For multiple files, use one concise summary sentence followed by one line per changed file in the format \`file name -> concrete change\`.\n"
+  printf '</commit_message_instruction>\n'
+  printf '</commit_context>\n'
+} > "$ctx_file"
+
+# Stdout is intentionally tiny: the path on its own line so simple tools can
+# pick it up, then a one-line consumption directive. The blob lives in the
+# file above; do NOT inline it here, or agent harnesses with output-size
+# limits will truncate or persist it and confuse downstream consumers.
+printf '%s\n' "$ctx_file"
+printf 'Read this entire file with the Read tool. Do NOT re-run git diff, git status, or git log — the per-file <file_change> sections inside are authoritative and need to be consumed whole to write a coherent message. If Read paginates, continue with offset/limit until every byte is covered. Only fall back to grep/awk/sed for files so large that paginated Read is impractical, and even then iterate sequentially over every <file_change> section rather than querying for a specific file.\n'

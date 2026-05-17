@@ -16,16 +16,22 @@ This LLM-Wiki is managed by the `wiki` skill created by Andreas F. Hoffmann from
 - When updating a page, always bump the `updated` date
 - Every new page must be added to `index.md` under the correct section
 - Every action must be appended to `log.md`
-- **Provenance:** On pages that synthesize 3+ sources, use standard markdown
-  footnotes to attribute claims to specific raw files:
+- **Provenance:** this is an LLM-first wiki — attribution belongs *next to*
+  the claim it attributes, not collected at the bottom of the page. The
+  `sources:` frontmatter is the canonical list of every raw file the page
+  draws on, and the linter validates each path resolves on disk. Pages do
+  not carry a body "Sources" section, and per-claim attribution uses inline
+  standard-markdown links:
 
   ```markdown
-  Transformers replaced RNNs for most sequence tasks by 2019.[^vaswani-2017]
-
-  [^vaswani-2017]: raw/papers/attention-is-all-you-need.md
+  Transformers replaced RNNs for most sequence tasks by 2019
+  ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md)).
   ```
 
-  Optional on single-source pages where the `sources:` frontmatter is enough.
+  Footnote markers (`[^name]` / `[^name]: …`) are not used: they split the
+  claim from its evidence across the page, render inconsistently across
+  markdown viewers, hide their targets from the broken-link check, and
+  easily drift into dangling references.
 
 ## Frontmatter
 
@@ -125,7 +131,6 @@ product, model, place — anything with identity). Include:
 - Overview / what it is
 - Key facts and dates
 - Relationships to other entities (relative markdown links)
-- Source references
 
 ## Concept Pages
 
@@ -147,7 +152,6 @@ verdict. Include:
 - What is being compared and why
 - Dimensions of comparison (table format preferred)
 - Verdict or synthesis
-- Sources
 
 ## Summary Pages
 
@@ -157,7 +161,6 @@ multiple sources, re-found by browsing the topic. Include:
 - Topic and scope
 - Key findings or claims, organized by sub-topic
 - Open threads / unresolved questions
-- Source references
 
 ## Query Pages
 
@@ -169,7 +172,6 @@ the answer valuable. Include:
 - The question, verbatim, as the title
 - The synthesized answer with cross-links to entity / concept / source pages
 - Confidence and caveats
-- Source references
 
 ## Procedure Pages
 

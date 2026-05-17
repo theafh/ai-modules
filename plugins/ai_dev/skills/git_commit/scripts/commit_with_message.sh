@@ -39,3 +39,13 @@ cd "$repo_root"
 git add -A
 git commit -F "$message_file"
 git status --short --untracked-files=all
+
+# Clean up the context file written by prepare_commit_context.sh. Only runs
+# on a successful commit (set -e exits the script earlier on any failure),
+# so the context survives for a retry if the commit itself fails.
+ctx_dir="${TMPDIR:-/tmp}"
+ctx_dir="${ctx_dir%/}"
+ctx_file="$ctx_dir/git_commit_context.txt"
+[[ -f "$ctx_file" ]] && rm -f "$ctx_file"
+
+exit 0

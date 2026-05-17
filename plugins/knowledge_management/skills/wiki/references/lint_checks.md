@@ -9,6 +9,9 @@ Reference for `scripts/lint.py` — what each check catches and which severity b
 | frontmatter | required fields (`title`, `created`, `updated`, `type`, `tags`, `sources`); `type` validated against the schema-loaded enum; `confidence` enum; YYYY-MM-DD date format |
 | custom fields | custom (non-canonical) frontmatter keys validated against their `field: a \| b \| c` declaration in `SCHEMA.md`'s `## Frontmatter`; pages using undeclared custom keys are flagged; declared-but-unused custom fields surface as info |
 | links | broken markdown links to `.md` files; orphan pages with zero inbound links |
+| broken-source | every `sources:` frontmatter entry must resolve to a real file under the wiki root (same severity as broken markdown links). The frontmatter is the canonical source inventory; a non-resolving entry breaks the provenance contract the field exists to enforce. |
+| sources-section | deprecated body `## Sources` / `## Source references` H2 heading inside a wiki page. Source attribution lives in the `sources:` frontmatter (canonical inventory) and inline next to each claim; a bottom-of-page collection duplicates the frontmatter and splits the claim-source binding across the page. The check is body-only and skips fenced code blocks. |
+| footnote | `[^name]` footnote references and `[^name]:` definitions outside fenced code blocks and inline code. The wiki uses inline standard-markdown links for claim-level attribution (`[text](relative/path.md)`) so attribution sits adjacent to the claim, feeds the broken-link check, and renders consistently across markdown viewers. |
 | index | wiki pages not referenced in `index.md` |
 | tags | tags used but missing from the `SCHEMA.md` taxonomy; tags in the taxonomy but unused on any page (stale tag detection) |
 | taxonomy style | SCHEMA.md `## Tag Taxonomy` bullets that drift from the canonical `- Label: tag, tag, …` one-line form. Flags emphasis around the category label (`**Label:**`, `*Label:*`, `__Label:__`, `_Label:_`), `*` or `+` used in place of `-`, and soft-wrap continuation lines that split a bullet across physical lines. The loader tolerates all three forms so off-taxonomy warnings don't false-positive, and this check nudges authors back to the canonical form so the leniency stays a safety net. |
@@ -22,9 +25,9 @@ Reference for `scripts/lint.py` — what each check catches and which severity b
 
 ## Severity buckets
 
-- **blocking** — broken links, missing or malformed frontmatter, missing `index.md`, missing or unparseable `SCHEMA.md`. The script exits 1 while any blocking finding remains.
-- **warn** — orphan pages, contested pages, source drift (sha256 mismatch), off-taxonomy tags, invalid enum or date values, pages missing from the index, verbatim-boilerplate mismatches against the canonical references, `[[wikilink]]` references that should be standard markdown links.
-- **info** — markdown style nits, oversized pages (>200 lines), low-confidence single-source pages, unused taxonomy tags, taxonomy-style drift in SCHEMA.md (emphasis labels, non-`-` bullet markers, soft-wrap continuations), log over 500 entries.
+- **blocking** — broken links, broken `sources:` frontmatter entries, missing or malformed frontmatter, missing `index.md`, missing or unparseable `SCHEMA.md`. The script exits 1 while any blocking finding remains.
+- **warn** — orphan pages, contested pages, source drift (sha256 mismatch), off-taxonomy tags, invalid enum or date values, pages missing from the index, verbatim-boilerplate mismatches against the canonical references, `[[wikilink]]` references that should be standard markdown links, `[^footnote]` references and definitions that should be inline standard-markdown links.
+- **info** — markdown style nits, oversized pages (>200 lines), low-confidence single-source pages, unused taxonomy tags, taxonomy-style drift in SCHEMA.md (emphasis labels, non-`-` bullet markers, soft-wrap continuations), deprecated body `## Sources` sections, log over 500 entries.
 
 ## Iteration loop
 

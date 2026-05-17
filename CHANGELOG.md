@@ -4,6 +4,17 @@ Status markers: `[active]` — described behavior or code is present and current
 
 Entries are grouped strictly by day and kept on their original implementation dates.
 
+## 2026-05-17 — git_commit context-file delivery and three-tier consumption
+
+- [active] **Implementation/runtime:** Changed `prepare_commit_context.sh` to write the structured context blob to `${TMPDIR:-/tmp}/git_commit_context.txt` and print only the path plus a one-line consumption directive on stdout, so the script's output never trips agent-harness output-size limits regardless of changeset size. The previous design wrote the whole blob to stdout, which on a 142-file commit produced a 258 KB output that the harness persisted to a tool-results file and showed only as a head preview, prompting the consumer to re-derive per-file diffs with `git diff` calls instead of reading the persisted blob — the exact anti-pattern the skill exists to prevent.
+- [active] **Implementation/runtime:** Updated `commit_with_message.sh` to remove the context file only on a successful commit (`set -e` exits earlier on any failure), so the context survives for a retry if the commit itself fails.
+- [active] **Refactor:** Replaced the single `<read_diffs>` step in `git_commit` SKILL.md (v3.2.0 → v3.3.0) with a `<consume_context>` block describing three tiers — default whole-file `Read`, paginated `Read` with `offset`/`limit` for files that overflow the default window, and `grep`/`awk`/`sed` sequential slicing as a last resort for changesets so large that paginated `Read` is impractical — plus a `<hard_rules>` clause forbidding re-derivation with `git diff`/`status`/`log` and forbidding selective sampling by filename even on the slicing fallback.
+- [active] **Docs/specs-only:** Updated `references/manual_fallback.md` so the manual replacement writes the captured evidence to the same `${TMPDIR:-/tmp}/git_commit_context.txt` path and the manual commit replacement deletes that file on successful commit, keeping the consumption flow identical whether the scripted path or manual recovery produced the file.
+- [active] **Refactor:** Bumped the `ai_dev` plugin to 1.0.9 across the marketplace entry and both the Claude and Codex plugin manifests.
+- **Files changed:** `.claude-plugin/marketplace.json`, `CHANGELOG.md`, `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `plugins/ai_dev/skills/git_commit/SKILL.md`, `plugins/ai_dev/skills/git_commit/references/manual_fallback.md`, `plugins/ai_dev/skills/git_commit/scripts/commit_with_message.sh`, `plugins/ai_dev/skills/git_commit/scripts/prepare_commit_context.sh`
+
+---
+
 ## 2026-05-10 — git_commit hardening and repo conventions
 
 - [active] **Refactor:** Restructured the `git_commit` skill (v3.2.0) into a phase-based primary workflow with `<path_resolution>`, `<primary_workflow>` (gather, read, compose, execute), `<fallback_trigger>`, `<fallback_on_script_failure>`, and a consolidated `<message_policy>` covering multi- and single-file format, line-quality, and a no-attribution-trailers rule, replacing the prior loose `<tools>` and `<steps>` layout. Added a sibling `references/manual_fallback.md` reference describing the only authorized fallback trigger and step-for-step replacements for both bundled scripts plus the post-recovery handoff back to the primary workflow.

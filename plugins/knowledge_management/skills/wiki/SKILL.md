@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, meeting note, internal note, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.9.2
+version: 1.10.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -141,15 +141,19 @@ take", that is a procedure.
 
 | Type | Sections (in order) |
 | --- | --- |
-| **entity** | Overview · Key facts and dates · Relationships to other entities · Sources |
+| **entity** | Overview · Key facts and dates · Relationships to other entities |
 | **concept** | Definition / explanation · Current state of knowledge · Open questions or debates · Related concepts |
-| **comparison** | What is being compared and why · Dimensions (table preferred) · Verdict / synthesis · Sources |
-| **summary** | Topic and scope · Key findings by sub-topic · Open threads · Sources |
-| **query** | Question (verbatim, as the page title) · Synthesized answer with cross-links · Confidence and caveats · Sources |
+| **comparison** | What is being compared and why · Dimensions (table preferred) · Verdict / synthesis |
+| **summary** | Topic and scope · Key findings by sub-topic · Open threads |
+| **query** | Question (verbatim, as the page title) · Synthesized answer with cross-links · Confidence and caveats |
 | **procedure** | One-paragraph rule summary · When this applies (the trigger) · The rule · Pitfalls / edge cases (optional, rule-shaped only) · See Also |
 
-Cross-links go in every section that references another wiki page. Sources
-section lists `raw/<kind>/<slug>.md` paths for every source the page draws on.
+Cross-links go in every section that references another wiki page. Source
+attribution lives in the `sources:` frontmatter — a list of
+`raw/<kind>/<slug>.md` paths the lint validates against disk. The frontmatter
+is the single source of truth; pages do not carry a separate body "Sources"
+section, and per-claim attribution uses inline standard-markdown links rather
+than footnote markers (see `<write_or_update_pages>`).
 </page_anatomy>
 
 </page_types>
@@ -434,7 +438,7 @@ difference between a growing wiki and a pile of duplicates.
 - **Updating existing pages**: always bump the `updated` date.
 - **Cross-reference**: every new/updated page links to ≥2 others.
 - **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page.
-- **Provenance**: 3+ sources → footnote markers `[^source-name]` inline, with `[^source-name]: raw/<kind>/<slug>.md` definitions at the page bottom.
+- **Provenance**: this is an LLM-first wiki, so attribution stays *next to* the claim it attributes — content that belongs together stays together. Claim-level attribution uses inline standard-markdown links: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. **No footnote markers** (`[^name]` / `[^name]: …`) and **no bottom-of-page "Sources" collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes. The page-level `sources:` frontmatter is the canonical inventory; inline links pin specific claims to specific sources within that inventory, and the lint validates both against disk.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
 </write_or_update_pages>
 

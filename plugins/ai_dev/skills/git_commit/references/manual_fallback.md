@@ -11,9 +11,13 @@ workflow for any remaining steps.
 
 ## Replacement for `prepare_commit_context.sh`
 
-Goal: produce the same evidence the script would have emitted — staged
-untracked files, full status, recent commits, per-file staged diffs, per-file
-unstaged diffs, and a generic note for binary files.
+Goal: produce the same evidence the script would have written to its context
+file — staged untracked files, full status, recent commits, per-file staged
+diffs, per-file unstaged diffs, and a generic note for binary files. Write
+the captured evidence to `${TMPDIR:-/tmp}/git_commit_context.txt` so the rest
+of the workflow can consume it the same way as the scripted path; consume it
+with `Read`, paginated `Read` if it overflows, or sequential `grep`/`awk`
+slicing only as a last resort.
 
 1. Stage every untracked, non-ignored file:
 
@@ -45,6 +49,9 @@ without altering its line breaks.
 2. Stage everything: `git add -A`.
 3. Commit from the file: `git commit -F MESSAGE_FILE`.
 4. Print final status: `git status --short --untracked-files=all`.
+5. On successful commit, delete the context file written in the previous
+   step: `rm -f "${TMPDIR:-/tmp}/git_commit_context.txt"`. Skip this step if
+   the commit failed so the context survives for a retry.
 
 ## After recovery
 

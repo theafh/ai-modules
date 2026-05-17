@@ -889,6 +889,146 @@ def check_markdown_style(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
     return issues
 
 
+# ---------------------------------------------------------------------------
+# Source-attribution checks
+#
+# The wiki uses three rules for source attribution:
+#
+#   1. `sources:` frontmatter is the canonical, page-level source inventory.
+#      Every entry must resolve to a real file under `raw/` — blocking when
+#      it doesn't, same severity as broken markdown links.
+#   2. Pages do not carry a body "Sources" / "Source references" H2 section.
+#      The frontmatter alone is the source of truth; a bottom-of-page list
+#      duplicates that inventory and splits the claim-source binding across
+#      the page. Info-level so legacy pages surface for clean-up without
+#      breaking the audit.
+#   3. Claim-level attribution uses inline standard-markdown links, never
+#      footnote markers (`[^name]` / `[^name]: …`). Footnotes render
+#      inconsistently across viewers, hide their targets from the
+#      broken-link check, and split a claim from its evidence — undesirable
+#      in an LLM-first wiki where attribution should sit next to the claim.
+#      Warn-level so the conversion path is clear and actionable.
+# ---------------------------------------------------------------------------
+
+SOURCES_HEADER_RE = re.compile(
+    r"^\s*##\s+(?:sources?|source\s+references?)\s*$",
+    re.IGNORECASE,
+)
+FOOTNOTE_RE = re.compile(r"\[\^([^\]\s]+)\]")
+FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^([^\]\s]+)\]:")
+
+
+def check_source_paths_exist(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+    """Validate every `sources:` frontmatter entry resolves to a file on disk.
+
+    Each path is interpreted relative to the wiki root (same convention as
+    the stale-content check that joins these paths to raw `ingested` dates).
+    Missing files are blocking — the same severity as broken markdown links —
+    because a non-resolvable `sources:` entry breaks the provenance contract
+    the frontmatter exists to enforce.
+    """
+    issues: list[Issue] = []
+    for page in iter_wiki_pages(wiki, page_dirs):
+        fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
+        if not fm:
+            continue
+        sources = fm.get("sources") or []
+        if not isinstance(sources, list):
+            continue
+        for src in sources:
+            if not src or not isinstance(src, str):
+                continue
+            target = (wiki / src).resolve()
+            if not target.is_file():
+                issues.append(Issue(
+                    SEV_BLOCKING, "broken-source", page,
+                    f"`sources:` entry missing on disk: {src}",
+                ))
+    return issues
+
+
+def check_sources_section(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+    """Flag deprecated body "Sources" / "Source references" H2 sections.
+
+    The `sources:` frontmatter is the single source of truth for the
+    page-level source inventory. A body collection duplicates that
+    inventory, splits the claim-source binding across the page, and drifts
+    independently from the frontmatter. Info-level so authors see the
+    legacy section and can hoist any per-source commentary into the
+    relevant claim before removing the heading.
+    """
+    issues: list[Issue] = []
+    for page in iter_wiki_pages(wiki, page_dirs):
+        text = page.read_text(encoding="utf-8")
+        if text.startswith("---"):
+            _, body = parse_frontmatter(text)
+        else:
+            body = text
+        in_fence = False
+        for i, line in enumerate(body.splitlines(), start=1):
+            if FENCE_RE.match(line.strip()):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            if SOURCES_HEADER_RE.match(line):
+                issues.append(Issue(
+                    SEV_INFO, "sources-section", page,
+                    "deprecated body 'Sources' section — the `sources:` "
+                    "frontmatter is the single source of truth; hoist any "
+                    "per-source notes inline and remove the heading",
+                    line=i,
+                ))
+    return issues
+
+
+def check_footnote_syntax(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+    """Flag `[^name]` footnote markers and `[^name]: …` definitions.
+
+    Skipped inside fenced code blocks and inline code so bash test syntax
+    and code samples that legitimately contain `[^` don't false-positive.
+    Both references and definitions are reported per line — the conversion
+    path is the same in either case: move the source path inline next to
+    the claim it attributes as a standard markdown link, and delete the
+    bottom-of-page definition.
+    """
+    issues: list[Issue] = []
+    targets = list(iter_wiki_pages(wiki, page_dirs))
+    for special in SPECIAL_FILES:
+        candidate = wiki / special
+        if candidate.is_file():
+            targets.append(candidate)
+
+    for page in targets:
+        text = page.read_text(encoding="utf-8")
+        if text.startswith("---"):
+            _, body = parse_frontmatter(text)
+        else:
+            body = text
+        in_fence = False
+        for i, line in enumerate(body.splitlines(), start=1):
+            if FENCE_RE.match(line.strip()):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            scrubbed = INLINE_CODE_RE.sub("", line)
+            is_def = bool(FOOTNOTE_DEF_RE.match(scrubbed))
+            for match in FOOTNOTE_RE.finditer(scrubbed):
+                kind = "definition" if is_def else "reference"
+                issues.append(Issue(
+                    SEV_WARN, "footnote", page,
+                    f"`[^{match.group(1)}]` footnote {kind} — wiki uses "
+                    f"inline `[text](relative/path.md)` links for "
+                    f"claim-level attribution; move the source path "
+                    f"next to the claim and remove the definition",
+                    line=i,
+                ))
+                if is_def:
+                    break
+    return issues
+
+
 def check_wikilink_syntax(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
     """Flag `[[target]]` wikilink-style references — the wiki uses standard
     markdown links `[text](relative/path.md)` so cross-references resolve in
@@ -1016,6 +1156,7 @@ def main() -> int:
             issues.extend(check_frontmatter(page, wiki, taxonomy, valid_types))
 
         issues.extend(check_links_and_orphans(wiki, page_dirs))
+        issues.extend(check_source_paths_exist(wiki, page_dirs))
         issues.extend(check_index_completeness(wiki, page_dirs))
         if taxonomy:
             issues.extend(check_unused_tags(wiki, taxonomy, page_dirs))
@@ -1025,6 +1166,8 @@ def main() -> int:
         issues.extend(check_custom_fields(wiki, custom_spec, page_dirs))
         issues.extend(check_markdown_style(wiki, page_dirs))
         issues.extend(check_wikilink_syntax(wiki, page_dirs))
+        issues.extend(check_footnote_syntax(wiki, page_dirs))
+        issues.extend(check_sources_section(wiki, page_dirs))
 
     issues.extend(check_verbatim_boilerplate(wiki))
     issues.extend(check_taxonomy_style(wiki))
