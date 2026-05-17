@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, meeting note, internal note, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.10.0
+version: 1.11.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -153,7 +153,12 @@ attribution lives in the `sources:` frontmatter — a list of
 `raw/<kind>/<slug>.md` paths the lint validates against disk. The frontmatter
 is the single source of truth; pages do not carry a separate body "Sources"
 section, and per-claim attribution uses inline standard-markdown links rather
-than footnote markers (see `<write_or_update_pages>`).
+than footnote markers (see `<write_or_update_pages>`). External material the
+page was distilled from but that stays outside `raw/` — e.g. doctrine in
+another repo — goes into an optional `## Derived from` body section at the
+page bottom; the renamed heading does not match the linter's deprecated
+`## Sources` regex, so it does not collide with the structured `sources:`
+channel.
 </page_anatomy>
 
 </page_types>
@@ -439,6 +444,7 @@ difference between a growing wiki and a pile of duplicates.
 - **Cross-reference**: every new/updated page links to ≥2 others.
 - **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page.
 - **Provenance**: this is an LLM-first wiki, so attribution stays *next to* the claim it attributes — content that belongs together stays together. Claim-level attribution uses inline standard-markdown links: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. **No footnote markers** (`[^name]` / `[^name]: …`) and **no bottom-of-page "Sources" collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes. The page-level `sources:` frontmatter is the canonical inventory; inline links pin specific claims to specific sources within that inventory, and the lint validates both against disk.
+- **External derivation**: when a page is distilled from material that is **not** itself the subject of classification — doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes — that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns". A page may have either, both, or neither.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
 </write_or_update_pages>
 

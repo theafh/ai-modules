@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.5.5
+version: 1.6.0
 model: inherit
 background: false
 effort: high
@@ -305,6 +305,34 @@ the fix move.
     markers `[^source-name]` with definitions at the page bottom (the
     schema requires footnotes once 3+ sources contribute).
   </provenance_violation>
+
+  <external_source_pointer>
+    A page carries attribution to material that lives outside the wiki's
+    `raw/` tree — typically an absolute or `~/`-relative filesystem path
+    into another repo, a URL the page was distilled from, or a bullet
+    in a body `## Sources` H2 that names such a target. These are
+    **derivation pointers**, not subjects of classification: the external
+    file is the substrate the page was distilled from, but capturing it
+    into `raw/<kind>/<slug>.md` is not the intent (the user's other repo,
+    workspace doctrine, etc. stays where it lives). Detect:
+
+    - A body `## Sources` H2 section whose bullets contain non-`raw/`
+      paths or arbitrary external descriptors. Lint also flags the
+      heading itself info-level via `check_sources_section`; this
+      check is the semantic complement that names *why* the bullets
+      are there and where they should go.
+    - A `sources:` frontmatter entry that does not resolve to a file
+      under `$WIKI/raw/`. Lint fires `broken-source` blocking; this
+      check distinguishes "the path is genuinely broken" from "the
+      path is external by design and belongs in the body section".
+    - Inline prose attribution that names an external file path or
+      URL the page is built on, without a corresponding `sources:`
+      entry or `## Derived from` listing.
+
+    Surface the affected pages, the external pointer text verbatim, and
+    any surrounding commentary. The fix move migrates them into a
+    `## Derived from` body section; it never deletes.
+  </external_source_pointer>
 
   <confidence_violation>
     A single-source, opinion-heavy, or fast-moving page declares
@@ -636,6 +664,55 @@ affect the same file so each file is opened, read, and rewritten once.
       bottom of the page.
     </fix_provenance_violation>
 
+    <fix_external_source_pointer>
+      Preserve every external pointer and its surrounding commentary
+      verbatim — the agent never silently drops a source pointer.
+      Migration uses **only** the body section; frontmatter stays
+      strictly typed (`sources:` continues to mean `raw/<kind>/<slug>.md`
+      paths and nothing else).
+
+      Process each affected page in this order:
+
+      1. **Hoist `raw/`-resolvable bullets first.** Walk every bullet in
+         the body `## Sources` section (and every entry in `sources:`).
+         A bullet whose link target resolves to an existing file under
+         `$WIKI/raw/<kind>/<slug>.md` belongs in `sources:` frontmatter
+         — add it there if not already present, then remove the
+         hoisted bullet from the body section. This is the normal
+         migration that clears `check_sources_section` for purely
+         in-wiki attribution.
+      2. **Rename the heading for the remainder.** Whatever bullets
+         remain under the body H2 after step 1 are non-`raw/` entries
+         (absolute paths into other repos, `~/`-relative paths, URLs,
+         descriptors, possibly with commentary). Rename the heading
+         from `## Sources` to `## Derived from` in place. Keep every
+         remaining bullet and every line of surrounding commentary
+         unchanged. The new heading does not match the linter's
+         `SOURCES_HEADER_RE` (`^\s*##\s+(?:sources?|source\s+references?)\s*$`),
+         so the info-level `check_sources_section` finding clears
+         without losing content.
+      3. **Empty body section after hoist.** If step 1 left the body
+         section with no remaining bullets, delete the heading entirely
+         — no `## Derived from` is needed when nothing external survives.
+      4. **`sources:` entries resolving outside `raw/`.** Move the
+         entry from `sources:` frontmatter into a `## Derived from`
+         bullet at the page bottom (create the section if it does not
+         exist yet). Lint's `broken-source` blocking finding clears
+         because the remaining `sources:` entries all resolve under
+         `raw/`.
+
+      The `## Derived from` section is intentionally unstructured: it
+      is the unstructured channel for material the wiki points at but
+      does not own. Do not invent a frontmatter mirror of it. Do not
+      capture the external file into `raw/<kind>/<slug>.md` as part of
+      this fix — that is `wiki_import`'s triage-first protocol and is
+      out of scope for an audit pass.
+
+      Bump `updated` on every page touched. Surface the migration in
+      the per-file change report under "external attribution migrated
+      to `## Derived from`".
+    </fix_external_source_pointer>
+
     <fix_confidence_violation>
       Set `confidence: medium` or `low` on single-source,
       opinion-heavy, or fast-moving pages. Reserve `high` for pages
@@ -806,6 +883,20 @@ affect the same file so each file is opened, read, and rewritten once.
       reference docs in `$WIKI_SKILL/references/` to silence a
       finding. The linter surfaces; the wiki content adapts.
     </do_not_edit_skill_or_scripts>
+
+    <preserve_external_attribution>
+      External source pointers and their surrounding commentary are
+      never silently removed. When a `sources:` entry resolves outside
+      `raw/`, when a body `## Sources` section carries non-`raw/`
+      bullets, or when prose attributes a claim to an external file,
+      URL, or repo, the only allowed moves are: hoist `raw/`-resolvable
+      bullets into `sources:` frontmatter and rename the remaining body
+      section to `## Derived from` via `fix_external_source_pointer`, or
+      surface to the user when the migration target is ambiguous. The
+      `fix_broken_md_link` move's "remove the link when the reference is
+      obsolete" branch does **not** apply to external derivation pointers
+      — those are durable lineage records, not obsolete references.
+    </preserve_external_attribution>
 
   </fix_constraints>
 

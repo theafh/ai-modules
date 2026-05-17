@@ -33,6 +33,20 @@ This LLM-Wiki is managed by the `wiki` skill created by Andreas F. Hoffmann from
   markdown viewers, hide their targets from the broken-link check, and
   easily drift into dangling references.
 
+- **Derived from:** some pages exist because external material exists — a
+  doctrine file in another repo, a codebase the page distills, a notebook
+  the analysis was extracted from — where that external material is **not**
+  itself the subject of classification, so it does not get captured into
+  `raw/<kind>/<slug>.md`. That lineage lives in an optional bottom-of-page
+  `## Derived from` section (bulleted list of external paths, URLs, or
+  descriptors with whatever standing commentary applies). The heading is
+  deliberately distinct from `## Sources` so the linter does not flag it as
+  the deprecated body-Sources section — `sources:` frontmatter remains the
+  single structured channel (strict `raw/<kind>/<slug>.md` paths,
+  lint-validated), while `## Derived from` is the unstructured channel for
+  external derivation material that lives outside the wiki by design. A
+  page may have `sources:`, `## Derived from`, both, or neither.
+
 ## Frontmatter
 
 ```yaml
