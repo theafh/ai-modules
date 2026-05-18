@@ -166,10 +166,15 @@ print_new_files() {
   printf '</staged_new_files>\n'
 }
 
-# Unique per-run path. mktemp -t respects TMPDIR on macOS and falls
-# back to /tmp elsewhere. The trailing XXXXXX is the randomized suffix
-# every mktemp implementation we target understands.
-ctx_file="$(mktemp -t git_commit_context.XXXXXX)"
+# Unique per-run path. Pass the full template (with XXXXXX) directly
+# rather than via `mktemp -t prefix`: BSD's `-t` form would treat the
+# argument as a literal prefix and leave the XXXXXX verbatim in the
+# resulting filename (only appending its own random suffix), which
+# looks like a bug to anyone watching the path. The full-template form
+# substitutes XXXXXX correctly on both BSD (macOS) and GNU mktemp.
+tmp_root="${TMPDIR:-/tmp}"
+tmp_root="${tmp_root%/}"
+ctx_file="$(mktemp "$tmp_root/git_commit_context.XXXXXX")"
 
 {
   printf '<commit_context>\n'

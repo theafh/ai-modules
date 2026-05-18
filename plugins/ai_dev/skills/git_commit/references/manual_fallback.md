@@ -14,7 +14,9 @@ workflow for any remaining steps.
 Goal: produce the same evidence the script would have written to its context
 file — staged untracked files, full status, recent commits, per-file staged
 diffs, per-file unstaged diffs, and a generic note for binary files. Pick a
-unique context path with `ctx_file=$(mktemp -t git_commit_context.XXXXXX)`
+unique context path with `ctx_file=$(mktemp "${TMPDIR:-/tmp}/git_commit_context.XXXXXX")`
+(pass the full template — `mktemp -t prefix` leaves the literal `XXXXXX` in
+the filename on BSD/macOS)
 and write the captured evidence there so the rest of the workflow can consume
 it the same way as the scripted path; consume it with `Read`, paginated
 `Read` if it overflows, or sequential `grep`/`awk` slicing only as a last
