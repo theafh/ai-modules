@@ -2,7 +2,7 @@
 name: git_commit
 description: Create one structured git commit covering the full current working-tree state. Use when the user asks to commit, commit changes, save changes, save work, make a commit, write a commit message, wrap up changes, "commit this", "git commit", or otherwise put the current repo state into git history.
 disable-model-invocation: true
-version: 3.3.0
+version: 3.4.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -22,8 +22,8 @@ license: MIT
       <slicing_fallback>Only when the file is so large that paginated `Read` is impractical (typically 1000+ file changesets) fall back to `grep`/`awk`/`sed` via Bash. Use them to *chunk* the file into ordered slices and read each slice — not to query for a specific filename. You still need to see every `<file_change>` section in order to write a coherent multi-file message; selective sampling is the original failure mode this skill exists to prevent.</slicing_fallback>
       <hard_rules>Never re-derive the context with `git diff`, `git status`, or `git log` — the script already produced it once and re-deriving wastes tokens and time. Never sample by filename; iterate every `<file_change>` section. Summarize updated files from their diffs, summarize new text files from their full added content, summarize binary files with a generic file-level line.</hard_rules>
     </consume_context>
-    <compose_message>Compose the commit message under `<message_policy>`, then write the exact text to a temporary message file (one file under the system tmp dir, single use).</compose_message>
-    <execute_commit>Invoke `scripts/commit_with_message.sh MESSAGE_FILE`. The script stages the full current repo state, runs `git commit -F`, prints the final status so line breaks stay exact in git history, and removes the context file on success (so it persists for a retry if the commit itself fails).</execute_commit>
+    <compose_message>Compose the commit message under `<message_policy>` directly in the Bash heredoc you will pass to `scripts/commit_with_message.sh`. Do not write the message to a temporary file first — the script reads it from stdin so there is no intermediate file to manage.</compose_message>
+    <execute_commit>Invoke `scripts/commit_with_message.sh CONTEXT_FILE` with the composed message piped in via a single-quoted heredoc, where `CONTEXT_FILE` is the path printed by `prepare_commit_context.sh` (passed so the script can remove it on success). The script stages the full current repo state, runs `git commit -F -` to consume the message from stdin exactly as composed, prints the final status so line breaks stay exact in git history, and removes the context file on success (so it persists for a retry if the commit itself fails). Invocation shape: `/abs/path/to/scripts/commit_with_message.sh /abs/path/to/context.txt <<'COMMIT_MSG_END'` then the message lines then `COMMIT_MSG_END` on its own line. Quote the heredoc delimiter to prevent shell expansion inside the message, and pick a delimiter no message line could begin with.</execute_commit>
   </primary_workflow>
   <fallback_trigger>The fallback below activates only after a primary script invocation has exited with a non-zero status. No other condition is permitted to trigger it — not perceived ambiguity, not large changesets, not script slowness, not path uncertainty before the first invocation. Re-resolve the absolute script path and retry once before treating any failure as final.</fallback_trigger>
   <fallback_on_script_failure>

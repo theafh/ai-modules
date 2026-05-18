@@ -13,11 +13,13 @@ workflow for any remaining steps.
 
 Goal: produce the same evidence the script would have written to its context
 file — staged untracked files, full status, recent commits, per-file staged
-diffs, per-file unstaged diffs, and a generic note for binary files. Write
-the captured evidence to `${TMPDIR:-/tmp}/git_commit_context.txt` so the rest
-of the workflow can consume it the same way as the scripted path; consume it
-with `Read`, paginated `Read` if it overflows, or sequential `grep`/`awk`
-slicing only as a last resort.
+diffs, per-file unstaged diffs, and a generic note for binary files. Pick a
+unique context path with `ctx_file=$(mktemp -t git_commit_context.XXXXXX)`
+and write the captured evidence there so the rest of the workflow can consume
+it the same way as the scripted path; consume it with `Read`, paginated
+`Read` if it overflows, or sequential `grep`/`awk` slicing only as a last
+resort. Keep the `ctx_file` value — you will pass it to the commit step so
+it gets cleaned up on success.
 
 1. Stage every untracked, non-ignored file:
 
@@ -42,16 +44,27 @@ slicing only as a last resort.
 
 ## Replacement for `commit_with_message.sh`
 
-Goal: stage the full repo state and commit from the prepared message file
-without altering its line breaks.
+Goal: stage the full repo state and commit from the composed message via
+stdin without altering its line breaks, and clean up the context file on
+success. There is no intermediate message file.
 
-1. Confirm the message file exists and is non-empty.
+1. Confirm the composed message is non-empty.
 2. Stage everything: `git add -A`.
-3. Commit from the file: `git commit -F MESSAGE_FILE`.
+3. Commit from stdin via a single-quoted heredoc so no shell expansion runs
+   inside the message:
+
+   ```bash
+   git commit -F - <<'COMMIT_MSG_END'
+   <subject line>
+
+   <body lines>
+   COMMIT_MSG_END
+   ```
+
 4. Print final status: `git status --short --untracked-files=all`.
-5. On successful commit, delete the context file written in the previous
-   step: `rm -f "${TMPDIR:-/tmp}/git_commit_context.txt"`. Skip this step if
-   the commit failed so the context survives for a retry.
+5. On successful commit, delete the context file from the previous step:
+   `rm -f "$ctx_file"` (using the `mktemp` path you kept). Skip this step
+   if the commit failed so the context survives for a retry.
 
 ## After recovery
 

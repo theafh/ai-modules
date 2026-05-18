@@ -15,12 +15,15 @@ Behavior:
   - Runs from any path inside a git repository.
   - Stages every untracked file so new files are visible in the staged diff.
   - Writes status, recent commits, and per-file staged/unstaged diffs to a
-    file under the system tmp dir (TMPDIR or /tmp). The file path is
-    deterministic so re-running clobbers the previous run.
+    fresh unique file under the system tmp dir (TMPDIR or /tmp) created
+    via mktemp. Every run gets its own path so stale files from prior
+    runs never collide and never block a fresh write.
   - Prints exactly two lines to stdout: the context file's absolute path,
     and a one-line consumption directive telling the consumer to Read the
     whole file. This keeps stdout small regardless of changeset size so
-    no agent harness ever truncates or persists it separately.
+    no agent harness ever truncates or persists it separately. The
+    consumer is expected to pass this path back to commit_with_message.sh
+    so the file is cleaned up on a successful commit.
   - Prints generic placeholders for binary diffs.
   - Handles paths with embedded newlines, tabs, or other special characters
     by routing every path list through NUL-delimited git output.
@@ -163,9 +166,10 @@ print_new_files() {
   printf '</staged_new_files>\n'
 }
 
-ctx_dir="${TMPDIR:-/tmp}"
-ctx_dir="${ctx_dir%/}"
-ctx_file="$ctx_dir/git_commit_context.txt"
+# Unique per-run path. mktemp -t respects TMPDIR on macOS and falls
+# back to /tmp elsewhere. The trailing XXXXXX is the randomized suffix
+# every mktemp implementation we target understands.
+ctx_file="$(mktemp -t git_commit_context.XXXXXX)"
 
 {
   printf '<commit_context>\n'

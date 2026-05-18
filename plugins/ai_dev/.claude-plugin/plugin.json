@@ -1,6 +1,6 @@
 {
   "name": "ai_dev",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Skills for everyday AI-assisted development: structured git commits, day-grouped changelog maintenance, writing and formatting AI instructions (prompts, rules, skill files, agent definitions), and language style guides for markdown, Python, and Rust.",
   "author": { "name": "Andreas F. Hoffmann" },
   "license": "MIT"
