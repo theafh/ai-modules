@@ -8,6 +8,13 @@ This LLM-Wiki is managed by the `wiki` skill created by Andreas F. Hoffmann from
 
 ## Conventions
 
+- **Folder layout is the type axis only.** Every page lives directly at
+  `<pluralized-type>/<slug>.md` — flat, one layer deep (`concepts/transformer.md`,
+  `entities/openai.md`). No thematic prefix folders, no sub-folders inside a type
+  folder, no pages at the wiki root. Thematic scope is expressed through `tags:`
+  and `type:`, both of which have explicit declared sets in this schema; the
+  folder tree does not carry a second axis. The linter blocks misfiled pages and
+  warns when a declared type folder is missing on disk.
 - File names: lowercase, hyphens, no spaces (e.g., `transformer-architecture.md`)
 - Every wiki page starts with YAML frontmatter (see below)
 - Cross-link with standard relative markdown links: `[transformer](../concepts/transformer.md)`

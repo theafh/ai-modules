@@ -197,11 +197,24 @@ def parse_frontmatter(text: str) -> tuple[dict | None, str]:
 # File iteration
 # ---------------------------------------------------------------------------
 
-def iter_wiki_pages(wiki: Path, page_dirs: tuple[str, ...]) -> Iterator[Path]:
-    for sub in page_dirs:
-        d = wiki / sub
-        if d.is_dir():
-            yield from sorted(d.rglob("*.md"))
+def iter_wiki_pages(wiki: Path) -> Iterator[Path]:
+    """Yield every page in the wiki, regardless of folder organization.
+
+    Walks the whole tree so misfiled pages are discovered too — the type-
+    location check needs to see them in order to flag them. Skips the wiki
+    root (SCHEMA.md, index.md, log.md and any other root-level markdown),
+    the ``raw/`` source tree, the ``_archive/`` tree, and hidden directories.
+    """
+    excluded_roots = {"raw", "_archive"}
+    for path in sorted(wiki.rglob("*.md")):
+        if path.parent == wiki:
+            continue
+        rel_parts = path.relative_to(wiki).parts
+        if rel_parts[0] in excluded_roots:
+            continue
+        if any(part.startswith(".") for part in rel_parts[:-1]):
+            continue
+        yield path
 
 
 def iter_raw_files(wiki: Path) -> Iterator[Path]:
@@ -582,10 +595,10 @@ def extract_md_links(body: str, page: Path) -> list[tuple[Path, str]]:
     return out
 
 
-def check_links_and_orphans(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_links_and_orphans(wiki: Path) -> list[Issue]:
     issues: list[Issue] = []
     inbound: dict[Path, int] = defaultdict(int)
-    pages = list(iter_wiki_pages(wiki, page_dirs))
+    pages = list(iter_wiki_pages(wiki))
 
     for page in pages:
         _, body = parse_frontmatter(page.read_text(encoding="utf-8"))
@@ -609,22 +622,78 @@ def check_links_and_orphans(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issu
     return issues
 
 
-def check_index_completeness(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_type_location(
+    wiki: Path, valid_types: set[str], page_dirs: tuple[str, ...]
+) -> list[Issue]:
+    """Enforce the flat ``<type>s/<slug>.md`` layout.
+
+    Two structural rules:
+
+    1. **Every expected type folder exists.** SCHEMA.md's `type:` enum
+       pluralizes into a fixed set of folder names; each gets a WARN when
+       missing on disk so structural drift is visible immediately.
+    2. **Every page lives directly at ``<type>s/<slug>.md``.** A page with
+       ``type: concept`` belongs at ``concepts/<slug>.md`` — not in a
+       thematic prefix (``ai/concepts/<slug>.md``), not nested inside the
+       type folder (``concepts/ai/<slug>.md``), not bare at the root. Misfiled
+       pages BLOCK with a concrete move suggestion. The pluralized type
+       folder is therefore the *only* layer the wiki tree expresses;
+       thematic scope belongs in ``tags:`` and ``type:``, not folder names.
+
+    The ``_archive/`` tree mirrors the type layout for archived pages and is
+    excluded from page iteration upstream, so archive contents do not block.
+    """
+    issues: list[Issue] = []
+
+    for dir_name in page_dirs:
+        if not (wiki / dir_name).is_dir():
+            issues.append(Issue(
+                SEV_WARN, "structure", wiki / dir_name,
+                f"expected type folder `{dir_name}/` missing — declared in "
+                f"SCHEMA.md `type:` enum but absent on disk",
+            ))
+
+    if not valid_types:
+        return issues
+
+    for page in iter_wiki_pages(wiki):
+        fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
+        if not fm:
+            continue
+        ptype = fm.get("type")
+        if not isinstance(ptype, str) or ptype not in valid_types:
+            continue
+        expected_dir = pluralize_page_dir(ptype)
+        rel = page.relative_to(wiki)
+        rel_parts = rel.parts
+        if len(rel_parts) == 2 and rel_parts[0] == expected_dir:
+            continue
+        suggested = f"{expected_dir}/{page.name}"
+        issues.append(Issue(
+            SEV_BLOCKING, "structure", page,
+            f"page declares `type: {ptype}` but lives at {rel.as_posix()} — "
+            f"move to {suggested} (flat `<type>s/<slug>.md` layout; thematic "
+            f"scope belongs in `tags:` / `type:`, not folder names)",
+        ))
+    return issues
+
+
+def check_index_completeness(wiki: Path) -> list[Issue]:
     index = wiki / "index.md"
     if not index.is_file():
         return [Issue(SEV_BLOCKING, "structure", index, "index.md missing")]
     index_text = index.read_text(encoding="utf-8")
     issues: list[Issue] = []
-    for page in iter_wiki_pages(wiki, page_dirs):
+    for page in iter_wiki_pages(wiki):
         rel = page.relative_to(wiki).as_posix()
         if rel not in index_text and page.name not in index_text:
             issues.append(Issue(SEV_WARN, "index", page, "page not referenced in index.md"))
     return issues
 
 
-def check_unused_tags(wiki: Path, taxonomy: set[str], page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_unused_tags(wiki: Path, taxonomy: set[str]) -> list[Issue]:
     used: set[str] = set()
-    for page in iter_wiki_pages(wiki, page_dirs):
+    for page in iter_wiki_pages(wiki):
         fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
         if not fm:
             continue
@@ -637,9 +706,9 @@ def check_unused_tags(wiki: Path, taxonomy: set[str], page_dirs: tuple[str, ...]
     ]
 
 
-def check_page_size(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_page_size(wiki: Path) -> list[Issue]:
     issues: list[Issue] = []
-    for page in iter_wiki_pages(wiki, page_dirs):
+    for page in iter_wiki_pages(wiki):
         line_count = sum(1 for _ in page.read_text(encoding="utf-8").splitlines())
         if line_count > 200:
             issues.append(Issue(SEV_INFO, "size", page, f"{line_count} lines (consider splitting at >200)"))
@@ -659,7 +728,7 @@ def check_log_rotation(wiki: Path) -> list[Issue]:
     return []
 
 
-def check_stale_content(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_stale_content(wiki: Path) -> list[Issue]:
     """A page is stale when its `updated` date trails the most recent
     `ingested` date among its cited raw sources by more than 90 days.
     """
@@ -673,7 +742,7 @@ def check_stale_content(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
                 continue
 
     issues: list[Issue] = []
-    for page in iter_wiki_pages(wiki, page_dirs):
+    for page in iter_wiki_pages(wiki):
         fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
         if not fm:
             continue
@@ -693,9 +762,9 @@ def check_stale_content(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
     return issues
 
 
-def check_quality_signals(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_quality_signals(wiki: Path) -> list[Issue]:
     issues: list[Issue] = []
-    for page in iter_wiki_pages(wiki, page_dirs):
+    for page in iter_wiki_pages(wiki):
         fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
         if not fm:
             continue
@@ -712,9 +781,7 @@ def check_quality_signals(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]
     return issues
 
 
-def check_custom_fields(
-    wiki: Path, spec: dict[str, set[str] | None], page_dirs: tuple[str, ...]
-) -> list[Issue]:
+def check_custom_fields(wiki: Path, spec: dict[str, set[str] | None]) -> list[Issue]:
     """Validate non-canonical frontmatter keys against the SCHEMA.md spec:
     flag pages using undeclared keys, flag values outside the declared enum,
     and surface declared-but-unused fields as info.
@@ -726,7 +793,7 @@ def check_custom_fields(
 
     issues: list[Issue] = []
     used_fields: set[str] = set()
-    for page in iter_wiki_pages(wiki, page_dirs):
+    for page in iter_wiki_pages(wiki):
         fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
         if not fm:
             continue
@@ -799,9 +866,9 @@ WIKILINK_RE = re.compile(r"\[\[([^\[\]\n]+)\]\]")
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 
 
-def check_markdown_style(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_markdown_style(wiki: Path) -> list[Issue]:
     issues: list[Issue] = []
-    targets = list(iter_wiki_pages(wiki, page_dirs))
+    targets = list(iter_wiki_pages(wiki))
     for special in SPECIAL_FILES:
         candidate = wiki / special
         if candidate.is_file():
@@ -918,7 +985,7 @@ FOOTNOTE_RE = re.compile(r"\[\^([^\]\s]+)\]")
 FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^([^\]\s]+)\]:")
 
 
-def check_source_paths_exist(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_source_paths_exist(wiki: Path) -> list[Issue]:
     """Validate every `sources:` frontmatter entry resolves to a file on disk.
 
     Each path is interpreted relative to the wiki root (same convention as
@@ -928,7 +995,7 @@ def check_source_paths_exist(wiki: Path, page_dirs: tuple[str, ...]) -> list[Iss
     the frontmatter exists to enforce.
     """
     issues: list[Issue] = []
-    for page in iter_wiki_pages(wiki, page_dirs):
+    for page in iter_wiki_pages(wiki):
         fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
         if not fm:
             continue
@@ -947,7 +1014,7 @@ def check_source_paths_exist(wiki: Path, page_dirs: tuple[str, ...]) -> list[Iss
     return issues
 
 
-def check_sources_section(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_sources_section(wiki: Path) -> list[Issue]:
     """Flag deprecated body "Sources" / "Source references" H2 sections.
 
     The `sources:` frontmatter is the single source of truth for the
@@ -958,7 +1025,7 @@ def check_sources_section(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]
     relevant claim before removing the heading.
     """
     issues: list[Issue] = []
-    for page in iter_wiki_pages(wiki, page_dirs):
+    for page in iter_wiki_pages(wiki):
         text = page.read_text(encoding="utf-8")
         if text.startswith("---"):
             _, body = parse_frontmatter(text)
@@ -982,7 +1049,7 @@ def check_sources_section(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]
     return issues
 
 
-def check_footnote_syntax(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_footnote_syntax(wiki: Path) -> list[Issue]:
     """Flag `[^name]` footnote markers and `[^name]: …` definitions.
 
     Skipped inside fenced code blocks and inline code so bash test syntax
@@ -993,7 +1060,7 @@ def check_footnote_syntax(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]
     bottom-of-page definition.
     """
     issues: list[Issue] = []
-    targets = list(iter_wiki_pages(wiki, page_dirs))
+    targets = list(iter_wiki_pages(wiki))
     for special in SPECIAL_FILES:
         candidate = wiki / special
         if candidate.is_file():
@@ -1029,7 +1096,7 @@ def check_footnote_syntax(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]
     return issues
 
 
-def check_wikilink_syntax(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]:
+def check_wikilink_syntax(wiki: Path) -> list[Issue]:
     """Flag `[[target]]` wikilink-style references — the wiki uses standard
     markdown links `[text](relative/path.md)` so cross-references resolve in
     plain renderers and feed the broken-link check. Inline code (`` `...` ``)
@@ -1037,7 +1104,7 @@ def check_wikilink_syntax(wiki: Path, page_dirs: tuple[str, ...]) -> list[Issue]
     don't false-positive.
     """
     issues: list[Issue] = []
-    targets = list(iter_wiki_pages(wiki, page_dirs))
+    targets = list(iter_wiki_pages(wiki))
     for special in SPECIAL_FILES:
         candidate = wiki / special
         if candidate.is_file():
@@ -1152,22 +1219,23 @@ def main() -> int:
         ))
 
     if page_dirs:
-        for page in iter_wiki_pages(wiki, page_dirs):
+        for page in iter_wiki_pages(wiki):
             issues.extend(check_frontmatter(page, wiki, taxonomy, valid_types))
 
-        issues.extend(check_links_and_orphans(wiki, page_dirs))
-        issues.extend(check_source_paths_exist(wiki, page_dirs))
-        issues.extend(check_index_completeness(wiki, page_dirs))
+        issues.extend(check_type_location(wiki, valid_types, page_dirs))
+        issues.extend(check_links_and_orphans(wiki))
+        issues.extend(check_source_paths_exist(wiki))
+        issues.extend(check_index_completeness(wiki))
         if taxonomy:
-            issues.extend(check_unused_tags(wiki, taxonomy, page_dirs))
-        issues.extend(check_page_size(wiki, page_dirs))
-        issues.extend(check_stale_content(wiki, page_dirs))
-        issues.extend(check_quality_signals(wiki, page_dirs))
-        issues.extend(check_custom_fields(wiki, custom_spec, page_dirs))
-        issues.extend(check_markdown_style(wiki, page_dirs))
-        issues.extend(check_wikilink_syntax(wiki, page_dirs))
-        issues.extend(check_footnote_syntax(wiki, page_dirs))
-        issues.extend(check_sources_section(wiki, page_dirs))
+            issues.extend(check_unused_tags(wiki, taxonomy))
+        issues.extend(check_page_size(wiki))
+        issues.extend(check_stale_content(wiki))
+        issues.extend(check_quality_signals(wiki))
+        issues.extend(check_custom_fields(wiki, custom_spec))
+        issues.extend(check_markdown_style(wiki))
+        issues.extend(check_wikilink_syntax(wiki))
+        issues.extend(check_footnote_syntax(wiki))
+        issues.extend(check_sources_section(wiki))
 
     issues.extend(check_verbatim_boilerplate(wiki))
     issues.extend(check_taxonomy_style(wiki))

@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, meeting note, internal note, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.11.0
+version: 1.12.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -63,6 +63,21 @@ and *procedural* (how) — see `<page_types>` below.
 taxonomy. The linter reads its `## Frontmatter` yaml block to learn the
 page-type enum, so wikis can declare additional types there without modifying
 the linter.
+
+<folder_layout>
+**The folder tree is the type axis only.** Every page lives directly at
+`<pluralized-type>/<slug>.md` — flat, one layer deep. No thematic prefix
+(`themes/ai/concepts/foo.md` is wrong), no sub-folder nesting inside a type
+folder (`concepts/ai/foo.md` is wrong), no bare files at the wiki root.
+Thematic scope belongs in `tags:` and `type:`, not in folder names — tags have
+an enumerated taxonomy in SCHEMA.md and don't drift the way emergent theme
+folders do. The linter's `structure` check enforces this with **blocking**
+severity on misfiled pages (with a concrete move suggestion) and **warn**
+when an expected type folder is missing on disk. Because the wiki's primary
+consumer is an LLM with tools — which greps and follows links rather than
+browsing — visual folder shelving adds no real value and trades it for
+filing-drift risk.
+</folder_layout>
 </architecture>
 
 <page_types>
