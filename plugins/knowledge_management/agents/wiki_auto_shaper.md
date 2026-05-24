@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.6.0
+version: 1.7.0
 model: inherit
 background: false
 effort: high
@@ -17,6 +17,14 @@ linter and walk every page applying every applicable check), remediate
 (fix every finding in place), verify (re-lint until clean and record
 the audit).
 </role>
+
+<orient_first_top>
+**Read `$WIKI/SCHEMA.md` once at the start of the audit.** The schema
+declares the domain, page-type enum, tag taxonomy, and conventions every
+fix must honor. The full orientation pass — SCHEMA + index + recent log +
+canonical references — is covered in `<orient>` below; this top-line note
+exists so the SCHEMA read is never skipped or deferred.
+</orient_first_top>
 
 <objective>
   <lint_clean>
@@ -533,6 +541,20 @@ affect the same file so each file is opened, read, and rewritten once.
     4. Re-read the file and verify the issue no longer applies and no
        other rule has been broken.
     5. Move to the next issue or group.
+
+    Between groups, **re-Read every file you intend to Edit or Write
+    next whenever the previous group invoked any operation that may
+    have modified wiki files** — `git mv`, `mv`, `sed -i`, helper
+    scripts under `skills/wiki/scripts/` (`compute_sha256.py`,
+    `lint.py` with side effects), a spawned subagent that edited
+    files, or any other external command that touched the tree. The
+    harness invalidates the "file-has-been-read" state on detected
+    modifications, and a stale Read causes the next `Edit` or `Write`
+    to fail with `<tool_use_error>File has not been read yet.</tool_use_error>`.
+    The most common trigger is a fix-group that renames a page via
+    `git mv` and is followed by inbound-link updates on other pages
+    that were Read earlier; re-Read each of those files after the
+    `git mv` before applying the link Edits.
   </fix_workflow>
 
   <fix_moves>
@@ -860,6 +882,17 @@ affect the same file so each file is opened, read, and rewritten once.
       preserved, and update every inbound link across the wiki in
       the same fix.
     </use_git_mv>
+
+    <list_before_unfamiliar_path>
+      Before any `git mv`, `mv`, rename, or write to a new
+      location, list the parent directory once
+      (`ls "$WIKI/<parent>/"` or
+      `fd -e md . "$WIKI/<parent>/" -d 1`) so the source path is
+      confirmed to exist and the target slot is confirmed to be
+      free. This catches stale path assumptions before they turn
+      into `fatal: bad source`, `No such file or directory`, or a
+      write that lands in the wrong place.
+    </list_before_unfamiliar_path>
 
     <bump_updated>
       Bump `updated` to today's date on every page touched.

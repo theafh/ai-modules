@@ -1,7 +1,7 @@
 ---
 name: wiki_import
 description: Import a specific resource (URL, file, paper, PDF, transcript, meeting note, internal note, paste) into the wiki using a triage-first protocol — capture it as raw source, mine the captured raw for durable knowledge, diff every candidate against the existing wiki, and surface both candidate additions and contradictions with concrete reconciliation suggestions before any wiki-page write. Use when the user points at such a resource and asks to import, integrate, digest, absorb, review-before-adding, or propose-then-add it into their wiki; when they want a triage step on a single source rather than a straight ingest; or whenever a named source should be brought in with a propose-then-act front end.
-version: 1.0.2
+version: 1.1.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -10,6 +10,7 @@ license: MIT
 
 <wiki_import>
   <role>Resource-to-wiki reconciliation editor. Capture the resource the user pointed to as raw source, mine the captured raw for durable knowledge, diff against the wiki, and triage the result before any wiki-page write.</role>
+  <orient_first_top>**Read `$WIKI/SCHEMA.md` once at the start of any session that activates this skill.** The schema declares the domain, page-type enum, tag taxonomy, and conventions every classification and write must honor. The full orientation pass (SCHEMA + index + last ~350 lines of log) is covered by `<orient_first>` in `<policy>` below; this top-line note exists so the SCHEMA read is never skipped on a "quick" import.</orient_first_top>
   <objective>Pull a single named external resource into the wiki end to end: persist the raw, classify each candidate by page type and relation to existing content, surface conflicts between the resource and existing wiki pages, and propose reconciliations the user can accept page by page. Defer all wiki structure, discovery, orientation, raw capture, ingest, and lint behavior to the `wiki` skill.</objective>
   <policy>
     <resolve_first>Resolve `$WIKI` through the `wiki` skill's discovery flow before reading the resource. Honor exit-2 ambiguity by presenting candidates and asking the user.</resolve_first>
@@ -22,6 +23,8 @@ license: MIT
     <propose_then_act>Emit the proposal and wait for user selections before any wiki-page write. The raw capture in step 4 stays — only the entity, concept, comparison, summary, query, and procedure writes wait.</propose_then_act>
     <defer_writes>Route approved NEW and EXTEND items through the `wiki` skill's Ingest flow (steps 3–6). Route approved CONFLICT items through its contested-page protocol (`contested: true`, `contradictions:` frontmatter, both positions recorded with dates and sources).</defer_writes>
     <single_resource>Source material for the proposal is the captured raw only. Skip claims the resource did not establish, even when they are true in the broader domain.</single_resource>
+    <too_large_to_read_in_one_shot>When `Read` fails with `File content (N tokens) exceeds maximum allowed tokens (25000)`, do not retry the same call — the same call fails the same way. Switch strategy: run `Bash wc -l <path>` to size the file, then `Read` with `offset` and `limit` to walk it in chunks, or run `Bash grep -n <pattern> <path>` to find the section you need and `Read` only that range. This applies in particular to Confluence-page tool-result tempfiles under `.../tool-results/mcp-claude_ai_Atlassian-getConfluencePage-*.txt` and to long transcripts or dense papers — sources that routinely exceed the 25k-token Read limit. The failure mode to avoid is the 3–5× same-call retry loop the model defaults to on this error.</too_large_to_read_in_one_shot>
+    <list_before_unfamiliar_path>Before writing into a `raw/<kind>/` bucket you have not recently confirmed on disk, list the parent directory once (`ls "$WIKI/raw/<kind>/"`). This catches a retired or renamed bucket before the Write lands in the wrong place.</list_before_unfamiliar_path>
   </policy>
   <steps>
     <step>Confirm the resource pointer and its kind. If the user supplied only "this link" or "that paper", request the URL or path explicitly before continuing.</step>

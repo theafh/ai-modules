@@ -1,7 +1,7 @@
 ---
 name: wiki
-description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, meeting note, internal note, paste) into their wiki; query an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or references their wiki, knowledge base, or research notes.
-version: 1.12.0
+description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; ingest, add, or process a source (URL, article, paper, PDF, transcript, meeting note, internal note, paste) into their wiki; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; lint, audit, fix, health-check, clean up, or auto-repair a wiki; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
+version: 1.13.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -21,6 +21,16 @@ everything ingested.
 **Division of labor:** the human curates sources and directs analysis. The
 agent summarizes, cross-references, files, and maintains consistency.
 </role>
+
+<orient_first_top>
+**Read `$WIKI/SCHEMA.md` once at the start of any session that activates this
+skill.** The schema declares the domain, the page-type enum, the tag taxonomy,
+and the conventions every subsequent action must honor — reading it first
+prevents wrong-type pages, off-taxonomy tags, and duplicate or misfiled work.
+The full orientation pass (SCHEMA + index + recent log) is covered in
+`<resuming_an_existing_wiki>`; this top-line note exists so the SCHEMA read is
+never skipped, even on quick queries.
+</orient_first_top>
 
 <when_to_activate>
 Use this skill when the user:
@@ -696,6 +706,59 @@ tail -n 350 "$WIKI/log.md"                    # ~last 20 log entries
   The new entry's line number must be the largest. If not, fix before
   continuing.
 </appending_to_log>
+
+<file_handling_discipline>
+Three rules keep tool use stable on long wiki sessions. Each addresses a
+failure mode observed in real session traces.
+
+<re_read_after_mutation>
+**Re-Read each file you plan to Edit or Write after any operation that may
+have modified wiki files.** Mutations that invalidate the harness's
+"file-has-been-read" state include `git mv`, `mv`, `sed -i`, the linter when
+run in auto-fix mode, helper scripts under `skills/wiki/scripts/`
+(`compute_sha256.py`, `init_wiki.sh`, `lint.py` with side effects), a
+subagent that performed edits during this session, and any external command
+that touches the working tree. A stale Read causes the next `Edit` or
+`Write` to fail with `<tool_use_error>File has not been read yet. Read it
+first before writing to it.</tool_use_error>` and burns 3–5 turns per
+occurrence on retries.
+
+The pattern that triggers this most often: rename a page with `git mv`, then
+update inbound links across other pages. The inbound-link Edits fail on
+stale Reads. Re-Read each file you are about to update *after* the `git mv`,
+before the first Edit.
+</re_read_after_mutation>
+
+<too_large_to_read_in_one_shot>
+**When `Read` fails with `File content (N tokens) exceeds maximum allowed
+tokens (25000)`, do not retry the same call.** The file is too large for a
+single read and the same call will fail the same way. Switch strategy
+instead:
+
+- `Bash wc -l <path>` to size the file, then `Read` with `offset` and
+  `limit` to walk it in chunks.
+- `Bash grep -n <pattern> <path>` to locate the section you need, then
+  `Read` only that range.
+
+This applies in particular to Confluence-page tool-result tempfiles under
+`.../tool-results/mcp-claude_ai_Atlassian-getConfluencePage-*.txt` and to
+large raw sources (long transcripts, dense PDFs converted to markdown). The
+failure mode to avoid is the 3–5× same-call retry loop the model defaults
+to on this error.
+</too_large_to_read_in_one_shot>
+
+<list_before_manipulating_unfamiliar_paths>
+**Before manipulating a wiki path you have not recently confirmed — rename,
+move, Read of a new location, Write of a new file — list the parent
+directory once.** A single `ls <parent>` or
+`fd -e md . <parent> -d 1` is enough. This catches stale path
+assumptions (a slug the model remembers from earlier that was already
+renamed, a directory it expects to exist that does not, a `raw/<kind>/`
+bucket that was retired) before they turn into `No such file or directory`,
+`fatal: bad source`, or a Write that lands in the wrong place.
+</list_before_manipulating_unfamiliar_paths>
+
+</file_handling_discipline>
 
 </operational_discipline>
 

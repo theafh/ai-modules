@@ -9,10 +9,17 @@ by severity so the caller knows what to fix first.
 Usage:
     python3 lint.py [WIKI_PATH] [--quiet]
 
-Discovery if WIKI_PATH is omitted (current working directory only):
-    1. ./wiki/         → use it
-    2. ./.no_wiki  → use ~/wiki
-    3. neither         → error; pass an explicit path
+Discovery if WIKI_PATH is omitted (mirrors ``scripts/discover_wiki.sh``):
+    Walk up from CWD toward ``$HOME``. At each level, ``.no_wiki`` skips
+    to the parent and a present ``wiki/`` terminates the walk with a hit.
+    Auto-resolve only when the closest non-opted-out level already has
+    ``wiki/`` (use it) or when every level up through ``$HOME`` is opted
+    out (use ``$HOME/wiki``). Otherwise — multiple creation candidates,
+    no existing wiki yet — exit 1 with the candidate list and a hint to
+    pass ``--wiki-path``, since lint runs non-interactively.
+    Outside ``$HOME``, fall back to the pre-walk-up behavior:
+    ``./wiki/`` → use it, ``./.no_wiki`` → use ``~/wiki``,
+    neither → exit with the two-candidate hint.
 
 Exit codes:
     0  no blocking issues
@@ -80,6 +87,13 @@ def discover_wiki(arg: str | None) -> Path:
             candidates.append(("existing", (level / "wiki").resolve()))
             break
         candidates.append(("available", level))
+
+    # Outside-$HOME single-CWD fallback: if the walk-up is disabled and the
+    # CWD did not yield an EXISTING wiki, append $HOME as a second creation
+    # candidate so the caller can pick "create here or fall back to the
+    # global wiki" — mirrors discover_wiki.sh's same-named branch.
+    if not under_home and candidates and candidates[-1][0] != "existing":
+        candidates.append(("available", home))
 
     if not candidates:
         home_wiki = home / "wiki"
@@ -1185,7 +1199,7 @@ def main() -> int:
     parser.add_argument(
         "wiki_path",
         nargs="?",
-        help="Path to the wiki directory. If omitted, uses ./wiki/ (or ~/wiki when ./.no_wiki is present).",
+        help="Path to the wiki directory. If omitted, walks up from CWD toward $HOME (same algorithm as scripts/discover_wiki.sh): uses the closest non-opted-out `wiki/`, or $HOME/wiki when every level is opted out via .no_wiki, otherwise exits with a candidate list.",
     )
     parser.add_argument("--quiet", action="store_true", help="Suppress info-level findings.")
     args = parser.parse_args()

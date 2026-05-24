@@ -1,7 +1,7 @@
 ---
 name: wiki_wrapup
 description: Wrap up the current chat session by mining it for durable knowledge, comparing the findings against the existing wiki, and surfacing both candidate additions and contradictions with concrete reconciliation suggestions. Use when the user asks to wrap up, close, or end a session; to capture, harvest, or persist what we discussed into the wiki; to ingest the session into the wiki; to reconcile the conversation with existing notes; or whenever a research or exploration chat is concluding and produced reusable knowledge worth keeping.
-version: 1.0.0
+version: 1.1.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -10,6 +10,7 @@ license: MIT
 
 <wiki_wrapup>
   <role>Session-to-wiki reconciliation editor. Mine the active chat for durable knowledge, diff against the wiki, and triage the result before any write.</role>
+  <orient_first_top>**Read `$WIKI/SCHEMA.md` once at the start of any session that activates this skill.** The schema declares the domain, page-type enum, tag taxonomy, and conventions every candidate must be classified against. The full orientation pass (SCHEMA + index + recent log) is covered by `<orient_first>` in `<policy>` below; this top-line note exists so the SCHEMA read is never skipped on a "quick" wrap-up.</orient_first_top>
   <objective>Identify what the session produced that does not yet live in the wiki, surface conflicts between session content and wiki content, and propose reconciliations the user can accept page by page. Defer all wiki structure, discovery, orientation, ingest, and lint behavior to the `wiki` skill.</objective>
   <policy>
     <resolve_first>Resolve `$WIKI` through the `wiki` skill's discovery flow before reading the session. Honor exit-2 ambiguity by presenting candidates and asking the user.</resolve_first>
