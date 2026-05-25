@@ -1,7 +1,7 @@
 ---
 name: wiki_import
-description: Import a specific resource (URL, file, paper, PDF, transcript, meeting note, internal note, paste) into the wiki using a triage-first protocol — capture it as raw source, mine the captured raw for durable knowledge, diff every candidate against the existing wiki, and surface both candidate additions and contradictions with concrete reconciliation suggestions before any wiki-page write. Use when the user points at such a resource and asks to import, integrate, digest, absorb, review-before-adding, or propose-then-add it into their wiki; when they want a triage step on a single source rather than a straight ingest; or whenever a named source should be brought in with a propose-then-act front end.
-version: 1.1.0
+description: Import a specific resource (URL, file, paper, PDF, transcript, meeting note, internal note, paste) into the wiki using a triage-first protocol — capture it as raw source, mine the captured raw for durable knowledge, diff every candidate against the existing wiki, and surface both candidate additions and contradictions with concrete reconciliation suggestions before any wiki-page write. Use when the user points at such a resource and asks to ingest, import, integrate, digest, absorb, review-before-adding, or propose-then-add it into their wiki; when they want a triage step on a single source rather than a straight ingest; or whenever a named source should be brought in with a propose-then-act front end.
+version: 1.2.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
