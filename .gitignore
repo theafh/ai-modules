@@ -3,6 +3,8 @@ deployment/.deploy-backup-*/
 .DS_Store
 tests/
 /*[Tt][Oo][Dd][Oo]*.md
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
 
 # Python
 __pycache__/
