@@ -2,8 +2,8 @@
 description: Add a `task_check` sibling skill (inspired by spec_check) that assesses one task's implementation readiness against a checklist (scope, focus, complexity, no contradictions/ambiguity), read-only.
 scope: plugins/ai_dev
 created: 2026-05-28T20:35:20
-updated: 2026-05-28T22:38:00
-status: open
+updated: 2026-05-28T23:25:48
+status: implemented
 ---
 
 # Add the `task_check` sibling skill
@@ -21,7 +21,7 @@ enforces.
 
 ## Context
 
-Depends on [the rename](archive/task-skill_rename-tasks-to-task.md). The direct
+Depends on [the rename](task-skill_rename-tasks-to-task.md). The direct
 template is `staged-spec/skills/spec_check/SKILL.md`, a thin skill that
 "reviews a single stage spec for implementation readiness … produces one
 direct assessment from the current agent" and defers its assessment
@@ -101,12 +101,12 @@ Natural chain: `task_create` → `task_check` → `task_implement` →
 
 ## Related
 
-- Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
+- Base: [the rename](task-skill_rename-tasks-to-task.md).
 - Next in chain: [task_implement](task-skill_implement-sibling-skill.md).
 - Boundary peers: [task_health](task-skill_health-sibling-skill.md),
   [task_audit](task-skill_audit-sibling-skill.md),
-  [task_create](archive/task-skill_create-sibling-skill.md).
+  [task_create](task-skill_create-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_check/SKILL.md` +
   `single_stage_assessment.md`.
 - Tests tracked in
-  [task-skill_testing-new-features](task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](../task-skill_testing-new-features.md).

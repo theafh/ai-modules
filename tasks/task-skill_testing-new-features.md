@@ -2,7 +2,7 @@
 description: Running collection task for test coverage deferred from tasks-skill feature commits — behavioral evals (and any other test growth) that the one-bump-per-commit rule keeps out of the shipping commit.
 scope: plugins/ai_dev
 created: 2026-05-28T20:17:49
-updated: 2026-05-28T22:50:54
+updated: 2026-05-28T23:54:24
 status: open
 ---
 
@@ -47,30 +47,40 @@ Two surfaces:
    each ships its own behavioral eval here in its own commit:
    [the rename](archive/task-skill_rename-tasks-to-task.md),
    [task_create](archive/task-skill_create-sibling-skill.md),
-   [task_check](task-skill_check-sibling-skill.md),
-   [task_health](task-skill_health-sibling-skill.md),
-   [task_audit](task-skill_audit-sibling-skill.md),
-   [task_implement](task-skill_implement-sibling-skill.md),
+   [task_check](archive/task-skill_check-sibling-skill.md),
+   [task_health](archive/task-skill_health-sibling-skill.md),
+   [task_audit](archive/task-skill_audit-sibling-skill.md),
+   [task_implement](archive/task-skill_implement-sibling-skill.md),
    [task_finish](archive/task-skill_finish-sibling-skill.md). Add a scenario
    per skill (e.g. `task_check` flags an under-specified fixture task;
    `task_audit` emits `Gaps:` against a task with a missing test;
    `task_finish` closes a task and re-points the links the move breaks).
-   **`task_create` has shipped (1.0.0), so its behavioral eval is the
-   first concretely due:** a focused single-create prompt yields one
-   lint-clean task file with `created`/`updated` stamped from `date`, and
-   no second task or broader workflow is run.
-3. **Trigger-eval split for the `task` family** (a distinct axis from the
+   **All six focused siblings — `task_create`, `task_check`,
+   `task_implement`, `task_audit`, `task_finish`, and `task_health` — have
+   shipped (each 1.0.0), so their behavioral evals are all now concretely
+   due; none remain unbuilt.** The simplest is `task_create`'s: a focused single-create prompt yields
+   one lint-clean task file with `created`/`updated` stamped from `date`,
+   and no second task or broader workflow is run.
+3. **Trigger-eval split across the `task` family** (a distinct axis from the
    behavioral evals above — see `tests/trigger_evals/` and `tests/CLAUDE.md`).
-   `task_create` overlaps the base `task` skill's create triggers, so the
-   split needs validation that mirrors the wiki/wiki_import precedent: a
-   focused single-create phrasing ("make a task for X") routes to
-   `task_create`, while list/query/update/finish/archive/lint and
-   multi-task phrasings route to `task`, with no family regression. Add a
-   `tests/trigger_evals/task.json` eval set (queries with `expected_skill`
-   of `task` / `task_create` / `null`) and tune whichever sibling
-   description is bleeding. This carries forward acceptance item 3 of
-   [task_create](archive/task-skill_create-sibling-skill.md), deferred from the
-   commit that shipped the skill.
+   The focused siblings each overlap the base `task` skill's broad verbs
+   (create / implement / finish / defer / archive / audit), so the split
+   needs validation that mirrors the wiki/wiki_import precedent: a focused
+   single-purpose phrasing routes to the right sibling — "make a task for X"
+   → `task_create`, "is this task ready to build?" → `task_check`,
+   "implement this task" → `task_implement`,
+   "finish / defer / archive this task" → `task_finish`, "is this task
+   really done?" → `task_audit`, "health-check / clean up the backlog" →
+   `task_health` — while broad or ambiguous backlog phrasings route to the
+   base `task` skill, with no family regression. Add a
+   `tests/trigger_evals/task.json` set (queries with `expected_skill` of
+   `task` / `task_create` / `task_check` / `task_implement` / `task_finish` /
+   `task_audit` / `task_health` / `null`) and sharpen whichever sibling
+   description is bleeding. This carries forward the deferred trigger-eval
+   acceptance of every shipped sibling — `task_create` (item 3), `task_check`
+   (item 4), `task_implement` (item 5), `task_finish` (item 5), `task_audit`
+   (item 4), and `task_health` (item 5) — none validated in the commit that
+   shipped it.
 
 ## Approach
 
@@ -108,9 +118,10 @@ their eval.
   from the real wall clock (within tolerance), and the staged tasks tree
   lints clean — no birth-time drift warning.
 - `tests/tasks/script_tests/run.sh` continues to pass with no regression.
-- A `tests/trigger_evals/task.json` set exists and passes: focused
-  single-create phrasings route to `task_create`, broader backlog
-  phrasings route to `task`, with no precise regression elsewhere in the
-  family.
+- A `tests/trigger_evals/task.json` set exists and passes: each shipped
+  focused sibling (`task_create`, `task_check`, `task_implement`,
+  `task_finish`, `task_audit`, `task_health`) wins its own single-purpose
+  phrasings, broad or ambiguous backlog phrasings route to the base `task`
+  skill, with no precise regression elsewhere in the family.
 - Each item's eval lands in its own commit, separate from the feature it
   covers.

@@ -2,8 +2,8 @@
 description: Add a `task_audit` sibling skill (modeled on spec_audit): verify a task's claimed completion against the codebase — features, tests, acceptance — and report gaps. Read-only gate; closing out is task_finish's job.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T22:50:54
-status: open
+updated: 2026-05-28T23:08:40
+status: implemented
 ---
 
 # Add the `task_audit` sibling skill
@@ -16,13 +16,13 @@ every feature in the body, every acceptance item, and the tests that back
 them — and reports any gap between specified and built behaviour. It is a
 **read-only gate**: it makes no state change. On a clean pass it reports the
 task ready to finish and hands the close-out to
-[task_finish](archive/task-skill_finish-sibling-skill.md); it never archives. It
+[task_finish](task-skill_finish-sibling-skill.md); it never archives. It
 answers "is this task genuinely done?" — `task_finish` answers "now close
 it."
 
 ## Context
 
-Depends on [the rename](archive/task-skill_rename-tasks-to-task.md). The direct
+Depends on [the rename](task-skill_rename-tasks-to-task.md). The direct
 template is `staged-spec/skills/spec_audit/SKILL.md` — the "Implementation
 Auditor" — which audits specs marked `✓ Implemented` against the actual
 codebase, treats tests and verifications as first-class deliverables, runs
@@ -52,7 +52,7 @@ capture):
 
 The closing mechanics live in the base skill's `<archive>` workflow
 (`plugins/ai_dev/skills/task/SKILL.md`) and are owned by
-[task_finish](archive/task-skill_finish-sibling-skill.md), not by `task_audit`.
+[task_finish](task-skill_finish-sibling-skill.md), not by `task_audit`.
 `task_audit` runs the verification and stops at a verdict; on a clean pass it
 points the user at `task_finish` to perform the close-out.
 
@@ -79,7 +79,7 @@ Boundary with siblings:
    **requirement / expected behaviour / actual behaviour / minimum fix**,
    ordered by mismatch size (largest coverage or behaviour gap first).
 4. Make no state change. On a clean pass, report the task ready to finish and
-   point at [task_finish](archive/task-skill_finish-sibling-skill.md) for the
+   point at [task_finish](task-skill_finish-sibling-skill.md) for the
    close-out. On gaps, report them and hand the remaining work to
    `task_implement`. Never mark a task done on prose alone — require codebase
    evidence.
@@ -105,10 +105,10 @@ Boundary with siblings:
 
 ## Related
 
-- Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
-- Close-out peer (acts on a clean pass): [task_finish](archive/task-skill_finish-sibling-skill.md).
+- Base: [the rename](task-skill_rename-tasks-to-task.md).
+- Close-out peer (acts on a clean pass): [task_finish](task-skill_finish-sibling-skill.md).
 - Hand-off peer for gaps: [task_implement](task-skill_implement-sibling-skill.md).
 - Tree-health peer: [task_health](task-skill_health-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_audit/SKILL.md`.
 - Tests tracked in
-  [task-skill_testing-new-features](task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](../task-skill_testing-new-features.md).

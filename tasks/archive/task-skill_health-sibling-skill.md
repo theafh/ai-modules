@@ -1,9 +1,9 @@
 ---
-description: Add a `task_health` sibling skill that audits and fixes the tasks tree (naming, frontmatter, status/location, links, size, drift) — agent-driven like wiki_fix or inline, TBD.
+description: Add a `task_health` sibling skill that audits and fixes the tasks tree (naming, frontmatter, status/location, links, size, drift) inline (no agent), repairing mechanical findings and surfacing judgement calls.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T22:38:00
-status: open
+updated: 2026-05-28T23:54:24
+status: implemented
 ---
 
 # Add the `task_health` sibling skill
@@ -22,7 +22,7 @@ readiness before `task_implement` runs. This skill is whole-tree health.)
 
 ## Context
 
-Depends on [the rename](archive/task-skill_rename-tasks-to-task.md). The oracle
+Depends on [the rename](task-skill_rename-tasks-to-task.md). The oracle
 already exists: `plugins/ai_dev/skills/task/scripts/lint.py` reports
 blocking/warn/info findings for naming, frontmatter, status/location
 consistency, datetime format, the `created`-vs-birth-time drift check,
@@ -55,42 +55,48 @@ Reference patterns, read end-to-end (not just their one-liners):
 - The base skill's `<lint>` and `<archive>` workflows for what a fix looks
   like (bump `updated` from `date`, move on status change, re-point links).
 
-**Open design decision — agent vs inline (resolve as part of this task):**
+**Design decision — inline (settled).** `task_health` folds the four phases
+directly into the skill, with **no** dedicated agent. Rationale: the `tasks/`
+tree is small and the fixes are mechanical (rename, bump `updated`, move a
+file to match status, re-point a link, re-stamp a drifted `created` after
+confirming with the user), so the agent indirection `wiki_fix` →
+`wiki_auto_shaper` uses for a large wiki is not warranted here — and it would
+add an agent definition to maintain plus the read-token cost flagged in
+[wiki_auto-shaper-read-token-cost](../wiki_auto-shaper-read-token-cost.md). A
+dedicated `task_auto_shaper` agent is **out of scope** for this task; revisit
+it as separate future work only if the tree grows enough that inline
+iteration strains a single context.
 
-- *With a dedicated agent* (mirrors `wiki_fix` → `wiki_auto_shaper`): a thin
-  `task_health` skill delegates to a `task_auto_shaper` agent that runs the
-  orient → assess → remediate → verify protocol and returns a final report
-  the skill surfaces verbatim. Clean separation, can iterate
-  fix→re-lint→fix autonomously over a large tree, but adds an agent
-  definition to maintain and a read-token cost (the same concern raised for
-  the wiki agent in
-  [wiki_auto-shaper-read-token-cost](wiki_auto-shaper-read-token-cost.md)).
-- *Inline* (skill folds the same four phases directly, no agent): simpler,
-  fine because the task tree is small and the fixes are mechanical (rename,
-  bump `updated`, move file to match status, re-point a link, re-stamp a
-  drifted `created` after confirming with the user). Likely the right
-  default given the bounded problem size — decide and record the rationale
-  in the task body when implementing.
-
-Either way, keep the wiki precedent's shape: orient once, assess fully,
-remediate in place, verify to a clean lint, and end with a concise report.
+Keep the wiki precedent's shape: orient once, assess fully, remediate in
+place, verify (triaged as below — 0 blocking and mechanical warns resolved,
+judgement-call warns reported), and end with a concise report.
 
 ## Approach
 
-1. Decide agent-vs-inline (lean inline unless the tree-size argument
-   changes); record the decision and rationale in the shipped `SKILL.md`.
-2. New skill dir `plugins/ai_dev/skills/task_health/` (+ a
-   `task_auto_shaper` agent if the agent path wins). Structure the work as
-   the wiki agent's four phases:
+1. Build inline per the settled decision above — one `task_health` skill, no
+   agent. Record the inline rationale briefly in the shipped `SKILL.md`, and
+   note the agent variant as deferred future work.
+2. New skill dir `plugins/ai_dev/skills/task_health/` with `SKILL.md`
+   (pseudo-XML, positive language), no agent. Structure the work as the wiki
+   agent's four phases:
    - **orient** — read the base `task` skill's rules once.
    - **assess** — `discover_tasks.sh` → run `lint.py` → bucket findings →
-     walk every task applying checks the linter can't (topic mixing, a body
-     that no longer reads single-shot-ready).
+     walk every task applying the **best-effort advisory** checks the linter
+     can't: *topic mixing* (one task file covering two unrelated units of
+     work — flag for a split) and *single-shot-readiness* (a body that no
+     longer reads as something an implementer could act on from the file
+     alone — an empty section, a dangling "TBD", context that assumes the
+     original chat). Surface these; do not auto-rewrite.
    - **remediate** — auto-fix the safe mechanical findings (status/location
      mismatch → move; missing/malformed frontmatter → fill; non-ISO
      datetime → normalise; broken link → re-point).
-   - **verify** — re-lint until it exits 0 with no blocking/warn (only
-     acceptable info), and report.
+   - **verify** — re-lint and triage rather than chase zero-warn: drive
+     blocking findings to zero and fix the mechanical warns, while leaving
+     birth-time drift and other judgement-call warns surfaced-and-accepted
+     (the live tree carries birth-time warns a clone or in-place rewrite
+     resets — expected, not failures). The clean bar is **0 blocking,
+     mechanical warns resolved, judgement-call warns reported** — not
+     zero-warn. Then report.
 3. Surface, do not silently change, the judgement calls: oversized pages
    needing a split, scope ambiguity, birth-time drift that may be a
    legitimate checkout, and **contradictions between tasks** (mirror
@@ -104,13 +110,14 @@ remediate in place, verify to a clean lint, and end with a concise report.
 
 - `task_health` triggers on audit/lint/clean-up/health-check phrasings for
   the task backlog and, on a deliberately-broken fixture tree, runs orient →
-  assess → remediate → verify and re-lints to a clean exit (no blocking/warn,
-  only acceptable info).
+  assess → remediate → verify and re-lints to **0 blocking with the
+  mechanical warns resolved**; birth-time and other judgement-call warns are
+  surfaced-and-accepted, not driven to zero.
 - Judgement-call findings (splits, drift, cross-task contradictions) are
   surfaced for human review, not silently changed.
 - It ends with a concise report of what was fixed and what was flagged.
-- The agent-vs-inline decision and its rationale are recorded in the
-  shipped `SKILL.md`.
+- The shipped `SKILL.md` is inline (no agent) and records that rationale
+  briefly, noting the agent variant as deferred future work.
 - Trigger evals: `task_health` owns audit/fix verbs without the base `task`
   skill stealing them (mirror the wiki/wiki_fix split).
 - `make lint` and deploy dry-run pass; plugin meta bumped lockstep.
@@ -118,11 +125,11 @@ remediate in place, verify to a clean lint, and end with a concise report.
 
 ## Related
 
-- Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
+- Base: [the rename](task-skill_rename-tasks-to-task.md).
 - Peer boundary to keep crisp: [task_audit](task-skill_audit-sibling-skill.md)
   verifies a single task against the codebase; `task_health` audits the
   tree's internal health.
 - Source patterns: `plugins/knowledge_management/skills/wiki_fix/SKILL.md` +
   `plugins/knowledge_management/agents/wiki_auto_shaper.md`.
 - Tests tracked in
-  [task-skill_testing-new-features](task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](../task-skill_testing-new-features.md).

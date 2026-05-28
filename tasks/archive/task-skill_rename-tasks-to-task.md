@@ -87,9 +87,9 @@ they stay as-is.
 ## Related
 
 - Prerequisite for [task_create](task-skill_create-sibling-skill.md),
-  [task_check](../task-skill_check-sibling-skill.md),
-  [task_health](../task-skill_health-sibling-skill.md),
-  [task_audit](../task-skill_audit-sibling-skill.md), and
-  [task_implement](../task-skill_implement-sibling-skill.md).
+  [task_check](task-skill_check-sibling-skill.md),
+  [task_health](task-skill_health-sibling-skill.md),
+  [task_audit](task-skill_audit-sibling-skill.md), and
+  [task_implement](task-skill_implement-sibling-skill.md).
 - Test growth (evals) for the renamed skill is tracked in
   [task-skill_testing-new-features](../task-skill_testing-new-features.md).

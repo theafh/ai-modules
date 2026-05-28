@@ -14,7 +14,7 @@ A skill that **finishes a single task**: it performs the close-out — set
 `status` to `implemented` (work done and shipped) or `deferred` (parked),
 bump `updated` from `date`, `git mv` the file to `archive/`, re-point every
 cross-reference the move touches, and re-lint to a clean tree. It is the
-*action* counterpart to [task_audit](../task-skill_audit-sibling-skill.md),
+*action* counterpart to [task_audit](task-skill_audit-sibling-skill.md),
 which is the read-only *gate* ("is this genuinely done?"). The user says
 "finish this task", "mark X done", "defer Y", or "archive this task" and gets
 the task correctly closed out — the skill form of the base skill's
@@ -91,8 +91,8 @@ Natural chain: `task_create` → `task_check` → `task_implement` → `task_aud
 
 - Base: [the rename](task-skill_rename-tasks-to-task.md); the base
   skill's `<archive>` workflow is the authority.
-- Verification gate before me: [task_audit](../task-skill_audit-sibling-skill.md).
-- The doer: [task_implement](../task-skill_implement-sibling-skill.md).
+- Verification gate before me: [task_audit](task-skill_audit-sibling-skill.md).
+- The doer: [task_implement](task-skill_implement-sibling-skill.md).
 - Pattern to follow: [task_create](task-skill_create-sibling-skill.md)
   (thin, deferential front end over the base skill).
 - Tests tracked in

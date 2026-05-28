@@ -64,9 +64,9 @@ other's territory).
 ## Related
 
 - Base: [the rename](task-skill_rename-tasks-to-task.md).
-- Peers: [task_check](../task-skill_check-sibling-skill.md),
-  [task_health](../task-skill_health-sibling-skill.md),
-  [task_audit](../task-skill_audit-sibling-skill.md),
-  [task_implement](../task-skill_implement-sibling-skill.md).
+- Peers: [task_check](task-skill_check-sibling-skill.md),
+  [task_health](task-skill_health-sibling-skill.md),
+  [task_audit](task-skill_audit-sibling-skill.md),
+  [task_implement](task-skill_implement-sibling-skill.md).
 - Tests tracked in
   [task-skill_testing-new-features](../task-skill_testing-new-features.md).
