@@ -1,0 +1,54 @@
+---
+name: task_create
+description: Create exactly one well-formed task file in the project's tasks/ backlog, fast and with minimal ceremony. Use when the user wants a single task or todo written for upcoming work — "make a task for X", "add a todo to do Y", "file a task about Z" — and wants just that one file, not a broader backlog session. For listing, querying, updating, finishing, archiving, or linting tasks, the broader task skill applies instead.
+version: 1.0.0
+author: Andreas F. Hoffmann
+license: MIT
+---
+
+# task_create
+
+<task_create_skill>
+
+<role>
+task_create is the focused on-ramp for adding a single item to the project's `tasks/` backlog. Its one job is to turn a single request into one conformant, lint-clean task file with no surrounding workflow. It is a thin, trigger-precise front end over the `task` skill: the `task` skill stays the authority for the file format and the create mechanics, and task_create lets a one-shot "make a task for X" load a narrow surface instead of the whole backlog-management skill.
+</role>
+
+<when_to_activate>
+Activate when the user wants exactly one task file written:
+
+- "Make / create / add / file / write a task (or todo) for X."
+- "Capture this as a task" about a single piece of upcoming work.
+- A single follow-up item that surfaced mid-conversation and should persist as one task file.
+
+Route to the `task` skill instead when the user wants to list, query, update, refine, finish, implement, defer, archive, or lint tasks, or to derive several tasks from a larger document in one pass — those are the broader backlog workflows.
+</when_to_activate>
+
+<authority>
+The `task` skill's `SKILL.md` is the single source of truth; keep every shared rule there and follow it rather than copying it. Read that skill and apply:
+
+- `<file_format>` — `<naming>`, `<frontmatter>` (including the `date`-stamped `created` / `updated`), `<markdown_policy>`, and the `<body>` sections.
+- `<discover>` — locate or scaffold `tasks/` through the bundled `discover_tasks.sh` / `init_tasks.sh`.
+- `<lint>` — the bundled `lint.py` and what each finding means.
+
+These assets ship in the same plugin as task_create, so they are present wherever task_create is.
+</authority>
+
+<workflow>
+Create one file, in order:
+
+1. **Discover.** Run the `task` skill's `<discover>` step to resolve `tasks/`, scaffolding it when it is missing.
+2. **Gather.** Confirm the single item to capture and collect enough context to fill the `<body>` sections so a single-shot implementer could act on it from the file alone. When the context is too thin for that, ask one sharp clarifying question, then proceed.
+3. **Scope and name.** Pick a `<scope>` from the groupings already present in `tasks/`, and a compact `<name>` that is unique across both `tasks/` and `tasks/archive/`. List both directories once to keep the name collision-free.
+4. **Timestamp.** Run `date +%Y-%m-%dT%H:%M:%S` once and use its output verbatim for both `created` and `updated`.
+5. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`.
+6. **Lint.** Run the linter per the `task` skill's `<lint>` step (`lint.py --quiet`) and resolve every blocking finding before reporting the file as created.
+
+Keep this to one atomic task file. When the request actually carries several independent items, or a single item would run past 300 lines, hand the multi-task split to the `task` skill rather than expanding the work here.
+</workflow>
+
+<output_contract>
+Report the relative path of the one task file created and confirm the linter came back clean. Surface any assumption you made about scope, name, or body so the user can correct it.
+</output_contract>
+
+</task_create_skill>

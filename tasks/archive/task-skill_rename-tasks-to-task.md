@@ -86,7 +86,7 @@ they stay as-is.
 
 ## Related
 
-- Prerequisite for [task_create](../task-skill_create-sibling-skill.md),
+- Prerequisite for [task_create](task-skill_create-sibling-skill.md),
   [task_check](../task-skill_check-sibling-skill.md),
   [task_health](../task-skill_health-sibling-skill.md),
   [task_audit](../task-skill_audit-sibling-skill.md), and

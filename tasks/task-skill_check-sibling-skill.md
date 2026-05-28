@@ -2,7 +2,7 @@
 description: Add a `task_check` sibling skill (inspired by spec_check) that assesses one task's implementation readiness against a checklist (scope, focus, complexity, no contradictions/ambiguity), read-only.
 scope: plugins/ai_dev
 created: 2026-05-28T20:35:20
-updated: 2026-05-28T21:28:43
+updated: 2026-05-28T21:56:02
 status: open
 ---
 
@@ -104,7 +104,7 @@ Natural chain: `task_create` → `task_check` → `task_implement` →
 - Next in chain: [task_implement](task-skill_implement-sibling-skill.md).
 - Boundary peers: [task_health](task-skill_health-sibling-skill.md),
   [task_audit](task-skill_audit-sibling-skill.md),
-  [task_create](task-skill_create-sibling-skill.md).
+  [task_create](archive/task-skill_create-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_check/SKILL.md` +
   `single_stage_assessment.md`.
 - Tests tracked in

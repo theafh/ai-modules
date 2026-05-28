@@ -2,7 +2,7 @@
 description: Add a `task_implement` sibling skill that implements one task file end-to-end (code, tests, verification) via a strict read-understand-implement-verify flow, adapted from spec_implement.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T21:28:43
+updated: 2026-05-28T22:07:10
 status: open
 ---
 
@@ -60,11 +60,14 @@ mapped from a `/specs` stage to a single `tasks/<scope>_<name>.md` file:
 Drop the `/specs`-only machinery (architecture.md index, stage status
 tracking, `features.md`).
 
-Relationship to `task_audit`: `task_audit` *verifies and closes* an
-already-(believed-)done task; `task_implement` *does the work*. A natural
-chain is implement → audit (verify + archive). Decide whether
-`task_implement` also archives on success or leaves closing to
-`task_audit`.
+Relationship to the verify/close siblings: `task_implement` *does the work*;
+[task_audit](task-skill_audit-sibling-skill.md) *verifies* it (a read-only
+gate); [task_finish](task-skill_finish-sibling-skill.md) *closes* it (sets
+status and archives). The natural chain is implement → audit (verify) →
+finish (close).
+Decide whether `task_implement` ends at "work done, suite green" and leaves
+verify and close to those siblings, or also invokes them on success — and
+record the choice in the shipped `SKILL.md`.
 
 ## Approach
 
@@ -79,8 +82,9 @@ chain is implement → audit (verify + archive). Decide whether
    **cross-check** each `## Acceptance` item → **run the full suite** until
    clean → **update docs + bump versions** per repo rules → report results
    faithfully, including anything unmet or skipped.
-3. On full success, bump `updated` and either archive (base `<archive>`
-   flow) or hand to `task_audit` — per the decided boundary.
+3. On full success, hand off to `task_audit` (verify) and `task_finish`
+   (close), or stop at "work done, suite green" and let those siblings run —
+   per the decided boundary. `task_implement` does not archive directly.
 4. Reuse the base skill's bundled scripts; add none unless a real need
    appears. Register in plugin/repo metas; ship at 1.0.0; bump plugin
    lockstep.
@@ -95,8 +99,8 @@ chain is implement → audit (verify + archive). Decide whether
   and loading the guardrails (spec_implement discipline preserved).
 - Tests are treated as required deliverables, not optional — a missing test
   for a stated acceptance check is a gap, not a pass.
-- The implement→close boundary with `task_audit` is decided and recorded
-  in the shipped `SKILL.md`.
+- The implement → audit (verify) → finish (close) boundary is decided and
+  recorded in the shipped `SKILL.md`.
 - Trigger evals keep `task_implement` distinct from `task_create`,
   `task_audit`, and the base skill.
 - `make lint` and deploy dry-run pass; plugin meta bumped lockstep.
@@ -105,7 +109,8 @@ chain is implement → audit (verify + archive). Decide whether
 
 - Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
 - Readiness gate before me: [task_check](task-skill_check-sibling-skill.md).
-- Closing peer: [task_audit](task-skill_audit-sibling-skill.md).
+- Verify gate after me: [task_audit](task-skill_audit-sibling-skill.md).
+- Close-out after verify: [task_finish](task-skill_finish-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_implement/SKILL.md`.
 - Tests tracked in
   [task-skill_testing-new-features](task-skill_testing-new-features.md).
