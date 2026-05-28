@@ -2,7 +2,7 @@
 description: Running collection task for test coverage deferred from tasks-skill feature commits — behavioral evals (and any other test growth) that the one-bump-per-commit rule keeps out of the shipping commit.
 scope: plugins/ai_dev
 created: 2026-05-28T20:17:49
-updated: 2026-05-28T21:07:26
+updated: 2026-05-28T21:28:43
 status: open
 ---
 
@@ -38,19 +38,19 @@ Two surfaces:
 ### Open items to cover
 
 1. **Trustworthy timestamps** (from
-   [tasks-skill_trustworthy-timestamps](archive/tasks-skill_trustworthy-timestamps.md),
+   [task-skill_trustworthy-timestamps](archive/task-skill_trustworthy-timestamps.md),
    implemented): the SKILL now tells the model to stamp `created`/`updated`
    from `date +%Y-%m-%dT%H:%M:%S` rather than fabricating. Needs a
    behavioral eval proving the agent runs `date` (or otherwise stamps a
    value matching the real wall clock) instead of inventing a time.
 2. **The `task` family build-out** — as the planned sibling skills land,
    each ships its own behavioral eval here in its own commit:
-   [the rename](archive/tasks-skill_rename-tasks-to-task.md),
-   [task_create](tasks-skill_create-sibling-skill.md),
-   [task_check](tasks-skill_check-sibling-skill.md),
-   [task_health](tasks-skill_health-sibling-skill.md),
-   [task_audit](tasks-skill_audit-sibling-skill.md),
-   [task_implement](tasks-skill_implement-sibling-skill.md). Add a scenario
+   [the rename](archive/task-skill_rename-tasks-to-task.md),
+   [task_create](task-skill_create-sibling-skill.md),
+   [task_check](task-skill_check-sibling-skill.md),
+   [task_health](task-skill_health-sibling-skill.md),
+   [task_audit](task-skill_audit-sibling-skill.md),
+   [task_implement](task-skill_implement-sibling-skill.md). Add a scenario
    per skill (e.g. `task_check` flags an under-specified fixture task;
    `task_audit` emits `Gaps:` against a task with a missing test).
 

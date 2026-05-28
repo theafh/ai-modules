@@ -55,8 +55,8 @@ they stay as-is.
    Plugins list), and the two `CLAUDE.md` mentions.
 4. Re-point any task file whose `scope:` names the old skill dir
    `plugins/ai_dev/skills/tasks` to `plugins/ai_dev/skills/task` (currently
-   `tasks-skill_link-resolution-project-root-fallback.md` and
-   `tasks-skill_lossless-doc-conversion-check.md`). The linter blocks on a
+   `task-skill_link-resolution-project-root-fallback.md` and
+   `task-skill_lossless-doc-conversion-check.md`). The linter blocks on a
    `scope:` path that no longer exists, so this must ride in the rename
    commit. Leave alone scopes that point at `tasks/` the backlog directory —
    only the skill-dir path changes.
@@ -86,10 +86,10 @@ they stay as-is.
 
 ## Related
 
-- Prerequisite for [task_create](../tasks-skill_create-sibling-skill.md),
-  [task_check](../tasks-skill_check-sibling-skill.md),
-  [task_health](../tasks-skill_health-sibling-skill.md),
-  [task_audit](../tasks-skill_audit-sibling-skill.md), and
-  [task_implement](../tasks-skill_implement-sibling-skill.md).
+- Prerequisite for [task_create](../task-skill_create-sibling-skill.md),
+  [task_check](../task-skill_check-sibling-skill.md),
+  [task_health](../task-skill_health-sibling-skill.md),
+  [task_audit](../task-skill_audit-sibling-skill.md), and
+  [task_implement](../task-skill_implement-sibling-skill.md).
 - Test growth (evals) for the renamed skill is tracked in
-  [tasks-skill_testing-new-features](../tasks-skill_testing-new-features.md).
+  [task-skill_testing-new-features](../task-skill_testing-new-features.md).

@@ -2,7 +2,7 @@
 description: Add a `task_health` sibling skill that audits and fixes the tasks tree (naming, frontmatter, status/location, links, size, drift) — agent-driven like wiki_fix or inline, TBD.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T21:07:26
+updated: 2026-05-28T21:28:43
 status: open
 ---
 
@@ -17,12 +17,12 @@ run plus autonomous repair of the mechanical issues, with judgement-call
 findings surfaced for the user.
 
 (Named `task_health`, not `task_check`, deliberately:
-[task_check](tasks-skill_check-sibling-skill.md) checks a *single* task for
+[task_check](task-skill_check-sibling-skill.md) checks a *single* task for
 readiness before `task_implement` runs. This skill is whole-tree health.)
 
 ## Context
 
-Depends on [the rename](archive/tasks-skill_rename-tasks-to-task.md). The oracle
+Depends on [the rename](archive/task-skill_rename-tasks-to-task.md). The oracle
 already exists: `plugins/ai_dev/skills/task/scripts/lint.py` reports
 blocking/warn/info findings for naming, frontmatter, status/location
 consistency, datetime format, the `created`-vs-birth-time drift check,
@@ -117,11 +117,11 @@ remediate in place, verify to a clean lint, and end with a concise report.
 
 ## Related
 
-- Base: [the rename](archive/tasks-skill_rename-tasks-to-task.md).
-- Peer boundary to keep crisp: [task_audit](tasks-skill_audit-sibling-skill.md)
+- Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
+- Peer boundary to keep crisp: [task_audit](task-skill_audit-sibling-skill.md)
   verifies a single task against the codebase; `task_health` audits the
   tree's internal health.
 - Source patterns: `plugins/knowledge_management/skills/wiki_fix/SKILL.md` +
   `plugins/knowledge_management/agents/wiki_auto_shaper.md`.
 - Tests tracked in
-  [tasks-skill_testing-new-features](tasks-skill_testing-new-features.md).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md).

@@ -1,7 +1,7 @@
 ---
 name: task
-description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native Jira that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.1.0
+description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
+version: 1.1.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 <task_skill>
 
 <role>
-The task skill manages upcoming work and todos for the current project as plain-markdown files under `tasks/` at the project root. Each task is a single self-contained markdown file written so a single-shot AI coder could pick it up and implement it with no further context from chat. Open work lives in `tasks/`; finished and dropped work moves to `tasks/archive/`. This skill is the **project-local backlog** — a filesystem-native Jira that lives next to the code, complementary to the `wiki` skill (which captures durable knowledge across projects).
+The task skill manages upcoming work and todos for the current project as plain-markdown files under `tasks/` at the project root. Each task is a single self-contained markdown file written so a single-shot AI coder could pick it up and implement it with no further context from chat. Open work lives in `tasks/`; finished and dropped work moves to `tasks/archive/`. This skill is the **project-local backlog** — a filesystem-native task tracker that lives next to the code, complementary to the `wiki` skill (which captures durable knowledge across projects).
 </role>
 
 <when_to_activate>

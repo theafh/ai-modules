@@ -2,7 +2,7 @@
 description: Add a `task_audit` sibling skill (modeled on spec_audit): audit a task's claimed completion against the codebase — features, tests, acceptance — report gaps, archive on a clean pass.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T21:07:26
+updated: 2026-05-28T21:28:43
 status: open
 ---
 
@@ -19,7 +19,7 @@ answers "is this task genuinely done — and if so, close it properly."
 
 ## Context
 
-Depends on [the rename](archive/tasks-skill_rename-tasks-to-task.md). The direct
+Depends on [the rename](archive/task-skill_rename-tasks-to-task.md). The direct
 template is `staged-spec/skills/spec_audit/SKILL.md` — the "Implementation
 Auditor" — which audits specs marked `✓ Implemented` against the actual
 codebase, treats tests and verifications as first-class deliverables, runs
@@ -58,7 +58,7 @@ Boundary with siblings:
 - `task_health` audits the *tree's* internal lint health (mechanical).
 - `task_audit` audits *one task* against the *codebase* (reality-level) and
   closes it. Different oracle, different unit.
-- It overlaps with [task_implement](tasks-skill_implement-sibling-skill.md):
+- It overlaps with [task_implement](task-skill_implement-sibling-skill.md):
   when the audit finds the work unfinished, decide whether `task_audit`
   finishes trivial gaps itself or hands substantial remaining work to
   `task_implement`.
@@ -102,9 +102,9 @@ Boundary with siblings:
 
 ## Related
 
-- Base: [the rename](archive/tasks-skill_rename-tasks-to-task.md).
-- Hand-off peer: [task_implement](tasks-skill_implement-sibling-skill.md).
-- Tree-health peer: [task_health](tasks-skill_health-sibling-skill.md).
+- Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
+- Hand-off peer: [task_implement](task-skill_implement-sibling-skill.md).
+- Tree-health peer: [task_health](task-skill_health-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_audit/SKILL.md`.
 - Tests tracked in
-  [tasks-skill_testing-new-features](tasks-skill_testing-new-features.md).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md).

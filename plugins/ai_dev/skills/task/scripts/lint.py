@@ -482,12 +482,24 @@ def check_local_links(tasks: Path, page: Path) -> list[Issue]:
     """Block on broken relative `.md` links from this task to others.
 
     External links (`https://…`, `mailto:`) are ignored. Anchor and
-    query-string fragments are stripped before resolving. The local
-    cross-reference contract is the same one the filesystem enforces —
-    if the file is not there, the link is wrong.
+    query-string fragments are stripped before resolving. A target is
+    resolved against two roots before it is called broken: the task file's
+    own directory (so sibling-task and `./`/`../` links keep working) and
+    the project root (`tasks.parent`, the same root `scope:` resolves
+    against — so a repo-root-relative path to a source file lints clean
+    without a `../` prefix). Only a target that exists under neither root
+    is a broken link.
     """
     text = page.read_text(encoding="utf-8")
     _, body = parse_frontmatter(text)
+    project_root = tasks.parent.resolve()
+
+    def display(candidate: Path) -> Path:
+        try:
+            return candidate.relative_to(tasks)
+        except ValueError:
+            return candidate
+
     issues: list[Issue] = []
     for match in LINK_RE.finditer(body):
         link_text, raw_target = match.group(1), match.group(2)
@@ -496,16 +508,18 @@ def check_local_links(tasks: Path, page: Path) -> list[Issue]:
             continue
         if not target.endswith(".md"):
             continue
-        candidate = (page.parent / target).resolve()
-        if not candidate.exists():
-            try:
-                rel = candidate.relative_to(tasks)
-            except ValueError:
-                rel = candidate
-            issues.append(Issue(
-                SEV_BLOCKING, "broken-link", page,
-                f"link target missing: {rel} ({link_text!r})",
-            ))
+        from_page = (page.parent / target).resolve()
+        if from_page.exists():
+            continue
+        from_root = (project_root / target).resolve()
+        if from_root.exists():
+            continue
+        issues.append(Issue(
+            SEV_BLOCKING, "broken-link", page,
+            f"link target missing: {display(from_page)} "
+            f"(also tried project root: {display(from_root)}) "
+            f"({link_text!r})",
+        ))
     return issues
 
 

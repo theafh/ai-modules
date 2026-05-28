@@ -2,7 +2,7 @@
 description: Add a `task_check` sibling skill (inspired by spec_check) that assesses one task's implementation readiness against a checklist (scope, focus, complexity, no contradictions/ambiguity), read-only.
 scope: plugins/ai_dev
 created: 2026-05-28T20:35:20
-updated: 2026-05-28T21:07:26
+updated: 2026-05-28T21:28:43
 status: open
 ---
 
@@ -21,7 +21,7 @@ enforces.
 
 ## Context
 
-Depends on [the rename](archive/tasks-skill_rename-tasks-to-task.md). The direct
+Depends on [the rename](archive/task-skill_rename-tasks-to-task.md). The direct
 template is `staged-spec/skills/spec_check/SKILL.md`, a thin skill that
 "reviews a single stage spec for implementation readiness … produces one
 direct assessment from the current agent" and defers its assessment
@@ -56,9 +56,9 @@ Boundary with siblings (keep crisp):
 
 - `task_check` (this) — judges *one* task's readiness **before** building;
   read-only.
-- [task_health](tasks-skill_health-sibling-skill.md) — audits the *whole
+- [task_health](task-skill_health-sibling-skill.md) — audits the *whole
   tree's* lint health and fixes mechanical issues.
-- [task_audit](tasks-skill_audit-sibling-skill.md) — verifies a
+- [task_audit](task-skill_audit-sibling-skill.md) — verifies a
   *believed-done* task against the *codebase* **after** building, then
   archives.
 
@@ -100,12 +100,12 @@ Natural chain: `task_create` → `task_check` → `task_implement` →
 
 ## Related
 
-- Base: [the rename](archive/tasks-skill_rename-tasks-to-task.md).
-- Next in chain: [task_implement](tasks-skill_implement-sibling-skill.md).
-- Boundary peers: [task_health](tasks-skill_health-sibling-skill.md),
-  [task_audit](tasks-skill_audit-sibling-skill.md),
-  [task_create](tasks-skill_create-sibling-skill.md).
+- Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
+- Next in chain: [task_implement](task-skill_implement-sibling-skill.md).
+- Boundary peers: [task_health](task-skill_health-sibling-skill.md),
+  [task_audit](task-skill_audit-sibling-skill.md),
+  [task_create](task-skill_create-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_check/SKILL.md` +
   `single_stage_assessment.md`.
 - Tests tracked in
-  [tasks-skill_testing-new-features](tasks-skill_testing-new-features.md).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md).

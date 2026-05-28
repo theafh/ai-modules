@@ -95,5 +95,5 @@ would churn it); only `created` vs birth time.
   time within tolerance).
 - Behavioural eval coverage (model stamps `created`/`updated` from `date`
   rather than fabricating) is tracked separately in
-  [tasks-skill_testing-new-features](../tasks-skill_testing-new-features.md)
+  [task-skill_testing-new-features](../task-skill_testing-new-features.md)
   and lands in its own commit, per the repo's one-bump-per-commit rule.
