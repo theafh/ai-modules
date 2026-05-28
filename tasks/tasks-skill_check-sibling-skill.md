@@ -2,7 +2,7 @@
 description: Add a `task_check` sibling skill (inspired by spec_check) that assesses one task's implementation readiness against a checklist (scope, focus, complexity, no contradictions/ambiguity), read-only.
 scope: plugins/ai_dev
 created: 2026-05-28T20:35:20
-updated: 2026-05-28T20:35:20
+updated: 2026-05-28T21:07:26
 status: open
 ---
 
@@ -21,7 +21,7 @@ enforces.
 
 ## Context
 
-Depends on [the rename](tasks-skill_rename-tasks-to-task.md). The direct
+Depends on [the rename](archive/tasks-skill_rename-tasks-to-task.md). The direct
 template is `staged-spec/skills/spec_check/SKILL.md`, a thin skill that
 "reviews a single stage spec for implementation readiness … produces one
 direct assessment from the current agent" and defers its assessment
@@ -100,7 +100,7 @@ Natural chain: `task_create` → `task_check` → `task_implement` →
 
 ## Related
 
-- Base: [the rename](tasks-skill_rename-tasks-to-task.md).
+- Base: [the rename](archive/tasks-skill_rename-tasks-to-task.md).
 - Next in chain: [task_implement](tasks-skill_implement-sibling-skill.md).
 - Boundary peers: [task_health](tasks-skill_health-sibling-skill.md),
   [task_audit](tasks-skill_audit-sibling-skill.md),

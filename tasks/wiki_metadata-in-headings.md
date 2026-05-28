@@ -2,7 +2,7 @@
 description: Keep wiki headings and bold-prefix labels to a fixed structural vocabulary; route displaced metadata (date, source, qualifier) to its proper channel.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:35
-updated: 2026-05-28T20:07:08
+updated: 2026-05-28T21:10:40
 status: open
 ---
 
@@ -36,7 +36,7 @@ Related tasks: [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) 
 1. **`plugins/knowledge_management/agents/wiki_auto_shaper.md` `<remediate>` section** — when normalising a heading or bold-prefix label, keep the vocabulary to the SCHEMA-defined set; route displaced metadata (date, source, qualifier, audience, mandate level, scope tag) to its structured channel *before* applying the normalisation. The wiki SCHEMA defines the heading vocabulary per page type; consult it rather than inventing terms.
 2. **`plugins/knowledge_management/skills/wiki/SKILL.md`** — mirror the rule in the authoring contract.
 3. **`plugins/knowledge_management/skills/wiki/scripts/lint.py`** — add an info-level heuristic flagging either of:
-   - A heading line (`^#+ `) or bold-label line (`^\*\*.*\*\*:?\s*$`) longer than 60 characters.
+   - A heading line (`^#+\s`) or bold-label line (`^\*\*.*\*\*:?\s*$`) longer than 60 characters.
    - A heading or bold-label line containing a parenthesised date or qualifier suffix matching the regex `\([0-9]{4}-[0-9]{2}-[0-9]{2}.*?\)` (also catch shorter forms like `(2026-05-22 ...)`).
 
    Surface both checks as `info`-level, not blocking — the wider workflow should be able to land an edit that contains a violation while warning the author.

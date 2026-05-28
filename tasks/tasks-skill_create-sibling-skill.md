@@ -2,7 +2,7 @@
 description: Add a `task_create` sibling skill — a focused, low-ceremony entry point that creates exactly one well-formed task file, delegating naming/frontmatter/lint rules to the base `task` skill.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T20:25:06
+updated: 2026-05-28T21:07:26
 status: open
 ---
 
@@ -19,7 +19,7 @@ backlog-management surface.
 
 ## Context
 
-Depends on [the rename](tasks-skill_rename-tasks-to-task.md) (sibling skills
+Depends on [the rename](archive/tasks-skill_rename-tasks-to-task.md) (sibling skills
 are named `task_*`). The base skill's `<create>` workflow
 (`plugins/ai_dev/skills/task/SKILL.md`, the `<gather>`/`<scope>`/`<name>`/
 `<write>`/`<lint_after_create>` steps) is the authority for naming,
@@ -63,7 +63,7 @@ other's territory).
 
 ## Related
 
-- Base: [the rename](tasks-skill_rename-tasks-to-task.md).
+- Base: [the rename](archive/tasks-skill_rename-tasks-to-task.md).
 - Peers: [task_check](tasks-skill_check-sibling-skill.md),
   [task_health](tasks-skill_health-sibling-skill.md),
   [task_audit](tasks-skill_audit-sibling-skill.md),

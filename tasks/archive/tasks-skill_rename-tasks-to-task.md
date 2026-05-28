@@ -2,8 +2,8 @@
 description: Rename the `tasks` skill to `task` everywhere (dir, frontmatter, H1, plugin metas, READMEs, CLAUDE.md), keeping the managed `tasks/` backlog dir name — prerequisite for the task_* sibling skills.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T20:52:59
-status: open
+updated: 2026-05-28T21:07:26
+status: implemented
 ---
 
 # Rename the `tasks` skill to `task` everywhere
@@ -86,10 +86,10 @@ they stay as-is.
 
 ## Related
 
-- Prerequisite for [task_create](tasks-skill_create-sibling-skill.md),
-  [task_check](tasks-skill_check-sibling-skill.md),
-  [task_health](tasks-skill_health-sibling-skill.md),
-  [task_audit](tasks-skill_audit-sibling-skill.md), and
-  [task_implement](tasks-skill_implement-sibling-skill.md).
+- Prerequisite for [task_create](../tasks-skill_create-sibling-skill.md),
+  [task_check](../tasks-skill_check-sibling-skill.md),
+  [task_health](../tasks-skill_health-sibling-skill.md),
+  [task_audit](../tasks-skill_audit-sibling-skill.md), and
+  [task_implement](../tasks-skill_implement-sibling-skill.md).
 - Test growth (evals) for the renamed skill is tracked in
-  [tasks-skill_testing-new-features](tasks-skill_testing-new-features.md).
+  [tasks-skill_testing-new-features](../tasks-skill_testing-new-features.md).

@@ -11,7 +11,7 @@ A plugin bundling the skills used for day-to-day AI-assisted development: keepin
 
 ### Work tracking
 
-- **tasks**: manage upcoming work and todos as plain-markdown task files under `tasks/` at the project root, with `tasks/archive/` for `implemented` and `deferred` items. Atomic per task, split at 300 lines, status/location enforced by a bundled linter; a filesystem-native Jira that lives next to the code.
+- **task**: manage upcoming work and todos as plain-markdown task files under `tasks/` at the project root, with `tasks/archive/` for `implemented` and `deferred` items. Atomic per task, split at 300 lines, status/location enforced by a bundled linter; a filesystem-native Jira that lives next to the code.
 
 ### AI instructions
 

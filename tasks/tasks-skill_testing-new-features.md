@@ -2,7 +2,7 @@
 description: Running collection task for test coverage deferred from tasks-skill feature commits — behavioral evals (and any other test growth) that the one-bump-per-commit rule keeps out of the shipping commit.
 scope: plugins/ai_dev
 created: 2026-05-28T20:17:49
-updated: 2026-05-28T20:52:59
+updated: 2026-05-28T21:07:26
 status: open
 ---
 
@@ -45,7 +45,7 @@ Two surfaces:
    value matching the real wall clock) instead of inventing a time.
 2. **The `task` family build-out** — as the planned sibling skills land,
    each ships its own behavioral eval here in its own commit:
-   [the rename](tasks-skill_rename-tasks-to-task.md),
+   [the rename](archive/tasks-skill_rename-tasks-to-task.md),
    [task_create](tasks-skill_create-sibling-skill.md),
    [task_check](tasks-skill_check-sibling-skill.md),
    [task_health](tasks-skill_health-sibling-skill.md),

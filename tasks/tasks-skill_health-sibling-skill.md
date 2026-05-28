@@ -2,7 +2,7 @@
 description: Add a `task_health` sibling skill that audits and fixes the tasks tree (naming, frontmatter, status/location, links, size, drift) — agent-driven like wiki_fix or inline, TBD.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T20:47:54
+updated: 2026-05-28T21:07:26
 status: open
 ---
 
@@ -22,7 +22,7 @@ readiness before `task_implement` runs. This skill is whole-tree health.)
 
 ## Context
 
-Depends on [the rename](tasks-skill_rename-tasks-to-task.md). The oracle
+Depends on [the rename](archive/tasks-skill_rename-tasks-to-task.md). The oracle
 already exists: `plugins/ai_dev/skills/task/scripts/lint.py` reports
 blocking/warn/info findings for naming, frontmatter, status/location
 consistency, datetime format, the `created`-vs-birth-time drift check,
@@ -117,7 +117,7 @@ remediate in place, verify to a clean lint, and end with a concise report.
 
 ## Related
 
-- Base: [the rename](tasks-skill_rename-tasks-to-task.md).
+- Base: [the rename](archive/tasks-skill_rename-tasks-to-task.md).
 - Peer boundary to keep crisp: [task_audit](tasks-skill_audit-sibling-skill.md)
   verifies a single task against the codebase; `task_health` audits the
   tree's internal health.

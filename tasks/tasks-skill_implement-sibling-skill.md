@@ -2,7 +2,7 @@
 description: Add a `task_implement` sibling skill that implements one task file end-to-end (code, tests, verification) via a strict read-understand-implement-verify flow, adapted from spec_implement.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T20:47:54
+updated: 2026-05-28T21:07:26
 status: open
 ---
 
@@ -20,7 +20,7 @@ base skill is designed to produce into actual shipped work.
 
 ## Context
 
-Depends on [the rename](tasks-skill_rename-tasks-to-task.md). The template
+Depends on [the rename](archive/tasks-skill_rename-tasks-to-task.md). The template
 is `staged-spec/skills/spec_implement/SKILL.md` — the "Spec Implementer" —
 whose strict ordered workflow is the thing worth porting, not just the
 one-line "read-understand-implement-verify" summary. Its actual steps,
@@ -103,7 +103,7 @@ chain is implement → audit (verify + archive). Decide whether
 
 ## Related
 
-- Base: [the rename](tasks-skill_rename-tasks-to-task.md).
+- Base: [the rename](archive/tasks-skill_rename-tasks-to-task.md).
 - Readiness gate before me: [task_check](tasks-skill_check-sibling-skill.md).
 - Closing peer: [task_audit](tasks-skill_audit-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_implement/SKILL.md`.

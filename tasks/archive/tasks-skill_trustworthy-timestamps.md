@@ -1,8 +1,8 @@
 ---
 description: Stop created/updated timestamps being model-fabricated — SKILL gives the exact date shell command to run, and lint cross-checks created against filesystem birth time when available.
-scope: plugins/ai_dev/skills/tasks
+scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
-updated: 2026-05-28T20:17:49
+updated: 2026-05-28T21:05:01
 status: implemented
 ---
 

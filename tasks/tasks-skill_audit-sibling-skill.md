@@ -2,7 +2,7 @@
 description: Add a `task_audit` sibling skill (modeled on spec_audit): audit a task's claimed completion against the codebase — features, tests, acceptance — report gaps, archive on a clean pass.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T20:45:12
+updated: 2026-05-28T21:07:26
 status: open
 ---
 
@@ -19,7 +19,7 @@ answers "is this task genuinely done — and if so, close it properly."
 
 ## Context
 
-Depends on [the rename](tasks-skill_rename-tasks-to-task.md). The direct
+Depends on [the rename](archive/tasks-skill_rename-tasks-to-task.md). The direct
 template is `staged-spec/skills/spec_audit/SKILL.md` — the "Implementation
 Auditor" — which audits specs marked `✓ Implemented` against the actual
 codebase, treats tests and verifications as first-class deliverables, runs
@@ -102,7 +102,7 @@ Boundary with siblings:
 
 ## Related
 
-- Base: [the rename](tasks-skill_rename-tasks-to-task.md).
+- Base: [the rename](archive/tasks-skill_rename-tasks-to-task.md).
 - Hand-off peer: [task_implement](tasks-skill_implement-sibling-skill.md).
 - Tree-health peer: [task_health](tasks-skill_health-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_audit/SKILL.md`.

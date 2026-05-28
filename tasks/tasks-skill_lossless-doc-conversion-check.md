@@ -1,8 +1,8 @@
 ---
 description: Add a built-in lossless-conversion step to the create workflow so splitting an existing document into tasks verifies no unit of meaning was dropped, without the user having to ask.
-scope: plugins/ai_dev/skills/tasks
+scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
-updated: 2026-05-28T19:49:23
+updated: 2026-05-28T21:05:01
 status: open
 ---
 

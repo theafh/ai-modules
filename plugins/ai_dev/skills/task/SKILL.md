@@ -1,17 +1,17 @@
 ---
-name: tasks
+name: task
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native Jira that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.0.1
+version: 1.1.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
 
-# tasks
+# task
 
-<tasks_skill>
+<task_skill>
 
 <role>
-The tasks skill manages upcoming work and todos for the current project as plain-markdown files under `tasks/` at the project root. Each task is a single self-contained markdown file written so a single-shot AI coder could pick it up and implement it with no further context from chat. Open work lives in `tasks/`; finished and dropped work moves to `tasks/archive/`. This skill is the **project-local backlog** — a filesystem-native Jira that lives next to the code, complementary to the `wiki` skill (which captures durable knowledge across projects).
+The task skill manages upcoming work and todos for the current project as plain-markdown files under `tasks/` at the project root. Each task is a single self-contained markdown file written so a single-shot AI coder could pick it up and implement it with no further context from chat. Open work lives in `tasks/`; finished and dropped work moves to `tasks/archive/`. This skill is the **project-local backlog** — a filesystem-native Jira that lives next to the code, complementary to the `wiki` skill (which captures durable knowledge across projects).
 </role>
 
 <when_to_activate>
@@ -27,7 +27,7 @@ Activate this skill when the user:
 </when_to_activate>
 
 <not_in_scope>
-The wiki skill captures durable knowledge (concepts, procedures, references). The tasks skill captures *upcoming work* on this project. When a user message is about recording what they learned or how something works, route to `wiki` instead. When they want to track what still needs doing, this skill is right.
+The wiki skill captures durable knowledge (concepts, procedures, references). The task skill captures *upcoming work* on this project. When a user message is about recording what they learned or how something works, route to `wiki` instead. When they want to track what still needs doing, this skill is right.
 </not_in_scope>
 
 <architecture>
@@ -63,7 +63,7 @@ Every task carries this YAML frontmatter:
 ```yaml
 ---
 description: One-line compact summary of what this task delivers.
-scope: plugins/ai_dev/skills/tasks
+scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
 updated: 2026-05-28T19:49:23
 status: open
@@ -73,7 +73,7 @@ status: open
 Fields:
 
 - `description` — compact one-liner (<=200 chars). The body carries the full context.
-- `scope` — either a relative path under the project root pointing at the directory the task targets (unquoted; e.g. `scope: plugins/ai_dev/skills/tasks`), or a short descriptive label when no single directory fits (quoted; e.g. `scope: "project xyz"`). The linter resolves an unquoted value against the project root and blocks if the path is missing or escapes the root; a quoted value is accepted as text. Paths win when one fits — the filesystem stays the source of truth.
+- `scope` — either a relative path under the project root pointing at the directory the task targets (unquoted; e.g. `scope: plugins/ai_dev/skills/task`), or a short descriptive label when no single directory fits (quoted; e.g. `scope: "project xyz"`). The linter resolves an unquoted value against the project root and blocks if the path is missing or escapes the root; a quoted value is accepted as text. Paths win when one fits — the filesystem stays the source of truth.
 - `created` — ISO 8601 datetime, set once when the task is created.
 - `updated` — ISO 8601 datetime, bumped on every edit and on every status change.
 - `status` — one of `open`, `implemented`, `deferred`.
@@ -224,4 +224,4 @@ Findings come in three buckets:
 
 </pitfalls>
 
-</tasks_skill>
+</task_skill>
