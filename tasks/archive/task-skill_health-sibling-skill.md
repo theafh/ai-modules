@@ -1,8 +1,8 @@
 ---
-description: Add a `task_health` sibling skill that audits and fixes the tasks tree (naming, frontmatter, status/location, links, size, drift) inline (no agent), repairing mechanical findings and surfacing judgement calls.
+description: Add a `task_health` sibling skill that audits and fixes the tasks tree (naming, frontmatter, status/location, links, size, drift) inline, repairing mechanical findings and surfacing judgement calls.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T23:54:24
+updated: 2026-05-29T00:13:50
 status: implemented
 ---
 

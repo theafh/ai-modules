@@ -12,12 +12,18 @@ A plugin bundling the skills used for day-to-day AI-assisted development: keepin
 ### Work tracking
 
 - **task**: manage upcoming work and todos as plain-markdown task files under `tasks/` at the project root, with `tasks/archive/` for `implemented` and `deferred` items. Atomic per task, split at 300 lines, status/location enforced by a bundled linter; a filesystem-native backlog that lives next to the code.
+
+The single-task siblings run in lifecycle order — **create → check → implement → audit → finish**:
+
 - **task_create**: focused on-ramp that creates exactly one well-formed task file fast, deferring the naming, frontmatter, body, and lint rules to the `task` skill. Use it when a single "make a task for X" should load a narrow surface instead of the whole backlog workflow.
-- **task_implement**: take one existing task file and carry it to done — read it, load the repo guardrails, build on the existing code, write the tests, run the suite clean, and confirm every acceptance item. It does the work and leaves verification to `task_audit` and close-out to `task_finish`.
-- **task_finish**: close out one task — set its status to `implemented` or `deferred`, bump `updated`, `git mv` it to `archive/`, re-point the links the move touches, and re-lint. The action counterpart to the read-only `task_audit` gate; owns both the implemented and deferred closures and defers the five close-out steps to the `task` skill.
-- **task_audit**: verify one task's claimed completion against the actual codebase — confirm every body item, acceptance check, and backing test, run the suite, and report a verdict (clean, or ordered gaps with fixes). Read-only gate ported from staged-spec's `spec_audit`; hands a clean pass to `task_finish` and gaps to `task_implement`.
 - **task_check**: assess whether one task is ready to build — judge it against a readiness checklist (structure, scope sizing, focus, complexity, contradictions, ambiguity) and report a General assessment plus a ranked Issues list. Read-only gate *before* building, ported from staged-spec's `spec_check`.
-- **task_health**: audit and repair the whole `tasks/` tree in one inline pass (orient → assess → remediate → verify) — run the linter, auto-fix mechanical findings (naming, frontmatter, status/location, links, datetimes), and surface judgement calls (splits, drift, cross-task contradictions) for review. The task-backlog analogue of `wiki_fix`, done inline rather than via an agent.
+- **task_implement**: take one existing task file and carry it to done — read it, load the repo guardrails, build on the existing code, write the tests, run the suite clean, and confirm every acceptance item. It does the work and leaves verification to `task_audit` and close-out to `task_finish`.
+- **task_audit**: verify one task's claimed completion against the actual codebase — confirm every body item, acceptance check, and backing test, run the suite, and report a verdict (clean, or ordered gaps with fixes). Read-only gate ported from staged-spec's `spec_audit`; hands a clean pass to `task_finish` and gaps to `task_implement`.
+- **task_finish**: close out one task — set its status to `implemented` or `deferred`, bump `updated`, `git mv` it to `archive/`, re-point the links the move touches, and re-lint. The action counterpart to the read-only `task_audit` gate; owns both the implemented and deferred closures and defers the five close-out steps to the `task` skill.
+
+Standing apart from that flow:
+
+- **task_health**: audit and repair the whole `tasks/` tree in one inline pass (orient → assess → remediate → verify) — run the linter, auto-fix mechanical findings (naming, frontmatter, status/location, links, datetimes), and surface judgement calls (splits, drift, cross-task contradictions) for review. The task-backlog analogue of `wiki_fix`, done inline rather than via an agent. Operates on the whole backlog, independent of any single task's lifecycle.
 
 ### AI instructions
 

@@ -1,8 +1,8 @@
 ---
-description: Add a `task_finish` sibling skill that closes out one task — set status implemented or deferred, bump updated, git mv to archive/, re-point links, re-lint — the action counterpart to the read-only task_audit gate.
+description: Add a `task_finish` sibling skill that closes out one task — set status, bump updated, git mv to archive/, re-point links, re-lint — the action counterpart to the read-only task_audit gate.
 scope: plugins/ai_dev
 created: 2026-05-28T22:07:10
-updated: 2026-05-28T22:50:54
+updated: 2026-05-29T00:13:50
 status: implemented
 ---
 
