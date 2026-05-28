@@ -29,6 +29,7 @@ ai-modules/
 │       └── skills/
 │           ├── git_commit/
 │           ├── update_changelog/
+│           ├── tasks/
 │           ├── ai_instruction_writing/
 │           ├── ai_instruction_formatting/
 │           ├── format_markdown/
@@ -67,6 +68,7 @@ Skills for day-to-day AI-assisted development: keeping git history and changelog
 
 - **git_commit**: a phase-based commit workflow with a hardened prepare script that handles special-character paths and per-file binary detection. It stages changes, infers an intended commit grouping, and writes a message aligned with the project's existing convention. A sibling manual-fallback reference covers the path when the script can't be used.
 - **update_changelog**: generates or refreshes a day-grouped `CHANGELOG.md` from git history. It produces newest-first day sections with status markers (`[active]`, `[changed later]`, `[superseded]`), and processes one day at a time so long histories stay within a single context window.
+- **tasks**: project-local backlog of upcoming work as plain-markdown files under `tasks/` at the project root, with `tasks/archive/` for `implemented` and `deferred` items. Each task is written as a self-contained brief a single-shot AI coder could pick up and implement; the bundled linter enforces naming, frontmatter, status/location consistency, and a 300-line split threshold. Complementary to the `wiki` skill: tasks track *what is still to do*, the wiki captures *what is durably known*.
 - **ai_instruction_writing**: writes any AI-consumed artefact (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of negative prohibitions the model has to invert.
 - **ai_instruction_formatting**: organises AI-consumed content into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in a dedicated tag so the model can locate the right section by structure rather than by re-reading the prose.
 - **format_markdown / format_python / format_rust**: linter-aligned style guides (`markdownlint`, `flake8` plus `ruff` plus `pylint`, `clippy`) consulted at write time. The point is to land code that already passes the linter, instead of spending a follow-up turn reacting to lint output.

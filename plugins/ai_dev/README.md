@@ -9,6 +9,10 @@ A plugin bundling the skills used for day-to-day AI-assisted development: keepin
 - **git_commit**: stage all new files and create one commit that captures the intended repository state, following project commit-message conventions.
 - **update_changelog**: create or update a day-grouped `CHANGELOG.md` from git history — newest-first sections with status markers (`[active]`, `[changed later]`, `[superseded]`), processed one day at a time to stay within context limits.
 
+### Work tracking
+
+- **tasks**: manage upcoming work and todos as plain-markdown task files under `tasks/` at the project root, with `tasks/archive/` for `implemented` and `deferred` items. Atomic per task, split at 300 lines, status/location enforced by a bundled linter; a filesystem-native Jira that lives next to the code.
+
 ### AI instructions
 
 - **ai_instruction_writing**: write AI-consumed content (SKILL.md, .mdc rule files, CLAUDE.md / AGENTS.md / GEMINI.md, prompt templates, system prompts, commands, agent and sub-agent definitions, instruction sets, persona definitions) using positive, action-oriented language as the primary carrier of every instruction.

@@ -19,8 +19,8 @@
     {
       "name": "ai_dev",
       "source": "./plugins/ai_dev",
-      "description": "Skills for everyday AI-assisted development: structured git commits, day-grouped changelog maintenance, writing and formatting AI instructions (prompts, rules, skill files, agent definitions), and language style guides for markdown, Python, and Rust.",
-      "version": "1.0.10"
+      "description": "Skills for everyday AI-assisted development: structured git commits, day-grouped changelog maintenance, project-local task and todo tracking as plain-markdown files, writing and formatting AI instructions (prompts, rules, skill files, agent definitions), and language style guides for markdown, Python, and Rust.",
+      "version": "1.1.0"
     }
   ]
 }
