@@ -1,8 +1,8 @@
 ---
 description: Keep wiki headings and bold-prefix labels to a fixed structural vocabulary; route displaced metadata (date, source, qualifier) to its proper channel.
 scope: plugins/knowledge_management
-created: 2026-05-28T14:30:00
-updated: 2026-05-28T15:00:00
+created: 2026-05-28T19:24:35
+updated: 2026-05-28T20:07:08
 status: open
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: tasks
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native Jira that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -64,8 +64,8 @@ Every task carries this YAML frontmatter:
 ---
 description: One-line compact summary of what this task delivers.
 scope: plugins/ai_dev/skills/tasks
-created: 2026-05-28T14:30:00
-updated: 2026-05-28T14:30:00
+created: 2026-05-28T19:49:23
+updated: 2026-05-28T19:49:23
 status: open
 ---
 ```
@@ -78,7 +78,13 @@ Fields:
 - `updated` — ISO 8601 datetime, bumped on every edit and on every status change.
 - `status` — one of `open`, `implemented`, `deferred`.
 
-Use the user's current date for both `created` and `updated` on a fresh task. Get it from the environment context, not from guessing.
+Obtain the timestamp by running the shell command below and copy its output verbatim — the model has no clock, so a hand-written time is a guess:
+
+```bash
+date +%Y-%m-%dT%H:%M:%S        # local time, e.g. 2026-05-28T19:49:23
+```
+
+Both `created` (set once, on a fresh task) and `updated` (bumped on every edit, status change, and archive move) take their value from this command's output. When creating several tasks in one turn, run `date` once and reuse the captured value across the batch rather than re-running it per file.
 </frontmatter>
 
 <markdown_policy>
@@ -173,7 +179,7 @@ When a task is finished or being dropped, run all five steps:
 </archive>
 
 <lint>
-The linter checks naming, frontmatter completeness, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across open + archive.
+The linter checks naming, frontmatter completeness, status validity, datetime format, status/location consistency, page size (>300 lines), filename collisions across open + archive, and — where the filesystem records it — agreement between the `created` date and the file's birth time.
 
 ```bash
 python3 scripts/lint.py              # auto-discover via discover_tasks.sh
@@ -184,7 +190,7 @@ python3 scripts/lint.py --quiet      # blocking + warn only
 Findings come in three buckets:
 
 - **blocking** — bad filename, missing/malformed frontmatter, invalid status, status/location mismatch, duplicate filenames. Exit 1; must fix.
-- **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines).
+- **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines), and a `created` timestamp that disagrees with the file's birth time by more than an hour (advisory drift detection — a `git mv`/rename preserves birth time, but a fresh clone/checkout or a copy resets it, and the check stays silent on filesystems that don't record one).
 - **info** — reserved for future style nits.
 </lint>
 

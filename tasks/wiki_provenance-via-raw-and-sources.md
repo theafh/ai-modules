@@ -1,8 +1,8 @@
 ---
 description: Force wiki content derived from non-canonical raw artifacts (sessions, pastes, meetings) into a `raw/` sidecar + frontmatter `sources:`, not body-prose narration.
 scope: plugins/knowledge_management
-created: 2026-05-28T14:30:00
-updated: 2026-05-28T15:00:00
+created: 2026-05-28T19:24:54
+updated: 2026-05-28T20:07:08
 status: open
 ---
 
