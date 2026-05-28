@@ -2,7 +2,7 @@
 description: Add a `task_check` sibling skill (inspired by spec_check) that assesses one task's implementation readiness against a checklist (scope, focus, complexity, no contradictions/ambiguity), read-only.
 scope: plugins/ai_dev
 created: 2026-05-28T20:35:20
-updated: 2026-05-28T21:56:02
+updated: 2026-05-28T22:38:00
 status: open
 ---
 
@@ -97,6 +97,7 @@ Natural chain: `task_create` → `task_check` → `task_implement` →
 - Trigger evals keep `task_check` distinct from `task_health` (tree audit)
   and `task_audit` (post-build codebase verification) and the base skill.
 - `make lint` and deploy dry-run pass; plugin meta bumped lockstep.
+- Ships the shared `task_*` `<family>` map block (all six siblings, marking itself), matching the block in `task_create` / `task_implement`.
 
 ## Related
 

@@ -2,7 +2,7 @@
 description: Add a `task_health` sibling skill that audits and fixes the tasks tree (naming, frontmatter, status/location, links, size, drift) — agent-driven like wiki_fix or inline, TBD.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T21:28:43
+updated: 2026-05-28T22:38:00
 status: open
 ---
 
@@ -114,6 +114,7 @@ remediate in place, verify to a clean lint, and end with a concise report.
 - Trigger evals: `task_health` owns audit/fix verbs without the base `task`
   skill stealing them (mirror the wiki/wiki_fix split).
 - `make lint` and deploy dry-run pass; plugin meta bumped lockstep.
+- Ships the shared `task_*` `<family>` map block (all six siblings, marking itself), matching the block in `task_create` / `task_implement`.
 
 ## Related
 

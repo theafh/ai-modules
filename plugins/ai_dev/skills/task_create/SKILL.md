@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one well-formed task file in the project's tasks/ backlog, fast and with minimal ceremony. Use when the user wants a single task or todo written for upcoming work — "make a task for X", "add a todo to do Y", "file a task about Z" — and wants just that one file, not a broader backlog session. For listing, querying, updating, finishing, archiving, or linting tasks, the broader task skill applies instead.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -50,5 +50,18 @@ Keep this to one atomic task file. When the request actually carries several ind
 <output_contract>
 Report the relative path of the one task file created and confirm the linter came back clean. Surface any assumption you made about scope, name, or body so the user can correct it.
 </output_contract>
+
+<family>
+The `task_*` family — each sibling does one job, then points to the next; the base `task` skill is the hub that can do all of it:
+
+- `task_create` — write one task file **(this skill)**
+- `task_check` — readiness gate before building (read-only)
+- `task_implement` — do the work
+- `task_audit` — verify a believed-done task against the codebase (read-only)
+- `task_finish` — close out: set status, bump `updated`, archive
+- `task_health` — audit and repair the whole tasks tree
+
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with health maintaining the tree.
+</family>
 
 </task_create_skill>

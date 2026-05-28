@@ -2,7 +2,7 @@
 description: Running collection task for test coverage deferred from tasks-skill feature commits — behavioral evals (and any other test growth) that the one-bump-per-commit rule keeps out of the shipping commit.
 scope: plugins/ai_dev
 created: 2026-05-28T20:17:49
-updated: 2026-05-28T22:07:10
+updated: 2026-05-28T22:50:54
 status: open
 ---
 
@@ -51,7 +51,7 @@ Two surfaces:
    [task_health](task-skill_health-sibling-skill.md),
    [task_audit](task-skill_audit-sibling-skill.md),
    [task_implement](task-skill_implement-sibling-skill.md),
-   [task_finish](task-skill_finish-sibling-skill.md). Add a scenario
+   [task_finish](archive/task-skill_finish-sibling-skill.md). Add a scenario
    per skill (e.g. `task_check` flags an under-specified fixture task;
    `task_audit` emits `Gaps:` against a task with a missing test;
    `task_finish` closes a task and re-points the links the move breaks).

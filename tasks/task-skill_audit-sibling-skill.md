@@ -2,7 +2,7 @@
 description: Add a `task_audit` sibling skill (modeled on spec_audit): verify a task's claimed completion against the codebase — features, tests, acceptance — and report gaps. Read-only gate; closing out is task_finish's job.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T22:07:10
+updated: 2026-05-28T22:50:54
 status: open
 ---
 
@@ -16,7 +16,7 @@ every feature in the body, every acceptance item, and the tests that back
 them — and reports any gap between specified and built behaviour. It is a
 **read-only gate**: it makes no state change. On a clean pass it reports the
 task ready to finish and hands the close-out to
-[task_finish](task-skill_finish-sibling-skill.md); it never archives. It
+[task_finish](archive/task-skill_finish-sibling-skill.md); it never archives. It
 answers "is this task genuinely done?" — `task_finish` answers "now close
 it."
 
@@ -52,7 +52,7 @@ capture):
 
 The closing mechanics live in the base skill's `<archive>` workflow
 (`plugins/ai_dev/skills/task/SKILL.md`) and are owned by
-[task_finish](task-skill_finish-sibling-skill.md), not by `task_audit`.
+[task_finish](archive/task-skill_finish-sibling-skill.md), not by `task_audit`.
 `task_audit` runs the verification and stops at a verdict; on a clean pass it
 points the user at `task_finish` to perform the close-out.
 
@@ -79,7 +79,7 @@ Boundary with siblings:
    **requirement / expected behaviour / actual behaviour / minimum fix**,
    ordered by mismatch size (largest coverage or behaviour gap first).
 4. Make no state change. On a clean pass, report the task ready to finish and
-   point at [task_finish](task-skill_finish-sibling-skill.md) for the
+   point at [task_finish](archive/task-skill_finish-sibling-skill.md) for the
    close-out. On gaps, report them and hand the remaining work to
    `task_implement`. Never mark a task done on prose alone — require codebase
    evidence.
@@ -101,11 +101,12 @@ Boundary with siblings:
 - Trigger evals keep `task_audit` distinct from `task_health` (tree lint)
   and the base skill.
 - `make lint` and deploy dry-run pass; plugin meta bumped lockstep.
+- Ships the shared `task_*` `<family>` map block (all six siblings, marking itself), matching the block in `task_create` / `task_implement`.
 
 ## Related
 
 - Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
-- Close-out peer (acts on a clean pass): [task_finish](task-skill_finish-sibling-skill.md).
+- Close-out peer (acts on a clean pass): [task_finish](archive/task-skill_finish-sibling-skill.md).
 - Hand-off peer for gaps: [task_implement](task-skill_implement-sibling-skill.md).
 - Tree-health peer: [task_health](task-skill_health-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_audit/SKILL.md`.

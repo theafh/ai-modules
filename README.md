@@ -31,6 +31,8 @@ ai-modules/
 │           ├── update_changelog/
 │           ├── task/
 │           ├── task_create/
+│           ├── task_implement/
+│           ├── task_finish/
 │           ├── ai_instruction_writing/
 │           ├── ai_instruction_formatting/
 │           ├── format_markdown/
@@ -71,6 +73,8 @@ Skills for day-to-day AI-assisted development: keeping git history and changelog
 - **update_changelog**: generates or refreshes a day-grouped `CHANGELOG.md` from git history. It produces newest-first day sections with status markers (`[active]`, `[changed later]`, `[superseded]`), and processes one day at a time so long histories stay within a single context window.
 - **task**: project-local backlog of upcoming work as plain-markdown files under `tasks/` at the project root, with `tasks/archive/` for `implemented` and `deferred` items. Each task is written as a self-contained brief a single-shot AI coder could pick up and implement; the bundled linter enforces naming, frontmatter, status/location consistency, and a 300-line split threshold. Complementary to the `wiki` skill: tasks track *what is still to do*, the wiki captures *what is durably known*.
 - **task_create**: a focused front end over `task` that creates exactly one well-formed task file with minimal ceremony, deferring the naming, frontmatter, body, and lint rules to the `task` skill rather than restating them. It gives a one-shot "make a task for X" a narrow, trigger-precise surface instead of loading the full backlog-management workflow.
+- **task_implement**: implements one existing task file end-to-end via a strict read → load-guardrails → understand-codebase → implement → test → verify flow ported from staged-spec's `spec_implement`. It does the work and stops at a green suite, leaving codebase verification (`task_audit`) and close-out (`task_finish`) to its single-purpose siblings.
+- **task_finish**: closes out one task — sets its status (`implemented` or `deferred`), bumps `updated`, `git mv`s it to `archive/`, re-points the cross-references the move touches, and re-lints. The action counterpart to the read-only `task_audit` gate, deferring the five close-out steps to the base `task` skill's `<archive>` workflow.
 - **ai_instruction_writing**: writes any AI-consumed artefact (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of negative prohibitions the model has to invert.
 - **ai_instruction_formatting**: organises AI-consumed content into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in a dedicated tag so the model can locate the right section by structure rather than by re-reading the prose.
 - **format_markdown / format_python / format_rust**: linter-aligned style guides (`markdownlint`, `flake8` plus `ruff` plus `pylint`, `clippy`) consulted at write time. The point is to land code that already passes the linter, instead of spending a follow-up turn reacting to lint output.

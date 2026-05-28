@@ -2,7 +2,7 @@
 description: Add a `task_implement` sibling skill that implements one task file end-to-end (code, tests, verification) via a strict read-understand-implement-verify flow, adapted from spec_implement.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T22:07:10
+updated: 2026-05-28T22:50:54
 status: open
 ---
 
@@ -62,7 +62,7 @@ tracking, `features.md`).
 
 Relationship to the verify/close siblings: `task_implement` *does the work*;
 [task_audit](task-skill_audit-sibling-skill.md) *verifies* it (a read-only
-gate); [task_finish](task-skill_finish-sibling-skill.md) *closes* it (sets
+gate); [task_finish](archive/task-skill_finish-sibling-skill.md) *closes* it (sets
 status and archives). The natural chain is implement → audit (verify) →
 finish (close).
 Decide whether `task_implement` ends at "work done, suite green" and leaves
@@ -110,7 +110,7 @@ record the choice in the shipped `SKILL.md`.
 - Base: [the rename](archive/task-skill_rename-tasks-to-task.md).
 - Readiness gate before me: [task_check](task-skill_check-sibling-skill.md).
 - Verify gate after me: [task_audit](task-skill_audit-sibling-skill.md).
-- Close-out after verify: [task_finish](task-skill_finish-sibling-skill.md).
+- Close-out after verify: [task_finish](archive/task-skill_finish-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_implement/SKILL.md`.
 - Tests tracked in
   [task-skill_testing-new-features](task-skill_testing-new-features.md).

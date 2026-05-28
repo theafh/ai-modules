@@ -2,8 +2,8 @@
 description: Add a `task_finish` sibling skill that closes out one task — set status implemented or deferred, bump updated, git mv to archive/, re-point links, re-lint — the action counterpart to the read-only task_audit gate.
 scope: plugins/ai_dev
 created: 2026-05-28T22:07:10
-updated: 2026-05-28T22:07:10
-status: open
+updated: 2026-05-28T22:50:54
+status: implemented
 ---
 
 # Add the `task_finish` sibling skill
@@ -14,7 +14,7 @@ A skill that **finishes a single task**: it performs the close-out — set
 `status` to `implemented` (work done and shipped) or `deferred` (parked),
 bump `updated` from `date`, `git mv` the file to `archive/`, re-point every
 cross-reference the move touches, and re-lint to a clean tree. It is the
-*action* counterpart to [task_audit](task-skill_audit-sibling-skill.md),
+*action* counterpart to [task_audit](../task-skill_audit-sibling-skill.md),
 which is the read-only *gate* ("is this genuinely done?"). The user says
 "finish this task", "mark X done", "defer Y", or "archive this task" and gets
 the task correctly closed out — the skill form of the base skill's
@@ -22,12 +22,12 @@ the task correctly closed out — the skill form of the base skill's
 
 ## Context
 
-Depends on [the rename](archive/task-skill_rename-tasks-to-task.md) (sibling
+Depends on [the rename](task-skill_rename-tasks-to-task.md) (sibling
 skills are named `task_*`). The base `task` skill's `<archive>` workflow
 (`plugins/ai_dev/skills/task/SKILL.md`) is the authority for the five
 close-out steps and stays the single source of truth — `task_finish` defers
 to it rather than restating it, exactly as
-[task_create](archive/task-skill_create-sibling-skill.md) defers to
+[task_create](task-skill_create-sibling-skill.md) defers to
 `<create>`.
 
 Why this is its own skill rather than part of `task_audit`:
@@ -46,7 +46,7 @@ The trigger tension mirrors `task_create`: the base `task` description already
 claims "finish, complete, implement, defer, archive". `task_finish` must carve
 out the *single-task close-out* intent without stealing the base skill's
 broader triggers. Tune the split with `tests/trigger_evals/` (tracked in
-[task-skill_testing-new-features](task-skill_testing-new-features.md)).
+[task-skill_testing-new-features](../task-skill_testing-new-features.md)).
 
 Natural chain: `task_create` → `task_check` → `task_implement` → `task_audit`
 (verify) → `task_finish` (close).
@@ -83,16 +83,17 @@ Natural chain: `task_create` → `task_check` → `task_implement` → `task_aud
   them.
 - Trigger evals show `task_finish` and the base `task` skill split cleanly on
   single-close vs broader-workflow phrasings, no family regression (tracked in
-  [task-skill_testing-new-features](task-skill_testing-new-features.md)).
+  [task-skill_testing-new-features](../task-skill_testing-new-features.md)).
 - `make lint` and the deploy dry-run pass; plugin meta bumped lockstep.
+- Ships the shared `task_*` `<family>` map block (all six siblings, marking itself), matching the block in `task_create` / `task_implement`.
 
 ## Related
 
-- Base: [the rename](archive/task-skill_rename-tasks-to-task.md); the base
+- Base: [the rename](task-skill_rename-tasks-to-task.md); the base
   skill's `<archive>` workflow is the authority.
-- Verification gate before me: [task_audit](task-skill_audit-sibling-skill.md).
-- The doer: [task_implement](task-skill_implement-sibling-skill.md).
-- Pattern to follow: [task_create](archive/task-skill_create-sibling-skill.md)
+- Verification gate before me: [task_audit](../task-skill_audit-sibling-skill.md).
+- The doer: [task_implement](../task-skill_implement-sibling-skill.md).
+- Pattern to follow: [task_create](task-skill_create-sibling-skill.md)
   (thin, deferential front end over the base skill).
 - Tests tracked in
-  [task-skill_testing-new-features](task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](../task-skill_testing-new-features.md).

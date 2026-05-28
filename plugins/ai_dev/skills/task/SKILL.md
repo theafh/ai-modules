@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.1.1
+version: 1.1.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -223,5 +223,18 @@ Findings come in three buckets:
 </not_a_wiki>
 
 </pitfalls>
+
+<family>
+This base `task` skill is the hub of a `task_*` family and can do all of the backlog work itself. Focused front ends each cover one slice and hand off along a chain:
+
+- `task_create` — write one task file
+- `task_check` — readiness gate before building (read-only)
+- `task_implement` — do the work
+- `task_audit` — verify a believed-done task against the codebase (read-only)
+- `task_finish` — close out: set status, bump `updated`, archive
+- `task_health` — audit and repair the whole tasks tree
+
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with health maintaining the tree.
+</family>
 
 </task_skill>

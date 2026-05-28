@@ -13,6 +13,8 @@ A plugin bundling the skills used for day-to-day AI-assisted development: keepin
 
 - **task**: manage upcoming work and todos as plain-markdown task files under `tasks/` at the project root, with `tasks/archive/` for `implemented` and `deferred` items. Atomic per task, split at 300 lines, status/location enforced by a bundled linter; a filesystem-native backlog that lives next to the code.
 - **task_create**: focused on-ramp that creates exactly one well-formed task file fast, deferring the naming, frontmatter, body, and lint rules to the `task` skill. Use it when a single "make a task for X" should load a narrow surface instead of the whole backlog workflow.
+- **task_implement**: take one existing task file and carry it to done — read it, load the repo guardrails, build on the existing code, write the tests, run the suite clean, and confirm every acceptance item. It does the work and leaves verification to `task_audit` and close-out to `task_finish`.
+- **task_finish**: close out one task — set its status to `implemented` or `deferred`, bump `updated`, `git mv` it to `archive/`, re-point the links the move touches, and re-lint. The action counterpart to the read-only `task_audit` gate; owns both the implemented and deferred closures and defers the five close-out steps to the `task` skill.
 
 ### AI instructions
 
