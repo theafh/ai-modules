@@ -2,7 +2,7 @@
 description: Add a `task_audit` sibling skill (modeled on spec_audit): verify a task's claimed completion against the codebase and report gaps. Read-only gate; closing out is task_finish's job.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-29T00:13:50
+updated: 2026-05-31T00:20:09
 status: implemented
 ---
 
@@ -111,4 +111,4 @@ Boundary with siblings:
 - Tree-health peer: [task_health](task-skill_health-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_audit/SKILL.md`.
 - Tests tracked in
-  [task-skill_testing-new-features](../task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md).

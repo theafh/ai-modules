@@ -3,9 +3,8 @@
 
 Audits every `*.md` task file under the resolved tasks/ tree:
 filename naming convention, frontmatter completeness, status/location
-consistency, datetime format, title presence, page size, name
-collisions across open + archive, and — where the filesystem records
-it — agreement between the `created` date and the file's birth time.
+consistency, datetime format, title presence, page size, and name
+collisions across open + archive.
 
 Usage:
     python3 lint.py [TASKS_PATH] [--quiet]
@@ -27,7 +26,6 @@ import subprocess
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Iterator
 
@@ -62,13 +60,6 @@ SEV_INFO = 2
 SEVERITY_LABEL = {SEV_BLOCKING: "blocking", SEV_WARN: "warn", SEV_INFO: "info"}
 
 MAX_LINES_BEFORE_SPLIT = 300
-
-# Birth-time drift tolerance: a `created` stamp taken from `date` at
-# creation matches birth time within seconds, so we allow an hour of
-# slack (batch reuse of one captured `date`, clock drift) before
-# flagging. A `git mv`/rename preserves birth time, so the archive
-# workflow stays clean; only a fresh clone/checkout or a copy resets it.
-BIRTHTIME_TOLERANCE_SECONDS = 3_600
 
 
 @dataclass
@@ -284,91 +275,6 @@ def check_size(page: Path) -> list[Issue]:
             f">{MAX_LINES_BEFORE_SPLIT})",
         )]
     return []
-
-
-def birth_epoch(page: Path) -> float | None:
-    """Return the file's birth (creation) time as epoch seconds, or None
-    when the platform/filesystem does not record one.
-
-    Prefers stdlib ``os.stat`` introspection (``st_birthtime``, present on
-    macOS/BSD and on Linux from Python 3.12 on supported filesystems) so
-    the common path stays fast and dependency-free. Falls back to the
-    ``stat`` CLI (``stat -c %W``) only where the attribute is absent, and
-    treats the ``0``/``-`` "unknown" sentinels as no-birth-time.
-    """
-    try:
-        st = page.stat()
-    except OSError:
-        return None
-    bt = getattr(st, "st_birthtime", None)
-    if bt is not None:
-        return bt if bt > 0 else None
-
-    # Linux without st_birthtime: ask the stat CLI. `%W` is birth time as
-    # epoch seconds, or `0` (some builds print `-`) when unrecorded.
-    try:
-        res = subprocess.run(
-            ["stat", "-c", "%W", str(page)],
-            capture_output=True,
-            text=True,
-        )
-    except (OSError, ValueError):
-        return None
-    out = res.stdout.strip()
-    if res.returncode != 0 or not out or out in {"0", "-"}:
-        return None
-    try:
-        val = int(out)
-    except ValueError:
-        return None
-    return float(val) if val > 0 else None
-
-
-def check_birthtime(page: Path, fm: dict | None) -> list[Issue]:
-    """Warn when `created` disagrees with the file's birth time by more
-    than the tolerance.
-
-    Advisory only — a fresh clone/checkout or a copy resets birth time
-    (a `git mv`/rename preserves it), so this catches a fabricated
-    timestamp without ever blocking. Silent on filesystems that record no
-    birth time, and silent when `created` is missing or malformed (those
-    are flagged elsewhere).
-    """
-    if not fm:
-        return []
-    created = fm.get("created")
-    if not isinstance(created, str) or not created or not DATETIME_RE.match(created):
-        return []
-
-    birth = birth_epoch(page)
-    if birth is None:
-        return []
-
-    try:
-        created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
-    except ValueError:
-        return []
-    # `.timestamp()` reads a naive datetime as local time and an aware one
-    # by its offset — both yield the right epoch to compare against birth.
-    created_epoch = created_dt.timestamp()
-
-    drift = abs(birth - created_epoch)
-    if drift <= BIRTHTIME_TOLERANCE_SECONDS:
-        return []
-
-    birth_iso = datetime.fromtimestamp(birth).isoformat(timespec="seconds")
-    amount = (
-        f"{drift / 3_600:.1f} hours"
-        if drift < 2 * 86_400
-        else f"{drift / 86_400:.1f} days"
-    )
-    return [Issue(
-        SEV_WARN, "frontmatter", page,
-        f"created {created!r} disagrees with the file's birth time "
-        f"({birth_iso}) by {amount} — stamp it from "
-        f"`date +%Y-%m-%dT%H:%M:%S` rather than guessing (a fresh "
-        f"clone/checkout or a copy resets birth time and can also trip this)",
-    )]
 
 
 def check_scope(tasks: Path, page: Path) -> list[Issue]:
@@ -590,7 +496,6 @@ def main() -> int:
         issues.extend(check_filename(page))
         fm_issues, fm = check_frontmatter(page)
         issues.extend(fm_issues)
-        issues.extend(check_birthtime(page, fm))
         issues.extend(check_scope(tasks, page))
         issues.extend(check_location(tasks, page, fm))
         issues.extend(check_size(page))

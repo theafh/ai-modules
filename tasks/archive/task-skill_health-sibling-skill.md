@@ -2,7 +2,7 @@
 description: Add a `task_health` sibling skill that audits and fixes the tasks tree (naming, frontmatter, status/location, links, size, drift) inline, repairing mechanical findings and surfacing judgement calls.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-29T00:13:50
+updated: 2026-05-31T00:20:09
 status: implemented
 ---
 
@@ -132,4 +132,4 @@ judgement-call warns reported), and end with a concise report.
 - Source patterns: `plugins/knowledge_management/skills/wiki_fix/SKILL.md` +
   `plugins/knowledge_management/agents/wiki_auto_shaper.md`.
 - Tests tracked in
-  [task-skill_testing-new-features](../task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md).

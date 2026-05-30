@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.1.2
+version: 1.1.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -179,7 +179,7 @@ When a task is finished or being dropped, run all five steps:
 </archive>
 
 <lint>
-The linter checks naming, frontmatter completeness, status validity, datetime format, status/location consistency, page size (>300 lines), filename collisions across open + archive, and — where the filesystem records it — agreement between the `created` date and the file's birth time.
+The linter checks naming, frontmatter completeness, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across open + archive.
 
 ```bash
 python3 scripts/lint.py              # auto-discover via discover_tasks.sh
@@ -190,7 +190,7 @@ python3 scripts/lint.py --quiet      # blocking + warn only
 Findings come in three buckets:
 
 - **blocking** — bad filename, missing/malformed frontmatter, invalid status, status/location mismatch, duplicate filenames. Exit 1; must fix.
-- **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines), and a `created` timestamp that disagrees with the file's birth time by more than an hour (advisory drift detection — a `git mv`/rename preserves birth time, but a fresh clone/checkout or a copy resets it, and the check stays silent on filesystems that don't record one).
+- **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines).
 - **info** — reserved for future style nits.
 </lint>
 
@@ -232,9 +232,9 @@ This base `task` skill is the hub of a `task_*` family and can do all of the bac
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive
-- `task_health` — audit and repair the whole tasks tree
+- `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with health maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_skill>

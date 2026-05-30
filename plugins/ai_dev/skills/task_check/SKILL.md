@@ -1,7 +1,7 @@
 ---
 name: task_check
-description: Assess whether one task file in tasks/ is ready to hand to an implementer — judge it against a readiness checklist (structure, scope sizing, focus, complexity, contradictions, ambiguity) and report a General assessment plus a ranked Issues list. Read-only: it judges, it does not edit. Use before building a task. For doing the work use task_implement; for verifying a believed-done task use task_audit; for whole-tree health use task_health.
-version: 1.0.0
+description: Assess whether one task file in tasks/ is ready to hand to an implementer — judge it against a readiness checklist (structure, scope sizing, focus, complexity, contradictions, ambiguity) and report a General assessment plus a ranked Issues list. Read-only: it judges, it does not edit. Use before building a task. For doing the work use task_implement; for verifying a believed-done task use task_audit; for whole-tree health use task_fix.
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -20,7 +20,7 @@ Activate when the user wants a single task's readiness judged before building:
 - "Is `<task>` ready?" / "check this task before I build it" / "assess this task's readiness."
 - "Will a one-shot implementer get this right?"
 
-Route elsewhere when the user wants to write a task (`task_create` or the base `task` skill), do the implementation work (`task_implement`), verify a believed-done task against the codebase (`task_audit`), close a task (`task_finish`), or health-check the whole tree (`task_health`). The crisp line: task_check judges *one task's readiness before building*; `task_audit` verifies *one task's claimed completion after building*.
+Route elsewhere when the user wants to write a task (`task_create` or the base `task` skill), do the implementation work (`task_implement`), verify a believed-done task against the codebase (`task_audit`), close a task (`task_finish`), or health-check the whole tree (`task_fix`). The crisp line: task_check judges *one task's readiness before building*; `task_audit` verifies *one task's claimed completion after building*.
 </when_to_activate>
 
 <authority>
@@ -60,9 +60,9 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive
-- `task_health` — audit and repair the whole tasks tree
+- `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with health maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_check_skill>

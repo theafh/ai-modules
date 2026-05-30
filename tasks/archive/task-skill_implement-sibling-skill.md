@@ -2,7 +2,7 @@
 description: Add a `task_implement` sibling skill that implements one task file end-to-end (code, tests, verification) via a strict read-understand-implement-verify flow, adapted from spec_implement.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-28T22:56:14
+updated: 2026-05-31T00:20:09
 status: implemented
 ---
 
@@ -113,4 +113,4 @@ record the choice in the shipped `SKILL.md`.
 - Close-out after verify: [task_finish](task-skill_finish-sibling-skill.md).
 - Source skill: `staged-spec/skills/spec_implement/SKILL.md`.
 - Tests tracked in
-  [task-skill_testing-new-features](../task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md).

@@ -1,7 +1,7 @@
 ---
 name: task_implement
 description: Implement one existing task file end-to-end — turn the work a tasks/ file describes into shipped code, tests, and a passing suite, confirming every acceptance item. Use when the user points at a single task and wants it built or done now. For creating, checking readiness, verifying a believed-done task, or closing/archiving, the create / check / audit / finish siblings apply instead.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -60,9 +60,9 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_implement` — do the work **(this skill)**
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive
-- `task_health` — audit and repair the whole tasks tree
+- `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with health maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_implement_skill>

@@ -1,7 +1,7 @@
 ---
 name: task_audit
 description: Verify one task's claimed completion against the actual codebase — confirm every body item, acceptance check, and backing test, run the suite, and report a verdict (clean, or gaps with fixes). Read-only: it makes no change. Use when a task is believed done and you want it checked before closing, or to re-check an archived task for drift. For readiness before building use task_check; for doing the work use task_implement; for closing use task_finish.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -23,7 +23,7 @@ Activate when the user wants a task's done-ness checked against reality:
 
 Audit only a task whose work is *claimed complete* — a believed-done task being closed, or an archived `implemented` task re-checked for drift. Decline a task whose body is still a plan.
 
-Route elsewhere when the user wants to assess a task's readiness *before* building (`task_check`), do the implementation work (`task_implement`), close and archive a task (`task_finish`), or audit the whole tree's lint health (`task_health`).
+Route elsewhere when the user wants to assess a task's readiness *before* building (`task_check`), do the implementation work (`task_implement`), close and archive a task (`task_finish`), or audit the whole tree's lint health (`task_fix`).
 </when_to_activate>
 
 <authority>
@@ -57,9 +57,9 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only) **(this skill)**
 - `task_finish` — close out: set status, bump `updated`, archive
-- `task_health` — audit and repair the whole tasks tree
+- `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with health maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_audit_skill>

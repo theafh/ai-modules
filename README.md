@@ -35,7 +35,7 @@ ai-modules/
 │           ├── task_implement/
 │           ├── task_audit/
 │           ├── task_finish/
-│           ├── task_health/
+│           ├── task_fix/
 │           ├── ai_instruction_writing/
 │           ├── ai_instruction_formatting/
 │           ├── format_markdown/
@@ -83,7 +83,7 @@ Skills for day-to-day AI-assisted development: keeping git history and changelog
 - **task_finish**: closes out one task — sets its status (`implemented` or `deferred`), bumps `updated`, `git mv`s it to `archive/`, re-points the cross-references the move touches, and re-lints. The action counterpart to the read-only `task_audit` gate, deferring the five close-out steps to the base `task` skill's `<archive>` workflow.
 
   Standing apart from that flow:
-- **task_health**: audits and repairs the whole `tasks/` tree in one inline pass (orient → assess → remediate → verify) — runs `lint.py`, auto-fixes the mechanical findings, and surfaces the judgement calls (splits, birth-time drift, cross-task contradictions) for human review, closing with an `audit complete — N resolved, K flagged` report. The task-backlog analogue of `wiki_fix`, done inline rather than via an agent because the tree is small and the fixes are mechanical. Operates on the whole backlog, independent of any single task's lifecycle.
+- **task_fix**: audits and repairs the whole `tasks/` tree in one inline pass (orient → assess → remediate → verify) — runs `lint.py`, auto-fixes the mechanical findings, and surfaces the judgement calls (splits, cross-task contradictions) for human review, closing with an `audit complete — N resolved, K flagged` report. The task-backlog analogue of `wiki_fix`, done inline rather than via an agent because the tree is small and the fixes are mechanical. Operates on the whole backlog, independent of any single task's lifecycle.
 - **ai_instruction_writing**: writes any AI-consumed artefact (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of negative prohibitions the model has to invert.
 - **ai_instruction_formatting**: organises AI-consumed content into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in a dedicated tag so the model can locate the right section by structure rather than by re-reading the prose.
 - **format_markdown / format_python / format_rust**: linter-aligned style guides (`markdownlint`, `flake8` plus `ruff` plus `pylint`, `clippy`) consulted at write time. The point is to land code that already passes the linter, instead of spending a follow-up turn reacting to lint output.

@@ -2,7 +2,7 @@
 description: Stop created/updated timestamps being model-fabricated — SKILL gives the exact date shell command to run, and lint cross-checks created against filesystem birth time when available.
 scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
-updated: 2026-05-28T21:05:01
+updated: 2026-05-31T00:20:09
 status: implemented
 ---
 
@@ -95,5 +95,5 @@ would churn it); only `created` vs birth time.
   time within tolerance).
 - Behavioural eval coverage (model stamps `created`/`updated` from `date`
   rather than fabricating) is tracked separately in
-  [task-skill_testing-new-features](../task-skill_testing-new-features.md)
+  [task-skill_testing-new-features](task-skill_testing-new-features.md)
   and lands in its own commit, per the repo's one-bump-per-commit rule.

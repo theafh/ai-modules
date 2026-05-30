@@ -2,7 +2,7 @@
 description: Drop the `created`-vs-birth-time drift check from task lint.py — birthtime is not durable under edits or clones, so the check false-flags legitimate changes. Move to trust-on-write.
 scope: plugins/ai_dev/skills/task
 created: 2026-05-29T00:28:10
-updated: 2026-05-29T00:28:10
+updated: 2026-05-31T00:16:58
 status: open
 ---
 
@@ -63,7 +63,7 @@ only — the `wiki` skill's separate birthtime logic in
    drift clause from the **warn** bucket description. In `<frontmatter>`,
    keep the "stamp from `date`" guidance (still how `created` is set) but
    drop any wording implying the value is checked against birthtime.
-3. **`plugins/ai_dev/skills/task_health/SKILL.md`** — rework the **verify**
+3. **`plugins/ai_dev/skills/task_fix/SKILL.md`** — rework the **verify**
    phase and `<surface_for_review>`: the current triage is framed around
    "leaving birth-time drift … surfaced-and-accepted." With the check gone,
    the clean bar becomes simply 0 blocking + mechanical warns resolved +
@@ -92,7 +92,7 @@ only — the `wiki` skill's separate birthtime logic in
   file (which resets birthtime) and re-linting produces no new warning from
   the change alone.
 - No dead code or unused imports remain in `lint.py` after the removal.
-- The base `task` `<lint>` prose, `task_health`'s verify/surface sections,
+- The base `task` `<lint>` prose, `task_fix`'s verify/surface sections,
   and any other live `task_*` references no longer describe a drift check;
   archived tasks are left as-is.
 - `tests/tasks/script_tests/run.sh` passes with the drift cases removed.

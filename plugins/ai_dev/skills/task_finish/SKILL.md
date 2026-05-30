@@ -1,7 +1,7 @@
 ---
 name: task_finish
 description: Close out one task in the project's tasks/ backlog — set its status to implemented or deferred, bump updated, git mv it to archive/, re-point the links the move touches, and re-lint. Use when the user wants a single task finished, marked done, deferred, parked, or archived. For creating, checking readiness, doing the work, or verifying a task, the create / check / implement / audit siblings apply instead.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -49,9 +49,9 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive **(this skill)**
-- `task_health` — audit and repair the whole tasks tree
+- `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with health maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_finish_skill>

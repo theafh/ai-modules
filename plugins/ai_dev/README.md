@@ -23,7 +23,7 @@ The single-task siblings run in lifecycle order — **create → check → imple
 
 Standing apart from that flow:
 
-- **task_health**: audit and repair the whole `tasks/` tree in one inline pass (orient → assess → remediate → verify) — run the linter, auto-fix mechanical findings (naming, frontmatter, status/location, links, datetimes), and surface judgement calls (splits, drift, cross-task contradictions) for review. The task-backlog analogue of `wiki_fix`, done inline rather than via an agent. Operates on the whole backlog, independent of any single task's lifecycle.
+- **task_fix**: audit and repair the whole `tasks/` tree in one inline pass (orient → assess → remediate → verify) — run the linter, auto-fix mechanical findings (naming, frontmatter, status/location, links, datetimes), and surface judgement calls (splits, cross-task contradictions) for review. The task-backlog analogue of `wiki_fix`, done inline rather than via an agent. Operates on the whole backlog, independent of any single task's lifecycle.
 
 ### AI instructions
 

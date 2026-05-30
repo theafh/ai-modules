@@ -2,7 +2,7 @@
 description: Add a `task_finish` sibling skill that closes out one task — set status, bump updated, git mv to archive/, re-point links, re-lint — the action counterpart to the read-only task_audit gate.
 scope: plugins/ai_dev
 created: 2026-05-28T22:07:10
-updated: 2026-05-29T00:13:50
+updated: 2026-05-31T00:20:09
 status: implemented
 ---
 
@@ -46,7 +46,7 @@ The trigger tension mirrors `task_create`: the base `task` description already
 claims "finish, complete, implement, defer, archive". `task_finish` must carve
 out the *single-task close-out* intent without stealing the base skill's
 broader triggers. Tune the split with `tests/trigger_evals/` (tracked in
-[task-skill_testing-new-features](../task-skill_testing-new-features.md)).
+[task-skill_testing-new-features](task-skill_testing-new-features.md)).
 
 Natural chain: `task_create` → `task_check` → `task_implement` → `task_audit`
 (verify) → `task_finish` (close).
@@ -83,7 +83,7 @@ Natural chain: `task_create` → `task_check` → `task_implement` → `task_aud
   them.
 - Trigger evals show `task_finish` and the base `task` skill split cleanly on
   single-close vs broader-workflow phrasings, no family regression (tracked in
-  [task-skill_testing-new-features](../task-skill_testing-new-features.md)).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md)).
 - `make lint` and the deploy dry-run pass; plugin meta bumped lockstep.
 - Ships the shared `task_*` `<family>` map block (all six siblings, marking itself), matching the block in `task_create` / `task_implement`.
 
@@ -96,4 +96,4 @@ Natural chain: `task_create` → `task_check` → `task_implement` → `task_aud
 - Pattern to follow: [task_create](task-skill_create-sibling-skill.md)
   (thin, deferential front end over the base skill).
 - Tests tracked in
-  [task-skill_testing-new-features](../task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md).
