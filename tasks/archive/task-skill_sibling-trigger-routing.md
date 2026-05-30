@@ -2,8 +2,8 @@
 description: Improve task* family trigger routing — baseline precise 14/25; description-sharpening was tried and regressed, so the working levers are naming and right-sizing the eval, not more description text.
 scope: plugins/ai_dev
 created: 2026-05-29T23:41:45
-updated: 2026-05-31T00:29:37
-status: open
+updated: 2026-05-31T00:43:06
+status: implemented
 ---
 
 # Improve task* family trigger routing
@@ -78,7 +78,7 @@ Work *with* those limits. Do **not** reintroduce description-sharpening as
 the fix — it is a rejected approach.
 
 1. **Measure the landed naming lever.** The
-   [rename of `task_health` → `task_fix`](archive/task-skill_rename-health-to-fix.md)
+   [rename of `task_health` → `task_fix`](task-skill_rename-health-to-fix.md)
    gave the repair intent a `fix` name token, and it has already deployed
    (source and `~/.claude/skills` both carry `task_fix`; `task.json` already
    expects it). Per the name-dominance finding this is the right tool for
@@ -161,9 +161,46 @@ the fix — it is a rejected approach.
   plugin metadata lockstep; `make lint` and the deploy dry-run pass, and
   the re-measure deploy is run only on the operator's go-ahead.
 
+## Findings
+
+Re-run `tests/trigger_evals/results/task/2026-05-31_003514/` (model
+`claude-sonnet-4-6`, 3 runs/query, same protocol as the baseline). Raw
+record: that dir's `results.json` / `run.log`.
+
+- **Result: precise 15/25, family 20/25** — vs. baseline 14/25 precise,
+  20/25 family. A +1 precise gain, no regression, family unchanged.
+- **The naming lever worked exactly as predicted.** The entire +1 is the
+  Bucket B query "audit the entire tasks tree and fix whatever is
+  mechanical": baseline routed it to `task_audit`; this run routed it
+  `task_audit / task_fix / task_fix` → precise pass (2/3). The deployed
+  `fix` name token grabbed it, confirming the name-dominance finding. No
+  other query moved from the rename alone, as expected.
+- **The 10 residual precise-fails carry dispositions in `task.json`** (each
+  as a `note` field — see the deviation below). None is addressable real
+  bleed; no further non-regressive lever exists:
+  - **5 known-accepted** — base `task` swallows a bare action verb
+    (`build`, `go do … end to end`, `verify`, `mark … archive`, `defer`).
+    Family-passes; acceptable real-world behaviour; description-sharpening
+    is the rejected lever and no name token distinguishes these.
+  - **5 instrument-limited** — the model acts inline / reads the named file
+    rather than loading a skill (`…ready…` + path, `implement … <path>`,
+    `re-check this archived task`, `what's left to do`, `break this doc`).
+    The runner cannot observe a skill load when the model's first move is
+    to do the work.
+- **Deviation from the brief:** the task said to record dispositions
+  "inline next to each `task.json` entry". `task.json` is strict JSON
+  (`json.load`), so a comment would break the parse; instead each
+  disposition is a JSON-legal `note` field on the entry. Verified
+  `run.py`'s `normalize_eval_entry` reads only `query` / `expected_skill`
+  and ignores the `note`, so the runner is unaffected.
+- **No description, skill, or plugin edits were made** — the lever had
+  already landed, so there was no version bump, no plugin-lockstep change,
+  and no `make deploy`. The descriptions kept firing; no new `-/-/-`
+  resulted from any edit of mine.
+
 ## Related
 
 - Landed name-token lever (archived):
-  [task-skill_rename-health-to-fix](archive/task-skill_rename-health-to-fix.md).
+  [task-skill_rename-health-to-fix](task-skill_rename-health-to-fix.md).
 - Where `task.json` and the behavioral evals were authored:
-  [task-skill_testing-new-features](archive/task-skill_testing-new-features.md).
+  [task-skill_testing-new-features](task-skill_testing-new-features.md).

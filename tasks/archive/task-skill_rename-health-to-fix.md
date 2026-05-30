@@ -27,7 +27,7 @@ trigger routing are out of this task's completion bar (see below).
 (`wiki` ↔ `task`, `wiki_fix` ↔ `task_fix`), which aids recall and routing.
 
 It is also a routing lever for
-[task-skill_sibling-trigger-routing](../task-skill_sibling-trigger-routing.md):
+[task-skill_sibling-trigger-routing](task-skill_sibling-trigger-routing.md):
 that investigation found **skill-name tokens dominate trigger routing**,
 and one bleed was "audit the entire tasks tree and **fix** whatever is
 mechanical" landing on `task_audit`. A `fix` name token gives that query
@@ -110,11 +110,11 @@ plugin a minor lockstep (`1.1.1` → `1.2.0`). Follow that shape here.
 - Routing effect is **out of scope here** — after the user runs
   `make deploy`, the re-run of `tests/trigger_evals/task.json` and the
   verdict on whether the `fix` token resolved the Bucket B query are owned
-  by [task-skill_sibling-trigger-routing](../task-skill_sibling-trigger-routing.md).
+  by [task-skill_sibling-trigger-routing](task-skill_sibling-trigger-routing.md).
 
 ## Related
 
 - Motivating routing analysis (owns the post-rename re-measurement):
-  [task-skill_sibling-trigger-routing](../task-skill_sibling-trigger-routing.md).
+  [task-skill_sibling-trigger-routing](task-skill_sibling-trigger-routing.md).
 - Sibling family precedent: the `wiki_fix` skill in the
   `knowledge_management` plugin.

@@ -75,7 +75,7 @@ Two surfaces:
    The ongoing work of *improving* that routing — and the settled finding
    that description-sharpening regresses while naming (the `task_health` →
    `task_fix` rename) is the working lever — now lives in its own task,
-   [task-skill_sibling-trigger-routing](../task-skill_sibling-trigger-routing.md).
+   [task-skill_sibling-trigger-routing](task-skill_sibling-trigger-routing.md).
    This carried forward the deferred trigger-eval acceptance of every shipped
    sibling, none validated in the commit that shipped it.
 
@@ -101,7 +101,7 @@ Trustworthy-timestamps eval specifics:
 
 The trigger-eval axis has been split out: `tests/trigger_evals/task.json`
 is authored and baselined, and the work of raising its routing rate lives
-in [task-skill_sibling-trigger-routing](../task-skill_sibling-trigger-routing.md).
+in [task-skill_sibling-trigger-routing](task-skill_sibling-trigger-routing.md).
 Note its settled finding before touching descriptions — sharpening a
 *sibling* description to cede verbs regressed both precise and family
 rates; the working lever is naming (the `task_fix` rename), not more
@@ -120,7 +120,7 @@ their eval.
 - `tests/tasks/script_tests/run.sh` continues to pass with no regression.
 - A `tests/trigger_evals/task.json` set exists (it does, with a measured
   baseline). Raising its routing rate is tracked separately in
-  [task-skill_sibling-trigger-routing](../task-skill_sibling-trigger-routing.md);
+  [task-skill_sibling-trigger-routing](task-skill_sibling-trigger-routing.md);
   acceptance for *that* axis lives there, not here.
 - Each item's eval lands in its own commit, separate from the feature it
   covers.
