@@ -2,7 +2,7 @@
 description: Document the `raw/<kind>/` selection rubric and extend `source_path:` to cover out-of-repo local files in the wiki SCHEMA template and skill.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:04
-updated: 2026-05-28T20:07:08
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -46,8 +46,6 @@ Related task: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-a
 
    Document the use case. Note that such paths are non-portable across machines, so the sidecar body must carry enough excerpted content to be useful without the original file.
 3. **SCHEMA template** — optionally add a note that out-of-repo local sources should mark their host machine in the body, e.g., "Local file on the author's workstation; full transcript excerpted below."
-
-Bump versions only at commit time.
 
 ## Acceptance
 

@@ -2,7 +2,7 @@
 description: Keep wiki headings and bold-prefix labels to a fixed structural vocabulary; route displaced metadata (date, source, qualifier) to its proper channel.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:35
-updated: 2026-05-28T21:10:40
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -40,8 +40,6 @@ Related tasks: [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) 
    - A heading or bold-label line containing a parenthesised date or qualifier suffix matching the regex `\([0-9]{4}-[0-9]{2}-[0-9]{2}.*?\)` (also catch shorter forms like `(2026-05-22 ...)`).
 
    Surface both checks as `info`-level, not blocking — the wider workflow should be able to land an edit that contains a violation while warning the author.
-
-Bump versions only at commit time per the repo's one-bump-per-session rule.
 
 ## Acceptance
 

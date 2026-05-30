@@ -2,7 +2,7 @@
 description: Add a lint.py check that the "Total pages:" header in index.md matches the real page count, so the count stops drifting and being hand-recomputed.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:06:45
-updated: 2026-05-28T20:07:08
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -30,8 +30,6 @@ Files involved:
 2. **Compute ground truth.** Count `len(list(iter_wiki_pages(wiki)))`. Confirm what `iter_wiki_pages` includes/excludes (special files like `SCHEMA.md`/`index.md`/`log.md` should not be counted as pages) so the header convention and the count agree on what "a page" is; document the definition in `lint_checks.md`.
 3. **Emit the finding.** On mismatch, report which severity fits the project's tolerance. A `warn`-level finding with both numbers ("index Total pages says N, found M pages on disk") is appropriate — it surfaces the drift without blocking a mid-edit state. Register the check in the main runner alongside `check_index_completeness`.
 4. **Optional autofix hook.** If the linter grows an autofix path elsewhere, this is a safe candidate (rewrite the header to the computed count); otherwise leave it as a report-only finding.
-
-Bump the skill and plugin versions per the one-bump-per-commit rule at commit time.
 
 ## Acceptance
 

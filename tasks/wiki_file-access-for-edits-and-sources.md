@@ -2,7 +2,7 @@
 description: Add SKILL.md guidance to use Read (not Bash grep/cat/tail) when staging an Edit, and to resolve sources:/source_path: values against the wiki root when opening them.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-05-28T20:05:29
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -32,8 +32,6 @@ Files involved:
 1. **Read-to-stage-edits note.** In the editing guidance, add a short rule: to locate a span you intend to `Edit`, use `Read` (it both shows the content and satisfies Edit's read requirement); reserve Bash `grep`/`cat`/`tail` for counting and log-offset work, not for preparing an edit. Pair this with the entry-aware log retrieval from [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md) so the log case is covered consistently.
 2. **`sources:` resolution note.** Near the provenance description (~471-472), add one line: `sources:` / `source_path:` entries are paths relative to the **wiki root**; prefix with `$WIKI/` (or the wiki dir) when opening one with `Read`. Mirror the same note in the auto-shaper.
 3. Keep both additions to a sentence or two each — these are tool-use clarifications, not new conventions. Respect the no-meta-in-body and minimal-addition postures established elsewhere in the family.
-
-Bump the skill / agent / plugin versions per the one-bump-per-commit rule at commit time.
 
 ## Acceptance
 

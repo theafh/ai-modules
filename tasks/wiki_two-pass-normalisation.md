@@ -2,7 +2,7 @@
 description: Make the wiki_auto_shaper agent route displaced semantics to their proper channel before normalising structure, and surface both halves in the audit report.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:24
-updated: 2026-05-28T20:07:08
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -44,8 +44,6 @@ Related tasks:
    3. **Then normalise.** Apply the structural fix with no leftover semantic baggage.
 2. **Same file, audit-report contract** — when the agent performs a normalisation, the per-file change list must name both halves: the structural fix *and* any displaced-semantics routing it performed. Example phrasing: "label normalised + date/source routed to `sources:`". A normalisation with displaced semantics that were not routed must surface in the report rather than being silently completed.
 3. Reference the new rule by name ("two-pass remediation") from any other section of the agent that triggers normalisation (label vocabulary, page anatomy, frontmatter shape).
-
-Bump versions only at commit time.
 
 ## Acceptance
 

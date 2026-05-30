@@ -2,7 +2,7 @@
 description: Add a `growth:` declaration per wiki page type and teach the lint to defer size findings for declared-backlog/monotonic-append/synthesis pages; disambiguate todo anatomy for non-canonical sources.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:37
-updated: 2026-05-28T20:07:08
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -45,8 +45,6 @@ Related tasks:
 2. **`plugins/knowledge_management/skills/wiki/scripts/lint.py`** — when emitting the 200-line size finding, look up the page's declared type and growth pattern; skip the finding for `backlog`, `monotonic-append`, and `unbounded-synthesis` types below a much higher threshold (e.g., 1000 lines). For `backlog` past 1000 lines, emit a split-or-graduate-entries recommendation rather than a body-sanction note.
 3. **Target-wiki `SCHEMA.md` template** — in the todo page-type clause, state explicitly whether "canon" covers session-derived rules and which middle-paragraph label is canonical. Remove the ambiguity that lets the agent invent parenthetical annotations.
 4. **`plugins/knowledge_management/agents/wiki_auto_shaper.md`** — at the line currently containing "note the rationale on the page's body or in `SCHEMA.md`" (locate by phrase, around lines 944-946), drop "on the page's body or". If a sanction is genuinely needed beyond what SCHEMA declares, route it to `log.md`, never the page body. Coordinate with [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md) so the wording is removed exactly once across both tasks.
-
-Bump versions only at commit time per the one-bump-per-session rule.
 
 ## Acceptance
 

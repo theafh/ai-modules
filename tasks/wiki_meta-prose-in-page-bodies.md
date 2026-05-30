@@ -2,7 +2,7 @@
 description: Stop the wiki_auto_shaper agent (and wiki authoring contract) from inserting page-convention prose and lint-sanction prose into wiki page bodies.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:26
-updated: 2026-05-28T20:07:08
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -42,8 +42,6 @@ Related tasks: [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-
 5. **`plugins/knowledge_management/skills/wiki/scripts/lint.py`** — add an info-level heuristic flagging:
    - Lead paragraphs longer than two sentences on non-`type: schema|index|synthesis` pages.
    - Phrases anywhere in the body matching: `Each entry records`, `Canon for an entry`, `Page size note`, `is sanctioned`, `is self-trimming`, `info-level finding`, `200-line lint threshold`, `graduate off`.
-
-Bump the skill, agent, and plugin versions per the repo's one-bump-per-session rule at commit time, not while iterating.
 
 ## Acceptance
 

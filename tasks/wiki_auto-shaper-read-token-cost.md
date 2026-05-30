@@ -2,7 +2,7 @@
 description: Cut wiki_auto_shaper token consumption from unconditional full-file reads — make orient reads conditional and switch the page walk to Grep-first, bounded reads.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-05-28T20:05:29
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -34,8 +34,6 @@ Files involved:
    - When the linter returns zero blocking and zero warn, do not full-read every page to re-confirm cleanliness; sample or skip the structural re-read and reserve full reads for pages the grep heuristics flag.
    - Cap the number of full-file reads, or scale the depth of the walk to wiki size, so a clean large wiki does not trigger hundreds of reads.
 3. **Keep it explicit that this is an efficiency change, not a fidelity cut** — the agent must still detect the same prose-level issues; it just stops paying the full-read cost where the linter or a targeted grep already answers the question.
-
-Bump the agent and plugin versions per the one-bump-per-commit rule at commit time.
 
 ## Acceptance
 

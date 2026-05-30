@@ -2,7 +2,7 @@
 description: Fix wiki discovery so running from inside the wiki root resolves cleanly instead of "undecided", and correct lint.py's wrong --wiki-path hint.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:06:23
-updated: 2026-05-28T20:07:08
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -39,8 +39,6 @@ Files involved:
 2. **Alternatively / additionally, detect CWD-is-wiki-root directly.** Before the walk-up, if the current directory itself contains the wiki markers (`SCHEMA.md` and `index.md`, optionally `log.md`), resolve to CWD immediately. This is the most direct signal that "we are standing in the wiki" and avoids the two-candidate construction entirely. Pick one mechanism or layer both; keep behaviour identical across the shell and Python implementations.
 3. **Fix the `lint.py` hint and docstrings.** Replace "pass an explicit `--wiki-path`" with the real usage: pass the wiki path as the first positional argument, e.g. `python3 lint.py /path/to/wiki`. Update the message at ~109 and both docstrings (~19, ~56).
 4. **Give discovery-ambiguity its own exit code in `lint.py`.** Make the genuine-ambiguity exit distinct from lint-finding failures — exit 2 (mirroring `discover_wiki.sh`) rather than the bare `sys.exit(<string>)` exit-1 — so callers and the agent can distinguish "couldn't locate the wiki" from "lint found blocking issues". Keep the human-readable candidate listing.
-
-Bump the skill and plugin versions per the repo's one-bump-per-commit rule at commit time, not while iterating.
 
 ## Acceptance
 

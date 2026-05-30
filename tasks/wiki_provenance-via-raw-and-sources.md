@@ -2,7 +2,7 @@
 description: Force wiki content derived from non-canonical raw artifacts (sessions, pastes, meetings) into a `raw/` sidecar + frontmatter `sources:`, not body-prose narration.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:54
-updated: 2026-05-28T20:07:08
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -42,8 +42,6 @@ Related tasks: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rub
 3. **`plugins/knowledge_management/agents/wiki_auto_shaper.md` `<remediate>` section** — add a guard: when remediation would otherwise add provenance prose to a body, halt and instead create or extend the `raw/` sidecar and update `sources:`. The audit report must surface the routing.
 4. **Target-wiki `SCHEMA.md` template** (the file the wiki skill writes when bootstrapping a wiki) — add the same rule so it lands in every ingested wiki's `SCHEMA.md` and the agent reads it at `<read_schema>`.
 5. **All four locations above + wiki_import** — when extracting raw text that may contain markdown-sensitive characters, default to **fenced text blocks with a dynamically sized fence** (not blockquotes). Document the rule: pick the smallest backtick fence count (>=3) longer than any backtick run already inside the content.
-
-Bump versions at commit time only.
 
 ## Acceptance
 

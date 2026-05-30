@@ -2,7 +2,7 @@
 description: Give lint.py a per-finding acknowledge mechanism so accepted info-level findings stop re-surfacing every run and being re-justified in prose and the log.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-05-28T20:05:29
+updated: 2026-05-31T01:27:00
 status: open
 ---
 
@@ -34,8 +34,6 @@ Files involved:
 2. **Honour acceptances in the runner.** When a finding matches an acceptance, drop it from the active count or move it to a clearly separated "acknowledged" section of the report so it stops inflating the live info count and stops prompting re-justification.
 3. **Teach the workflow.** Update SKILL.md and the auto-shaper so that, when an info finding is intentional, the agent records the acceptance via this mechanism **once** — never by writing rationale prose into the page body (that prohibition is owned by [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md)) and never by appending a fresh log paragraph every run.
 4. **Document** the mechanism and its boundary with `growth:` in `lint_checks.md`.
-
-Bump the skill / agent / plugin versions per the one-bump-per-commit rule at commit time.
 
 ## Acceptance
 
