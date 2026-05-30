@@ -1,7 +1,7 @@
 ---
 name: task_audit
 description: Verify one task's claimed completion against the actual codebase — confirm every body item, acceptance check, and backing test, run the suite, and report a verdict (clean, or gaps with fixes). Read-only: it makes no change. Use when a task is believed done and you want it checked before closing, or to re-check an archived task for drift. For readiness before building use task_check; for doing the work use task_implement; for closing use task_finish.
-version: 1.0.1
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -43,8 +43,8 @@ Run in order, read-only throughout — make no edit to the task or the code.
 <output_contract>
 Report a verdict, evidence-based — never on prose alone.
 
-- On full compliance, output exactly: `Success: full task compliance confirmed.`
-- Otherwise output `Gaps:` followed by a numbered list. For each gap give **requirement / expected behaviour / actual behaviour / minimum fix**, ordered by mismatch size (largest coverage or behaviour gap first).
+- On full compliance, make the verdict line, on its own line, exactly: `Success: full task compliance confirmed.` — that literal is the machine-readable signal, so write it bare (no backticks, no surrounding words on that line). Supporting evidence may precede it and the `task_finish` pointer follows it; the verdict line itself stays exact.
+- Otherwise lead with `Gaps:` followed by a numbered list. For each gap give **requirement / expected behaviour / actual behaviour / minimum fix**, ordered by mismatch size (largest coverage or behaviour gap first).
 
 Make no state change. On a clean pass, point at `task_finish` to perform the close-out. On gaps, hand the remaining work to `task_implement`. Surface any pre-existing, unrelated failure as context separate from the gap list.
 </output_contract>

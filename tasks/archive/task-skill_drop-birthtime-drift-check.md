@@ -2,8 +2,8 @@
 description: Drop the `created`-vs-birth-time drift check from task lint.py — birthtime is not durable under edits or clones, so the check false-flags legitimate changes. Move to trust-on-write.
 scope: plugins/ai_dev/skills/task
 created: 2026-05-29T00:28:10
-updated: 2026-05-31T00:16:58
-status: open
+updated: 2026-05-31T01:18:38
+status: implemented
 ---
 
 # Drop the birth-time drift check from task `lint.py`
@@ -46,7 +46,7 @@ first-commit date (`git log --diff-filter=A --follow --format=%aI`), which is
 durable but adds git-dependence and complexity the field doesn't warrant.
 
 This is the successor to
-[task-skill_trustworthy-timestamps](archive/task-skill_trustworthy-timestamps.md)
+[task-skill_trustworthy-timestamps](task-skill_trustworthy-timestamps.md)
 (implemented), which introduced the check. Scope here is the **task** linter
 only — the `wiki` skill's separate birthtime logic in
 `plugins/knowledge_management/skills/wiki/scripts/lint.py` is out of scope.
@@ -102,5 +102,5 @@ only — the `wiki` skill's separate birthtime logic in
 ## Related
 
 - Ancestor (introduced the check):
-  [task-skill_trustworthy-timestamps](archive/task-skill_trustworthy-timestamps.md).
+  [task-skill_trustworthy-timestamps](task-skill_trustworthy-timestamps.md).
 - Out of scope: the `wiki` skill's own birthtime logic.

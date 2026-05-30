@@ -95,7 +95,7 @@ Trustworthy-timestamps eval specifics:
   `14:30:00`. `grade.sh` does this directly, comparing `created` against
   the run-start epoch in `.eval_started_at` (the birth-time lint check
   that once served as the oracle has been removed — see
-  [task-skill_drop-birthtime-drift-check](../task-skill_drop-birthtime-drift-check.md)).
+  [task-skill_drop-birthtime-drift-check](task-skill_drop-birthtime-drift-check.md)).
 - Keep the sandbox-isolation fail-safes (no writes outside the sandbox)
   per `tests/CLAUDE.md`.
 
