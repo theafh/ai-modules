@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.1.6
+version: 1.1.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -180,6 +180,15 @@ Run `python3 scripts/lint.py --quiet` and fix every blocking finding before decl
 <batch_creation>
 When the user hands over multiple tasks in one go, write each as its own atomic file. Pause and split when any single task threatens to exceed 300 lines, or when several items overlap but each is independently expandable.
 </batch_creation>
+
+<lossless_conversion>
+Whenever a task is **derived from source material**, hold a lossless-conversion contract — and run it on your own, without the user asking. A *source* is any pre-existing body of meaning being mined into tasks: an AI chat session, a pasted note, a `todo.md`, a spec, a PDF, a meeting transcript, a file on disk. The trigger is the presence of a source being mined — never its medium, and never how many tasks result. Producing a single task does not skip the check: one source can carry far more than one task's worth of meaning, so the lone task must still capture all of what's relevant. Source volume scales only how much the coverage pass has to walk, never whether it runs.
+
+- **Every relevant unit of meaning in the source maps to at least one task.** Rewriting, merging, expanding, or restructuring source content is welcome; dropping relevant meaning is not. Where one task results, it carries all of what's relevant; where many do, the meaning spreads across them with nothing left behind.
+- **Source-wide content propagates into each task it governs.** Content that scopes the *whole* source rather than one section — a shared preamble, a global caveat — carries into every derived task it governs rather than staying behind in the source.
+- **Run a coverage pass before declaring done.** Walk the source unit by unit — section, bullet, rule, turn — and confirm each is represented in a task. Report the rewrites, merges, and intentional expansions explicitly, and surface anything not yet covered for the user to decide. A thin direct request resolves in one glance; a rich source takes a real walk-through.
+- **Leave the source's disposition to the user.** For a shared asset or an on-disk source, never delete, move, overwrite, or truncate it on the skill's own initiative — confirm coverage first, then *propose* what could become of the source and wait for the user's explicit say-so. For an ephemeral source (a live chat session, a paste) there is nothing on disk to dispose of, so disposition here means simply withholding "done" until coverage is clean. Either way: confirm coverage first, then hand the keep/drop decision to the user.
+</lossless_conversion>
 
 </create>
 

@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one well-formed task file in the project's tasks/ backlog, fast and with minimal ceremony. Use when the user wants a single task or todo written for upcoming work — "make a task for X", "add a todo to do Y", "file a task about Z" — and wants just that one file, not a broader backlog session. For listing, querying, updating, finishing, archiving, or linting tasks, the broader task skill applies instead.
-version: 1.0.4
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -30,6 +30,7 @@ The `task` skill's `SKILL.md` is the single source of truth; keep every shared r
 - `<file_format>` — `<naming>`, `<frontmatter>` (including the `date`-stamped `created` / `updated`), `<markdown_policy>`, and the `<body>` sections.
 - `<discover>` — locate or scaffold `tasks/` through the bundled `discover_tasks.sh` / `init_tasks.sh`.
 - `<create>`'s `<prior_art>` — the two-tier duplicate / already-done gate run before writing.
+- `<create>`'s `<lossless_conversion>` — the source-fidelity contract that fires whenever a task is derived from source material. This single-task on-ramp *is* the single-task-from-a-source path that contract names, so apply it verbatim from the base skill rather than restating it here, keeping the two in step.
 - `<lint>` — the bundled `lint.py` and what each finding means.
 
 These assets ship in the same plugin as task_create, so they are present wherever task_create is.
@@ -49,6 +50,8 @@ Create one file, in order:
 5. **Timestamp.** Run `date +%Y-%m-%dT%H:%M:%S` once and use its output verbatim for both `created` and `updated`.
 6. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`.
 7. **Lint.** Run the linter per the `task` skill's `<lint>` step (`lint.py --quiet`) and resolve every blocking finding before reporting the file as created.
+
+When this one task is derived from source material — a pasted note, a chat turn, a `todo.md`, a PDF, any pre-existing body of meaning — apply the `task` skill's `<lossless_conversion>` contract on your own before reporting done: confirm the single task carries every relevant unit of meaning from that source, propagate source-wide content into it, and leave the source's keep/drop disposition to the user. A single task does not exempt the check — one source can hold more meaning than it captures.
 
 Keep this to one atomic task file. When the request actually carries several independent items, or a single item would run past 300 lines, hand the multi-task split to the `task` skill rather than expanding the work here.
 </workflow>

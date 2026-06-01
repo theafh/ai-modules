@@ -2,8 +2,8 @@
 description: Add a built-in lossless-conversion step so deriving tasks from any source — chat, note, todo, file, PDF — verifies no unit of meaning was dropped, without the user asking.
 scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
-updated: 2026-06-01T22:38:52
-status: open
+updated: 2026-06-01T23:25:41
+status: implemented
 ---
 
 # Verify lossless conversion when deriving tasks from any source

@@ -2,7 +2,7 @@
 description: Sweep every task_* family SKILL.md for big ai_instruction_writing violations — negative-only and inverted instructions — and rewrite them to a positive, action-oriented carrier.
 scope: "task_* family skills"
 created: 2026-06-01T22:50:36
-updated: 2026-06-01T22:50:36
+updated: 2026-06-01T23:25:41
 status: open
 ---
 
@@ -45,7 +45,7 @@ standing convention rather than introducing a new one.
 
 This task is the **family-wide** pass. It is distinct from the targeted
 negation-framing cleanup noted on
-[the lossless-conversion task](task-skill_lossless-conversion-check.md), which
+[the lossless-conversion task](archive/task-skill_lossless-conversion-check.md), which
 fixes only the lines that task itself adds.
 
 ## Approach
