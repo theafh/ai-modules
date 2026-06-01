@@ -1,7 +1,7 @@
 ---
 name: task_fix
 description: Audit and repair the whole tasks/ backlog tree in one pass — run the linter, walk every task, auto-fix the mechanical findings (naming, frontmatter, status/location, links, datetimes), and surface judgement calls (splits, cross-task contradictions) for review. Inline, no agent. Use to health-check, clean up, audit, or lint the task backlog. For a single task's readiness use task_check; to verify one believed-done task against the codebase use task_audit.
-version: 1.1.0
+version: 1.1.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -29,6 +29,10 @@ task_fix runs **inline — no dedicated agent.** The `tasks/` tree is small and 
 <authority>
 The base `task` skill's `SKILL.md` is the single source of truth; read it and follow it rather than copying its rules. Its `<discover>` step locates `tasks/`, its bundled `lint.py` is the mechanical oracle (`<lint>`), and its `<archive>` workflow defines a status/location move (set `status`, bump `updated` from `date`, `git mv`, re-point cross-references, re-lint). These assets ship in the same plugin as task_fix.
 </authority>
+
+<path_resolution>
+The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to the base `task` skill's `SKILL.md`, not next to this one. After reading that base `SKILL.md` (per `<authority>`), resolve each script's absolute path by combining the directory you loaded it from with `scripts/<script-name>` and invoke that absolute path — never a bare `scripts/...`, which resolves against the current working directory (the target project) rather than the skill, and so finds the project's own `scripts/` or nothing. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed.
+</path_resolution>
 
 <workflow>
 Run all four phases in order.

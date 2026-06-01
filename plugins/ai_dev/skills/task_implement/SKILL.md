@@ -1,7 +1,7 @@
 ---
 name: task_implement
 description: Implement one existing task file end-to-end — turn the work a tasks/ file describes into shipped code, tests, and a passing suite, confirming every acceptance item. Use when the user points at a single task and wants it built or done now. For creating, checking readiness, verifying a believed-done task, or closing/archiving, the create / check / audit / finish siblings apply instead.
-version: 1.0.1
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -26,6 +26,10 @@ Route elsewhere when the user wants to create a task (`task_create` or the base 
 <authority>
 The `task` skill's `SKILL.md` is the source of truth for the task-file shape; read it and use its `<discover>` step to locate `tasks/` and its `<file_format>` / `<body>` sections to read the task you are implementing. Implement the *work the task describes* — do not restate task-skill rules here.
 </authority>
+
+<path_resolution>
+The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to the base `task` skill's `SKILL.md`, not next to this one. After reading that base `SKILL.md` (per `<authority>`), resolve each script's absolute path by combining the directory you loaded it from with `scripts/<script-name>` and invoke that absolute path — never a bare `scripts/...`, which resolves against the current working directory (the target project) rather than the skill, and so finds the project's own `scripts/` or nothing. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed.
+</path_resolution>
 
 <workflow>
 Run in order. Make no code edit before the first three steps are complete.

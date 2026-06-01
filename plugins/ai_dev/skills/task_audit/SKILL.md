@@ -1,7 +1,7 @@
 ---
 name: task_audit
 description: Verify one task's claimed completion against the actual codebase — confirm every body item, acceptance check, and backing test, run the suite, and report a verdict (clean, or gaps with fixes). Read-only: it makes no change. Use when a task is believed done and you want it checked before closing, or to re-check an archived task for drift. For readiness before building use task_check; for doing the work use task_implement; for closing use task_finish.
-version: 1.0.2
+version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -29,6 +29,10 @@ Route elsewhere when the user wants to assess a task's readiness *before* buildi
 <authority>
 The base `task` skill's `SKILL.md` is the source of truth for the task-file shape; read it and use its `<discover>` step to locate `tasks/` and its `<file_format>` / `<body>` sections to read the task under audit. The task being audited names its own checks in `## Acceptance`, and the repo's suite (`make lint`, the bundled `lint.py`, the matching `tests/<skill>/script_tests`) is the verification surface — run what the task and repo name.
 </authority>
+
+<path_resolution>
+The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to the base `task` skill's `SKILL.md`, not next to this one. After reading that base `SKILL.md` (per `<authority>`), resolve each script's absolute path by combining the directory you loaded it from with `scripts/<script-name>` and invoke that absolute path — never a bare `scripts/...`, which resolves against the current working directory (the target project) rather than the skill, and so finds the project's own `scripts/` or nothing. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed.
+</path_resolution>
 
 <workflow>
 Run in order, read-only throughout — make no edit to the task or the code.

@@ -1,7 +1,7 @@
 ---
 name: task_finish
 description: Close out one task in the project's tasks/ backlog — set its status to implemented or deferred, bump updated, git mv it to archive/, re-point the links the move touches, and re-lint. Use when the user wants a single task finished, marked done, deferred, parked, or archived. For creating, checking readiness, doing the work, or verifying a task, the create / check / implement / audit siblings apply instead.
-version: 1.0.1
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -27,6 +27,10 @@ Route elsewhere when the user wants to create a task (`task_create` or the base 
 <authority>
 The base `task` skill's `SKILL.md` is the single source of truth; keep every shared rule there and follow it rather than copying it. Read that skill and apply its `<discover>` step to locate `tasks/`, its `<archive>` workflow for the five close-out steps, and its `<lint>` step (the bundled `lint.py`) to confirm the result. These assets ship in the same plugin as task_finish, so they are present wherever task_finish is.
 </authority>
+
+<path_resolution>
+The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to the base `task` skill's `SKILL.md`, not next to this one. After reading that base `SKILL.md` (per `<authority>`), resolve each script's absolute path by combining the directory you loaded it from with `scripts/<script-name>` and invoke that absolute path — never a bare `scripts/...`, which resolves against the current working directory (the target project) rather than the skill, and so finds the project's own `scripts/` or nothing. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed.
+</path_resolution>
 
 <workflow>
 Close one task, in order:

@@ -1,7 +1,7 @@
 ---
 name: task_check
 description: Assess whether one task file in tasks/ is ready to hand to an implementer — judge it against a readiness checklist (structure, scope sizing, focus, complexity, contradictions, ambiguity) and report a General assessment plus a ranked Issues list. Read-only: it judges, it does not edit. Use before building a task. For doing the work use task_implement; for verifying a believed-done task use task_audit; for whole-tree health use task_fix.
-version: 1.0.1
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -26,6 +26,10 @@ Route elsewhere when the user wants to write a task (`task_create` or the base `
 <authority>
 The base `task` skill's `SKILL.md` is the source of truth for the task-file shape; read it and use its `<discover>` step to locate `tasks/` and its `<file_format>` / `<body>` / `<one_task_per_file>` / `<split_at_300>` rules as the structural bar you assess against. Assess the task — do not edit it.
 </authority>
+
+<path_resolution>
+The base `task` skill's `discover_tasks.sh` ships in `scripts/` next to that skill's `SKILL.md`, not next to this one. After reading the base `SKILL.md` (per `<authority>`), resolve the script's absolute path by combining the directory you loaded it from with `scripts/<script-name>` and invoke that absolute path — never a bare `scripts/...`, which resolves against the current working directory (the target project) rather than the skill. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed.
+</path_resolution>
 
 <assessment>
 The bar: a one-shot AI coder receives this task as its sole input and produces a full implementation in a single pass. Evaluate every issue against that bar.
