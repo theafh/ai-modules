@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one well-formed task file in the project's tasks/ backlog, fast and with minimal ceremony. Use when the user wants a single task or todo written for upcoming work — "make a task for X", "add a todo to do Y", "file a task about Z" — and wants just that one file, not a broader backlog session. For listing, querying, updating, finishing, archiving, or linting tasks, the broader task skill applies instead.
-version: 1.0.3
+version: 1.0.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -29,6 +29,7 @@ The `task` skill's `SKILL.md` is the single source of truth; keep every shared r
 
 - `<file_format>` — `<naming>`, `<frontmatter>` (including the `date`-stamped `created` / `updated`), `<markdown_policy>`, and the `<body>` sections.
 - `<discover>` — locate or scaffold `tasks/` through the bundled `discover_tasks.sh` / `init_tasks.sh`.
+- `<create>`'s `<prior_art>` — the two-tier duplicate / already-done gate run before writing.
 - `<lint>` — the bundled `lint.py` and what each finding means.
 
 These assets ship in the same plugin as task_create, so they are present wherever task_create is.
@@ -43,16 +44,17 @@ Create one file, in order:
 
 1. **Discover.** Run the `task` skill's `<discover>` step to resolve `tasks/`, scaffolding it when it is missing.
 2. **Gather.** Confirm the single item to capture and collect enough context to fill the `<body>` sections so a single-shot implementer could act on it from the file alone. When the context is too thin for that, ask one sharp clarifying question, then proceed.
-3. **Scope and name.** Pick a `<scope>` from the groupings already present in `tasks/`, and a compact `<name>` that is unique across both `tasks/` and `tasks/archive/`. List both directories once to keep the name collision-free.
-4. **Timestamp.** Run `date +%Y-%m-%dT%H:%M:%S` once and use its output verbatim for both `created` and `updated`.
-5. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`.
-6. **Lint.** Run the linter per the `task` skill's `<lint>` step (`lint.py --quiet`) and resolve every blocking finding before reporting the file as created.
+3. **Prior-art gate.** Run the `task` skill's `<prior_art>` step: a fast `rg` scan of `tasks/` + `tasks/archive/` that escalates to an in-depth project analysis only when the scan hits. When a match shows the work is already an open task, partially covered, already implemented, or already deferred, surface it with evidence and let the user decide how to proceed before writing — never auto-resolve.
+4. **Scope and name.** Pick a `<scope>` from the groupings already present in `tasks/`, and a compact `<name>` that is unique across both `tasks/` and `tasks/archive/`. List both directories once to keep the name collision-free.
+5. **Timestamp.** Run `date +%Y-%m-%dT%H:%M:%S` once and use its output verbatim for both `created` and `updated`.
+6. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`.
+7. **Lint.** Run the linter per the `task` skill's `<lint>` step (`lint.py --quiet`) and resolve every blocking finding before reporting the file as created.
 
 Keep this to one atomic task file. When the request actually carries several independent items, or a single item would run past 300 lines, hand the multi-task split to the `task` skill rather than expanding the work here.
 </workflow>
 
 <output_contract>
-Report the relative path of the one task file created and confirm the linter came back clean. Surface any assumption you made about scope, name, or body so the user can correct it.
+Report the relative path of the one task file created and confirm the linter came back clean. Surface any assumption you made about scope, name, or body so the user can correct it. When the prior-art gate found a match, report the classification and evidence and reflect the user's decision instead of silently creating a duplicate.
 </output_contract>
 
 <family>

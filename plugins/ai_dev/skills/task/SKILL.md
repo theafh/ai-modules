@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.1.5
+version: 1.1.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -141,6 +141,25 @@ Run every step in order:
 <gather>
 Confirm the user's intent and gather enough material — current state, target behaviour, relevant files — to fill the body sections in `<body>`. If context is too thin to write something a single-shot AI coder could implement from, ask one sharp clarifying question before writing.
 </gather>
+
+<prior_art>
+Before naming and writing, confirm the request is not already captured or already built — a two-tier gate that stays cheap until there is a reason to dig.
+
+**Tier 1 — fast scan, always.** Derive a few distinctive terms from the task's intent and `rg` them across both `tasks/` and `tasks/archive/` (the `<query>` search). This is a quick keyword pass over every existing task file, open and closed.
+
+- **No hits** → the request is novel as far as the backlog records; continue to `<scope>`. Stop here; do not escalate.
+- **One or more hits** → escalate to Tier 2, scoped to the matched material.
+
+**Tier 2 — in-depth analysis, only when Tier 1 hits.** Investigate whether the requested work is genuinely new, partly done, or fully done. Read each matched task file in full, and inspect the project itself — the code, modules, and docs the request would touch — to judge the real implementation state rather than trusting a task's stated status. Classify the request as one of:
+
+- **Novel** — the hits were incidental keyword overlap; nothing actually covers this work. Continue to `<scope>`.
+- **Already an open task** — an open task in `tasks/` already captures this work.
+- **Partially covered** — some of the requested work already exists (in an open task, in an archived `implemented`/`deferred` task, or already in the codebase) and some is genuinely new.
+- **Already implemented** — the codebase already does this, whether or not a task records it.
+- **Already deferred** — an archived `deferred` task already weighed this and parked it.
+
+**Surface, never auto-resolve.** Report the classification with concrete evidence — the matched file paths and the specific code that already covers the work — and ask the user how to proceed: create as new anyway, fold the delta into the existing task, narrow this task to only the genuinely-new part, reopen the deferred task, or skip creation. Write a file only after the user's call. When they choose to proceed anyway, cross-link the related task(s) in `## Context`.
+</prior_art>
 
 <scope>
 Pick the `<scope>` from the project's existing groupings — skill family, sub-project, module, feature area, service. Reuse a scope already present in the directory whenever it fits; introduce a new one only when no existing scope applies.
