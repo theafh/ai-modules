@@ -2,7 +2,7 @@
 description: Add a rule to the task skills that task file bodies read as what to do (positive, action-oriented), with negatives kept for genuine non-goals or deferred scope.
 scope: "task_* family skills"
 created: 2026-06-02T19:16:33
-updated: 2026-06-02T21:12:48
+updated: 2026-06-02T22:46:06
 status: open
 ---
 
@@ -27,8 +27,8 @@ source of truth the front ends defer to (`task_create` and `task_fix` both cite
 `task`'s `SKILL.md` as authority). Files in play, all under
 `plugins/ai_dev/skills/`:
 
-- `task/SKILL.md` — `<body>` (lines ~100–109) defines the Goal / Context /
-  Approach / Acceptance sections. This is where the authoring rule belongs.
+- `task/SKILL.md` — `<body>` defines the Goal / Context / Approach / Acceptance
+  sections. This is where the authoring rule belongs.
 - `task_create/SKILL.md` — `<authority>` already points at `task`'s `<body>`;
   its `<workflow>` "Write" step is where the rule applies on creation.
 - `task_fix/SKILL.md` — the whole-tree repair pass; this is where a body-framing

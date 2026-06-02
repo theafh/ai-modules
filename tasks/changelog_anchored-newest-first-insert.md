@@ -2,7 +2,7 @@
 description: Make the newest-first day insertion a single anchored prepend against a stable header boundary, so the agent stops mis-splicing day order.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:21:26
-updated: 2026-06-02T21:12:48
+updated: 2026-06-02T22:42:50
 status: open
 ---
 
@@ -34,7 +34,7 @@ against it.
 - **Define a stable anchor in `<output_contract>`.** The header block (H1 + legend/intro lines) ends at a recognizable boundary; the first `## YYYY-MM-DD` heading is the top of the day list. The invariant: new day sections always go **immediately between the header block and the current first day heading**, never inside the header, never below an existing day.
 - **Incremental run (few new days — the common case): one anchored prepend.** Build all the run's day sections into a single block already ordered newest-first, then perform **one** insert that splices that block between the header and the first existing day heading (anchor the edit on that first existing heading). One edit, one seam, nothing reordered.
 - **Cold build (no `CHANGELOG.md`, long history): per-day insert against the same anchor.** Keep `<context_safety>` (process one day at a time oldest→newest, flush before the next so prior days fall out of context). Each completed day is inserted immediately after the header block — the same stable anchor — so processing oldest→newest yields newest-first without holding the whole history in context. The anchor is identical to the incremental case; only the batch size differs, and that is governed by context-safety.
-- **Bound the read needed to find the seam.** To locate the insertion point, read only the header block plus the first existing `## ` heading (a small bounded read), not the whole file.
+- **Bound the read needed to find the seam.** To locate the insertion point, read only the header block plus the first existing `##` heading (a small bounded read), not the whole file.
 - **Rewrite `<newest_first>`, `<day_loop>`, and the `<procedure>` insert substeps** to state the anchored operation explicitly (single-block prepend for incremental, per-day anchored insert under context-safety for cold build), replacing the current loose "insert directly after the header" phrasing.
 - Keep the skill self-contained — describe the operation inline; no pointer to sibling skills in the shipped prose.
 

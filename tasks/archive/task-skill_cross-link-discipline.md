@@ -2,8 +2,8 @@
 description: Add a rule to the task skills that a task links to another task file only when the link marks a dependency, changes how the work is implemented, or points at a file that will be co-edited.
 scope: plugins/ai_dev/skills/task
 created: 2026-06-02T21:00:35
-updated: 2026-06-02T21:33:26
-status: open
+updated: 2026-06-02T22:43:40
+status: implemented
 ---
 
 # Make value-only task cross-linking a rule in the task skills
@@ -61,7 +61,7 @@ links were kept, relatedness-only links dropped. Encoding it stops the judgment
 from being re-litigated per cleanup, and keeps both failure modes in check — dead
 decorative links *and* over-pruning that strips genuine organisational value.
 
-Coordinate with [task-skill_positive-task-body-rule.md](task-skill_positive-task-body-rule.md):
+Coordinate with [task-skill_positive-task-body-rule.md](../task-skill_positive-task-body-rule.md):
 it adds a different authoring rule to the **same** base `task` `<body>` guidance
 and likewise edits `task_create` and `task_fix`, so the two touch overlapping
 regions and should land in a deliberate order. This link is itself an instance of

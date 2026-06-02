@@ -230,14 +230,16 @@ else
   fi
 fi
 
-# Instruction files that need rule references
-CLAUDE_MD="${CLAUDE_DIR}/CLAUDE.md"
-AGENTS_MD="${CODEX_DIR}/AGENTS.md"
-GEMINI_MD="${GEMINI_DIR}/GEMINI.md"
-
-# Markers for the managed block
-MARKER_BEGIN="<!-- BEGIN GLOBAL RULES -->"
-MARKER_END="<!-- END GLOBAL RULES -->"
+# Dormant managed-global-rules feature, parked to keep its exact strings and
+# intent on record: these five inputs once fed a routine that wrote a
+# <!-- BEGIN/END GLOBAL RULES --> block into each tool's instruction file.
+# To revive, re-enable these declarations and restore the routine that writes
+# the marker-delimited block into each instruction file.
+# CLAUDE_MD="${CLAUDE_DIR}/CLAUDE.md"
+# AGENTS_MD="${CODEX_DIR}/AGENTS.md"
+# GEMINI_MD="${GEMINI_DIR}/GEMINI.md"
+# MARKER_BEGIN="<!-- BEGIN GLOBAL RULES -->"
+# MARKER_END="<!-- END GLOBAL RULES -->"
 DEPLOYED_ARTIFACTS_LOG="${SCRIPT_DIR}/deployed_artefacts.log"
 DEPLOYMENT_CONF="${SCRIPT_DIR}/deployment.conf"
 

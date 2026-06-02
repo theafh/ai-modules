@@ -1,7 +1,7 @@
 ---
 name: task_fix
 description: Audit and repair the whole tasks/ backlog tree in one pass — run the linter, walk every task, auto-fix the mechanical findings (naming, frontmatter, status/location, links, datetimes), and surface judgement calls (splits, cross-task contradictions) for review. Inline, no agent. Use to health-check, clean up, audit, or lint the task backlog. For a single task's readiness use task_check; to verify one believed-done task against the codebase use task_audit.
-version: 1.1.1
+version: 1.1.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -38,8 +38,8 @@ The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to 
 Run all four phases in order.
 
 1. **Orient.** Read the base `task` skill's rules once — naming, frontmatter, the `<body>` anatomy, the standard-markdown policy, the 300-line split rule, and the `<lint>` / `<archive>` workflows. These are the bar every fix honors.
-2. **Assess.** Resolve `tasks/` via `<discover>`, run `lint.py` over the tree, and bucket its findings (blocking / warn / info). Then walk every task applying the **best-effort advisory** checks the linter can't: *topic mixing* (one file covering two unrelated units of work — flag for a split) and *single-shot-readiness* (a body that no longer reads as something an implementer could act on from the file alone — an empty section, a dangling "TBD", context that assumes the original chat).
-3. **Remediate.** Auto-fix the safe mechanical findings in place: status/location mismatch → move via the base `<archive>` workflow (including its cross-reference re-pointing); missing or malformed frontmatter → fill; non-ISO datetime → normalise; broken local link → re-point. Bump `updated` from `date` on every file you change. Leave the judgement calls below untouched.
+2. **Assess.** Resolve `tasks/` via `<discover>`, run `lint.py` over the tree, and bucket its findings (blocking / warn / info). Then walk every task applying the **best-effort advisory** checks the linter can't: *topic mixing* (one file covering two unrelated units of work — flag for a split), *single-shot-readiness* (a body that no longer reads as something an implementer could act on from the file alone — an empty section, a dangling "TBD", context that assumes the original chat), and *cross-link value* (a cross-reference to another task that does no work, judged against the cross-link discipline in the base `task` skill's `<markdown_policy>`).
+3. **Remediate.** Auto-fix the safe mechanical findings in place: status/location mismatch → move via the base `<archive>` workflow (including its cross-reference re-pointing); missing or malformed frontmatter → fill; non-ISO datetime → normalise; broken local link → re-point; an unambiguous reverse-duplicate cross-link (the relationship is already stated on the linked side) → remove. Bump `updated` from `date` on every file you change. Leave the judgement calls below untouched — a cross-link whose value is a genuine call belongs in `<surface_for_review>`, never an auto-delete.
 4. **Verify.** Re-lint and triage rather than chase zero-warn: drive blocking findings to zero and confirm the mechanical warns are resolved, while leaving the judgement-call warns (an oversized page that needs a split) surfaced-and-accepted for the user. The clean bar is **0 blocking, mechanical warns resolved, judgement-call warns reported** — not zero-warn.
 </workflow>
 
@@ -48,6 +48,7 @@ Surface these for human review; do not silently change them:
 
 - Oversized pages (>300 lines) that need a split.
 - Scope ambiguity that needs a human call on the right `scope:` value.
+- **Cross-links whose value is a judgement call** — a relatedness-only reference that might still be load-bearing. Flag it for the user; auto-removing on a value judgement risks stripping a genuinely organising link, so reserve the auto-fix for the unambiguous reverse-duplicate case.
 - **Contradictions between tasks** — mirror `wiki_fix`'s contested protocol: flag both sides for human review, never auto-resolve.
 </surface_for_review>
 

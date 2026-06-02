@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.1.7
+version: 1.1.8
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -93,6 +93,7 @@ Task bodies are **100% CommonMark-standard markdown**. The YAML frontmatter at t
 - **No footnotes.** `[^name]` references and `[^name]: …` definitions are non-standard. Place attribution inline as a normal markdown link next to the claim.
 - **No wikilinks.** `[[target]]` is an Obsidian extension. Use `[text](relative-path.md)` for cross-references.
 - **Local cross-references are standard markdown links.** Relative `.md` links to other task files (under `tasks/` or `tasks/archive/`) must resolve on disk — the linter blocks broken targets.
+- **Link to another task file when the cross-reference carries weight.** Add a link when it marks a **dependency** (this task builds on, extends, or must follow the other), when reading the linked task would **change how this task is implemented** (it defines a rubric, format, or interface this task consumes), or when the **linked file will be co-edited** (a shared region, a coordinated double-edit, or competing mechanisms to reconcile). The settling test: would reading the linked task, or knowing it exists, change how you implement this task or edit this file? Keep the link when yes; leave out a relatedness-only reference — a bare "see also" / "distinct from" / "pairs with", or a reverse-duplicate pointer whose relationship the linked side already states — since reading the target changes nothing about the work.
 
 Simplicity, single-topic scope, and standard tooling beat every non-standard extension.
 </markdown_policy>

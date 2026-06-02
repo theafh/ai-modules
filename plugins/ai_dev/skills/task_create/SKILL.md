@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one well-formed task file in the project's tasks/ backlog, fast and with minimal ceremony. Use when the user wants a single task or todo written for upcoming work — "make a task for X", "add a todo to do Y", "file a task about Z" — and wants just that one file, not a broader backlog session. For listing, querying, updating, finishing, archiving, or linting tasks, the broader task skill applies instead.
-version: 1.0.5
+version: 1.0.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -48,7 +48,7 @@ Create one file, in order:
 3. **Prior-art gate.** Run the `task` skill's `<prior_art>` step: a fast `rg` scan of `tasks/` + `tasks/archive/` that escalates to an in-depth project analysis only when the scan hits. When a match shows the work is already an open task, partially covered, already implemented, or already deferred, surface it with evidence and let the user decide how to proceed before writing — never auto-resolve.
 4. **Scope and name.** Pick a `<scope>` from the groupings already present in `tasks/`, and a compact `<name>` that is unique across both `tasks/` and `tasks/archive/`. List both directories once to keep the name collision-free.
 5. **Timestamp.** Run `date +%Y-%m-%dT%H:%M:%S` once and use its output verbatim for both `created` and `updated`.
-6. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`.
+6. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`. When filling `## Context` and any cross-references, apply the cross-link discipline from the `task` skill's `<markdown_policy>` so each link to another task earns its place.
 7. **Lint.** Run the linter per the `task` skill's `<lint>` step (`lint.py --quiet`) and resolve every blocking finding before reporting the file as created.
 
 When this one task is derived from source material — a pasted note, a chat turn, a `todo.md`, a PDF, any pre-existing body of meaning — apply the `task` skill's `<lossless_conversion>` contract on your own before reporting done: confirm the single task carries every relevant unit of meaning from that source, propagate source-wide content into it, and leave the source's keep/drop disposition to the user. A single task does not exempt the check — one source can hold more meaning than it captures.

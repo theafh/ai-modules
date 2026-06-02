@@ -2,8 +2,8 @@
 description: Park the dormant managed-global-rules variables in deployment.sh as commented scaffolding with a revival note, clearing the SC2034 shellcheck findings.
 scope: deployment
 created: 2026-06-02T19:23:55
-updated: 2026-06-02T20:57:24
-status: open
+updated: 2026-06-02T22:59:28
+status: implemented
 ---
 
 # Park the dormant managed-global-rules scaffolding in deployment.sh
@@ -13,8 +13,8 @@ status: open
 `deployment/deployment.sh` carries five variables left over from a
 managed-global-rules feature that another repo used to inject a shared rules
 block into each tool's instruction file. The feature is not wired up here, so the
-variables are declared and never read, and `make lint` (which runs
-`shellcheck deployment/deployment.sh` with no severity filter) exits 1 on five
+variables are declared and never read, and `shellcheck` — which `make lint`
+runs over every shell file with no severity filter — exits 1 on five
 **SC2034 "appears unused"** warnings.
 
 Keep the scaffolding for possible future revival rather than deleting it, and
@@ -55,7 +55,7 @@ Background: the global-rules injection was used in another repo's copy of this
 script. Whether this repo ever uses it again is undecided — one likely direction
 is codifying global rules into skills instead — so the scaffolding is parked, not
 removed, pending that decision. This task is independent of
-[the conf/log relocation task](deployment_relocate-state-to-home.md), which
+[the conf/log relocation task](../deployment_relocate-state-to-home.md), which
 touches lines 241–242 but not the parked variables; whichever lands first, the
 other still applies cleanly.
 
