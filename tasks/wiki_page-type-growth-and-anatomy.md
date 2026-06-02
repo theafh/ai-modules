@@ -2,7 +2,7 @@
 description: Add a `growth:` declaration per wiki page type and teach the lint to defer size findings for declared-backlog/monotonic-append/synthesis pages; disambiguate todo anatomy for non-canonical sources.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:37
-updated: 2026-05-31T01:27:00
+updated: 2026-06-02T20:57:24
 status: open
 ---
 

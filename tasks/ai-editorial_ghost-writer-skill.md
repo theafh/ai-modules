@@ -2,7 +2,7 @@
 description: "Build the ghost_writer skill: rules for writing and especially editing strong prose, with one ruleset per genre — scientific, essays, blog posts, social media, case studies."
 scope: "ai_editorial plugin"
 created: 2026-06-01T23:31:06
-updated: 2026-06-01T23:31:06
+updated: 2026-06-02T21:12:48
 status: open
 ---
 
@@ -25,7 +25,6 @@ Add the `ghost_writer` skill to the `ai_editorial` plugin. It carries the rules 
 1. `plugins/ai_editorial/skills/ghost_writer/SKILL.md` — frontmatter `name: ghost_writer`, `version: 1.0.0`; pseudo-XML body (role, when-to-activate, the write-and-edit workflow keyed by genre, output contract). State that editing existing text is the primary mode.
 2. `skills/ghost_writer/references/` — the shared prose-writing and editing rules, plus one ruleset per genre: scientific writing, essays, blog posts, social media, case studies. Each ruleset states what good looks like for that genre and how to edit toward it. Populate from the source gathered in Context.
 3. If the file set outgrows a single coherent unit — for instance if each genre ruleset becomes substantial — split the per-genre rulesets into a follow-up task rather than letting this one pass 300 lines.
-4. Adding a skill to an existing plugin is a plugin edit, so bump the `ai_editorial` plugin meta — both `plugin.json` files and the marketplace entry — in lockstep in the same commit, per `CLAUDE.md`. The skill itself ships at `1.0.0`.
 
 ## Acceptance
 

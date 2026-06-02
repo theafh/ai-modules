@@ -2,7 +2,7 @@
 description: "Scaffold and register the new ai_editorial plugin shell — both plugin.json files, README, skills/ dir, marketplace entry, and root README update — at version 1.0.0."
 scope: "ai_editorial plugin"
 created: 2026-06-01T23:31:06
-updated: 2026-06-01T23:31:06
+updated: 2026-06-02T21:12:48
 status: open
 ---
 
@@ -36,6 +36,6 @@ Non-goal: the skills themselves land in the two sibling tasks — this task ship
 
 - `plugins/ai_editorial/` holds both `plugin.json` files (the `.codex-plugin` one carrying `"skills": "./skills/"`), a `README.md`, and a `skills/` directory.
 - The plugin appears in `.claude-plugin/marketplace.json` and in the root `README.md` layout tree and **Plugins** list.
-- The plugin, both `plugin.json` files, and the marketplace entry are all at `1.0.0` (a new plugin ships at 1.0.0 with no bump in the introducing commit).
+- The plugin, both `plugin.json` files, and the marketplace entry are all at `1.0.0`.
 - `make lint` comes back clean (markdownlint, `jq` syntax check, shellcheck).
 - `./deployment/deployment.sh --global --dry-run` previews `ai_editorial` without error.

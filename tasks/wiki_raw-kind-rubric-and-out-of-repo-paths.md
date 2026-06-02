@@ -2,7 +2,7 @@
 description: Document the `raw/<kind>/` selection rubric and extend `source_path:` to cover out-of-repo local files in the wiki SCHEMA template and skill.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:04
-updated: 2026-05-31T01:27:00
+updated: 2026-06-02T20:57:24
 status: open
 ---
 
