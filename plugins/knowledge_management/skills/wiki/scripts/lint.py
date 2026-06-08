@@ -10,20 +10,24 @@ Usage:
     python3 lint.py [WIKI_PATH] [--quiet]
 
 Discovery if WIKI_PATH is omitted (mirrors ``scripts/discover_wiki.sh``):
-    Walk up from CWD toward ``$HOME``. At each level, ``.no_wiki`` skips
-    to the parent and a present ``wiki/`` terminates the walk with a hit.
-    Auto-resolve only when the closest non-opted-out level already has
-    ``wiki/`` (use it) or when every level up through ``$HOME`` is opted
-    out (use ``$HOME/wiki``). Otherwise — multiple creation candidates,
-    no existing wiki yet — exit 1 with the candidate list and a hint to
-    pass ``--wiki-path``, since lint runs non-interactively.
-    Outside ``$HOME``, fall back to the pre-walk-up behavior:
-    ``./wiki/`` → use it, ``./.no_wiki`` → use ``~/wiki``,
-    neither → exit with the two-candidate hint.
+    A directory is a wiki when its basename contains "wiki"
+    (case-insensitive) and at least two of SCHEMA.md / index.md / log.md
+    exist in it and it carries no ``.no_wiki``. If CWD is itself a wiki,
+    resolve to it directly. Otherwise walk up from CWD toward ``$HOME``:
+    at each level ``.no_wiki`` skips to the parent and the first child
+    directory recognised as a wiki terminates the walk. Auto-resolve when
+    the closest non-opted-out level holds a recognised wiki, or when every
+    level up through ``$HOME`` is opted out (use ``$HOME/wiki``).
+    Otherwise — no recognised wiki, only creation candidates — exit 2 with
+    the candidate list and a hint to pass the wiki path as the positional
+    argument, since lint runs non-interactively. Outside ``$HOME``, fall
+    back: a recognised wiki child of CWD → use it, ``./.no_wiki`` → use
+    ``~/wiki``, neither → exit 2 with the two-candidate list.
 
 Exit codes:
     0  no blocking issues
     1  one or more blocking issues found
+    2  wiki location undecided (discovery could not pick a wiki)
 """
 
 from __future__ import annotations
@@ -43,17 +47,32 @@ from typing import Callable, Iterator
 # Discovery
 # ---------------------------------------------------------------------------
 
-def discover_wiki(arg: str | None) -> Path:
-    """Resolve the wiki by walking up from CWD to ``$HOME``.
+def is_wiki(d: Path) -> bool:
+    """True when ``d`` is a usable wiki: it carries no ``.no_wiki`` opt-out,
+    its basename contains "wiki" (case-insensitive), and at least two of the
+    ``SPECIAL_FILES`` markers (SCHEMA.md / index.md / log.md) exist directly
+    inside it. ``.no_wiki`` takes precedence, so a retired wiki is dropped.
+    """
+    if (d / ".no_wiki").is_file():
+        return False
+    if "wiki" not in d.name.lower():
+        return False
+    present = sum(1 for marker in SPECIAL_FILES if (d / marker).is_file())
+    return present >= 2
 
-    Mirrors ``scripts/discover_wiki.sh``: at each level, ``.no_wiki``
-    skips to the parent, ``wiki/`` terminates the walk with a hit, and
-    every other level becomes a creation candidate. Auto-resolves only
-    when the closest non-opted-out level already has ``wiki/`` or when
+
+def discover_wiki(arg: str | None) -> Path:
+    """Resolve the wiki, mirroring ``scripts/discover_wiki.sh``.
+
+    A directory is a wiki per ``is_wiki`` (name contains "wiki" + >=2
+    markers, no ``.no_wiki``). If CWD is itself a wiki, resolve to it
+    directly. Otherwise walk up from CWD to ``$HOME``: ``.no_wiki`` skips a
+    level, the first child (lexical order) recognised as a wiki terminates
+    the walk, every other level becomes a creation candidate. Auto-resolves
+    when the closest non-opted-out level holds a recognised wiki, or when
     every level up through ``$HOME`` is opted out (use ``$HOME/wiki``).
-    Bails with a hint when the climb leaves multiple creation
-    candidates — lint runs non-interactively, so ambiguity becomes the
-    user's call via an explicit ``--wiki-path``.
+    Exits 2 with a candidate list and a positional-argument hint when the
+    climb leaves only creation candidates — lint runs non-interactively.
     """
     if arg:
         path = Path(arg).expanduser().resolve()
@@ -63,6 +82,13 @@ def discover_wiki(arg: str | None) -> Path:
 
     cwd = Path.cwd().resolve()
     home = Path.home().resolve()
+
+    # Standing in a wiki resolves to it directly, before any walk-up and
+    # before the under-/outside-$HOME split. .no_wiki at CWD suppresses this
+    # (folded into is_wiki), so a retired wiki you stand in is not resolved.
+    if is_wiki(cwd):
+        return cwd
+
     under_home = cwd == home or home in cwd.parents
 
     if under_home:
@@ -83,13 +109,18 @@ def discover_wiki(arg: str | None) -> Path:
     for level in ladder:
         if (level / ".no_wiki").is_file():
             continue
-        if (level / "wiki").is_dir():
-            candidates.append(("existing", (level / "wiki").resolve()))
+        try:
+            children = sorted(level.iterdir())
+        except OSError:
+            children = []
+        existing = next((c for c in children if c.is_dir() and is_wiki(c)), None)
+        if existing is not None:
+            candidates.append(("existing", existing.resolve()))
             break
         candidates.append(("available", level))
 
     # Outside-$HOME single-CWD fallback: if the walk-up is disabled and the
-    # CWD did not yield an EXISTING wiki, append $HOME as a second creation
+    # CWD did not yield an existing wiki, append $HOME as a second creation
     # candidate so the caller can pick "create here or fall back to the
     # global wiki" — mirrors discover_wiki.sh's same-named branch.
     if not under_home and candidates and candidates[-1][0] != "existing":
@@ -105,10 +136,13 @@ def discover_wiki(arg: str | None) -> Path:
         return candidates[0][1]
 
     listing = "\n  ".join(f"{kind}: {path}" for kind, path in candidates)
-    sys.exit(
-        "wiki location is undecided; pass an explicit --wiki-path. "
-        f"walk-up candidates from {cwd} were:\n  {listing}"
+    print(
+        "wiki location is undecided; pass the wiki path as the positional "
+        f"argument, e.g. `python3 lint.py /path/to/wiki`. walk-up candidates "
+        f"from {cwd} were:\n  {listing}",
+        file=sys.stderr,
     )
+    sys.exit(2)
 
 
 # Top-level files that aren't pages but live in the wiki root.
@@ -1199,7 +1233,7 @@ def main() -> int:
     parser.add_argument(
         "wiki_path",
         nargs="?",
-        help="Path to the wiki directory. If omitted, walks up from CWD toward $HOME (same algorithm as scripts/discover_wiki.sh): uses the closest non-opted-out `wiki/`, or $HOME/wiki when every level is opted out via .no_wiki, otherwise exits with a candidate list.",
+        help="Path to the wiki directory. If omitted, discovers it the way scripts/discover_wiki.sh does: a directory whose basename contains 'wiki' with >=2 of SCHEMA.md/index.md/log.md present and no .no_wiki counts as a wiki; uses CWD if it is one, else the closest such wiki walking up toward $HOME, else $HOME/wiki when every level is opted out, otherwise exits 2 with a candidate list.",
     )
     parser.add_argument("--quiet", action="store_true", help="Suppress info-level findings.")
     args = parser.parse_args()

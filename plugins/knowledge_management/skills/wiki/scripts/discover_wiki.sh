@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # discover_wiki.sh — print the wiki path on stdout, walking up from CWD.
 #
+# A directory is recognised as a wiki when its basename contains "wiki"
+# (case-insensitive) AND at least two of SCHEMA.md / index.md / log.md
+# exist directly inside it AND it carries no .no_wiki opt-out.
+#
+# CWD short-circuit (exit 0): when CWD is itself a wiki by that test, print
+# CWD and stop — before any walk-up.
+#
 # Walk-up discovery (when CWD is at or under $HOME):
 #   For each level from CWD up to and including $HOME:
 #     1. <level>/.no_wiki present → opted out; skip and continue up.
-#     2. <level>/wiki/   present → record as the existing wiki and STOP
-#        walking (do not search above an existing wiki).
+#     2. a child directory recognised as a wiki (lexically first wins) →
+#        record as the existing wiki and STOP walking.
 #     3. neither                  → record as an "available" creation
 #        candidate and continue up.
 #
 # Auto-resolve (exit 0, single path on stdout):
-#   - The closest non-opted-out level already has wiki/ (i.e. the very
-#     first hit during the walk is an existing wiki) → print that path.
+#   - CWD is itself a wiki (short-circuit), or the closest non-opted-out
+#     level already holds a recognised wiki → print that path.
 #   - Every visited level was opted out via .no_wiki, all the way up
 #     through $HOME → print "$HOME/wiki" (the explicit "use home" chain).
 #
@@ -29,7 +36,7 @@
 #
 # Outside-$HOME fallback (CWD is not at or under $HOME):
 #   The walk-up does not apply; behave as the pre-walk-up script:
-#   - <CWD>/wiki/   → print "$CWD/wiki", exit 0.
+#   - a recognised wiki child of CWD → print it, exit 0.
 #   - <CWD>/.no_wiki → print "$HOME/wiki",  exit 0.
 #   - neither         → exit 2 with "AVAILABLE:$CWD" and "AVAILABLE:$HOME"
 #     so the caller can ask the user.
@@ -63,16 +70,21 @@ case "${1:-}" in
     cat <<'USAGE'
 discover_wiki.sh — print the wiki path on stdout, walking up from CWD.
 
+A directory is a wiki when its basename contains "wiki" (case-insensitive)
+AND >=2 of SCHEMA.md / index.md / log.md exist in it AND it has no .no_wiki.
+
+CWD short-circuit (exit 0): if CWD is itself a wiki, print CWD and stop.
+
 Walk-up discovery (when CWD is at or under $HOME):
   For each level from CWD up to and including $HOME:
     1. <level>/.no_wiki present → opted out; skip and continue up.
-    2. <level>/wiki/   present → record as the existing wiki and STOP
-       walking (do not search above an existing wiki).
+    2. a child dir recognised as a wiki (lexically first) → record as the
+       existing wiki and STOP walking.
     3. neither                  → record as an "available" creation
        candidate and continue up.
 
 Auto-resolve (exit 0, single path on stdout):
-  - The closest non-opted-out level already has wiki/.
+  - CWD is itself a wiki, or the closest non-opted-out level holds one.
   - Every visited level was opted out via .no_wiki up through $HOME →
     print "$HOME/wiki".
 
@@ -83,7 +95,7 @@ Ask-the-user (exit 2, candidate list on stdout):
     between CWD (inclusive) and the chosen path (exclusive).
 
 Outside-$HOME fallback (CWD not at or under $HOME):
-  - <CWD>/wiki/   → print "$CWD/wiki",  exit 0.
+  - a recognised wiki child of CWD → print it,  exit 0.
   - <CWD>/.no_wiki → print "$HOME/wiki", exit 0.
   - neither         → exit 2 with two AVAILABLE candidates ($CWD, $HOME).
 
@@ -114,8 +126,39 @@ abs() {
   fi
 }
 
+is_wiki() {
+  # True when $1 is a usable wiki: it carries no .no_wiki opt-out, its
+  # basename contains "wiki" (case-insensitive), and at least two of the
+  # three markers SCHEMA.md / index.md / log.md exist directly inside it.
+  # .no_wiki takes precedence over wiki-ness, so a retired wiki is dropped.
+  local dir=$1
+  [[ -f "$dir/.no_wiki" ]] && return 1
+  local base_lc
+  base_lc=$(basename "$dir" | tr '[:upper:]' '[:lower:]')
+  case "$base_lc" in
+    *wiki*) ;;
+    *) return 1 ;;
+  esac
+  local count=0 marker
+  for marker in SCHEMA.md index.md log.md; do
+    [[ -f "$dir/$marker" ]] && count=$((count + 1))
+  done
+  [[ $count -ge 2 ]]
+}
+
 cwd=$(abs "$PWD")
 home=$(abs "$HOME")
+
+# Standing in a wiki resolves to it directly, before any walk-up or the
+# under-$HOME / outside-$HOME split. .no_wiki at CWD suppresses this (it is
+# folded into is_wiki), so a retired wiki you stand in is not resolved.
+if is_wiki "$cwd"; then
+  printf '%s\n' "$cwd"
+  if $CHECK && [[ ! -d "$cwd" ]]; then
+    exit 1
+  fi
+  exit 0
+fi
 
 under_home=false
 case "$cwd" in
@@ -139,13 +182,25 @@ else
 fi
 
 # Walk the ladder, building candidates. EXISTING terminates the walk.
+# At each level the existing wiki is the first child directory (lexical
+# order, to match lint.py) that is_wiki recognises; break-on-first means a
+# second matching sibling at the same level is deliberately not surfaced.
 candidates=()
 for level in "${ladder[@]}"; do
   if [[ -f "$level/.no_wiki" ]]; then
     continue
   fi
-  if [[ -d "$level/wiki" ]]; then
-    candidates+=("EXISTING:$level/wiki")
+  found=""
+  for child in "$level"/*/; do
+    [[ -d "$child" ]] || continue
+    child=${child%/}
+    if is_wiki "$child"; then
+      found=$child
+      break
+    fi
+  done
+  if [[ -n "$found" ]]; then
+    candidates+=("EXISTING:$found")
     break
   fi
   candidates+=("AVAILABLE:$level")

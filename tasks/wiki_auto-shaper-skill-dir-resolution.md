@@ -2,7 +2,7 @@
 description: Make the wiki_auto_shaper agent resolve its own skill directory ($WIKI_SKILL) before any scripts/ call, so cold-start runs stop failing with exit 127.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-05-31T01:27:00
+updated: 2026-06-09T00:05:37
 status: open
 ---
 
@@ -34,7 +34,7 @@ Files involved:
    Validate the candidate by checking for `$WIKI_SKILL/SKILL.md` and `$WIKI_SKILL/scripts/lint.py`; only accept a directory that contains them.
 2. **Replace the bare-relative discovery call.** Change `scripts/discover_wiki.sh` in `<discover_wiki>` to `"$WIKI_SKILL/scripts/discover_wiki.sh"` so it works regardless of CWD. Audit the whole agent for any other bare `scripts/...` reference and qualify it with `$WIKI_SKILL`.
 3. **State the failure mode explicitly** in the new step: if `$WIKI_SKILL` cannot be resolved, stop and report rather than guessing — a wrong skill dir silently lints against stale templates.
-4. Coordinate with [wiki_discovery-from-inside-wiki-dir.md](wiki_discovery-from-inside-wiki-dir.md): once that lands, discovery succeeds even when the agent's CWD is the wiki itself, but `$WIKI_SKILL` (the *skill* dir, distinct from the *wiki* dir) still has to be resolved separately — the two are unrelated paths.
+4. Coordinate with [wiki_discovery-from-inside-wiki-dir.md](archive/wiki_discovery-from-inside-wiki-dir.md) (implemented): discovery now succeeds even when the agent's CWD is the wiki itself, but `$WIKI_SKILL` (the *skill* dir, distinct from the *wiki* dir) still has to be resolved separately — the two are unrelated paths.
 
 ## Acceptance
 

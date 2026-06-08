@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.15.1
+version: 1.16.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -212,17 +212,29 @@ python3 scripts/lint.py                              # health-check
 ```
 
 <discover_wiki>
-`discover_wiki.sh` walks up level by level from the current working directory
-toward `$HOME`. At each level:
+`discover_wiki.sh` recognises a directory as a wiki when its basename contains
+"wiki" (case-insensitive) **and** at least two of `SCHEMA.md` / `index.md` /
+`log.md` exist directly inside it **and** it carries no `.no_wiki`. (A fresh
+wiki has all three markers, so the 2-of-3 rule still resolves one that lost a
+marker; a directory merely named `wiki` without markers is not adopted.)
 
-1. **`<level>/.no_wiki`** present → opted out; skip and continue up.
-2. **`<level>/wiki/`** present → record as the existing wiki and STOP walking
-   (the search never crosses an existing wiki).
-3. **Neither** → record as an "available" creation candidate and continue up.
+It resolves in this order:
+
+1. **CWD short-circuit** — if the current working directory is itself a
+   recognised wiki, print it and stop, before any walk-up. This covers
+   standing inside a wiki, including a topic-named one like `ml-wiki/`.
+2. **Walk up** level by level from CWD toward `$HOME`. At each level:
+   - **`<level>/.no_wiki`** present → opted out; skip and continue up.
+   - a **child directory recognised as a wiki** (lexically first wins) →
+     record as the existing wiki and STOP walking (the search never crosses
+     an existing wiki). A second matching sibling at the same level is not
+     surfaced.
+   - **neither** → record as an "available" creation candidate and continue up.
 
 The script auto-resolves on stdout (exit 0) when it can:
 
-- The closest non-opted-out level already has `wiki/` → print that path.
+- CWD is itself a wiki (short-circuit), or the closest non-opted-out level
+  holds a recognised wiki → print that path.
 - Every level visited up through `$HOME` is opted out via `.no_wiki` → print
   `$HOME/wiki` (the explicit "use the global wiki" chain).
 
@@ -237,12 +249,13 @@ EXISTING:/Users/foo/wiki        # only as the last entry, if found
 ```
 
 When CWD is not at or under `$HOME`, walk-up is disabled and the script
-falls back to the pre-walk-up behavior (`./wiki/`, `./.no_wiki`, or ask).
+falls back to the pre-walk-up behavior (a recognised wiki child of CWD,
+`./.no_wiki`, or ask).
 
-`.no_wiki` is the explicit opt-out: drop an empty file by that name in any
-directory you do not want a local wiki for, and the walk skips that level.
-Place it at an existing `<wiki-path>/.no_wiki` to retire that wiki dir
-without deleting it.
+`.no_wiki` is the explicit opt-out and overrides the predicate: drop an empty
+file by that name in any directory you do not want a local wiki for, and the
+walk skips that level. Place it at an existing `<wiki-path>/.no_wiki` to retire
+that wiki dir without deleting it — discovery then declines to adopt it.
 </discover_wiki>
 
 <init_wiki>
@@ -266,13 +279,16 @@ pass over the wiki.
 </lint>
 
 <fallback_without_scripts>
-Without access to the scripts, perform discovery inline by walking up from
-CWD toward `$HOME`: at each level, treat `<level>/.no_wiki` as "skip", a
-present `<level>/wiki/` as a hit (and stop walking), anything else as a
-creation candidate. Auto-resolve only when the closest non-opted-out level
-already has `wiki/` or every level up through `$HOME` is opted out (use
-`$HOME/wiki`). Otherwise follow the explicit workflow in
-`<resolving_the_wiki_location>` — never silently route to an upstream wiki.
+Without access to the scripts, perform discovery inline with the same rule: a
+directory is a wiki when its basename contains "wiki" (case-insensitive) and
+at least two of `SCHEMA.md` / `index.md` / `log.md` are present and it carries
+no `.no_wiki`. If CWD is itself a wiki, use it. Otherwise walk up from CWD
+toward `$HOME`: at each level treat `<level>/.no_wiki` as "skip", the first
+child directory recognised as a wiki (lexical order) as a hit (and stop
+walking), anything else as a creation candidate. Auto-resolve only when the
+closest non-opted-out level holds a recognised wiki or every level up through
+`$HOME` is opted out (use `$HOME/wiki`). Otherwise follow the explicit workflow
+in `<resolving_the_wiki_location>` — never silently route to an upstream wiki.
 </fallback_without_scripts>
 </tools>
 
