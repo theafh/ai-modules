@@ -2,7 +2,7 @@
 description: Sweep every task_* family SKILL.md for big ai_instruction_writing violations — negative-only and inverted instructions — and rewrite them to a positive, action-oriented carrier.
 scope: "task_* family skills"
 created: 2026-06-01T22:50:36
-updated: 2026-06-02T20:57:24
+updated: 2026-06-09T15:12:08
 status: open
 ---
 
@@ -51,6 +51,14 @@ fixes only the lines that task itself adds. It is also distinct from
 adds a new authoring rule about the task *files* the skill produces, whereas this
 sweep reframes the SKILL.md prose itself and changes no skill behavior.
 
+Sequencing: this sweep runs last. Implement it only when the work of every
+other `task-skill_*` task has landed — archived siblings count as landed,
+and an open sibling counts once its acceptance items verifiably hold (its
+close-out may still be pending). Enumerate the `task-skill_*` siblings in
+`tasks/` and `tasks/archive/` at implementation time; any sibling whose work
+is not yet built defers the sweep. The walk then covers the family's final
+prose rather than text the other tasks replace.
+
 ## Approach
 
 Walk each of the seven `SKILL.md` files in turn and apply the `<self_check>`
@@ -90,4 +98,3 @@ outside the seven `SKILL.md` bodies, and adds no new lint rule for negation.
   framing; `name:`, the H1, and the pseudo-XML root tag stay aligned.
 - A short report lists, per file, the big violations found and how each was
   rewritten (or "none found").
-- `make lint` stays clean.
