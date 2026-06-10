@@ -2,7 +2,7 @@
 description: Add a lint.py check that the "Total pages:" header in index.md matches the real page count, so the count stops drifting and being hand-recomputed.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:06:45
-updated: 2026-05-31T01:27:00
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -37,4 +37,4 @@ Files involved:
 - A fixture wiki whose header matches produces no finding.
 - The page-count definition (what counts as a page vs a special file) is documented in `lint_checks.md` and matches `iter_wiki_pages`.
 - Script unit tests under `tests/wiki/` cover match, mismatch, and missing-header cases.
-- `make lint` clean; `tests/wiki/run_all.sh` passes.
+- `tests/wiki/run_all.sh` passes.

@@ -2,7 +2,7 @@
 description: Make the wiki_auto_shaper agent route displaced semantics to their proper channel before normalising structure, and surface both halves in the audit report.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:24
-updated: 2026-06-02T20:57:24
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -53,5 +53,4 @@ Related tasks:
   - Labels match SCHEMA vocabulary, no parenthetical attribution remains.
   - Displaced metadata appears in `sources:` or `raw/`.
   - The audit report names both halves of the fix per file.
-- `make lint` clean.
 - `tests/wiki/run_all.sh --layer2` passes.

@@ -2,7 +2,7 @@
 description: Force wiki content derived from non-canonical raw artifacts (sessions, pastes, meetings) into a `raw/` sidecar + frontmatter `sources:`, not body-prose narration.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:54
-updated: 2026-05-31T01:27:00
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -51,5 +51,4 @@ Related tasks: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rub
   - The consuming page's frontmatter has `sources:` referencing it.
   - No body paragraph narrates provenance.
   - Any HTML-like tokens in the raw text do not trip `markdownlint MD033`.
-- `make lint` clean.
 - `tests/wiki/run_all.sh --layer2` passes.

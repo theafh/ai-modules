@@ -2,7 +2,7 @@
 description: Stop the wiki_auto_shaper agent (and wiki authoring contract) from inserting page-convention prose and lint-sanction prose into wiki page bodies.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:26
-updated: 2026-05-31T01:27:00
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -31,7 +31,7 @@ Cross-references:
 - `ai-assets` repo `wiki/todos/bet-assistant-updates.md` before/after diff.
 - `ai-assets` repo `wiki/log.md` 2026-05-26 audit entry.
 
-Related tasks: [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) (the lint-sanction-routing edit overlaps with edit #4 here).
+Related tasks: [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) (its lint-sanction-routing edit drops the same "on the page's body or" wording as step 1 here — coordinate so the wording is removed exactly once).
 
 ## Approach
 
@@ -49,4 +49,3 @@ Related tasks: [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-
 - `lint.py` reports the new info-level findings on a fixture page containing any of the listed phrases.
 - Fixture wiki containing an oversized todo page → after `wiki_fix`, no new meta-prose paragraph in the page body, sanction rationale only in the audit log.
 - `tests/wiki/run_all.sh --layer2` passes with no regression.
-- `make lint` clean on all edited files.

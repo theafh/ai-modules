@@ -2,7 +2,7 @@
 description: Stop prepare_changelog_day.sh from overflowing the tool buffer — write the blob to a file and add a git_commit-style paginated-consume protocol.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
-updated: 2026-06-02T21:12:48
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -53,4 +53,3 @@ Non-goals: don't change which commits a day selects — that's [changelog_increm
 - `SKILL.md` carries a `<consume_context>` block with full-read → paginated-read → ordered-slicing and a hard rule against re-deriving via `git log`/`git diff`/`git status` and against `head`-truncating the blob.
 - The `<tools>` description and `<procedure>` reference the file-path handoff, not a stdout blob.
 - The `<consume_context>` block is self-contained and does **not** reference `git_commit` or any other sibling skill — the protocol is spelled out inline.
-- Repo lint (whatever the repo provides — see [changelog_repo-agnostic-lint.md](changelog_repo-agnostic-lint.md)) comes back clean; `./deployment/deployment.sh --global --dry-run` is clean.

@@ -2,7 +2,7 @@
 description: Pin changelog verification to whatever lint tooling the target repo actually provides — never assume make lint, never pull a network linter.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
-updated: 2026-06-02T21:12:48
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -45,4 +45,3 @@ Non-goals: don't add a bundled linter to the skill; don't make markdown linting 
 - `SKILL.md` has a `<verify>` step that discovers and runs the repo's own lint tooling against `CHANGELOG.md`, with a clear priority order and a graceful skip when none is found.
 - The step explicitly prohibits `npx --yes`/network-installing a linter and prohibits applying a default ruleset that overrides the repo's lint config.
 - No normative clause assumes `make lint` exists; any mention of it is illustrative and conditional.
-- Running `make lint` in *this* repo still comes back clean for the edited skill.

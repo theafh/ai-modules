@@ -2,7 +2,7 @@
 description: Add SKILL.md guidance to use Read (not Bash grep/cat/tail) when staging an Edit, and to resolve sources:/source_path: values against the wiki root when opening them.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-05-31T01:27:00
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -38,4 +38,4 @@ Files involved:
 - SKILL.md (and the auto-shaper) state that `Read` is the way to stage an `Edit`, and that Bash grep/cat/tail do not satisfy the Edit precondition.
 - SKILL.md (and the auto-shaper) state that `sources:` / `source_path:` values resolve against the wiki root and must be prefixed accordingly when opened.
 - The additions are short prose only; no new lint check is required (though a fixture walkthrough confirming no "File has not been read yet" and no failed `sources:` Read is welcome).
-- `make lint` clean on the edited files; `tests/wiki/run_all.sh` passes.
+- `tests/wiki/run_all.sh` passes.

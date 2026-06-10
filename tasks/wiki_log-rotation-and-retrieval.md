@@ -2,7 +2,7 @@
 description: Enforce log.md rotation (so it never reaches tens of thousands of tokens) and switch the prescribed log-read idiom from tail -n N to entry-aware bounded retrieval.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-05-31T01:27:00
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -42,4 +42,4 @@ Files involved:
 - The prescribed log-read step in SKILL.md and the agent uses entry-anchor + bounded-slice retrieval, not `tail -n <fixed>`.
 - On a fixture wiki with an oversized `log.md`, the orientation read returns the last N entries without tripping "output too large" or the 25000-token Read cap.
 - Script unit tests under `tests/wiki/` cover the rotation severity threshold.
-- `make lint` clean; `tests/wiki/run_all.sh` passes.
+- `tests/wiki/run_all.sh` passes.

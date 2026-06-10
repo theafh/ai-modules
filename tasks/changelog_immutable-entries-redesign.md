@@ -2,7 +2,7 @@
 description: Redesign update_changelog so past entries are immutable — drop the retroactive status-marker re-evaluation that rewrites already-written entries.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T19:37:57
-updated: 2026-06-02T21:12:48
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -43,7 +43,7 @@ Edit `plugins/ai_dev/skills/update_changelog/SKILL.md` so past entries are immut
 - **Remove the `<status_re_evaluation>` procedure step entirely.** No run re-reads or re-marks past entries.
 - **Retire the three-marker overlay** (`[active]` / `[changed later]` / `[superseded]`) and its header legend line. Once entries are immutable every entry is a frozen fact at write time, so a live marker is noise. The `<entry_line>` format drops the `[status]` slot.
 - **Fold supersession into the `<categories>` axis.** Add `Removed` and `Deprecated` (and confirm `Changed` is expressible) so that when something is replaced or removed, the new entry in the later day's section carries the story via its category — the old entry is never touched.
-- **Strengthen the immutability rules.** `<date_immutability>` and `<preserve_existing>` should now state plainly that past entries — date, text, and category — are frozen once written; later runs only *add* new day sections at the top. Remove any wording that licenses editing old entries.
+- **Strengthen the immutability rules.** `<date_immutability>` and `<preserve_existing>` should now state plainly that past entries — date, text, and category — are frozen once written; later runs only *add* new day sections at the top. Remove any wording that licenses editing old entries. One carve-out, defined in [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md): the last recorded day stays completable until no unrecorded commits remain for it — a run may add entries for newly-found commits, extend its `Files changed:` line, and revise its theme — while entries already present stay frozen; every older day is frozen in full.
 - **Update the `<objective>`, `<output_contract>` header/legend, `<status_markers>` (delete), and the `description:` frontmatter** so they no longer promise per-entry "current code state" markers; the description's marker enumeration must go.
 - **Reconcile `<model_authority>`** which currently lists "status-marker evaluation" as a model-owned job — drop that responsibility.
 - Keep everything else (day grouping, newest-first, one-entry-per-logical-change, files-changed line, one-day-at-a-time context safety, the `prepare_changelog_day.sh` tool contract) intact.
@@ -55,6 +55,5 @@ Non-goals: do not touch the existing `CHANGELOG.md` content in this task — the
 - `SKILL.md` no longer contains a `<status_re_evaluation>` step, the `[active]`/`[changed later]`/`[superseded]` legend, or a `<status_markers>` block, and the `<entry_line>` format has no `[status]` slot.
 - The `description:` frontmatter no longer enumerates status markers; it describes an immutable-entry (add-only), day-grouped changelog.
 - `<categories>` includes `Removed`/`Deprecated` (and `Changed`) so supersession is expressible on a new entry.
-- `<date_immutability>` / `<preserve_existing>` state that past entries are frozen (date, text, category) and runs only prepend new day sections; no clause licenses editing prior entries.
+- `<date_immutability>` / `<preserve_existing>` state that past entries are frozen (date, text, category) and runs only prepend new day sections, carrying the last-recorded-day carve-out from the Approach; no clause licenses rewriting entries already present.
 - No remaining internal contradiction between context-safety (don't re-read the whole history) and the procedure (which no longer re-reads it).
-- `make lint` and `./deployment/deployment.sh --global --dry-run` come back clean.

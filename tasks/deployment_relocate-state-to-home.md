@@ -2,7 +2,7 @@
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
 created: 2026-06-02T18:58:04
-updated: 2026-06-02T19:05:54
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -139,5 +139,5 @@ Considered and set aside for this task; revisit only if asked:
 - `~/.ai_asset_deploy/config` on this machine retains the `#claude disallow:**` rule exactly as the current `deployment.conf` has it — confirm a `--dry-run` still excludes Claude after relocation.
 - A fresh checkout with no home conf falls back to the template and deploys with the generic defaults (`*legacy*` skipped for every tool, Claude **not** excluded) — confirm via `./deployment/deployment.sh --global --dry-run`.
 - `deployment/README.md`, root `README.md`, and `.gitignore` updated to the new paths; no stale references to `deployment/deployed_artefacts.log` or in-repo `deployment.conf` remain.
-- `make lint` comes back clean; `./deployment/deployment.sh --global --dry-run` runs without error and shows the resolved `~/.ai_asset_deploy/` conf/log paths in its banner.
+- `./deployment/deployment.sh --global --dry-run` runs without error and shows the resolved `~/.ai_asset_deploy/` conf/log paths in its banner.
 - Working tree is clean after a deploy (no `M deployment/deployment.conf`).

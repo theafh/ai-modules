@@ -1,6 +1,18 @@
 # ai-modules
 
-A collection of professional AI skills, agents, commands, and hooks. The same source of truth ships through several equal paths. You can install it from the bundled Claude Code marketplace, symlink it into vendor config dirs globally with `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity), symlink it into a single repo's local config via `--project-dir`, or use it in-place from a checkout. The deployment script discovers artefacts by plugin layout and installs them where each tool expects them.
+A collection of professional AI skills, agents, commands, and hooks for AI-assisted development, packaged as plugins.
+
+## Why install this
+
+These plugins give an AI coding agent durable, file-native context that a chat session does not keep: a backlog of the work still to do, and a knowledge base of what the project has learned. Both live as plain CommonMark markdown on disk, so they stay greppable, diffable, versioned in git, and readable in any editor, with no database, SaaS, or proprietary reader in the loop.
+
+**task is an asynchronous backlog that lives with the code.** It works like Jira or Trello, but for AI agents. You fill it now and act on it later, and both filling it and reading it back are trivial for an agent. While you are deep in one change, you can fire off a newly spotted bug or idea as a task and keep going. It then sits there until you are ready to ship it, or until its description has matured enough to hand off. Each task is written to be self-sufficient: an agent can implement it from the file alone, even in a later session that never saw the conversation that created it. A bundled linter enforces naming, frontmatter, and a size-based split threshold. The create → check → implement → audit → finish lifecycle gives each step its own focused skill. The read-only gates (is this ready to build, is it actually done) stay apart from the skills that change files.
+
+**wiki is an internal knowledge base an AI can build and navigate on its own.** It auto-discovers from the current directory and holds far more context than a chat window. The content lives as interlinked markdown pages, organized by type (entities, concepts, comparisons, procedures, and more). Each page is written up once as sources arrive, rather than reconstructed on every query. The agent writes the wiki and people read it back with the agent. As a result, it surfaces contradictions rather than burying them, and it gets reshaped over time to stay usable instead of degrading into scattered notes. It stays reachable through standard tools. And because it is tied to the repo, the meta context it accumulates compounds as the project grows. That makes later work easier, across both knowledge management and ordinary coding.
+
+The mechanical parts of both families (discovery, scaffolding, linting, source hashing) ship as bundled scripts the agent runs rather than improvising the bookkeeping each session. And because the same files deploy into Claude Code, Codex, Cursor, Copilot, Gemini, and Antigravity, the backlog and the knowledge base come with you whichever agent you happen to be driving.
+
+Alongside task and wiki, the same two plugins ship a set of smaller day-to-day skills: clean git commits and changelogs, authoring and formatting for the instructions an AI reads, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
 
 ## Layout
 
@@ -88,7 +100,9 @@ Skills for day-to-day AI-assisted development: keeping git history and changelog
 - **ai_instruction_formatting**: organises AI-consumed content into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in a dedicated tag so the model can locate the right section by structure rather than by re-reading the prose.
 - **format_markdown / format_python / format_rust**: linter-aligned style guides (`markdownlint`, `flake8` plus `ruff` plus `pylint`, `clippy`) consulted at write time. The point is to land code that already passes the linter, instead of spending a follow-up turn reacting to lint output.
 
-## Make targets
+## Installing and deploying
+
+The same source of truth ships through several equal paths. You can install it from the bundled Claude Code marketplace, symlink it into vendor config dirs globally with `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity), symlink it into a single repo's local config via `--project-dir`, or use it in-place from a checkout. The deployment script discovers artefacts by plugin layout and installs them where each tool expects them.
 
 Common workflows are wrapped in the [Makefile](Makefile):
 

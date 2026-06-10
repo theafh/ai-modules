@@ -2,7 +2,7 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T15:26:15
-updated: 2026-06-09T15:26:15
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -94,4 +94,4 @@ When the `filename` warning fires, the autofix mirrors the manual session fix:
 - `wiki_auto_shaper.md` `<remediate>` phase carries the ASCII-fold rename remediation (git mv + re-point references), coordinated with the [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) edits to the same section.
 - The tags open decision is reflected: either tags fold to ASCII (default) or the tag check NFC-normalizes both sides, per the user's call.
 - A wiki linter fixture with a non-ASCII / NFD filename produces the new warning; after the auto_shaper fix the filename is pure ASCII, references resolve, and the linter is clean.
-- `make lint` clean; the wiki test suite (`tests/wiki/run_all.sh`) passes.
+- The wiki test suite (`tests/wiki/run_all.sh`) passes.

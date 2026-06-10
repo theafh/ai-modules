@@ -2,7 +2,7 @@
 description: Make the wiki_auto_shaper agent resolve its own skill directory ($WIKI_SKILL) before any scripts/ call, so cold-start runs stop failing with exit 127.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-09T00:05:37
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -41,4 +41,3 @@ Files involved:
 - A cold-start auto-shaper run (CWD = a target repo, no prior skill-dir knowledge) resolves `$WIKI_SKILL` in its first orientation step and runs `discover_wiki.sh` / `lint.py` without an exit-127 / "No such file" detour.
 - No bare relative `scripts/...` invocations remain in the agent; all are `$WIKI_SKILL/scripts/...`.
 - The skill-dir resolution validates `SKILL.md` + `scripts/lint.py` presence and halts with a clear message if it cannot find a valid bundle.
-- `make lint` clean on the edited agent file.

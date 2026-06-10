@@ -2,7 +2,7 @@
 description: Fix incremental-run date selection — reprocess the last recorded day plus all following, and use only committed work, since same-day commits can land after the last entry.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
-updated: 2026-06-02T21:12:48
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -50,4 +50,3 @@ Non-goals: no change to per-day commit selection inside the script (already corr
 - The day-`D` reconciliation rule is defined: add/extend the existing section, never rewrite entries already present.
 - A scenario check: with a changelog whose newest day is `D` and a new commit added on `D` after generation, an incremental run picks up that commit and adds it to day `D`'s section.
 - First-run (no `CHANGELOG.md`) behavior is unchanged.
-- Repo lint clean.

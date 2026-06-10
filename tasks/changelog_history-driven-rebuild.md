@@ -2,7 +2,7 @@
 description: After the changelog skill fixes ship, delete CHANGELOG.md and cold-regenerate it from git history with the fixed skill, then verify a re-run is a no-op.
 scope: "CHANGELOG.md regeneration"
 created: 2026-06-02T19:37:57
-updated: 2026-06-02T21:19:33
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -42,8 +42,8 @@ end-to-end proof that the changelog skill fixes work together.
 2. Delete `CHANGELOG.md` (`git rm CHANGELOG.md`).
 3. Run `update_changelog` with no `CHANGELOG.md` present; its cold-build path
    regenerates every day section from git history in the new format.
-4. Committing the regenerated file is fine — it is normal skill output, not a
-   hand-edit.
+4. Committing the regenerated file is fine, per `CLAUDE.md`'s changelog rule
+   (skill output, not a hand-edit).
 
 ## Acceptance
 
@@ -54,4 +54,3 @@ end-to-end proof that the changelog skill fixes work together.
   its own commits).
 - A spot re-run of `update_changelog` makes **no** changes — confirming the file
   is in the skill's steady state and the fix suite works end-to-end.
-- `make lint` comes back clean.

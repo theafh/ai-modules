@@ -2,7 +2,7 @@
 description: Cut wiki_auto_shaper token consumption from unconditional full-file reads — make orient reads conditional and switch the page walk to Grep-first, bounded reads.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-05-31T01:27:00
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -40,4 +40,4 @@ Files involved:
 - On a clean wiki (lint returns zero blocking/zero warn), an auto-shaper run does **not** issue a full `Read` of every page; full reads are bounded and reserved for grep-flagged pages.
 - Orientation no longer reads every template in full unconditionally; the scaffold comparison still happens via `diff -u`.
 - Prose-level issues (instance leakage, topic-mixing, contradictions) are still detected on a fixture wiki that contains them — the grep-first path flags and full-reads the offending pages.
-- `make lint` clean on the edited agent file; `tests/wiki/run_all.sh` passes with no regression in audit outcomes.
+- `tests/wiki/run_all.sh` passes with no regression in audit outcomes.

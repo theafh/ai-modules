@@ -2,7 +2,7 @@
 description: Add a `growth:` declaration per wiki page type and teach the lint to defer size findings for declared-backlog/monotonic-append/synthesis pages; disambiguate todo anatomy for non-canonical sources.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:37
-updated: 2026-06-02T20:57:24
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -31,7 +31,7 @@ Files involved:
 
 Related tasks:
 
-- [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md) — edit #4 there overlaps with edit #4 here (the "or page body" wording must be dropped). Coordinate the two so the wording is removed exactly once.
+- [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md) — its step dropping the "on the page's body or" wording from the auto-shaper overlaps with step 4 here. Coordinate the two so the wording is removed exactly once.
 - [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md) — the parenthetical-attribution failure this task partly causes by leaving the anatomy ambiguous.
 
 ## Approach
@@ -52,5 +52,4 @@ Related tasks:
   - **Fixture A** — `todo` page at 250 lines (within the `backlog` pattern): `wiki_fix` emits no size finding, adds no sanction prose.
   - **Fixture B** — `todo` page at 1200 lines: size finding with split or graduate-entries recommendation; not sanctioned in body.
   - **Fixture C** — `todo` page with one entry sourced from a recorded session: middle-paragraph label matches SCHEMA verbatim, no parenthetical attribution; source attribution lives in frontmatter `sources:` pointing at `raw/meetings/<slug>.md`.
-- `make lint` clean.
 - `tests/wiki/run_all.sh --layer2` passes.

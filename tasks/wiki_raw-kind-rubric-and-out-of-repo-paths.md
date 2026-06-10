@@ -2,7 +2,7 @@
 description: Document the `raw/<kind>/` selection rubric and extend `source_path:` to cover out-of-repo local files in the wiki SCHEMA template and skill.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:04
-updated: 2026-06-02T20:57:24
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -51,5 +51,4 @@ Related task: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-a
 
 - Both the wiki skill and the wiki SCHEMA template carry the rubric and the extended `source_path:` semantics.
 - Chat-session ingestion fixture through `wiki_import` with no kind hint → lands under `raw/meetings/` per the rubric, uses `source_path:` for an out-of-repo absolute path, body excerpt large enough to stand on its own.
-- `make lint` clean on all edited files.
 - `tests/wiki/run_all.sh --layer2` passes.

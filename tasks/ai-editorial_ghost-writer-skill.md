@@ -2,7 +2,7 @@
 description: "Build the ghost_writer skill: rules for writing and especially editing strong prose, with one ruleset per genre — scientific, essays, blog posts, social media, case studies."
 scope: "ai_editorial plugin"
 created: 2026-06-01T23:31:06
-updated: 2026-06-02T21:12:48
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -22,14 +22,13 @@ Add the `ghost_writer` skill to the `ai_editorial` plugin. It carries the rules 
 
 ## Approach
 
-1. `plugins/ai_editorial/skills/ghost_writer/SKILL.md` — frontmatter `name: ghost_writer`, `version: 1.0.0`; pseudo-XML body (role, when-to-activate, the write-and-edit workflow keyed by genre, output contract). State that editing existing text is the primary mode.
+1. `plugins/ai_editorial/skills/ghost_writer/SKILL.md` — frontmatter `name: ghost_writer`; pseudo-XML body (role, when-to-activate, the write-and-edit workflow keyed by genre, output contract). State that editing existing text is the primary mode.
 2. `skills/ghost_writer/references/` — the shared prose-writing and editing rules, plus one ruleset per genre: scientific writing, essays, blog posts, social media, case studies. Each ruleset states what good looks like for that genre and how to edit toward it. Populate from the source gathered in Context.
 3. If the file set outgrows a single coherent unit — for instance if each genre ruleset becomes substantial — split the per-genre rulesets into a follow-up task rather than letting this one pass 300 lines.
 
 ## Acceptance
 
 - `plugins/ai_editorial/skills/ghost_writer/` holds `SKILL.md` and a `references/` set covering the shared prose/editing rules plus the five named genre rulesets.
-- The skill directory name, the frontmatter `name:`, and the H1 agree; the skill is at `version: 1.0.0`.
 - Each genre ruleset traces to the agreed source from Context, not invented unprompted.
 - The skill `description:` triggers on human-facing prose work and stays distinct from the `ai_instruction_*` skills.
-- `make lint` comes back clean; `./deployment/deployment.sh --global --dry-run` previews `ghost_writer` without error.
+- `./deployment/deployment.sh --global --dry-run` previews `ghost_writer` without error.

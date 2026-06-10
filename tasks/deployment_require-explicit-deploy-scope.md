@@ -2,7 +2,7 @@
 description: Require an explicit --global or --project-dir scope before deployment.sh touches any target dir, so secondary flags like --clear-backups stop silently triggering a global deploy.
 scope: deployment
 created: 2026-06-02T23:06:06
-updated: 2026-06-02T23:06:06
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -84,4 +84,3 @@ This is a co-edited-file coordination link, not a relatedness note.
   and exits 0; `--global --clear-backups` still clears then deploys globally.
 - `./deployment/deployment.sh --project-dir DIR …` still deploys into the project
   unchanged.
-- `make lint` passes — shellcheck stays clean for the added guard.

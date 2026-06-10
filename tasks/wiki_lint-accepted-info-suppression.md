@@ -2,7 +2,7 @@
 description: Give lint.py a per-finding acknowledge mechanism so accepted info-level findings stop re-surfacing every run and being re-justified in prose and the log.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-05-31T01:27:00
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -41,4 +41,4 @@ Files involved:
 - An *unaccepted* info finding still appears normally.
 - The boundary between this per-finding accept and the type-level `growth:` deferral is documented; the two do not double-handle page-size findings.
 - SKILL.md / auto-shaper instruct recording acceptance through this mechanism rather than prose or repeated log entries.
-- `make lint` clean; `tests/wiki/run_all.sh` passes.
+- `tests/wiki/run_all.sh` passes.

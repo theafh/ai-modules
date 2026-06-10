@@ -2,7 +2,7 @@
 description: Keep wiki headings and bold-prefix labels to a fixed structural vocabulary; route displaced metadata (date, source, qualifier) to its proper channel.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:35
-updated: 2026-05-31T01:27:00
+updated: 2026-06-10T22:05:12
 status: open
 ---
 
@@ -43,7 +43,7 @@ Related tasks: [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) 
 
 ## Acceptance
 
-- Editing the three files above lands the rule + lint heuristic; both run cleanly through `make lint`.
+- Editing the three files above lands the rule + lint heuristic.
 - Fixture wiki with mixed-source entries carrying parenthesised attribution suffixes → after `wiki_fix`:
   - Labels match SCHEMA vocabulary verbatim (no parenthetical attribution).
   - Displaced metadata appears in `sources:` or a `raw/` sidecar.
