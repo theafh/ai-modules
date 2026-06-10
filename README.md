@@ -2,7 +2,7 @@
 
 A collection of professional AI skills, agents, commands, and hooks for AI-assisted development, packaged as plugins.
 
-## Why install this
+## Why You Should Install This
 
 These plugins give an AI coding agent durable, file-native context that a chat session does not keep: a backlog of the work still to do, and a knowledge base of what the project has learned. Both live as plain CommonMark markdown on disk, so they stay greppable, diffable, versioned in git, and readable in any editor, with no database, SaaS, or proprietary reader in the loop.
 
@@ -10,7 +10,7 @@ These plugins give an AI coding agent durable, file-native context that a chat s
 
 **wiki is an internal knowledge base an AI can build and navigate on its own.** It auto-discovers from the current directory and holds far more context than a chat window. The content lives as interlinked markdown pages, organized by type (entities, concepts, comparisons, procedures, and more). Each page is written up once as sources arrive, rather than reconstructed on every query. The agent writes the wiki and people read it back with the agent. As a result, it surfaces contradictions rather than burying them, and it gets reshaped over time to stay usable instead of degrading into scattered notes. It stays reachable through standard tools. And because it is tied to the repo, the meta context it accumulates compounds as the project grows. That makes later work easier, across both knowledge management and ordinary coding.
 
-The mechanical parts of both families (discovery, scaffolding, linting, source hashing) ship as bundled scripts the agent runs rather than improvising the bookkeeping each session. And because the same files deploy into Claude Code, Codex, Cursor, Copilot, Gemini, and Antigravity, the backlog and the knowledge base come with you whichever agent you happen to be driving.
+The mechanical parts of both families (discovery, scaffolding, linting, source hashing) ship as bundled scripts the agent runs rather than improvising the bookkeeping each session. This saves you turns with your coding agent going back and fourth, saves tokens and makes workflows more deterministic. And because the same files deploy into Claude Code, Codex, Cursor, Copilot, Gemini, and Antigravity, the backlog and the knowledge base come with you whichever agent you happen to be driving wile making it easy to colaborate on a shared codebase across different user setips and AI agents.
 
 Alongside task and wiki, the same two plugins ship a set of smaller day-to-day skills: clean git commits and changelogs, authoring and formatting for the instructions an AI reads, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
 
