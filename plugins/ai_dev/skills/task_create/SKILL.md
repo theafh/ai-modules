@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one well-formed task file in the project's tasks/ backlog, fast and with minimal ceremony. Use when the user wants a single task or todo written for upcoming work — "make a task for X", "add a todo to do Y", "file a task about Z" — and wants just that one file, not a broader backlog session. For listing, querying, updating, finishing, archiving, or linting tasks, the broader task skill applies instead.
-version: 1.0.6
+version: 1.1.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -31,6 +31,7 @@ The `task` skill's `SKILL.md` is the single source of truth; keep every shared r
 - `<discover>` — locate or scaffold `tasks/` through the bundled `discover_tasks.sh` / `init_tasks.sh`.
 - `<create>`'s `<prior_art>` — the two-tier duplicate / already-done gate run before writing.
 - `<create>`'s `<lossless_conversion>` — the source-fidelity contract that fires whenever a task is derived from source material. This single-task on-ramp *is* the single-task-from-a-source path that contract names, so apply it verbatim from the base skill rather than restating it here, keeping the two in step.
+- `<readiness_checklist>` — the lens the drafted body is self-checked against before the file is written.
 - `<lint>` — the bundled `lint.py` and what each finding means.
 
 These assets ship in the same plugin as task_create, so they are present wherever task_create is.
@@ -44,12 +45,13 @@ The bundled scripts (`discover_tasks.sh`, `init_tasks.sh`, `lint.py`) ship in `s
 Create one file, in order:
 
 1. **Discover.** Run the `task` skill's `<discover>` step to resolve `tasks/`, scaffolding it when it is missing.
-2. **Gather.** Confirm the single item to capture and collect enough context to fill the `<body>` sections so a single-shot implementer could act on it from the file alone. When the context is too thin for that, ask one sharp clarifying question, then proceed.
+2. **Gather.** Confirm the single item to capture and collect enough context to fill the `<body>` sections to the base skill's self-sufficiency bar: the file on its own is enough to implement, with everything actually available at implementation time — the codebase, the project's standing instructions, the user — staying in play. When the context is too thin for that, ask one sharp clarifying question, then proceed.
 3. **Prior-art gate.** Run the `task` skill's `<prior_art>` step: a fast `rg` scan of `tasks/` + `tasks/archive/` that escalates to an in-depth project analysis only when the scan hits. When a match shows the work is already an open task, partially covered, already implemented, or already deferred, surface it with evidence and let the user decide how to proceed before writing — never auto-resolve.
 4. **Scope and name.** Pick a `<scope>` from the groupings already present in `tasks/`, and a compact `<name>` that is unique across both `tasks/` and `tasks/archive/`. List both directories once to keep the name collision-free.
 5. **Timestamp.** Run `date +%Y-%m-%dT%H:%M:%S` once and use its output verbatim for both `created` and `updated`.
-6. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`. When filling `## Context` and any cross-references, apply the cross-link discipline from the `task` skill's `<markdown_policy>` so each link to another task earns its place.
-7. **Lint.** Run the linter per the `task` skill's `<lint>` step (`lint.py --quiet`) and resolve every blocking finding before reporting the file as created.
+6. **Self-check the draft.** Judge the drafted body against the `task` skill's `<readiness_checklist>` and resolve every finding before writing, so the file written already passes the lens `task_check` will apply.
+7. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`. When filling `## Context` and any cross-references, apply the cross-link discipline and the soft-pointer rule from the `task` skill's `<markdown_policy>`, so each link to another task earns its place and each pointer to file content survives edits to its target.
+8. **Lint.** Run the linter per the `task` skill's `<lint>` step (`lint.py --quiet`) and resolve every blocking finding before reporting the file as created.
 
 When this one task is derived from source material — a pasted note, a chat turn, a `todo.md`, a PDF, any pre-existing body of meaning — apply the `task` skill's `<lossless_conversion>` contract on your own before reporting done: confirm the single task carries every relevant unit of meaning from that source, propagate source-wide content into it, and leave the source's keep/drop disposition to the user. A single task does not exempt the check — one source can hold more meaning than it captures.
 

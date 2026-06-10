@@ -2,8 +2,8 @@
 description: "Add composition guidance to the task skill: write frontmatter descriptions to roughly 180 characters, keeping the linter's 200-character warning as ceiling headroom."
 scope: "task_* family skills"
 created: 2026-06-09T10:45:16
-updated: 2026-06-09T13:32:19
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # Description length budget: compose to roughly 180 characters

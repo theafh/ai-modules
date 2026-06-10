@@ -2,8 +2,8 @@
 description: Add a rule to the task skills that task file bodies read as what to do (positive, action-oriented), with negatives kept for genuine non-goals or deferred scope.
 scope: "task_* family skills"
 created: 2026-06-02T19:16:33
-updated: 2026-06-09T13:38:24
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # Make positive, action-oriented task bodies a rule in the task skills

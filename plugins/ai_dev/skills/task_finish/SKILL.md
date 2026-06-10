@@ -1,7 +1,7 @@
 ---
 name: task_finish
 description: Close out one task in the project's tasks/ backlog — set its status to implemented or deferred, bump updated, git mv it to archive/, re-point the links the move touches, and re-lint. Use when the user wants a single task finished, marked done, deferred, parked, or archived. For creating, checking readiness, doing the work, or verifying a task, the create / check / implement / audit siblings apply instead.
-version: 1.0.2
+version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -38,7 +38,7 @@ Close one task, in order:
 1. **Identify the target task.** Run the base skill's `<discover>` step to resolve `tasks/`, and confirm which single task file is being closed. Read it so you know its current `status`, links, and the work it claims.
 2. **Decide the outcome.** Set `implemented` when the work is done and shipped, or `deferred` when the task is parked or dropped and not pursued for now. When the user's intent is ambiguous between the two, ask before changing anything.
 3. **Verify before an `implemented` close.** Marking a task `implemented` asserts the work is genuinely done, so confirm that against the codebase first — run `task_audit` (the read-only gate) or carry out its check, and resolve or report any gap before closing. A `deferred` close skips this step, since parking a task makes no claim about completion. Mark a task `implemented` on codebase evidence, not on prose.
-4. **Run the base skill's `<archive>` close-out.** Follow the `task` skill's `<archive>` workflow end to end — set `status`, bump `updated` from `date`, `git mv` the file to `archive/`, re-point every cross-reference the move touches (outbound links inside the moved file, inbound links from other open tasks), and re-lint until no blocking finding remains. Those rules live in the base skill; follow them there rather than restating them here.
+4. **Run the base skill's `<archive>` close-out.** Follow the `task` skill's `<archive>` workflow end to end — set `status`, bump `updated` from `date`, `git mv` the file to `archive/`, re-point every cross-reference the move touches (outbound links inside the moved file, inbound links from anywhere in the tasks tree — open and archived alike), and re-lint until no blocking finding remains. Those rules live in the base skill; follow them there rather than restating them here.
 </workflow>
 
 <output_contract>

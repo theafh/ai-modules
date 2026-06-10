@@ -1,7 +1,7 @@
 ---
 name: task_check
 description: Assess whether one task file in tasks/ is ready to hand to an implementer — judge it against a readiness checklist (structure, scope sizing, focus, complexity, contradictions, ambiguity) and report a General assessment plus a ranked Issues list. Read-only: it judges, it does not edit. Use before building a task. For doing the work use task_implement; for verifying a believed-done task use task_audit; for whole-tree health use task_fix.
-version: 1.0.2
+version: 1.1.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -24,7 +24,7 @@ Route elsewhere when the user wants to write a task (`task_create` or the base `
 </when_to_activate>
 
 <authority>
-The base `task` skill's `SKILL.md` is the source of truth for the task-file shape; read it and use its `<discover>` step to locate `tasks/` and its `<file_format>` / `<body>` / `<one_task_per_file>` / `<split_at_300>` rules as the structural bar you assess against. Assess the task — do not edit it.
+The base `task` skill's `SKILL.md` is the source of truth for the task-file shape; read it and use its `<discover>` step to locate `tasks/`, its `<readiness_checklist>` as the lens you assess with, and its `<file_format>` / `<body>` / `<one_task_per_file>` / `<split_at_300>` rules as the structural bar behind that lens. Assess the task — do not edit it.
 </authority>
 
 <path_resolution>
@@ -32,17 +32,11 @@ The base `task` skill's `discover_tasks.sh` ships in `scripts/` next to that ski
 </path_resolution>
 
 <assessment>
-The bar: a one-shot AI coder receives this task as its sole input and produces a full implementation in a single pass. Evaluate every issue against that bar.
+The bar is the base skill's self-sufficiency concept: the task file on its own is enough to produce a full implementation in a single pass, and the implementer draws on everything actually available — the codebase, the project's standing instructions (`CLAUDE.md` / `AGENTS.md` and equivalents), the user. Judge the task the way it is consumed: a task that leans on a standing project instruction is correctly authored when it cites the rule, and flagging the absence of content a standing instruction already owns is a false positive. Evaluate every issue against that bar.
 
-1. **Structural check first.** Confirm the body opens with a single `# Title` and carries the `## Goal` / `## Context` / `## Approach` / `## Acceptance` sections, with valid frontmatter, per the base skill's `<body>` and `<file_format>`. A one-shot implementer follows structure literally, so a structural gap is high-severity — run this before the content lens.
-2. **Content lens.** Read the task thoroughly and surface every issue that could derail a correct, complete one-shot implementation:
-   - **Scope sizing** — the most compact scope that still delivers a coherent, independently testable unit. Flag too-large (multi-pass risk, past the 300-line split) and too-small (coordination overhead, no standalone capability).
-   - **Focus** — one atomic item. Flag scope creep that belongs in a sibling task and should be cross-linked rather than folded in.
-   - **Complexity** — implementable in a single pass. Flag hidden multi-step or cross-cutting work.
-   - **Contradictions** — internal consistency, including behavioural contradictions where one part makes another non-functional.
-   - **Ambiguity / under-specification** — missing requirements, unstated assumptions, or vague pointers that lead to divergent implementations.
-   - **Over-specification** — constraints that needlessly narrow an implementation choice the task meant to leave open.
-   - **Negation-framed behaviour** — behaviour defined as "not X" that an implementer must invert to act on; recommend a direct positive statement that preserves the technical detail.
+Assess against the base `task` skill's `<readiness_checklist>`, in its order — the structural check first, then the content lens item by item. The checklist lives once in the base skill as the family's single source; apply it from there rather than from a copy here.
+
+Ground every issue before reporting it: an issue enters the report only after you have confirmed it against the repository — read the file it implicates, run the command the acceptance names, check the policy the task cites. An unverifiable suspicion is voiced as a question in the general assessment, never as a numbered issue.
 
 Stay read-only throughout — assess and report, change nothing.
 </assessment>
@@ -51,9 +45,10 @@ Stay read-only throughout — assess and report, change nothing.
 Borrow `spec_check`'s shape exactly:
 
 - Lead with a `# General assessment` paragraph: one short paragraph stating whether the task is ready to build and why.
-- Then a `## Issues` section. When clean, output exactly `No issues found.` Otherwise list every issue as a single ordered list, ranked by how likely each is to cause a wrong or divergent one-shot implementation — most problematic first. Each entry: `**[short title]** — what is wrong, the implementation impact, and the minimum fix.`
+- Then a `## Issues` section carrying verified implementation-divergence issues exclusively. When clean, output exactly `No issues found.` Otherwise list every verified issue as a single ordered list, ranked by how likely each is to cause a wrong or divergent one-shot implementation — most problematic first. Each entry: `**[short title]** — where it sits, what is wrong, the implementation impact, and the minimum fix.` Locate each issue by label or unambiguous description — the section heading, the pseudo-XML tag, a quoted phrase — per the base skill's soft-pointer rule.
+- After the list, add a short unnumbered **Style notes** tail for style-level findings — negation framing, wording polish; omit the tail when there are none.
 
-Include every issue regardless of size; minor clarity improvements belong at the bottom. Make no edit and move no file — acting on the findings is `task_create`/editing, and building is `task_implement`.
+Include every verified issue regardless of size. Make no edit and move no file — acting on the findings is `task_create`/editing, and building is `task_implement`.
 </output_contract>
 
 <family>

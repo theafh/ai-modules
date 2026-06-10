@@ -1,7 +1,7 @@
 ---
 name: task_implement
 description: Implement one existing task file end-to-end — turn the work a tasks/ file describes into shipped code, tests, and a passing suite, confirming every acceptance item. Use when the user points at a single task and wants it built or done now. For creating, checking readiness, verifying a believed-done task, or closing/archiving, the create / check / audit / finish siblings apply instead.
-version: 1.0.2
+version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -34,7 +34,7 @@ The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to 
 <workflow>
 Run in order. Make no code edit before the first three steps are complete.
 
-1. **Read the task end-to-end.** Understand the desired behaviour, the `## Approach`, the context pointers, and the scope / non-goals. The base skill writes each task so a single-shot implementer has everything needed from the file alone — treat the file as that contract, and restate your understanding before writing any code.
+1. **Read the task end-to-end.** Understand the desired behaviour, the `## Approach`, the context pointers, and the scope / non-goals. The base skill writes each task to be self-sufficient — the file on its own is enough to implement, and you draw on everything actually available alongside it: the codebase, the project's standing instructions, the user. Treat the file as that contract, and restate your understanding before writing any code.
 2. **Load the guardrails.** Read the governing `CLAUDE.md` files (repo root, this repo, and the one nearest the work) and hold their conventions as defaults for every edit — pseudo-XML and positive-language authoring, the Make + shell + markdown toolchain, snake_case naming, deployment-agnostic cross-references, and the versioning / plugin-lockstep rules — together with any constraint the task's own `## Approach` states.
 3. **Understand the existing codebase, and confirm the work isn't already done.** Read the code and tests already in place around the work, and extend the patterns, conventions, and architecture in use rather than inventing a new shape. Before writing anything, check the current state of the target: whether the artifact already exists, and whether the behaviour — or part of it — is already present. Build on or correct what is there instead of re-implementing it or clobbering it.
 4. **Implement in order — `## Approach` is the plan, the codebase is ground truth.** Follow the `## Approach` step by step, building everything in scope and skipping everything the task marks a non-goal, and name every artifact after the behaviour it delivers. Where a step's mechanics conflict with what the repo actually requires, do what the codebase requires and report the deviation rather than following the brief literally. When the task explicitly leaves a decision open, make the call and record the rationale in the shipped artifact — a code comment, the `SKILL.md` body, a doc — not only in chat.

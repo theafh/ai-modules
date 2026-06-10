@@ -2,8 +2,8 @@
 description: "Extend the base skill's Acceptance definition into a contract: deliverable items flip false-to-true and check mechanically; stochastic work records measurements with a fail branch."
 scope: plugins/ai_dev/skills/task
 created: 2026-06-09T12:29:51
-updated: 2026-06-09T13:38:24
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # Acceptance contract: items flip false to true and check mechanically

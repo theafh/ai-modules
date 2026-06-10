@@ -2,8 +2,8 @@
 description: Require task_check to verify every reported issue against the repo before ranking it, and move pure style findings into an unnumbered tail below the numbered issues list.
 scope: plugins/ai_dev/skills/task_check
 created: 2026-06-09T12:34:16
-updated: 2026-06-09T13:32:19
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # Grounded check issues: verify on disk, style notes to the tail

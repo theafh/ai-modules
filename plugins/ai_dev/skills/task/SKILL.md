@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.1.8
+version: 1.2.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 <task_skill>
 
 <role>
-The task skill manages upcoming work and todos for the current project as plain-markdown files under `tasks/` at the project root. Each task is a single self-contained markdown file written so a single-shot AI coder could pick it up and implement it with no further context from chat. Open work lives in `tasks/`; finished and dropped work moves to `tasks/archive/`. This skill is the **project-local backlog** — a filesystem-native task tracker that lives next to the code, complementary to the `wiki` skill (which captures durable knowledge across projects).
+The task skill is the hub and source of truth of the `task_*` family: the **project-local backlog** that manages a project's upcoming work and todos as plain-markdown task files living next to the code. The concept behind the whole system: every task file is written to be **self-sufficient** — the file alone is enough to implement the work from, including in a later session with no memory of the task's creation. That sufficiency is a floor, never a filter: at implementation time the implementer draws on everything actually available — the codebase, the project's standing instructions, the user in the loop.
 </role>
 
 <when_to_activate>
@@ -72,7 +72,7 @@ status: open
 
 Fields:
 
-- `description` — compact one-liner (<=200 chars). The body carries the full context.
+- `description` — compact one-liner. Compose to roughly 180 characters; the linter warns above 200, and that gap is headroom for a later broadening edit rather than length to write at. The body carries the full context.
 - `scope` — either a relative path under the project root pointing at the directory the task targets (unquoted; e.g. `scope: plugins/ai_dev/skills/task`), or a short descriptive label when no single directory fits (quoted; e.g. `scope: "project xyz"`). The linter resolves an unquoted value against the project root and blocks if the path is missing or escapes the root; a quoted value is accepted as text. Paths win when one fits — the filesystem stays the source of truth.
 - `created` — ISO 8601 datetime, set once when the task is created.
 - `updated` — ISO 8601 datetime, bumped on every edit and on every status change.
@@ -94,22 +94,50 @@ Task bodies are **100% CommonMark-standard markdown**. The YAML frontmatter at t
 - **No wikilinks.** `[[target]]` is an Obsidian extension. Use `[text](relative-path.md)` for cross-references.
 - **Local cross-references are standard markdown links.** Relative `.md` links to other task files (under `tasks/` or `tasks/archive/`) must resolve on disk — the linter blocks broken targets.
 - **Link to another task file when the cross-reference carries weight.** Add a link when it marks a **dependency** (this task builds on, extends, or must follow the other), when reading the linked task would **change how this task is implemented** (it defines a rubric, format, or interface this task consumes), or when the **linked file will be co-edited** (a shared region, a coordinated double-edit, or competing mechanisms to reconcile). The settling test: would reading the linked task, or knowing it exists, change how you implement this task or edit this file? Keep the link when yes; leave out a relatedness-only reference — a bare "see also" / "distinct from" / "pairs with", or a reverse-duplicate pointer whose relationship the linked side already states — since reading the target changes nothing about the work.
+- **Locate referenced content by a stable label — the soft-pointer rule.** Anchor every pointer to a heading, a pseudo-XML tag, a symbol or rule name, or a short quoted phrase, together with the file path, so the reference stays valid while the referenced file evolves. A line number may accompany the label; the label carries the reference.
 
 Simplicity, single-topic scope, and standard tooling beat every non-standard extension.
 </markdown_policy>
 
 <body>
-The body starts with a single `# Title` H1 on the first non-blank line, followed by the rest of the task content. Write the body so a single-shot AI coder picking up only this file has every piece of context they need to implement the work end to end:
+The body starts with a single `# Title` H1 on the first non-blank line, followed by the rest of the task content. Write the body to be **self-sufficient**: the file carries everything the work needs that the project itself does not already hold, while whatever exists at implementation time — the codebase, the project's standing instructions, the user in the loop — stays in play and gets used. Self-sufficiency is what lets a task outlive its origins: the conversation that created it is the one context guaranteed to be gone by then. Corollary: content a standing project instruction already mandates is cited from the task, with the rule's text staying in its source document. Fill these sections:
 
 - **Goal** — what the task delivers and the user-visible outcome.
 - **Context** — pointers to the relevant files, modules, prior decisions, related tasks, links.
 - **Approach** — the intended implementation path, plus any constraints or non-goals.
-- **Acceptance** — concrete checks that say the task is done (tests to pass, behaviour to verify, lint to come back clean).
+- **Acceptance** — the contract of concrete checks that say the task is done (a staged fixture the new behaviour is proven on, a file state to inspect, a measurement to record). Every item honours the contract:
+  - **Deliverable items flip.** Each item is false today and flipped true by the work, verifiable mechanically — a command to run, a file state to inspect, a behaviour to observe.
+  - **Task-specific gates only.** Every item's outcome changes with this task's work. The project's standing instructions own the generic gates — `make lint`, a deploy dry-run, the full test suite — which run at their standing moments; name a gate only when the task changes what it verifies, such as a new lint rule proven on a staged fixture or a new scenario added to a suite.
+  - **Implementer-runnable.** Every item verifies through steps the implementer runs alone; an action the project's standing instructions gate on the user stays out of acceptance.
+  - **Measured, with a fail branch.** Stochastic or empirical work names its measurement protocol — run count, fixed denominator, baseline — and the recorded measurement is the deliverable; the item states what happens when the hypothesis fails rather than gating on the hoped-for direction.
+  - **Enumerate.** Prefer a list of independently verifiable items over one compound check.
+
+Write the body positive and action-oriented: the primary carrier of every section is what the work does — Goal, Approach, and Acceptance lead with the action taken and what "done" looks like. Negatives earn their place where they carry content of their own: a genuine non-goal, a deferred or explored alternative, a guardrail, the task-specific gate the **Acceptance** contract defines.
+
+Three further rules govern the body's structure:
+
+- **State once.** Each rule, constraint, or decision appears in exactly one place in the body; Goal, Approach, and Acceptance point at that statement rather than re-wording it, so the sections stay in agreement as the task evolves.
+- **Decide or label.** Resolve every either/or before the file is written. When one decision genuinely stays open, label it explicitly ("Open decision:"), list the options, and name the default an implementer takes without further input; one labeled open decision is the ceiling.
+- **Illustrate.** The general statement carries each rule or requirement; specific cases, incident histories, and dated references stay brief illustrations supporting it. A body whose meaning lives only in an example has its altitude inverted.
 
 Keep each task scoped to **one** atomic item. When you notice scope creep — material that overlaps but is itself expandable — file it as a separate task and cross-link instead of folding it in. When a task grows past **300 lines**, you must split it into multiple tasks before continuing.
 </body>
 
 </file_format>
+
+<readiness_checklist>
+The readiness lens for one task file, judged against the self-sufficiency bar `<body>` defines. It lives here as the family's single source: judge a draft against it before writing the file, and judge an existing task against it before handing it to an implementer.
+
+1. **Structural check first.** Confirm the body opens with a single `# Title` and carries the `## Goal` / `## Context` / `## Approach` / `## Acceptance` sections, with valid frontmatter, per `<body>` and `<file_format>`. A one-shot implementer follows structure literally, so a structural gap is high-severity — run this before the content lens.
+2. **Content lens.** Read the task thoroughly and surface every issue that could derail a correct, complete one-shot implementation:
+   - **Scope sizing** — the most compact scope that still delivers a coherent, independently testable unit. Flag too-large (multi-pass risk, past the 300-line split) and too-small (coordination overhead, no standalone capability).
+   - **Focus** — one atomic item. Flag scope creep that belongs in a sibling task and should be cross-linked rather than folded in.
+   - **Complexity** — implementable in a single pass. Flag hidden multi-step or cross-cutting work.
+   - **Contradictions** — internal consistency, including behavioural contradictions where one part makes another non-functional; paraphrase drift between sections — what the **State once** rule prevents — is the standard source.
+   - **Ambiguity / under-specification** — missing requirements, unstated assumptions, or vague pointers that lead to divergent implementations; an unresolved either/or is a **Decide or label** finding, and a reference that leans on a bare line number is flagged against the `<markdown_policy>` soft-pointer rule.
+   - **Over-specification** — constraints that needlessly narrow an implementation choice the task meant to leave open; a choice meant to stay open is labeled per **Decide or label** rather than silently narrowed.
+   - **Negation-framed behaviour** — behaviour defined as "not X" that an implementer must invert to act on; reframe per the body's positive, action-oriented rule, preserving the technical detail.
+</readiness_checklist>
 
 <workflows>
 
@@ -141,6 +169,8 @@ Run every step in order:
 
 <gather>
 Confirm the user's intent and gather enough material — current state, target behaviour, relevant files — to fill the body sections in `<body>`. If context is too thin to write something a single-shot AI coder could implement from, ask one sharp clarifying question before writing.
+
+For an incident-shaped request — a failure case, an error, a "when X happens it breaks" — settle the altitude as part of gathering, as a decision rather than a question: decide from the request and the surrounding code whether the task delivers the point-fix for the reported case or the general behaviour whose absence caused it, and default to the point-fix when the evidence supports nothing more. Record the choice as an explicit clause in the task's `## Goal` — the point-fix for the named case, or the behaviour definition with the incident as its motivating case — and surface it among the assumptions the create report names, so the user's reply is the correction point.
 </gather>
 
 <prior_art>
@@ -199,6 +229,8 @@ List with `ls "$TASKS"` for open tasks, `ls "$TASKS/archive"` for closed. Filter
 
 <update>
 Edit the body or frontmatter as needed, then bump `updated` to the current datetime in the same edit. Re-run `python3 scripts/lint.py --quiet` after the edit. When an update materially changes the scope or adds expandable new work, split into a follow-up task rather than letting the file grow past 300 lines.
+
+**Applying check findings** is a first-class update flow: when the user replies with issue numbers and per-number decisions — accept, reject, or modify — apply each accepted finding's minimum fix to the task file, leave each rejected finding's passage as it is, and fold a user-modified instruction in over the report's suggestion. Numbers index the most recent `task_check` report in the conversation; when no report is in context, ask for the issue list instead of guessing. The whole round is one update: bump `updated` once in the same edit round and re-run the linter once at the end.
 </update>
 
 <archive>
@@ -207,7 +239,7 @@ When a task is finished or being dropped, run all five steps:
 1. Set `status` in the frontmatter to `implemented` (work is done and shipped) or `deferred` (parked, not pursued for now).
 2. Bump `updated` to the current datetime.
 3. Move the file from `<tasks>/` to `<tasks>/archive/` with `git mv` (or plain `mv` if the project is not a git repo). The filename does not change.
-4. Update cross-references. Re-point any link inside the moved task that still names a sibling at `<tasks>/` to its new relative path, and rewrite inbound links from other open tasks to either point at the archived location or convert them to plain text plus `(archived)` when the link is no longer load-bearing.
+4. Update cross-references. Re-point any link inside the moved task that still names a sibling at `<tasks>/` to its new relative path. Then scan the whole tasks tree — `tasks/` and `tasks/archive/` alike (e.g. `rg` the moving filename across both) — for inbound links to the moving file, and rewrite every hit to either point at the archived location or convert to plain text plus `(archived)` when the link is no longer load-bearing.
 5. Run `python3 scripts/lint.py --quiet` and resolve every blocking finding before declaring the archive complete.
 </archive>
 
@@ -248,7 +280,7 @@ Findings come in three buckets:
 </bump_updated>
 
 <single_shot_ready>
-**Write for a single-shot implementer.** A task body that needs the original chat to make sense is a task that has not captured enough context.
+**Write for a single-shot implementer.** The task file carries everything the work needs that the project itself does not already hold; everything available at implementation time — codebase, standing instructions, the user — stays in play. A body that leans on its birth conversation fails this bar: that conversation is the one context certain to be gone.
 </single_shot_ready>
 
 <not_a_wiki>

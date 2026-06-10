@@ -2,8 +2,8 @@
 description: "Broaden the base task skill's role to orientation and state the system's concept: a task file is enough on its own to implement, with every available context staying in play."
 scope: plugins/ai_dev/skills/task
 created: 2026-06-09T11:06:38
-updated: 2026-06-09T13:32:19
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # Base role states the task-system concept: self-sufficient, all context in play

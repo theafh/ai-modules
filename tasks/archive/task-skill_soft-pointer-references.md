@@ -2,8 +2,8 @@
 description: Reference content in task bodies and task_check reports by stable labels and descriptions — soft pointers that survive edits — instead of bare line numbers that drift.
 scope: "task_* family skills"
 created: 2026-06-09T10:45:16
-updated: 2026-06-09T13:32:19
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # Soft pointers: labels and descriptions instead of line numbers

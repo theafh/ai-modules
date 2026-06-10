@@ -2,8 +2,8 @@
 description: "Align the sibling skills' one-shot bar sentences to the base self-sufficiency concept — replacing the sole-input vacuum phrasings — and have checks judge tasks as consumed."
 scope: "task_* family skills"
 created: 2026-06-09T10:45:16
-updated: 2026-06-09T13:32:19
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # Sibling bar sentences follow the self-sufficiency concept

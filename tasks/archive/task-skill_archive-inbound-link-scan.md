@@ -2,8 +2,8 @@
 description: Extend the archive flow's inbound-link re-pointing to scan tasks/archive/ as well as open tasks, so no link breaks when a task moves to archive.
 scope: "task_* family skills"
 created: 2026-06-09T12:34:16
-updated: 2026-06-09T13:32:19
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # Archive-aware inbound link scan at close-out

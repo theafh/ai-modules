@@ -2,8 +2,8 @@
 description: Add a task_fix advisory check that surfaces task bodies restating a rule the project's standing instructions own, proposing citation or removal instead of the copy.
 scope: plugins/ai_dev/skills/task_fix
 created: 2026-06-09T12:34:16
-updated: 2026-06-09T13:32:19
-status: open
+updated: 2026-06-10T20:50:09
+status: implemented
 ---
 
 # task_fix surfaces restated standing rules
