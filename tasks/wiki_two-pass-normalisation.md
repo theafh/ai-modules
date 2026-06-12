@@ -2,7 +2,7 @@
 description: Make the wiki_auto_shaper agent route displaced semantics to their proper channel before normalising structure, and surface both halves in the audit report.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:24
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T00:06:12
 status: open
 ---
 
@@ -14,7 +14,7 @@ When the `wiki_auto_shaper` agent normalises a structural element (heading vocab
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point during the 2026-05-26 audit of `wiki/todos/bet-assistant-updates.md` in the `ai-assets` repo, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
 During that audit the agent normalised eight labels from "What the session showed" to "What the canon says" (a vocabulary fix), and then **jammed the displaced session date into the heading** as a parenthetical qualifier — producing the same overcompressed labels documented in [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md).
 
@@ -22,7 +22,7 @@ The correct path: route the date+session metadata to `sources:` (creating a `raw
 
 Skipping the routing step also produces:
 
-- **Overcompressed labels** — vocabulary terms forced to carry extra semantics they were never meant to (the "What the canon says (2026-05-22 ...)" case above).
+- **Overcompressed labels** — vocabulary terms forced to carry extra semantics they were never meant to (the "What the canon says (2026-01-15 ...)" case above).
 - **Headings with parenthetical attribution** — the structural element broken to hold metadata.
 - **Frontmatter fields with embedded prose** — e.g., `scope: project xyz (Q3 only)`.
 - **Section titles with embedded scope or mandate-level tags** — another shape of the same failure when scope/mandate metadata gets jammed into a title rather than routed to frontmatter.

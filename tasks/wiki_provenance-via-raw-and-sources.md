@@ -2,7 +2,7 @@
 description: Force wiki content derived from non-canonical raw artifacts (sessions, pastes, meetings) into a `raw/` sidecar + frontmatter `sources:`, not body-prose narration.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:54
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T00:06:12
 status: open
 ---
 
@@ -14,9 +14,9 @@ Any wiki content derived from an artifact outside `wiki/` and outside canonical 
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point during the 2026-05-26 audit of `wiki/todos/bet-assistant-updates.md` in the `ai-assets` repo, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
-During that audit the wiki page derived content from a chat-session transcript (a non-canonical raw artifact); the auto-shaper narrated the provenance in body prose ("during a 2026-05-22 authoring session, the user enforced…") instead of writing a `raw/<kind>/<slug>.md` sidecar and pointing at it from `sources:`.
+During that audit the wiki page derived content from a chat-session transcript (a non-canonical raw artifact); the auto-shaper narrated the provenance in body prose ("during an authoring session, the user enforced…") instead of writing a `raw/<kind>/<slug>.md` sidecar and pointing at it from `sources:`.
 
 The convention already exists for in-repo mirrors (e.g., `raw/notes/repo-claude-md.md`) but is **not consistently applied** to ad-hoc raw artifacts that arrive mid-conversation: pastes, chat session transcripts, meeting notes, screenshot OCR, voice memos, internal scratch.
 

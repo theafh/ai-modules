@@ -2,7 +2,7 @@
 description: Add a `growth:` declaration per wiki page type and teach the lint to defer size findings for declared-backlog/monotonic-append/synthesis pages; disambiguate todo anatomy for non-canonical sources.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:37
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T00:06:12
 status: open
 ---
 
@@ -17,7 +17,7 @@ Two adjacent failures around page-type contracts get fixed together:
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point during the 2026-05-26 audit of `wiki/todos/bet-assistant-updates.md` in the `ai-assets` repo, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
 During that audit the auto-shaper either parenthetically annotated the middle-paragraph heading (see [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md)) or silently broadened the definition of "canon" in a page-summary paragraph (see [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md)) — both remediation smells driven by the ambiguous page-type contract.
 

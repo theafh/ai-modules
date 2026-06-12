@@ -2,7 +2,7 @@
 description: Stop the wiki_auto_shaper agent (and wiki authoring contract) from inserting page-convention prose and lint-sanction prose into wiki page bodies.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:26
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T00:06:12
 status: open
 ---
 
@@ -14,7 +14,7 @@ Wiki page bodies carry only load-bearing knowledge — the entries, facts, and c
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point during the 2026-05-26 audit of `wiki/todos/bet-assistant-updates.md` in the `ai-assets` repo, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
 During that remediation the `wiki_auto_shaper` agent inserted two unwanted paragraphs that had to be stripped by hand:
 
@@ -27,9 +27,9 @@ Carve-out: `SCHEMA.md`, `index.md`, and synthesis pages (`type: synthesis`) may 
 
 Cross-references:
 
-- `ai-assets` memory `feedback_no_meta_in_wiki_body.md`.
-- `ai-assets` repo `wiki/todos/bet-assistant-updates.md` before/after diff.
-- `ai-assets` repo `wiki/log.md` 2026-05-26 audit entry.
+- A wiki owner's memory note capturing the no-meta-in-body feedback.
+- A wiki page's before/after diff where meta prose had been stripped from the body.
+- A wiki `log.md` audit entry recording the cleanup.
 
 Related tasks: [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) (its lint-sanction-routing edit drops the same "on the page's body or" wording as step 1 here — coordinate so the wording is removed exactly once).
 

@@ -2,7 +2,7 @@
 description: Keep wiki headings and bold-prefix labels to a fixed structural vocabulary; route displaced metadata (date, source, qualifier) to its proper channel.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:35
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T00:06:12
 status: open
 ---
 
@@ -14,12 +14,12 @@ Markdown headings and bold-prefix labels in wiki pages are *structural*: they ma
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point during the 2026-05-26 audit of `wiki/todos/bet-assistant-updates.md` in the `ai-assets` repo, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
 During that audit the auto-shaper normalised eight section labels and produced strings like:
 
-- `**What the canon says (2026-05-22 review-routing session):**`
-- `**What the canon says (2026-05-22 agent-runtime POC bet authoring session):**`
+- `**What the canon says (2026-01-15 triage session):**`
+- `**What the canon says (2026-01-15 design review session):**`
 
 The user called this "overcompression beyond recognition" — the label vocabulary is structural, the parenthesised attribution is content that belongs elsewhere.
 
@@ -37,7 +37,7 @@ Related tasks: [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) 
 2. **`plugins/knowledge_management/skills/wiki/SKILL.md`** — mirror the rule in the authoring contract.
 3. **`plugins/knowledge_management/skills/wiki/scripts/lint.py`** — add an info-level heuristic flagging either of:
    - A heading line (`^#+\s`) or bold-label line (`^\*\*.*\*\*:?\s*$`) longer than 60 characters.
-   - A heading or bold-label line containing a parenthesised date or qualifier suffix matching the regex `\([0-9]{4}-[0-9]{2}-[0-9]{2}.*?\)` (also catch shorter forms like `(2026-05-22 ...)`).
+   - A heading or bold-label line containing a parenthesised date or qualifier suffix matching the regex `\([0-9]{4}-[0-9]{2}-[0-9]{2}.*?\)` (also catch shorter forms like `(2026-01-15 ...)`).
 
    Surface both checks as `info`-level, not blocking — the wider workflow should be able to land an edit that contains a violation while warning the author.
 

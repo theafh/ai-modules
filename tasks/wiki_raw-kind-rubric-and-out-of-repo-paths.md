@@ -2,7 +2,7 @@
 description: Document the `raw/<kind>/` selection rubric and extend `source_path:` to cover out-of-repo local files in the wiki SCHEMA template and skill.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:04
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T00:06:12
 status: open
 ---
 
@@ -17,12 +17,12 @@ The wiki convention for ingesting raw artifacts grows two documented rules so di
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point during the 2026-05-26 audit of `wiki/todos/bet-assistant-updates.md` in the `ai-assets` repo, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
 Two adjacent gaps in the raw-artifact convention surfaced during that ingest:
 
 - **Kind selection ambiguity.** Kinds are `articles | assets | meetings | notes | papers`. A chat-session transcript could plausibly land under `meetings` or `notes`. Different authors will pick differently, fragmenting the convention.
-- **No documented field for out-of-repo local files.** `source_path:` is documented for in-repo mirrors; `source_url:` is documented for external URLs. A local file outside the repo (e.g., `~/.claude/projects/.../session.jsonl`) fits neither. The 2026-05-26 ingest used `source_path:` with an absolute `~`-prefixed path, which works but is undocumented and non-portable across machines.
+- **No documented field for out-of-repo local files.** `source_path:` is documented for in-repo mirrors; `source_url:` is documented for external URLs. A local file outside the repo (e.g., `~/.claude/projects/.../session.jsonl`) fits neither. That ingest used `source_path:` with an absolute `~`-prefixed path, which works but is undocumented and non-portable across machines.
 
 Files involved:
 
