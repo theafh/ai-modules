@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.2.0
+version: 1.3.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -94,7 +94,7 @@ Task bodies are **100% CommonMark-standard markdown**. The YAML frontmatter at t
 - **No wikilinks.** `[[target]]` is an Obsidian extension. Use `[text](relative-path.md)` for cross-references.
 - **Local cross-references are standard markdown links.** Relative `.md` links to other task files (under `tasks/` or `tasks/archive/`) must resolve on disk — the linter blocks broken targets.
 - **Link to another task file when the cross-reference carries weight.** Add a link when it marks a **dependency** (this task builds on, extends, or must follow the other), when reading the linked task would **change how this task is implemented** (it defines a rubric, format, or interface this task consumes), or when the **linked file will be co-edited** (a shared region, a coordinated double-edit, or competing mechanisms to reconcile). The settling test: would reading the linked task, or knowing it exists, change how you implement this task or edit this file? Keep the link when yes; leave out a relatedness-only reference — a bare "see also" / "distinct from" / "pairs with", or a reverse-duplicate pointer whose relationship the linked side already states — since reading the target changes nothing about the work.
-- **Locate referenced content by a stable label — the soft-pointer rule.** Anchor every pointer to a heading, a pseudo-XML tag, a symbol or rule name, or a short quoted phrase, together with the file path, so the reference stays valid while the referenced file evolves. A line number may accompany the label; the label carries the reference.
+- **Locate referenced content by a verbatim label — the soft-pointer rule.** Anchor every pointer to an exact, greppable string in the target — a heading, a pseudo-XML tag, a symbol or rule name, or a short quoted phrase — together with the file path, so the reference resolves by search and fails loudly (grep finds nothing) once the target is reworded rather than landing the reader on stale, plausible-looking wrong code. The label carries the whole reference and must be verbatim-greppable: a vague description like "the matchers block" does not qualify. Give extent, when useful, as size — "the ~10-line guard block" — never as position. Keep position claims out: a `:N` suffix on a file path, a bare `line N`, and an `around lines N–M` range each carry a number that rots silently as the file evolves.
 
 Simplicity, single-topic scope, and standard tooling beat every non-standard extension.
 </markdown_policy>
@@ -134,7 +134,7 @@ The readiness lens for one task file, judged against the self-sufficiency bar `<
    - **Focus** — one atomic item. Flag scope creep that belongs in a sibling task and should be cross-linked rather than folded in.
    - **Complexity** — implementable in a single pass. Flag hidden multi-step or cross-cutting work.
    - **Contradictions** — internal consistency, including behavioural contradictions where one part makes another non-functional; paraphrase drift between sections — what the **State once** rule prevents — is the standard source.
-   - **Ambiguity / under-specification** — missing requirements, unstated assumptions, or vague pointers that lead to divergent implementations; an unresolved either/or is a **Decide or label** finding, and a reference that leans on a bare line number is flagged against the `<markdown_policy>` soft-pointer rule.
+   - **Ambiguity / under-specification** — missing requirements, unstated assumptions, or vague pointers that lead to divergent implementations; an unresolved either/or is a **Decide or label** finding, and any reference carrying a line-number position claim — a `:N` path suffix, a bare `line N`, an `around lines N–M` range — is flagged against the `<markdown_policy>` soft-pointer rule.
    - **Over-specification** — constraints that needlessly narrow an implementation choice the task meant to leave open; a choice meant to stay open is labeled per **Decide or label** rather than silently narrowed.
    - **Negation-framed behaviour** — behaviour defined as "not X" that an implementer must invert to act on; reframe per the body's positive, action-oriented rule, preserving the technical detail.
 </readiness_checklist>
@@ -255,7 +255,7 @@ python3 scripts/lint.py --quiet      # blocking + warn only
 Findings come in three buckets:
 
 - **blocking** — bad filename, missing/malformed frontmatter, invalid status, status/location mismatch, duplicate filenames. Exit 1; must fix.
-- **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines).
+- **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines), line-number position claims in an open task body (the soft-pointer rule; fenced code blocks are skipped, inline code stays checked).
 - **info** — reserved for future style nits.
 </lint>
 

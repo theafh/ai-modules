@@ -2,8 +2,8 @@
 description: Tighten the task-family soft-pointer rule to verbatim greppable labels only — no path:N or "line N" position claims — at every rule site, plus a fence-aware warn-level lint check.
 scope: plugins/ai_dev/skills
 created: 2026-06-12T14:22:20
-updated: 2026-06-13T00:29:06
-status: open
+updated: 2026-06-13T01:19:38
+status: implemented
 ---
 
 # Ban line-number references in task files: label-only soft pointers
@@ -59,4 +59,4 @@ Non-goals: the wiki family's pointer conventions are untouched; ephemeral chat o
 - On the warn fixture, `lint.py` reports exactly the two new warn findings naming file and matched pattern; on the quiet fixture it reports none of them; **both runs exit 0** (false today: the check does not exist).
 - A re-grep of "line number" and "soft-pointer" across `plugins/ai_dev/skills/task*` shows every remaining mention consistent with the label-only rule (false today: two sites carry the old clause).
 - Once the new check exists, running it over this task file reports zero position-claim warns — every illustration here uses a non-digit placeholder (`:N`, `line N`, `around lines N–M`) or sits inside a fenced block, so the file defining the rule stays clean (the body was made compliant while the task was shaped; this item confirms the check keeps it clean).
-- Reduced acceptance test on one untouched task: a tree-wide run of the new check flags [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md) — left unmodified — with the position-claim warns it currently carries (a `file.md:N` path claim and an `around lines N–M` prose claim among them), naming file and matched pattern, at exit 0. The repo-wide sweep that would clear those warns across the tree is deferred to a follow-up task, so other open tasks still warning here is expected, not a failure (false today: the check does not exist).
+- Reduced acceptance test on one untouched task: a tree-wide run of the new check flags [wiki_log-rotation-and-retrieval.md](../wiki_log-rotation-and-retrieval.md) — left unmodified — with the position-claim warns it currently carries (a `file.md:N` path claim and an `around lines N–M` prose claim among them), naming file and matched pattern, at exit 0. The repo-wide sweep that would clear those warns across the tree is deferred to a follow-up task, so other open tasks still warning here is expected, not a failure (false today: the check does not exist).
