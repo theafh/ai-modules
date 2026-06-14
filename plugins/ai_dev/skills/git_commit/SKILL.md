@@ -2,7 +2,7 @@
 name: git_commit
 description: Create one structured git commit covering the full current working-tree state. Use when the user asks to commit, commit changes, save changes, save work, make a commit, write a commit message, wrap up changes, "commit this", "git commit", or otherwise put the current repo state into git history.
 disable-model-invocation: true
-version: 3.4.0
+version: 3.4.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -14,6 +14,11 @@ license: MIT
   <path_resolution>
     Bundled scripts live in `scripts/` next to this `SKILL.md`. Resolve each script's absolute path by combining the directory of this `SKILL.md` with `scripts/<script-name>` and invoke the absolute path. Every agentic IDE that surfaces a skill exposes the file path it loaded the skill from, so the parent directory is always knowable. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed; never switch to the fallback because of perceived path uncertainty.
   </path_resolution>
+  <codex_agent_only>
+    <scope>Codex agents apply this section. Non-Codex agents ignore this section and follow the primary workflow normally.</scope>
+    <sandbox_preflight>When the active Codex environment reports managed filesystem sandboxing and `.git` is readable without write access, invoke the primary workflow scripts with Codex command escalation on their first attempt. Use `sandbox_permissions: "require_escalated"` for `prepare_commit_context.sh` and `commit_with_message.sh` so Git can create `.git/index.lock` without a failed first run.</sandbox_preflight>
+    <fallback_boundary>Apply this only from visible Codex sandbox metadata. When `.git` is writable or sandbox metadata is unavailable, follow the primary workflow normally and use fallback handling only after an actual script failure.</fallback_boundary>
+  </codex_agent_only>
   <primary_workflow>
     <gather_context>Invoke `scripts/prepare_commit_context.sh`. The script stages every untracked file and writes one structured context blob (status, recent commits, per-file staged/unstaged diffs, binary markers) to a file under the system tmp dir. Its stdout prints exactly two lines: the context file's absolute path, then a one-line consumption directive. Treat that file as the authoritative source for the commit; the path on stdout is the only thing you carry forward.</gather_context>
     <consume_context>
