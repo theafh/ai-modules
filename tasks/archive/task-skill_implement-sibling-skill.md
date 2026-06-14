@@ -3,7 +3,9 @@ description: Add a `task_implement` sibling skill that implements one task file 
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
 updated: 2026-05-31T00:20:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add the `task_implement` sibling skill

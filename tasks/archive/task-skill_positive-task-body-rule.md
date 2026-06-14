@@ -3,7 +3,9 @@ description: Add a rule to the task skills that task file bodies read as what to
 scope: "task_* family skills"
 created: 2026-06-02T19:16:33
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Make positive, action-oriented task bodies a rule in the task skills

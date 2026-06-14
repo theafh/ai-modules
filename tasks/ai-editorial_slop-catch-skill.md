@@ -2,8 +2,9 @@
 description: "Build the slop_catch skill: a bundled Python detector (ported from the ai_slop_detector extension) plus a structural-tell ruleset that flags AI writing tells in a draft and returns feedback."
 scope: "ai_editorial plugin"
 created: 2026-06-01T23:31:06
-updated: 2026-06-10T22:05:12
+updated: 2026-06-14T18:35:44
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Build the slop_catch skill
@@ -18,11 +19,11 @@ Add the `slop_catch` skill to the `ai_editorial` plugin. Given a draft, it surfa
 - **Source to port — prerequisite input.** The detection logic lives in the user's `ai_slop_detector` browser extension, a separate sibling repo under the private-repos root, not part of this repo. Before writing the detector, locate and read that repo to extract the exact tells and how it scores them. If the repo is not reachable from this checkout, gather the tell list and detection logic from the user before building the script. Port the real tells rather than inventing them.
 - Pairs with [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md): `slop_catch` flags AI tells; `ghost_writer` produces and edits prose that avoids them.
 - Keep distinct from `ai_instruction_writing` (machine-facing). Write the skill `description:` so it triggers on reviewing and flagging human-facing prose for AI tells, not on authoring machine instructions.
-- Conventions: pseudo-XML skill body (reference `ai_instruction_formatting`); positive, action-oriented language (reference `ai_instruction_writing`); `snake_case`; the Python script follows the `format_python` style guide.
+- Follow the standing repo rules for skill authoring; this task supplies the `slop_catch`-specific detector workflow, source-port requirement, and Python style-guide requirement.
 
 ## Approach
 
-1. `plugins/ai_editorial/skills/slop_catch/SKILL.md` — frontmatter `name: slop_catch`; pseudo-XML body (role, when-to-activate, the detect-and-report workflow, output contract).
+1. `plugins/ai_editorial/skills/slop_catch/SKILL.md` — frontmatter `name: slop_catch`; body sections for role, when-to-activate, the detect-and-report workflow, and output contract.
 2. `skills/slop_catch/scripts/` — the Python detector ported from `ai_slop_detector`. Define its I/O contract explicitly: how it receives the draft (stdin or a file argument), what it emits (structured findings — tell id, location/span, message), and its exit behaviour. The `SKILL.md` prose states how the skill runs the script and turns its output into reader-facing feedback.
 3. `skills/slop_catch/references/` — the structural-tell ruleset: each tell named, with what it looks like and why it reads as AI-generated, so the agent can explain the findings the script flags and catch tells the script cannot.
 
@@ -31,5 +32,5 @@ Add the `slop_catch` skill to the `ai_editorial` plugin. Given a draft, it surfa
 - `plugins/ai_editorial/skills/slop_catch/` holds `SKILL.md`, a `scripts/` directory with the detector, and a `references/` directory with the tell ruleset.
 - The script's input/output contract is documented, and `SKILL.md` describes how that output becomes reader-facing feedback.
 - Every tell the detector and ruleset cover traces to the `ai_slop_detector` source (or to the tell list the user supplied), not invented.
-- The Python script adheres to the `format_python` style guide (a manual check — `make lint` here covers markdown, `jq`, and shell only, not Python).
+- The Python script adheres to the `format_python` style guide.
 - `./deployment/deployment.sh --global --dry-run` previews `slop_catch` without error.

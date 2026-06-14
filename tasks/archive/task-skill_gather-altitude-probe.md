@@ -3,7 +3,9 @@ description: "Settle incident-shaped requests' altitude at gather: point-fix or 
 scope: plugins/ai_dev/skills/task
 created: 2026-06-09T14:03:33
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Gather altitude probe: point-fix or behaviour definition, decided at capture

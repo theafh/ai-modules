@@ -3,7 +3,9 @@ description: Add a `task_health` sibling skill that audits and fixes the tasks t
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
 updated: 2026-05-31T00:20:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add the `task_health` sibling skill

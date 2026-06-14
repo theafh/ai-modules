@@ -3,7 +3,9 @@ description: Running collection task for test coverage deferred from tasks-skill
 scope: plugins/ai_dev
 created: 2026-05-28T20:17:49
 updated: 2026-05-31T00:20:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add deferred test coverage for tasks-skill features

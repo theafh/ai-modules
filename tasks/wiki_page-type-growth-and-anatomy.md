@@ -4,6 +4,7 @@ scope: plugins/knowledge_management
 created: 2026-05-28T19:25:37
 updated: 2026-06-13T01:47:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Declare page-type growth patterns; clarify todo anatomy for non-canonical sources

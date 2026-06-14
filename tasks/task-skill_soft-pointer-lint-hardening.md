@@ -4,6 +4,7 @@ scope: plugins/ai_dev/skills
 created: 2026-06-13T14:33:01
 updated: 2026-06-13T14:47:16
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Harden the soft-pointer detector and its triage contract in the task skills

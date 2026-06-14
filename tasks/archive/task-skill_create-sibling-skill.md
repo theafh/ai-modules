@@ -3,7 +3,9 @@ description: Add a `task_create` sibling skill — a focused, low-ceremony entry
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
 updated: 2026-05-31T00:20:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add the `task_create` sibling skill

@@ -4,6 +4,7 @@ scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
 updated: 2026-06-13T01:47:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Give update_changelog a large-output protocol like git_commit's
@@ -43,7 +44,7 @@ Two coordinated changes, script + prose:
 2. **Skill — add a consume protocol.** Add a `<consume_context>` block to `update_changelog/SKILL.md` modeled on `git_commit`'s: default `Read` of the path; paginated `Read` with `offset`/`limit` in sequence until the whole file is covered; ordered `grep`/`awk` slicing only as a last resort for huge days; and a hard rule — **never** re-derive the day with `git log`/`git diff`/`git status` (the script is the sole per-day source), **never** truncate the blob with `head`, and iterate every `<file_change>` in order rather than sampling.
 3. Update the `<tools>`/`<prepare_changelog_day>` description and `<procedure>` substeps so they reference the file-path return and the consume protocol instead of "fetch the context blob in one call".
 4. Keep the `<consume_context>` block **self-contained** — describe the read protocol inline, in full. Do **not** add a runtime pointer to `git_commit` (or any sibling) in the shipped skill: an agent running `update_changelog` gains nothing from being told to go look at another skill and is more likely to get distracted than helped. `git_commit` is only the implementer's model (see `## Context`); the protocol it demonstrates gets copied into this skill's own prose, not referenced from it.
-5. If `tests/update_changelog/` has script unit tests, extend them to assert the script prints a path (not the blob) and that the file contains the expected sections; otherwise note the gap (don't grow the harness in the shipping commit per `CLAUDE.md`).
+5. If `tests/update_changelog/` has script unit tests, extend them to assert the script prints a path (not the blob) and that the file contains the expected sections; otherwise note the gap (don't grow the harness in the shipping commit per the repo rules).
 
 Non-goals: don't change which commits a day selects — that's [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md); the script's `--after/--before` day window is correct and stays as-is. Don't add a compact/diffs-off mode unless the file-handoff alone proves insufficient — the file path plus paginated read should remove the overflow entirely, matching how `git_commit` handles 1000-file commits.
 

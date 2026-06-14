@@ -2,8 +2,10 @@
 description: Add a rule to the task skills that a task links to another task file only when the link marks a dependency, changes how the work is implemented, or points at a file that will be co-edited.
 scope: plugins/ai_dev/skills/task
 created: 2026-06-02T21:00:35
-updated: 2026-06-10T20:50:09
-status: implemented
+updated: 2026-06-14T18:14:02
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Make value-only task cross-linking a rule in the task skills
@@ -27,10 +29,10 @@ judgment.
 The rule lives most naturally in the base `task` skill — the single source of
 truth the front ends defer to. Files in play, all under `plugins/ai_dev/skills/`:
 
-- `task/SKILL.md` — `<markdown_policy>` (lines ~90–98) already states the link
-  *mechanics*: local cross-references are standard markdown links that must
-  resolve on disk, no wikilinks. The *when-to-link* judgment belongs right here,
-  beside those mechanics.
+- `task/SKILL.md` — `<markdown_policy>` already states the link *mechanics*:
+  local cross-references are standard markdown links that must resolve on disk,
+  no wikilinks. The *when-to-link* judgment belongs right here, beside those
+  mechanics.
 - `task_create/SKILL.md` — `<authority>` already defers to `task`'s file format;
   its `<workflow>` "Write" step is where the rule applies when filling
   `## Context` and any cross-references.

@@ -4,6 +4,7 @@ scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:21:26
 updated: 2026-06-10T22:05:12
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Anchor the newest-first day insertion so the agent stops mis-ordering

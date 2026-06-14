@@ -4,6 +4,7 @@ scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
 updated: 2026-06-10T22:05:12
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Verify the changelog with the repo's own lint tooling, whatever it is
@@ -26,7 +27,7 @@ gracefully when there is none.
 - Skill: `plugins/ai_dev/skills/update_changelog/SKILL.md`. No current clause covers post-write verification.
 - Evidence (session-transcript audit, 2026-06-02): session `fa358b26` verified with `npx --yes markdownlint-cli CHANGELOG.md` — wrong because it ignores the repo's own markdownlint config (in this repo, `.markdownlint.jsonc` turns off MD033 for the intentional pseudo-XML), and `--yes` fetches from the network. Session `8fad43d6` correctly used the repo's `make lint` / `make lint-md`. The divergence is purely because the skill leaves verification unspecified.
 - Key constraint from the user: **do not hardcode `make lint`.** That target is specific to this meta-repo; most target repos won't have it. The skill must use *whatever lint rules are available in the repo it is running in* — and if none exist, say so and skip rather than inventing one.
-- This is a general-skill concern (the skill runs everywhere), distinct from this repo's own `CLAUDE.md` lint conventions. The fix lives in the skill prose, not in any repo-specific Makefile.
+- This is a general-skill concern (the skill runs everywhere), distinct from this repo's own lint conventions (the repo rules). The fix lives in the skill prose, not in any repo-specific Makefile.
 
 ## Approach
 

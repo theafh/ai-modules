@@ -3,7 +3,9 @@ description: Extend the archive flow's inbound-link re-pointing to scan tasks/ar
 scope: "task_* family skills"
 created: 2026-06-09T12:34:16
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Archive-aware inbound link scan at close-out

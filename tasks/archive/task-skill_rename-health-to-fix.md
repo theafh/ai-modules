@@ -3,7 +3,9 @@ description: Rename task_health to task_fix — mirror wiki_fix and give repair 
 scope: plugins/ai_dev
 created: 2026-05-30T00:07:29
 updated: 2026-05-30T23:13:04
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Rename task_health to task_fix

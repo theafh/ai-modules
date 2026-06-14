@@ -3,7 +3,9 @@ description: Move the readiness checklist into the base task skill as the single
 scope: "task_* family skills"
 created: 2026-06-09T10:45:16
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Shared readiness checklist: create writes what check judges

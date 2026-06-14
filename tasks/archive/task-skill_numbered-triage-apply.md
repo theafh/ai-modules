@@ -3,7 +3,9 @@ description: "Make applying selected check findings a first-class update flow: t
 scope: plugins/ai_dev/skills/task
 created: 2026-06-09T12:34:16
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Numbered-triage apply path in the update workflow

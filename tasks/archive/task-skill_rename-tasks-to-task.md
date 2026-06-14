@@ -2,8 +2,10 @@
 description: Rename the `tasks` skill to `task` everywhere (dir, frontmatter, H1, plugin metas, READMEs, CLAUDE.md), keeping the managed `tasks/` backlog dir name — prerequisite for the task_* sibling skills.
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-31T00:20:09
-status: implemented
+updated: 2026-06-14T18:14:02
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Rename the `tasks` skill to `task` everywhere
@@ -23,10 +25,9 @@ The skill lives in the `ai_dev` plugin. References found in this repo
 (grep `\btasks\b` across plugin + repo meta):
 
 - `plugins/ai_dev/skills/tasks/` — the skill directory (rename to `task/`).
-- `plugins/ai_dev/skills/tasks/SKILL.md` — frontmatter `name: tasks` (line 2)
-  and the `# tasks` H1 (line 9) and the `<tasks_skill>` root tag; keep the
-  directory name, frontmatter `name:`, and H1 aligned per `CLAUDE.md`
-  "Editing a skill".
+- `plugins/ai_dev/skills/tasks/SKILL.md` — frontmatter `name: tasks`, the
+  `# tasks` H1, and the `<tasks_skill>` root tag; keep the directory name,
+  frontmatter `name:`, and H1 aligned per `CLAUDE.md` "Editing a skill".
 - `plugins/ai_dev/README.md` — skill list entry.
 - `README.md` (root) — layout tree + Plugins bullet list.
 - `CLAUDE.md` (root) — the tasks-skill pointer ("This repo manages upcoming

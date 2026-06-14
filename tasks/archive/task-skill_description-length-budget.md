@@ -3,7 +3,9 @@ description: "Add composition guidance to the task skill: write frontmatter desc
 scope: "task_* family skills"
 created: 2026-06-09T10:45:16
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Description length budget: compose to roughly 180 characters

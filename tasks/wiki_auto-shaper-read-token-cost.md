@@ -4,6 +4,7 @@ scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
 updated: 2026-06-13T01:47:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Stop the auto-shaper's unconditional full-file reads (orient + page walk)

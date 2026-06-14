@@ -4,6 +4,7 @@ scope: plugins/knowledge_management
 created: 2026-05-28T19:24:26
 updated: 2026-06-13T01:47:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Forbid meta-prose in wiki page bodies

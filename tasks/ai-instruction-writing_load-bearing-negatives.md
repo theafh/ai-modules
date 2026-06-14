@@ -4,6 +4,7 @@ scope: plugins/ai_dev/skills/ai_instruction_writing
 created: 2026-06-13T01:10:16
 updated: 2026-06-13T01:10:16
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Recognise load-bearing negatives in ai_instruction_writing

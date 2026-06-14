@@ -3,7 +3,9 @@ description: Add a `task_check` sibling skill (inspired by spec_check) that asse
 scope: plugins/ai_dev
 created: 2026-05-28T20:35:20
 updated: 2026-05-31T00:20:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add the `task_check` sibling skill

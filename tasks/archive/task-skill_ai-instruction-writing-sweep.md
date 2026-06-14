@@ -3,7 +3,9 @@ description: Sweep every task_* family SKILL.md for big ai_instruction_writing v
 scope: "task_* family skills"
 created: 2026-06-01T22:50:36
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Sweep the task_* family for big ai_instruction_writing violations

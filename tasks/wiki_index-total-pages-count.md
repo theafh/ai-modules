@@ -4,6 +4,7 @@ scope: plugins/knowledge_management
 created: 2026-05-28T20:06:45
 updated: 2026-06-13T01:47:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Lint the `Total pages:` header in `index.md` against the real count

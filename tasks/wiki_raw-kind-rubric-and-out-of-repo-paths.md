@@ -4,6 +4,7 @@ scope: plugins/knowledge_management
 created: 2026-05-28T19:25:04
 updated: 2026-06-13T00:06:12
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Document the `raw/` kind rubric and out-of-repo `source_path:` semantics

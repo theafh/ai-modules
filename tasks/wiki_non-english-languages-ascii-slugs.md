@@ -4,6 +4,7 @@ scope: plugins/knowledge_management
 created: 2026-06-09T15:26:15
 updated: 2026-06-13T01:47:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Non-English-language wikis: content in-language, slugs pure ASCII, linter warns on non-ASCII filenames

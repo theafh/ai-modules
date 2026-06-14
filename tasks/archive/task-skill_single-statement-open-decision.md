@@ -3,7 +3,9 @@ description: "Add three authoring rules to the base skill's body: rules stated o
 scope: plugins/ai_dev/skills/task
 created: 2026-06-09T12:34:16
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # State once, decide or label, illustrate: body authoring rules

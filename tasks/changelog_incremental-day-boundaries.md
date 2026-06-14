@@ -4,6 +4,7 @@ scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
 updated: 2026-06-10T22:05:12
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Make incremental runs reprocess the last recorded day, from committed history only

@@ -4,6 +4,7 @@ scope: plugins/knowledge_management
 created: 2026-06-12T23:32:36
 updated: 2026-06-12T23:32:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Align `wiki_auto_shaper` provenance handling with the no-footnote attribution convention

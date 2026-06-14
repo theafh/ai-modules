@@ -3,7 +3,9 @@ description: Add a built-in lossless-conversion step so deriving tasks from any 
 scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
 updated: 2026-06-01T23:25:41
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Verify lossless conversion when deriving tasks from any source

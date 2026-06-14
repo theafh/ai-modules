@@ -4,6 +4,7 @@ scope: deployment
 created: 2026-06-02T23:06:06
 updated: 2026-06-13T01:47:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Require an explicit deployment scope so global stops being a silent fallback

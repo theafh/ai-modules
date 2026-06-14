@@ -2,8 +2,10 @@
 description: Stop created/updated timestamps being model-fabricated — SKILL gives the exact date shell command to run, and lint cross-checks created against filesystem birth time when available.
 scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
-updated: 2026-05-31T00:20:09
-status: implemented
+updated: 2026-06-14T18:14:02
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Make created/updated timestamps trustworthy
@@ -29,9 +31,9 @@ Two gaps combine:
    actual wall clock was ~19:26 — the date was right, the time invented.
 
 2. **The linter only checks timestamp *format*, never plausibility.** In
-   `scripts/lint.py`, `DATETIME_RE` (line 42, `^\d{4}-\d{2}-\d{2}`) and the
-   `for date_field in ("created", "updated")` loop (around line 220) only warn
-   on non-ISO-8601 shape. A fabricated-but-well-formed datetime passes clean.
+   `scripts/lint.py`, `DATETIME_RE` (`^\d{4}-\d{2}-\d{2}`) and the
+   `for date_field in ("created", "updated")` loop only warn on non-ISO-8601
+   shape. A fabricated-but-well-formed datetime passes clean.
 
 ## Approach
 

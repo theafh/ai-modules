@@ -3,7 +3,9 @@ description: Reference content in task bodies and task_check reports by stable l
 scope: "task_* family skills"
 created: 2026-06-09T10:45:16
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Soft pointers: labels and descriptions instead of line numbers

@@ -3,7 +3,9 @@ description: Add a `task_finish` sibling skill that closes out one task — set 
 scope: plugins/ai_dev
 created: 2026-05-28T22:07:10
 updated: 2026-05-31T00:20:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add the `task_finish` sibling skill

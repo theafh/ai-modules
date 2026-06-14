@@ -4,6 +4,7 @@ scope: deployment
 created: 2026-06-02T18:58:04
 updated: 2026-06-13T01:47:36
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Relocate deployment.sh per-machine state (conf + log) to $HOME
@@ -117,7 +118,7 @@ The script may automate the seeding on first run (if no home conf/log exists but
 
 ### Guardrails
 
-- Keep the toolchain to Make + shell, per the CLAUDE.md authoring convention.
+- Keep the toolchain to Make + shell, per the repo rules' authoring convention.
 - Keep the conf a single flat robots.txt-style file: home replaces repo, bootstrapped from the template. (Template-base + home-override *layering* stays a deferred option — see below.)
 
 When implementing, confirm with the user that the machine-wide log is the intended behavior: `--uninstall` from any bundled copy of the script will clean every artifact recorded in the shared manifest across all repos. This is the natural consequence of one home-level log and is almost certainly what is wanted; document it in `deployment/README.md` as the expected behavior.

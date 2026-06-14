@@ -2,7 +2,7 @@
 description: Add skill_doctor to audit skill definitions, metadata, descriptions, tests, trigger readiness, and registration for one skill, a skill family, or all repo skills.
 scope: plugins/ai_dev/skills
 created: 2026-06-14T16:53:22
-updated: 2026-06-14T16:56:15
+updated: 2026-06-14T18:35:44
 reported-by: Andreas Hoffmann
 status: open
 ---
@@ -62,9 +62,9 @@ target skills themselves:
 ## Approach
 
 Implement the new skill as `plugins/ai_dev/skills/skill_doctor/SKILL.md`.
-Use the repo's normal skill-authoring conventions: pseudo-XML structure,
-positive action-oriented instructions, deployment-agnostic references, and
-snake_case naming. Ship the new skill at `version: 1.0.0`.
+Follow the standing repo rules for skill authoring; this task supplies the
+`skill_doctor`-specific behaviour and examples. Ship the new
+skill at `version: 1.0.0`.
 
 The check workflow should be read-only by default and report concrete
 findings with file paths and evidence. It should not rewrite skill files
@@ -116,13 +116,11 @@ The skill should include examples for all three scopes:
 - The skill is registered in the ai_dev plugin metadata, the Codex and
   Claude marketplace manifests, `plugins/ai_dev/README.md`, and the root
   `README.md` wherever this repo lists plugin skills.
-- Because this adds a skill to an existing plugin, the ai_dev plugin metadata
-  is bumped lockstep in the implementation commit according to the repo
-  versioning rule. The new skill itself ships at `1.0.0`.
+- The registration and version metadata follow the standing repo rules for
+  adding a skill to an existing plugin; the new skill itself ships at `1.0.0`.
 - A focused local test or eval exists for scope resolution and for the
   frontmatter-description discovery-safety check, including a fixture with a
   risky sibling-description outlier.
-- `make lint` and `./deployment/deployment.sh --global --dry-run` pass.
 
 ## Related
 

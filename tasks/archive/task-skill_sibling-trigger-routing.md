@@ -3,7 +3,9 @@ description: Improve task* family trigger routing — baseline precise 14/25; de
 scope: plugins/ai_dev
 created: 2026-05-29T23:41:45
 updated: 2026-05-31T00:43:06
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Improve task* family trigger routing

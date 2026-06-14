@@ -4,6 +4,7 @@ scope: "CHANGELOG.md regeneration"
 created: 2026-06-02T19:37:57
 updated: 2026-06-10T22:05:12
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Delete and cold-regenerate CHANGELOG.md with the fixed skill
@@ -26,7 +27,7 @@ end-to-end proof that the changelog skill fixes work together.
   artefacts — status markers and at least one retroactive annotation
   (the `2026-05-29` entry notes the `task_health` → `task_fix` rename that
   actually happened `2026-05-31`). Regenerating discards all of that.
-- `CHANGELOG.md` is git-history-derived by design (`CLAUDE.md`), so nothing in it
+- `CHANGELOG.md` is git-history-derived by design (per the repo rules), so nothing in it
   needs preserving beyond what the skill re-derives from commits — which is why
   deleting and regenerating is safe rather than lossy.
 - Do this **only after all the changelog skill-fix tasks have shipped**, the
@@ -42,7 +43,7 @@ end-to-end proof that the changelog skill fixes work together.
 2. Delete `CHANGELOG.md` (`git rm CHANGELOG.md`).
 3. Run `update_changelog` with no `CHANGELOG.md` present; its cold-build path
    regenerates every day section from git history in the new format.
-4. Committing the regenerated file is fine, per `CLAUDE.md`'s changelog rule
+4. Committing the regenerated file is fine, per the repo rules' changelog rule
    (skill output, not a hand-edit).
 
 ## Acceptance

@@ -2,8 +2,10 @@
 description: Make lint.py resolve body links from the project root as a fallback so repo-relative links stop being false-positive broken-links that force ../ prefixing.
 scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
-updated: 2026-05-28T21:41:01
-status: implemented
+updated: 2026-06-14T18:14:02
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Resolve task-body links from the project root as a fallback
@@ -22,10 +24,10 @@ Two link-like fields in the skill resolve against **different roots**, which is
 the root cause:
 
 - `scope:` resolves against the **project root**. In `scripts/lint.py`,
-  `check_scope` (around line 307) does:
+  `check_scope` does:
   `project_root = tasks.parent.resolve()` then `target = (project_root / raw).resolve()`.
 - Body markdown links resolve against the **task file's own directory**. In
-  `check_links` (around line 405) the only resolution is:
+  `check_links` the only resolution is:
   `candidate = (page.parent / target).resolve()` → `tasks/<link>`.
 
 So a path that is correct for `scope:` (repo-root-relative) is reported broken

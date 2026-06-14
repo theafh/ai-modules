@@ -3,7 +3,9 @@ description: Add a task_fix advisory check that surfaces task bodies restating a
 scope: plugins/ai_dev/skills/task_fix
 created: 2026-06-09T12:34:16
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # task_fix surfaces restated standing rules

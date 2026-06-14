@@ -3,7 +3,9 @@ description: Require task_check to verify every reported issue against the repo 
 scope: plugins/ai_dev/skills/task_check
 created: 2026-06-09T12:34:16
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Grounded check issues: verify on disk, style notes to the tail

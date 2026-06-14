@@ -3,7 +3,9 @@ description: "Broaden the base task skill's role to orientation and state the sy
 scope: plugins/ai_dev/skills/task
 created: 2026-06-09T11:06:38
 updated: 2026-06-10T20:50:09
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Base role states the task-system concept: self-sufficient, all context in play

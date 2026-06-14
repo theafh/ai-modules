@@ -3,7 +3,9 @@ description: Drop the `created`-vs-birth-time drift check from task lint.py — 
 scope: plugins/ai_dev/skills/task
 created: 2026-05-29T00:28:10
 updated: 2026-05-31T01:18:38
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Drop the birth-time drift check from task `lint.py`

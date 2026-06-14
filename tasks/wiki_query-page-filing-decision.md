@@ -4,6 +4,7 @@ scope: plugins/knowledge_management
 created: 2026-06-11T17:46:27
 updated: 2026-06-11T17:46:27
 status: open
+reported-by: Andreas Hoffmann
 ---
 
 # Deterministic query-page filing decision

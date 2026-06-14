@@ -3,7 +3,9 @@ description: Tighten the task-family soft-pointer rule to verbatim greppable lab
 scope: plugins/ai_dev/skills
 created: 2026-06-12T14:22:20
 updated: 2026-06-13T01:19:38
-status: implemented
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Ban line-number references in task files: label-only soft pointers
