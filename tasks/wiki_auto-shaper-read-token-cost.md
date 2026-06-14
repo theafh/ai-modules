@@ -2,7 +2,7 @@
 description: Cut wiki_auto_shaper token consumption from unconditional full-file reads — make orient reads conditional and switch the page walk to Grep-first, bounded reads.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -16,15 +16,15 @@ A `wiki_auto_shaper` run consumes far fewer tokens by not reading large files it
 
 Two phases of [agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) read whole files unconditionally, and both costs scale badly:
 
-1. **Orientation over-reads.** `<read_canonical_references>` (around lines 158-188) lists several full-file reads as mandatory orientation: the wiki `SKILL.md` (tens of KB), `template_schema.md`, `template_index.md`, `template_log.md`, `init_wiki.sh`, and `raw_taxonomy.md`. Immediately afterward, `<scaffold_drift>` (around lines 399-509) runs `diff -u` of the live `SCHEMA.md`/`index.md`/`log.md` against the same templates (lines ~412-418) — which is the authoritative line-level comparison. So the bulk template reads are largely redundant with a diff the agent runs anyway.
+1. **Orientation over-reads.** `<read_canonical_references>` lists several full-file reads as mandatory orientation: the wiki `SKILL.md` (tens of KB), `template_schema.md`, `template_index.md`, `template_log.md`, `init_wiki.sh`, and `raw_taxonomy.md`. Immediately afterward, `<scaffold_drift>` runs `diff -u` of the live `SCHEMA.md`/`index.md`/`log.md` against the same templates — which is the authoritative line-level comparison. So the bulk template reads are largely redundant with a diff the agent runs anyway.
 
-2. **Whole-wiki page reads even when lint is clean.** `<page_first_iteration>` (around lines 209-233) mandates walking the working set "page by page" with a full read of each page and is flagged load-bearing, so the agent will not shortcut it. When the linter returns zero blocking/zero warn, the agent still issues one full `Read` per page across the entire wiki and concludes each is clean — fixing nothing, at a cost that grows linearly with wiki size (hundreds of reads on a large wiki).
+2. **Whole-wiki page reads even when lint is clean.** `<page_first_iteration>` mandates walking the working set "page by page" with a full read of each page and is flagged load-bearing, so the agent will not shortcut it. When the linter returns zero blocking/zero warn, the agent still issues one full `Read` per page across the entire wiki and concludes each is clean — fixing nothing, at a cost that grows linearly with wiki size (hundreds of reads on a large wiki).
 
 The prose-level checks that genuinely need page content (instance leakage on procedure pages, topic-mixing, cross-page contradictions) can be narrowed first with `Grep` across the tree, reading in full only the pages a grep flags. Structural checks are already the linter's job.
 
 Files involved:
 
-- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — `<read_canonical_references>` (~158-188), `<page_first_iteration>` (~209-233), `<scaffold_drift>` (~399-509).
+- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — `<read_canonical_references>`, `<page_first_iteration>`, `<scaffold_drift>`.
 
 ## Approach
 

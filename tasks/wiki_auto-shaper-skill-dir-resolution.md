@@ -2,7 +2,7 @@
 description: Make the wiki_auto_shaper agent resolve its own skill directory ($WIKI_SKILL) before any scripts/ call, so cold-start runs stop failing with exit 127.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -14,9 +14,9 @@ The `wiki_auto_shaper` agent reliably locates its own skill directory at the ver
 
 ## Context
 
-[agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) references `$WIKI_SKILL` more than a dozen times to locate its bundled assets — e.g. `$WIKI_SKILL/SKILL.md` (~line 57), `$WIKI_SKILL/scripts/` (~88), the canonical templates (~162-178), and `python3 $WIKI_SKILL/scripts/lint.py "$WIKI"` (~201). But **`$WIKI_SKILL` is never defined**. Nothing in the agent resolves it before use.
+[agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) references `$WIKI_SKILL` more than a dozen times to locate its bundled assets — e.g. `$WIKI_SKILL/SKILL.md`, `$WIKI_SKILL/scripts/`, the canonical templates, and `python3 $WIKI_SKILL/scripts/lint.py "$WIKI"`. But **`$WIKI_SKILL` is never defined**. Nothing in the agent resolves it before use.
 
-Worse, the `<discover_wiki>` step (around line 120) runs the discovery script with a **bare relative path** — `WIKI=$(scripts/discover_wiki.sh --check)` — which only works if the process happens to be sitting in the skill's `scripts/` directory. On a cold start the working directory is the target repo, so the relative path misses, the script exits 127, and the agent burns several turns probing the filesystem (`find /`, plugin-cache guesses, `ls -d`) before stumbling onto the real location. This happens on every cold auto-shaper run.
+Worse, the `<discover_wiki>` step runs the discovery script with a **bare relative path** — `WIKI=$(scripts/discover_wiki.sh --check)` — which only works if the process happens to be sitting in the skill's `scripts/` directory. On a cold start the working directory is the target repo, so the relative path misses, the script exits 127, and the agent burns several turns probing the filesystem (`find /`, plugin-cache guesses, `ls -d`) before stumbling onto the real location. This happens on every cold auto-shaper run.
 
 The agent is deployed through several equal paths (marketplace, `make deploy` symlinks into user config dirs, `--project-dir` symlinks, in-place from a checkout), so the skill directory location varies. The resolution must try the realistic locations rather than hard-coding one.
 

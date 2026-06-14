@@ -2,7 +2,7 @@
 description: Stop prepare_changelog_day.sh from overflowing the tool buffer — write the blob to a file and add a git_commit-style paginated-consume protocol.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -22,7 +22,7 @@ truncates.
 
 ## Context
 
-- Script: `plugins/ai_dev/skills/update_changelog/scripts/prepare_changelog_day.sh`. Its `print_diffs()` (lines ~110-128) runs `git --no-pager diff` per changed file and writes everything to stdout, wrapped in `<changelog_day>…</changelog_day>`.
+- Script: `plugins/ai_dev/skills/update_changelog/scripts/prepare_changelog_day.sh`. Its `print_diffs()` runs `git --no-pager diff` per changed file and writes everything to stdout, wrapped in `<changelog_day>…</changelog_day>`.
 - Reference implementation **for whoever builds this task — not to be cited in the shipped skill**: the `git_commit` skill in the same plugin. Its `scripts/prepare_commit_context.sh` writes the structured blob to a file under the system tmp dir and prints exactly two stdout lines — the **absolute context-file path** and a one-line consumption directive. Its `SKILL.md` then drives consumption with a `<consume_context>` block:
   - `<full_read>` — `Read` the whole file (default path).
   - `<paginated_read>` — if it overflows the Read window, call `Read` again with `offset`/`limit` and continue **in sequence** until every byte is covered.

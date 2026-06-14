@@ -2,7 +2,7 @@
 description: Require an explicit --global or --project-dir scope before deployment.sh touches any target dir, so secondary flags like --clear-backups stop silently triggering a global deploy.
 scope: deployment
 created: 2026-06-02T23:06:06
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -23,20 +23,20 @@ deploys; a global deploy happens only when `--global` is passed explicitly.
 ## Context
 
 - File: `deployment/deployment.sh`.
-- **Arg parsing** (lines ~94–133): `--global` sets `GLOBAL_MODE=true` and
+- **Arg parsing**: `--global` sets `GLOBAL_MODE=true` and
   `--project-dir` sets `PROJECT_DIR`; the other flags — `--clear-backups`,
   `--dry-run`, `--uninstall`, `--type`, `--target` — set their own state and never
   select a scope.
-- **The only current guard** against an unintended run is the zero-arg check
-  (line ~135): `if [[ "$ORIGINAL_ARGC" -eq 0 ]]; then print_usage; exit 0; fi`.
+- **The only current guard** against an unintended run is the zero-arg check:
+  `if [[ "$ORIGINAL_ARGC" -eq 0 ]]; then print_usage; exit 0; fi`.
   Any non-empty argv passes it.
-- **The conflict guard** (lines ~143–146) rejects `--global` together with
+- **The conflict guard** rejects `--global` together with
   `--project-dir`, but nothing requires that *one* of them be present.
-- **Target-dir selection** (lines ~205–231): when `PROJECT_DIR` is empty, the
-  `else` branch (lines ~216–231) assigns the **global** `$HOME/.*` config dirs.
+- **Target-dir selection**: when `PROJECT_DIR` is empty, the
+  `else` branch assigns the **global** `$HOME/.*` config dirs.
   This is the silent fallback — with neither scope flag set, deployment proceeds
   against global dirs. There is no `GLOBAL_MODE` gate on the actual deploy.
-- **The usage text already promises the intended behavior** (lines ~66–71): "To
+- **The usage text already promises the intended behavior**: "To
   deploy to global config directories, pass --global explicitly," and it calls
   `--global` "the previous default behavior of running the script with no
   arguments." The code stops enforcing that promise the moment any argument is

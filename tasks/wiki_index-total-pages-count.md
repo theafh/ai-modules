@@ -2,7 +2,7 @@
 description: Add a lint.py check that the "Total pages:" header in index.md matches the real page count, so the count stops drifting and being hand-recomputed.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:06:45
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -14,13 +14,13 @@ The linter compares the `Total pages: N` header written in `index.md` against th
 
 ## Context
 
-`index.md` carries a human-maintained `Total pages: N` line. Nothing validates it. The existing index check, `check_index_completeness` in [skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) (around line 695), only verifies that *each* page on disk is *referenced* somewhere in `index.md`; it never reads the `Total pages:` header or compares it to a count. As a result the header drifts — incremented per wrap-up without reconciling against ground truth, occasionally jumping by large deltas in a single edit — and the only way it gets corrected today is by an author manually counting (`grep -cE '^- \[' index.md`, `find wiki -name '*.md' | wc -l`) and editing the header, a ritual repeated across sessions.
+`index.md` carries a human-maintained `Total pages: N` line. Nothing validates it. The existing index check, `check_index_completeness` in [skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py), only verifies that *each* page on disk is *referenced* somewhere in `index.md`; it never reads the `Total pages:` header or compares it to a count. As a result the header drifts — incremented per wrap-up without reconciling against ground truth, occasionally jumping by large deltas in a single edit — and the only way it gets corrected today is by an author manually counting (`grep -cE '^- \[' index.md`, `find wiki -name '*.md' | wc -l`) and editing the header, a ritual repeated across sessions.
 
 The linter already has everything needed: `iter_wiki_pages(wiki)` yields exactly the set of pages that should be counted, and `check_index_completeness` already loads `index.md`'s text.
 
 Files involved:
 
-- [plugins/knowledge_management/skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) — `check_index_completeness` (~695) and the check registration in the main runner (~1242).
+- [plugins/knowledge_management/skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) — `check_index_completeness` and the check registration in the main runner.
 - [plugins/knowledge_management/skills/wiki/references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md) — document the new check.
 - [plugins/knowledge_management/skills/wiki/references/template_index.md](../plugins/knowledge_management/skills/wiki/references/template_index.md) — confirm the `Total pages:` line format the check parses.
 

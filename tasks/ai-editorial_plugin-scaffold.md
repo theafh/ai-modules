@@ -2,7 +2,7 @@
 description: "Scaffold and register the new ai_editorial plugin shell — both plugin.json files, README, skills/ dir, marketplace entry, and root README update."
 scope: "ai_editorial plugin"
 created: 2026-06-01T23:31:06
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -18,7 +18,7 @@ Stand up the shell of a third plugin, `ai_editorial`, alongside `ai_dev` and `kn
 - The two launch skills are filed as sibling tasks and depend on this scaffold. Build this first, then [ai-editorial_slop-catch-skill.md](ai-editorial_slop-catch-skill.md) and [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md).
 - **Domain distinction (governs the plugin description and both skills).** `ai_editorial` is human-facing prose — the opposite vector from `ai_dev`'s `ai_instruction_writing`, which is machine-facing (prompts, rules, SKILL.md). Word the plugin description as a peer to the other two so it does not blur into the `ai_instruction_*` space.
 - Naming is settled: the plugin is `ai_editorial`; do not rename it.
-- Convention: write deployment-agnostic cross-references — name siblings directly, never qualify by plugin name, marketplace, or deployment path (per `CLAUDE.md`). Use `snake_case` for the plugin directory.
+- Convention: write deployment-agnostic cross-references (per `CLAUDE.md`). Use `snake_case` for the plugin directory.
 
 ## Approach
 

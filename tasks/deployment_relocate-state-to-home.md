@@ -2,7 +2,7 @@
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
 created: 2026-06-02T18:58:04
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -12,25 +12,25 @@ status: open
 
 `deployment/deployment.sh` currently keeps both its per-tool config and its uninstall manifest *inside the repo tree*, derived from `SCRIPT_DIR`:
 
-- `DEPLOYMENT_CONF="${SCRIPT_DIR}/deployment.conf"` (deployment.sh:242)
-- `DEPLOYED_ARTIFACTS_LOG="${SCRIPT_DIR}/deployed_artefacts.log"` (deployment.sh:241)
+- `DEPLOYMENT_CONF="${SCRIPT_DIR}/deployment.conf"` in `deployment.sh`
+- `DEPLOYED_ARTIFACTS_LOG="${SCRIPT_DIR}/deployed_artefacts.log"` in `deployment.sh`
 
 This script is bundled into several repos. Two problems follow:
 
 1. **The conf is committed and machine-specific edits dirty the repo.** `deployment.conf` is git-tracked; a user's local tweaks show up as a permanent `M deployment/deployment.conf` (exactly the current working-tree state).
 2. **The log is per-script-copy state.** Each bundled copy writes its own `deployed_artefacts.log` next to itself, so `--uninstall` run from repo A is blind to artifacts deployed from repo B — even though both deployed into the same global config dirs.
 
-Deliver a change where **per-machine state lives in `$HOME`** (consistent with backups, which already land in `$HOME` — deployment.sh:1381) and the repo carries only a committed `.template` of shared defaults. Outcome: a clean repo working tree, a single machine-wide uninstall manifest, and a fresh checkout that still deploys with sane defaults.
+Deliver a change where **per-machine state lives in `$HOME`** (consistent with backups, which already land in `$HOME` — the `Backups land in $HOME` behavior in `deployment.sh`) and the repo carries only a committed `.template` of shared defaults. Outcome: a clean repo working tree, a single machine-wide uninstall manifest, and a fresh checkout that still deploys with sane defaults.
 
 ## Context
 
 Relevant code in `deployment/deployment.sh`:
 
-- Lines 241–242 — where `DEPLOYED_ARTIFACTS_LOG` and `DEPLOYMENT_CONF` are defined (both off `SCRIPT_DIR`).
-- Lines 289–309 — log append + dedupe helpers (`append_deployed_artifact_log`, `dedupe_deployed_artifact_log`); the `trap` on EXIT writes the log.
-- Lines 375–419 — `parse_deployment_conf`; tolerates a missing conf (`[[ -f "$DEPLOYMENT_CONF" ]] || return 0`).
-- Lines 1432–1513 — `uninstall_logged_artifacts`; the only reader of the log. Already filters by active target and type.
-- Line 1532 — the `Config:` banner line that echoes the conf path.
+- The `DEPLOYED_ARTIFACTS_LOG` and `DEPLOYMENT_CONF` definitions (both off `SCRIPT_DIR`).
+- The log append + dedupe helpers `append_deployed_artifact_log` and `dedupe_deployed_artifact_log`; `trap dedupe_deployed_artifact_log EXIT` writes the log.
+- `parse_deployment_conf`; tolerates a missing conf (`[[ -f "$DEPLOYMENT_CONF" ]] || return 0`).
+- `uninstall_logged_artifacts`; the only reader of the log. Already filters by active target and type.
+- The `Config:` banner line that echoes the conf path.
 
 Current conf (`deployment/deployment.conf`) is **not purely user-specific** — it mixes shared architectural policy with personal overrides:
 
@@ -41,9 +41,9 @@ So the conf is really **shared defaults + a thin user-override layer**. Moving i
 
 Other references that hardcode the old paths and must move in lockstep:
 
-- `deployment/README.md` — lines 5, 49, 51–53, 92, 113 name `deployment/deployed_artefacts.log` and `deployment.conf`.
-- Root `README.md` — line 46 lists `deployment.conf` in the layout tree.
-- `.gitignore` — line 1 ignores `deployment/deployed_artefacts.log` (becomes obsolete once the log leaves the tree).
+- `deployment/README.md` names `deployment/deployed_artefacts.log` and `deployment.conf`.
+- Root `README.md` lists `deployment.conf` in the layout tree.
+- `.gitignore` ignores `deployment/deployed_artefacts.log` (becomes obsolete once the log leaves the tree).
 - `CLAUDE.md` references `make uninstall` relying on the deployment log.
 
 Prior-art scan (Tier 1) found only incidental hits — other tasks invoke `deployment.sh --global --dry-run` as an acceptance check; none addresses conf/log relocation. This work is novel.

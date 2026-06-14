@@ -2,7 +2,7 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T15:26:15
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -41,10 +41,10 @@ It says lowercase/hyphens/no-spaces but **never says "ASCII only"**, and every e
 ### Files involved
 
 - [SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) — the `<folder_layout>` section (slug shape) and the authoring-conventions area. Add the non-English-language guidance and the content-vs-slug split.
-- [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md) — the `## Conventions` "File names:" bullet (currently line ~18). Extend to "pure ASCII; transliterate non-ASCII" with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here.
+- [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md) — the `## Conventions` "File names:" bullet. Extend to "pure ASCII; transliterate non-ASCII" with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here.
 - [scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) — add the new check. Findings are `Issue(severity, bucket, page, message)`; severity constants `SEV_BLOCKING / SEV_WARN / SEV_INFO`; existing path-shape logic lives in `check_type_location`. Add a sibling `check_filename_ascii` (bucket `filename`) and register it in the run pipeline.
 - [references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md) — document the new check row in the matrix and add it to the **warn** bucket list.
-- [wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — the `<remediate>` phase (the rename machinery around line ~554, where a fix-group "renames a page via `git mv`"). Add an ASCII-fold-rename remediation for the new warning.
+- [wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — the `<remediate>` phase (the rename machinery where a fix-group "renames a page via `git mv`"). Add an ASCII-fold-rename remediation for the new warning.
 
 ### Related task
 

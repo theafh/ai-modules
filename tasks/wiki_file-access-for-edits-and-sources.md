@@ -2,7 +2,7 @@
 description: Add SKILL.md guidance to use Read (not Bash grep/cat/tail) when staging an Edit, and to resolve sources:/source_path: values against the wiki root when opening them.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -16,7 +16,7 @@ The wiki authoring contract steers the agent to use the right tool for two recur
 
 Two distinct but small failure modes recur during wiki editing, both fixable with a sentence of guidance in the skill prose:
 
-1. **Bash-locate then Edit fails the read-precondition.** When the agent locates the span to change with a Bash command (`grep -n`, `cat`, `tail`) and then calls `Edit`, the edit fails with "File has not been read yet" because the Edit tool requires a prior `Read` of *that* file in the session — a Bash grep does not satisfy it. The agent then has to `Read` and re-`Edit`: a three-call round-trip where one `Read` + one `Edit` would do. The skill's editing/log guidance currently leans on Bash inspection idioms ([skills/wiki/SKILL.md:684](../plugins/knowledge_management/skills/wiki/SKILL.md) and nearby) without flagging that they do not prepare an Edit.
+1. **Bash-locate then Edit fails the read-precondition.** When the agent locates the span to change with a Bash command (`grep -n`, `cat`, `tail`) and then calls `Edit`, the edit fails with "File has not been read yet" because the Edit tool requires a prior `Read` of *that* file in the session — a Bash grep does not satisfy it. The agent then has to `Read` and re-`Edit`: a three-call round-trip where one `Read` + one `Edit` would do. The skill's `<appending_to_log>` editing/log guidance in [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) (and nearby) currently leans on Bash inspection idioms without flagging that they do not prepare an Edit.
 
 2. **`sources:` paths read as CWD-relative.** By convention, `sources:` / `source_path:` entries are paths relative to the **wiki root** (the linter resolves them that way — see the source-path existence check in [skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py)). But nothing in the agent-facing prose says so, so when the agent reads a `sources:` value literally (e.g. `raw/notes/<slug>.md`) it opens the wrong path, gets "file does not exist", and falls back to a `find` to locate the real `<wiki>/raw/notes/<slug>.md`. A one-line note removes the failed-Read-then-find detour.
 
@@ -24,13 +24,13 @@ This task is the *read-time* counterpart to the provenance tasks. [wiki_provenan
 
 Files involved:
 
-- [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) — editing/log guidance (~684) and the provenance/`sources:` description (~471-472).
+- [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) — the `<appending_to_log>` editing/log guidance and the `**Provenance**` / `sources:` description.
 - [plugins/knowledge_management/agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — mirror both notes wherever it stages edits or opens `sources:` paths.
 
 ## Approach
 
 1. **Read-to-stage-edits note.** In the editing guidance, add a short rule: to locate a span you intend to `Edit`, use `Read` (it both shows the content and satisfies Edit's read requirement); reserve Bash `grep`/`cat`/`tail` for counting and log-offset work, not for preparing an edit. Pair this with the entry-aware log retrieval from [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md) so the log case is covered consistently.
-2. **`sources:` resolution note.** Near the provenance description (~471-472), add one line: `sources:` / `source_path:` entries are paths relative to the **wiki root**; prefix with `$WIKI/` (or the wiki dir) when opening one with `Read`. Mirror the same note in the auto-shaper.
+2. **`sources:` resolution note.** Near the `**Provenance**` description, add one line: `sources:` / `source_path:` entries are paths relative to the **wiki root**; prefix with `$WIKI/` (or the wiki dir) when opening one with `Read`. Mirror the same note in the auto-shaper.
 3. Keep both additions to a sentence or two each — these are tool-use clarifications, not new conventions. Respect the no-meta-in-body and minimal-addition postures established elsewhere in the family.
 
 ## Acceptance

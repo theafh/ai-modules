@@ -2,7 +2,7 @@
 description: Give lint.py a per-finding acknowledge mechanism so accepted info-level findings stop re-surfacing every run and being re-justified in prose and the log.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-10T22:05:12
+updated: 2026-06-13T01:47:36
 status: open
 ---
 
@@ -14,13 +14,13 @@ A wiki owner can mark a specific info-level lint finding as reviewed-and-accepte
 
 ## Context
 
-`lint.py` emits info-level findings for conditions that are often intentional and accepted by the wiki owner — `confidence: low` frontmatter, pages over the 200-line soft cap ([skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) `check_page_size`), and taxonomy tags defined but unused (`check_unused_tags`). These re-surface on every run because there is no way to acknowledge an individual finding. The only suppression today is `--quiet` (argparse around line 1204), which hides **all** info indiscriminately — too blunt, so it goes unused, and instead each audit re-litigates the same accepted findings in prose and adds another near-identical log entry. The info count creeps upward across a session purely from this churn.
+`lint.py` emits info-level findings for conditions that are often intentional and accepted by the wiki owner — `confidence: low` frontmatter, pages over the 200-line soft cap ([skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) `check_page_size`), and taxonomy tags defined but unused (`check_unused_tags`). These re-surface on every run because there is no way to acknowledge an individual finding. The only suppression today is the `--quiet` argparse flag, which hides **all** info indiscriminately — too blunt, so it goes unused, and instead each audit re-litigates the same accepted findings in prose and adds another near-identical log entry. The info count creeps upward across a session purely from this churn.
 
 This is the *general* per-finding accept mechanism. A narrower, type-based mechanism for the specific case of expected page growth is being designed separately in [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) (a `growth:` declaration per page type that makes the linter defer size findings for backlog/synthesis pages). **Reconcile the two so they do not become competing mechanisms**: the `growth:` declaration handles "this page type is expected to grow"; this task handles "I have reviewed *this specific* finding and accept it" for any info category. Decide whether size acceptance flows through `growth:` (type-level) or through the per-finding accept here (instance-level), and document the boundary.
 
 Files involved:
 
-- [plugins/knowledge_management/skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) — finding emission and the main runner; `--quiet` (~1204).
+- [plugins/knowledge_management/skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) — finding emission and the main runner; the `--quiet` flag.
 - [plugins/knowledge_management/skills/wiki/references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md) — document the accept mechanism.
 - Target-wiki `SCHEMA.md` template inside the wiki skill bundle, if acceptances are stored there.
 - [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) and [agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — teach the accept workflow so the agent uses it instead of re-justifying in prose.
