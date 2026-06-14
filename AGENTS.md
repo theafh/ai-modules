@@ -45,7 +45,7 @@ Makefile                          # task entry point
 
 `CHANGELOG.md` is git-history-derived. Update it only through the `update_changelog` skill, run on demand. Don't hand-edit CHANGELOG entries as part of other work. Committing the skill's output is fine.
 
-This repo manages upcoming work and todos with the `task` skill (`/task`). Open items live in `tasks/`; `implemented` and `deferred` items move to `tasks/archive/`.
+This repo manages upcoming work and todos with the `task` skill (`/task`). Live items (`open`, `checked`, `ready`, `implemented`, `audited`) live in `tasks/`; terminal items (`finished`, `deferred`) move to `tasks/archive/`. Task files record `reported-by`, and implemented work records `implemented-by`.
 
 ## Editing a skill
 

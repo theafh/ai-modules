@@ -2,8 +2,10 @@
 description: Add reported-by/implemented-by provenance and a seven-state status lifecycle to the task_* family — linter-enforced with a backward-move guard; archive retrofit consolidated in task_fix.
 scope: plugins/ai_dev/skills
 created: 2026-06-12T22:21:32
-updated: 2026-06-14T16:22:17
-status: open
+updated: 2026-06-14T16:47:25
+status: implemented
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Task provenance and lifecycle status across the task_* family

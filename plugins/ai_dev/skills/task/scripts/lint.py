@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """lint.py — health-check the tasks directory.
 
-Audits every `*.md` task file under the resolved tasks/ tree:
-filename naming convention, frontmatter completeness, status/location
-consistency, datetime format, title presence, page size, and name
-collisions across open + archive.
+Audits live `*.md` task files under the resolved tasks/ tree by default:
+filename naming convention, frontmatter completeness, provenance,
+status/location consistency, datetime format, title presence, page size,
+and name collisions across live + archive. Pass `--include-archive` for
+the archive-maintenance mode used by task_fix.
 
 Usage:
-    python3 lint.py [TASKS_PATH] [--quiet]
+    python3 lint.py [TASKS_PATH] [--quiet] [--include-archive]
 
 When TASKS_PATH is omitted the linter shells out to the sibling
 ``discover_tasks.sh`` so it resolves the same path the skill uses at
@@ -33,9 +34,25 @@ from typing import Iterator
 SCRIPT_DIR = Path(__file__).resolve().parent
 DISCOVER_SCRIPT = SCRIPT_DIR / "discover_tasks.sh"
 
-REQUIRED_FRONTMATTER = ("description", "scope", "created", "updated", "status")
-VALID_STATUS = {"open", "implemented", "deferred"}
-ARCHIVE_STATUS = {"implemented", "deferred"}
+REQUIRED_FRONTMATTER = (
+    "description",
+    "scope",
+    "created",
+    "updated",
+    "status",
+    "reported-by",
+)
+VALID_STATUS = {
+    "open",
+    "checked",
+    "ready",
+    "implemented",
+    "audited",
+    "finished",
+    "deferred",
+}
+ARCHIVE_STATUS = {"finished", "deferred"}
+IMPLEMENTER_STATUS = {"implemented", "audited", "finished"}
 
 NAME_RE = re.compile(r"^(?P<scope>[a-z0-9]+(?:-[a-z0-9]+)*)_(?P<name>[a-z0-9]+(?:-[a-z0-9]+)*)\.md$")
 DATETIME_RE = re.compile(
@@ -172,16 +189,18 @@ def parse_frontmatter(text: str) -> tuple[dict | None, str]:
     return data, body
 
 
-def iter_task_files(tasks: Path) -> Iterator[Path]:
-    """Yield every `*.md` task file: open tasks at the root and archived
-    tasks under archive/. Other folders are ignored — the tasks tree is
-    intentionally two-level only.
+def iter_task_files(tasks: Path, include_archive: bool = False) -> Iterator[Path]:
+    """Yield `*.md` task files: live tasks at the root by default, and
+    archived tasks when archive-maintenance mode is requested. Other
+    folders are ignored — the tasks tree is intentionally two-level only.
     """
     if not tasks.is_dir():
         return
     for path in sorted(tasks.glob("*.md")):
         if path.is_file():
             yield path
+    if not include_archive:
+        return
     archive = tasks / "archive"
     if archive.is_dir():
         for path in sorted(archive.glob("*.md")):
@@ -208,7 +227,54 @@ def check_filename(page: Path) -> list[Issue]:
     )]
 
 
-def check_frontmatter(page: Path) -> tuple[list[Issue], dict | None]:
+def _git_output(cwd: Path, args: list[str]) -> list[str]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(cwd), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return []
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def user_name_head(tasks: Path) -> str:
+    names = _git_output(tasks.parent, ["config", "user.name"])
+    return names[0] if names else "default_user"
+
+
+def _rel_to_project(tasks: Path, page: Path) -> str:
+    try:
+        return str(page.relative_to(tasks.parent))
+    except ValueError:
+        return str(page)
+
+
+def reported_by_value(tasks: Path, page: Path) -> tuple[str, str]:
+    names = _git_output(
+        tasks.parent,
+        ["log", "--diff-filter=A", "--follow", "--format=%an", "--", _rel_to_project(tasks, page)],
+    )
+    if names:
+        return names[-1], "derived from the first-add commit author"
+    return user_name_head(tasks), "derived from `git config user.name`"
+
+
+def implemented_by_value(tasks: Path, page: Path) -> tuple[str, str]:
+    names = _git_output(
+        tasks.parent,
+        ["log", "--diff-filter=R", "--follow", "--format=%an", "--", _rel_to_project(tasks, page)],
+    )
+    if names:
+        return names[0], "derived from the archive-move commit author"
+    return user_name_head(tasks), "derived from `git config user.name`"
+
+
+def check_frontmatter(tasks: Path, page: Path) -> tuple[list[Issue], dict | None]:
     text = page.read_text(encoding="utf-8")
     fm, body = parse_frontmatter(text)
     issues: list[Issue] = []
@@ -216,11 +282,14 @@ def check_frontmatter(page: Path) -> tuple[list[Issue], dict | None]:
         issues.append(Issue(
             SEV_BLOCKING, "frontmatter", page,
             "missing or malformed frontmatter — every task needs "
-            "`description`, `created`, `updated`, and `status` between `---` fences",
+            "`description`, `scope`, `created`, `updated`, `status`, "
+            "and `reported-by` between `---` fences",
         ))
         return issues, None
 
     for field in REQUIRED_FRONTMATTER:
+        if field == "reported-by":
+            continue
         if field not in fm or fm[field] == "":
             issues.append(Issue(
                 SEV_BLOCKING, "frontmatter", page,
@@ -232,6 +301,24 @@ def check_frontmatter(page: Path) -> tuple[list[Issue], dict | None]:
         issues.append(Issue(
             SEV_BLOCKING, "frontmatter", page,
             f"invalid status {status!r} (expected one of {sorted(VALID_STATUS)})",
+        ))
+
+    if "reported-by" not in fm or fm["reported-by"] == "":
+        value, source = reported_by_value(tasks, page)
+        issues.append(Issue(
+            SEV_BLOCKING, "frontmatter", page,
+            "missing required field: reported-by — add "
+            f"`reported-by: {value}` ({source}; legacy provenance "
+            "backfill does not bump `updated` when this is the only change)",
+        ))
+
+    if status in IMPLEMENTER_STATUS and ("implemented-by" not in fm or fm["implemented-by"] == ""):
+        value, source = implemented_by_value(tasks, page)
+        issues.append(Issue(
+            SEV_BLOCKING, "frontmatter", page,
+            "missing required field: implemented-by — add "
+            f"`implemented-by: {value}` ({source}; legacy provenance "
+            "backfill does not bump `updated` when this is the only change)",
         ))
 
     for date_field in ("created", "updated"):
@@ -267,12 +354,6 @@ def check_location(tasks: Path, page: Path, fm: dict | None) -> list[Issue]:
     if not isinstance(status, str) or status not in VALID_STATUS:
         return []
     archived = is_archived(tasks, page)
-    if status == "open" and archived:
-        return [Issue(
-            SEV_BLOCKING, "location", page,
-            "status is `open` but file lives under archive/ — "
-            f"move to {tasks / page.name}",
-        )]
     if status in ARCHIVE_STATUS and not archived:
         return [Issue(
             SEV_BLOCKING, "location", page,
@@ -280,6 +361,19 @@ def check_location(tasks: Path, page: Path, fm: dict | None) -> list[Issue]:
             f"move to {tasks / 'archive' / page.name}",
         )]
     return []
+
+
+def check_archive_migration(tasks: Path, page: Path, fm: dict | None) -> list[Issue]:
+    if not fm or not is_archived(tasks, page):
+        return []
+    status = fm.get("status")
+    if not isinstance(status, str) or status not in VALID_STATUS or status in ARCHIVE_STATUS:
+        return []
+    return [Issue(
+        SEV_BLOCKING, "migration", page,
+        f"status is `{status}` under archive/ — migrate to `status: finished`; "
+        "legacy status migration does not bump `updated` when this is the only change",
+    )]
 
 
 def check_size(page: Path) -> list[Issue]:
@@ -563,21 +657,28 @@ def main() -> int:
         nargs="?",
         help="Path to the tasks directory. If omitted, defers to scripts/discover_tasks.sh.",
     )
+    parser.add_argument(
+        "--include-archive",
+        action="store_true",
+        help="Include tasks/archive/*.md in per-file checks and legacy retrofit hints.",
+    )
     parser.add_argument("--quiet", action="store_true", help="Suppress info-level findings.")
     args = parser.parse_args()
 
     tasks = discover_tasks(args.tasks_path)
-    pages = list(iter_task_files(tasks))
+    pages = list(iter_task_files(tasks, include_archive=args.include_archive))
+    collision_pages = list(iter_task_files(tasks, include_archive=True))
 
     issues: list[Issue] = []
-    issues.extend(check_name_collisions(pages))
+    issues.extend(check_name_collisions(collision_pages))
 
     for page in pages:
         issues.extend(check_filename(page))
-        fm_issues, fm = check_frontmatter(page)
+        fm_issues, fm = check_frontmatter(tasks, page)
         issues.extend(fm_issues)
         issues.extend(check_scope(tasks, page))
         issues.extend(check_location(tasks, page, fm))
+        issues.extend(check_archive_migration(tasks, page, fm))
         issues.extend(check_size(page))
         issues.extend(check_no_footnotes(page))
         issues.extend(check_no_wikilinks(page))

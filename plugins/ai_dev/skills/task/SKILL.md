@@ -1,7 +1,7 @@
 ---
 name: task
-description: Manage upcoming work as plain-markdown task files inside the current project — a filesystem-native backlog that lives next to the code. Use when the user asks to create, write, capture, list, query, update, finish, complete, implement, defer, archive, or lint a task or todo; mentions "tasks", "todos", "the task list", "what's left to do"; asks to break work into trackable items; or otherwise wants upcoming work persisted as files alongside the project rather than as conversation state.
-version: 1.3.0
+description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
+version: 1.3.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -20,7 +20,7 @@ Activate this skill when the user:
 - Asks to create, write, capture, file, or add a task / todo / backlog item.
 - Asks to list, show, find, or query existing tasks.
 - Asks to update, edit, refine, or expand a task.
-- Says a task is done, finished, implemented, shipped, or completed — move it to archive with status `implemented`.
+- Says a task is done, finished, implemented, shipped, or completed — move it to archive with status `finished`.
 - Says a task should be dropped, parked, deferred, or shelved — move it to archive with status `deferred`.
 - Asks to lint, audit, or health-check the tasks directory.
 - Mentions the project's tasks, todos, or backlog in any way that implies persisting upcoming work as files rather than chat state.
@@ -37,7 +37,7 @@ The wiki skill captures durable knowledge (concepts, procedures, references). Th
     ├── <scope>_<name>.md      # open tasks
     ├── <scope>_<name>.md
     └── archive/
-        ├── <scope>_<name>.md  # implemented + deferred tasks
+        ├── <scope>_<name>.md  # finished + deferred tasks
         └── <scope>_<name>.md
 ```
 
@@ -67,6 +67,7 @@ scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
 updated: 2026-05-28T19:49:23
 status: open
+reported-by: default_user
 ---
 ```
 
@@ -75,8 +76,23 @@ Fields:
 - `description` — compact one-liner. Compose to roughly 180 characters; the linter warns above 200, and that gap is headroom for a later broadening edit rather than length to write at. The body carries the full context.
 - `scope` — either a relative path under the project root pointing at the directory the task targets (unquoted; e.g. `scope: plugins/ai_dev/skills/task`), or a short descriptive label when no single directory fits (quoted; e.g. `scope: "project xyz"`). The linter resolves an unquoted value against the project root and blocks if the path is missing or escapes the root; a quoted value is accepted as text. Paths win when one fits — the filesystem stays the source of truth.
 - `created` — ISO 8601 datetime, set once when the task is created.
-- `updated` — ISO 8601 datetime, bumped on every edit and on every status change.
-- `status` — one of `open`, `implemented`, `deferred`.
+- `updated` — ISO 8601 datetime, bumped on every edit and on every status change. See `<bump_updated>` for the legacy-backfill exception.
+- `status` — one of:
+  - `open` — created and not yet checked.
+  - `checked` — `task_check` ran and found blocking issues.
+  - `ready` — implementation-ready, either from a clean `task_check` verdict or from the user declaring readiness through the apply-findings update flow.
+  - `implemented` — `task_implement` built the work.
+  - `audited` — `task_audit` confirmed every body item, acceptance check, and required test over a current `implemented` task.
+  - `finished` — closed out as done and archived.
+  - `deferred` — parked or dropped and archived.
+- `reported-by` — the user who created the task, written by the create path and resolved via `<user_name_chain>`. See `<bump_updated>` for legacy backfill.
+- `implemented-by` — the user who built the work, written by `task_implement` when it stamps `implemented`, required on `implemented`, `audited`, and `finished`, and resolved via `<user_name_chain>`. Deferred tasks omit it because they were never implemented. See `<bump_updated>` for legacy backfill.
+
+Status matches location: `open`, `checked`, `ready`, `implemented`, and `audited` live in `tasks/`; `finished` and `deferred` live in `tasks/archive/`.
+
+<user_name_chain>
+Resolve a recorded user name by reading `git config user.name`; when that is empty or the project is not a git repo, ask the user which name to record; when the ask goes unanswered, write the literal string `default_user`.
+</user_name_chain>
 
 Obtain the timestamp by running the shell command below and copy its output verbatim — the model has no clock, so a hand-written time is a guess:
 
@@ -86,6 +102,14 @@ date +%Y-%m-%dT%H:%M:%S        # local time, e.g. 2026-05-28T19:49:23
 
 Both `created` (set once, on a fresh task) and `updated` (bumped on every edit, status change, and archive move) take their value from this command's output. When creating several tasks in one turn, run `date` once and reuse the captured value across the batch rather than re-running it per file.
 </frontmatter>
+
+<lifecycle_responsibility>
+Each stage records the furthest lifecycle point it establishes: `task_create` writes `open`; `task_check` writes `ready` on a clean verdict and `checked` when blocking findings remain; the apply-findings update flow writes `ready` only when the user declares readiness before implementation; `task_implement` writes `implemented`; `task_audit` writes `audited` only for a clean, complete verdict over a current `implemented`; `task_finish` writes `finished` for done work or `deferred` for parked work.
+</lifecycle_responsibility>
+
+<backward_move_guard>
+Before a stage writes a status that could move a task backward, read the current status and compare it to the target. The guarded writers are exactly `task_check` and `task_implement`: `task_check` may otherwise overwrite `implemented`, `audited`, or `finished` with `checked` or `ready`, and `task_implement` may otherwise overwrite `audited` or `finished` with `implemented`. On a regression, warn, name the current→target move, and ask the user to confirm the move is intended unless the session context already makes that intent clear, then proceed only when confirmed. Forward moves, same-status stamps, `task_check` revising `ready` back to `checked`, and parking as `deferred` proceed without this guard.
+</backward_move_guard>
 
 <markdown_policy>
 Task bodies are **100% CommonMark-standard markdown**. The YAML frontmatter at the top is the only allowed extension. The linter blocks on non-standard syntax so the tasks tree stays portable to any renderer and the filesystem stays the source of truth:
@@ -185,7 +209,7 @@ Before naming and writing, confirm the request is not already captured or alread
 
 - **Novel** — the hits were incidental keyword overlap; nothing actually covers this work. Continue to `<scope>`.
 - **Already an open task** — an open task in `tasks/` already captures this work.
-- **Partially covered** — some of the requested work already exists (in an open task, in an archived `implemented`/`deferred` task, or already in the codebase) and some is genuinely new.
+- **Partially covered** — some of the requested work already exists (in a live task, in an archived `finished`/`deferred` task, or already in the codebase) and some is genuinely new.
 - **Already implemented** — the codebase already does this, whether or not a task records it.
 - **Already deferred** — an archived `deferred` task already weighed this and parked it.
 
@@ -201,7 +225,7 @@ Pick a `<name>` that is compact, descriptive, and unique within `tasks/` *and* `
 </name>
 
 <write>
-Create `<tasks>/<scope>_<name>.md` with the frontmatter from `<frontmatter>` (status: `open`, created/updated set to now) and a body that opens with `# Title` and fills the sections in `<body>`.
+Create `<tasks>/<scope>_<name>.md` with the frontmatter from `<frontmatter>` (status: `open`, `reported-by` resolved via `<user_name_chain>`, created/updated set to now) and a body that opens with `# Title` and fills the sections in `<body>`.
 </write>
 
 <lint_after_create>
@@ -230,13 +254,13 @@ List with `ls "$TASKS"` for open tasks, `ls "$TASKS/archive"` for closed. Filter
 <update>
 Edit the body or frontmatter as needed, then bump `updated` to the current datetime in the same edit. Re-run `python3 scripts/lint.py --quiet` after the edit. When an update materially changes the scope or adds expandable new work, split into a follow-up task rather than letting the file grow past 300 lines.
 
-**Applying check findings** is a first-class update flow: when the user replies with issue numbers and per-number decisions — accept, reject, or modify — apply each accepted finding's minimum fix to the task file, leave each rejected finding's passage as it is, and fold a user-modified instruction in over the report's suggestion. Numbers index the most recent `task_check` report in the conversation; when no report is in context, ask for the issue list instead of guessing. The whole round is one update: bump `updated` once in the same edit round and re-run the linter once at the end.
+**Applying check findings** is a first-class update flow: when the user replies with issue numbers and per-number decisions — accept, reject, or modify — apply each accepted finding's minimum fix to the task file, leave each rejected finding's passage as it is, and fold a user-modified instruction in over the report's suggestion. Numbers index the most recent `task_check` report in the conversation; when no report is in context, ask for the issue list instead of guessing. When the user declares the task ready over remaining findings, stamp `status: ready`. The whole round is one update: bump `updated` once in the same edit round and re-run the linter once at the end.
 </update>
 
 <archive>
 When a task is finished or being dropped, run all five steps:
 
-1. Set `status` in the frontmatter to `implemented` (work is done and shipped) or `deferred` (parked, not pursued for now).
+1. Set `status` in the frontmatter to `finished` (work is done and shipped) or `deferred` (parked, not pursued for now).
 2. Bump `updated` to the current datetime.
 3. Move the file from `<tasks>/` to `<tasks>/archive/` with `git mv` (or plain `mv` if the project is not a git repo). The filename does not change.
 4. Update cross-references. Re-point any link inside the moved task that still names a sibling at `<tasks>/` to its new relative path. Then scan the whole tasks tree — `tasks/` and `tasks/archive/` alike (e.g. `rg` the moving filename across both) — for inbound links to the moving file, and rewrite every hit to either point at the archived location or convert to plain text plus `(archived)` when the link is no longer load-bearing.
@@ -244,17 +268,18 @@ When a task is finished or being dropped, run all five steps:
 </archive>
 
 <lint>
-The linter checks naming, frontmatter completeness, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across open + archive.
+The linter checks naming, frontmatter completeness, provenance, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across live + archive. By default it iterates live files in `tasks/*.md`, while still resolving links into `archive/` and checking filename collisions across both roots. `task_fix` is the archive owner: it passes `--include-archive` to include archived files in per-file checks, surface legacy provenance retrofit hints, and migrate non-terminal archived statuses to `finished`.
 
 ```bash
 python3 scripts/lint.py              # auto-discover via discover_tasks.sh
 python3 scripts/lint.py /custom/path # explicit tasks directory
 python3 scripts/lint.py --quiet      # blocking + warn only
+python3 scripts/lint.py --include-archive  # task_fix archive-maintenance mode
 ```
 
 Findings come in three buckets:
 
-- **blocking** — bad filename, missing/malformed frontmatter, invalid status, status/location mismatch, duplicate filenames. Exit 1; must fix.
+- **blocking** — bad filename, missing/malformed frontmatter, missing required provenance, invalid status, status/location mismatch, duplicate filenames, legacy archived status migration. Exit 1; must fix.
 - **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines), line-number position claims in an open task body (the soft-pointer rule; fenced code blocks are skipped, inline code stays checked).
 - **info** — reserved for future style nits.
 </lint>
@@ -272,11 +297,11 @@ Findings come in three buckets:
 </split_at_300>
 
 <status_matches_location>
-**Status matches location.** `open` lives in `tasks/`; `implemented` and `deferred` live in `tasks/archive/`. The linter blocks on any mismatch.
+**Status matches location.** `open`, `checked`, `ready`, `implemented`, and `audited` live in `tasks/`; `finished` and `deferred` live in `tasks/archive/`. The linter blocks on a terminal status under `tasks/`; archive-inclusive maintenance migrates a non-terminal archived status to `finished`.
 </status_matches_location>
 
 <bump_updated>
-**Bump `updated` on every change.** Body edit, frontmatter edit, status change, archive move — all bump `updated` to the current datetime.
+**Bump `updated` on every change.** Body edit, frontmatter edit, status change, archive move — all bump `updated` to the current datetime. Legacy provenance backfill and legacy status migration leave `updated` unchanged when they are the only edits in the file; when the same pass also makes a content fix, bump `updated` for that content fix and let the legacy backfill ride along.
 </bump_updated>
 
 <single_shot_ready>

@@ -19,7 +19,7 @@ The single-task siblings run in lifecycle order — **create → check → imple
 - **task_check**: assess whether one task is ready to build — judge it against a readiness checklist (structure, scope sizing, focus, complexity, contradictions, ambiguity) and report a General assessment plus a ranked Issues list. Read-only gate *before* building, ported from staged-spec's `spec_check`.
 - **task_implement**: take one existing task file and carry it to done — read it, load the repo guardrails, build on the existing code, write the tests, run the suite clean, and confirm every acceptance item. It does the work and leaves verification to `task_audit` and close-out to `task_finish`.
 - **task_audit**: verify one task's claimed completion against the actual codebase — confirm every body item, acceptance check, and backing test, run the suite, and report a verdict (clean, or ordered gaps with fixes). Read-only gate ported from staged-spec's `spec_audit`; hands a clean pass to `task_finish` and gaps to `task_implement`.
-- **task_finish**: close out one task — set its status to `implemented` or `deferred`, bump `updated`, `git mv` it to `archive/`, re-point the links the move touches, and re-lint. The action counterpart to the read-only `task_audit` gate; owns both the implemented and deferred closures and defers the five close-out steps to the `task` skill.
+- **task_finish**: close out one task — set its status to `finished` or `deferred`, bump `updated`, `git mv` it to `archive/`, re-point the links the move touches, and re-lint. The action counterpart to the read-only `task_audit` gate; owns both the finished and deferred closures and defers the five close-out steps to the `task` skill.
 
 Standing apart from that flow:
 

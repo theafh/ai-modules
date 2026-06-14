@@ -40,4 +40,4 @@ mkdir -p "$TASKS_DIR/archive"
 
 echo "tasks directory ready at $TASKS_DIR"
 echo "  open tasks live in     : $TASKS_DIR/"
-echo "  implemented + deferred : $TASKS_DIR/archive/"
+echo "  finished + deferred    : $TASKS_DIR/archive/"
