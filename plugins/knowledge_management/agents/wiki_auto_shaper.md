@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.7.0
+version: 1.7.1
 model: inherit
 background: false
 effort: high
@@ -309,9 +309,11 @@ the fix move.
   </wrong_directory_for_declared_type>
 
   <provenance_violation>
-    A page synthesizes 3+ sources but lacks the inline footnote
-    markers `[^source-name]` with definitions at the page bottom (the
-    schema requires footnotes once 3+ sources contribute).
+    A page synthesizes 3+ sources but its claims lack inline
+    standard-markdown path-link attribution to the source files under
+    `raw/<kind>/<slug>.md`. The wiki convention keeps attribution next
+    to the claim it supports and uses page-level `sources:` frontmatter
+    as the canonical source inventory.
   </provenance_violation>
 
   <external_source_pointer>
@@ -680,10 +682,11 @@ affect the same file so each file is opened, read, and rewritten once.
     </fix_cross_link_starvation>
 
     <fix_provenance_violation>
-      Add `[^source-slug]` markers to the specific claims drawn from
-      each source, and the matching
-      `[^source-slug]: raw/<kind>/<slug>.md` definitions at the
-      bottom of the page.
+      Add inline standard-markdown path links next to the specific
+      claims drawn from each source, pointing at the matching
+      `raw/<kind>/<slug>.md` files. Keep page-level `sources:`
+      frontmatter as the source inventory, and keep claim-level
+      attribution beside the claim it supports.
     </fix_provenance_violation>
 
     <fix_external_source_pointer>
