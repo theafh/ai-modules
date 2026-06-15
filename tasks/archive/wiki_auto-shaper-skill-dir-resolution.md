@@ -2,9 +2,10 @@
 description: Make wiki_auto_shaper resolve $WIKI_SKILL and $WIKI as run-local paths before bundled tool calls, avoiding stale environment or hook state.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-15T22:18:11
-status: ready
+updated: 2026-06-15T23:15:13
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Resolve auto-shaper runtime paths locally
@@ -20,7 +21,7 @@ Cold-start runs stop wasting turns hunting for `discover_wiki.sh` / `lint.py` an
 
 ## Context
 
-[agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) references `$WIKI_SKILL` more than a dozen times to locate its bundled assets: `$WIKI_SKILL/SKILL.md`, `$WIKI_SKILL/scripts/`, the canonical templates, and `python3 $WIKI_SKILL/scripts/lint.py "$WIKI"`. But `$WIKI_SKILL` is never defined, so nothing in the agent establishes the location of the installed wiki skill bundle before use.
+[agents/wiki_auto_shaper.md](../../plugins/knowledge_management/agents/wiki_auto_shaper.md) references `$WIKI_SKILL` more than a dozen times to locate its bundled assets: `$WIKI_SKILL/SKILL.md`, `$WIKI_SKILL/scripts/`, the canonical templates, and `python3 $WIKI_SKILL/scripts/lint.py "$WIKI"`. But `$WIKI_SKILL` is never defined, so nothing in the agent establishes the location of the installed wiki skill bundle before use.
 
 The `<discover_wiki>` step also runs the discovery script with a bare relative path: `WIKI=$(scripts/discover_wiki.sh --check)`. That only works when the process happens to be sitting in the wiki skill directory. On a cold start the working directory is normally the target repo, so the relative path misses, the script exits 127, and the agent spends turns probing the filesystem before finding the real bundle.
 
@@ -30,7 +31,7 @@ Harness portability decision: keep both values run-local. Use shell variables in
 
 Files involved:
 
-- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — `<orient>` / `<discover_wiki>` and every `$WIKI_SKILL` reference.
+- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../../plugins/knowledge_management/agents/wiki_auto_shaper.md) — `<orient>` / `<discover_wiki>` and every `$WIKI_SKILL` reference.
 
 ## Approach
 
@@ -44,7 +45,7 @@ Files involved:
 4. Resolve `$WIKI` only after `$WIKI_SKILL` is valid, by running `"$WIKI_SKILL/scripts/discover_wiki.sh" --check` from the audit's current working directory. Preserve the existing `discover_wiki.sh` exit-code behavior: an unscaffolded selected path stops the audit, and an ambiguous path list is presented to the user for selection.
 5. Use both values as run-local state. Prefer same-shell command blocks or explicit absolute paths over durable `export`. If a child process in the same shell block needs the values, exporting inside that block is acceptable; the agent instructions must not rely on exported values surviving across future tool calls, sessions, repos, or harnesses.
 6. Replace bare script calls in the agent's command instructions. `scripts/discover_wiki.sh`, `python3 scripts/lint.py`, and other bundled wiki helper invocations become `"$WIKI_SKILL/scripts/discover_wiki.sh"`, `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"`, and equivalent quoted absolute paths.
-7. Keep `$WIKI` and `$WIKI_SKILL` separate in the prose. `$WIKI_SKILL` locates the published skill assets. `$WIKI` locates the user's current wiki content. Coordinate with [wiki_discovery-from-inside-wiki-dir.md](archive/wiki_discovery-from-inside-wiki-dir.md) (implemented): that task improved wiki-content discovery, while this task fixes skill-bundle discovery.
+7. Keep `$WIKI` and `$WIKI_SKILL` separate in the prose. `$WIKI_SKILL` locates the published skill assets. `$WIKI` locates the user's current wiki content. Coordinate with [wiki_discovery-from-inside-wiki-dir.md](wiki_discovery-from-inside-wiki-dir.md) (implemented): that task improved wiki-content discovery, while this task fixes skill-bundle discovery.
 
 ## Acceptance
 

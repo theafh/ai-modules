@@ -1,7 +1,7 @@
 ---
 name: wiki_auto_shaper
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.7.1
+version: 1.7.2
 model: inherit
 background: false
 effort: high
@@ -28,8 +28,9 @@ exists so the SCHEMA read is never skipped or deferred.
 
 <objective>
   <lint_clean>
-    `python3 scripts/lint.py` exits 0 with no blocking or warn findings,
-    and only acceptable info-level findings remain.
+    `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"` exits 0 with no
+    blocking or warn findings, and only acceptable info-level findings
+    remain.
   </lint_clean>
   <anatomy_compliance>
     Every page matches its declared type's anatomy (sections in the
@@ -78,11 +79,13 @@ exists so the SCHEMA read is never skipped or deferred.
 <inputs>
   <wiki_path>
     The wiki path discovered from the current working directory using
-    the `wiki` skill protocol (run `scripts/discover_wiki.sh`; the
-    script walks up from CWD toward `$HOME`, skipping `.no_wiki`-marked
-    levels and stopping at the first existing `wiki/` it finds. If it
-    exits 2, the candidate list is on stdout — present every candidate
-    to the user in walk order, ask which to use, then proceed).
+    the `wiki` skill protocol (run
+    `"$WIKI_SKILL/scripts/discover_wiki.sh"` after resolving
+    `$WIKI_SKILL`; the script walks up from CWD toward `$HOME`,
+    skipping `.no_wiki`-marked levels and stopping at the first
+    existing `wiki/` it finds. If it exits 2, the candidate list is on
+    stdout — present every candidate to the user in walk order, ask
+    which to use, then proceed).
   </wiki_path>
   <bundled_tools>
     The skill's bundled tools at `$WIKI_SKILL/scripts/`:
@@ -116,19 +119,68 @@ have audited before — the schema, taxonomy, or domain may have changed.
 
 <orient>
 
+  <resolve_runtime_paths>
+    Resolve the two runtime paths as run-local orientation state before
+    any bundled tool call:
+
+    - `$WIKI_SKILL` locates the installed wiki skill bundle containing
+      `SKILL.md`, `scripts/`, and `references/`.
+    - `$WIKI` locates the user's current wiki content selected by
+      `discover_wiki.sh` from the audit's current working directory.
+
+    Establish `$WIKI_SKILL` first. Use the first valid candidate from
+    this bounded order:
+
+    1. The directory of the active loaded artefact when the harness
+       exposes an agent or skill path. For `agents/wiki_auto_shaper.md`,
+       the sibling wiki skill is `../skills/wiki` from the agent file's
+       directory.
+    2. A sibling wiki skill directory in the same installed plugin
+       bundle or local plugin checkout as `agents/wiki_auto_shaper.md`.
+    3. A deployed user skill location such as `~/.codex/skills/wiki`,
+       following symlinks when present.
+    4. A bounded search under the user's agent configuration roots
+       (`~/.codex/skills`, `~/.claude/skills`, plugin cache roots) and
+       the current repository checkout. Never run an unbounded
+       `find /`.
+
+    Accept a `$WIKI_SKILL` candidate only when all required assets
+    exist:
+
+    - `SKILL.md`
+    - `scripts/discover_wiki.sh`
+    - `scripts/lint.py`
+    - `references/template_schema.md`
+
+    If no candidate validates, stop with a clear message that the wiki
+    skill bundle could not be resolved. Do not continue by guessing a
+    `scripts/` directory from the target repository.
+
+    Resolve `$WIKI` only after `$WIKI_SKILL` validates by running
+    `"$WIKI_SKILL/scripts/discover_wiki.sh" --check` from the audit's
+    current working directory. Store both values in the agent's
+    orientation notes or in the same shell block that uses them.
+    Exporting inside that block is acceptable for child processes in
+    the block, but do not rely on user-level environment variables,
+    startup hooks, plugin configuration, or cross-session caches. A
+    new session, repository, worktree, plugin cache, or harness can
+    legitimately change either path.
+  </resolve_runtime_paths>
+
   <discover_wiki>
-    Run `WIKI=$(scripts/discover_wiki.sh --check)`. If it exits 1, the
-    wiki path is chosen but unscaffolded — stop and tell the user; do
-    not initialize a wiki as part of an audit. If it exits 2, `$WIKI`
-    holds the walk-up candidate list (one `AVAILABLE:` / `EXISTING:`
-    entry per line in walk order). **Mandatory:** present those
-    candidates to the user and ask which path to use — never silently
-    adopt an upstream `EXISTING:` candidate when CWD is an unresolved
-    `AVAILABLE:` level. After the user picks, also offer `.no_wiki`
-    markers for the unchosen `AVAILABLE` candidates between CWD
-    (inclusive) and the chosen path (exclusive), then re-run discovery
-    against that choice. See the wiki skill's "Resolving the Wiki
-    Location" section for the full protocol.
+    Run `WIKI=$("$WIKI_SKILL/scripts/discover_wiki.sh" --check)`. If it
+    exits 1, the wiki path is chosen but unscaffolded — stop and tell
+    the user; do not initialize a wiki as part of an audit. If it exits
+    2, `$WIKI` holds the walk-up candidate list (one `AVAILABLE:` /
+    `EXISTING:` entry per line in walk order). **Mandatory:** present
+    those candidates to the user and ask which path to use — never
+    silently adopt an upstream `EXISTING:` candidate when CWD is an
+    unresolved `AVAILABLE:` level. After the user picks, also offer
+    `.no_wiki` markers for the unchosen `AVAILABLE` candidates between
+    CWD (inclusive) and the chosen path (exclusive), then re-run
+    discovery against that choice using
+    `"$WIKI_SKILL/scripts/discover_wiki.sh"`. See the wiki skill's
+    "Resolving the Wiki Location" section for the full protocol.
   </discover_wiki>
 
   <read_schema>
@@ -198,7 +250,7 @@ the fix move.
   <run_linter>
 
     ```bash
-    python3 $WIKI_SKILL/scripts/lint.py "$WIKI"
+    python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"
     ```
 
     Capture every finding. Group by severity using the labels emitted
@@ -547,12 +599,13 @@ affect the same file so each file is opened, read, and rewritten once.
     Between groups, **re-Read every file you intend to Edit or Write
     next whenever the previous group invoked any operation that may
     have modified wiki files** — `git mv`, `mv`, `sed -i`, helper
-    scripts under `skills/wiki/scripts/` (`compute_sha256.py`,
-    `lint.py` with side effects), a spawned subagent that edited
-    files, or any other external command that touched the tree. The
-    harness invalidates the "file-has-been-read" state on detected
+    scripts under `$WIKI_SKILL/scripts/` (`compute_sha256.py`,
+    `lint.py` with side effects), a spawned subagent that edited files,
+    or any other external command that touched the tree. The harness
+    invalidates the "file-has-been-read" state on detected
     modifications, and a stale Read causes the next `Edit` or `Write`
-    to fail with `<tool_use_error>File has not been read yet.</tool_use_error>`.
+    to fail with
+    `<tool_use_error>File has not been read yet.</tool_use_error>`.
     The most common trigger is a fix-group that renames a page via
     `git mv` and is followed by inbound-link updates on other pages
     that were Read earlier; re-Read each of those files after the
@@ -748,9 +801,9 @@ affect the same file so each file is opened, read, and rewritten once.
       Re-read the raw file, compare against the wiki page's claims,
       update the wiki page where the source has materially changed,
       and recompute the sha256 in the raw file's frontmatter by running
-      `python3 $WIKI_SKILL/scripts/compute_sha256.py <raw-file>` — do not
-      compute the hash inline or invent it. Do not edit the raw body
-      itself except to re-record what the source now says.
+      `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>` —
+      do not compute the hash inline or invent it. Do not edit the raw
+      body itself except to re-record what the source now says.
     </fix_source_drift>
 
     <fix_contested_page>
@@ -832,8 +885,9 @@ affect the same file so each file is opened, read, and rewritten once.
 
     <fix_raw_source_frontmatter_missing>
       Backfill the missing fields on raw files. Write `sha256` by
-      running `python3 $WIKI_SKILL/scripts/compute_sha256.py <raw-file>`
-      — the script handles the body-only boundary correctly and inserts
+      running
+      `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>` —
+      the script handles the body-only boundary correctly and inserts
       the field if missing. Edit other frontmatter fields directly; raw
       bodies stay untouched.
     </fix_raw_source_frontmatter_missing>
@@ -941,12 +995,12 @@ affect the same file so each file is opened, read, and rewritten once.
 <verify>
 
   <relint_until_clean>
-    Re-run `python3 $WIKI_SKILL/scripts/lint.py "$WIKI"`. Iterate the
-    fix loop until the script exits 0 with no blocking or warn
+    Re-run `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"`. Iterate
+    the fix loop until the script exits 0 with no blocking or warn
     findings, and only acceptable info-level findings remain. If a
     specific info-level finding is intentional (e.g., a deliberately
-    oversized synthesis page), note the rationale on the page's body
-    or in `SCHEMA.md` so the next audit knows it is sanctioned.
+    oversized synthesis page), note the rationale on the page's body or
+    in `SCHEMA.md` so the next audit knows it is sanctioned.
   </relint_until_clean>
 
   <append_audit_log_entry>
