@@ -1,6 +1,6 @@
 # ai_dev
 
-A plugin bundling the skills used for day-to-day AI-assisted development: keeping git history and changelogs clean, writing and formatting AI-consumed instructions, and applying per-language style conventions.
+A plugin bundling the skills used for day-to-day AI-assisted development: keeping git history and changelogs clean, writing and formatting AI-consumed instructions, keeping bundled skill/plugin runtime artefacts portable, and applying per-language style conventions.
 
 ## Skills
 
@@ -29,6 +29,10 @@ Standing apart from that flow:
 
 - **ai_instruction_writing**: write AI-consumed content (SKILL.md, .mdc rule files, CLAUDE.md / AGENTS.md / GEMINI.md, prompt templates, system prompts, commands, agent and sub-agent definitions, instruction sets, persona definitions) using positive, action-oriented language as the primary carrier of every instruction.
 - **ai_instruction_formatting**: organize AI-consumed content into pseudo-XML by wrapping each semantic concern in a dedicated tag for role, policy, inputs, and output contract.
+
+### Harness portability
+
+- **harness_portability**: apply cross-agent-harness and cross-OS portability rules when creating or editing scripts, hooks, MCP helpers, command wrappers, setup flows, or execution/configuration wording bundled inside skills and plugins. Keeps OpenAI Codex and Anthropic Claude compatibility, official provider documentation checks, and macOS/Linux behavior in scope.
 
 ### Code and document formatting
 

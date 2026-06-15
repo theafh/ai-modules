@@ -2,7 +2,7 @@
 description: Add skill_doctor to audit skill definitions, metadata, descriptions, tests, trigger readiness, and registration for one skill, a skill family, or all repo skills.
 scope: plugins/ai_dev/skills
 created: 2026-06-14T16:53:22
-updated: 2026-06-14T18:35:44
+updated: 2026-06-15T20:14:48
 reported-by: Andreas Hoffmann
 status: open
 ---
@@ -39,6 +39,21 @@ discovery-safety check before deeper content review:
 
 - parse each selected `SKILL.md` frontmatter with normal YAML handling;
 - inspect `name`, `description`, and `version` for manifest usability;
+- verify that each `description:` serves two distinct audiences with
+  different needs:
+  - the human reader needs a precise, compact explanation of what the skill is
+    about, what class of work it owns, and how it differs from neighboring
+    skills;
+  - the LLM router needs keyword-rich trigger material it can match before
+    loading the body, including `Use when` contexts, likely prompt phrases,
+    artifacts, file types, domain terms, and invocation boundaries;
+- judge the balance between those audiences: the description should usually
+  open with a user-readable summary, then add trigger-rich invocation
+  language, without becoming a keyword dump or a prose-only summary that lacks
+  routing signals;
+- flag descriptions that explain the skill's internal workflow instead of
+  describing when to invoke it, and direct those implementation details into
+  the skill body;
 - compare sibling descriptions inside the same family for formatting
   outliers, risky punctuation, non-ASCII characters, and routing overlap;
 - confirm each description says what the skill is for at a user-readable
@@ -77,8 +92,9 @@ Recommended workflow:
    skill directory and name the final set before checking.
 2. **Discovery safety first.** Parse selected `SKILL.md` frontmatter and
    compare sibling descriptions for YAML safety, risky characters,
-   user-readable purpose, and routing overlap. For a family request, include
-   every sibling in that family so outliers are visible.
+   human-reader clarity, LLM-router trigger coverage, the balance between
+   those two audiences, workflow leakage, and routing overlap. For a family
+   request, include every sibling in that family so outliers are visible.
 3. **Registration.** Check that each selected skill is registered in the
    plugin metadata, marketplace metadata where applicable, plugin README,
    and root README when the repo convention requires it.
@@ -108,7 +124,17 @@ The skill should include examples for all three scopes:
 - The skill supports single-skill, family, and whole-repo scopes, and its
   instructions require the resolved target set to be named before checking.
 - The first required check is discovery safety for `SKILL.md` frontmatter
-  and descriptions, including family outlier comparison and routing overlap.
+  and descriptions, including family outlier comparison, routing overlap,
+  trigger-matching coverage, human-readable purpose, and workflow-detail
+  leakage.
+- The description audit enforces the combined metadata rule: state what the
+  skill is, include keyword-rich `Use when` trigger contexts for LLM
+  matching, keep the wording clear for users browsing skills, and leave
+  implementation workflow details in the body.
+- The description audit treats user readability and LLM trigger matching as
+  separate requirements: it flags descriptions that read well for humans but
+  lack routing keywords, and descriptions that expose many keywords but fail
+  to explain the skill's purpose clearly to a user.
 - The check set is derived from the selected skill artifacts and applies to
   any skill family, not to one hard-coded family.
 - The skill remains read-only by default and reports file-specific findings
@@ -121,6 +147,9 @@ The skill should include examples for all three scopes:
 - A focused local test or eval exists for scope resolution and for the
   frontmatter-description discovery-safety check, including a fixture with a
   risky sibling-description outlier.
+- Final cleanup removes the temporary skill-description authoring rule from
+  the standing repo rules in `AGENTS.md` and `CLAUDE.md` once `skill_doctor`
+  owns the reusable description-quality check.
 
 ## Related
 

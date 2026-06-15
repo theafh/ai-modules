@@ -2,8 +2,8 @@
 description: Make the wiki_auto_shaper agent resolve its own skill directory ($WIKI_SKILL) before any scripts/ call, so cold-start runs stop failing with exit 127.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-13T01:47:36
-status: open
+updated: 2026-06-14T19:33:39
+status: ready
 reported-by: Andreas Hoffmann
 ---
 

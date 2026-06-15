@@ -50,6 +50,7 @@ ai-modules/
 │           ├── task_fix/
 │           ├── ai_instruction_writing/
 │           ├── ai_instruction_formatting/
+│           ├── harness_portability/
 │           ├── format_markdown/
 │           ├── format_python/
 │           └── format_rust/
@@ -82,7 +83,7 @@ An LLM-wiki sits between a full RAG pipeline and a loose pile of notes. It is st
 
 ### ai_dev
 
-Skills for day-to-day AI-assisted development: keeping git history and changelogs clean, writing and formatting AI-consumed instructions, and applying linter-aligned style conventions at write time.
+Skills for day-to-day AI-assisted development: keeping git history and changelogs clean, writing and formatting AI-consumed instructions, keeping bundled skill/plugin runtime artefacts portable, and applying linter-aligned style conventions at write time.
 
 - **git_commit**: a phase-based commit workflow with a hardened prepare script that handles special-character paths and per-file binary detection. It stages changes, infers an intended commit grouping, and writes a message aligned with the project's existing convention. A sibling manual-fallback reference covers the path when the script can't be used.
 - **update_changelog**: generates or refreshes a day-grouped `CHANGELOG.md` from git history. It produces newest-first day sections with status markers (`[active]`, `[changed later]`, `[superseded]`), and processes one day at a time so long histories stay within a single context window.
@@ -98,6 +99,7 @@ Skills for day-to-day AI-assisted development: keeping git history and changelog
 - **task_fix**: audits and repairs the whole `tasks/` tree in one inline pass (orient → assess → remediate → verify) — runs `lint.py`, auto-fixes the mechanical findings, and surfaces the judgement calls (splits, cross-task contradictions) for human review, closing with an `audit complete — N resolved, K flagged` report. The task-backlog analogue of `wiki_fix`, done inline rather than via an agent because the tree is small and the fixes are mechanical. Operates on the whole backlog, independent of any single task's lifecycle.
 - **ai_instruction_writing**: writes any AI-consumed artefact (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of negative prohibitions the model has to invert.
 - **ai_instruction_formatting**: organises AI-consumed content into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in a dedicated tag so the model can locate the right section by structure rather than by re-reading the prose.
+- **harness_portability**: applies cross-agent-harness and cross-OS portability rules to scripts, hooks, MCP helpers, command wrappers, setup flows, and execution/configuration wording bundled inside skills and plugins. It keeps OpenAI Codex and Anthropic Claude compatibility, official provider documentation checks, and macOS/Linux behavior in scope.
 - **format_markdown / format_python / format_rust**: linter-aligned style guides (`markdownlint`, `flake8` plus `ruff` plus `pylint`, `clippy`) consulted at write time. The point is to land code that already passes the linter, instead of spending a follow-up turn reacting to lint output.
 
 ## Installing and deploying

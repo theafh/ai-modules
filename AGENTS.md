@@ -26,6 +26,7 @@ Makefile                          # task entry point
 
 - **Use pseudo-XML inside skill prompts** (`<role>`, `<objective>`, `<policy>`, `<output_contract>`). Reference: `plugins/ai_dev/skills/ai_instruction_formatting/SKILL.md`.
 - **Use positive, action-oriented language** in skill prose and instructions. Reference: `plugins/ai_dev/skills/ai_instruction_writing/SKILL.md`.
+- **Write skill descriptions for both audiences.** The `description:` frontmatter is read before the body is loaded by an LLM router and by users browsing skills. Serve both needs deliberately: give the user a precise compact summary of what the skill is about and how it differs from neighbors, then give the router keyword-rich `Use when` trigger contexts, prompt phrases, artefacts, file types, and invocation boundaries. Keep implementation workflow details in the body.
 - **Keep the toolchain to Make + shell + markdown.** Add new languages, package managers, or build steps only when the user explicitly asks for them.
 - **Match snake_case naming** for skill and plugin directories.
 - **Write deployment-agnostic cross-references.** Reference sibling artefacts by name (`wiki_auto_shaper`, `format_markdown`) rather than by plugin name, marketplace, or installed path.
@@ -44,6 +45,12 @@ Makefile                          # task entry point
 - `make lint` / `make fix` — runs `markdownlint`, `jq` syntax check, `shellcheck`. `fix` auto-fixes markdown only.
 - `make deploy` — symlink components into vendor config dirs. Aliases: `global`, `install`. **Run only when the user asks for it.**
 - `make uninstall` — remove deployed artefacts via the deployment log.
+
+## Protected file edits
+
+- **Treat `.agents/plugins/marketplace.json` as protected when Codex runs with managed filesystem permissions.** Read it for context, then attempt at most one exact-context `apply_patch` for the intended JSON field.
+- **Escalate through the user when the approval state blocks the edit.** If the patch is rejected, times out, or cannot ask for usable escalation, stop and ask the user to change the approval/sandbox state and then tell you to retry. Do not spend turns on shell write workarounds while the harness blocks writes.
+- **Use a tightly scoped write after the user changes permissions.** Once the user switches to a state that allows the edit, retry the exact file update and verify with `make lint`.
 
 `CHANGELOG.md` is git-history-derived. Update it only through the `update_changelog` skill, run on demand. Don't hand-edit CHANGELOG entries as part of other work. Committing the skill's output is fine.
 
