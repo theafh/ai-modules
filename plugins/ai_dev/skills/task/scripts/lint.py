@@ -73,20 +73,29 @@ LINK_RE = re.compile(r"(?<!\!)\[([^\^\]][^\]]*)\]\(([^)]+)\)")
 
 # Soft-pointer rule: a task reference anchors on a verbatim greppable
 # label, never a line-number position claim that goes stale silently.
-# Two anchored, false-positive-resistant shapes warn (open tasks only,
+# Three anchored, false-positive-resistant shapes warn (open tasks only,
 # fenced blocks skipped):
-#   - a `:N` suffix on a path with a known source/config/doc extension,
-#     so `localhost:8080`, `host:port`, and `13:40:10` stay silent;
-#   - a `line N` / `around lines N-M` prose claim, word-order-sensitive
-#     so a trailing `N lines` size count stays legal.
+#   - a `:N` suffix or adjacent `~N` marker on a path with a known
+#     source/config/doc extension, so `localhost:8080`, `host:port`, and
+#     `13:40:10` stay silent;
+#   - a `line N` / `around lines N-M` prose claim, matched
+#     case-insensitively and with optional `~`;
+#   - a parenthesized approximate range like `(~N)` / `(~N-M)`.
 # Each pattern reaches outward to the surrounding path token / number
 # range so the finding can quote the offending text as written; the
-# trigger at the core is still the extension+`:N` (resp. `line[s] N`),
-# so every documented silent case stays silent. The extension allowlist
-# is deliberately partial — widen it only when a missed extension proves
-# common in real task references.
-POSITION_PATH_RE = re.compile(r"[\w./-]*\.(?:md|sh|py|json|ya?ml|toml|js|ts|go|rs|c|h):[0-9]+")
-POSITION_PROSE_RE = re.compile(r"\b(?:around )?lines? [0-9]+(?:[-–][0-9]+)?")
+# trigger at the core is still the extension+position marker (resp.
+# `line[s]` / parenthesized `~`), so every documented silent case stays
+# silent. The extension allowlist is deliberately partial — widen it only
+# when a missed extension proves common in real task references.
+POSITION_PATH_RE = re.compile(
+    r"[\w./-]*\.(?:md|sh|py|json|ya?ml|toml|js|ts|go|rs|c|h)(?::[0-9]+|\s+~[0-9]+)"
+)
+POSITION_PROSE_RE = re.compile(
+    r"\b(?:around\s+)?lines?\s+~?[0-9]+(?:[-–][0-9]+)?",
+    re.IGNORECASE,
+)
+POSITION_TILDE_RANGE_RE = re.compile(r"\(~[0-9]+(?:[-–][0-9]+)?\)")
+SIZE_SUFFIX_RE = re.compile(r"\s*(?:B|KB|MB|GB|TB|bytes)\b", re.IGNORECASE)
 
 SEV_BLOCKING = 0
 SEV_WARN = 1
@@ -480,12 +489,18 @@ def _scrub_fences(text: str) -> list[str]:
     return out
 
 
+def _has_size_suffix(line: str, end: int) -> bool:
+    """Return True when a position-like number is immediately a size."""
+    return bool(SIZE_SUFFIX_RE.match(line[end:]))
+
+
 def check_no_position_claims(tasks: Path, page: Path) -> list[Issue]:
     """Warn on line-number position claims in an open task body.
 
-    The soft-pointer rule bans a position claim — a `:N` suffix on a file
-    path, a bare `line N`, or an `around lines N-M` range — because the
-    number rots silently as the referenced file evolves while a verbatim
+    The soft-pointer rule bans a position claim — a `:N` suffix or `~N`
+    marker on a file path, a bare `line N` / `line ~N`, an `around lines
+    N-M` range, or a parenthesized `(~N-M)` range — because the number
+    rots silently as the referenced file evolves while a verbatim
     greppable label fails loudly. Warn-only: never blocks, so a residual
     false positive surfaces one advisory line and fails nothing. Open
     tasks only — archived pages are closed records nobody maintains, so
@@ -499,20 +514,35 @@ def check_no_position_claims(tasks: Path, page: Path) -> list[Issue]:
     issues: list[Issue] = []
     for i, line in enumerate(_scrub_fences(body), start=1):
         for match in POSITION_PATH_RE.finditer(line):
+            if _has_size_suffix(line, match.end()):
+                continue
             issues.append(Issue(
                 SEV_WARN, "soft-pointer", page,
-                f"line-number position claim {match.group(0)!r} — the "
-                f"soft-pointer rule bans a `:N` suffix on a file path; "
+                f"line-number position claim {match.group(0).strip()!r} — the "
+                f"soft-pointer rule bans a `:N` suffix or `~N` marker on a file path; "
                 f"anchor on a verbatim greppable label instead",
                 line=i,
             ))
         for match in POSITION_PROSE_RE.finditer(line):
+            if _has_size_suffix(line, match.end()):
+                continue
             issues.append(Issue(
                 SEV_WARN, "soft-pointer", page,
                 f"line-number position claim {match.group(0).strip()!r} — "
-                f"the soft-pointer rule bans a bare `line N` / `around "
-                f"lines N-M`; anchor on a verbatim greppable label, and "
+                f"the soft-pointer rule bans a bare `line N`, `line ~N`, "
+                f"or `around lines N-M`; anchor on a verbatim greppable label, and "
                 f"give extent as size if useful",
+                line=i,
+            ))
+        for match in POSITION_TILDE_RANGE_RE.finditer(line):
+            if _has_size_suffix(line, match.end()):
+                continue
+            issues.append(Issue(
+                SEV_WARN, "soft-pointer", page,
+                f"line-number position claim {match.group(0).strip()!r} — "
+                f"the soft-pointer rule bans a parenthesized `~N` / `~N-M` "
+                f"range; anchor on a verbatim greppable label, and give "
+                f"extent as size if useful",
                 line=i,
             ))
     return issues

@@ -2,9 +2,10 @@
 description: Harden the task linter's soft-pointer detector (catch tilde/capital-Lines shapes, skip size extents) and teach skills to triage each warn — rewrite genuine line anchors, ignore false positives.
 scope: plugins/ai_dev/skills
 created: 2026-06-13T14:33:01
-updated: 2026-06-13T14:47:16
-status: open
+updated: 2026-06-16T22:22:40
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Harden the soft-pointer detector and its triage contract in the task skills
@@ -46,8 +47,8 @@ That bias places an obligation on the skills that read the warn. The size carve-
 
 Predecessors, both implemented:
 
-- [task-skill_label-only-soft-pointers.md](archive/task-skill_label-only-soft-pointers.md) added `check_no_position_claims` with its fence-aware, warn-level behavior; this task hardens that detector.
-- [task-skill_soft-pointer-references.md](archive/task-skill_soft-pointer-references.md) established the label-over-line-number rule it enforces.
+- [task-skill_label-only-soft-pointers.md](task-skill_label-only-soft-pointers.md) added `check_no_position_claims` with its fence-aware, warn-level behavior; this task hardens that detector.
+- [task-skill_soft-pointer-references.md](task-skill_soft-pointer-references.md) established the label-over-line-number rule it enforces.
 
 ## Approach
 

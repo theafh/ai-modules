@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.2
+version: 1.3.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -280,7 +280,7 @@ python3 scripts/lint.py --include-archive  # task_fix archive-maintenance mode
 Findings come in three buckets:
 
 - **blocking** — bad filename, missing/malformed frontmatter, missing required provenance, invalid status, status/location mismatch, duplicate filenames, legacy archived status migration. Exit 1; must fix.
-- **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines), line-number position claims in an open task body (the soft-pointer rule; fenced code blocks are skipped, inline code stays checked).
+- **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines), line-number position claims in an open task body (the soft-pointer rule; fenced code blocks are skipped, inline code stays checked). The soft-pointer check is recall-biased and names candidates including `path:N`, `path ~N`, capitalized or lowercase `line N` / `line ~N` / `around lines N-M`, and parenthesized `(~N)` / `(~N-M)` shapes, while skipping size extents such as `~16 KB`, `512 bytes`, and `100 MB`. Treat each soft-pointer warn as a candidate, not a verdict: read the hit in surrounding context, rewrite a genuine line anchor to a verbatim greppable label, and leave a false positive such as a size, version, count, or quoted claim-shape untouched.
 - **info** — reserved for future style nits.
 </lint>
 
