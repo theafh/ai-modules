@@ -6,7 +6,7 @@ It autodiscovers artifacts by plugin layout, backs up only the selected targets 
 
 ## Run It
 
-Run with no arguments to see help. Pass `--global` to deploy globally, or `--project-dir DIR` to deploy into a single project's local config:
+Run with no arguments to see help. Pass `--global` to deploy globally, or `--project-dir DIR` to deploy into a single project's local config. `--uninstall` and standalone `--clear-backups` are maintenance modes that can run without a deployment scope:
 
 ```bash
 ./deployment/deployment.sh                                        # show help
@@ -15,7 +15,7 @@ Run with no arguments to see help. Pass `--global` to deploy globally, or `--pro
 ./deployment/deployment.sh --global --type skill --target claude  # filter
 ./deployment/deployment.sh --project-dir /path/to/repo --target claude
 ./deployment/deployment.sh --uninstall                            # remove logged artifacts
-./deployment/deployment.sh --clear-backups --target cursor,claude
+./deployment/deployment.sh --clear-backups --target cursor,claude # clear managed backups only
 ```
 
 ## Flags
@@ -24,14 +24,14 @@ Run with no arguments to see help. Pass `--global` to deploy globally, or `--pro
 | --- | --- |
 | `--global` | Deploy into global config dirs (`~/.cursor`, `~/.claude`, …). Mutually exclusive with `--project-dir`. |
 | `--project-dir DIR` | Deploy into a project directory's local config (`<DIR>/.cursor/`, `<DIR>/.claude/`, …). Backups are disabled in this mode. |
-| `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`. |
+| `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`. Requires `--global` or `--project-dir` unless used with `--uninstall`. |
 | `--target TARGETS` | Comma-separated target filter: `vscode`, `cursor`, `claude`, `codex`, `gemini`, `antigravity`. |
-| `--uninstall` | Remove previously deployed artifacts that match the active filters. Backups still run first. |
-| `--clear-backups` | Remove old managed backups for the selected targets before creating a fresh backup. No effect in `--project-dir` mode. |
+| `--uninstall` | Remove previously deployed artifacts that match the active filters. Can run without `--global` or `--project-dir`; backups still run first unless combined with no-scope `--clear-backups`. |
+| `--clear-backups` | Remove old managed backups for the selected targets before creating a fresh backup. Without `--global` or `--project-dir`, this clears matching global backups and exits before deploy. No effect in `--project-dir` mode. |
 | `--dry-run` | Preview backups, installs, and uninstall actions without writing changes. |
 | `-h`, `--help` | Show built-in help. |
 
-If `--target` filters out every app, the script aborts. If discovery finds no matching artifacts, it exits cleanly without deploying anything. `jq` is required (used for JSON-merge of Claude hook config) — the script exits early if it's missing.
+Deploy operations require an explicit scope: pass `--global` or `--project-dir DIR`. `--dry-run`, `--type`, or `--target` alone are deploy/filter requests and abort with a missing-scope error. If `--target` filters out every app, the script aborts. If discovery finds no matching artifacts, it exits cleanly without deploying anything. `jq` is required (used for JSON-merge of Claude hook config) — the script exits early if it's missing.
 
 ## Artifact Discovery
 
@@ -106,7 +106,7 @@ Before deploy or uninstall in global mode, the script backs up only the activate
 
 Backups land in `$HOME` as `<name>_YYYYMMDD_HHMMSS`, e.g. `~/.cursor_YYYYMMDD_HHMMSS`, `~/.claude_YYYYMMDD_HHMMSS`. `<name>` defaults to the basename of the target directory; it is overridden when the basename isn't tool-distinctive — currently the VS Code user-prompts dir on macOS (`~/Library/Application Support/Code/User/prompts`) backs up to `~/.vscode-prompts_YYYYMMDD_HHMMSS` rather than the misleading `~/prompts_YYYYMMDD_HHMMSS`. If a selected target dir does not exist yet, the script skips that backup. `--project-dir` mode skips backups entirely.
 
-`--clear-backups` removes only backups that match the script's managed naming scheme before creating the fresh backup for that target.
+`--clear-backups` removes only backups that match the script's managed naming scheme before creating the fresh backup for that target. When run without a deployment scope, it is a cleanup-only operation: `--target` narrows the global target roots, `--dry-run` previews removals, and the script exits without creating backups or deploying.
 
 ## Deploy Log and Uninstall
 

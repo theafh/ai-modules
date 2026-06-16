@@ -2,9 +2,10 @@
 description: Require an explicit --global or --project-dir before deployment.sh deploys, while keeping no-scope uninstall and backup cleanup as maintenance modes.
 scope: deployment
 created: 2026-06-02T23:06:06
-updated: 2026-06-16T21:57:01
-status: ready
+updated: 2026-06-16T22:09:29
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Require an explicit deployment scope so global stops being a silent fallback
@@ -109,7 +110,7 @@ log-driven and continues to uninstall without a deployment scope.
 Non-goals: no change to what a global or project deploy does once a scope is
 chosen; no new flags; no change to the `--global` + `--project-dir` conflict rule.
 
-Coordinate with [deployment_relocate-state-to-home.md](deployment_relocate-state-to-home.md):
+Coordinate with [deployment_relocate-state-to-home.md](../deployment_relocate-state-to-home.md):
 it also edits `deployment/deployment.sh` (the state-path resolution and banner, a
 different region), so whichever lands second rebases the other's line references.
 This is a co-edited-file coordination link, not a relatedness note.

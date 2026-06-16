@@ -39,7 +39,9 @@ set -euo pipefail
 #   ./deployment.sh --global                     # autodiscover all in global config dirs
 #   ./deployment.sh --global --clear-backups     # drop old backups, then create fresh ones
 #   ./deployment.sh --uninstall                  # uninstall logged artifacts only
-#   ./deployment.sh --global --type skills,commands
+#   ./deployment.sh --clear-backups --target cursor,claude
+#                                                 # clear managed backups only
+#   ./deployment.sh --global --type skill,command
 #                                                 # deploy only skills+commands globally
 #   ./deployment.sh --global --target vscode,claude
 #                                                 # deploy only to vscode+claude globally
@@ -54,6 +56,8 @@ DRY_RUN=false
 UNINSTALL=false
 CLEAR_BACKUPS=false
 GLOBAL_MODE=false
+BACKUP_CLEANUP_ONLY=false
+NO_SCOPE_UNINSTALL=false
 TYPE_FILTER=""
 TARGET_FILTER=""
 PROJECT_DIR=""
@@ -69,12 +73,15 @@ pass --global explicitly.
 Options:
   --global          Deploy into global config dirs. This is the previous default
                     behavior of running the script with no arguments.
-  --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook
+  --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook.
+                    Requires --global or --project-dir unless used with --uninstall.
   --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,gemini,antigravity
   --project-dir DIR Deploy into a project directory instead of global config dirs.
                     Backups are disabled in this mode.
-  --uninstall       Uninstall mode; remove matching logged deployed artifacts after backup
-  --clear-backups   Remove old backups for selected targets before creating new backups
+  --uninstall       Uninstall mode; remove matching logged deployed artifacts after backup.
+                    Can run without --global or --project-dir.
+  --clear-backups   Remove old backups for selected targets before creating new backups.
+                    Without --global or --project-dir, clears backups and exits.
   --dry-run         Preview changes without applying them
   -h, --help        Show this help message
 
@@ -85,6 +92,7 @@ Examples:
   ./deployment/deployment.sh --global --target codex
   ./deployment/deployment.sh --project-dir /path/to/repo --target claude
   ./deployment/deployment.sh --uninstall
+  ./deployment/deployment.sh --clear-backups --target cursor,claude
 USAGE
 }
 
@@ -189,12 +197,6 @@ if [[ -n "$PROJECT_DIR" ]]; then
     echo "  Note: --clear-backups has no effect in project-dir mode (backups are disabled)" >&2
     CLEAR_BACKUPS=false
   fi
-fi
-
-# jq is required for JSON-merge hook deployment (Claude Code settings.json)
-if ! command -v jq &>/dev/null; then
-  echo "Error: jq is required but not installed." >&2
-  exit 1
 fi
 
 # ---------------------------------------------------------------------------
@@ -491,6 +493,28 @@ if [[ -n "$TARGET_FILTER" ]]; then
     fi
   done
   unset _target_items _tgt
+fi
+
+if [[ "$GLOBAL_MODE" != true && -z "$PROJECT_DIR" ]]; then
+  if [[ "$UNINSTALL" == true ]]; then
+    # Log-driven uninstall is a maintenance mode: it uses the deployment log
+    # plus filters, not a newly selected deployment scope.
+    NO_SCOPE_UNINSTALL=true
+  elif [[ "$CLEAR_BACKUPS" == true && -z "$TYPE_FILTER" ]]; then
+    # Backup cleanup is the other no-scope maintenance mode. --target narrows
+    # backup roots; --type remains a deploy/uninstall artifact filter.
+    BACKUP_CLEANUP_ONLY=true
+  else
+    echo "Error: deployment requires an explicit scope. Pass --global or --project-dir DIR." >&2
+    print_usage >&2
+    exit 1
+  fi
+fi
+
+# jq is required for JSON-merge hook deployment (Claude Code settings.json)
+if ! command -v jq &>/dev/null; then
+  echo "Error: jq is required but not installed." >&2
+  exit 1
 fi
 
 # ---------------------------------------------------------------------------
@@ -1371,6 +1395,32 @@ clear_old_backups_for_app_dir() {
   eval "$_old_nullglob"
 }
 
+clear_backups_for_active_targets() {
+  declare -A cleared_roots=()
+  for target in "${APP_TARGETS[@]}"; do
+    IFS='|' read -r app_id _label base_dir <<< "$target"
+    # Each backup_roots entry is "path|backup_name". An empty backup_name
+    # falls back to basename(path). Override the name only when the basename
+    # isn't tool-distinctive — see the header comment for context.
+    local backup_roots=("$base_dir|")
+    if [[ "$app_id" == "antigravity" ]]; then
+      backup_roots=("${GEMINI_DIR}|")
+    elif [[ "$app_id" == "vscode" ]]; then
+      backup_roots=("${VSCODE_COPILOT_DIR}|" "${VSCODE_PROMPTS_DIR}|.vscode-prompts")
+    fi
+
+    local backup_root_entry local_backup_root local_backup_name
+    for backup_root_entry in "${backup_roots[@]}"; do
+      local_backup_root="${backup_root_entry%%|*}"
+      local_backup_name="${backup_root_entry#*|}"
+      if [[ -z "${cleared_roots[$local_backup_root]+x}" ]]; then
+        clear_old_backups_for_app_dir "$local_backup_root" "$local_backup_name"
+        cleared_roots["$local_backup_root"]=1
+      fi
+    done
+  done
+}
+
 backup_app_dir() {
   local app_dir="$1"
   local backup_name_override="${2:-}"
@@ -1543,6 +1593,15 @@ parse_deployment_conf
 if [[ -n "$PROJECT_DIR" ]]; then
   info "skip" "Backups are disabled in project-dir mode"
   echo ""
+elif $BACKUP_CLEANUP_ONLY; then
+  echo "Clearing managed backups for activated target directories..."
+  echo ""
+  clear_backups_for_active_targets
+  echo ""
+  print_summary
+  echo ""
+  echo "Done."
+  exit 0
 else
   echo "Backing up activated target directories..."
   echo ""
@@ -1567,7 +1626,11 @@ else
         if $CLEAR_BACKUPS; then
           clear_old_backups_for_app_dir "$local_backup_root" "$local_backup_name"
         fi
-        backup_app_dir "$local_backup_root" "$local_backup_name"
+        if [[ "$NO_SCOPE_UNINSTALL" == true && "$CLEAR_BACKUPS" == true ]]; then
+          info "skip" "Fresh backup disabled for no-scope --clear-backups --uninstall"
+        else
+          backup_app_dir "$local_backup_root" "$local_backup_name"
+        fi
         backed_up["$local_backup_root"]=1
       fi
     done
