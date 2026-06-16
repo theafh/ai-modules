@@ -2,8 +2,8 @@
 description: Require an explicit --global or --project-dir scope before deployment.sh touches any target dir, so secondary flags like --clear-backups stop silently triggering a global deploy.
 scope: deployment
 created: 2026-06-02T23:06:06
-updated: 2026-06-13T01:47:36
-status: open
+updated: 2026-06-16T21:45:29
+status: checked
 reported-by: Andreas Hoffmann
 ---
 

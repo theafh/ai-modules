@@ -1,7 +1,7 @@
 ---
 name: task_finish
 description: Close one completed or parked task. Use when the user asks to finish, mark done, defer, park, drop, or archive a task. Set finished or deferred, move the file to archive, update links, and relint.
-version: 1.0.4
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -21,7 +21,7 @@ Activate when the user wants one task closed out:
 - "Defer this" / "park `<task>`" / "drop this for now."
 - "Archive this task."
 
-Route elsewhere when the user wants to create a task (`task_create` or the base `task` skill), assess readiness before building (`task_check`), do the implementation work (`task_implement`), verify a believed-done task against the codebase (`task_audit`), or list / query / update tasks (the base `task` skill).
+Route elsewhere when the user wants to create a task (`task_create` or the base `task` skill), assess readiness before building (`task_check`), choose what to work on next (`task_select`), do the implementation work (`task_implement`), verify a believed-done task against the codebase (`task_audit`), or list / query / update tasks (the base `task` skill).
 </when_to_activate>
 
 <authority>
@@ -50,12 +50,13 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
+- `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive **(this skill)**
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → select → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_finish_skill>

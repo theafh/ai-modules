@@ -1,7 +1,7 @@
 ---
 name: task_implement
 description: Implement one existing task file end to end. Use when the user asks to build, do, or implement the work described by a task. Edit code and tests, run verification, stamp implemented, and leave audit and finish to sibling skills.
-version: 1.0.4
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -20,7 +20,7 @@ Activate when the user points at one task in `tasks/` and wants it built now:
 - "Implement this task" / "implement `<task-file>`."
 - "Do task X" / "build the thing described in `<task>`" / "make task Y happen."
 
-Route elsewhere when the user wants to create a task (`task_create` or the base `task` skill), assess a task's readiness *before* building (`task_check`), verify a believed-done task against the codebase (`task_audit`), or close and archive a task (`task_finish`).
+Route elsewhere when the user wants to create a task (`task_create` or the base `task` skill), assess a task's readiness *before* building (`task_check`), choose what to work on next (`task_select`), verify a believed-done task against the codebase (`task_audit`), or close and archive a task (`task_finish`).
 </when_to_activate>
 
 <authority>
@@ -61,12 +61,13 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
+- `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work **(this skill)**
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → select → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_implement_skill>

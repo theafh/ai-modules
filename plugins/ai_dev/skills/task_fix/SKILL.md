@@ -1,7 +1,7 @@
 ---
 name: task_fix
 description: Repair the whole tasks backlog tree in one pass. Use when the user asks to health check, clean up, audit, or lint the backlog. Run the archive inclusive linter, fix mechanical frontmatter, status, location, link, datetime, and provenance issues, and surface judgement calls.
-version: 1.3.1
+version: 1.3.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -19,7 +19,7 @@ Activate when the user wants the task backlog as a whole audited and tidied:
 
 - "Health-check my tasks" / "clean up the backlog" / "audit the task list" / "lint and fix the tasks tree."
 
-Route elsewhere when the user wants to judge a single task's readiness before building (`task_check`), verify one believed-done task against the codebase (`task_audit`), create a task (`task_create`), implement one (`task_implement`), or close one out (`task_finish`).
+Route elsewhere when the user wants to judge a single task's readiness before building (`task_check`), choose what to work on next (`task_select`), verify one believed-done task against the codebase (`task_audit`), create a task (`task_create`), implement one (`task_implement`), or close one out (`task_finish`).
 </when_to_activate>
 
 <design_note>
@@ -63,12 +63,13 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
+- `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree **(this skill)**
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → select → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_fix_skill>

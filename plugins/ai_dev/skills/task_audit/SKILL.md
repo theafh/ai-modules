@@ -1,7 +1,7 @@
 ---
 name: task_audit
 description: Audit one implemented or finished task against the actual codebase. Use after implementation or for drift checks before close out. Inspect code and tests, run verification, stamp audited only on clean implemented work, and report gaps otherwise.
-version: 1.0.4
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -23,7 +23,7 @@ Activate when the user wants a task's done-ness checked against reality:
 
 Audit only a task whose work is *claimed complete* — a live `implemented` or `audited` task under verification, or an archived `finished` task re-checked for drift. Decline a task whose body is still a plan.
 
-Route elsewhere when the user wants to assess a task's readiness *before* building (`task_check`), do the implementation work (`task_implement`), close and archive a task (`task_finish`), or audit the whole tree's lint health (`task_fix`).
+Route elsewhere when the user wants to assess a task's readiness *before* building (`task_check`), choose what to work on next (`task_select`), do the implementation work (`task_implement`), close and archive a task (`task_finish`), or audit the whole tree's lint health (`task_fix`).
 </when_to_activate>
 
 <authority>
@@ -59,12 +59,13 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
+- `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only) **(this skill)**
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → implement → audit → finish, with fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → select → implement → audit → finish, with fix maintaining the tree.
 </family>
 
 </task_audit_skill>
