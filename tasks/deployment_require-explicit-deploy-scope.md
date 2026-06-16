@@ -2,7 +2,7 @@
 description: Require an explicit --global or --project-dir before deployment.sh deploys, while keeping no-scope uninstall and backup cleanup as maintenance modes.
 scope: deployment
 created: 2026-06-02T23:06:06
-updated: 2026-06-16T21:53:24
+updated: 2026-06-16T21:57:01
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -54,6 +54,11 @@ log-driven and continues to uninstall without a deployment scope.
 - **Repro:** `./deployment/deployment.sh --clear-backups` clears backups and then
   deploys into the global dirs. Expected: clear managed backups and exit before
   deployment, because no deploy scope was selected.
+- **Mixed-mode combinations need explicit semantics** so the guard does not turn
+  into a broad `CLEAR_BACKUPS` bypass: no-scope backup cleanup supports
+  `--target` and `--dry-run`; no-scope uninstall keeps its existing `--target`
+  and `--type` filters; `--type` without `--uninstall` or a deploy scope remains
+  a deploy/artifact filter and requires `--global` or `--project-dir DIR`.
 
 ## Approach
 
@@ -72,6 +77,13 @@ log-driven and continues to uninstall without a deployment scope.
   managed backups for the selected target filter, then exit before the backup
   creation and deploy phases. Document that call inline near the guard or
   clear-backups branch so the maintenance mode is intentional and stable.
+- Keep `--clear-backups --dry-run` without a scope as a cleanup preview: report
+  the managed backups that would be removed, exit 0, and perform no backup
+  creation or deployment.
+- Treat `--clear-backups --type …` without `--uninstall` and without a scope as a
+  missing deploy-scope error, because `--type` filters artifacts, not backup
+  roots. `--clear-backups --uninstall --type …` remains valid because uninstall
+  already uses the type filter.
 - Keep `--global --clear-backups` as the explicit global deploy variant: clear
   old managed backups for activated global targets, create fresh backups, then
   deploy globally.
@@ -79,6 +91,13 @@ log-driven and continues to uninstall without a deployment scope.
   uninstalls matching entries as it does today. Document that call inline near the
   guard so the exception is intentional and stable rather than an accidental
   bypass.
+- Keep `--uninstall --target …` and `--uninstall --type …` without a scope
+  working as filtered uninstall operations. If `--clear-backups` is combined with
+  no-scope uninstall, clear the selected managed backups first, then uninstall
+  matching log entries, and exit without creating fresh backups or deploying.
+- Keep `--project-dir DIR --clear-backups` as today's project-dir no-op note for
+  backup cleanup, then continue the project deploy; project-dir mode still
+  disables backups.
 - Leave the global `else`-branch dir assignments unchanged; they now run only once
   `--global` is confirmed present. Keep the toolchain to shell only.
 - Update the script usage text and `deployment/README.md` in the same change so
@@ -100,16 +119,34 @@ This is a co-edited-file coordination link, not a relatedness note.
 - `./deployment/deployment.sh --clear-backups` clears managed global backups and
   exits 0 before backup creation or deployment; it performs no deployment and
   creates no new backups.
+- `./deployment/deployment.sh --clear-backups --target cursor,claude` clears only
+  managed backups for the selected targets and exits before backup creation or
+  deployment.
+- `./deployment/deployment.sh --clear-backups --dry-run` previews the managed
+  backups that would be removed and exits 0 without writing changes, creating
+  backups, or deploying.
+- `./deployment/deployment.sh --clear-backups --type skill` fails with the
+  missing deploy-scope error because `--type` has no backup-cleanup meaning
+  outside uninstall.
 - The same guard fires for any other non-scope deploy/filter flag alone —
   `--dry-run`, `--type …`, and `--target …`.
 - `./deployment/deployment.sh --uninstall` still uninstalls from the deployment
   log without requiring `--global` or `--project-dir`.
+- `./deployment/deployment.sh --uninstall --target claude` and
+  `./deployment/deployment.sh --uninstall --type skill` still apply the existing
+  uninstall filters without requiring `--global` or `--project-dir`.
+- `./deployment/deployment.sh --clear-backups --uninstall --target claude` clears
+  selected managed backups, uninstalls matching logged entries, creates no fresh
+  backups, performs no deploy, and exits 0.
 - `./deployment/deployment.sh` with no arguments still prints usage and exits 0.
 - `./deployment/deployment.sh --global --dry-run` still previews a global deploy
   and exits 0; `--global --clear-backups` clears old managed backups, creates
   fresh backups, then deploys globally.
 - `./deployment/deployment.sh --project-dir DIR …` still deploys into the project
   unchanged.
+- `./deployment/deployment.sh --project-dir DIR --clear-backups` still prints the
+  existing project-dir backup-disabled note and continues the project deploy
+  without backup cleanup or backup creation.
 - Script usage text and `deployment/README.md` reflect the final behavior: no
   stale no-scope deploy, preview, or filter examples remain, and the no-scope
   uninstall and clear-backups examples remain because the script still supports
