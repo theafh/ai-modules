@@ -1,9 +1,9 @@
 ---
-description: Require an explicit --global or --project-dir scope before deployment.sh touches any target dir, so secondary flags like --clear-backups stop silently triggering a global deploy.
+description: Require an explicit --global or --project-dir before deployment.sh deploys, while keeping no-scope uninstall and backup cleanup as maintenance modes.
 scope: deployment
 created: 2026-06-02T23:06:06
-updated: 2026-06-16T21:45:29
-status: checked
+updated: 2026-06-16T21:53:24
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -11,15 +11,18 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-Make a deployment scope — `--global` or `--project-dir DIR` — a required, explicit
-choice before `deployment/deployment.sh` touches any target directory. Today the
-script treats global config dirs as an implicit fallback: running it with a
-secondary flag but no scope (the reported case is `--clear-backups` on its own)
-silently performs a full **global** deployment into `~/.claude`, `~/.codex`,
-`~/.cursor`, `~/.gemini`, and the rest. Deployment should run only when a concrete
-scope flag selects one, and otherwise stop with a clear message. Outcome:
-`deployment.sh --clear-backups` (and any other non-scope flag alone) no longer
-deploys; a global deploy happens only when `--global` is passed explicitly.
+Make a deployment scope — `--global` or `--project-dir DIR` — a required,
+explicit choice before `deployment/deployment.sh` deploys into target
+directories. Today the script treats global config dirs as an implicit fallback:
+running it with a secondary flag but no scope (the reported case is
+`--clear-backups` on its own) silently performs a full **global** deployment into
+`~/.claude`, `~/.codex`, `~/.cursor`, `~/.gemini`, and the rest. Deployment
+should run only when a concrete scope flag selects one, and otherwise stop with a
+clear message. Outcome: `deployment.sh --clear-backups` becomes a standalone
+maintenance operation that clears managed backups and exits before deploy;
+non-scope deploy/filter flags alone no longer deploy; a global deploy happens
+only when `--global` is passed explicitly. `deployment.sh --uninstall` remains
+log-driven and continues to uninstall without a deployment scope.
 
 ## Context
 
@@ -42,27 +45,47 @@ deploys; a global deploy happens only when `--global` is passed explicitly.
   `--global` "the previous default behavior of running the script with no
   arguments." The code stops enforcing that promise the moment any argument is
   present.
+- **Docs and usage should mirror the script**: script usage and
+  `deployment/README.md` currently include no-scope examples such as
+  `./deployment/deployment.sh --uninstall` and
+  `./deployment/deployment.sh --clear-backups --target cursor,claude`. Keep
+  uninstall and standalone backup-cleanup examples no-scope when the script keeps
+  those behaviors, and add an explicit scope to examples that deploy.
 - **Repro:** `./deployment/deployment.sh --clear-backups` clears backups and then
-  deploys into the global dirs. Expected: refuse, because no scope was selected.
+  deploys into the global dirs. Expected: clear managed backups and exit before
+  deployment, because no deploy scope was selected.
 
 ## Approach
 
 - After arg parsing and the existing `--global` / `--project-dir` conflict check,
-  add a **scope-required guard**: when `GLOBAL_MODE` is false and `PROJECT_DIR` is
-  empty, print a clear error to stderr naming the missing choice (pass `--global`
-  or `--project-dir DIR`), follow it with the usage, and exit non-zero. This
-  replaces global-as-fallback with an explicit, required scope.
+  add a **scope-required guard**: when `GLOBAL_MODE` is false, `PROJECT_DIR` is
+  empty, `UNINSTALL` is false, and `CLEAR_BACKUPS` is false, print a clear error
+  to stderr naming the missing choice (pass `--global` or `--project-dir DIR`),
+  follow it with the usage, and exit non-zero. This replaces global-as-fallback
+  with an explicit, required scope for deploy operations while keeping
+  log-driven uninstall and standalone backup cleanup as existing no-scope
+  maintenance operations.
 - Keep the zero-arg path as the friendly help: no arguments still prints usage and
   exits 0. The new guard covers the "arguments present but no scope" case
-  (`--clear-backups`, `--dry-run`, `--type …`, `--target …`, `--uninstall` alone),
-  which currently slips through.
-- Decide `--uninstall`'s scope requirement deliberately and record the call in a
-  comment: uninstall works from the deployment log against the global dirs, so
-  prefer requiring an explicit scope for every operation that reads or writes
-  target dirs — one rule, not an exception list — unless there is a concrete reason
-  to exempt it, in which case document that reason inline.
+  (`--dry-run`, `--type …`, `--target …`), which currently slips through.
+- Keep `--clear-backups` without a scope working as backup cleanup only: clear
+  managed backups for the selected target filter, then exit before the backup
+  creation and deploy phases. Document that call inline near the guard or
+  clear-backups branch so the maintenance mode is intentional and stable.
+- Keep `--global --clear-backups` as the explicit global deploy variant: clear
+  old managed backups for activated global targets, create fresh backups, then
+  deploy globally.
+- Keep `--uninstall` without a scope working: it reads the deployment log and
+  uninstalls matching entries as it does today. Document that call inline near the
+  guard so the exception is intentional and stable rather than an accidental
+  bypass.
 - Leave the global `else`-branch dir assignments unchanged; they now run only once
   `--global` is confirmed present. Keep the toolchain to shell only.
+- Update the script usage text and `deployment/README.md` in the same change so
+  no-scope examples reflect the final behavior: keep `--uninstall` and
+  standalone `--clear-backups` as no-scope maintenance examples, and add
+  `--global` or `--project-dir DIR` to examples that deploy, preview, or filter
+  deployment.
 
 Non-goals: no change to what a global or project deploy does once a scope is
 chosen; no new flags; no change to the `--global` + `--project-dir` conflict rule.
@@ -74,14 +97,20 @@ This is a co-edited-file coordination link, not a relatedness note.
 
 ## Acceptance
 
-- `./deployment/deployment.sh --clear-backups` exits non-zero with a message that
-  no deployment scope was selected and that `--global` or `--project-dir` is
-  required; it performs no deployment and clears/creates no global artifacts.
-- The same guard fires for any other non-scope flag alone — `--dry-run`,
-  `--type …`, `--target …`, and (per the deliberate call above) `--uninstall`
-  unless explicitly exempted with a documented reason.
+- `./deployment/deployment.sh --clear-backups` clears managed global backups and
+  exits 0 before backup creation or deployment; it performs no deployment and
+  creates no new backups.
+- The same guard fires for any other non-scope deploy/filter flag alone —
+  `--dry-run`, `--type …`, and `--target …`.
+- `./deployment/deployment.sh --uninstall` still uninstalls from the deployment
+  log without requiring `--global` or `--project-dir`.
 - `./deployment/deployment.sh` with no arguments still prints usage and exits 0.
 - `./deployment/deployment.sh --global --dry-run` still previews a global deploy
-  and exits 0; `--global --clear-backups` still clears then deploys globally.
+  and exits 0; `--global --clear-backups` clears old managed backups, creates
+  fresh backups, then deploys globally.
 - `./deployment/deployment.sh --project-dir DIR …` still deploys into the project
   unchanged.
+- Script usage text and `deployment/README.md` reflect the final behavior: no
+  stale no-scope deploy, preview, or filter examples remain, and the no-scope
+  uninstall and clear-backups examples remain because the script still supports
+  them as maintenance modes.
