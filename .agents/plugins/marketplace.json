@@ -34,7 +34,7 @@
         "path": "./plugins/ai_dev"
       },
       "description": "Skills for everyday AI-assisted development: structured git commits, day-grouped changelog maintenance, project-local task and todo tracking as plain-markdown files (a base task skill plus create, check, select, implement, audit, finish, and fix siblings), writing and formatting AI instructions (prompts, rules, skill files, agent definitions), harness portability for bundled scripts and plugin wiring, and language style guides for markdown, Python, and Rust.",
-      "version": "1.8.1",
+      "version": "1.8.2",
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"

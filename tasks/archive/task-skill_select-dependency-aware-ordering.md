@@ -2,9 +2,10 @@
 description: Extend task_select to detect dependency and ordering relationships between candidate tasks and rank prerequisites ahead of the tasks that need them, so it never recommends a blocked task first.
 scope: plugins/ai_dev/skills/task_select
 created: 2026-06-17T23:08:20
-updated: 2026-06-17T23:47:23
-status: ready
+updated: 2026-06-18T00:21:14
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Make task_select dependency-aware when ranking
@@ -36,7 +37,7 @@ Distinguish the new criterion from the existing friction dimension to keep `<sco
 
 Scope narrowing defines the recommendation set, not the whole relationship universe. `task_select` still filters candidates before ranking according to `<candidate_policy>`, while retaining the full live eligible set for dependency lookup. A live prerequisite outside the user's filter does not become an ordinary ranked alternative, but it does block the filtered dependent from being presented as the single top implementation recommendation. If every filtered candidate is blocked by an outside-scope prerequisite, the report says there is no unblocked recommendation inside the filter and names the outside-scope prerequisite as the required next work.
 
-The archived [task that introduced `task_select`](archive/task-skill_select-sibling-skill.md) established the four-dimension rubric this task extends.
+The archived [task that introduced `task_select`](task-skill_select-sibling-skill.md) established the four-dimension rubric this task extends.
 
 ## Approach
 

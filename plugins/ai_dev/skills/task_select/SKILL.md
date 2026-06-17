@@ -1,7 +1,7 @@
 ---
 name: task_select
 description: Select and rank eligible live tasks from the project backlog. Use when the user asks what task to work on next, asks Codex to pick or prioritize backlog work, rank open tasks, choose from tasks/, or recommend the next task/action without editing task files.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -61,12 +61,22 @@ Implementation friction measures how likely the work is to stall because context
 </criterion>
 
 <criterion>
+Dependency and ordering relationships measure how candidate tasks sequence with each other inside the live eligible backlog. Use explicit relationship prose (`depends on`, `blocked by`, `must follow`, `after`, companion references), dependency cross-links to other task files, forward references to a block, section, rule, or artefact that another candidate creates, and shared-surface collisions as relationship signals. A prerequisite is a live eligible candidate that is not yet done; relationships to `implemented`, `audited`, `finished`, `deferred`, or archived tasks are already satisfied for selection purposes.
+
+Classify hard ordering dependencies separately from soft companion relationships. A hard ordering dependency exists when a task forward-references an artefact another candidate creates, explicit prose names the required order, or a shared-surface collision has directional evidence that one task creates, renames, removes, or rewrites a specific block, symbol, rule, or file state that the other task consumes. A soft companion relationship exists when candidates carry a coherence or cross-reference tie, or share a surface without directional evidence. Surface soft companions in the report while keeping them out of the required build order.
+</criterion>
+
+<criterion>
 Bug-fix preference promotes tasks that fix broken, incorrect, confusing, or misleading behavior when they are viable: a viable bug task has clear enough context, reasonable complexity, and manageable verification. Rank a viable bug fix ahead of non-bug work with similar impact.
 </criterion>
 </scoring_criteria>
 
 <ranking_method>
 Rank for practical next-action value: prefer the highest impact task that remains reasonably low in complexity and friction, with the bug-fix preference applied among comparable candidates. Treat a high-impact task with unresolved decisions or difficult verification as a weaker immediate recommendation than a slightly lower-impact task that can move cleanly now.
+
+Apply hard ordering dependencies as a sequencing constraint on top of the standalone scoring. Among candidates linked by a hard ordering dependency, rank the prerequisite ahead of its dependent regardless of relative impact, and give the dependent as the single top recommendation only after its live eligible prerequisites are no longer candidates. Report soft companion relationships without reordering the candidates.
+
+Apply scope narrowing to the recommendation set while retaining the full live eligible set for dependency lookup. When a filtered candidate depends on a live eligible prerequisite outside the filter, treat the filtered candidate as blocked from being recommended as an unblocked implementation task and name the outside-scope prerequisite as the required next work. When every filtered candidate is blocked by outside-scope prerequisites, report that there is no unblocked recommendation inside the filter.
 
 Use status to select the next action after ranking:
 
@@ -81,17 +91,20 @@ Use status to select the next action after ranking:
 3. **Apply narrowing.** When the user supplied a scope, prefix, label, or task name, filter the eligible set before ranking using the forms in `<candidate_policy>`.
 4. **Handle empty sets.** If discovery or filtering leaves no eligible candidates, report that state and stop without recommending archived work.
 5. **Read candidates.** Read each remaining task file in full, including frontmatter, Goal, Context, Approach, and Acceptance.
-6. **Score and rank.** Evaluate impact, implementation complexity, implementation friction, and bug-fix preference from the task body and available repo context. Keep the reasoning compact and evidence-based.
-7. **Recommend the next action.** Name the best candidate first, state the suggested next action for its current status, then list top alternatives and the tradeoff that kept them behind the recommendation.
+6. **Derive dependency and ordering relationships.** Check the filtered candidates' dependency cross-links, relationship prose, forward references, and shared surfaces against the full live eligible set when needed, then classify hard ordering dependencies and soft companion relationships before scoring and ranking.
+7. **Score and rank.** Evaluate impact, implementation complexity, implementation friction, dependency and ordering relationships, and bug-fix preference from the task body and available repo context. Keep the reasoning compact and evidence-based.
+8. **Recommend the next action.** Name the best unblocked candidate first, state the suggested next action for its current status, then list top alternatives and the tradeoff that kept them behind the recommendation. In the all-blocked filtered case, name the outside-scope prerequisite that should be handled next instead of presenting a blocked filtered task as the recommendation.
 </workflow>
 
 <output_contract>
 Return a recommendation report, not edits:
 
 - Start with `# Recommendation`.
-- Name exactly one recommended task first, using its relative path.
-- State the suggested next action for that task (`task_check`, `task_implement`, or applying check findings/refinement).
+- Name exactly one unblocked recommended task first, using its relative path. In the all-blocked filtered case, state that there is no unblocked recommendation inside the filter and name the outside-scope prerequisite that is the required next work.
+- State the suggested next action for the recommended task (`task_check`, `task_implement`, or applying check findings/refinement), or for the outside-scope prerequisite in the all-blocked filtered case.
 - Include a compact reason that covers impact, complexity, friction, and bug-fix priority.
+- Name ordering relationships that bear on the recommendation: the recommended task being a prerequisite for other candidates, a higher-scoring candidate held back because it is blocked, or an outside-scope prerequisite blocking an otherwise recommendable filtered candidate.
+- Surface soft companion relationships that are relevant to the ranked set without presenting them as forced order.
 - Add `## Alternatives` with the next strongest candidates and the main tradeoff for each.
 - Add `## Method` summarizing the candidate count, any scope filter applied, and the eligibility rule used.
 
