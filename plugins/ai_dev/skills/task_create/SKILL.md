@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one new task file for one upcoming work item. Use when the user asks to make, add, file, write, or capture a single task or todo. Use task for listing, querying, updating, archiving, linting, or multi task backlog work.
-version: 1.1.2
+version: 1.1.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -55,7 +55,7 @@ Create one file, in order:
 
 When this one task is derived from source material — a pasted note, a chat turn, a `todo.md`, a PDF, any pre-existing body of meaning — apply the `task` skill's `<lossless_conversion>` contract on your own before reporting done: confirm the single task carries every relevant unit of meaning from that source, propagate source-wide content into it, and leave the source's keep/drop disposition to the user. A single task does not exempt the check — one source can hold more meaning than it captures.
 
-Keep this to one atomic task file. When the request actually carries several independent items, or a single item would run past 300 lines, hand the multi-task split to the `task` skill rather than expanding the work here.
+Keep this to one atomic task file. When the request actually carries several independent items, or a single item would run past 300 lines, hand the multi-task split to the `task` skill rather than expanding the work here. A request that fits the base skill's **Scope sizing** rule stays eligible for this single-file path even when it touches multiple related parts.
 </workflow>
 
 <output_contract>

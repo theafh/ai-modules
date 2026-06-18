@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.4
+version: 1.3.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -148,7 +148,7 @@ Further rules govern the body's structure:
 - **Compact only to the implementable floor.** Write compactly while a one-shot implementer can still act without re-deriving dropped detail. Stop compression when it would stack clauses until the logic between them is lost, name an edit site without the shape of the change, or give a rule without the one example that fixes its meaning. Test the floor with this question: would this file, plus the project, let an implementer produce the intended change without filling a gap from outside?
 - **Rewrite in place, don't append.** When a task changes an existing artifact, frame the work as rewriting the affected passage in place to its target form, naming the passage that exists and what it becomes. Default to rewrite or supersede the existing passage so one canonical statement remains. Use a genuine-addition framing where no existing counterpart exists, the surface is append-only by design (a changelog, activity or decision log, or commit message), a comment or design note carries load-bearing evolution, or two similar-looking rules cover genuinely distinct situations and both belong.
 
-Keep each task scoped to **one** atomic item. When you notice scope creep — material that overlaps but is itself expandable — file it as a separate task and cross-link instead of folding it in. When a task grows past **300 lines**, you must split it into multiple tasks before continuing.
+Keep each task scoped to **one** atomic item. Size by cohesion when one change spans many parts of one system: if the work shares one rationale, one edit surface, and one acceptance story, keep it one task even when part count is high. When atomicity and part count pull apart, cohesion decides; the **300-line** ceiling still wins. Split independent items, expandable tangents, and tasks that grow past **300 lines** into siblings before continuing.
 </body>
 
 </file_format>
@@ -158,7 +158,7 @@ The readiness lens for one task file, judged against the self-sufficiency bar `<
 
 1. **Structural check first.** Confirm the body opens with a single `# Title` and carries the `## Goal` / `## Context` / `## Approach` / `## Acceptance` sections, with valid frontmatter, per `<body>` and `<file_format>`. A one-shot implementer follows structure literally, so a structural gap is high-severity — run this before the content lens.
 2. **Content lens.** Read the task thoroughly and surface every issue that could derail a correct, complete one-shot implementation:
-   - **Scope sizing** — the most compact scope that still delivers a coherent, independently testable unit. Flag too-large (multi-pass risk, past the 300-line split) and too-small (coordination overhead, no standalone capability).
+   - **Scope sizing** — the most compact scope that still delivers a coherent, independently testable unit. Judge cohesion as well as size: shared rationale, shared edit surface, and one acceptance story favor one task; independent items, duplicated rationale, or 300-line risk favor splitting. Flag too-large (multi-pass risk, past the 300-line split) and too-small (coordination overhead, no standalone capability).
    - **Focus** — one atomic item. Flag scope creep that belongs in a sibling task and should be cross-linked rather than folded in.
    - **Complexity** — implementable in a single pass. Flag hidden multi-step or cross-cutting work.
    - **Contradictions** — internal consistency, including behavioural contradictions where one part makes another non-functional; paraphrase drift between sections — what the **State once** rule prevents — is the standard source.
@@ -219,11 +219,11 @@ Before naming and writing, confirm the request is not already captured or alread
 
 - **Novel** — the hits were incidental keyword overlap; nothing actually covers this work. Continue to `<scope>`.
 - **Already an open task** — an open task in `tasks/` already captures this work.
-- **Partially covered** — some of the requested work already exists (in a live task, in an archived `finished`/`deferred` task, or already in the codebase) and some is genuinely new.
-- **Already implemented** — the codebase already does this, whether or not a task records it.
+- **Partially covered** — some of the requested work already exists (in a live task, in an archived `finished`/`deferred` task, or already in the codebase) and some is genuinely new. When a hit lands on archived `finished` work or code already in place, re-derive the genuinely-new delta before recommending any file write: identify what is redundant, what extends shipped work, and what remains unrelated and new.
+- **Already implemented** — the codebase or archived `finished` work already covers the full request.
 - **Already deferred** — an archived `deferred` task already weighed this and parked it.
 
-**Surface, never auto-resolve.** Report the classification with concrete evidence — the matched file paths and the specific code that already covers the work — and ask the user how to proceed: create as new anyway, fold the delta into the existing task, narrow this task to only the genuinely-new part, reopen the deferred task, or skip creation. Write a file only after the user's call. When they choose to proceed anyway, cross-link the related task(s) in `## Context`.
+**Surface, never auto-resolve.** Report the classification with concrete evidence — the matched file paths and the specific code that already covers the work — then surface the overlap and proposed split before asking the user how to proceed: create as new anyway, fold the fitting delta into an open task, file a follow-up that extends and cross-links the shipped `finished` task, narrow this task to only the genuinely-new remainder, reopen the deferred task, or skip creation when overlap is total. Write a file only after the user's call. When they choose to proceed anyway, cross-link the related task(s) in `## Context`.
 </prior_art>
 
 <scope>
@@ -303,7 +303,7 @@ Findings come in three buckets:
 </one_task_per_file>
 
 <split_at_300>
-**Split at 300 lines.** A task longer than that has stopped being a single implementable unit. Slice it into siblings that each carry full context.
+**Split at 300 lines.** Below this ceiling, apply the scope-sizing rule in `<body>` before slicing by part count. Past the ceiling, the task has stopped being a single implementable unit. Slice it into siblings that each carry full context.
 </split_at_300>
 
 <status_matches_location>
