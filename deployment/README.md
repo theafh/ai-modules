@@ -95,7 +95,7 @@ Generated, copied, and frontmatter-rewritten outputs are not live-linked back to
 
 ## Backups
 
-Before deploy or uninstall in global mode, the script backs up only the activated target roots:
+Before deploy, and before uninstall outside project-dir mode, the script backs up only the activated target roots:
 
 - `vscode` backs up `~/.copilot` and the VS Code prompts dir
 - `cursor` backs up `~/.cursor`

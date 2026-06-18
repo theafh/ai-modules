@@ -1,6 +1,6 @@
 # AI-Modules
 
-A collection of professional AI skills, agents, commands, and hooks for AI-assisted development, packaged as plugins.
+A collection of professional AI skills and agents for AI-assisted development, packaged as plugins. The deployment toolchain also supports commands and hooks.
 
 ## Why You Should Install This
 
@@ -20,6 +20,8 @@ Alongside task and wiki, the same two plugins ship a set of smaller day-to-day s
 ai-modules/
 ├── .claude-plugin/
 │   └── marketplace.json     # registers the plugins below as a Claude marketplace
+├── .agents/
+│   └── plugins/marketplace.json  # the same plugins registered as a Codex marketplace
 ├── plugins/                 # one subdirectory per plugin
 │   ├── knowledge_management/
 │   │   ├── .claude-plugin/plugin.json
@@ -71,7 +73,7 @@ Skills and agents for building, maintaining, and distilling a persistent, compou
 
 The wiki itself plus paired front ends that wrap two of its workflows so the model has a single named entry point per use case:
 
-- **wiki**: the foundation. Builds and maintains an interlinked markdown wiki — ingest URLs, articles, papers, PDFs, transcripts, meeting notes, internal notes, and pastes; query, lint, audit, archive, and reorganise. The page-type enum (`entity`, `concept`, `comparison`, `summary`, `query`, `procedure`) is read from `SCHEMA.md`, so a wiki extends its taxonomy without touching the linter. Provenance is anchored by footnotes plus body-only `sha256` drift detection on raw sources. Discovery, init, lint, and the sha256 helper all ship as bundled scripts, so the agent runs deterministic programs for the mechanical parts instead of inventing them inline each session.
+- **wiki**: the foundation. Builds and maintains an interlinked markdown wiki — ingest URLs, articles, papers, PDFs, transcripts, meeting notes, internal notes, and pastes; query, lint, audit, archive, and reorganise. The page-type enum (`entity`, `concept`, `comparison`, `summary`, `query`, `procedure`) is read from `SCHEMA.md`, so a wiki extends its taxonomy without touching the linter. Provenance is anchored by inline standard-markdown links that pin each claim to its source, with `sources:` frontmatter as the canonical inventory, plus body-only `sha256` drift detection on raw sources. Discovery, init, lint, and the sha256 helper all ship as bundled scripts, so the agent runs deterministic programs for the mechanical parts instead of inventing them inline each session.
 - **wiki_import** and **wiki_wrapup**: triage-first ingest pair. `wiki_import` takes one named resource (URL, file, paper, PDF, transcript, meeting note, internal note, or paste); `wiki_wrapup` takes the current chat session. Both capture the source, diff each candidate against the existing wiki, and emit a triage report (new pages, extensions, contradictions with both excerpts and concrete reconciliation options) before any wiki-page write lands. Approved writes route back through the `wiki` skill. Use them when "review what you'd change before changing it" matters — for example, after a research chat, or before importing a contested paper.
 - **wiki_fix** and **wiki_auto_shaper** *(agent)*: paired audit-and-repair. `wiki_fix` is the one-shot skill wrapper; `wiki_auto_shaper` is the agent it hands off to. The agent runs a two-phase loop — assess (lint plus semantic audit), then fix, then re-lint until clean. It repairs frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages, procedure pages leaking instance content, content that drifts from the per-type page anatomy, and surfaces cross-page contradictions via the contested-page protocol for human review rather than auto-resolving them.
 
@@ -88,7 +90,7 @@ Skills for day-to-day AI-assisted development: keeping git history and changelog
 
 - **git_commit**: a phase-based commit workflow with a hardened prepare script that handles special-character paths and per-file binary detection. It stages changes, infers an intended commit grouping, and writes a message aligned with the project's existing convention. A sibling manual-fallback reference covers the path when the script can't be used.
 - **update_changelog**: generates or refreshes a day-grouped `CHANGELOG.md` from git history. It produces newest-first day sections with status markers (`[active]`, `[changed later]`, `[superseded]`), and processes one day at a time so long histories stay within a single context window.
-- **task**: project-local backlog of upcoming work as plain-markdown files under `tasks/` at the project root, with `tasks/archive/` for `implemented` and `deferred` items. Each task is written as a self-contained brief a single-shot AI coder could pick up and implement; the bundled linter enforces naming, frontmatter, status/location consistency, and a 300-line split threshold. Complementary to the `wiki` skill: tasks track *what is still to do*, the wiki captures *what is durably known*.
+- **task**: project-local backlog of upcoming work as plain-markdown files under `tasks/` at the project root, with `tasks/archive/` for `finished` and `deferred` items. Each task is written as a self-contained brief a single-shot AI coder could pick up and implement; the bundled linter enforces naming, frontmatter, status/location consistency, and a 300-line split threshold. Complementary to the `wiki` skill: tasks track *what is still to do*, the wiki captures *what is durably known*.
   The single-task siblings run in lifecycle order — **create → check → select → implement → audit → finish**:
 - **task_create**: a focused front end over `task` that creates exactly one well-formed task file with minimal ceremony, deferring the naming, frontmatter, body, and lint rules to the `task` skill rather than restating them. It gives a one-shot "make a task for X" a narrow, trigger-precise surface instead of loading the full backlog-management workflow.
 - **task_check**: assesses whether one task is ready to hand to an implementer — runs a structural check then a content lens (scope sizing, focus, complexity, contradictions, ambiguity, over-specification, negation-framed behaviour) and emits `spec_check`'s shape (a `# General assessment` paragraph plus a ranked `## Issues` list). A read-only gate *before* building, the pre-implementation counterpart to `task_audit`.
