@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.3
+version: 1.3.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -131,18 +131,22 @@ The body starts with a single `# Title` H1 on the first non-blank line, followed
 - **Approach** — the intended implementation path, plus any constraints or non-goals.
 - **Acceptance** — the contract of concrete checks that say the task is done (a staged fixture the new behaviour is proven on, a file state to inspect, a measurement to record). Every item honours the contract:
   - **Deliverable items flip.** Each item is false today and flipped true by the work, verifiable mechanically — a command to run, a file state to inspect, a behaviour to observe.
+  - **Edit items supersede the stale passage.** When the task changes an existing artifact, at least one item checks that the prior passage is superseded and one canonical statement remains, rather than only checking that the new content appears somewhere.
   - **Task-specific gates only.** Every item's outcome changes with this task's work. The project's standing instructions own the generic gates — `make lint`, a deploy dry-run, the full test suite — which run at their standing moments; name a gate only when the task changes what it verifies, such as a new lint rule proven on a staged fixture or a new scenario added to a suite.
   - **Implementer-runnable.** Every item verifies through steps the implementer runs alone; an action the project's standing instructions gate on the user stays out of acceptance.
   - **Measured, with a fail branch.** Stochastic or empirical work names its measurement protocol — run count, fixed denominator, baseline — and the recorded measurement is the deliverable; the item states what happens when the hypothesis fails rather than gating on the hoped-for direction.
   - **Enumerate.** Prefer a list of independently verifiable items over one compound check.
 
-Write the body positive and action-oriented: the primary carrier of every section is what the work does — Goal, Approach, and Acceptance lead with the action taken and what "done" looks like. Negatives earn their place where they carry content of their own: a genuine non-goal, a deferred or explored alternative, a guardrail, the task-specific gate the **Acceptance** contract defines.
+Write the body positive and action-oriented: the primary carrier of every section is what the work does — Goal, Approach, and Acceptance lead with the action taken and what "done" looks like. Negatives earn their place where they carry content of their own: a genuine non-goal, a guardrail, or the task-specific gate the **Acceptance** contract defines. Keep rejected-option debate out of the body: a brief non-goal or guardrail stays, while the rationale for options weighed and rejected lives in the change's commit or pull-request description, or in the wiki when it is durable design knowledge. Frame the body as current state to target — what exists, what is not there yet, and the state the work reaches — and let **Rewrite in place, don't append** define the target when an existing passage is affected.
 
-Three further rules govern the body's structure:
+Further rules govern the body's structure:
 
 - **State once.** Each rule, constraint, or decision appears in exactly one place in the body; Goal, Approach, and Acceptance point at that statement rather than re-wording it, so the sections stay in agreement as the task evolves.
-- **Decide or label.** Resolve every either/or before the file is written. When one decision genuinely stays open, label it explicitly ("Open decision:"), list the options, and name the default an implementer takes without further input; one labeled open decision is the ceiling.
+- **Decide or label.** Resolve what you can derive before the file is written: exhaust the material available at authoring time — cited skills, the codebase, and the project's standing knowledge — and decide any fork answerable from that material. When one decision genuinely needs input that material cannot provide, label it explicitly ("Open decision:"), list the options, and name the default an implementer takes without further input; one labeled open decision is the ceiling.
 - **Illustrate.** The general statement carries each rule or requirement; specific cases, incident histories, and dated references stay brief illustrations supporting it. A body whose meaning lives only in an example has its altitude inverted.
+- **Redact by generalizing.** Keep user-specific and sensitive detail out by default: generalize rather than embedding absolute or home filesystem paths, secrets and credentials, personally identifiable data, and incidental product, project, tool, or person names. Repo-specific detail enters only when the user explicitly asks for it or the work genuinely needs it, and the body surfaces that choice rather than adding it silently.
+- **Compact only to the implementable floor.** Write compactly while a one-shot implementer can still act without re-deriving dropped detail. Stop compression when it would stack clauses until the logic between them is lost, name an edit site without the shape of the change, or give a rule without the one example that fixes its meaning. Test the floor with this question: would this file, plus the project, let an implementer produce the intended change without filling a gap from outside?
+- **Rewrite in place, don't append.** When a task changes an existing artifact, frame the work as rewriting the affected passage in place to its target form, naming the passage that exists and what it becomes. Default to rewrite or supersede the existing passage so one canonical statement remains. Use a genuine-addition framing where no existing counterpart exists, the surface is append-only by design (a changelog, activity or decision log, or commit message), a comment or design note carries load-bearing evolution, or two similar-looking rules cover genuinely distinct situations and both belong.
 
 Keep each task scoped to **one** atomic item. When you notice scope creep — material that overlaps but is itself expandable — file it as a separate task and cross-link instead of folding it in. When a task grows past **300 lines**, you must split it into multiple tasks before continuing.
 </body>
@@ -158,9 +162,11 @@ The readiness lens for one task file, judged against the self-sufficiency bar `<
    - **Focus** — one atomic item. Flag scope creep that belongs in a sibling task and should be cross-linked rather than folded in.
    - **Complexity** — implementable in a single pass. Flag hidden multi-step or cross-cutting work.
    - **Contradictions** — internal consistency, including behavioural contradictions where one part makes another non-functional; paraphrase drift between sections — what the **State once** rule prevents — is the standard source.
-   - **Ambiguity / under-specification** — missing requirements, unstated assumptions, or vague pointers that lead to divergent implementations; an unresolved either/or is a **Decide or label** finding, and any reference carrying a line-number position claim — a `:N` path suffix, a bare `line N`, an `around lines N–M` range — is flagged against the `<markdown_policy>` soft-pointer rule.
+   - **Ambiguity / under-specification** — missing requirements, unstated assumptions, vague pointers, or over-compressed prose that lead to divergent implementations; an unresolved either/or is a **Decide or label** finding, over-compression is judged against **Compact only to the implementable floor**, and any reference carrying a line-number position claim — a `:N` path suffix, a bare `line N`, an `around lines N–M` range — is flagged against the `<markdown_policy>` soft-pointer rule.
    - **Over-specification** — constraints that needlessly narrow an implementation choice the task meant to leave open; a choice meant to stay open is labeled per **Decide or label** rather than silently narrowed.
-   - **Negation-framed behaviour** — behaviour defined as "not X" that an implementer must invert to act on; reframe per the body's positive, action-oriented rule, preserving the technical detail.
+   - **Negation-framed behaviour** — behaviour defined as "not X" that an implementer must invert to act on; reframe per the body's positive, action-oriented rule, preserving the technical detail and moving rejected-option rationale to its named home.
+   - **Sensitive or user-specific detail** — body text embeds identifying or sensitive specifics without an explicit need; point the finding at **Redact by generalizing** rather than restating the rule.
+   - **Append-framed artifact edits** — a task changing an existing artifact is framed as "add X" while an affected passage exists; flag it per **Rewrite in place, don't append** unless the rule's genuine-addition carve-outs apply.
 </readiness_checklist>
 
 <workflows>
@@ -195,6 +201,10 @@ Run every step in order:
 Confirm the user's intent and gather enough material — current state, target behaviour, relevant files — to fill the body sections in `<body>`. If context is too thin to write something a single-shot AI coder could implement from, ask one sharp clarifying question before writing.
 
 For an incident-shaped request — a failure case, an error, a "when X happens it breaks" — settle the altitude as part of gathering, as a decision rather than a question: decide from the request and the surrounding code whether the task delivers the point-fix for the reported case or the general behaviour whose absence caused it, and default to the point-fix when the evidence supports nothing more. Record the choice as an explicit clause in the task's `## Goal` — the point-fix for the named case, or the behaviour definition with the incident as its motivating case — and surface it among the assumptions the create report names, so the user's reply is the correction point.
+
+Generalize from the motivating instance when a concrete episode is mined to improve a reusable artifact: for example, a working session with a skill that exposed a rough edge yields a task to improve that skill. The altitude is the general rule the episode argues for, not the point-fix, and the originating episode rides along only as the brief illustration the `<body>` **Illustrate** rule provides.
+
+When a user-specific or sensitive specific might be necessary and it is unclear whether to include it, ask the user for the level of detail rather than silently including or dropping it.
 </gather>
 
 <prior_art>
@@ -239,7 +249,7 @@ When the user hands over multiple tasks in one go, write each as its own atomic 
 <lossless_conversion>
 Whenever a task is **derived from source material**, hold a lossless-conversion contract — and run it on your own, without the user asking. A *source* is any pre-existing body of meaning being mined into tasks: an AI chat session, a pasted note, a `todo.md`, a spec, a PDF, a meeting transcript, a file on disk. The trigger is the presence of a source being mined — never its medium, and never how many tasks result. Producing a single task does not skip the check: one source can carry far more than one task's worth of meaning, so the lone task must still capture all of what's relevant. Source volume scales only how much the coverage pass has to walk, never whether it runs.
 
-- **Every relevant unit of meaning in the source maps to at least one task.** Rewriting, merging, expanding, or restructuring source content is welcome; dropping relevant meaning is not. Where one task results, it carries all of what's relevant; where many do, the meaning spreads across them with nothing left behind.
+- **Every relevant unit of meaning in the source maps to at least one task.** Rewriting, merging, expanding, or restructuring source content is welcome; dropping relevant meaning is not. Where one task results, it carries all of what's relevant; where many do, the meaning spreads across them with nothing left behind. In the artifact-improvement case named in `<gather>`, the relevant unit is the general lesson; the episode's specifics become illustration rather than content to retain verbatim.
 - **Source-wide content propagates into each task it governs.** Content that scopes the *whole* source rather than one section — a shared preamble, a global caveat — carries into every derived task it governs rather than staying behind in the source.
 - **Run a coverage pass before declaring done.** Walk the source unit by unit — section, bullet, rule, turn — and confirm each is represented in a task. Report the rewrites, merges, and intentional expansions explicitly, and surface anything not yet covered for the user to decide. A thin direct request resolves in one glance; a rich source takes a real walk-through.
 - **Leave the source's disposition to the user.** For a shared asset or an on-disk source, never delete, move, overwrite, or truncate it on the skill's own initiative — confirm coverage first, then *propose* what could become of the source and wait for the user's explicit say-so. For an ephemeral source (a live chat session, a paste) there is nothing on disk to dispose of, so disposition here means simply withholding "done" until coverage is clean. Either way: confirm coverage first, then hand the keep/drop decision to the user.

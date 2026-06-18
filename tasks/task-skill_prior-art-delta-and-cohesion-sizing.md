@@ -2,8 +2,8 @@
 description: "Sharpen create-path scoping: re-derive the genuinely-new delta against shipped and open tasks, route or extend instead of duplicating, and size tasks by cohesion rather than reflexive splitting."
 scope: "task_* family skills"
 created: 2026-06-15T16:21:22
-updated: 2026-06-15T16:35:57
-status: open
+updated: 2026-06-18T20:55:05
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -26,7 +26,7 @@ This edits the base `task` skill's create-decision surface; `task_create` inheri
 - The sizing gate lands beside the base `<body>` rule "Keep each task scoped to **one** atomic item.", the `<split_at_300>` pitfall, and the `<readiness_checklist>`'s **Scope sizing** item — which today flags too-large and too-small but names no cohesion counter-weight to the splitting pressure.
 - `task_create`'s `<workflow>` closes with "Keep this to one atomic task file ... hand the multi-task split to the `task` skill" — the sizing gate adds that a coherent multi-part change is not automatically a multi-task split.
 - Motivating episode: an agent mined a multi-session work episode into tasks for one skill family. It proposed several "new" rules, two of which had already shipped; the user named the overlap an analysis failure — *you suggested something that should exist* — and directed the moves the delta gate encodes: compare against what shipped, then drop, file a follow-up that extends the shipped task, or route the fitting part into an open task, and create new only for what is genuinely open. In the same correction the user set the sizing principle: a slightly larger task touching many parts of a complex system is fine, and force-splitting one coherent change into many files is over-engineering — the trade is one-shot simplicity against over-engineering-by-force-split.
-- This task is itself an instance of the delta gate: the same episode's lessons about how a body is *written* extend already-shipped body rules and ride a sibling task, [task-skill_decided-general-positive-body.md](task-skill_decided-general-positive-body.md); this file carries only the two create-decision gates that no shipped task covers.
+- This task is itself an instance of the delta gate: the same episode's lessons about how a body is *written* extend already-shipped body rules and ride a sibling task, [task-skill_decided-general-positive-body.md](archive/task-skill_decided-general-positive-body.md); this file carries only the two create-decision gates that no shipped task covers.
 
 ## Approach
 
