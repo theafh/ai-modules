@@ -13,6 +13,8 @@ A plugin bundling the skills used for day-to-day AI-assisted development: keepin
 
 - **task**: manage upcoming work and todos as plain-markdown task files under `tasks/` at the project root, with `tasks/archive/` for `finished` and `deferred` items. Atomic per task, split at 300 lines, status/location enforced by a bundled linter; a filesystem-native backlog that lives next to the code.
 
+Running a task from skill to skill, rather than handing one prompt to a single implementer, is what removes the ambiguity that implementer would otherwise resolve silently and wrongly. A one-shot agent fills every underspecified corner with plausible filler that reads right and isn't what you meant — whatever you leave open to misreading, it misreads, and differently each time. The gates below each surface a different class of that gap before it reaches code: naming, frontmatter, and structure forced explicit at creation; scope and contradictions named by `task_check`; ordering and dependencies surfaced by `task_select`; the built result checked against the brief by `task_audit`. Formatting the work and checking it for consistency at each hop turns those gaps into something you can see and close on purpose, instead of leaving them to be filled with generic guesses downstream.
+
 The single-task siblings run in lifecycle order — **create → check → select → implement → audit → finish**:
 
 - **task_create**: focused on-ramp that creates exactly one well-formed task file fast, deferring the naming, frontmatter, body, and lint rules to the `task` skill. Use it when a single "make a task for X" should load a narrow surface instead of the whole backlog workflow.
