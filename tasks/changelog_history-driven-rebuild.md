@@ -2,7 +2,7 @@
 description: After the changelog skill fixes ship, delete CHANGELOG.md and cold-regenerate it from git history with the fixed skill, then verify a re-run is a no-op.
 scope: "CHANGELOG.md regeneration"
 created: 2026-06-02T19:37:57
-updated: 2026-06-10T22:05:12
+updated: 2026-06-22T23:40:52
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -32,7 +32,7 @@ end-to-end proof that the changelog skill fixes work together.
   deleting and regenerating is safe rather than lossy.
 - Do this **only after all the changelog skill-fix tasks have shipped**, the
   format keystone being
-  [changelog_immutable-entries-redesign.md](changelog_immutable-entries-redesign.md):
+  [changelog_immutable-entries-redesign.md](archive/changelog_immutable-entries-redesign.md):
   a cold build against the unfixed skill would just reproduce the old marker
   format.
 

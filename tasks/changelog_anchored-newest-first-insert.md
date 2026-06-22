@@ -2,7 +2,7 @@
 description: Make the newest-first day insertion a single anchored prepend against a stable header boundary, so the agent stops mis-splicing day order.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:21:26
-updated: 2026-06-10T22:05:12
+updated: 2026-06-22T23:40:52
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -27,7 +27,7 @@ against it.
 - Root of the struggle: "insert after the header" has no crisp anchor, and a cold build over a long history does many such inserts in a row (process oldest→newest, each inserted at top), multiplying the chance of a misplaced or reordered day.
 - Interaction with sibling tasks (cross-link, sequence deliberately):
   - [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md) owns `<enumerate_dates>` and which days a run (re)builds. This task owns *how* those day sections land in the file. They meet at the insert step — keep their wording consistent.
-  - [changelog_immutable-entries-redesign.md](changelog_immutable-entries-redesign.md) makes the common run purely additive at the top (no marker re-walk), which is what makes a single clean prepend possible.
+  - [changelog_immutable-entries-redesign.md](archive/changelog_immutable-entries-redesign.md) makes the common run purely additive at the top (no marker re-walk), which is what makes a single clean prepend possible.
   - [changelog_large-output-protocol.md](changelog_large-output-protocol.md) governs reading the per-day blob; unrelated to the insert seam but part of the same write loop.
 
 ## Approach

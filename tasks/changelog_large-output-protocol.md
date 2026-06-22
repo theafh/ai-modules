@@ -2,7 +2,7 @@
 description: Stop prepare_changelog_day.sh from overflowing the tool buffer — write the blob to a file and add a git_commit-style paginated-consume protocol.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
-updated: 2026-06-13T01:47:36
+updated: 2026-06-22T23:40:52
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -34,7 +34,7 @@ truncates.
   - `6866e0db`: day 2026-05-28 emitted **244 KB** → same re-grep dance.
   - `df256b21`: 29.8 KB persisted.
 - The redundant manual `git log` re-derivation seen in the same sessions (including the `--since=DATE --until=DATE` same-day footgun that returns nothing) is the **same root cause** — the agent doesn't trust the script as the sole per-day source once its output overflowed. The `<hard_rules>` line below fixes both.
-- Interaction: the script's trailing `<entry_instruction>` heredoc references the `[status]` marker, which [changelog_immutable-entries-redesign.md](changelog_immutable-entries-redesign.md) reworks — sequence the two so the `<entry_instruction>` text is edited once; whichever lands second rebases on the first.
+- Interaction: the script's trailing `<entry_instruction>` heredoc references the `[status]` marker, which [changelog_immutable-entries-redesign.md](archive/changelog_immutable-entries-redesign.md) reworks — sequence the two so the `<entry_instruction>` text is edited once; whichever lands second rebases on the first.
 
 ## Approach
 
