@@ -34,7 +34,7 @@ the skill states it.
   CHANGELOG entries as part of other work. Committing the skill's output is fine."
   That binds the rule to this one repo rather than to the skill that should own it.
   This task is the follow-up the "Only committed work counts" bullet in
-  [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md)
+  [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md)
   points at — that task also states the run-scope corollary ("only committed
   history is in scope" for which days a run rebuilds), and this task owns the
   general invariant the corollary specializes.
@@ -60,7 +60,7 @@ the skill states it.
   alone, so `<objective>` stays a one-liner rather than duplicating the policy clause.
 - State the invariant once. The skill's `<source_of_truth>` clause is the canonical
   statement; where
-  [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md)
+  [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md)
   adds a run-scope clause about committed history, keep it pointing at this clause
   rather than restating it, so the two stay in agreement. The two tasks name no
   ordering: if the incremental-day-boundaries task lands first and writes a
@@ -88,7 +88,7 @@ here.
   content.
 - The invariant is stated once across the changelog skill and tasks: the skill
   clause is canonical, and any committed-history wording in the
-  [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md)
+  [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md)
   run-scope clause references it rather than restating it.
 - After the skill carries the invariant, the standing repo instructions in
   `CLAUDE.md` and `AGENTS.md` no longer carry the changelog hand-edit paragraph (the

@@ -46,7 +46,7 @@ Two coordinated changes, script + prose:
 4. Keep the `<consume_context>` block **self-contained** — describe the read protocol inline, in full. Do **not** add a runtime pointer to `git_commit` (or any sibling) in the shipped skill: an agent running `update_changelog` gains nothing from being told to go look at another skill and is more likely to get distracted than helped. `git_commit` is only the implementer's model (see `## Context`); the protocol it demonstrates gets copied into this skill's own prose, not referenced from it.
 5. If `tests/update_changelog/` has script unit tests, extend them to assert the script prints a path (not the blob) and that the file contains the expected sections; otherwise note the gap (don't grow the harness in the shipping commit per the repo rules).
 
-Non-goals: don't change which commits a day selects — that's [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md); the script's `--after/--before` day window is correct and stays as-is. Don't add a compact/diffs-off mode unless the file-handoff alone proves insufficient — the file path plus paginated read should remove the overflow entirely, matching how `git_commit` handles 1000-file commits.
+Non-goals: don't change which commits a day selects — that's [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md); the script's `--after/--before` day window is correct and stays as-is. Don't add a compact/diffs-off mode unless the file-handoff alone proves insufficient — the file path plus paginated read should remove the overflow entirely, matching how `git_commit` handles 1000-file commits.
 
 ## Acceptance
 
