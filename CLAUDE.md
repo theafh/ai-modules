@@ -30,6 +30,8 @@ Makefile                          # task entry point
 - **Keep the toolchain to Make + shell + markdown.** Add new languages, package managers, or build steps only when the user explicitly asks for them.
 - **Match snake_case naming** for skill and plugin directories.
 - **Write deployment-agnostic cross-references.** Reference sibling artefacts by name (`wiki_auto_shaper`, `format_markdown`) rather than by plugin name, marketplace, or installed path.
+- **Bundle a skill's helper scripts inside the skill.** A script that supports a skill lives at `plugins/<plugin>/skills/<skill>/scripts/<name>` and is referenced from its `SKILL.md` by the skill-relative path `scripts/<name>`. The plugin is the unit of distribution, so a script placed at the repo root or wired into the root `Makefile` is invisible to every deployment path except an in-place checkout. Add a repo-root `scripts/` directory only for repo-wide tooling that belongs to no single skill, and only when explicitly asked.
+- **Author a skill-family rule once in the family's base skill.** When a rule should govern a whole skill family (for example the `task_*` family), write it once in the base/hub skill so the front-end siblings inherit it through their `<authority>` reference instead of each carrying a copy. Pair enforcement with the canonical rule rather than restating it: a maintenance sibling such as `task_fix` carries a surface-and-propose advisory that points back at the base rule.
 
 ## Versioning
 

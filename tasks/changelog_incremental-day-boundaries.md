@@ -2,8 +2,8 @@
 description: Fix incremental-run date selection — reprocess the last recorded day plus all following, and use only committed work, since same-day commits can land after the last entry.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
-updated: 2026-06-10T22:05:12
-status: open
+updated: 2026-06-22T14:24:36
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -25,7 +25,7 @@ now considers "done." Fix the boundary so an incremental run re-derives from the
 
 - Skill: `plugins/ai_dev/skills/update_changelog/SKILL.md`, the `<enumerate_dates>` procedure step and the `<newest_first>` / `<context_safety>` policies.
 - The runtime-discovery facts the skill should make explicit (an agent has to find these out fresh each run, and the prose currently leaves them implicit):
-  - **Only committed work counts.** The changelog is git-history-derived; entries describe commits, never uncommitted edits in the working tree. (This is also the lesson from session `07a4d5ec`, where an agent hand-wrote entries for uncommitted changes and they had to be reverted — see the do-not-hand-edit follow-up.)
+  - **Only committed work counts.** The changelog is git-history-derived; entries describe commits, never uncommitted edits in the working tree. (This is also the lesson from session `07a4d5ec`, where an agent hand-wrote entries for uncommitted changes and they had to be reverted — see [changelog_no-hand-edit-invariant.md](changelog_no-hand-edit-invariant.md), the follow-up that moves this never-hand-edit invariant into the skill.)
   - **The last recorded day is provisionally complete, not frozen.** Find the most recent `## YYYY-MM-DD` heading in `CHANGELOG.md`; that day may have gained commits after the section was written. So the run must reconsider that day, not skip it.
   - **Reprocess the last recorded day + every following day.** Enumerate distinct commit dates from the last recorded day **inclusive** through the newest commit, and (re)build each. A day strictly older than the last recorded day is settled and stays untouched.
 - The bundled script is already correct here: `prepare_changelog_day.sh` selects a day by `--after=DATET00:00:00 --before=DATET23:59:59`, so re-running it for the last recorded day returns **all** of that day's commits, including ones added after the last run. The fix is in the skill's date-enumeration logic, not the script. (Note: the same-day `git log --since=DATE --until=DATE` footgun an agent hit in session `413ad030` was a manual ad-hoc command, not the script — the script uses the correct timestamped bounds.)
