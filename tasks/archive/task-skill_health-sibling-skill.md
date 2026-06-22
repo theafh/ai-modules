@@ -35,10 +35,10 @@ Reference patterns, read end-to-end (not just their one-liners):
 
 - `plugins/knowledge_management/skills/wiki_fix/SKILL.md` is a deliberately
   **thin front end**: it does no orientation or lint itself — it invokes the
-  `wiki_auto_shaper` agent, forwards any narrower user scope, and surfaces
+  `auto_shaper_wiki` agent, forwards any narrower user scope, and surfaces
   the agent's final report **verbatim**. Its whole output contract is "the
   agent's own final report".
-- `plugins/knowledge_management/agents/wiki_auto_shaper.md` is where the
+- `plugins/knowledge_management/agents/auto_shaper_wiki.md` is where the
   work lives, structured as **four named phases run in order**:
   - **orient** — read the rules once at the start (the agent reads
     `$WIKI/SCHEMA.md` + index + log + canonical references). Task analogue:
@@ -62,7 +62,7 @@ directly into the skill, with **no** dedicated agent. Rationale: the `tasks/`
 tree is small and the fixes are mechanical (rename, bump `updated`, move a
 file to match status, re-point a link, re-stamp a drifted `created` after
 confirming with the user), so the agent indirection `wiki_fix` →
-`wiki_auto_shaper` uses for a large wiki is not warranted here — and it would
+`auto_shaper_wiki` uses for a large wiki is not warranted here — and it would
 add an agent definition to maintain plus the read-token cost flagged in
 [wiki_auto-shaper-read-token-cost](../wiki_auto-shaper-read-token-cost.md). A
 dedicated `task_auto_shaper` agent is **out of scope** for this task; revisit
@@ -132,6 +132,6 @@ judgement-call warns reported), and end with a concise report.
   verifies a single task against the codebase; `task_health` audits the
   tree's internal health.
 - Source patterns: `plugins/knowledge_management/skills/wiki_fix/SKILL.md` +
-  `plugins/knowledge_management/agents/wiki_auto_shaper.md`.
+  `plugins/knowledge_management/agents/auto_shaper_wiki.md`.
 - Tests tracked in
   [task-skill_testing-new-features](task-skill_testing-new-features.md).

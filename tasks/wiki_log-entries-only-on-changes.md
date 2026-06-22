@@ -51,7 +51,7 @@ contradictory instructions above.
 
 Ripple: the linter's boilerplate check (`references/lint_checks.md`,
 `boilerplate` row) enforces the `log.md` preamble verbatim against
-`template_log.md`, and the `wiki_auto_shaper` agent diffs and aligns that
+`template_log.md`, and the `auto_shaper_wiki` agent diffs and aligns that
 preamble during audits. Editing the template therefore makes every existing
 wiki's preamble drift (warn) until its next audit pass aligns it — the
 designed propagation path, no extra action needed here.
@@ -89,14 +89,14 @@ the `<log_only_what_changed>` pitfall — the other passages align to it):
 
 Constraint: zero-change `lint` and `audit` *outcome* entries (the
 `<inline_iteration_loop>` outcome line in SKILL.md and the
-`wiki_auto_shaper` audit entry) are deliberate process records produced by
+`auto_shaper_wiki` audit entry) are deliberate process records produced by
 a different mechanism than content operations. Word the preamble so the
 changes-only rule governs content operations without outlawing those
 outcome entries.
 
 Open decision: whether zero-change `lint`/`audit` outcome entries remain
 sanctioned at all. Default an implementer takes without further input: they
-remain — removing them would ripple into `wiki_auto_shaper` and the
+remain — removing them would ripple into `auto_shaper_wiki` and the
 existing audit-trail convention, which is out of this task's scope.
 
 ## Acceptance

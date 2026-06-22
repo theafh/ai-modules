@@ -32,7 +32,7 @@ ai-modules/
 │   │   ├── .codex-plugin/plugin.json
 │   │   ├── README.md
 │   │   ├── agents/          # one .md file per agent
-│   │   │   └── wiki_auto_shaper.md
+│   │   │   └── auto_shaper_wiki.md
 │   │   └── skills/          # one subdirectory per skill, each with SKILL.md
 │   │       ├── wiki/
 │   │       ├── wiki_wrapup/
@@ -79,7 +79,7 @@ The wiki itself, plus paired front ends that wrap two of its workflows so the mo
 
 - **wiki**: the foundation. It builds and maintains an interlinked Markdown wiki. It can ingest URLs, articles, papers, PDFs, transcripts, meeting notes, internal notes, and pastes, then query, lint, audit, archive, and reorganise. The page types (`entity`, `concept`, `comparison`, `summary`, `query`, `procedure`) are read from `SCHEMA.md`, so a wiki can add a type without changing the linter. Each claim links to its source with an inline standard-Markdown link; the `sources:` frontmatter is the full inventory; and a body-only `sha256` hash detects when a raw source has drifted. Discovery, init, lint, and the sha256 helper all ship as bundled scripts, so the agent runs fixed programs for the mechanical parts instead of inventing them each session.
 - **wiki_import** and **wiki_wrapup**: a triage-first ingest pair. `wiki_import` takes one named resource (URL, file, paper, PDF, transcript, meeting note, internal note, or paste); `wiki_wrapup` takes the current chat session. Both capture the source, compare each candidate against the existing wiki, and produce a triage report (new pages, extensions, and contradictions, each with excerpts and concrete options to reconcile them) before any page is written. Approved writes go back through the `wiki` skill. Use them when you want to review changes before they land: after a research chat, or before importing a paper you don't fully trust.
-- **wiki_fix** and **wiki_auto_shaper** *(agent)*: a paired audit-and-repair. `wiki_fix` is the one-shot skill wrapper; `wiki_auto_shaper` is the agent it hands off to. The agent runs a two-phase loop: assess (lint plus a semantic audit), fix, then re-lint until clean. It repairs frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages, procedure pages that leak instance content, and content that drifts from its page type. Cross-page contradictions it does not auto-resolve; it surfaces them for human review through the contested-page protocol.
+- **wiki_fix** and **auto_shaper_wiki** *(agent)*: a paired audit-and-repair. `wiki_fix` is the one-shot skill wrapper; `auto_shaper_wiki` is the agent it hands off to. The agent runs a two-phase loop: assess (lint plus a semantic audit), fix, then re-lint until clean. It repairs frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages, procedure pages that leak instance content, and content that drifts from its page type. Cross-page contradictions it does not auto-resolve; it surfaces them for human review through the contested-page protocol.
 
 Two distillation skills that work on text outside the wiki:
 

@@ -15,7 +15,7 @@ Any wiki content derived from an artifact outside `wiki/` and outside canonical 
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `auto_shaper_wiki` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
 During that audit the wiki page derived content from a chat-session transcript (a non-canonical raw artifact); the auto-shaper narrated the provenance in body prose ("during an authoring session, the user enforced…") instead of writing a `raw/<kind>/<slug>.md` sidecar and pointing at it from `sources:`.
 
@@ -27,7 +27,7 @@ Files involved:
 
 - [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) — authoring contract.
 - [plugins/knowledge_management/skills/wiki_import/SKILL.md](../plugins/knowledge_management/skills/wiki_import/SKILL.md) — the ad-hoc / implicit-import path.
-- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — `<remediate>` section.
+- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — `<remediate>` section.
 - Target-wiki `SCHEMA.md` template inside the wiki skill bundle.
 
 Related tasks: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rubric-and-out-of-repo-paths.md) (the kind-picking rubric this task assumes).
@@ -40,7 +40,7 @@ Related tasks: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rub
    - Carry enough excerpted content in the sidecar body to be useful without the original file.
    - Never be narrated in the consuming page's body prose.
 2. **`plugins/knowledge_management/skills/wiki_import/SKILL.md`** — confirm it covers the ad-hoc case where a wiki edit *implicitly* uses a non-canonical artifact mid-conversation (not just explicit import calls). If it currently scopes itself to explicit invocation only, broaden the description and trigger guidance so the agent reaches for it when ingesting incidental artifacts mid-conversation.
-3. **`plugins/knowledge_management/agents/wiki_auto_shaper.md` `<remediate>` section** — add a guard: when remediation would otherwise add provenance prose to a body, halt and instead create or extend the `raw/` sidecar and update `sources:`. The audit report must surface the routing.
+3. **`plugins/knowledge_management/agents/auto_shaper_wiki.md` `<remediate>` section** — add a guard: when remediation would otherwise add provenance prose to a body, halt and instead create or extend the `raw/` sidecar and update `sources:`. The audit report must surface the routing.
 4. **Target-wiki `SCHEMA.md` template** (the file the wiki skill writes when bootstrapping a wiki) — add the same rule so it lands in every ingested wiki's `SCHEMA.md` and the agent reads it at `<read_schema>`.
 5. **All four locations above + wiki_import** — when extracting raw text that may contain markdown-sensitive characters, default to **fenced text blocks with a dynamically sized fence** (not blockquotes). Document the rule: pick the smallest backtick fence count (>=3) longer than any backtick run already inside the content.
 

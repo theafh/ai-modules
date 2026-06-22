@@ -1,5 +1,5 @@
 ---
-description: Make the wiki_auto_shaper agent route displaced semantics to their proper channel before normalising structure, and surface both halves in the audit report.
+description: Make the auto_shaper_wiki agent route displaced semantics to their proper channel before normalising structure, and surface both halves in the audit report.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:24
 updated: 2026-06-13T00:06:12
@@ -11,11 +11,11 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-When the `wiki_auto_shaper` agent normalises a structural element (heading vocabulary, page anatomy, frontmatter field, label) and the existing content carries semantics that don't fit the target structure, the agent must route the displaced semantics to their proper channel **before** applying the structural fix. Calling this "two-pass remediation" makes it citable in the audit report. The audit report must surface both halves of the fix, not silently swallow the routing step.
+When the `auto_shaper_wiki` agent normalises a structural element (heading vocabulary, page anatomy, frontmatter field, label) and the existing content carries semantics that don't fit the target structure, the agent must route the displaced semantics to their proper channel **before** applying the structural fix. Calling this "two-pass remediation" makes it citable in the audit report. The audit report must surface both halves of the fix, not silently swallow the routing step.
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `auto_shaper_wiki` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
 During that audit the agent normalised eight labels from "What the session showed" to "What the canon says" (a vocabulary fix), and then **jammed the displaced session date into the heading** as a parenthetical qualifier — producing the same overcompressed labels documented in [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md).
 
@@ -30,7 +30,7 @@ Skipping the routing step also produces:
 
 Files involved:
 
-- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — `<remediate>` section and the audit report contract.
+- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — `<remediate>` section and the audit report contract.
 
 Related tasks:
 
@@ -39,7 +39,7 @@ Related tasks:
 
 ## Approach
 
-1. **`plugins/knowledge_management/agents/wiki_auto_shaper.md` `<remediate>` section** — add an explicit three-step rule named "two-pass remediation":
+1. **`plugins/knowledge_management/agents/auto_shaper_wiki.md` `<remediate>` section** — add an explicit three-step rule named "two-pass remediation":
    1. **Identify displaced semantics.** Before changing the structure, name what semantic content the existing structure carries that won't fit the target. Examples: date/source in a heading, qualifier in a frontmatter key, scope tag in a section title, mandate level in a page name.
    2. **Route displaced semantics first.** Move the content to its proper structured channel — frontmatter, `sources:`, `raw/`, inline link, `log.md` — before applying the structural fix.
    3. **Then normalise.** Apply the structural fix with no leftover semantic baggage.

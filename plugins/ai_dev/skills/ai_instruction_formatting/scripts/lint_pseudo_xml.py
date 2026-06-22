@@ -137,8 +137,8 @@ def parse_frontmatter_name(fm: str) -> str | None:
 
 def _normalize_for_match(s: str) -> str:
     """Normalize a name for H1-vs-frontmatter comparison: lowercase and treat
-    spaces, hyphens, and underscores as equivalent so `# Wiki Auto Shaper`
-    matches `name: wiki_auto_shaper` while genuine drift still trips."""
+    spaces, hyphens, and underscores as equivalent so `# Auto Shaper Wiki`
+    matches `name: auto_shaper_wiki` while genuine drift still trips."""
     return re.sub(r"[\s_\-]+", "_", s.strip().lower()).strip("_")
 
 

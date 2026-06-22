@@ -1,5 +1,5 @@
 ---
-description: Make wiki_auto_shaper resolve $WIKI_SKILL and $WIKI as run-local paths before bundled tool calls, avoiding stale environment or hook state.
+description: Make auto_shaper_wiki resolve $WIKI_SKILL and $WIKI as run-local paths before bundled tool calls, avoiding stale environment or hook state.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
 updated: 2026-06-15T23:15:13
@@ -12,7 +12,7 @@ implemented-by: Andreas Hoffmann
 
 ## Goal
 
-The `wiki_auto_shaper` agent resolves both runtime paths it needs at the start of every audit and uses those paths locally for bundled tool calls:
+The `auto_shaper_wiki` agent resolves both runtime paths it needs at the start of every audit and uses those paths locally for bundled tool calls:
 
 - `$WIKI_SKILL` is the installed wiki skill bundle that contains `SKILL.md`, `scripts/`, and `references/`.
 - `$WIKI` is the target wiki selected for the current repository/session by the wiki discovery script.
@@ -21,7 +21,7 @@ Cold-start runs stop wasting turns hunting for `discover_wiki.sh` / `lint.py` an
 
 ## Context
 
-[agents/wiki_auto_shaper.md](../../plugins/knowledge_management/agents/wiki_auto_shaper.md) references `$WIKI_SKILL` more than a dozen times to locate its bundled assets: `$WIKI_SKILL/SKILL.md`, `$WIKI_SKILL/scripts/`, the canonical templates, and `python3 $WIKI_SKILL/scripts/lint.py "$WIKI"`. But `$WIKI_SKILL` is never defined, so nothing in the agent establishes the location of the installed wiki skill bundle before use.
+[agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md) references `$WIKI_SKILL` more than a dozen times to locate its bundled assets: `$WIKI_SKILL/SKILL.md`, `$WIKI_SKILL/scripts/`, the canonical templates, and `python3 $WIKI_SKILL/scripts/lint.py "$WIKI"`. But `$WIKI_SKILL` is never defined, so nothing in the agent establishes the location of the installed wiki skill bundle before use.
 
 The `<discover_wiki>` step also runs the discovery script with a bare relative path: `WIKI=$(scripts/discover_wiki.sh --check)`. That only works when the process happens to be sitting in the wiki skill directory. On a cold start the working directory is normally the target repo, so the relative path misses, the script exits 127, and the agent spends turns probing the filesystem before finding the real bundle.
 
@@ -31,14 +31,14 @@ Harness portability decision: keep both values run-local. Use shell variables in
 
 Files involved:
 
-- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../../plugins/knowledge_management/agents/wiki_auto_shaper.md) — `<orient>` / `<discover_wiki>` and every `$WIKI_SKILL` reference.
+- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md) — `<orient>` / `<discover_wiki>` and every `$WIKI_SKILL` reference.
 
 ## Approach
 
 1. Add a `<resolve_runtime_paths>` step at the top of `<orient>`, before `<discover_wiki>` and before every bundled script invocation. It establishes run-local `$WIKI_SKILL` first, then derives run-local `$WIKI` by invoking the discovery script from that skill bundle.
 2. Resolve `$WIKI_SKILL` from documented or observable bundle locations rather than from the target repo CWD. Use this resolution order:
    - The directory of the active agent/skill bundle when the harness exposes it in the loaded artefact path.
-   - A sibling wiki skill directory in the same installed plugin bundle as `agents/wiki_auto_shaper.md`, when running from a plugin checkout or plugin cache.
+   - A sibling wiki skill directory in the same installed plugin bundle as `agents/auto_shaper_wiki.md`, when running from a plugin checkout or plugin cache.
    - A deployed user skill location such as `~/.codex/skills/wiki`, following symlinks when present.
    - A bounded search under the user's agent configuration roots and the current repo checkout as a last resort. Keep the search bounded; never run an unbounded `find /`.
 3. Validate every `$WIKI_SKILL` candidate before accepting it. A valid candidate contains `SKILL.md`, `scripts/discover_wiki.sh`, `scripts/lint.py`, and `references/template_schema.md`. If no valid candidate is found, stop with a clear message that the wiki skill bundle could not be resolved.

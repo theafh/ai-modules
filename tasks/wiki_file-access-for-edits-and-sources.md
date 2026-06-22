@@ -26,7 +26,7 @@ This task is the *read-time* counterpart to the provenance tasks. [wiki_provenan
 Files involved:
 
 - [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) — the `<appending_to_log>` editing/log guidance and the `**Provenance**` / `sources:` description.
-- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — mirror both notes wherever it stages edits or opens `sources:` paths.
+- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — mirror both notes wherever it stages edits or opens `sources:` paths.
 
 ## Approach
 

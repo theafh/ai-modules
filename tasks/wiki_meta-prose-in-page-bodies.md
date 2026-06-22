@@ -1,5 +1,5 @@
 ---
-description: Stop the wiki_auto_shaper agent (and wiki authoring contract) from inserting page-convention prose and lint-sanction prose into wiki page bodies.
+description: Stop the auto_shaper_wiki agent (and wiki authoring contract) from inserting page-convention prose and lint-sanction prose into wiki page bodies.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:26
 updated: 2026-06-13T01:47:36
@@ -15,14 +15,14 @@ Wiki page bodies carry only load-bearing knowledge — the entries, facts, and c
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `auto_shaper_wiki` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
-During that remediation the `wiki_auto_shaper` agent inserted two unwanted paragraphs that had to be stripped by hand:
+During that remediation the `auto_shaper_wiki` agent inserted two unwanted paragraphs that had to be stripped by hand:
 
 - A page-summary paragraph defining "canon" ("Canon for an entry is…", "Each entry records…").
 - A "Page size note" sanction paragraph explaining that the backlog naturally grows past the 200-line lint threshold.
 
-The behaviour is currently licensed by the line in [wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) that reads "note the rationale on the page's body **or** in `SCHEMA.md`" — the "or page body" path gets picked because it sits closest to the lint finding. Nothing elsewhere in the agent or in [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) forbids inserting page-convention prose during remediation.
+The behaviour is currently licensed by the line in [auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) that reads "note the rationale on the page's body **or** in `SCHEMA.md`" — the "or page body" path gets picked because it sits closest to the lint finding. Nothing elsewhere in the agent or in [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) forbids inserting page-convention prose during remediation.
 
 Carve-out: `SCHEMA.md`, `index.md`, and synthesis pages (`type: synthesis`) may carry organising prose, because that *is* their load-bearing content.
 
@@ -36,7 +36,7 @@ Related tasks: [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-
 
 ## Approach
 
-1. **`plugins/knowledge_management/agents/wiki_auto_shaper.md`** — at the line currently containing "note the rationale on the page's body or in `SCHEMA.md`" (locate by phrase, not by line number), drop "on the page's body or". Sanctioned-finding rationale routes to `SCHEMA.md` or `log.md` only.
+1. **`plugins/knowledge_management/agents/auto_shaper_wiki.md`** — at the line currently containing "note the rationale on the page's body or in `SCHEMA.md`" (locate by phrase, not by line number), drop "on the page's body or". Sanctioned-finding rationale routes to `SCHEMA.md` or `log.md` only.
 2. **Same file, `<remediate>` section** — add an explicit prohibition: when rewriting a page body, do not insert page-convention definitions, entry-anatomy explanations, canon-kind clauses, or lint-sanction prose. Lead with one short sentence naming what the page is for; stop there. Carve out `type: schema | index | synthesis` pages.
 3. **`plugins/knowledge_management/skills/wiki/SKILL.md`** — mirror the same prohibition in the authoring contract so authors invoking the skill directly inherit the rule.
 4. **Target-wiki `SCHEMA.md` template** (search the wiki skill bundle for the SCHEMA template the agent writes when bootstrapping a wiki; likely under `plugins/knowledge_management/skills/wiki/`) — add the normative clause so each ingested wiki's `SCHEMA.md` carries the rule that the agent reads at `<read_schema>`.

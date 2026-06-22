@@ -1,7 +1,7 @@
 ---
 name: ai_instruction_formatting
 description: Organize AI-consumed content (prompts, rules, skills, commands, agents, system instructions) into pseudo-XML by wrapping each semantic concern in a dedicated tag for role, policy, inputs, and output contract.
-version: 3.4.0
+version: 3.4.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -31,7 +31,7 @@ Whenever the host file is a `SKILL.md` or agent definition, keep the YAML frontm
 
 Two tiers of guidance live in this skill: **mechanical rules** that are bugs when violated, and **stylistic guidance** that names well-tested defaults. The bundled linter enforces only the mechanical rules; an artifact that satisfies them while shaping content differently from the stylistic recommendations is correct, not deviant.
 
-- **Mechanical rules (linter-enforced, bugs when violated)**: frontmatter `name:` matches the directory name; H1 is present and is a casing-or-spacing variant of `name:` (so `# Wiki Auto Shaper` matches `name: wiki_auto_shaper` — only genuine name drift is flagged); ASCII snake_case tag names; no attributes, no entities, no self-closing tags; balanced opening and closing tags with a recognized file shape; max nesting depth five (covers the canonical workflow shape `<wrapper> → <section_group> → <named_phase> → <list_parent> → <list_item>`; deeper is flagged); no duplicate siblings outside the repeating-tags allowlist; trailing newline.
+- **Mechanical rules (linter-enforced, bugs when violated)**: frontmatter `name:` matches the directory name; H1 is present and is a casing-or-spacing variant of `name:` (so `# Auto Shaper Wiki` matches `name: auto_shaper_wiki` — only genuine name drift is flagged); ASCII snake_case tag names; no attributes, no entities, no self-closing tags; balanced opening and closing tags with a recognized file shape; max nesting depth five (covers the canonical workflow shape `<wrapper> → <section_group> → <named_phase> → <list_parent> → <list_item>`; deeper is flagged); no duplicate siblings outside the repeating-tags allowlist; trailing newline.
 - **Stylistic guidance (defaults, not violations)**: which named container holds which kind of content (see "Section Separation"), the relative order of objective / tools / policy / output_contract, and which tags from the standard vocabulary appear at all. Apply the defaults when authoring from scratch; deviate when the artifact's own structure carries the meaning more clearly. An artifact whose tag names are fully self-describing (e.g., `<commit_message_multi_file>`, `<scoring_criteria>`) often needs less wrapper ceremony than one whose children share a generic name like `<rule>` or `<step>`.
 
 ## Core Format
@@ -176,7 +176,7 @@ When an artifact references content owned by a different skill, agent, command, 
 | Reference kind | Form | Example |
 | :--- | :--- | :--- |
 | Cross-skill asset path | `$<SLUG>_SKILL/path/within/skill` | `$WIKI_SKILL/references/raw_taxonomy.md` |
-| Sibling artefact name (no path) | bare slug in backticks | `` `wiki_auto_shaper` `` |
+| Sibling artefact name (no path) | bare slug in backticks | `` `auto_shaper_wiki` `` |
 | Within-artifact path | relative path in backticks | `` `references/lint_checks.md` `` |
 
 The `$<SLUG>_SKILL/...` form makes cross-skill paths visually spotable (the `$` sigil stands out from surrounding prose), keeps boundaries unambiguous (the placeholder ends at the next whitespace or path separator), and stays orthogonal to pseudo-XML tags so the two conventions never collide. It is also greppable for tooling — `grep -r '\$[A-Z_]\+_SKILL/'` enumerates every cross-skill dependency in the codebase.

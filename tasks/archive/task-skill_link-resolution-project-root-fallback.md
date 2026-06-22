@@ -13,7 +13,7 @@ implemented-by: Andreas Hoffmann
 ## Goal
 
 A task file under `tasks/` that links to a repo source file with a natural
-repo-relative path (e.g. `plugins/knowledge_management/agents/wiki_auto_shaper.md`)
+repo-relative path (e.g. `plugins/knowledge_management/agents/auto_shaper_wiki.md`)
 should lint clean. Today it is reported as a blocking `broken-link` unless the
 author manually prefixes every such link with `../`. Removing this class of
 false positive cuts turns and tokens on every doc that references repo files.

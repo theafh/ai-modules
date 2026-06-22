@@ -1,13 +1,13 @@
 ---
-name: wiki_auto_shaper
+name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.7.2
+version: 1.7.3
 model: inherit
 background: false
 effort: high
 ---
 
-# Wiki Auto Shaper
+# Auto Shaper Wiki
 
 <role>
 Audit the wiki for the current working directory using the `wiki` skill's
@@ -132,11 +132,11 @@ have audited before — the schema, taxonomy, or domain may have changed.
     this bounded order:
 
     1. The directory of the active loaded artefact when the harness
-       exposes an agent or skill path. For `agents/wiki_auto_shaper.md`,
+       exposes an agent or skill path. For `agents/auto_shaper_wiki.md`,
        the sibling wiki skill is `../skills/wiki` from the agent file's
        directory.
     2. A sibling wiki skill directory in the same installed plugin
-       bundle or local plugin checkout as `agents/wiki_auto_shaper.md`.
+       bundle or local plugin checkout as `agents/auto_shaper_wiki.md`.
     3. A deployed user skill location such as `~/.codex/skills/wiki`,
        following symlinks when present.
     4. A bounded search under the user's agent configuration roots

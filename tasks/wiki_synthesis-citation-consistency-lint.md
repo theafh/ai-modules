@@ -33,7 +33,7 @@ The primitives this check needs already exist in the same file:
 
 Why only synthesis types: `query`/`summary`/`comparison` are the pages that synthesize across sources, so a missing or inconsistent citation there is the "synthesizes without citing" failure mode the check targets. The check must **not** demand that raw links exist, because a `query` page legitimately cites other wiki pages — an inline link into `concepts/` or `entities/` rather than into `raw/` — whose own raw grounding sits on those pages. It only flags disagreement between what is *declared* and what is *linked to raw*, which leaves a legitimately page-citing page with an empty `sources:` unflagged.
 
-Remediation is not built here. Because the `wiki_auto_shaper` agent runs `lint.py` inside its assess→fix→verify loop, the new finding flows to the agent automatically; an implementer adds no remediation logic to the linter. Info-level finding **suppression** is likewise out of scope — that mechanism is owned by [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md); this task adds no per-finding acknowledge handling.
+Remediation is not built here. Because the `auto_shaper_wiki` agent runs `lint.py` inside its assess→fix→verify loop, the new finding flows to the agent automatically; an implementer adds no remediation logic to the linter. Info-level finding **suppression** is likewise out of scope — that mechanism is owned by [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md); this task adds no per-finding acknowledge handling.
 
 Related work: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) defines the `raw/` + `sources:` provenance convention whose consistency this check enforces; read it for the semantics of what counts as a source.
 
@@ -52,7 +52,7 @@ Related work: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-a
 Non-goals / follow-ups (kept out to keep this task atomic):
 
 - **Grounding verification** (does the source support the claim). The wiki paraphrases and links whole files, so surface matching false-alarms on good paraphrase and entailment needs an LLM — which, pushed into skill rules, invites fabrication. Grounding stays human/agent review.
-- **A named `wiki_auto_shaper` remediation move** for the new finding (add the missing inline link, prune a decorative `sources:` entry, or flag for human) — a worthwhile follow-up analogous to the agent's existing orphan-page fix move, filed separately rather than folded in.
+- **A named `auto_shaper_wiki` remediation move** for the new finding (add the missing inline link, prune a decorative `sources:` entry, or flag for human) — a worthwhile follow-up analogous to the agent's existing orphan-page fix move, filed separately rather than folded in.
 
 ## Acceptance
 

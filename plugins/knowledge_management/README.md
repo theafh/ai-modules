@@ -8,7 +8,7 @@ The wiki itself, plus paired front ends that wrap two of its workflows behind si
 
 - **wiki**: the foundation. Build and maintain an interlinked Markdown wiki: ingest sources (URLs, articles, papers, PDFs, transcripts, meeting notes, internal notes, pastes), then query, lint, audit, archive, and reorganise. Page types are read from `SCHEMA.md`. Each claim is backed by an inline standard-Markdown link to its source; the page-level `sources:` frontmatter is the full inventory; an optional `## Derived from` section covers external material the wiki doesn't own; and a body-only `sha256` hash detects when a raw source has drifted. Discovery, init, lint, and the sha256 helper all ship as bundled scripts, so the agent runs fixed programs for the mechanical parts. Use it when the user asks to create, build, ingest into, query, or maintain a wiki, knowledge base, or research notes.
 - **wiki_import** and **wiki_wrapup**: a triage-first ingest pair. `wiki_import` takes one named resource (URL, file, paper, PDF, transcript, meeting note, internal note, or paste); `wiki_wrapup` takes the current chat session. Both capture the source, compare each candidate against the existing wiki, and produce a triage report (new pages, extensions, and contradictions, each with excerpts and concrete options to reconcile them) before any page is written. Approved writes go back through the `wiki` skill, so the ingest logic stays in one place. Use them when the user asks to import a specific resource, or to wrap up, close, or harvest the current chat into the wiki.
-- **wiki_fix**: a one-shot wrapper around the `wiki_auto_shaper` agent (see below). It runs the agent against the current repository's wiki to audit it end to end and fix every issue on its own: structure, content, splits, links, tags, and scaffold drift. Cross-page contradictions it does not auto-resolve; it surfaces them through the contested-page protocol. Use it when the user asks to fix, repair, lint, audit, or health-check their wiki without further interaction.
+- **wiki_fix**: a one-shot wrapper around the `auto_shaper_wiki` agent (see below). It runs the agent against the current repository's wiki to audit it end to end and fix every issue on its own: structure, content, splits, links, tags, and scaffold drift. Cross-page contradictions it does not auto-resolve; it surfaces them through the contested-page protocol. Use it when the user asks to fix, repair, lint, audit, or health-check their wiki without further interaction.
 
 Two distillation skills that work on text outside the wiki:
 
@@ -17,7 +17,7 @@ Two distillation skills that work on text outside the wiki:
 
 ## Agents
 
-- **wiki_auto_shaper**: the audit-and-fix engine that `wiki_fix` hands off to. It finds the current repository's wiki using the `wiki` skill's discovery logic, runs the linter, and fixes every issue on its own: frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, and content that breaks its page type's structure. Cross-page contradictions it surfaces through the contested-page protocol rather than auto-resolving. It works in two phases: assess (lint plus a semantic audit), then a fix loop, then re-lint until clean.
+- **auto_shaper_wiki**: the audit-and-fix engine that `wiki_fix` hands off to. It finds the current repository's wiki using the `wiki` skill's discovery logic, runs the linter, and fixes every issue on its own: frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, and content that breaks its page type's structure. Cross-page contradictions it surfaces through the contested-page protocol rather than auto-resolving. It works in two phases: assess (lint plus a semantic audit), then a fix loop, then re-lint until clean.
 
 ## Background
 
@@ -28,7 +28,7 @@ Karpathy treats a persistent Markdown wiki, not the chat transcript, as the last
 This skill keeps the compile-once-and-compound idea but moves it to a tool-neutral, plain-Markdown stack. Every page is a `.md` file you can open in any editor or terminal, with no Obsidian or third-party reader required. It adds a procedural layer alongside the declarative one: `procedures/` pages capture *how* an operator should act (workflows, conventions, runbooks), alongside the *what* and *why* of entity, concept, comparison, summary, and query pages. A few mechanics make it run on its own:
 
 - Discovery, init, lint, and the body-only sha256 helper ship as bundled scripts.
-- The `wiki_auto_shaper` agent runs the assess → fix → verify loop on its own.
+- The `auto_shaper_wiki` agent runs the assess → fix → verify loop on its own.
 - Each claim links to its source inline, the page-level `sources:` frontmatter is the inventory, and a `sha256` hash detects drift in raw sources.
 - The page types are read from `SCHEMA.md`, so a wiki can add a type without changing the linter.
 

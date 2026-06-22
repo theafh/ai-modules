@@ -16,7 +16,7 @@ Let a wiki be authored in any language while keeping filenames portable. After t
 - The wiki skills explicitly support **non-English content**: page bodies, headings, the `title:` frontmatter field, and content-specific metadata (tags as topic words) use the **language of the content**.
 - **Filenames / slugs stay pure ASCII.** A content-language word is fine (`steinbildhauerei`, `lebensziele`), but non-ASCII characters are transliterated, not embedded — German `ü→ue, ö→oe, ä→ae, ß→ss`; other languages strip diacritics (`é→e`, `ñ→n`, `å→a`). The readable title keeps its native characters; only the slug is folded (e.g. title `Künstliche Evolution` → slug `kuenstliche-evolution`).
 - The **linter flags any non-ASCII filename as a `warn`** (not blocking), naming the offending path and suggesting the ASCII-folded slug.
-- The **`wiki_auto_shaper` agent** treats that warning as an autofixable finding: `git mv` the page to its ASCII slug and re-point every inbound reference.
+- The **`auto_shaper_wiki` agent** treats that warning as an autofixable finding: `git mv` the page to its ASCII slug and re-point every inbound reference.
 
 This is both a small feature (new linter check + autofix + language guidance) and the fix for the gap that let the originating bug through.
 
@@ -45,11 +45,11 @@ It says lowercase/hyphens/no-spaces but **never says "ASCII only"**, and every e
 - [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md) — the `## Conventions` "File names:" bullet. Extend to "pure ASCII; transliterate non-ASCII" with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here.
 - [scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) — add the new check. Findings are `Issue(severity, bucket, page, message)`; severity constants `SEV_BLOCKING / SEV_WARN / SEV_INFO`; existing path-shape logic lives in `check_type_location`. Add a sibling `check_filename_ascii` (bucket `filename`) and register it in the run pipeline.
 - [references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md) — document the new check row in the matrix and add it to the **warn** bucket list.
-- [wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — the `<remediate>` phase (the rename machinery where a fix-group "renames a page via `git mv`"). Add an ASCII-fold-rename remediation for the new warning.
+- [auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — the `<remediate>` phase (the rename machinery where a fix-group "renames a page via `git mv`"). Add an ASCII-fold-rename remediation for the new warning.
 
 ### Related task
 
-- [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) — co-edits the same `wiki_auto_shaper.md` `<remediate>` phase. Coordinate so the new ASCII-fold rename slots in as a fix-group alongside the displaced-semantics routing rule rather than conflicting with it; reuse its `git mv` + re-point-references machinery rather than inventing a parallel one.
+- [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) — co-edits the same `auto_shaper_wiki.md` `<remediate>` phase. Coordinate so the new ASCII-fold rename slots in as a fix-group alongside the displaced-semantics routing rule rather than conflicting with it; reuse its `git mv` + re-point-references machinery rather than inventing a parallel one.
 
 ## Approach
 
@@ -92,7 +92,7 @@ When the `filename` warning fires, the autofix mirrors the manual session fix:
 - `template_schema.md`'s "File names:" convention requires pure ASCII and shows the transliteration rule.
 - `lint.py` emits a `warn`/`filename` finding for a page whose filename contains a non-ASCII character, names the path, and suggests the ASCII slug; NFD-decomposed names are detected if implemented.
 - `lint_checks.md` documents the new check in the matrix and lists it under the warn bucket.
-- `wiki_auto_shaper.md` `<remediate>` phase carries the ASCII-fold rename remediation (git mv + re-point references), coordinated with the [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) edits to the same section.
+- `auto_shaper_wiki.md` `<remediate>` phase carries the ASCII-fold rename remediation (git mv + re-point references), coordinated with the [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) edits to the same section.
 - The tags open decision is reflected: either tags fold to ASCII (default) or the tag check NFC-normalizes both sides, per the user's call.
 - A wiki linter fixture with a non-ASCII / NFD filename produces the new warning; after the auto_shaper fix the filename is pure ASCII, references resolve, and the linter is clean.
 - The wiki test suite (`tests/wiki/run_all.sh`) passes.

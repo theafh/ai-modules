@@ -1,7 +1,7 @@
 ---
 name: task_fix
 description: Repair the whole tasks backlog tree in one pass. Use when the user asks to health check, clean up, audit, or lint the backlog. Run the archive inclusive linter, fix mechanical frontmatter, status, location, link, datetime, and provenance issues, and surface judgement calls.
-version: 1.3.4
+version: 1.3.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -23,7 +23,7 @@ Route elsewhere when the user wants to judge a single task's readiness before bu
 </when_to_activate>
 
 <design_note>
-task_fix runs **inline — no dedicated agent.** The `tasks/` tree is small and the fixes are mechanical, so the agent indirection `wiki_fix` → `wiki_auto_shaper` uses for a large wiki is not warranted here, and it would add an agent to maintain plus a read-token cost. A `task_auto_shaper` agent is deferred future work, to revisit only if the tree grows enough that inline iteration strains a single context — and if so, the safe shape is a read-only assess fan-out feeding a single remediation writer, never per-file write agents (they would race on the shared link graph).
+task_fix runs **inline — no dedicated agent.** The `tasks/` tree is small and the fixes are mechanical, so the agent indirection `wiki_fix` → `auto_shaper_wiki` uses for a large wiki is not warranted here, and it would add an agent to maintain plus a read-token cost. A `task_auto_shaper` agent is deferred future work, to revisit only if the tree grows enough that inline iteration strains a single context — and if so, the safe shape is a read-only assess fan-out feeding a single remediation writer, never per-file write agents (they would race on the shared link graph).
 </design_note>
 
 <authority>

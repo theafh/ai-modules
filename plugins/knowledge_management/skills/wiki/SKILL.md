@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.16.0
+version: 1.16.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -38,7 +38,7 @@ Use this skill when the user:
 - Asks to create, build, or start a wiki or knowledge base.
 - Asks to ingest, add, or process a source into their wiki.
 - Asks a question that an existing wiki at the discovered location could answer.
-- Asks to lint, audit, fix, health-check, clean up, or auto-repair their wiki — delegate the work to the `wiki_auto_shaper` agent (see `<lint_and_audit>`).
+- Asks to lint, audit, fix, health-check, clean up, or auto-repair their wiki — delegate the work to the `auto_shaper_wiki` agent (see `<lint_and_audit>`).
 - References their wiki, knowledge base, or "notes" in a research context.
 - Asks to capture procedural knowledge — workflows, conventions, runbooks — alongside the wiki's subject pages.
 </when_to_activate>
@@ -272,7 +272,7 @@ template (domain, tag taxonomy, page-type sections, update policy).
 block — wikis can extend the type set in their schema without touching the
 script. See `<lint_and_audit>` below for the iteration loop;
 `references/lint_checks.md` has the full check matrix. The
-`wiki_auto_shaper` agent wraps `lint.py` with a complete
+`auto_shaper_wiki` agent wraps `lint.py` with a complete
 assess → fix → verify loop in an isolated context — spawn it when the user
 asks for a broad audit, lint, fix, health-check, clean-up, or auto-repair
 pass over the wiki.
@@ -506,7 +506,7 @@ difference between a growing wiki and a pile of duplicates.
 **Run the linter and iterate** — `python3 scripts/lint.py`. Fix every
 blocking finding before declaring complete. This is the narrow
 post-ingest check; for broad audits across the whole wiki, spawn the
-`wiki_auto_shaper` agent instead. See `<lint_and_audit>` below.
+`auto_shaper_wiki` agent instead. See `<lint_and_audit>` below.
 </run_linter_and_iterate>
 
 <report_what_changed>
@@ -629,10 +629,10 @@ When content is fully superseded or the domain scope changes:
 Two paths, picked by scope.
 
 <broad_audits>
-**Broad audits — spawn the `wiki_auto_shaper` agent.** When the user asks
+**Broad audits — spawn the `auto_shaper_wiki` agent.** When the user asks
 to lint, audit, fix, health-check, clean up, or auto-repair the wiki — or
 the wiki has accumulated drift across many pages — delegate to the
-`wiki_auto_shaper` agent. The agent runs a complete
+`auto_shaper_wiki` agent. The agent runs a complete
 assess → fix → verify loop in an isolated context: runs `lint.py`,
 audits the prose for issues the linter cannot see (topic mixing,
 type/anatomy mismatch, procedure-page instance leakage, content violations

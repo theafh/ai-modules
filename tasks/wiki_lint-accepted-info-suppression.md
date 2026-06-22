@@ -24,7 +24,7 @@ Files involved:
 - [plugins/knowledge_management/skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) — finding emission and the main runner; the `--quiet` flag.
 - [plugins/knowledge_management/skills/wiki/references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md) — document the accept mechanism.
 - Target-wiki `SCHEMA.md` template inside the wiki skill bundle, if acceptances are stored there.
-- [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) and [agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) — teach the accept workflow so the agent uses it instead of re-justifying in prose.
+- [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) and [agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — teach the accept workflow so the agent uses it instead of re-justifying in prose.
 
 ## Approach
 

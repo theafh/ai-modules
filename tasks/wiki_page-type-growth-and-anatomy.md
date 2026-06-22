@@ -18,7 +18,7 @@ Two adjacent failures around page-type contracts get fixed together:
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `wiki_auto_shaper` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
+This is one of a family of **generalisable refinements** to the wiki skills + `auto_shaper_wiki` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
 
 During that audit the auto-shaper either parenthetically annotated the middle-paragraph heading (see [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md)) or silently broadened the definition of "canon" in a page-summary paragraph (see [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md)) — both remediation smells driven by the ambiguous page-type contract.
 
@@ -28,7 +28,7 @@ Files involved:
 
 - Target-wiki `SCHEMA.md` template inside the wiki skill bundle (the file the wiki skill writes when bootstrapping a wiki).
 - [plugins/knowledge_management/skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py).
-- [plugins/knowledge_management/agents/wiki_auto_shaper.md](../plugins/knowledge_management/agents/wiki_auto_shaper.md) (the line currently containing "note the rationale on the page's body or in `SCHEMA.md`").
+- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) (the line currently containing "note the rationale on the page's body or in `SCHEMA.md`").
 
 Related tasks:
 
@@ -45,7 +45,7 @@ Related tasks:
    - `index` → `fixed`.
 2. **`plugins/knowledge_management/skills/wiki/scripts/lint.py`** — when emitting the 200-line size finding, look up the page's declared type and growth pattern; skip the finding for `backlog`, `monotonic-append`, and `unbounded-synthesis` types below a much higher threshold (e.g., 1000 lines). For `backlog` past 1000 lines, emit a split-or-graduate-entries recommendation rather than a body-sanction note.
 3. **Target-wiki `SCHEMA.md` template** — in the todo page-type clause, state explicitly whether "canon" covers session-derived rules and which middle-paragraph label is canonical. Remove the ambiguity that lets the agent invent parenthetical annotations.
-4. **`plugins/knowledge_management/agents/wiki_auto_shaper.md`** — at the line currently containing "note the rationale on the page's body or in `SCHEMA.md`" (locate by phrase), drop "on the page's body or". If a sanction is genuinely needed beyond what SCHEMA declares, route it to `log.md`, never the page body. Coordinate with [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md) so the wording is removed exactly once across both tasks.
+4. **`plugins/knowledge_management/agents/auto_shaper_wiki.md`** — at the line currently containing "note the rationale on the page's body or in `SCHEMA.md`" (locate by phrase), drop "on the page's body or". If a sanction is genuinely needed beyond what SCHEMA declares, route it to `log.md`, never the page body. Coordinate with [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md) so the wording is removed exactly once across both tasks.
 
 ## Acceptance
 

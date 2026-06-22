@@ -1,6 +1,6 @@
 # Raw Source Taxonomy
 
-Reference for the `raw/` subtree — what each canonical bucket is for, and how to classify a source into one of them. Consulted by the wiki skill on ingest and by the `wiki_auto_shaper` agent when it surfaces extra `raw/<kind>/` subdirectories for the user to route.
+Reference for the `raw/` subtree — what each canonical bucket is for, and how to classify a source into one of them. Consulted by the wiki skill on ingest and by the `auto_shaper_wiki` agent when it surfaces extra `raw/<kind>/` subdirectories for the user to route.
 
 The canonical *set* of buckets is whatever `scripts/init_wiki.sh` materializes today (it is the script that creates a new wiki's raw subtree, and the set evolves with the skill). This file defines *what each bucket means* and how to pick between them.
 
@@ -42,4 +42,4 @@ A new canonical bucket means three coordinated edits, in this order:
 2. Add the bucket row to the **Buckets** table above and update the classification heuristics if the new bucket changes precedence.
 3. Run `python3 scripts/lint.py` against a test wiki and confirm no new findings.
 
-The `wiki_auto_shaper` agent reads `init_wiki.sh` to learn the current canonical set and reads this file for the *meaning* of each bucket; both sources update together.
+The `auto_shaper_wiki` agent reads `init_wiki.sh` to learn the current canonical set and reads this file for the *meaning* of each bucket; both sources update together.

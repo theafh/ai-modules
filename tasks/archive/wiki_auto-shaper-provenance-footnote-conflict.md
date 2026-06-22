@@ -1,5 +1,5 @@
 ---
-description: Align the wiki_auto_shaper agent's provenance detection and remediation with the inline-path-link, no-footnote attribution convention the linter, schema, and SKILL already enforce.
+description: Align the auto_shaper_wiki agent's provenance detection and remediation with the inline-path-link, no-footnote attribution convention the linter, schema, and SKILL already enforce.
 scope: plugins/knowledge_management
 created: 2026-06-12T23:32:36
 updated: 2026-06-14T19:22:48
@@ -8,11 +8,11 @@ reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 ---
 
-# Align `wiki_auto_shaper` provenance handling with the no-footnote attribution convention
+# Align `auto_shaper_wiki` provenance handling with the no-footnote attribution convention
 
 ## Goal
 
-The `wiki_auto_shaper` agent's provenance detection and remediation stop emitting `[^footnote]` markers and instead attribute multi-source claims with inline standard-markdown path links — the convention the linter, schema, and authoring contract already enforce. After the change the agent reaches a clean re-lint on pages that synthesize three or more sources, where today it cannot.
+The `auto_shaper_wiki` agent's provenance detection and remediation stop emitting `[^footnote]` markers and instead attribute multi-source claims with inline standard-markdown path links — the convention the linter, schema, and authoring contract already enforce. After the change the agent reaches a clean re-lint on pages that synthesize three or more sources, where today it cannot.
 
 Scope decision: the fix changes only the agent prose. The linter, schema, and SKILL already agree on inline path-link attribution and stay unchanged; the agent is the sole deviation and the only thing this task edits.
 
@@ -22,7 +22,7 @@ The agent contradicts the wiki's footnote policy, so its own re-lint pass re-fla
 
 The contradiction is one agent file against three places that already agree with each other:
 
-- **Agent emits footnotes.** [plugins/knowledge_management/agents/wiki_auto_shaper.md](../../plugins/knowledge_management/agents/wiki_auto_shaper.md) — the `<provenance_violation>` detection block flags a page that "lacks the inline footnote markers `[^source-name]`" and asserts "the schema requires footnotes once 3+ sources contribute"; the `<fix_provenance_violation>` remediation block adds `[^source-slug]` markers plus matching `[^source-slug]: raw/<kind>/<slug>.md` definitions at the page bottom.
+- **Agent emits footnotes.** [plugins/knowledge_management/agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md) — the `<provenance_violation>` detection block flags a page that "lacks the inline footnote markers `[^source-name]`" and asserts "the schema requires footnotes once 3+ sources contribute"; the `<fix_provenance_violation>` remediation block adds `[^source-slug]` markers plus matching `[^source-slug]: raw/<kind>/<slug>.md` definitions at the page bottom.
 - **Linter forbids footnotes.** [plugins/knowledge_management/skills/wiki/scripts/lint.py](../../plugins/knowledge_management/skills/wiki/scripts/lint.py) — the `check_footnote_syntax` check emits a WARN-severity `footnote` issue on every `[^name]` marker and `[^name]:` definition, directing conversion to inline standard-markdown path links placed next to the claim.
 - **Schema forbids footnotes.** [plugins/knowledge_management/skills/wiki/references/template_schema.md](../../plugins/knowledge_management/skills/wiki/references/template_schema.md) — footnote markers "are not used".
 - **SKILL forbids footnotes.** [plugins/knowledge_management/skills/wiki/SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md) — "No footnote markers"; claim-level attribution uses inline standard-markdown links.
@@ -39,7 +39,7 @@ Related task: [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-ra
 
 ## Acceptance
 
-- A search of [wiki_auto_shaper.md](../../plugins/knowledge_management/agents/wiki_auto_shaper.md) finds no instruction to add `[^name]` footnote markers or bottom-of-page `[^name]:` definitions anywhere in its provenance detection or remediation; the `<fix_provenance_violation>` block instead instructs inline path-link attribution placed next to the claim.
+- A search of [auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md) finds no instruction to add `[^name]` footnote markers or bottom-of-page `[^name]:` definitions anywhere in its provenance detection or remediation; the `<fix_provenance_violation>` block instead instructs inline path-link attribution placed next to the claim.
 - The `<provenance_violation>` block defines the violation as a three-or-more-source page whose claims lack inline path-link attribution, and carries no statement that the schema requires footnotes.
 - The agent's provenance language matches the no-footnote convention stated in `check_footnote_syntax` ([lint.py](../../plugins/knowledge_management/skills/wiki/scripts/lint.py)), [template_schema.md](../../plugins/knowledge_management/skills/wiki/references/template_schema.md), and [SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md).
 - A wiki page with three or more sources, attributed per the rewritten `<fix_provenance_violation>` instructions, carries inline path-link attribution and yields zero `footnote` findings from `check_footnote_syntax`. If any footnote finding remains on such a page, the alignment is incomplete and the task is not done.
