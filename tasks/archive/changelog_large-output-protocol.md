@@ -2,9 +2,10 @@
 description: Stop prepare_changelog_day.sh from overflowing the tool buffer — write the blob to a file and add a git_commit-style paginated-consume protocol.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
-updated: 2026-06-23T22:06:41
-status: ready
+updated: 2026-06-23T22:17:43
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Give update_changelog a large-output protocol like git_commit's
@@ -34,7 +35,7 @@ truncates.
   - `6866e0db`: day 2026-05-28 emitted **244 KB** → same re-grep dance.
   - `df256b21`: 29.8 KB persisted.
 - The redundant manual `git log` re-derivation seen in the same sessions (including the `--since=DATE --until=DATE` same-day footgun that returns nothing) is the **same root cause** — the agent doesn't trust the script as the sole per-day source once its output overflowed. The `<hard_rules>` line below fixes both.
-- Interaction: [changelog_immutable-entries-redesign.md](archive/changelog_immutable-entries-redesign.md) has landed, so `update_changelog/SKILL.md` is status-free, but the script's trailing `<entry_instruction>` heredoc still references the `[status]` marker and current-state marker assignment. Rewrite that heredoc in place so the script's embedded instruction matches the immutable-entry format.
+- Interaction: [changelog_immutable-entries-redesign.md](changelog_immutable-entries-redesign.md) has landed, so `update_changelog/SKILL.md` is status-free, but the script's trailing `<entry_instruction>` heredoc still references the `[status]` marker and current-state marker assignment. Rewrite that heredoc in place so the script's embedded instruction matches the immutable-entry format.
 
 ## Approach
 
@@ -47,7 +48,7 @@ Coordinated changes across script, skill prose, and local tests:
 5. Keep the `<consume_context>` block **self-contained** — describe the read protocol inline, in full. Do **not** add a runtime pointer to `git_commit` (or any sibling) in the shipped skill: an agent running `update_changelog` gains nothing from being told to go look at another skill and is more likely to get distracted than helped. `git_commit` is only the implementer's model (see `## Context`); the protocol it demonstrates gets copied into this skill's own prose, not referenced from it.
 6. Extend `tests/update_changelog/script_tests/run.sh` so the local harness asserts the script prints a path (not the blob), the path remains readable after script exit, and the context file contains the expected `<changelog_day>` sections plus the immutable-entry `<entry_instruction>` format.
 
-Non-goals: don't change which commits a day selects — that's [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md); the script's `--after/--before` day window is correct and stays as-is. Don't add a compact/diffs-off mode unless the file-handoff alone proves insufficient — the file path plus paginated read should remove the overflow entirely, matching how `git_commit` handles 1000-file commits.
+Non-goals: don't change which commits a day selects — that's [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md); the script's `--after/--before` day window is correct and stays as-is. Don't add a compact/diffs-off mode unless the file-handoff alone proves insufficient — the file path plus paginated read should remove the overflow entirely, matching how `git_commit` handles 1000-file commits.
 
 ## Acceptance
 

@@ -7,7 +7,7 @@ A plugin of skills for day-to-day AI-assisted development: keeping git history a
 ### Git history
 
 - **git_commit**: stage new files and create one commit that captures the intended repository state, following the project's commit-message conventions.
-- **update_changelog**: build or update a day-grouped `CHANGELOG.md` from git history. It writes newest-first sections with status markers (`[active]`, `[changed later]`, `[superseded]`), and handles one day at a time to stay within context limits.
+- **update_changelog**: build or update a day-grouped `CHANGELOG.md` from git history. It writes newest-first immutable day sections with `- **Category:** Plain-English summary.` entries, and hands large per-day context through a readable file path so long histories stay consumable.
 
 ### Work tracking
 

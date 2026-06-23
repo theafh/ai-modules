@@ -28,7 +28,7 @@ against it.
 - Interaction with sibling tasks (cross-link, sequence deliberately):
   - [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md) owns `<enumerate_dates>` and which days a run (re)builds. This task owns *how* those day sections land in the file. They meet at the insert step — keep their wording consistent.
   - [changelog_immutable-entries-redesign.md](archive/changelog_immutable-entries-redesign.md) makes the common run purely additive at the top (no marker re-walk), which is what makes a single clean prepend possible.
-  - [changelog_large-output-protocol.md](changelog_large-output-protocol.md) governs reading the per-day blob; unrelated to the insert seam but part of the same write loop.
+  - [changelog_large-output-protocol.md](archive/changelog_large-output-protocol.md) governs reading the per-day blob; unrelated to the insert seam but part of the same write loop.
 
 ## Approach
 

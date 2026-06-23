@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# prepare_changelog_day.sh — emit one structured context blob for /update_changelog,
+# prepare_changelog_day.sh — write one structured context blob for /update_changelog,
 # covering every commit authored on a single calendar day.
 
 set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-prepare_changelog_day.sh — emit one structured context blob for /update_changelog.
+prepare_changelog_day.sh — write one structured context blob for /update_changelog.
 
 Usage:
   prepare_changelog_day.sh YYYY-MM-DD
@@ -15,9 +15,13 @@ Behavior:
   - Runs from any path inside a git repository.
   - Selects every commit whose author date falls on the given calendar day
     (local time zone, midnight to midnight inclusive).
-  - Prints commit subjects and bodies, the deduplicated repo-relative file list,
+  - Writes commit subjects and bodies, the deduplicated repo-relative file list,
     and the day's net per-file diff (first-of-day commit's parent through
-    last-of-day commit), with a generic placeholder for binary diffs.
+    last-of-day commit) to a fresh file under the system tmp dir, with a
+    generic placeholder for binary diffs.
+  - Prints exactly two lines to stdout: the context file's absolute path and a
+    one-line consumption directive. The context file remains readable after the
+    script exits.
 
 Notes:
   - The day diff is the net change between the first selected commit's parent
@@ -78,6 +82,17 @@ else
   range="${empty_tree}..${last_hash}"
 fi
 
+# Keep the returned context file outside tmp_dir: tmp_dir is trap-cleaned for
+# internal lists, while the caller must still be able to read the context after
+# this script exits. The full-template mktemp form works on BSD and GNU mktemp.
+tmp_root="${TMPDIR:-/tmp}"
+tmp_root="${tmp_root%/}"
+case "$tmp_root" in
+  /*) ;;
+  *) tmp_root="$(cd "$tmp_root" && pwd -P)" ;;
+esac
+ctx_file="$(mktemp "$tmp_root/update_changelog_day.${date_arg}.XXXXXX")"
+
 is_binary_diff() {
   local path="$1"
   local numstat
@@ -127,15 +142,20 @@ print_diffs() {
   printf '</diffs>\n'
 }
 
-printf '<changelog_day>\n'
-printf '<repo_root>%s</repo_root>\n' "$repo_root"
-printf '<date>%s</date>\n' "$date_arg"
-print_commits
-print_files_changed
-print_diffs
-cat <<EOF
+{
+  printf '<changelog_day>\n'
+  printf '<repo_root>%s</repo_root>\n' "$repo_root"
+  printf '<date>%s</date>\n' "$date_arg"
+  print_commits
+  print_files_changed
+  print_diffs
+  cat <<EOF
 <entry_instruction>
-Compose one day section for ${date_arg}. Write a "## ${date_arg} — {Day theme}" heading, one bullet per logical change in the format "- [status] **Category:** Plain-English summary.", and end the section with a "- **Files changed:** ..." bullet listing the paths from <files_changed> backtick-wrapped and comma-separated. Assign status markers by checking each entry against the current code state. Append the section to CHANGELOG.md immediately after the header so the file stays newest-first.
+Compose one day section for ${date_arg}. Write a "## ${date_arg} — {Day theme}" heading, one bullet per logical change in the format "- **Category:** Plain-English summary.", and end the section with a "- **Files changed:** ..." bullet listing the paths from <files_changed> backtick-wrapped and comma-separated. Append the section to CHANGELOG.md immediately after the header so the file stays newest-first.
 </entry_instruction>
 </changelog_day>
 EOF
+} > "$ctx_file"
+
+printf '%s\n' "$ctx_file"
+printf 'Read this entire file with the Read tool. Treat the file as the authoritative per-day source: consume every <commit> and <file_change> in order, continue with offset/limit if Read paginates, and use ordered grep/awk/sed slices only when paginated Read is impractical. Do NOT re-run git log, git diff, or git status, and do NOT pipe the blob through head.\n'

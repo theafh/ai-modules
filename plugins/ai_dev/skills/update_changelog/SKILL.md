@@ -1,7 +1,7 @@
 ---
 name: update_changelog
 description: Create or update a day-grouped, add-only CHANGELOG.md from git commit history. Use when asked to generate, refresh, or maintain a repository changelog. Produces newest-first day sections while keeping existing entries immutable and processes one day at a time to stay within context limits.
-version: 3.0.2
+version: 3.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -12,8 +12,14 @@ license: MIT
   <objective>Create or update a `CHANGELOG.md` in the repository root: a human-readable, day-grouped, add-only history derived from git commits, newest day first. Record later committed changes as new entries or day sections while preserving existing entries as immutable historical facts.</objective>
   <command_intent>build CHANGELOG.md, refresh changelog from git history, add the missing days to the changelog</command_intent>
   <tools>
-    <prepare_changelog_day>Run `scripts/prepare_changelog_day.sh YYYY-MM-DD` from this skill when it is available. The script emits one structured context blob for a single calendar day with the day's commit subjects and bodies, the deduplicated repo-relative file list, and per-file net diffs for the day, plus generic placeholders for binary files. Exits 1 with `no commits on <date>` when the date has no commits — skip silently.</prepare_changelog_day>
+    <prepare_changelog_day>Run `scripts/prepare_changelog_day.sh YYYY-MM-DD` from this skill when it is available. The script writes one structured context blob for a single calendar day to a file under the system tmp dir, with the day's commit subjects and bodies, the deduplicated repo-relative file list, per-file net diffs for the day, and generic placeholders for binary files. Its stdout prints exactly two lines: the context file's absolute path, then a one-line consumption directive. Exits 1 with `no commits on <date>` when the date has no commits — skip silently.</prepare_changelog_day>
   </tools>
+  <consume_context>
+    <full_read>Use the `Read` tool on the path printed by `scripts/prepare_changelog_day.sh` and read the entire file. This is the default path and works for normal-sized days.</full_read>
+    <paginated_read>If the file overflows `Read`'s default window, call `Read` again with `offset`/`limit` and continue in sequence until every byte is covered. Consume each page in order.</paginated_read>
+    <ordered_slicing_fallback>Only when the file is so large that paginated `Read` is impractical, use `grep`/`awk`/`sed` via Bash to split the file into ordered slices. Read those slices sequentially from the top of the file through the end, preserving the original order of `<commit>` and `<file_change>` sections.</ordered_slicing_fallback>
+    <hard_rules>Use the script's context file as the sole per-day source. Never re-derive the day with `git log`, `git diff`, or `git status`; never truncate the blob with `head`; never sample by filename. Iterate every `<commit>` and `<file_change>` section in order before composing the day section.</hard_rules>
+  </consume_context>
   <output_contract>
     <header>The file always begins with the H1 `# CHANGELOG — {Project Name}`, then a blank line, then the line stating that entries are grouped strictly by day, kept on their original implementation dates, and immutable once written. Substitute `{Project Name}` from the repo directory name, `package.json`, `Cargo.toml`, or the README's H1.</header>
     <day_section>One `## YYYY-MM-DD — {Day theme}` heading per calendar day that has commits, ordered newest-first. `{Day theme}` is a 2-5 word editorial summary of that day's dominant focus. End every day section with a horizontal rule (`---`).</day_section>
@@ -40,8 +46,9 @@ license: MIT
     <day_loop>
       For each selected date, oldest-first:
       <substeps>
-        <substep>Run `scripts/prepare_changelog_day.sh YYYY-MM-DD` to fetch that day's context blob in one call. If the script exits 1, skip the date silently.</substep>
-        <substep>Read every `<commit>` and `<file_change>` block. Aggregate related changes into logical entries, choose categories, and compose a 2-5 word day theme.</substep>
+        <substep>Run `scripts/prepare_changelog_day.sh YYYY-MM-DD` to produce that day's context file path. If the script exits 1, skip the date silently.</substep>
+        <substep>Read the returned context file according to `<consume_context>`, covering the full file before composing the day section.</substep>
+        <substep>Read every `<commit>` and `<file_change>` block from the consumed context. Aggregate related changes into logical entries, choose categories, and compose a 2-5 word day theme.</substep>
         <substep>Build the day section from the day theme, the entry bullets, and the `- **Files changed:** ...` bullet using the paths from `<files_changed>`. End the section with `---`.</substep>
         <substep>For a new day, insert the completed day section directly after the header block in `CHANGELOG.md`. For the reopened most recent recorded day, reconcile the existing section in place per `<last_recorded_day_reconciliation>`. Flush to disk before composing the next day so prior detail can fall out of working context.</substep>
       </substeps>
