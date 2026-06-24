@@ -10,7 +10,7 @@ These plugins give an AI coding agent the context a chat session forgets: a back
 
 Task does this for the work. Running a task through the skill-to-skill lifecycle, instead of handing it to a single one-shot implementer, forces each gap to surface and be filled on purpose. Wiki does this for the knowledge. The agent writes what it learns in its own words, and you correct a page when it reads wrong. Over many sessions the two of you converge, until the agent attaches the same meaning to what matters that you do. Just telling it never gets there.
 
-**Task is an async backlog that lives with the code.** It works like Jira or Trello, but for AI agents. You add to it now and act on it later, and both are easy for an agent to do. While you are deep in one change, you can drop a newly spotted bug or idea into a task and keep going. It waits there until you are ready to ship it, or until its description is detailed enough to hand off. Each task is self-contained: an agent can implement it from the file alone, even in a later session that never saw the conversation that created it. A bundled linter checks naming, frontmatter, and task size. The create → check → select → implement → audit → finish lifecycle gives each step its own skill. The read-only gates stay separate from the skills that change files, and they answer three questions without editing anything: is this ready to build, what should I work on next, and is it done?
+**Task is an async backlog that lives with the code.** It works like Jira or Trello, but for AI agents. You add to it now and act on it later, and both are easy for an agent to do. While you are deep in one change, you can drop a newly spotted bug or idea into a task and keep going. It waits there until you are ready to ship it, or until its description is detailed enough to hand off. Each task is self-contained: an agent can implement it from the file alone, even in a later session that never saw the conversation that created it. A bundled linter checks naming, frontmatter, and task size. The create → check → select → implement → audit → finish lifecycle gives each step its own skill, with an optional auto-check loop to repair readiness issues while keeping `task_check` as the gate. The read-only gates stay separate from the skills that change files, and they answer three questions without editing anything: is this ready to build, what should I work on next, and is it done?
 
 **Wiki is a knowledge base an AI can build and navigate on its own.** It finds itself from the current directory and holds far more context than a chat window. The content is interlinked Markdown pages, grouped by type: entities, concepts, comparisons, procedures, and more. Each page is written once as sources arrive, not rebuilt on every query. The agent writes the wiki, and you read it back with the agent's help. Because of this, it surfaces contradictions instead of hiding them, and it gets reshaped over time so it stays usable instead of decaying into scattered notes. It stays reachable through ordinary tools. And because it lives in the repo, the context it gathers compounds as the project grows, which makes later work easier, for both knowledge and code.
 
@@ -44,12 +44,17 @@ ai-modules/
 │       ├── .claude-plugin/plugin.json
 │       ├── .codex-plugin/plugin.json
 │       ├── README.md
+│       ├── agents/
+│       │   ├── auto_gate_task.md
+│       │   ├── auto_reviewer_task.md
+│       │   └── auto_verifier_task.md
 │       └── skills/
 │           ├── git_commit/
 │           ├── update_changelog/
 │           ├── task/
 │           ├── task_create/
 │           ├── task_check/
+│           ├── task_auto_check/
 │           ├── task_select/
 │           ├── task_implement/
 │           ├── task_audit/
@@ -90,16 +95,17 @@ An LLM wiki sits between a full RAG pipeline and a loose pile of notes. It is st
 
 ### ai_dev
 
-Skills for day-to-day AI-assisted development: keeping git history and changelogs clean, writing and formatting the instructions an AI reads, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
+Skills and agents for day-to-day AI-assisted development: keeping git history and changelogs clean, writing and formatting the instructions an AI reads, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
 
 - **git_commit**: a step-by-step commit workflow with a hardened prepare script that handles special-character paths and detects binary files one by one. It stages changes, works out a sensible commit grouping, and writes a message that matches the project's existing style. A sibling reference covers the manual path when the script can't run.
 - **update_changelog**: builds or refreshes a day-grouped `CHANGELOG.md` from git history. It writes newest-first immutable day sections with `- **Category:** Plain-English summary.` entries, and hands large per-day context through a readable file path so long histories stay consumable.
 - **task**: a project-local backlog of upcoming work, as plain-Markdown files under `tasks/` at the project root, with `tasks/archive/` for `finished` and `deferred` items. Each task is a self-contained brief that a single-shot AI coder could pick up and build. The bundled linter checks naming, frontmatter, status/location consistency, and a 300-line split limit. It complements the `wiki` skill: tasks track *what is still to do*, the wiki holds *what is durably known*.
 
-The single-task siblings run in lifecycle order, **create → check → select → implement → audit → finish**:
+The single-task siblings run in lifecycle order, **create → check → select → implement → audit → finish**, with `task_auto_check` available as an opt-in readiness repair loop between create/check and selection:
 
 - **task_create**: a focused front end over `task` that creates exactly one well-formed task file with little ceremony. It leaves the naming, frontmatter, body, and lint rules to the `task` skill instead of repeating them, so a one-shot "make a task for X" loads a narrow surface rather than the full backlog workflow.
 - **task_check**: decides whether one task is ready to hand to an implementer. It runs a structural check, then a content review (scope sizing, focus, complexity, contradictions, ambiguity, over-specification, behaviour framed as "not X"), and returns `spec_check`'s shape: a `# General assessment` paragraph plus a ranked `## Issues` list. A read-only gate *before* building. It is the counterpart to `task_audit`, which checks *after*.
+- **task_auto_check**: automatically drives one task toward readiness while reusing `task_check` as the only gate. Its helper agents (`auto_gate_task`, `auto_reviewer_task`, `auto_verifier_task`) report the gate result, propose focused repairs, verify intent-safe minimum edits, and stop at `ready` or a surfaced stuck state.
 - **task_select**: recommends what to work on next from the live backlog. It filters eligible tasks, finds dependencies and ordering, ranks by impact, implementation complexity, friction, and viable bug-fix priority, then names one unblocked task and its natural next action. A read-only step between readiness and implementation.
 - **task_implement**: builds one existing task file end to end, following a strict flow: read, load guardrails, understand the codebase, implement, test, verify (ported from staged-spec's `spec_implement`). It does the work and stops at a green test suite, leaving codebase verification to `task_audit` and close-out to `task_finish`.
 - **task_audit**: checks one task's claimed completion against the codebase. It walks every body item, acceptance check, and backing test, runs the suite, and returns a verdict in the `spec_audit` shape (`Success`, or an ordered `Gaps:` list with fixes). A read-only gate that changes nothing; it hands a clean pass to `task_finish` and gaps to `task_implement`.

@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one new task file for one upcoming work item. Use when the user asks to make, add, file, write, or capture a single task or todo. Use task for listing, querying, updating, archiving, linting, or multi task backlog work.
-version: 1.1.3
+version: 1.1.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -21,7 +21,7 @@ Activate when the user wants exactly one task file written:
 - "Capture this as a task" about a single piece of upcoming work.
 - A single follow-up item that surfaced mid-conversation and should persist as one task file.
 
-Route to the `task` skill instead when the user wants to list, query, update, refine, finish, implement, defer, archive, or lint tasks, or to derive several tasks from a larger document in one pass — those are the broader backlog workflows. Route to `task_select` when the user wants a recommendation about what backlog item to work on next.
+Route to the `task` skill instead when the user wants to list, query, update, refine, finish, implement, defer, archive, or lint tasks, or to derive several tasks from a larger document in one pass — those are the broader backlog workflows. Route to `task_auto_check` when the user wants an existing task repaired until `task_check` reports ready. Route to `task_select` when the user wants a recommendation about what backlog item to work on next.
 </when_to_activate>
 
 <authority>
@@ -67,13 +67,14 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 
 - `task_create` — write one task file **(this skill)**
 - `task_check` — readiness gate before building (read-only)
+- `task_auto_check` — autonomously repair one task until `task_check` reports ready
 - `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → select → implement → audit → finish, with fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
 </family>
 
 </task_create_skill>

@@ -1,7 +1,7 @@
 ---
 name: task_select
 description: Select and rank eligible live tasks from the project backlog. Use when the user asks what task to work on next, asks Codex to pick or prioritize backlog work, rank open tasks, choose from tasks/, or recommend the next task/action without editing task files.
-version: 1.0.1
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -21,7 +21,7 @@ Activate when the user wants backlog selection or prioritization:
 - "Rank my open tasks" / "prioritize tasks in this scope."
 - "Which task should I check, implement, or refine next?"
 
-Route elsewhere when the user wants to create a task (`task_create` or the base `task` skill), judge one named task's readiness (`task_check`), implement one chosen task (`task_implement`), verify a completed task (`task_audit`), close a task (`task_finish`), repair the tree (`task_fix`), or list/query tasks without a recommendation (the base `task` skill).
+Route elsewhere when the user wants to create a task (`task_create` or the base `task` skill), judge one named task's readiness (`task_check`), automatically repair one task until it is ready (`task_auto_check`), implement one chosen task (`task_implement`), verify a completed task (`task_audit`), close a task (`task_finish`), repair the tree (`task_fix`), or list/query tasks without a recommendation (the base `task` skill).
 </when_to_activate>
 
 <authority>
@@ -116,13 +116,14 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
+- `task_auto_check` — autonomously repair one task until `task_check` reports ready
 - `task_select` — choose and rank the next eligible task/action (read-only) **(this skill)**
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → select → implement → audit → finish, with fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
 </family>
 
 </task_select_skill>

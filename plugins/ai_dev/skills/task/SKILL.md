@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.5
+version: 1.3.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -79,8 +79,8 @@ Fields:
 - `updated` — ISO 8601 datetime, bumped on every edit and on every status change. See `<bump_updated>` for the legacy-backfill exception.
 - `status` — one of:
   - `open` — created and not yet checked.
-  - `checked` — `task_check` ran and found blocking issues.
-  - `ready` — implementation-ready, either from a clean `task_check` verdict or from the user declaring readiness through the apply-findings update flow.
+  - `checked` — `task_check` ran and found blocking issues, either directly or as the gate inside `task_auto_check`.
+  - `ready` — implementation-ready, either from a clean `task_check` verdict, from `task_auto_check` reaching that verdict, or from the user declaring readiness through the apply-findings update flow.
   - `implemented` — `task_implement` built the work.
   - `audited` — `task_audit` confirmed every body item, acceptance check, and required test over a current `implemented` task.
   - `finished` — closed out as done and archived.
@@ -104,7 +104,7 @@ Both `created` (set once, on a fresh task) and `updated` (bumped on every edit, 
 </frontmatter>
 
 <lifecycle_responsibility>
-Each stage records the furthest lifecycle point it establishes: `task_create` writes `open`; `task_check` writes `ready` on a clean verdict and `checked` when blocking findings remain; the apply-findings update flow writes `ready` only when the user declares readiness before implementation; `task_implement` writes `implemented`; `task_audit` writes `audited` only for a clean, complete verdict over a current `implemented`; `task_finish` writes `finished` for done work or `deferred` for parked work.
+Each stage records the furthest lifecycle point it establishes: `task_create` writes `open`; `task_check` writes `ready` on a clean verdict and `checked` when blocking findings remain; `task_auto_check` edits the task body and reuses `task_check` for those `ready` / `checked` stamps; the apply-findings update flow writes `ready` only when the user declares readiness before implementation; `task_implement` writes `implemented`; `task_audit` writes `audited` only for a clean, complete verdict over a current `implemented`; `task_finish` writes `finished` for done work or `deferred` for parked work.
 </lifecycle_responsibility>
 
 <backward_move_guard>
@@ -329,13 +329,14 @@ This base `task` skill is the hub of a `task_*` family and can do all of the bac
 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
+- `task_auto_check` — autonomously repair one task until `task_check` reports ready
 - `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The natural chain is create → check → select → implement → audit → finish, with fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
 </family>
 
 </task_skill>
