@@ -2,8 +2,8 @@
 description: Establish the optional root UPPERCASE.md doc convention: document the tasks-vs-root filing rule, define ARCHITECTURE.md as an optional descriptive doc, and document the tiered adoption model.
 scope: plugins/ai_dev
 created: 2026-06-21T15:17:35
-updated: 2026-06-21T17:17:45
-status: open
+updated: 2026-06-24T18:45:14
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -11,7 +11,7 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-Define how the task family optionally recognizes standing project documents at the repo root, without adding any required ceremony. Two parts land together: the filing convention that separates task-system material from project-wide material, and an optional `ARCHITECTURE.md` as a descriptive project doc detached from the task lifecycle. Both are opt-in, so a bare task repo with no root docs keeps working exactly as it does today. This task also documents the family's tiered adoption model so the optional tiers are discoverable.
+Define how the task family optionally recognizes standing project documents at the repo root, without adding any required ceremony. Three deliverables land together: the filing convention that separates task-system material under `tasks/` from project-wide material at the root, an optional `ARCHITECTURE.md` as a descriptive project doc detached from the task lifecycle and distinct from the falsifiable intent guardrail, and the family's tiered adoption model that makes the optional tiers and their dependencies discoverable. All three are opt-in, so a bare task repo with no root docs keeps working exactly as it does today, and a project adopts richness only as it reaches for it.
 
 ## Context
 
@@ -23,13 +23,12 @@ The tiered adoption model this task documents: the plain task chain by default, 
 
 ## Approach
 
-Document the filing convention (task-system material under `tasks/`, project-wide material as root `UPPERCASE.md`) in the task family's standing documentation — the plugin README and the base `task` skill prose — as the single statement of the rule. Document `ARCHITECTURE.md` as an optional descriptive convention, explicitly contrasted with both the intent contract (falsifiable guardrail) and any index/status-board role (which it must not take on). Document the tiered adoption model so the optional tiers and their dependencies are discoverable. Hold the line that none of these become a hard requirement: the default experience is unchanged.
+Document the filing convention (task-system material under `tasks/`, project-wide material as root `UPPERCASE.md`) in the base `task` skill prose — the family's standing documentation — as the single statement of the rule, keeping it skill-based and deployment-agnostic rather than tied to any one repo's README. Document `ARCHITECTURE.md` as an optional descriptive convention, explicitly contrasted with both the intent contract (falsifiable guardrail) and any index/status-board role (which it must not take on). Document the tiered adoption model so the optional tiers and their dependencies are discoverable. Hold the line that none of these become a hard requirement: the default experience is unchanged.
 
 Non-goal: making architecture or any root doc mandatory, and re-introducing a maintained global index/status board. The test methodology doc and its wiring are owned by the sibling testing task, not this one.
 
 ## Acceptance
 
-- The filing convention (task-system material under `tasks/`, project-wide material as root `UPPERCASE.md`) is documented once in the task family's standing documentation.
+- The filing convention (task-system material under `tasks/`, project-wide material as root `UPPERCASE.md`) is documented once in the base `task` skill prose.
 - `ARCHITECTURE.md` is documented as an optional descriptive doc, explicitly distinct from the intent contract and explicitly not a status-board or stage index.
 - The tiered adoption model (plain chain → optional review → autonomous layer plus intent guardrail → optional standing docs) is documented so each tier and its prerequisites are discoverable.
-- None of these add a hard requirement: a check confirms a bare task repo with no root docs lints and operates unchanged, and `make lint` passes with the documentation updates in place.
