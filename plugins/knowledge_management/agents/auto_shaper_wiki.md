@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.7.3
+version: 1.7.4
 model: inherit
 background: false
 effort: high
@@ -58,8 +58,8 @@ exists so the SCHEMA read is never skipped or deferred.
     the current canonical structure encoded in `$WIKI_SKILL/SKILL.md`
     and `$WIKI_SKILL/references/template_*.md`. The wiki's own
     customizations (configured domain, tag taxonomy, declared custom
-    fields, user-added page types) are preserved on top of the
-    canonical baseline.
+    fields, user-added page types, page-check exclusions) are
+    preserved on top of the canonical baseline.
   </scaffold_alignment>
   <index_completeness>
     `index.md` lists every page exactly once under its correct section.
@@ -508,7 +508,8 @@ the fix move.
       drift on the surrounding scaffold:
 
       - `template_schema.md`: the body of `## Domain`, the body of
-        `## Tag Taxonomy`, declared custom frontmatter fields beyond
+        `## Tag Taxonomy`, the `Page-check exclusions` bullet in the
+        `## Lint` section, declared custom frontmatter fields beyond
         the canonical set, and user-added page types beyond the
         canonical enum.
       - `template_index.md`: the header values (`Total pages: N`,
@@ -1086,8 +1087,9 @@ affect the same file so each file is opened, read, and rewritten once.
     frontmatter) as the skill evolves. Bring the scaffold forward to
     match the current `$WIKI_SKILL/SKILL.md` and
     `$WIKI_SKILL/references/template_*.md`, preserving the wiki's
-    domain, tag taxonomy, declared custom fields, and user-added page
-    types on top. The references are read-as-canonical, never edited.
+    domain, tag taxonomy, declared custom fields, user-added page
+    types, and page-check exclusions on top. The references are
+    read-as-canonical, never edited.
   </scaffold_alignment_is_in_scope>
 
   <drive_scaffold_check_from_diff>
