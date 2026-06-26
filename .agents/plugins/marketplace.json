@@ -20,7 +20,7 @@
         "path": "./plugins/knowledge_management"
       },
       "description": "Skills and agents for building, maintaining, and distilling a persistent, interlinked knowledge base. Ships the wiki, wiki_wrapup, wiki_import, wiki_fix, executive_summary, and spr skills, and the auto_shaper_wiki agent.",
-      "version": "1.10.4",
+      "version": "1.10.5",
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"

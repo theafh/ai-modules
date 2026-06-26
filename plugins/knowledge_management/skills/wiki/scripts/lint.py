@@ -245,17 +245,52 @@ def parse_frontmatter(text: str) -> tuple[dict | None, str]:
 # File iteration
 # ---------------------------------------------------------------------------
 
+# A single bullet in SCHEMA.md's ``## Lint`` section names extra top-level
+# directories to skip during the page walk: ``- Page-check exclusions: a, b``
+# (comma-separated dir names directly under the wiki root). ``-``/``*``/``+``
+# are all accepted as the marker; the label is matched case-insensitively.
+LINT_EXCLUDE_RE = re.compile(
+    r"^\s*[-*+]\s+page-check exclusions\s*:\s*(.+)$",
+    re.IGNORECASE,
+)
+
+
 def load_excluded_roots(wiki: Path) -> set[str]:
-    """Roots to skip during the page walk. Always skips ``raw`` and
-    ``_archive``; extra roots come from a ``<!-- lint-exclude: a, b -->``
-    directive in SCHEMA.md (comma-separated dir names). Absent directive =
-    default behaviour, so existing vaults are unaffected."""
+    """Top-level directory names to skip during the page walk.
+
+    Always skips ``raw`` and ``_archive``. A wiki adds more by listing them
+    on a ``- Page-check exclusions: a, b`` bullet inside a ``## Lint``
+    section in SCHEMA.md — directory names directly under the wiki root,
+    comma-separated, additive to the two defaults. A vault that mixes
+    curated pages with operational or imported subtrees keeps the page rules
+    off those trees this way.
+
+    The scan is scoped to the ``## Lint`` section and skips fenced code
+    blocks within it, mirroring ``load_taxonomy`` and the body scanners — so
+    the bullet shown inside a fenced example (in the canonical template, or
+    where a vault documents its own list) is never read as live config.
+    Absent section or bullet leaves the default ``{raw, _archive}``
+    unchanged, so existing vaults are unaffected.
+    """
     roots = {"raw", "_archive"}
     schema = wiki / "SCHEMA.md"
-    if schema.is_file():
-        m = re.search(r"<!--\s*lint-exclude:\s*([^>]*?)-->", schema.read_text())
+    if not schema.is_file():
+        return roots
+    section = re.search(
+        r"##\s+Lint(.+?)(?=\n##\s|\Z)", schema.read_text(encoding="utf-8"), re.DOTALL
+    )
+    if not section:
+        return roots
+    in_fence = False
+    for line in section.group(1).splitlines():
+        if FENCE_RE.match(line.strip()):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = LINT_EXCLUDE_RE.match(line)
         if m:
-            roots |= {p.strip() for p in m.group(1).split(",") if p.strip()}
+            roots |= {p.strip().strip("`*_'\"") for p in m.group(1).split(",") if p.strip()}
     return roots
 
 

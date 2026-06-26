@@ -240,3 +240,22 @@ When new information conflicts with existing content:
 2. If genuinely contradictory, note both positions with dates and sources
 3. Mark the contradiction in frontmatter: `contradictions: [page-name]`
 4. Flag for user review in the lint report
+
+## Lint
+
+`scripts/lint.py` walks every Markdown file under the type folders and always
+skips the `raw/` and `_archive/` trees. A vault that also holds non-page
+folders — synced notes, generated artifacts, imported working files — names
+them here so the page rules (frontmatter, links, structure, orphans) stay off
+files that were never meant to be wiki pages:
+
+```text
+- Page-check exclusions: notes, generated
+```
+
+List the directory names directly under the wiki root, comma-separated, on one
+`Page-check exclusions:` bullet. The names are additive to the always-skipped
+`raw/` and `_archive/`, not a replacement. Omit the bullet when the vault holds
+only pages — the default skips the two standard trees and nothing else. The
+linter reads this bullet only outside fenced code blocks, so the example above
+is documentation rather than a live setting.

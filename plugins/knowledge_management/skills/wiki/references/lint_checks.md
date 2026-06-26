@@ -24,6 +24,10 @@ Reference for `scripts/lint.py` — what each check catches and which severity b
 | markdown style | bullet style (`-` only); header level skipping; trailing punctuation in headers; fenced code without language identifier; multiple consecutive blank lines; bare URLs; list-marker spacing; trailing newline (matches the `format_markdown` skill) |
 | wikilink | `[[target]]` or `[[target\|alias]]` wikilink-style references outside of fenced code blocks and inline code. The wiki uses standard markdown links `[text](relative/path.md)` so cross-references resolve in plain renderers and feed the broken-link check; the warning includes a hint suggesting the equivalent markdown form. |
 
+## Page-walk scope
+
+The per-page checks (frontmatter, links, structure, orphans, tags, size, and the rest) run on every Markdown file under the type folders. The walk always skips the `raw/` and `_archive/` trees; a vault extends that skip set by listing extra top-level directories on a `- Page-check exclusions: a, b` bullet in `SCHEMA.md`'s `## Lint` section (documented in `template_schema.md`). The names are read only outside fenced code blocks, so a documented example never becomes a live exclusion.
+
 ## Severity buckets
 
 - **blocking** — broken links, broken `sources:` frontmatter entries, missing or malformed frontmatter, missing `index.md`, missing or unparseable `SCHEMA.md`, pages filed outside their `<type>s/<slug>.md` location. The script exits 1 while any blocking finding remains.
