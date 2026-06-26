@@ -245,6 +245,20 @@ def parse_frontmatter(text: str) -> tuple[dict | None, str]:
 # File iteration
 # ---------------------------------------------------------------------------
 
+def load_excluded_roots(wiki: Path) -> set[str]:
+    """Roots to skip during the page walk. Always skips ``raw`` and
+    ``_archive``; extra roots come from a ``<!-- lint-exclude: a, b -->``
+    directive in SCHEMA.md (comma-separated dir names). Absent directive =
+    default behaviour, so existing vaults are unaffected."""
+    roots = {"raw", "_archive"}
+    schema = wiki / "SCHEMA.md"
+    if schema.is_file():
+        m = re.search(r"<!--\s*lint-exclude:\s*([^>]*?)-->", schema.read_text())
+        if m:
+            roots |= {p.strip() for p in m.group(1).split(",") if p.strip()}
+    return roots
+
+
 def iter_wiki_pages(wiki: Path) -> Iterator[Path]:
     """Yield every page in the wiki, regardless of folder organization.
 
@@ -253,7 +267,7 @@ def iter_wiki_pages(wiki: Path) -> Iterator[Path]:
     root (SCHEMA.md, index.md, log.md and any other root-level markdown),
     the ``raw/`` source tree, the ``_archive/`` tree, and hidden directories.
     """
-    excluded_roots = {"raw", "_archive"}
+    excluded_roots = load_excluded_roots(wiki)
     for path in sorted(wiki.rglob("*.md")):
         if path.parent == wiki:
             continue
