@@ -801,6 +801,9 @@ merge_json_key() {
   if $DRY_RUN; then
     SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
     info "would-merge" "${target} <- .${key} from ${source}"
+    if [[ -n "$hooks_dir" ]]; then
+      info "would-rewrite" "./hooks/ command paths -> ${hooks_dir}/"
+    fi
     return 0
   fi
 
@@ -1252,6 +1255,13 @@ install_for_app() {
       ;;
     hook)
       local src_ext="${source_abs##*.}"
+      case "$src_ext" in
+        sh|json) ;;
+        *)
+          info "skip" "[$name] not an executable hook or hook config"
+          return 0
+          ;;
+      esac
       case "$app_id" in
         vscode)
           local dest_dir="${app_dir}/hooks"
@@ -1302,6 +1312,25 @@ install_for_app() {
               hooks_dir="${app_dir}/hooks"
             fi
             merge_json_key "$source_abs" "${app_dir}/settings.json" "hooks" "$app_id" "$type" "$hooks_dir"
+          elif [[ "$src_ext" == "sh" ]]; then
+            local dest_dir="${app_dir}/hooks"
+            ensure_dir "$dest_dir"
+            local dest_file
+            dest_file="${dest_dir}/$(basename "$source_abs")"
+            if [[ ${#replacement_specs[@]} -gt 0 ]]; then
+              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" "${replacement_specs[@]}"
+            else
+              copy_file "$source_abs" "$dest_file" "$app_id" "$type"
+            fi
+            if ! $DRY_RUN; then chmod +x "$dest_file"; fi
+          fi
+          ;;
+        codex)
+          if [[ "$src_ext" == "json" ]]; then
+            # Only deploy the Codex config-layer hook config; skip Claude/plugin configs.
+            [[ "$source_abs" == *codex-hooks* ]] || { info "skip" "[$name] not a Codex hook config"; return 0; }
+            local hooks_dir="${app_dir}/hooks"
+            merge_json_key "$source_abs" "${app_dir}/hooks.json" "hooks" "$app_id" "$type" "$hooks_dir"
           elif [[ "$src_ext" == "sh" ]]; then
             local dest_dir="${app_dir}/hooks"
             ensure_dir "$dest_dir"

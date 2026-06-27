@@ -1,8 +1,9 @@
 {
   "name": "ai_dev",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Skills and agents for everyday AI-assisted development: structured git commits, day-grouped changelog maintenance, project-local task and todo tracking as plain-markdown files (a base task skill plus create, check, auto-check, select, implement, audit, finish, and fix siblings with auto_*_task helper agents), writing and formatting AI instructions (prompts, rules, skill files, agent definitions), harness portability for bundled scripts and plugin wiring, and language style guides for markdown, Python, and Rust.",
   "author": { "name": "Andreas F. Hoffmann" },
   "license": "MIT",
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
 }

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$(git rev-parse --show-toplevel)/plugins/ai_dev/hooks/charter_guardrail.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
