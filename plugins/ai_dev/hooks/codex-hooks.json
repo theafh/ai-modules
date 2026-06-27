@@ -9,6 +9,15 @@
             "command": "./hooks/charter_guardrail.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/charter_guardrail.sh"
+          }
+        ]
       }
     ]
   }
