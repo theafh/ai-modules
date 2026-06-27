@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.6
+version: 1.3.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -33,6 +33,10 @@ The wiki skill captures durable knowledge (concepts, procedures, references). Th
 <architecture>
 ```text
 <project-root>/
+├── CHARTER.md?       # optional hard project-purpose guardrail
+├── ARCHITECTURE.md?  # optional descriptive project architecture
+├── FEATURES.md?      # optional behaviour ledger
+├── TESTING.md?       # optional project-specific testing notes
 └── tasks/
     ├── <scope>_<name>.md      # open tasks
     ├── <scope>_<name>.md
@@ -41,8 +45,14 @@ The wiki skill captures durable knowledge (concepts, procedures, references). Th
         └── <scope>_<name>.md
 ```
 
-The tree is intentionally two layers — root for open, `archive/` for everything closed. No further nesting. Scope sits in the filename, not in a folder.
+The filing convention has one canonical split: material directly about the task system lives under `tasks/`, and project-wide standing material lives at the repo root as optional `UPPERCASE.md` docs. The task tree stays intentionally two layers — `tasks/` for live work, `tasks/archive/` for closed work. No further task nesting. Scope sits in the filename, not in a folder. A bare project with only `tasks/` remains complete.
 </architecture>
+
+<standing_doc_consumption>
+Resolve the project root from the base `<discover>` step, then gate each optional standing-doc read with POSIX `test -f "$root/<DOC>.md"`. On a hit, the consuming skill or agent reads the doc for the purpose named at its touchpoint; on a miss, it continues unchanged and raises no missing-doc error.
+
+`CHARTER.md` is the top guard: any skill or agent about to write or change task content validates the proposed content against the charter's boundaries and invariants and stops on a violation. The softer docs inform work without blocking it: `FEATURES.md` and `ARCHITECTURE.md` provide prior-art and design context for task creation, `TESTING.md` provides project-specific testing details for implementation and audit, and `ARCHITECTURE.md` is refreshed during finish when completed work extends the design.
+</standing_doc_consumption>
 
 <file_format>
 
@@ -156,8 +166,9 @@ Keep each task scoped to **one** atomic item. Size by cohesion when one change s
 <readiness_checklist>
 The readiness lens for one task file, judged against the self-sufficiency bar `<body>` defines. It lives here as the family's single source: judge a draft against it before writing the file, and judge an existing task against it before handing it to an implementer.
 
-1. **Structural check first.** Confirm the body opens with a single `# Title` and carries the `## Goal` / `## Context` / `## Approach` / `## Acceptance` sections, with valid frontmatter, per `<body>` and `<file_format>`. A one-shot implementer follows structure literally, so a structural gap is high-severity — run this before the content lens.
-2. **Content lens.** Read the task thoroughly and surface every issue that could derail a correct, complete one-shot implementation:
+1. **Charter check.** When `CHARTER.md` exists at the project root, validate the task content against its boundaries and invariants. Surface every conflict as a readiness issue, leave the task body unchanged, and keep the task out of `ready` until the conflict is resolved.
+2. **Structural check.** Confirm the body opens with a single `# Title` and carries the `## Goal` / `## Context` / `## Approach` / `## Acceptance` sections, with valid frontmatter, per `<body>` and `<file_format>`. A one-shot implementer follows structure literally, so a structural gap is high-severity — run this before the content lens.
+3. **Content lens.** Read the task thoroughly and surface every issue that could derail a correct, complete one-shot implementation:
    - **Scope sizing** — the most compact scope that still delivers a coherent, independently testable unit. Judge cohesion as well as size: shared rationale, shared edit surface, and one acceptance story favor one task; independent items, duplicated rationale, or 300-line risk favor splitting. Flag too-large (multi-pass risk, past the 300-line split) and too-small (coordination overhead, no standalone capability).
    - **Focus** — one atomic item. Flag scope creep that belongs in a sibling task and should be cross-linked rather than folded in.
    - **Complexity** — implementable in a single pass. Flag hidden multi-step or cross-cutting work.
@@ -199,6 +210,8 @@ Run every step in order:
 
 <gather>
 Confirm the user's intent and gather enough material — current state, target behaviour, relevant files — to fill the body sections in `<body>`. If context is too thin to write something a single-shot AI coder could implement from, ask one sharp clarifying question before writing.
+
+When `FEATURES.md` and/or `ARCHITECTURE.md` exist at the project root, read them before the prior-art codebase scan: `FEATURES.md` supplies higher-signal existing behaviour, and `ARCHITECTURE.md` supplies design context. When either doc is absent, continue unchanged.
 
 For an incident-shaped request — a failure case, an error, a "when X happens it breaks" — settle the altitude as part of gathering, as a decision rather than a question: decide from the request and the surrounding code whether the task delivers the point-fix for the reported case or the general behaviour whose absence caused it, and default to the point-fix when the evidence supports nothing more. Record the choice as an explicit clause in the task's `## Goal` — the point-fix for the named case, or the behaviour definition with the incident as its motivating case — and surface it among the assumptions the create report names, so the user's reply is the correction point.
 
@@ -274,7 +287,8 @@ When a task is finished or being dropped, run all five steps:
 2. Bump `updated` to the current datetime.
 3. Move the file from `<tasks>/` to `<tasks>/archive/` with `git mv` (or plain `mv` if the project is not a git repo). The filename does not change.
 4. Update cross-references. Re-point any link inside the moved task that still names a sibling at `<tasks>/` to its new relative path. Then scan the whole tasks tree — `tasks/` and `tasks/archive/` alike (e.g. `rg` the moving filename across both) — for inbound links to the moving file, and rewrite every hit to either point at the archived location or convert to plain text plus `(archived)` when the link is no longer load-bearing.
-5. Run `python3 scripts/lint.py --quiet` and resolve every blocking finding before declaring the archive complete.
+5. When closing as `finished`, `ARCHITECTURE.md` exists at the project root, and the completed work extended the system's design, update `ARCHITECTURE.md` in the same archive pass. When the doc is absent or the task did not change the design, continue unchanged.
+6. Run `python3 scripts/lint.py --quiet` and resolve every blocking finding before declaring the archive complete.
 </archive>
 
 <lint>
@@ -336,7 +350,7 @@ This base `task` skill is the hub of a `task_*` family and can do all of the bac
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The family layers as a graduated drift-prevention spectrum: the plain manual chain is the default and fences nothing; `task_auto_check` adds the optional readiness loop; autonomous writers, including future implementer and shaper surfaces, carry the hard `CHARTER.md` guardrail; and softer standing docs inform work through the verified test-discipline rule, the descriptive `ARCHITECTURE.md`, and the `FEATURES.md` ledger. `ARCHITECTURE.md` describes goals, stack, and design decisions; it is distinct from the charter's falsifiable boundary role and from any status-board, stage-index, or build-order view. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
 </family>
 
 </task_skill>

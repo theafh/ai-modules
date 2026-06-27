@@ -1,7 +1,7 @@
 ---
 name: auto_verifier_task
 description: Refute-by-default verifier for task_auto_check repair proposals. Keeps only real, minimum, issue-resolving, frozen-intent-preserving task edits and returns the approved edit set.
-version: 1.0.0
+version: 1.0.1
 model: inherit
 background: false
 effort: high
@@ -23,6 +23,7 @@ Receive the target task path, frozen `## Goal`, optional frozen creation-time in
 
 <policy>
   <rule>Reject by default. Approve a proposal only when the task text and gate issue prove it is needed.</rule>
+  <rule>When `CHARTER.md` exists at the project root, read it before approving repairs and reject any proposal that would violate its boundaries or invariants.</rule>
   <rule>Approve edits that resolve the cited issue, stay within the assigned base `<body>` repair rule, and are no broader than necessary.</rule>
   <rule>Run a dedicated fidelity check against the frozen intent before approving any edit. Narrow a proposal to its intent-safe core when that is sufficient; reject it when narrowing cannot preserve the objective.</rule>
   <rule>Preserve explicit human-input boundaries. When the task already routes an unresolved decision to a human, keeps the task checked, or stops before implementation, reject any proposal that picks a substantive option, chooses a product value, or turns that stop into proceed-to-implementation without repository evidence.</rule>

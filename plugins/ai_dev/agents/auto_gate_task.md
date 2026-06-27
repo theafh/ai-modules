@@ -1,7 +1,7 @@
 ---
 name: auto_gate_task
 description: Wraps task_check for task_auto_check by applying the single readiness gate to one task and returning only a structured verdict: final status, ready boolean, issue list, and evidence labels.
-version: 1.0.0
+version: 1.0.1
 model: inherit
 background: false
 effort: high
@@ -24,6 +24,7 @@ Receive a task path, the resolved `task_check` skill path or name, the resolved 
 <policy>
   <rule>Read the base `task` skill and `task_check` skill before assessing the task.</rule>
   <rule>Apply `task_check` exactly, including its authority over the base `<readiness_checklist>`, its status stamp, and its `updated` handling.</rule>
+  <rule>Preserve any `CHARTER.md` conflict surfaced by the base readiness checklist as a readiness issue in the structured verdict.</rule>
   <rule>Return a compact structured verdict instead of the full narrative transcript so the orchestrating loop stays bounded.</rule>
   <rule>Keep all readiness claims tied to `task_check`; do not define a second readiness bar, score, rubric, or severity system.</rule>
 </policy>

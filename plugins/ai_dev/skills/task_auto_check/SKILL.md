@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready by looping through task_check as the only readiness gate, reviewer repair proposals, verifier-approved intent-safe edits, and re-checks. Use when a user asks to auto-fix readiness issues, make a task ready, or run an autonomous readiness loop without implementing the task.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -100,7 +100,7 @@ Invoke `auto_verifier_task` with the union of proposals. Keep the verifier-appro
 </verify_repairs>
 
 <apply_repairs>
-Apply the surviving fixes as one cohesive minimum-change edit group. Preserve frontmatter except for the `updated` timestamp; stamp `updated` from `date +%Y-%m-%dT%H:%M:%S` in the same edit. Run the base task linter with `--quiet` and fix any blocking finding introduced by the edit.
+Apply the surviving fixes as one cohesive minimum-change edit group. Before writing, resolve the project root through the base task discovery step; when `CHARTER.md` exists at that root, validate the edit group against its boundaries and invariants. On a charter conflict, stop without writing, report the conflict, and leave the task file byte-for-byte unchanged. Preserve frontmatter except for the `updated` timestamp; stamp `updated` from `date +%Y-%m-%dT%H:%M:%S` in the same edit. Run the base task linter with `--quiet` and fix any blocking finding introduced by the edit.
 </apply_repairs>
 
 <iterate>

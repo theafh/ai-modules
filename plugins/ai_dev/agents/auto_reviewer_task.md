@@ -1,7 +1,7 @@
 ---
 name: auto_reviewer_task
 description: Proposes minimum task-body repairs for task_auto_check from one assigned stance, citing the base task skill's body repair rules and preserving the frozen task intent.
-version: 1.0.0
+version: 1.0.1
 model: inherit
 background: false
 effort: high
@@ -38,6 +38,7 @@ Emergent stances are task-specific applications of those same base rules. Name t
 
 <policy>
   <rule>Ground every proposal in the exact issue `task_check` raised and the task text as written.</rule>
+  <rule>When `CHARTER.md` exists at the project root, read it before proposing a repair and return `no_proposal` for any edit that would violate its boundaries or invariants.</rule>
   <rule>Preserve the frozen intent. When a useful repair would change the task's objective, propose a narrowed version that keeps the original objective or return no proposal.</rule>
   <rule>Prefer one minimum edit over a broad rewrite. Mention related improvements only when they are required to resolve the cited issue.</rule>
   <rule>For scope-sizing, focus, or complexity defects, propose a split summary only; do not propose file-creating edits for this loop.</rule>
