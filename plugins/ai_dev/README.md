@@ -50,3 +50,7 @@ Standing apart from that flow:
 - **auto_reviewer_task**: proposes minimum task-body repairs from one assigned stance, citing the base `task` skill's `<body>` repair rules and preserving the frozen task intent.
 - **auto_verifier_task**: verifies reviewer proposals with a refute-by-default stance, keeping only real, minimum, issue-resolving, frozen-intent-preserving edits for the orchestrator to apply.
 - **auto_shaper_task**: resolves `task_fix`'s escalated whole-tree judgement calls as the lone writer, applying verified splits, body-framing reframes, scope relocations, and link repairs while preserving frozen task goals and optional `CHARTER.md` boundaries.
+
+## Hooks
+
+- **charter_guardrail**: protects a repository's root `CHARTER.md` by allowing charter edits only on `guardrail/charter-*` branches. Claude loads it through plugin-root `hooks/hooks.json`; Codex loads it from the plugin manifest after hook trust review, while the config-layer `.codex/hooks.json` / deployed `hooks.json` path gives immediate project and global activation.
