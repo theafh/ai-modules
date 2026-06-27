@@ -2,12 +2,16 @@
 description: Cut auto_shaper_wiki token consumption from unconditional full-file reads — make orient reads conditional and switch the page walk to Grep-first, bounded reads.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-13T01:47:36
-status: open
+updated: 2026-06-27T11:12:00
+status: deferred
 reported-by: Andreas Hoffmann
 ---
 
 # Stop the auto-shaper's unconditional full-file reads (orient + page walk)
+
+## Deferral note
+
+Deferred 2026-06-27. The cost diagnosis here is sound, but the prescribed mechanism — grep-first reads, skipping the page walk when lint is clean, and a wiki-size read cap — would silently drop the reflective audit. An adversarial assessment found that ten of the agent's fourteen assess-phase checks are reflective (no grep signature, and the linter never produces them), so making a grep hit or a clean-lint result the precondition for reading a page removes exactly those findings on every page that is never read. The token goal is carried forward — the safe orient-phase trim preserved, and the page walk re-approached through change-scoped (incremental) reads rather than grep gating — in [the successor task](../wiki_auto-shaper-fidelity-safe-token-cost.md).
 
 ## Goal
 
@@ -15,7 +19,7 @@ A `auto_shaper_wiki` run consumes far fewer tokens by not reading large files it
 
 ## Context
 
-Two phases of [agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) read whole files unconditionally, and both costs scale badly:
+Two phases of [agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md) read whole files unconditionally, and both costs scale badly:
 
 1. **Orientation over-reads.** `<read_canonical_references>` lists several full-file reads as mandatory orientation: the wiki `SKILL.md` (tens of KB), `template_schema.md`, `template_index.md`, `template_log.md`, `init_wiki.sh`, and `raw_taxonomy.md`. Immediately afterward, `<scaffold_drift>` runs `diff -u` of the live `SCHEMA.md`/`index.md`/`log.md` against the same templates — which is the authoritative line-level comparison. So the bulk template reads are largely redundant with a diff the agent runs anyway.
 
@@ -25,7 +29,7 @@ The prose-level checks that genuinely need page content (instance leakage on pro
 
 Files involved:
 
-- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — `<read_canonical_references>`, `<page_first_iteration>`, `<scaffold_drift>`.
+- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md) — `<read_canonical_references>`, `<page_first_iteration>`, `<scaffold_drift>`.
 
 ## Approach
 

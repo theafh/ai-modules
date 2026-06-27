@@ -64,7 +64,7 @@ file to match status, re-point a link, re-stamp a drifted `created` after
 confirming with the user), so the agent indirection `wiki_fix` →
 `auto_shaper_wiki` uses for a large wiki is not warranted here — and it would
 add an agent definition to maintain plus the read-token cost flagged in
-[wiki_auto-shaper-read-token-cost](../wiki_auto-shaper-read-token-cost.md). A
+[wiki_auto-shaper-read-token-cost](wiki_auto-shaper-read-token-cost.md). A
 dedicated `task_auto_shaper` agent is **out of scope** for this task; revisit
 it as separate future work only if the tree grows enough that inline
 iteration strains a single context.
