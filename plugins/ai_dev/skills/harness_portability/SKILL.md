@@ -1,7 +1,7 @@
 ---
 name: harness_portability
 description: Cross-agent-harness and cross-OS portability review for runtime artefacts bundled inside skills and plugins. Use when creating, editing, reviewing, or troubleshooting shell scripts, Bash scripts, Python helpers, Node helpers, hooks, MCP servers, command wrappers, setup or install flows, plugin wiring, skill wording, execution instructions, initialization instructions, configuration instructions, path handling, environment variables, permissions, or provider-specific OpenAI Codex and Anthropic Claude behavior that must work across agent harnesses, macOS, and Linux.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -29,6 +29,7 @@ license: MIT
     <rule>Design scripts and wiring for the harness that will run the published skill or plugin, not only for the harness currently doing the implementation work.</rule>
     <rule>Use official provider documentation before encoding provider-specific behavior for OpenAI Codex, Anthropic Claude, or another targeted harness. Prefer current official docs over memory, observed behavior in one session, or assumptions from another agent surface.</rule>
     <rule>State the provider documentation source or the verification gap when a change depends on harness-specific execution, initialization, configuration, filesystem, environment, permission, or tool-discovery behavior.</rule>
+    <rule>Confirm a target harness loads plugin-bundled hooks at runtime before shipping a blocking or lifecycle hook inside a plugin; where it does not, register the live hook through the harness config layer and keep any plugin-manifest declaration as a forward-compatible path that activates once the harness runs plugin hooks. Anthropic Claude auto-discovers a plugin-root `hooks/hooks.json` with no manifest entry, while OpenAI Codex (mid-2026) fires hooks only from config-layer files such as `~/.codex/hooks.json` or `[hooks]` in `config.toml` — a plugin-declared hook installs but does not run (developers.openai.com/codex/hooks, developers.openai.com/codex/plugins/build; tracked open in openai/codex#16430).</rule>
     <rule>Use POSIX shell features for shell scripts unless the script declares and checks for a stronger shell requirement such as Bash. Use Python standard-library APIs for path, JSON, subprocess, temporary-file, and filesystem operations when they are more portable than shell pipelines.</rule>
     <rule>Resolve paths relative to the script, skill, plugin, or explicit user-provided root. Use environment variables and documented harness inputs for configuration; keep user-specific absolute paths out of published artefacts.</rule>
     <rule>Handle spaces, quotes, newlines, and special characters in file paths and user-provided values. Quote shell expansions, pass subprocess arguments as arrays where the language supports it, and keep data separate from command strings.</rule>
@@ -61,6 +62,7 @@ license: MIT
     <shell_portability>Shell syntax, utilities, and flags work on macOS and Linux or are guarded with fallbacks.</shell_portability>
     <language_runtime>Python, Node.js, or other runtime code uses portable standard APIs for filesystem, process, encoding, and temporary-file behavior.</language_runtime>
     <harness_wiring>Skill/plugin prose explains execution and configuration through documented harness behavior rather than current-session implementation details.</harness_wiring>
+    <plugin_hook_runtime>A blocking or lifecycle hook shipped inside a plugin is verified to load at runtime on each target harness, with config-layer registration where the harness does not execute plugin-bundled hooks.</plugin_hook_runtime>
     <provider_docs>Provider-specific claims are checked against official OpenAI Codex, Anthropic Claude, or other targeted provider documentation.</provider_docs>
     <failure_modes>Missing dependency, unsupported OS, unsupported shell, and missing config errors are actionable for a future agent.</failure_modes>
     <verification>Verification covers the touched runtime path, or the remaining unverified surfaces are named explicitly.</verification>
