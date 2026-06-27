@@ -1,7 +1,7 @@
 ---
 name: auto_reviewer_task
 description: Proposes minimum task-body repairs for task_auto_check and read-side task_fix escalation, citing the base task skill's body repair rules and preserving frozen task intent.
-version: 1.0.1
+version: 1.0.2
 model: inherit
 background: false
 effort: high

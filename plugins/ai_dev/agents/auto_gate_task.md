@@ -1,7 +1,7 @@
 ---
 name: auto_gate_task
 description: Wraps task_check for task_auto_check by applying the single readiness gate to one task and returning only a structured verdict: final status, ready boolean, issue list, and evidence labels.
-version: 1.0.1
+version: 1.0.2
 model: inherit
 background: false
 effort: high

@@ -1,7 +1,7 @@
 ---
 name: auto_verifier_task
 description: Refute-by-default verifier for task_auto_check and auto_shaper_task proposals. Keeps only real, minimum, issue-resolving, frozen-intent-preserving task edits or writer-executed structural plans.
-version: 1.0.1
+version: 1.0.2
 model: inherit
 background: false
 effort: high
