@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready by looping through task_check as the only readiness gate, reviewer repair proposals, verifier-approved intent-safe edits, and re-checks. Use when a user asks to auto-fix readiness issues, make a task ready, or run an autonomous readiness loop without implementing the task.
-version: 1.0.1
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -66,7 +66,7 @@ Add emergent task-specific stances only as concrete applications of those same b
 </reviewer_stances>
 
 <structural_split_boundary>
-When `task_check` raises scope-sizing, focus, or complexity defects whose proper repair creates or splits task files, stop the auto-edit path for that issue. Ask `auto_reviewer_task` for a split proposal summary, surface the loop as stuck for a human or `task_auto_shaper`, and leave the current file's body unchanged for that structural change.
+When `task_check` raises scope-sizing, focus, or complexity defects whose proper repair creates or splits task files, stop the auto-edit path for that issue. Ask `auto_reviewer_task` for a split proposal summary, surface the loop as stuck for a human or for `task_fix`'s `auto_shaper_task` escalation, and leave the current file's body unchanged for that structural change.
 </structural_split_boundary>
 
 <verification_standard>
@@ -118,7 +118,7 @@ Report the loop result with concrete evidence:
 - For each rejected or human-routed issue: the reason it was rejected or routed.
 - The exact verification commands run, including the base task linter.
 
-Close with the natural next step: `task_implement` when the task is `ready`, or human refinement / `task_auto_shaper` when the loop stops stuck. Do not point at `task_finish`, because readiness is before implementation.
+Close with the natural next step: `task_implement` when the task is `ready`, or human refinement / `task_fix` with `auto_shaper_task` escalation when the loop stops stuck on structural tree work. Do not point at `task_finish`, because readiness is before implementation.
 </output_contract>
 
 <family>

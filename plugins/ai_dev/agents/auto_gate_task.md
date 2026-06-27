@@ -1,7 +1,7 @@
 ---
 name: auto_gate_task
 description: Wraps task_check for task_auto_check by applying the single readiness gate to one task and returning only a structured verdict: final status, ready boolean, issue list, and evidence labels.
-version: 1.0.1
+version: 1.0.2
 model: inherit
 background: false
 effort: high
@@ -18,7 +18,7 @@ Return whether `task_check` stamped the task `ready` or `checked`, plus the veri
 </objective>
 
 <inputs>
-Receive a task path, the resolved `task_check` skill path or name, the resolved base `task` skill path or name, and any creation-time context the orchestrator supplies for the run.
+Receive a task path, the resolved `task_check` skill path or name, the resolved base `task` skill path or name, and any creation-time context the orchestrator supplies for the run. When `auto_shaper_task` invokes this agent for read-side evidence, also receive the `task_fix` escalation label that requested the readiness dimension.
 </inputs>
 
 <policy>
@@ -27,6 +27,7 @@ Receive a task path, the resolved `task_check` skill path or name, the resolved 
   <rule>Preserve any `CHARTER.md` conflict surfaced by the base readiness checklist as a readiness issue in the structured verdict.</rule>
   <rule>Return a compact structured verdict instead of the full narrative transcript so the orchestrating loop stays bounded.</rule>
   <rule>Keep all readiness claims tied to `task_check`; do not define a second readiness bar, score, rubric, or severity system.</rule>
+  <rule>Edit no files directly. For `task_auto_check`, any status write belongs to `task_check`; for `auto_shaper_task`, return evidence for the single writer to consume.</rule>
 </policy>
 
 <output_contract>

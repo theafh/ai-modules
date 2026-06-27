@@ -47,7 +47,8 @@ ai-modules/
 │       ├── agents/
 │       │   ├── auto_gate_task.md
 │       │   ├── auto_reviewer_task.md
-│       │   └── auto_verifier_task.md
+│       │   ├── auto_verifier_task.md
+│       │   └── auto_shaper_task.md
 │       └── skills/
 │           ├── git_commit/
 │           ├── update_changelog/
@@ -113,7 +114,7 @@ The single-task siblings run in lifecycle order, **create → check → select �
 
 Standing apart from that flow:
 
-- **task_fix**: audits and repairs the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs `lint.py`, auto-fixes the mechanical findings, and surfaces the judgement calls (splits, cross-task contradictions) for human review, then reports how many it resolved and how many it flagged. It is the task-backlog version of `wiki_fix`, done inline rather than through an agent because the tree is small and the fixes are mechanical. It works on the whole backlog, independent of any single task's lifecycle.
+- **task_fix**: audits and repairs the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs `lint.py`, auto-fixes the mechanical findings, and surfaces the judgement calls (splits, cross-task contradictions) for human review by default, then reports how many it resolved and how many it flagged. On explicit opt-in or confirmed scale, it escalates those calls to `auto_shaper_task`, the single serialized writer for verified splits, body-framing reframes, scope relocations, and link repairs. It works on the whole backlog, independent of any single task's lifecycle.
 - **ai_instruction_writing**: writes any artefact an AI reads (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of "don't" rules the model has to invert.
 - **ai_instruction_formatting**: organises content an AI reads into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in its own tag, so the model can find the right section by structure instead of re-reading the prose.
 - **harness_portability**: applies portability rules (across agent harnesses and operating systems) to scripts, hooks, MCP helpers, command wrappers, setup flows, and the execution and configuration wording bundled inside skills and plugins. It covers OpenAI Codex and Anthropic Claude compatibility, checks against official provider docs, and macOS/Linux behaviour.
