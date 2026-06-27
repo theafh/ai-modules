@@ -2,9 +2,10 @@
 description: Cut auto_shaper_wiki token cost via a safe orient-phase trim and change-scoped page reads, while preserving every reflective prose check the linter cannot catch.
 scope: plugins/knowledge_management
 created: 2026-06-27T11:12:00
-updated: 2026-06-27T11:42:00
-status: ready
+updated: 2026-06-27T12:49:50
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Cut auto_shaper_wiki token cost without weakening the reflective prose audit
@@ -24,7 +25,7 @@ Files this task edits or relies on:
 - Linter ground truth: `plugins/knowledge_management/skills/wiki/scripts/lint.py` and `references/lint_checks.md`.
 - Regression harness: `tests/wiki/run_all.sh`.
 
-This task supersedes [the deferred grep-first attempt](archive/wiki_auto-shaper-read-token-cost.md), which proposed grep-first reads and skipping the walk when lint is clean. That approach was deferred because it would drop the reflective ten silently; reading it shows the rejected mechanism and the original cost diagnosis this task carries forward.
+This task supersedes [the deferred grep-first attempt](wiki_auto-shaper-read-token-cost.md), which proposed grep-first reads and skipping the walk when lint is clean. That approach was deferred because it would drop the reflective ten silently; reading it shows the rejected mechanism and the original cost diagnosis this task carries forward.
 
 ## Approach
 
@@ -34,6 +35,7 @@ Facet 2 — page-walk reads scoped to change, not wiki size (fidelity-preserving
 
 - Incremental working-set scoping: derive the pages new or changed since the last recorded audit — from the last `audit` entry in `log.md` and/or a `git` comparison against that point — and give those the full page-first cold walk. A page unchanged since it last passed a cold walk is not re-read.
 - First-audit and unknown-baseline fallback: when no prior audit baseline exists, the working set is every page (today's behaviour); the saving begins on the second audit.
+- Clean-audit baseline record: every completed audit, including one that finds nothing to fix, appends a zero-change `audit` outcome entry carrying the baseline and cold-read set, so the saving begins on the second audit even when the first audit was clean on arrival. Without it a clean audit leaves no baseline and the next run re-reads the whole wiki. This is the sanctioned process record [wiki_log-entries-only-on-changes.md](../wiki_log-entries-only-on-changes.md) preserves when it scopes the log to content changes.
 - Optional parallelism: spread the cold per-page reads across parallel per-page sub-agents to amortise token and latency cost. This preserves the `<iterate_page_first_not_check_first>` cold-verdict independence, since each page is judged in its own context.
 - Grep stays an additive prefilter only, for `procedure_instance_leakage`'s lexical subset (dates, paths, proper nouns): a grep hit adds a page to the read set, and a grep miss never removes a page from the cold walk.
 - `cross_page_contradiction` reads both sides of a same-subject pair whenever either side is in the working set.
@@ -46,6 +48,7 @@ Non-goals, rejected — do not implement any of these, because each drops reflec
 - Edit supersedes: the rewritten `<read_canonical_references>` no longer carries the prior "read … in full" unconditional mandate, and one canonical on-demand statement remains in its place.
 - Reflective detection preserved: on a fixture wiki seeded with at least one ungreppable offender — a `cross_page_contradiction` between two pages and a `procedure_vs_concept_misclassification` page that carries no anomalous token — an audit run flags both. This is the regression guard the deferred grep-first approach failed.
 - Incremental scoping: on a fixture wiki already audited clean once, a second run with exactly one page edited to introduce an ungreppable defect reads that page in full and flags it, while not issuing a full read of every unchanged page. Record the read set for both runs as the measurement.
+- Clean-audit baseline: a clean audit (lint 0, no semantic findings) skips remediate but still appends its zero-change `audit` outcome entry recording the baseline and cold-read set, so a second audit of an unchanged clean wiki scopes incrementally instead of re-reading every page. Verify against the `<compile_issue_list>` clean path and `<append_audit_log_entry>`, and by a clean-run → edit-one-page → re-run trace whose second run reads only the edited page.
 - First-audit fallback: on a fixture wiki with no prior `audit` entry in `log.md`, the working set is every page, with no silent reduction below full coverage on the first pass.
 - No banned mechanism present: the agent text contains no grep-gated page selection, no skip-the-walk-when-lint-clean clause, and no size-scaled read cap, and `<iterate_page_first_not_check_first>` still forbids letting any one check gate the others.
 - `tests/wiki/run_all.sh` passes with no regression in audit outcomes.

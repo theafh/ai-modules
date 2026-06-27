@@ -12,8 +12,9 @@ effort: high
 <role>
 Audit the wiki for the current working directory using the `wiki` skill's
 discovery, lint, and content rules, then resolve every issue found. Four
-named phases: orient (read scaffold and references), assess (run the
-linter and walk every page applying every applicable check), remediate
+named phases: orient (read wiki-owned scaffold and derive the audit
+working set), assess (run the linter and walk every page in that set
+with every applicable semantic check), remediate
 (fix every finding in place), verify (re-lint until clean and record
 the audit).
 </role>
@@ -203,40 +204,68 @@ have audited before — the schema, taxonomy, or domain may have changed.
   <enumerate_pages>
     List every `.md` file under the wiki's page directories (the
     `<type>s` directories derived from the schema enum, plus
-    `procedures/` if the schema declares it). Build a working set of
-    every page that exists on disk.
+    `procedures/` if the schema declares it). Build a page inventory:
+    every page that exists on disk, its declared type when visible from
+    frontmatter, and its path relative to `$WIKI`. This inventory bounds
+    the audit; it is not automatically the cold-read set for every run.
   </enumerate_pages>
 
+  <derive_page_audit_working_set>
+    Derive the semantic-audit working set from change evidence before
+    reading page bodies:
+
+    - **First audit or unknown baseline**: when `log.md` has no prior
+      `audit` entry with a usable baseline, when the baseline cannot be
+      compared, or when the wiki is not in a git worktree that can
+      answer the comparison, the working set is the full page inventory.
+      This preserves the historical full cold walk and gives every page
+      its first lifetime read.
+    - **Incremental audit**: when the newest prior `audit` entry records
+      a usable git baseline, derive new, changed, moved, or deleted
+      page paths with `git diff --name-status <baseline> -- "$WIKI"` and
+      `git status --short -- "$WIKI"`. Full-read only pages whose
+      current body is new or changed since that baseline. A page that is
+      unchanged since it last passed a cold walk stays out of the
+      cold-read set for this run.
+    - **Lexical leakage prefilter**: grep may add pages for the lexical
+      subset of `procedure_instance_leakage` (dates, absolute or
+      home-relative paths, obvious person names, command-output shapes).
+      A grep hit adds the page to the full-read set; a grep miss removes
+      nothing.
+    - **Contradiction peers**: when a working-set page makes a claim
+      about a subject also covered elsewhere, identify same-subject
+      peers via the index, page titles, links, and targeted search. Read
+      both sides of the pair in full whenever either side is in the
+      working set, then apply `cross_page_contradiction`.
+
+    Record the final cold-read set in the audit notes before the
+    page-first walk. When the set is empty, the page-first walk records
+    that no page bodies required a cold read on this run; lint outcome
+    never gates page selection.
+  </derive_page_audit_working_set>
+
   <read_canonical_references>
-    Read the canonical scaffold references the skill ships with, so
-    the audit has a current baseline to compare the wiki against:
+    Build the canonical-reference map without whole-file preloads.
 
-    - `$WIKI_SKILL/SKILL.md` — the canonical page-type enum, the
-      three-layer architecture diagram, the "Page Types: Pick by
-      Question" table, and the per-type "Page anatomy" table.
-    - `$WIKI_SKILL/references/template_schema.md` — the canonical
-      `SCHEMA.md` shape (Domain, Conventions, Frontmatter yaml block,
-      raw/ Frontmatter, Tag Taxonomy, Page Thresholds, Page Types:
-      Pick by Question, per-type page sections, Update Policy).
-    - `$WIKI_SKILL/references/template_index.md` — the canonical
-      `index.md` header (`Total pages`, `Last updated`) and section
-      list.
-    - `$WIKI_SKILL/references/template_log.md` — the canonical
-      `log.md` preamble (entry format, action enum, rotation rule).
-    - `$WIKI_SKILL/scripts/init_wiki.sh` — the canonical raw
-      subtree (the `mkdir` calls under `$WIKI/raw/` define the
-      authoritative set of `raw/<kind>/` subdirectories the
-      current skill version creates).
-    - `$WIKI_SKILL/references/raw_taxonomy.md` — the meaning of
-      each canonical `raw/<kind>/` bucket and the classification
-      heuristics that map a source onto the right bucket
-      (consulted when surfacing files for user routing).
+    Read `$WIKI_SKILL/SKILL.md` by contiguous semantic block: the folder
+    layout, page-type material, "Page Types: Pick by Question", and
+    "Page anatomy" table as one block; the "Capture Procedure" tests as
+    a second block. Defer the "Page thresholds" figure until a size
+    finding needs it.
 
-    Treat these references as the *current baseline* the wiki's
-    scaffold must align with. A wiki built against an older version of
-    the skill will drift from this baseline as the skill evolves; that
-    drift is in scope for the audit. The references are
-    read-as-canonical for comparison only — never edited.
+    Treat `$WIKI_SKILL/references/template_schema.md`,
+    `$WIKI_SKILL/references/template_index.md`,
+    `$WIKI_SKILL/references/template_log.md`,
+    `$WIKI_SKILL/scripts/init_wiki.sh`, and
+    `$WIKI_SKILL/references/raw_taxonomy.md` as on-demand references.
+    The scaffold baseline comes from the three `diff -u` commands in
+    `<scaffold_drift>`; read the relevant template section only when a
+    diff hunk needs interpretation, especially whole-section deletion
+    hunks where canonical drift must be distinguished from preserved
+    customization. Derive the raw subtree from the `mkdir` lines in
+    `init_wiki.sh`; read `raw_taxonomy.md` only when reporting or
+    routing concrete raw files. The references are canonical for
+    comparison only and are never edited.
   </read_canonical_references>
 
 </orient>
@@ -259,11 +288,11 @@ the fix move.
   </run_linter>
 
   <page_first_iteration>
-    The linter validates structure; it does not read prose. Iterate
-    the working set **page by page**, not check by check. For each
-    page, consult every applicable check below in sequence — apply
-    every test before moving to the next page. Each check has equal
-    weight; none is privileged.
+    The linter validates structure; it does not read prose. Iterate the
+    semantic-audit working set **page by page**, not check by check. For
+    each page in the cold-read set, read the page body in full, then
+    consult every applicable check below in sequence before moving to the
+    next page. Each check has equal weight; none is privileged.
 
     Page-first iteration is load-bearing. Check-first iteration
     (running one check across every page, then the next check) lets
@@ -282,6 +311,12 @@ the fix move.
     and so on; raw files get `provenance_violation` and source-drift
     only. Skip a check on a given page only when the check
     definition declares it inapplicable.
+
+    Optional parallelism is allowed only at the page boundary: assign
+    independent full-page cold reads to per-page subagents, have each
+    subagent apply every applicable check to its one page, then merge
+    their issue lists. This preserves cold-verdict independence while
+    reducing elapsed time on large working sets.
   </page_first_iteration>
 
   <topic_mixing>
@@ -404,10 +439,11 @@ the fix move.
 
   <raw_subtree_drift>
     The wiki's `raw/` subdirectory layout differs from what
-    `init_wiki.sh` would materialize today. Read the canonical raw
-    subdirectory set from `$WIKI_SKILL/scripts/init_wiki.sh` (the
-    script is the source of truth — it is what materializes a new
-    wiki's raw subtree, and the set evolves with the skill). List
+    `init_wiki.sh` would materialize today. Derive the canonical raw
+    subdirectory set from the `mkdir` calls in
+    `$WIKI_SKILL/scripts/init_wiki.sh` (the script is the source of
+    truth - it is what materializes a new wiki's raw subtree, and the
+    set evolves with the skill). List
     the wiki's actual subdirectories under `$WIKI/raw/`. Surface
     drift in both directions:
 
@@ -426,14 +462,14 @@ the fix move.
       into canonical buckets, or retire it. An empty extra
       directory is informational only.
 
-    Do not hardcode a canonical list in this check — read it from
-    `init_wiki.sh` at audit time so the check stays correct as
-    the script evolves. For the *meaning* of each canonical
-    bucket and the classification criteria that map a file onto
-    the right one, defer to `$WIKI_SKILL/references/raw_taxonomy.md`
-    — quote the relevant bucket descriptions and heuristics from
-    that file in the per-file report so the user has the
-    classification framework at hand when routing.
+    Do not hardcode a canonical list in this check. Derive it from the
+    `mkdir` calls in `init_wiki.sh` at audit time so the check stays
+    correct as the script evolves. For the *meaning* of each canonical
+    bucket and the classification criteria that map a file onto the
+    right one, defer to `$WIKI_SKILL/references/raw_taxonomy.md` and
+    quote only the relevant bucket descriptions and heuristics in the
+    per-file report so the user has the classification framework at hand
+    when routing.
   </raw_subtree_drift>
 
   <cross_page_contradiction>
@@ -444,10 +480,11 @@ the fix move.
     Y"), recency (a newer page revises an older page's claim without
     cross-linking), or recommendation (one procedure prescribes a
     workflow another procedure forbids). Cross-check during the
-    page-first walk: when a page makes a claim, search the wiki for
-    other pages on the same subject and compare. Flag the contradiction
-    on both pages so the remediate phase can mark both via the
-    contested-page protocol. Do not pick a winner.
+    page-first walk: when a working-set page makes a claim, search the
+    wiki inventory for other pages on the same subject, read the
+    candidate peer pages in full, and compare both sides. Flag the
+    contradiction on both pages so the remediate phase can mark both via
+    the contested-page protocol. Do not pick a winner.
   </cross_page_contradiction>
 
   <scaffold_drift>
@@ -573,8 +610,11 @@ the fix move.
 
     Group lines by severity (blocking → warn → info → semantic) so
     the remediate phase can work top-down. If the lint pass exits 0
-    and the page-first walk finds no semantic issues, stop and
-    report "wiki is clean" — skip the remediate phase.
+    and the page-first walk finds no semantic issues, the wiki is
+    clean: skip the remediate phase, but still record this audit's
+    baseline via `<append_audit_log_entry>` (a zero-change outcome
+    entry) so the next run can scope incrementally, then report
+    "wiki is clean".
   </compile_issue_list>
 
 </assess>
@@ -1005,17 +1045,35 @@ affect the same file so each file is opened, read, and rewritten once.
   </relint_until_clean>
 
   <append_audit_log_entry>
-    Append a single audit entry to `log.md`, anchored on the previous
-    entry's last body line so it lands at the end of the file:
+    Append a single audit entry to `log.md` on every completed audit,
+    including a clean one, anchored on the previous entry's last body
+    line so it lands at the end of the file:
 
     ```text
     ## [YYYY-MM-DD] audit | N blocking, N warn, N info; M pages updated, K pages split
     ```
 
     List the files actually created, updated, or moved — do not
-    narrate inspected-but-unchanged files. Verify with
+    narrate inspected-but-unchanged files; a clean audit instead
+    writes a zero-change outcome entry
+    (`0 blocking, 0 warn, 0 info; 0 pages updated, 0 pages split`)
+    whose file list is empty and whose purpose is the baseline and
+    cold-read metadata below — a sanctioned process record distinct
+    from a content-change entry. Verify with
     `grep -n '^## \[' "$WIKI/log.md" | tail -5` that the new entry
     has the largest line number; fix the order if not.
+
+    Include two audit metadata lines in the entry body so the next run
+    can scope its cold reads:
+
+    ```text
+    - Audit baseline: <git commit sha used for future diffs, or unavailable>
+    - Cold page reads: <comma-separated relative page paths, or none>
+    ```
+
+    Prefer `git rev-parse HEAD` for the baseline when the wiki lives in
+    a git worktree. When no usable baseline exists, write `unavailable`;
+    the next run will fall back to the full page inventory.
   </append_audit_log_entry>
 
   <report_changes>
@@ -1032,8 +1090,9 @@ affect the same file so each file is opened, read, and rewritten once.
   <assess_output>
     The issue list in the format above, severity-grouped. If the
     wiki is clean (lint passes and the page-first walk finds no
-    semantic issues), emit exactly the line "wiki is clean" and
-    stop.
+    semantic issues), record this audit's baseline via
+    `<append_audit_log_entry>`, then emit the line "wiki is clean"
+    and stop.
   </assess_output>
   <remediate_output>
     One fix summary per issue or issue group as the work proceeds, in
@@ -1069,14 +1128,17 @@ affect the same file so each file is opened, read, and rewritten once.
   </wiki_skill_is_truth_for_authoring>
 
   <iterate_page_first_not_check_first>
-    The assess phase's audit walk runs page by page, applying every
-    applicable check before advancing to the next page. Every check
-    is a peer; none is privileged. Do not iterate check by check
-    across the whole working set, because a "passed" verdict on
-    one check shapes the next check's reading of the same page —
-    confirmation bias that makes subtle drift (procedure-vs-concept
-    misclassification, instance leakage, tag drift, type/anatomy
-    mismatch on visually-shaped pages) survive the audit.
+    The assess phase's audit walk runs page by page over the derived
+    semantic working set, applying every applicable check before
+    advancing to the next page. Every check is a peer; none is
+    privileged. Run one cold full read for each page in that set,
+    including same-subject contradiction peers. Do not iterate check by
+    check across the working set, because a "passed" verdict on one
+    check shapes the next check's reading of the same page -
+    confirmation bias that makes subtle drift
+    (procedure-vs-concept misclassification, instance leakage, tag
+    drift, type/anatomy mismatch on visually-shaped pages) survive the
+    audit.
   </iterate_page_first_not_check_first>
 
   <scaffold_alignment_is_in_scope>
@@ -1111,8 +1173,11 @@ affect the same file so each file is opened, read, and rewritten once.
 
   <single_orientation_pass>
     Make exactly one orientation pass per audit (read SCHEMA, index,
-    recent log once during orient). Re-read the schema mid-run only when
-    a fix updates it (new tag, new custom field, new page type).
+    recent log once during orient, and build the canonical-reference map
+    once). Re-read the schema mid-run only when a fix updates it (new
+    tag, new custom field, new page type). Read canonical templates and
+    raw-reference material on demand when the corresponding diff hunk,
+    raw-subtree issue, or routing report needs that specific section.
   </single_orientation_pass>
 
   <minimal_changes_per_fix>

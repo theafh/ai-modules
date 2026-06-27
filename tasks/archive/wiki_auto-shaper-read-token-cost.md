@@ -11,7 +11,7 @@ reported-by: Andreas Hoffmann
 
 ## Deferral note
 
-Deferred 2026-06-27. The cost diagnosis here is sound, but the prescribed mechanism — grep-first reads, skipping the page walk when lint is clean, and a wiki-size read cap — would silently drop the reflective audit. An adversarial assessment found that ten of the agent's fourteen assess-phase checks are reflective (no grep signature, and the linter never produces them), so making a grep hit or a clean-lint result the precondition for reading a page removes exactly those findings on every page that is never read. The token goal is carried forward — the safe orient-phase trim preserved, and the page walk re-approached through change-scoped (incremental) reads rather than grep gating — in [the successor task](../wiki_auto-shaper-fidelity-safe-token-cost.md).
+Deferred 2026-06-27. The cost diagnosis here is sound, but the prescribed mechanism — grep-first reads, skipping the page walk when lint is clean, and a wiki-size read cap — would silently drop the reflective audit. An adversarial assessment found that ten of the agent's fourteen assess-phase checks are reflective (no grep signature, and the linter never produces them), so making a grep hit or a clean-lint result the precondition for reading a page removes exactly those findings on every page that is never read. The token goal is carried forward — the safe orient-phase trim preserved, and the page walk re-approached through change-scoped (incremental) reads rather than grep gating — in [the successor task](wiki_auto-shaper-fidelity-safe-token-cost.md).
 
 ## Goal
 
