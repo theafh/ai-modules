@@ -27,7 +27,7 @@ The single-task siblings run in lifecycle order, **create → check → select �
 
 Standing apart from that flow:
 
-- **task_fix**: audit and repair the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs the linter, auto-fixes mechanical findings (naming, frontmatter, status/location, links, datetimes), and surfaces judgement calls (splits, cross-task contradictions) for review. The task-backlog version of `wiki_fix`, done inline rather than through an agent. It works on the whole backlog, independent of any single task's lifecycle.
+- **task_fix**: audit and repair the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs the linter, auto-fixes mechanical findings (naming, frontmatter, status/location, links, datetimes), and surfaces judgement calls (splits, cross-task contradictions) for review by default. On explicit opt-in or confirmed scale, it escalates those calls to `auto_shaper_task`, the single serialized writer for that run. It works on the whole backlog, independent of any single task's lifecycle.
 
 ### AI instructions
 
@@ -49,3 +49,4 @@ Standing apart from that flow:
 - **auto_gate_task**: wraps `task_check` for `task_auto_check` and returns a compact structured verdict: final status, ready boolean, issue list, and evidence labels.
 - **auto_reviewer_task**: proposes minimum task-body repairs from one assigned stance, citing the base `task` skill's `<body>` repair rules and preserving the frozen task intent.
 - **auto_verifier_task**: verifies reviewer proposals with a refute-by-default stance, keeping only real, minimum, issue-resolving, frozen-intent-preserving edits for the orchestrator to apply.
+- **auto_shaper_task**: resolves `task_fix`'s escalated whole-tree judgement calls as the lone writer, applying verified splits, body-framing reframes, scope relocations, and link repairs while preserving frozen task goals and optional `CHARTER.md` boundaries.
