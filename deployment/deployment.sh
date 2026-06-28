@@ -1328,7 +1328,12 @@ install_for_app() {
         codex)
           if [[ "$src_ext" == "json" ]]; then
             # Only deploy the Codex config-layer hook config; skip Claude/plugin configs.
-            [[ "$source_abs" == *codex-hooks* ]] || { info "skip" "[$name] not a Codex hook config"; return 0; }
+            local source_file
+            source_file="$(basename "$source_abs")"
+            if [[ "$source_file" != "codex-custom-deploy-hooks.json" ]]; then
+              info "skip" "[$name] not a Codex custom deploy hook config"
+              return 0
+            fi
             local hooks_dir="${app_dir}/hooks"
             merge_json_key "$source_abs" "${app_dir}/hooks.json" "hooks" "$app_id" "$type" "$hooks_dir"
           elif [[ "$src_ext" == "sh" ]]; then

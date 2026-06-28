@@ -69,7 +69,7 @@ The table below shows global-mode paths. Project-dir mode replaces `~` with `<pr
 | VS Code Copilot | `~/Library/Application Support/Code/User/prompts/<name>.prompt.md` (macOS) or `~/.config/Code/User/prompts/<name>.prompt.md` (Linux), via symlink | `~/.copilot/skills/<name>` via symlink | `~/.copilot/agents/<name>.agent.md`, frontmatter rewritten | `~/.copilot/hooks/<file>` via copy |
 | Cursor | `~/.cursor/commands/<name>.md` via symlink | `~/.cursor/skills/<name>` via symlink | `~/.cursor/agents/<name>.md`, frontmatter rewritten | `~/.cursor/hooks.json` (copy from `cursor-hooks*.json`) and `~/.cursor/hooks/<file>` for shell scripts |
 | Claude Code | `~/.claude/commands/<name>.md` via symlink | `~/.claude/skills/<name>` via symlink | `~/.claude/agents/<name>.md`, frontmatter rewritten | `.hooks` key merged into `~/.claude/settings.json` (from `claude-code-hooks*.json`); shell scripts copied to `~/.claude/hooks/<file>` |
-| OpenAI Codex | `~/.codex/prompts/<name>.md` via symlink | `~/.codex/skills/<name>` via symlink (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | not implemented |
+| OpenAI Codex | `~/.codex/prompts/<name>.md` via symlink | `~/.codex/skills/<name>` via symlink (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | `hooks` key merged into `~/.codex/hooks.json` (from `codex-custom-deploy-hooks.json`); shell scripts copied to `~/.codex/hooks/<file>` |
 | Gemini CLI | `~/.gemini/commands/<name>.toml` generated from command source | `~/.gemini/skills/<name>` via symlink | `~/.gemini/agents/<name>.md`, frontmatter rewritten | not implemented |
 | Antigravity | `~/.gemini/antigravity/workflows/<name>.md` generated from command source | `~/.gemini/antigravity/skills/<name>` via symlink | not supported (skipped) | not implemented |
 
@@ -87,6 +87,7 @@ Several targets do not consume the repo source files directly:
 | agent (`agents/*.md`) | VS Code, Cursor, Claude, Gemini | frontmatter rewritten — vendor-prefixed fields (`CLAUDE_model:`, `CURSOR_model:`, …) are kept and stripped of prefix for the matching target; fields prefixed for other tools are dropped |
 | agent (`agents/*.md`) | OpenAI Codex | `.toml` mapping frontmatter `name`, `description`, `model`, `model_reasoning_effort`, and `readonly` (`readonly: true` becomes `sandbox_mode = "read-only"`); body becomes `developer_instructions` |
 | hook (`hooks/claude-code-hooks*.json`) | Claude Code | `.hooks` key merged into `~/.claude/settings.json`; relative `./hooks/` command paths are rewritten to absolute (global) or `.claude/hooks/` (project-dir) so the config stays portable |
+| hook (`hooks/codex-custom-deploy-hooks.json`) | OpenAI Codex | `hooks` key merged into `~/.codex/hooks.json`; relative `./hooks/` command paths are rewritten to absolute (global) or `.codex/hooks/` (project-dir) so the config stays portable |
 | hook (`hooks/cursor-hooks*.json`) | Cursor | copied to `~/.cursor/hooks.json` |
 
 `replace:path VAR=value` rules in `deployment.conf` force a copied (not symlinked) deployment for matching paths and substitute `$VAR$` in the deployed copy only.

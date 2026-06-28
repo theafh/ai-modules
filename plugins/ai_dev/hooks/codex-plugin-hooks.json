@@ -1,0 +1,29 @@
+{
+  "description": "Protect root CHARTER.md edits outside guardrail/charter-* branches in Codex plugin installs.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/charter_guardrail.sh\"",
+            "timeout": 30,
+            "statusMessage": "Checking CHARTER.md guardrail"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/charter_guardrail.sh\"",
+            "timeout": 30,
+            "statusMessage": "Checking CHARTER.md guardrail"
+          }
+        ]
+      }
+    ]
+  }
+}

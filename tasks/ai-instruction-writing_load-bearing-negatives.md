@@ -2,7 +2,7 @@
 description: "Add a load-bearing-negative case to ai_instruction_writing: keep an enumerated ban that names specific traps or mirrors a mechanical check, rather than cutting it as a redundant inverse."
 scope: plugins/ai_dev/skills/ai_instruction_writing
 created: 2026-06-13T01:10:16
-updated: 2026-06-24T19:10:25
+updated: 2026-06-28T13:22:09
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -40,7 +40,7 @@ This task refines the skill's own ruleset. It is distinct from the archived fami
 
 Edit the `ai_instruction_writing` `SKILL.md` so the skill recognises the load-bearing negative as its own case. Lead every addition with a positive carrier, matching the skill's house style.
 
-1. **Add a fourth `<self_check>` outcome** for the enumerable-but-load-bearing negative: keep the negative when its listed cases carry information the positive cannot imply — the specific wrong forms a writer would reach for, or the exact set a downstream mechanism (a linter, a parser) acts on.
+1. **Add a fourth `<self_check>` outcome** for the enumerable-but-load-bearing negative: keep the negative when its listed cases carry information the positive cannot imply — the specific wrong forms a writer would reach for, or the exact set a downstream mechanism (a linter, a parser) acts on. Phrase the new branch to relate explicitly to `<when_positive_is_complete>`, so a reader applying the procedure routes a load-bearing case here instead of stopping at the redundant-inverse outcome: have the branch turn on the discriminator — the positive can read complete yet its excluded cases still carry information it cannot imply — so the two outcomes read as disjoint rather than both firing on a positive that looks finished.
 2. **Add a matching category** as a new sub-block *inside* `<catch_all_negative>`, placed immediately after `<invalid_redundant_negative>` — a child block for a valid load-bearing negative *specification*, named to signal its keep verdict and enumerable nature without claiming catch-all status (for example `<valid_load_bearing_negative>`) — that contrasts directly with its `<invalid_redundant_negative>` sibling. The sub-block keeps the one-to-one map between `<self_check>` outcomes and `<catch_all_negative>` children four-wide and seats the keep example beside the cut example it must be told apart from. Give two worked examples that resolve oppositely: keep "anchor on a verbatim label; keep position claims out — a `:N` suffix, a bare `line N`, an `around lines N–M` range" (the shapes name traps and mirror a linter); cut "Use 4-space indentation; don't use tabs" (the positive already implies the rest and no tool keys on the names).
 3. **State the discriminator test** in the new guidance so it cannot be stretched to excuse any negative: keep only when the reader learns a banned form they could not derive from the positive, or a tool acts on the exact named set; otherwise it is the redundant inverse `<invalid_redundant_negative>` already covers.
 4. **Broaden `<applicability>`** so it recognises negative specifications as legitimate in production rules, not only in meta or teaching context.
@@ -50,7 +50,7 @@ Preserve `<core_rule>`'s thrust — a positive carrier leads every instruction, 
 
 ## Acceptance
 
-- `<self_check>` carries a fourth outcome branch that keeps an enumerable negative when its cases carry information the positive cannot imply (false today: `<self_check>` offers only the inverted / redundant / broader-class outcomes).
+- `<self_check>` carries a fourth outcome branch that keeps an enumerable negative when its cases carry information the positive cannot imply, phrased to relate explicitly to `<when_positive_is_complete>` so a load-bearing case routes to the new branch rather than stopping at the redundant-inverse outcome (false today: `<self_check>` offers only the inverted / redundant / broader-class outcomes, with no branch coordinating the two).
 - A new sub-block inside `<catch_all_negative>`, placed immediately after `<invalid_redundant_negative>`, presents two enumerable-negative examples that resolve oppositely — a "keep" (the soft-pointer-style ban, justified by named traps and parity with a mechanical check) explicitly contrasted with its `<invalid_redundant_negative>` sibling's "cut" — so an author can tell the load-bearing negative from the redundant one (false today: the only enumerable-negative example says cut, and it has no keep sibling).
 - The new guidance states the discriminator test: keep when the reader learns a banned form they could not derive from the positive or a tool acts on the exact named set; cut when the positive already implies every excluded case (false today: no such test exists).
 - `<applicability>` no longer implies negatives are legitimate only in meta or teaching context; it recognises negative specifications in production rules (false today: `<applicability>` limits legitimacy to "meta or teaching context — including this skill").

@@ -1,8 +1,8 @@
 ---
-description: Keep git_commit's whole-repo staging as the default but add a drift-detection guard that pauses when files outside the reviewed set appear (a concurrent session's in-flight work), asking before including them, and biasing to commit-all when detection is uncertain.
+description: Keep git_commit's whole-repo staging as the default; add a drift guard that pauses to ask when files outside the reviewed set appear, biasing to commit-all when uncertain.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-06-26T18:38:55
-updated: 2026-06-26T19:47:04
+updated: 2026-06-28T12:19:39
 reported-by: Andreas Hoffmann
 status: open
 ---
@@ -15,7 +15,7 @@ The `git_commit` skill stages the entire working tree (`git add -A`) before comm
 
 ## Context
 
-- Staging happens at **two** points today. `prepare_commit_context.sh` stages every untracked file (`git ls-files --others --exclude-standard -z | git add`, lines 51-57) so new files show up in the staged diff; `commit_with_message.sh` then runs `git add -A` (line 54) before committing. `references/manual_fallback.md` duplicates both as manual sequences. The guard and any wording change must keep all four sites consistent.
+- Staging happens at **two** points today. `prepare_commit_context.sh` stages every untracked file (`git ls-files --others --exclude-standard -z | git add`) so new files show up in the staged diff; `commit_with_message.sh` then runs `git add -A` before committing. `references/manual_fallback.md` duplicates both as manual sequences. The guard and any wording change must keep all four sites consistent.
 - Failure mode: when a second Claude or Codex session is editing the same working tree, whole-repo staging captures that session's partial, unrelated files into this commit, with a message that does not describe them. Observed in the `ai-assets` repo, where a concurrent wiki-reorganization session's in-flight files were swept into an unrelated commit. The whole-repo default is also why the downstream "verify `git show --stat HEAD` after committing" workaround has to exist at all.
 - The whole-repo default stays the backbone on purpose: it guarantees nothing the user changed is missed, and missing an intended file is treated as worse than occasionally over-including one. The guard is therefore additive — it narrows the sweep only where drift is clearly detected, and falls back to commit-all whenever it is in doubt, rather than replacing `git add -A` with a scoped-staging rule that could silently drop an intended file.
 - Detection has a known reach limit to record, not solve: a foreign file already present **before** `prepare_commit_context.sh` runs is staged and captured into the reviewed context, so it looks indistinguishable from an intended file and will be committed under the commit-all bias. The guard reliably catches paths that appear or change **after** the context was prepared; the pre-prepare case is accepted as the conservative no-miss tradeoff.

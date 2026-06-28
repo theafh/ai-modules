@@ -121,12 +121,13 @@ Standing apart from that flow:
 - **harness_portability**: applies portability rules (across agent harnesses and operating systems) to scripts, hooks, MCP helpers, command wrappers, setup flows, and the execution and configuration wording bundled inside skills and plugins. It covers OpenAI Codex and Anthropic Claude compatibility, checks against official provider docs, and macOS/Linux behaviour.
 - **format_markdown / format_python / format_rust**: style guides aligned with the linters (`markdownlint`; `flake8`, `ruff`, and `pylint`; `clippy`), read as you write. The point is to produce code that already passes the linter, instead of spending a follow-up turn fixing what it reports.
 
-The `ai_dev` hook surface ships a shared `charter_guardrail` script and hook
-configs for Claude and Codex. It protects a repository's root `CHARTER.md` by
-allowing charter edits only on `guardrail/charter-*` branches, while staying
-inert in projects that have not adopted a charter. Codex can load the hook from
-the plugin manifest after hook trust review, and the config-layer `.codex/` path
-keeps repo-local and deployed activation explicit.
+The `ai_dev` hook surface ships a shared `charter_guardrail` script and
+harness-specific hook configs for Claude and Codex. It protects a repository's
+root `CHARTER.md` by allowing charter edits only on `guardrail/charter-*`
+branches, while staying inert in projects that have not adopted a charter. Codex
+loads its plugin-bundled config from the plugin manifest after hook trust review,
+and the config-layer `.codex/` path keeps repo-local and deployed activation
+explicit.
 
 ## Installing and deploying
 
