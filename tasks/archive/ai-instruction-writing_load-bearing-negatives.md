@@ -2,9 +2,10 @@
 description: "Add a load-bearing-negative case to ai_instruction_writing: keep an enumerated ban that names specific traps or mirrors a mechanical check, rather than cutting it as a redundant inverse."
 scope: plugins/ai_dev/skills/ai_instruction_writing
 created: 2026-06-13T01:10:16
-updated: 2026-06-28T13:22:09
-status: ready
+updated: 2026-06-28T14:25:45
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Recognise load-bearing negatives in ai_instruction_writing

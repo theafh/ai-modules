@@ -1,7 +1,7 @@
 ---
 name: ai_instruction_writing
 description: Write AI-consumed content using positive, action-oriented language as the primary carrier of every instruction. Use when creating or editing any artifact an AI reads at inference time — SKILL.md files, .mdc rule files, CLAUDE.md/AGENTS.md/GEMINI.md configuration, prompt templates, system prompts, commands, agent and sub-agent definitions, instruction sets, and persona definitions.
-version: 3.0.0
+version: 3.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -10,22 +10,23 @@ license: MIT
 
 <ai_instruction_writing>
   <objective>
-    Write AI-consumed content so every instruction's primary carrier is a positive, action-oriented statement that tells the LLM what to do, what something is, or how it should be. Allow negative or contrastive supplements only as a catch-all for what positive guidance cannot enumerate.
+    Write AI-consumed content so every instruction's primary carrier is a positive, action-oriented statement that tells the LLM what to do, what something is, or how it should be. Allow negative or contrastive supplements when they add information the positive carrier cannot imply: a broad catch-all class, specific banned forms, or an exact set a downstream mechanism checks.
   </objective>
 
   <core_rule>
-    Every instruction's primary carrier is a positive statement that tells the LLM what to do, what something is, or how it should be. A negative or contrastive supplement ("don't X", "avoid Y", "X instead of Y", double negatives, implicit negation by comparison) earns its place only when listing every positive case is infeasible — the negative then names a broader class as a catch-all for what falls outside the positive guidance. When the positive set is fully enumerable, the negative restates the inverse and adds nothing; cut it.
+    Every instruction's primary carrier is a positive statement that tells the LLM what to do, what something is, or how it should be. A negative or contrastive supplement ("don't X", "avoid Y", "X instead of Y", double negatives, implicit negation by comparison) earns its place when it adds information the positive carrier cannot imply. It may name a broader catch-all class for what falls outside the positive guidance, or it may specify exact banned forms or checked sets that a reader or tool needs. Cut a negative only when it restates the inverse of the positive and adds nothing.
   </core_rule>
 
   <self_check>
     <procedure>Delete the negative or contrastive portion of a rule, then apply the matching outcome below.</procedure>
     <when_positive_is_empty_or_vague>The rule is inverted. Rewrite the positive carrier first.</when_positive_is_empty_or_vague>
     <when_positive_is_complete>The negative just restates the inverse. Drop the negative — it is redundant.</when_positive_is_complete>
+    <when_positive_is_complete_but_negative_is_load_bearing>The positive can read complete while the listed exclusions still carry information it cannot imply. Keep the negative when the reader learns a banned form from it, or when a downstream tool acts on the exact named set.</when_positive_is_complete_but_negative_is_load_bearing>
     <when_negative_names_a_broader_class>Keep the negative. It covers a long tail that no single positive could enumerate.</when_negative_names_a_broader_class>
   </self_check>
 
   <applicability>
-    This rule governs the model's *output*. In meta or teaching context — including this skill — contrastive pairs, ❌/✅ examples, and "X replaces Y" patterns are legitimate when they illustrate how to transform inputs.
+    This rule governs the model's *output*. In production rules, negative specifications are legitimate when they name load-bearing banned forms or exact checked sets. In meta or teaching context — including this skill — contrastive pairs, ❌/✅ examples, and "X replaces Y" patterns are legitimate when they illustrate how to transform inputs.
   </applicability>
 
   <authoring_guidelines>
@@ -53,7 +54,7 @@ license: MIT
 
   <catch_all_negative>
     <principle>
-      A negative supplement earns its place when listing the positive cases exhaustively is infeasible. The negative names a broader class as a catch-all for what falls outside the positive guidance. When the positive set is finite and enumerable, no negative is needed.
+      A negative supplement earns its place when it adds information the positive carrier cannot imply. It may name a broader class as a catch-all for what falls outside the positive guidance, or it may name enumerable banned forms that teach specific traps or mirror an exact downstream check. When the negative adds no such information, cut it.
     </principle>
     <valid_catch_all>
       <pattern>Positive carrier plus catch-all for the long tail.</pattern>
@@ -70,11 +71,19 @@ license: MIT
       </examples>
     </invalid_negative_only>
     <invalid_redundant_negative>
-      <pattern>Negative just inverts an enumerable positive (noise).</pattern>
+      <pattern>Negative just inverts an enumerable positive and adds no new signal.</pattern>
       <examples>
         <example>"Use 4-space indentation; don't use tabs or 2-space indents." Drop the negative: "Use 4-space indentation."</example>
       </examples>
     </invalid_redundant_negative>
+    <valid_load_bearing_negative>
+      <pattern>Positive carrier plus enumerable negative specification that teaches banned forms or mirrors an exact checked set.</pattern>
+      <discriminator>Keep the negative only when the reader learns a banned form they could not derive from the positive, or when a downstream tool acts on the exact named set. Otherwise route the case to the invalid_redundant_negative branch.</discriminator>
+      <examples>
+        <example>"Anchor every reference on a verbatim label; keep position claims out: a `:N` path suffix, a bare `line N`, and an `around lines N-M` range." Keep the negative: the listed shapes name traps writers reach for and mirror the linter's exact check.</example>
+        <example>"Use 4-space indentation; don't use tabs." Cut the negative: the positive already implies the excluded cases, and no tool keys on the names.</example>
+      </examples>
+    </valid_load_bearing_negative>
   </catch_all_negative>
 
   <transformation_patterns>
