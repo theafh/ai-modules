@@ -2,8 +2,8 @@
 description: Add a read-only task_explain sibling skill that gives a compact high-level what/why/how readout of one task file, and register it across the family rosters, READMEs, and manifests.
 scope: plugins/ai_dev
 created: 2026-06-28T14:36:58
-updated: 2026-06-28T14:56:00
-status: open
+updated: 2026-06-28T15:24:26
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -57,7 +57,7 @@ Registration, in the same change:
 
 - Add a `task_explain` entry to the `<family>` block in every task-family `SKILL.md`, keeping the base `task` skill's roster and the siblings' rosters in agreement.
 - Add a `task_explain` bullet to the per-skill lists in `README.md` and `plugins/ai_dev/README.md`, add `task_explain/` to the skills directory tree in `README.md`, and account for it in the read-only-helpers framing there.
-- Register the skill in `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and `.agents/plugins/marketplace.json`, matching the shape of the existing `task_*` entries.
+- Register the skill in `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and `.agents/plugins/marketplace.json`. These four manifests carry no per-skill array — each names the family's siblings only inside its prose `description` string (the enumeration reading "...create, check, auto-check, select, implement, audit, finish, and fix siblings..."). Weave `explain` into that enumeration in each of the four files; there is no separate per-skill entry to add.
 
 Coverage: add activation/trigger coverage consistent with the repo's convention for behaviour-only skills (see `tests/` and the standing testing rules) — confirm `task_explain` fires on the orientation phrasings above and stays distinct from the sibling triggers — or record why coverage is absent.
 
@@ -69,6 +69,6 @@ Coverage: add activation/trigger coverage consistent with the repo's convention 
 - The skill's role text states its boundary against `task_check`, `task_select`, and `task_audit` — it explains intent and plan, and does not judge readiness or done-ness or recommend next work.
 - Every task-family `SKILL.md` `<family>` block lists `task_explain`, and the base `task` skill's roster and the sibling rosters agree; no roster omits it.
 - `README.md` and `plugins/ai_dev/README.md` list `task_explain` in their per-skill bullets, `README.md`'s skills directory tree includes `task_explain/`, and the read-only-helpers framing in those READMEs accounts for it while the three-questions gates sentence and the `create → check → select → implement → audit → finish` lifecycle sentence stay unchanged.
-- `task_explain` is registered in `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and `.agents/plugins/marketplace.json`, matching the existing `task_*` entry shape; the new skill ships at `1.0.0` and the `ai_dev` plugin version and metadata follow the standing repo rules for adding a skill.
+- In each of `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and `.agents/plugins/marketplace.json`, the `ai_dev` `description` string's task-sibling enumeration names `task_explain`, with one canonical sibling list per file rather than the prior enumeration that stopped at "finish, and fix siblings"; the new skill ships at `1.0.0` and the `ai_dev` plugin version rises in lockstep across all four files per the standing repo rules for adding a skill.
 - Behaviour/trigger coverage for `task_explain` exists consistent with the repo's behaviour-only-skill convention, or the task records why it is absent.
 - `make lint` passes.
