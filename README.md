@@ -125,9 +125,9 @@ The `ai_dev` hook surface ships a shared `charter_guardrail` script and
 harness-specific hook configs for Claude and Codex. It protects a repository's
 root `CHARTER.md` by allowing charter edits only on `guardrail/charter-*`
 branches, while staying inert in projects that have not adopted a charter. Codex
-loads its plugin-bundled config from the plugin manifest after hook trust review,
-and the config-layer `.codex/` path keeps repo-local and deployed activation
-explicit.
+loads its plugin-bundled config from the plugin manifest after hook trust review.
+The deployable config-layer Codex hook source remains available for explicit
+global or project activation outside plugin installs.
 
 ## Installing and deploying
 

@@ -53,4 +53,4 @@ Standing apart from that flow:
 
 ## Hooks
 
-- **charter_guardrail**: protects a repository's root `CHARTER.md` by allowing charter edits only on `guardrail/charter-*` branches. Claude loads it through plugin-root `hooks/hooks.json`; Codex loads a Codex-native plugin hook config from `hooks/codex-plugin-hooks.json` after hook trust review, while `hooks/codex-custom-deploy-hooks.json` feeds the config-layer `.codex/hooks.json` / deployed `hooks.json` path for immediate project and global activation.
+- **charter_guardrail**: protects a repository's root `CHARTER.md` by allowing charter edits only on `guardrail/charter-*` branches. Claude loads it through plugin-root `hooks/hooks.json`; Codex loads a Codex-native plugin hook config from `hooks/codex-plugin-hooks.json` after hook trust review, while `hooks/codex-custom-deploy-hooks.json` feeds explicit config-layer deployment outside plugin installs.
