@@ -1,7 +1,7 @@
 ---
 name: task_fix
 description: Repair the whole tasks backlog tree in one pass, with an optional autonomous escalation. Use when the user asks to health check, clean up, audit, lint, or autonomously resolve backlog judgement calls. Run the archive inclusive linter, fix mechanical frontmatter, status, location, link, datetime, and provenance issues inline by default, and escalate to auto_shaper_task only on explicit opt-in or confirmed scale.
-version: 1.3.7
+version: 1.3.8
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -68,6 +68,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
 - `task_auto_check` — autonomously repair one task until `task_check` reports ready
+- `task_explain` — explain one task at a high level (read-only)
 - `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)

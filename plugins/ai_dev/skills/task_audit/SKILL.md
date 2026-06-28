@@ -1,7 +1,7 @@
 ---
 name: task_audit
 description: Audit one implemented or finished task against the actual codebase. Use after implementation or for drift checks before close out. Inspect code and tests, run verification, stamp audited only on clean implemented work, and report gaps otherwise.
-version: 1.0.7
+version: 1.0.8
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -60,6 +60,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
 - `task_auto_check` — autonomously repair one task until `task_check` reports ready
+- `task_explain` — explain one task at a high level (read-only)
 - `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only) **(this skill)**

@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one new task file for one upcoming work item. Use when the user asks to make, add, file, write, or capture a single task or todo. Use task for listing, querying, updating, archiving, linting, or multi task backlog work.
-version: 1.1.4
+version: 1.1.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -68,6 +68,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_create` — write one task file **(this skill)**
 - `task_check` — readiness gate before building (read-only)
 - `task_auto_check` — autonomously repair one task until `task_check` reports ready
+- `task_explain` — explain one task at a high level (read-only)
 - `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)

@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready by looping through task_check as the only readiness gate, reviewer repair proposals, verifier-approved intent-safe edits, and re-checks. Use when a user asks to auto-fix readiness issues, make a task ready, or run an autonomous readiness loop without implementing the task.
-version: 1.0.2
+version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -127,6 +127,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
 - `task_auto_check` — autonomously repair one task until `task_check` reports ready **(this skill)**
+- `task_explain` — explain one task at a high level (read-only)
 - `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)

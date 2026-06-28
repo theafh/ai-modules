@@ -15,6 +15,8 @@ A plugin of skills and agents for day-to-day AI-assisted development: keeping gi
 
 Running a task from skill to skill, instead of handing one prompt to a single implementer, removes the ambiguity that implementer would otherwise resolve silently and wrongly. A one-shot agent fills every underspecified corner with plausible filler that reads right but isn't what you meant. Whatever you leave open to misreading, it misreads, and differently each time. Each gate below catches a different kind of gap before it reaches code: creation forces naming, frontmatter, and structure to be explicit; `task_check` names scope problems and contradictions; `task_select` surfaces ordering and dependencies; and `task_audit` checks the result against the brief. Formatting the work and checking it for consistency at each step makes those gaps visible, so you close them on purpose instead of leaving them to be filled with generic guesses later.
 
+For orientation rather than gating, `task_explain` gives a compact what/why/how readout of one live or archived task without editing it.
+
 The single-task siblings run in lifecycle order, **create → check → select → implement → audit → finish**, with `task_auto_check` available as an opt-in readiness repair loop between create/check and selection:
 
 - **task_create**: a focused on-ramp that quickly creates exactly one well-formed task file, leaving the naming, frontmatter, body, and lint rules to the `task` skill. Use it when a single "make a task for X" should load a narrow surface instead of the whole backlog workflow.
@@ -27,6 +29,7 @@ The single-task siblings run in lifecycle order, **create → check → select �
 
 Standing apart from that flow:
 
+- **task_explain**: explain one task at a high level without editing it. It resolves one live or archived task, names its status and scope, and gives a compact what/why/how readout so a reader can orient before choosing a lifecycle action.
 - **task_fix**: audit and repair the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs the linter, auto-fixes mechanical findings (naming, frontmatter, status/location, links, datetimes), and surfaces judgement calls (splits, cross-task contradictions) for review by default. On explicit opt-in or confirmed scale, it escalates those calls to `auto_shaper_task`, the single serialized writer for that run. It works on the whole backlog, independent of any single task's lifecycle.
 
 ### AI instructions

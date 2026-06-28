@@ -2,9 +2,10 @@
 description: Add a read-only task_explain sibling skill that gives a compact high-level what/why/how readout of one task file, and register it across the family rosters, READMEs, and manifests.
 scope: plugins/ai_dev
 created: 2026-06-28T14:36:58
-updated: 2026-06-28T15:24:26
-status: ready
+updated: 2026-06-28T16:46:25
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add the `task_explain` sibling skill
@@ -19,7 +20,7 @@ The skill encodes a request pattern that recurs in practice, illustrated by the 
 
 ## Context
 
-The `task_*` family already has read-only members that each answer one question about a task without editing it: `task_check` (is it ready to build), `task_select` (what should I work on next), and `task_audit` (is it done). `task_explain` adds a fourth, orientation-focused question — what is this task about, why, and how — aimed at understanding rather than judgement. No single sibling is the right thing to clone: `task_create` is the model for *form and weight* (a light, thin front end that cites the base skill), while the finished [`task_select` sibling-skill task](archive/task-skill_select-sibling-skill.md) is the precedent for the *read-only contract* and the *registration footprint* this task repeats — not for `task_select`'s ranking, scoring, whole-backlog scan, or archive-exclusion, all of which `task_explain` deliberately omits.
+The `task_*` family already has read-only members that each answer one question about a task without editing it: `task_check` (is it ready to build), `task_select` (what should I work on next), and `task_audit` (is it done). `task_explain` adds a fourth, orientation-focused question — what is this task about, why, and how — aimed at understanding rather than judgement. No single sibling is the right thing to clone: `task_create` is the model for *form and weight* (a light, thin front end that cites the base skill), while the finished [`task_select` sibling-skill task](task-skill_select-sibling-skill.md) is the precedent for the *read-only contract* and the *registration footprint* this task repeats — not for `task_select`'s ranking, scoring, whole-backlog scan, or archive-exclusion, all of which `task_explain` deliberately omits.
 
 Affected surfaces:
 

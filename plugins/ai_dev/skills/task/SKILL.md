@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.7
+version: 1.3.8
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -344,6 +344,7 @@ This base `task` skill is the hub of a `task_*` family and can do all of the bac
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
 - `task_auto_check` — autonomously repair one task until `task_check` reports ready
+- `task_explain` — explain one task at a high level (read-only)
 - `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)

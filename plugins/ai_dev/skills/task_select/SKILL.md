@@ -1,7 +1,7 @@
 ---
 name: task_select
 description: Select and rank eligible live tasks from the project backlog. Use when the user asks what task to work on next, asks Codex to pick or prioritize backlog work, rank open tasks, choose from tasks/, or recommend the next task/action without editing task files.
-version: 1.0.2
+version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -117,6 +117,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
 - `task_auto_check` — autonomously repair one task until `task_check` reports ready
+- `task_explain` — explain one task at a high level (read-only)
 - `task_select` — choose and rank the next eligible task/action (read-only) **(this skill)**
 - `task_implement` — do the work
 - `task_audit` — verify a believed-done task against the codebase (read-only)

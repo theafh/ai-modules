@@ -1,7 +1,7 @@
 ---
 name: task_implement
 description: Implement one existing task file end to end. Use when the user asks to build, do, or implement the work described by a task. Edit code and tests, run verification, stamp implemented, and leave audit and finish to sibling skills.
-version: 1.0.7
+version: 1.0.8
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -62,6 +62,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_create` — write one task file
 - `task_check` — readiness gate before building (read-only)
 - `task_auto_check` — autonomously repair one task until `task_check` reports ready
+- `task_explain` — explain one task at a high level (read-only)
 - `task_select` — choose and rank the next eligible task/action (read-only)
 - `task_implement` — do the work **(this skill)**
 - `task_audit` — verify a believed-done task against the codebase (read-only)
