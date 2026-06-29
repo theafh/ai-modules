@@ -306,6 +306,16 @@ Findings come in three buckets:
 - **blocking** — bad filename, missing/malformed frontmatter, missing required provenance, invalid status, status/location mismatch, duplicate filenames, legacy archived status migration. Exit 1; must fix.
 - **warn** — non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines), line-number position claims in an open task body (the soft-pointer rule; fenced code blocks are skipped, inline code stays checked). The soft-pointer check is recall-biased and names candidates including `path:N`, `path ~N`, capitalized or lowercase `line N` / `line ~N` / `around lines N-M`, and parenthesized `(~N)` / `(~N-M)` shapes, while skipping size extents such as `~16 KB`, `512 bytes`, and `100 MB`. Treat each soft-pointer warn as a candidate, not a verdict: read the hit in surrounding context, rewrite a genuine line anchor to a verbatim greppable label, and leave a false positive such as a size, version, count, or quoted claim-shape untouched.
 - **info** — reserved for future style nits.
+
+The **mechanically fixable lint finding set** is the authoritative type list for task-family siblings that auto-repair linter output. Apply only the entries whose target is determinable in the current scope, and surface the rest:
+
+- **Frontmatter and lifecycle mechanics** — fill missing or malformed required frontmatter when the value is named by the linter, derivable from git history, derivable from `<user_name_chain>`, or already present in the task context; normalise an unambiguous non-ISO `created` or `updated` value; repair status/location mismatches and archived non-terminal statuses through the lifecycle workflow that owns that move.
+- **Description budget** — rewrite an over-budget `description` into one compact canonical line within the linter budget while preserving the named scope, important nouns, and user-visible deliverable; remove the stale over-budget wording rather than appending a second summary.
+- **Local markdown links** — re-point a broken relative markdown link when the correct target is determinable from the link text, filename, task title, or existing repository path; surface a broken link when more than one plausible target exists or no target can be found.
+- **Standard-markdown conversion** — convert a linter-blocked wikilink or footnote to standard markdown when the linked target or attribution target is determinable; surface it when the conversion target is unclear.
+- **Soft-pointer cleanup** — triage each soft-pointer warning as the warning rule above requires, replace a confirmed line-number position claim with a verbatim greppable label, and leave false positives such as sizes, versions, counts, or quoted claim-shapes untouched.
+
+Mechanical lint repair preserves task intent and file semantics. It bumps `updated` once for a content-changing edit group, leaves `updated` unchanged when it makes no change, and reports every surfaced judgement call with the linter category and reason.
 </lint>
 
 </workflows>

@@ -2,9 +2,10 @@
 description: Add a task_auto_check step that auto-fixes a task's mechanical lint findings (overlong description, broken links, datetime/format) before reporting done, even when task_check already stamped it ready.
 scope: "task_* family: task_auto_check + base task <lint>"
 created: 2026-06-29T18:48:53
-updated: 2026-06-29T19:43:26
-status: ready
+updated: 2026-06-29T22:50:09
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # task_auto_check: auto-fix mechanical lint findings on the task before reporting ready
@@ -23,8 +24,8 @@ The relevant surfaces, each located by a greppable label:
 - `task_check`'s `<assessment>` judges the body against the base `task` skill's `<readiness_checklist>`; it does not assess lint conformance, so a task can hold a clean readiness verdict while still tripping the linter. Lint cleanliness and readiness are separate axes.
 - The base `task` skill's `<lint>` defines the blocking / warn / info buckets, and its `<frontmatter>` sets the `description` budget ("roughly 180 characters; the linter warns above 200"). An over-budget `description` is a warn, not a blocker — which is why the narrow blocking-only guard in `<apply_repairs>` never touches it.
 - The family already carries the "mechanical, inline-fixable" repair notion: `task_fix`'s `<workflow>` remediate phase auto-fixes "the safe mechanical findings in place" — frontmatter, status, location, link, datetime, provenance — across the whole tree, and routes the rest to `<surface_for_review>`. This task brings that same notion to `task_auto_check`'s single file. It is a rule two siblings now share, so it is single-sourced per the standing repo rule that a skill-family rule is authored once in the family's base skill (see the Approach open decision for where).
-- Co-edit on `task_auto_check`'s `<loop_policy>`: the [intent-drift task](task-family_intent-drift-detection.md) adds a *human-route* boundary there, modeled on `<structural_split_boundary>`; this task adds an *auto-fix* path. They compose into one taxonomy — auto-fixable findings (verified body repairs, and now mechanical lint findings) versus surfaced or human-routed findings (structural splits, intent drift, undeterminable mechanical fixes). Land both without duplicating or contradicting the other's boundary wording.
-- A `description` rewrite must preserve the description's *named scope*, not just its gist, so it cannot create the under-naming finding the [title/description coverage task](task-skill_title-body-coverage-check.md) adds to the readiness checklist.
+- Co-edit on `task_auto_check`'s `<loop_policy>`: the [intent-drift task](../task-family_intent-drift-detection.md) adds a *human-route* boundary there, modeled on `<structural_split_boundary>`; this task adds an *auto-fix* path. They compose into one taxonomy — auto-fixable findings (verified body repairs, and now mechanical lint findings) versus surfaced or human-routed findings (structural splits, intent drift, undeterminable mechanical fixes). Land both without duplicating or contradicting the other's boundary wording.
+- A `description` rewrite must preserve the description's *named scope*, not just its gist, so it cannot create the under-naming finding the [title/description coverage task](../task-skill_title-body-coverage-check.md) adds to the readiness checklist.
 - This edits shipped skill content under `plugins/ai_dev/`, so the standing plugin-version-bump and validation gates apply.
 
 ## Approach
@@ -52,7 +53,7 @@ Non-goals: deeper markdown *style* beyond what the task linter enforces (blank-l
 - On a staged task with a non-ISO datetime or malformed frontmatter, the step normalises or fills it and the re-lint comes back clean.
 - On a staged task carrying a stray wikilink or footnote that the task linter blocks, the step converts it to standard markdown and the re-lint comes back clean.
 - The mechanical-fix path is separate from the body-repair reviewer/verifier path and does not re-run `task_check`: inspection of the step confirms it neither spawns the reviewer/verifier agents for these findings nor re-gates readiness after applying them.
-- Judgement-call findings stay surfaced: a staged oversized task is reported for a split rather than auto-edited, and the step cites `<structural_split_boundary>` as its model and composes with the drift boundary the [intent-drift task](task-family_intent-drift-detection.md) adds to `<loop_policy>` without duplicating or contradicting it.
+- Judgement-call findings stay surfaced: a staged oversized task is reported for a split rather than auto-edited, and the step cites `<structural_split_boundary>` as its model and composes with the drift boundary the [intent-drift task](../task-family_intent-drift-detection.md) adds to `<loop_policy>` without duplicating or contradicting it.
 - The step bumps `updated` once when it changes the file, leaves `updated` unchanged when it makes no change, and validates its edit group against `CHARTER.md` when present, matching the existing `<apply_repairs>` charter guard.
 - `task_auto_check`'s `<output_contract>` reports both the mechanical fixes applied and any finding surfaced-but-not-fixed.
 - The mechanically-fixable finding set is single-sourced per the open decision's resolution: a grep confirms one authoritative list that the other sibling cites, rather than two divergent copies across `task_fix` and `task_auto_check`.
