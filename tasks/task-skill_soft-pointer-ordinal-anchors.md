@@ -45,7 +45,7 @@ list:
   broadened that detector and added the recall-bias triage contract.
 
 The motivating instance: while hardening references inside
-[task-family_create-reconcile-open-questions.md](task-family_create-reconcile-open-questions.md),
+[task-family_create-reconcile-open-questions.md](archive/task-family_create-reconcile-open-questions.md),
 several "step 6 / step 7 / step 8" anchors pointed into `task_create`'s numbered
 `<workflow>` list. They resolved correctly at the time, yet were fragile for the
 exact reason this rule targets — that task's whole job is to add a step to that
