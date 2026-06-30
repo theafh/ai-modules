@@ -2,9 +2,10 @@
 description: Make task_finish status-aware so a current `audited` task skips the redundant codebase re-verification, while a direct `finished` close on a never-audited task still verifies.
 scope: plugins/ai_dev/skills/task_finish
 created: 2026-06-29T18:42:31
-updated: 2026-06-30T19:42:39
-status: ready
+updated: 2026-06-30T21:53:21
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # task_finish trusts a current `audited` stamp instead of re-running the audit
@@ -50,7 +51,7 @@ existing hand-off as-is.
 This restores the original design intent. The task that introduced the skill
 stated finish should let a user "close without re-running a full audit" (the
 **Audit verifies; finish acts** rationale in
-[task-skill_finish-sibling-skill.md](archive/task-skill_finish-sibling-skill.md));
+[task-skill_finish-sibling-skill.md](task-skill_finish-sibling-skill.md));
 a later lifecycle pass renamed step 3 to the `finished` close and the wording
 drifted into the unconditional re-check this task corrects.
 
