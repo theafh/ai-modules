@@ -2,8 +2,8 @@
 description: Make the newest-first day insertion a single anchored prepend against a stable header boundary, so the agent stops mis-splicing day order.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:21:26
-updated: 2026-06-22T23:40:52
-status: open
+updated: 2026-06-30T19:39:29
+status: ready
 reported-by: Andreas Hoffmann
 ---
 

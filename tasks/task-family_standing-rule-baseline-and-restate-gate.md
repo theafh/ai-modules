@@ -2,8 +2,8 @@
 description: Treat CLAUDE.md / AGENTS.md / GEMINI.md as harness standing-rule files the task family follows even when its guardrail docs are absent, and gate readiness against a body that restates them.
 scope: plugins/ai_dev/skills/task
 created: 2026-06-29T18:56:15
-updated: 2026-06-29T19:13:03
-status: open
+updated: 2026-06-30T19:02:01
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
