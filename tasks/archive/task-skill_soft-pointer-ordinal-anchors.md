@@ -2,9 +2,10 @@
 description: Extend the task-family soft-pointer rule and readiness lens from line-number claims to ordinal list-position anchors ("step 6", "item 3"), which rot when the task edits that list.
 scope: plugins/ai_dev/skills/task
 created: 2026-06-29T22:26:13
-updated: 2026-06-29T22:30:49
-status: ready
+updated: 2026-07-01T19:34:40
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Soft-pointer rule bans ordinal list-position anchors, not just line numbers
@@ -36,16 +37,16 @@ rule, but every one of them addresses **line-number** position claims only — a
 capital-`Lines` variants — and none names an item's ordinal position inside a
 list:
 
-- [task-skill_soft-pointer-references.md](archive/task-skill_soft-pointer-references.md)
+- [task-skill_soft-pointer-references.md](task-skill_soft-pointer-references.md)
   established locate-by-label over bare line numbers.
-- [task-skill_label-only-soft-pointers.md](archive/task-skill_label-only-soft-pointers.md)
+- [task-skill_label-only-soft-pointers.md](task-skill_label-only-soft-pointers.md)
   banned line-number position claims and added the warn-level `lint.py`
   detector.
-- [task-skill_soft-pointer-lint-hardening.md](archive/task-skill_soft-pointer-lint-hardening.md)
+- [task-skill_soft-pointer-lint-hardening.md](task-skill_soft-pointer-lint-hardening.md)
   broadened that detector and added the recall-bias triage contract.
 
 The motivating instance: while hardening references inside
-[task-family_create-reconcile-open-questions.md](archive/task-family_create-reconcile-open-questions.md),
+[task-family_create-reconcile-open-questions.md](task-family_create-reconcile-open-questions.md),
 several "step 6 / step 7 / step 8" anchors pointed into `task_create`'s numbered
 `<workflow>` list. They resolved correctly at the time, yet were fragile for the
 exact reason this rule targets — that task's whole job is to add a step to that
