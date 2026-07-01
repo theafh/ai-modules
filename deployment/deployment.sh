@@ -1071,6 +1071,20 @@ escape_toml_basic_string() {
   printf '%s' "$value"
 }
 
+is_model_inherit_value() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+    value="${value#\"}"
+    value="${value%\"}"
+  elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+    value="${value#\'}"
+    value="${value%\'}"
+  fi
+  [[ "$value" == "inherit" ]]
+}
+
 # ---------------------------------------------------------------------------
 # Generate a .toml agent for Codex CLI from a vendor-rewritten .md agent
 # ---------------------------------------------------------------------------
@@ -1141,7 +1155,9 @@ generate_toml_agent() {
   {
     [[ -n "$name" ]] && printf 'name = "%s"\n' "$(escape_toml_basic_string "$name")"
     [[ -n "$description" ]] && printf 'description = "%s"\n' "$(escape_toml_basic_string "$description")"
-    [[ -n "$model" ]] && printf 'model = "%s"\n' "$(escape_toml_basic_string "$model")"
+    if [[ -n "$model" ]] && ! is_model_inherit_value "$model"; then
+      printf 'model = "%s"\n' "$(escape_toml_basic_string "$model")"
+    fi
     [[ -n "$model_reasoning_effort" ]] && printf 'model_reasoning_effort = "%s"\n' "$(escape_toml_basic_string "$model_reasoning_effort")"
     if [[ "$readonly" == "true" ]]; then
       printf 'sandbox_mode = "read-only"\n'
