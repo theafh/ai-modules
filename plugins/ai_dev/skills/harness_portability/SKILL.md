@@ -1,6 +1,6 @@
 ---
 name: harness_portability
-description: Cross-agent-harness and cross-OS portability review for runtime artefacts bundled inside skills and plugins. Use when creating, editing, reviewing, or troubleshooting shell scripts, Bash scripts, Python helpers, Node helpers, hooks, Codex hook layering, Claude hook configuration, shared plugin hook scripts, MCP servers, command wrappers, setup or install flows, plugin wiring, skill wording, execution instructions, initialization instructions, configuration instructions, path handling, environment variables, permissions, or provider-specific OpenAI Codex and Anthropic Claude behavior that must work across agent harnesses, macOS, and Linux.
+description: Cross-agent-harness and cross-OS portability review for runtime artefacts bundled inside skills and plugins. Use when creating, editing, reviewing, or troubleshooting shell scripts, Bash scripts, Python helpers, Node helpers, hooks, Codex hook layering, Claude hook configuration, shared plugin hook scripts, MCP servers, command wrappers, setup or install flows, plugin wiring, agent and subagent definitions, agent frontmatter fields, tool allowlists, read-only agent enforcement, agent TOML generation, skill wording, execution instructions, initialization instructions, configuration instructions, path handling, environment variables, permissions, or provider-specific OpenAI Codex, Anthropic Claude, Cursor, and Gemini CLI behavior that must work across agent harnesses, macOS, and Linux.
 version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
@@ -10,15 +10,15 @@ license: MIT
 
 <harness_portability>
   <objective>
-    Keep bundled skill and plugin runtime artefacts portable across agent harnesses and operating systems. Apply this skill whenever a change creates or edits scripts, hooks, MCP helpers, command wrappers, setup flows, or the skill/plugin wording that tells future agents how to execute, initialize, or configure those artefacts.
+    Keep bundled skill and plugin runtime artefacts portable across agent harnesses and operating systems. Apply this skill whenever a change creates or edits scripts, hooks, agent definitions, MCP helpers, command wrappers, setup flows, or the skill/plugin wording that tells future agents how to execute, initialize, or configure those artefacts.
   </objective>
 
   <scope>
     <included_artefacts>
-      Apply these rules to Bash, POSIX shell, Python, JavaScript, TypeScript, Node.js, and other executable files shipped inside skills, agents, commands, hooks, MCP servers, plugin directories, and their supporting resources. Apply them equally to prose that wires those files into agent workflows.
+      Apply these rules to Bash, POSIX shell, Python, JavaScript, TypeScript, Node.js, and other executable files shipped inside skills, agents, commands, hooks, MCP servers, plugin directories, and their supporting resources. Apply them equally to prose that wires those files into agent workflows, and to agent and subagent definition files themselves, whose frontmatter and body each harness parses under its own schema.
     </included_artefacts>
     <target_harnesses>
-      Treat OpenAI Codex and Anthropic Claude as the initial provider targets. Add additional harnesses as concrete practice reveals new compatibility requirements.
+      Treat OpenAI Codex and Anthropic Claude as the primary provider targets for every surface, and include Cursor and Gemini CLI for the agent-definition surface their native loaders exercise. Add further harnesses as concrete practice reveals new compatibility requirements.
     </target_harnesses>
     <target_operating_systems>
       Support macOS and Linux by default. Use portable APIs and runtime feature detection when behavior differs between the two systems.
@@ -29,6 +29,8 @@ license: MIT
     <rule>Design scripts and wiring for the harness that will run the published skill or plugin, not only for the harness currently doing the implementation work.</rule>
     <rule>Use official provider documentation before encoding provider-specific behavior for OpenAI Codex, Anthropic Claude, or another targeted harness. Prefer current official docs over memory, observed behavior in one session, or assumptions from another agent surface.</rule>
     <rule>State the provider documentation source or the verification gap when a change depends on harness-specific execution, initialization, configuration, filesystem, environment, permission, or tool-discovery behavior.</rule>
+    <rule>Compose cross-harness behavior as a union of native fields: when one harness reads a field the others ignore — Claude reads a `tools:` allowlist, Codex reads `sandbox_mode` — carry each harness's native field side by side in the shared artefact and let every other harness ignore the foreign ones. Verify unknown-field tolerance on every target first, and reach a strict-schema target through a generated variant instead of the shared file.</rule>
+    <rule>Treat agent and subagent definition files as their own portability surface: confirm each target harness's frontmatter schema tolerance, tool naming, and agent registration mechanism before shipping a shared definition, and keep role-critical policy in the agent body so it survives harnesses that run the role inline.</rule>
     <rule>Model hook wiring as a layered runtime surface. Identify every hook source the target harness can load, then choose one intentional activation path for each hook behavior unless duplicate execution is deliberate.</rule>
     <rule>Use provider-specific hook configuration files for provider-specific schemas, and keep the executable hook script shared when the same policy should run in multiple harnesses.</rule>
     <rule>Confirm a target harness loads plugin-bundled hooks at runtime before shipping a blocking or lifecycle hook inside a plugin, and document the trust, enablement, or reload step that makes the hook active.</rule>
@@ -71,6 +73,27 @@ license: MIT
     </duplicate_diagnosis>
   </hook_portability>
 
+  <agent_portability>
+    <agent_definition_surfaces>
+      Treat agent and subagent definitions as a per-harness surface with distinct formats, locations, and loaders; the facts below were verified against provider documentation, loader source, and on-disk harness state in July 2026 — re-verify against current official docs before encoding new behavior. Anthropic Claude reads markdown agents with YAML frontmatter, loads plugin-bundled `agents/*.md` natively from installed plugins, and silently ignores unknown frontmatter keys; plugin-delivered agents additionally have `hooks`, `mcpServers`, and `permissionMode` ignored for security. Cursor reads markdown agents from `.cursor/agents/`, `.claude/agents/`, and `.codex/agents/` in both project and user variants (`.cursor` wins name conflicts) and recognizes `name`, `description`, `model`, `readonly`, and `is_background`. OpenAI Codex registers spawnable roles only from standalone TOML files under `~/.codex/agents/` or `<repo>/.codex/agents/` (`name`, `description`, `developer_instructions` required; `model`, `model_reasoning_effort`, `sandbox_mode`, `mcp_servers` optional); the Codex plugin schema carries no agent component, so plugin-bundled markdown agents land in the plugin cache without ever becoming spawnable roles. Gemini CLI reads markdown agents from `.gemini/agents/` and `~/.gemini/agents/` under a strict schema limited to `kind`, `name`, `description`, `display_name`, `tools`, `mcp_servers`, `model`, `temperature`, `max_turns`, and `timeout_mins`.
+    </agent_definition_surfaces>
+    <frontmatter_schema_tolerance>
+      Classify every target harness as ignore-unknown or strict-schema before sharing one agent file across harnesses. Claude and Cursor tolerate foreign keys, which is what lets one markdown file carry several harnesses' native fields side by side. Gemini CLI validates strictly: a single unrecognized key — `version:`, `background:`, `effort:`, or any vendor-prefixed field — fails validation, and that agent stays unloaded while the CLI keeps running. Confirm tolerance from the docs or the loader source, and treat "the other harness will ignore it" as a claim to verify per harness rather than a default assumption.
+    </frontmatter_schema_tolerance>
+    <tool_name_namespaces>
+      Treat tool allowlists as harness-specific in both value shape and tool naming. Claude's `tools:` takes a comma-separated string of capitalized names (`Read, Grep, Glob, Bash`), and omitting the field inherits every tool. Gemini's `tools:` requires a YAML array of lowercase slugs validated against its registry (`read_file`, `grep_search`, `glob`, `run_shell_command`); a comma string fails as "Expected array, received string", and Claude-cased names fail as invalid tool names. Cursor exposes no tools field at all — its current identifiers are `Shell`, `Read`, `Grep`, `Glob`, `LS`, `StrReplace`, and `Write`, with the shell tool named `Shell` rather than `Bash` — and Codex offers no per-agent tool allowlist. Because the namespaces are disjoint, one `tools:` value cannot satisfy Claude and Gemini simultaneously: a shared file carries at most one harness's `tools:` and reaches the others through their own fields or a deploy bridge.
+    </tool_name_namespaces>
+    <readonly_agent_enforcement>
+      Enforce a read-only agent role with each harness's native lever, unioned in one source file where key tolerance allows: a `tools:` allowlist of read-only tools for Claude, `readonly: true` for Cursor (restricted write permissions), `sandbox_mode = "read-only"` in the generated TOML for Codex, and a Gemini-named `tools` array reachable only through a per-harness generated variant because of Gemini's strict schema. Account for Codex read-only semantics gating command execution behind approval, so a read-only agent that needs `git log`-style commands may pause for confirmation there. Keep the prompt-level prohibition — edit no files, stamp no frontmatter — stated in the agent body as the universal floor: frontmatter enforcement binds only where the agent actually spawns as a separate agent, while the body contract also governs harnesses that degrade the role to inline execution.
+    </readonly_agent_enforcement>
+    <spawn_registration_and_inline_degradation>
+      Confirm where a named agent actually registers before relying on its definition file for any guarantee. A harness without the registered role usually keeps the orchestrating skill working — the main agent performs the role inline, where agent-file enforcement never applies. Verify registration on the target itself: the harness agent directory, the installed plugin cache, and the spawnable-role list the harness advertises (Codex builds its `spawn_agent` roles from the TOML agent directory plus built-ins such as `default`, `explorer`, and `worker`). Write orchestrating skills so their policy survives inline degradation instead of assuming a sub-agent boundary exists everywhere.
+    </spawn_registration_and_inline_degradation>
+    <native_fields_and_deploy_bridges>
+      Author shared agent sources with each harness's native field names, and reserve deploy-time transforms for format bridges. A native plugin or marketplace install reads the raw file, so a deploy-only convention — a vendor-prefixed key such as `CLAUDE_tools:`, or a `readonly:` to `sandbox_mode` mapping — takes effect only on machines that ran the deploy script and is invisible on every native install path. Use a generation step in two situations: where the target reads a different format entirely — markdown to Codex TOML is the required bridge, and it is also the only path by which a plugin-distributed agent reaches Codex as a spawnable role — and where the target validates a strict schema, which the shared file can never satisfy. For a strict-schema target, generate a variant that whitelists the target's allowed keys and maps near-equivalent values to the target's vocabulary: the Gemini CLI agent bridge reduces frontmatter to Gemini's schema, translates Claude tool names to Gemini slugs as a YAML array (`Read` to `read_file`, `Bash` to `run_shell_command`), drops the field when a name has no valid mapping, and drops every other key so the agent passes validation instead of silently failing to load.
+    </native_fields_and_deploy_bridges>
+  </agent_portability>
+
   <workflow>
     <inventory_runtime_surface>
       List every script, hook, MCP helper, command wrapper, setup flow, and prose instruction affected by the change. Include both directly edited files and callers that execute them.
@@ -88,7 +111,7 @@ license: MIT
       Implement the change with portable path handling, argument handling, dependency detection, error reporting, and documented configuration. Prefer small explicit compatibility checks over implicit reliance on the current machine.
     </apply_portable_patterns>
     <verify_across_surfaces>
-      Run the narrowest useful verification for the touched artefact. Include macOS/Linux or Codex/Claude coverage when available; otherwise report the untested surface and why it could not be exercised in the current session.
+      Run the narrowest useful verification for the touched artefact. Include macOS/Linux or Codex/Claude coverage when available; otherwise report the untested surface and why it could not be exercised in the current session. For agent definitions, confirm on the target harness that the definition actually loads and registers — inspect the harness agent directory, the installed plugin cache, and the advertised spawnable-role list — rather than inferring from file placement.
     </verify_across_surfaces>
     <refresh_installed_plugin_cache>
       After editing a marketplace-installed plugin, refresh the installed Codex plugin cache with `codex plugin add <plugin>@<marketplace>` or the matching marketplace workflow, then inspect `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` to confirm the cached manifest and hook files match the source. Restarting Codex alone can reuse stale cached plugin files.
@@ -103,6 +126,7 @@ license: MIT
     <plugin_hook_runtime>A blocking or lifecycle hook shipped inside a plugin is verified to load at runtime on each target harness, with explicit Codex manifest overrides when `hooks/hooks.json` is Claude-only and with config-layer registration where the harness does not execute plugin-bundled hooks.</plugin_hook_runtime>
     <hook_layering>Codex hook behavior has exactly the intended active sources across plugin, user, project, managed, and deploy-generated layers; duplicate execution is either removed or documented as intentional.</hook_layering>
     <dual_harness_hooks>Claude and Codex hook configuration files are separated when schemas differ, while shared shell scripts remain portable across both harnesses.</dual_harness_hooks>
+    <agent_definitions>Shared agent frontmatter carries only keys every target harness tolerates, tool allowlists use each harness's exact tool names and value shape, read-only roles pair frontmatter enforcement with a body-level policy that survives inline execution, and the definition is verified to register on each harness expected to spawn it.</agent_definitions>
     <provider_docs>Provider-specific claims are checked against official OpenAI Codex, Anthropic Claude, or other targeted provider documentation.</provider_docs>
     <failure_modes>Missing dependency, unsupported OS, unsupported shell, and missing config errors are actionable for a future agent.</failure_modes>
     <verification>Verification covers the touched runtime path, or the remaining unverified surfaces are named explicitly.</verification>

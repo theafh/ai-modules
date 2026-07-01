@@ -5,6 +5,8 @@ version: 1.0.0
 model: inherit
 background: false
 effort: high
+readonly: true
+tools: Read, Grep, Glob, Bash
 ---
 
 # Auto Drift Task
@@ -48,6 +50,7 @@ Return Markdown with this exact shape:
 # auto_drift_task report
 task: <path>
 classification: <clean|drift|low_confidence_clean>
+drifted_fields: <none|title|goal|title+goal>
 confidence: <high|medium|low>
 baseline_commit: <hash-or-unavailable>
 history_followed: <true|false|unknown>
@@ -64,7 +67,7 @@ goal: <freeze-time-goal>
 <short meaning-level comparison, including why clean changes are clean or why drift is drift>
 
 ## Human route
-<"None." for clean results, or "Attention: this Goal appears to have already drifted from its original intent." plus the recovered-versus-current evidence for drift>
+<"None." for clean results, or an attention message that names the field that actually drifted — "Attention: this task's Title appears to have already drifted from its original intent." for title-only drift, "…this task's Goal appears…" for goal-only drift, or "…this task's Title and Goal appear…" when both drifted — plus the recovered-versus-current evidence for drift. Match the named field to `drifted_fields`.>
 ```
 
 </output_contract>

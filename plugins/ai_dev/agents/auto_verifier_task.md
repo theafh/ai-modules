@@ -5,6 +5,8 @@ version: 1.0.2
 model: inherit
 background: false
 effort: high
+readonly: true
+tools: Read, Grep, Glob
 ---
 
 # Auto Verifier Task

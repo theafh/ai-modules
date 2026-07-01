@@ -1064,6 +1064,13 @@ rewrite_agent_frontmatter() {
   fi
 }
 
+escape_toml_basic_string() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '%s' "$value"
+}
+
 # ---------------------------------------------------------------------------
 # Generate a .toml agent for Codex CLI from a vendor-rewritten .md agent
 # ---------------------------------------------------------------------------
@@ -1132,17 +1139,199 @@ generate_toml_agent() {
   if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
 
   {
-    [[ -n "$name" ]] && printf 'name = "%s"\n' "${name//\"/\\\"}"
-    [[ -n "$description" ]] && printf 'description = "%s"\n' "${description//\"/\\\"}"
-    [[ -n "$model" ]] && printf 'model = "%s"\n' "${model//\"/\\\"}"
-    [[ -n "$model_reasoning_effort" ]] && printf 'model_reasoning_effort = "%s"\n' "${model_reasoning_effort//\"/\\\"}"
+    [[ -n "$name" ]] && printf 'name = "%s"\n' "$(escape_toml_basic_string "$name")"
+    [[ -n "$description" ]] && printf 'description = "%s"\n' "$(escape_toml_basic_string "$description")"
+    [[ -n "$model" ]] && printf 'model = "%s"\n' "$(escape_toml_basic_string "$model")"
+    [[ -n "$model_reasoning_effort" ]] && printf 'model_reasoning_effort = "%s"\n' "$(escape_toml_basic_string "$model_reasoning_effort")"
     if [[ "$readonly" == "true" ]]; then
       printf 'sandbox_mode = "read-only"\n'
     fi
-    printf 'developer_instructions = """\n%s\n"""\n' "$body"
+    printf 'developer_instructions = """\n%s\n"""\n' "$(escape_toml_basic_string "$body")"
   } > "$dest"
 
   ok "generated" "$dest (.toml agent)"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+  append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
+}
+
+# ---------------------------------------------------------------------------
+# Generate a Gemini CLI agent from a vendor-rewritten .md agent
+#
+# Gemini validates agent frontmatter against a strict schema: one unknown key
+# fails validation and the agent silently stays unloaded. This generator
+# keeps only the keys Gemini accepts, maps Claude-style tool names in
+# `tools:` to Gemini slugs emitted as a YAML array, and drops every other
+# header. GEMINI_-prefixed source fields are honored first through
+# rewrite_agent_frontmatter, so an explicit GEMINI_ override still wins.
+# ---------------------------------------------------------------------------
+GEMINI_AGENT_ALLOWED_KEYS=(kind name description display_name tools mcp_servers model temperature max_turns timeout_mins)
+
+map_gemini_tool_name() {
+  case "$1" in
+    Read)      printf 'read_file' ;;
+    Grep)      printf 'grep_search' ;;
+    Glob)      printf 'glob' ;;
+    Bash)      printf 'run_shell_command' ;;
+    Edit)      printf 'replace' ;;
+    Write)     printf 'write_file' ;;
+    WebFetch)  printf 'web_fetch' ;;
+    WebSearch) printf 'google_web_search' ;;
+    *) return 1 ;;
+  esac
+}
+
+generate_gemini_agent() {
+  local source="$1" dest="$2" target_id="$3" artifact_type="$4"
+
+  if [[ ! -f "$source" ]]; then
+    err "missing" "source not found: $source"
+    return 1
+  fi
+
+  # Resolve vendor prefixes first (quiet mode always writes the temp file)
+  local tmp_rewritten
+  tmp_rewritten="$(mktemp)"
+  rewrite_agent_frontmatter "$source" "$tmp_rewritten" "$target_id" true
+
+  local in_frontmatter=false frontmatter_done=false skip_block=false
+  local output="" line key value
+  local seen_emitted=" " tools_line="" tools_explicit=false
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if ! $frontmatter_done && [[ "$line" == "---" ]]; then
+      if $in_frontmatter; then
+        # Flush the buffered tools decision before closing the frontmatter
+        [[ -n "$tools_line" ]] && output+="${tools_line}"$'\n'
+        in_frontmatter=false
+        frontmatter_done=true
+      else
+        in_frontmatter=true
+      fi
+      output+="---"$'\n'
+      continue
+    fi
+
+    if $in_frontmatter; then
+      if $skip_block; then
+        if [[ -z "$line" || "$line" == [[:space:]]* ]]; then
+          continue
+        fi
+        skip_block=false
+      fi
+
+      if [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*(.*)$ ]]; then
+        key="${BASH_REMATCH[1]}"
+        value="${BASH_REMATCH[2]}"
+
+        local allowed=false k
+        for k in "${GEMINI_AGENT_ALLOWED_KEYS[@]}"; do
+          if [[ "$key" == "$k" ]]; then
+            allowed=true
+            break
+          fi
+        done
+        if ! $allowed; then
+          skip_block=true
+          continue
+        fi
+
+        case "$key" in
+          model)
+            # `inherit` is a Claude/Cursor value; Gemini falls back to the
+            # session default when the key is absent. Emitting nothing also
+            # leaves room for a later explicit GEMINI_model value.
+            if [[ "$value" == "inherit" ]]; then
+              skip_block=true
+              continue
+            fi
+            if [[ "$seen_emitted" == *" ${key} "* ]]; then
+              warn "gemini-agent" "dropped duplicate '${key}' for ${dest##*/}"
+              skip_block=true
+              continue
+            fi
+            seen_emitted+="${key} "
+            output+="${line}"$'\n'
+            ;;
+          tools)
+            # An array value is Gemini-native (e.g. from a GEMINI_tools
+            # override) and wins over a mapped generic value in any order.
+            if [[ "$value" == \[* ]]; then
+              if $tools_explicit; then
+                warn "gemini-agent" "dropped duplicate tools array for ${dest##*/}"
+              else
+                tools_line="${line}"
+                tools_explicit=true
+              fi
+              skip_block=true
+              continue
+            fi
+            if $tools_explicit; then
+              skip_block=true
+              continue
+            fi
+            if [[ -n "$tools_line" ]]; then
+              warn "gemini-agent" "dropped duplicate tools for ${dest##*/}"
+              skip_block=true
+              continue
+            fi
+            # Map a Claude-style comma-separated string to Gemini slugs.
+            local mapped=() raw_tools=() tool slug all_mapped=true
+            IFS=',' read -ra raw_tools <<< "$value"
+            for tool in "${raw_tools[@]}"; do
+              tool="${tool#"${tool%%[![:space:]]*}"}"
+              tool="${tool%"${tool##*[![:space:]]}"}"
+              [[ -z "$tool" ]] && continue
+              if slug="$(map_gemini_tool_name "$tool")"; then
+                mapped+=("$slug")
+              else
+                all_mapped=false
+                warn "gemini-agent" "dropped tools for ${dest##*/}: no Gemini mapping for '${tool}'"
+                break
+              fi
+            done
+            if $all_mapped && [[ ${#mapped[@]} -gt 0 ]]; then
+              local joined
+              joined="$(printf '%s, ' "${mapped[@]}")"
+              tools_line="tools: [${joined%, }]"
+            elif $all_mapped; then
+              warn "gemini-agent" "dropped empty tools for ${dest##*/}"
+            fi
+            skip_block=true
+            ;;
+          *)
+            if [[ "$seen_emitted" == *" ${key} "* ]]; then
+              warn "gemini-agent" "dropped duplicate '${key}' for ${dest##*/}"
+              skip_block=true
+              continue
+            fi
+            seen_emitted+="${key} "
+            output+="${line}"$'\n'
+            ;;
+        esac
+        continue
+      fi
+
+      # Continuation line of a kept key — keep as-is
+      output+="${line}"$'\n'
+      continue
+    fi
+
+    # Body — pass through unchanged
+    output+="${line}"$'\n'
+  done < "$tmp_rewritten"
+
+  rm -f "$tmp_rewritten"
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    info "would-gen" "$dest (gemini agent)"
+    return 0
+  fi
+
+  if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
+
+  printf '%s' "$output" > "$dest"
+  ok "generated" "$dest (gemini agent)"
   SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
   append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
 }
@@ -1233,12 +1422,19 @@ install_for_app() {
           $DRY_RUN || append_deployed_artifact_log "$dest_path" "$app_id" "$type" "$source_abs"
           maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
           ;;
-        cursor|claude|gemini)
+        cursor|claude)
           local dest_dir="${app_dir}/agents"
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.md"
           rewrite_agent_frontmatter "$source_abs" "$dest_path" "$app_id"
           $DRY_RUN || append_deployed_artifact_log "$dest_path" "$app_id" "$type" "$source_abs"
+          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
+          ;;
+        gemini)
+          local dest_dir="${app_dir}/agents"
+          ensure_dir "$dest_dir"
+          local dest_path="${dest_dir}/${name}.md"
+          generate_gemini_agent "$source_abs" "$dest_path" "$app_id" "$type"
           maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
           ;;
         codex)
