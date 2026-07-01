@@ -2,8 +2,8 @@
 description: Add to harness_portability a principle that harness-scoped carve-outs are a valid cross-harness-compat mechanism for skill behaviour, keyed on capability when a harness's capability changes.
 scope: plugins/ai_dev/skills/harness_portability
 created: 2026-06-30T19:33:12
-updated: 2026-06-30T19:33:12
-status: open
+updated: 2026-07-01T18:36:53
+status: ready
 reported-by: Andreas Hoffmann
 ---
 

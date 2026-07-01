@@ -2,8 +2,8 @@
 description: Rename the harness_portability skill to plugin_portability across active artefacts; historic task and changelog content keeps the old name except for breaking path references.
 scope: plugins/ai_dev/skills/harness_portability
 created: 2026-06-30T19:55:47
-updated: 2026-06-30T19:55:47
-status: open
+updated: 2026-07-01T17:51:26
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -46,6 +46,7 @@ Move the directory, rename the identifiers inside it, then sweep the active refe
 - **Update the plugin manifests and marketplaces.** In both `plugin.json` files and both marketplace registrations, rewrite the skill-label phrase `harness portability for bundled scripts and plugin wiring` to `plugin portability for bundled scripts and plugin wiring`, leaving the rest of each description intact.
 - **Update the READMEs.** In `plugins/ai_dev/README.md` and root `README.md`, rename the `**harness_portability**` bullet lead to `**plugin_portability**`, and rename the `harness_portability/` entry in the root README layout tree to `plugin_portability/`.
 - **Fix only path references in historic files.** Re-point `tasks/ai-dev_harness-portability-carveout-compat.md`'s `scope:` to `plugins/ai_dev/skills/plugin_portability`, and re-point the markdown link target in `tasks/ai-dev_git-refresh-skill.md` to `../plugins/ai_dev/skills/plugin_portability/SKILL.md`. Change nothing else in those files — keep the `harness_portability` name everywhere it reads as prose, and keep both task filenames as they are.
+- **Re-point this rename task's own `scope:`.** After the directory move, change this file's frontmatter `scope:` from `plugins/ai_dev/skills/harness_portability` to `plugins/ai_dev/skills/plugin_portability`, so it resolves against the renamed directory the move created rather than the deleted one; make no other change to this file's frontmatter or body.
 
 Non-goals: this task does not rewrite the skill's descriptive/objective prose, does not edit the open `harness-portability-carveout-compat` task's body or rename its file, does not hand-edit `CHANGELOG.md`, and does not touch the concept-only prose mentions listed in Context. Skill/plugin `version:` and marketplace-lockstep bumps follow the standing repo versioning rules at commit time and are not enumerated here.
 
@@ -56,6 +57,7 @@ Non-goals: this task does not rewrite the skill's descriptive/objective prose, d
 - Both `plugins/ai_dev/.claude-plugin/plugin.json` and `plugins/ai_dev/.codex-plugin/plugin.json`, and both `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json`, contain `plugin portability for bundled scripts and plugin wiring` and no longer contain `harness portability for bundled scripts and plugin wiring`.
 - `plugins/ai_dev/README.md` and root `README.md` open the skill bullet with `**plugin_portability**`, and the root README layout tree lists `plugin_portability/`; neither file references the old `harness_portability` skill name.
 - `tasks/ai-dev_harness-portability-carveout-compat.md` has `scope: plugins/ai_dev/skills/plugin_portability`, and `tasks/ai-dev_git-refresh-skill.md`'s markdown link resolves to `../plugins/ai_dev/skills/plugin_portability/SKILL.md`; the body prose, descriptions, filenames, and the `harness_portability` name in the prose of both files are unchanged.
+- This rename task's own frontmatter `scope:` reads `plugins/ai_dev/skills/plugin_portability`, resolving against the renamed directory rather than the deleted `plugins/ai_dev/skills/harness_portability`.
 - `tasks/ai-dev_git-commit-consume-context-contract.md`, the two named archive task files, and `CHANGELOG.md` are byte-for-byte unchanged.
 - `rg "harness_portability" -l` returns only historic task bodies and `CHANGELOG.md`; no manifest, marketplace, README, or the renamed skill file appears.
 - `make lint` passes (markdownlint, jq syntax check, shellcheck) and the task linter reports the moved-target `scope:` and link path as resolving.

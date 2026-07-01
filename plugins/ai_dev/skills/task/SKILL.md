@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.8
+version: 1.3.9
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 <task_skill>
 
 <role>
-The task skill is the hub and source of truth of the `task_*` family: the **project-local backlog** that manages a project's upcoming work and todos as plain-markdown task files living next to the code. The concept behind the whole system: every task file is written to be **self-sufficient** — the file alone is enough to implement the work from, including in a later session with no memory of the task's creation. That sufficiency is a floor, never a filter: at implementation time the implementer draws on everything actually available — the codebase, the project's standing instructions, the user in the loop.
+The task skill is the hub and source of truth of the `task_*` family: the **project-local backlog** that manages a project's upcoming work and todos as plain-markdown task files living next to the code. The concept behind the whole system: every task file is written to be **self-sufficient** — the file alone is enough to implement the work from, including in a later session with no memory of the task's creation. That sufficiency is a floor, never a filter: at implementation time the implementer draws on everything actually available — the codebase, the project's standing-instruction baseline, the user in the loop.
 </role>
 
 <when_to_activate>
@@ -33,10 +33,13 @@ The wiki skill captures durable knowledge (concepts, procedures, references). Th
 <architecture>
 ```text
 <project-root>/
-├── CHARTER.md?       # optional hard project-purpose guardrail
-├── ARCHITECTURE.md?  # optional descriptive project architecture
-├── FEATURES.md?      # optional behaviour ledger
-├── TESTING.md?       # optional project-specific testing notes
+├── CLAUDE.md?        # optional harness-loaded project rule file
+├── AGENTS.md?        # optional harness-loaded project rule file
+├── GEMINI.md?        # optional harness-loaded project rule file
+├── CHARTER.md?       # optional family-consulted hard project-purpose guardrail
+├── ARCHITECTURE.md?  # optional family-consulted descriptive project architecture
+├── FEATURES.md?      # optional family-consulted behaviour ledger
+├── TESTING.md?       # optional family-consulted project-specific testing notes
 └── tasks/
     ├── <scope>_<name>.md      # open tasks
     ├── <scope>_<name>.md
@@ -45,13 +48,15 @@ The wiki skill captures durable knowledge (concepts, procedures, references). Th
         └── <scope>_<name>.md
 ```
 
-The filing convention has one canonical split: material directly about the task system lives under `tasks/`, and project-wide standing material lives at the repo root as optional `UPPERCASE.md` docs. The task tree stays intentionally two layers — `tasks/` for live work, `tasks/archive/` for closed work. No further task nesting. Scope sits in the filename, not in a folder. A bare project with only `tasks/` remains complete.
+The filing convention has one canonical split: material directly about the task system lives under `tasks/`, and project-wide standing material lives at the repo root as optional `UPPERCASE.md` docs. Two root-doc roles exist there: harness-loaded rule files (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` and equivalents) provide the project's standing-instruction baseline, while family-consulted guardrail docs (`CHARTER.md` / `ARCHITECTURE.md` / `FEATURES.md` / `TESTING.md`) add task-family-specific constraints and context. The task tree stays intentionally two layers — `tasks/` for live work, `tasks/archive/` for closed work. No further task nesting. Scope sits in the filename, not in a folder. A bare project with only `tasks/` remains complete.
 </architecture>
 
 <standing_doc_consumption>
-Resolve the project root from the base `<discover>` step, then gate each optional standing-doc read with POSIX `test -f "$root/<DOC>.md"`. On a hit, the consuming skill or agent reads the doc for the purpose named at its touchpoint; on a miss, it continues unchanged and raises no missing-doc error.
+Resolve the project root from the base `<discover>` step. The project's standing instructions start with the harness-loaded root rule files: `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` and equivalents. When present, the harness loads those files before the skill runs, and the task family follows that baseline at every touchpoint independent of whether any family guardrail doc exists. The task family adds no separate presence-gated read for those harness files because the harness already supplies them.
 
-`CHARTER.md` is the top guard: any skill or agent about to write or change task content validates the proposed content against the charter's boundaries and invariants and stops on a violation. The softer docs inform work without blocking it: `FEATURES.md` and `ARCHITECTURE.md` provide prior-art and design context for task creation, `TESTING.md` provides project-specific testing details for implementation and audit, and `ARCHITECTURE.md` is refreshed during finish when completed work extends the design.
+Family-consulted guardrail docs are the additive layer over that baseline. Gate each optional family guardrail doc read with POSIX `test -f "$root/<DOC>.md"`. On a hit, the consuming skill or agent reads the doc for the purpose named at its touchpoint; on a miss, it continues unchanged and raises no missing-doc error.
+
+`CHARTER.md` is the highest-order guardrail: any skill or agent about to write or change task content validates the proposed content against the charter's boundaries and invariants and stops on a violation. The harness baseline governs wherever the family guardrail docs are silent. When a harness rule conflicts with a softer guardrail doc (`ARCHITECTURE.md` / `FEATURES.md` / `TESTING.md`), surface the conflict for human review instead of auto-resolving it. The softer docs inform work without blocking it: `FEATURES.md` and `ARCHITECTURE.md` provide prior-art and design context for task creation, `TESTING.md` provides project-specific testing details for implementation and audit, and `ARCHITECTURE.md` is refreshed during finish when completed work extends the design.
 </standing_doc_consumption>
 
 <file_format>
@@ -134,7 +139,7 @@ Simplicity, single-topic scope, and standard tooling beat every non-standard ext
 </markdown_policy>
 
 <body>
-The body starts with a single `# Title` H1 on the first non-blank line, followed by the rest of the task content. Write the body to be **self-sufficient**: the file carries everything the work needs that the project itself does not already hold, while whatever exists at implementation time — the codebase, the project's standing instructions, the user in the loop — stays in play and gets used. Self-sufficiency is what lets a task outlive its origins: the conversation that created it is the one context guaranteed to be gone by then. Corollary: content a standing project instruction already mandates is cited from the task, with the rule's text staying in its source document. Fill these sections:
+The body starts with a single `# Title` H1 on the first non-blank line, followed by the rest of the task content. Write the body to be **self-sufficient**: the file carries everything the work needs that the project itself does not already hold, while whatever exists at implementation time — the codebase, the project's standing-instruction baseline, the user in the loop — stays in play and gets used. Self-sufficiency is what lets a task outlive its origins: the conversation that created it is the one context guaranteed to be gone by then. Corollary: content a standing project instruction (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` and equivalents, plus the applicable family guardrail docs) already mandates is cited from the task as a standing repo rule, with the rule's text staying in its source document. Fill these sections:
 
 - **Goal** — what the task delivers and the user-visible outcome.
 - **Context** — pointers to the relevant files, modules, prior decisions, related tasks, links.
@@ -175,6 +180,7 @@ The readiness lens for one task file, judged against the self-sufficiency bar `<
    - **Contradictions** — internal consistency, including behavioural contradictions where one part makes another non-functional; paraphrase drift between sections — what the **State once** rule prevents — is the standard source.
    - **Ambiguity / under-specification** — missing requirements, unstated assumptions, vague pointers, or over-compressed prose that lead to divergent implementations; an unresolved either/or is a **Decide or label** finding, over-compression is judged against **Compact only to the implementable floor**, and any reference carrying a line-number position claim — a `:N` path suffix, a bare `line N`, an `around lines N–M` range — is flagged against the `<markdown_policy>` soft-pointer rule.
    - **Over-specification** — constraints that needlessly narrow an implementation choice the task meant to leave open; a choice meant to stay open is labeled per **Decide or label** rather than silently narrowed.
+   - **Restated standing rules** — body passage instructs the implementer with a copy of a rule that the `<body>` corollary says belongs in a standing project instruction; this is a readiness issue, not wording polish, because copied rules drift from their source. Replace the copy with a standing-rule citation, or drop it when the surrounding text carries nothing else. Keep this distinct from **Over-specification**, which narrows an implementation choice, and apply the **Task-specific gates only** acceptance clause for generic project-gate items: a generic gate is a restatement, while a task-specific executable check remains valid.
    - **Negation-framed behaviour** — behaviour defined as "not X" that an implementer must invert to act on; reframe per the body's positive, action-oriented rule, preserving the technical detail and moving rejected-option rationale to its named home.
    - **Sensitive or user-specific detail** — body text embeds identifying or sensitive specifics without an explicit need; point the finding at **Redact by generalizing** rather than restating the rule.
    - **Append-framed artifact edits** — a task changing an existing artifact is framed as "add X" while an affected passage exists; flag it per **Rewrite in place, don't append** unless the rule's genuine-addition carve-outs apply.
@@ -339,7 +345,7 @@ Mechanical lint repair preserves task intent and file semantics. It bumps `updat
 </bump_updated>
 
 <single_shot_ready>
-**Write for a single-shot implementer.** The task file carries everything the work needs that the project itself does not already hold; everything available at implementation time — codebase, standing instructions, the user — stays in play. A body that leans on its birth conversation fails this bar: that conversation is the one context certain to be gone.
+**Write for a single-shot implementer.** The task file carries everything the work needs that the project itself does not already hold; everything available at implementation time — codebase, the standing-instruction baseline named in the standing-doc consumption section, the user — stays in play. A body that leans on its birth conversation fails this bar: that conversation is the one context certain to be gone.
 </single_shot_ready>
 
 <not_a_wiki>
@@ -361,7 +367,7 @@ This base `task` skill is the hub of a `task_*` family and can do all of the bac
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The family layers as a graduated drift-prevention spectrum: the plain manual chain is the default and fences nothing; `task_auto_check` adds the optional readiness loop; autonomous writers, including future implementer and shaper surfaces, carry the hard `CHARTER.md` guardrail; and softer standing docs inform work through the verified test-discipline rule, the descriptive `ARCHITECTURE.md`, and the `FEATURES.md` ledger. `ARCHITECTURE.md` describes goals, stack, and design decisions; it is distinct from the charter's falsifiable boundary role and from any status-board, stage-index, or build-order view. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The family layers as a graduated drift-prevention spectrum: the plain manual chain follows the harness-loaded standing-instruction baseline and adds no autonomous hard gate; `task_auto_check` adds the optional readiness loop; autonomous writers, including future implementer and shaper surfaces, carry the hard `CHARTER.md` guardrail; and softer standing docs inform work through the verified test-discipline rule, the descriptive `ARCHITECTURE.md`, and the `FEATURES.md` ledger. `ARCHITECTURE.md` describes goals, stack, and design decisions; it is distinct from the charter's falsifiable boundary role and from any status-board, stage-index, or build-order view. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
 </family>
 
 </task_skill>

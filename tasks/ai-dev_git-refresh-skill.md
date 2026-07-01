@@ -2,8 +2,8 @@
 description: Add a git_refresh skill to ai_dev that fast-forwards the repo's default branch and deletes cleanly-merged local branches by default, gating riskier branch pruning behind an explicit opt-in.
 scope: plugins/ai_dev/skills
 created: 2026-06-28T18:53:29
-updated: 2026-06-28T19:10:29
-status: open
+updated: 2026-07-01T18:29:25
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -47,7 +47,7 @@ These recommended command sequences are the content the user asked to live inlin
 
 Bundle the git logic under `scripts/` per the repo's helper-script rule, and apply the [harness_portability](../plugins/ai_dev/skills/harness_portability/SKILL.md) skill so the script runs under both OpenAI Codex and Anthropic Claude and across macOS and Linux — BSD-vs-GNU differences in `git` porcelain parsing, `sed`, and `grep` are the usual breakage. Write the skill's own `description:` for both audiences per the standing rule: a compact statement of what it does plus router trigger phrases such as "clean up branches", "refresh main", "delete merged branches", "get back to a clean main", and "prune stale local branches". Mirror the `tests/git_commit/` skill-creator-aligned harness pattern for the new test surface.
 
-This adds shipped content under `plugins/ai_dev/`, so the standing registration and versioning gates apply: the new skill ships at `1.0.0`, and adding it counts as a plugin edit, so the `ai_dev` plugin version rises in lockstep across both `plugin.json` files and both marketplace registrations in the commit that lands it.
+This adds shipped content under `plugins/ai_dev/`, so registration and versioning for the landing commit follow the standing repo rules, which own the plugin version-lockstep procedure.
 
 ## Acceptance
 
@@ -64,5 +64,5 @@ This adds shipped content under `plugins/ai_dev/`, so the standing registration 
 - Gated force-delete shows the commits that would be lost before any `git branch -D` and requires an explicit confirmation.
 - The skill bundles its git logic under `scripts/` and carries a `references/` manual-fallback note, mirroring `git_commit`'s structure.
 - A `tests/git_refresh/` harness exists following the skill-creator-aligned pattern (script tests under `script_tests/`, evals under `evals/`), covering default-branch detection, the safe default run (deletes merged, leaves an upstream-gone-with-unpushed branch untouched), the closing report and conditional offer (offer present when a gated candidate exists, nothing-further message when none do), and the gated upstream-gone pruning with its per-branch safety check, on staged fixtures.
-- The skill is registered in the `ai_dev` `plugin.json` (Claude and Codex), both marketplace registrations, `plugins/ai_dev/README.md`, and the root `README.md` layout tree and skill list; the ai_dev plugin version rises in lockstep in the landing commit while the new skill stays at `1.0.0`.
+- The skill is registered in the `ai_dev` `plugin.json` (Claude and Codex), both marketplace registrations, `plugins/ai_dev/README.md`, and the root `README.md` layout tree and skill list, per the standing registration rules.
 - The plugin README's "Git history" grouping is rewritten to cover the broader git family (for example "Git") so `git_refresh` files sensibly beside `git_commit`.

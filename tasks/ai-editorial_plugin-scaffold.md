@@ -2,8 +2,8 @@
 description: "Scaffold and register the new ai_editorial plugin shell — both plugin.json files, README, skills/ dir, marketplace entry, and root README update."
 scope: "ai_editorial plugin"
 created: 2026-06-01T23:31:06
-updated: 2026-06-14T18:35:44
-status: open
+updated: 2026-07-01T18:12:58
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -27,7 +27,7 @@ Stand up the shell of a third plugin, `ai_editorial`, alongside `ai_dev` and `kn
    - `.codex-plugin/plugin.json` — same metadata plus `"skills": "./skills/"`.
    - `README.md` — plugin overview that lists the two planned skills (`slop_catch`, `ghost_writer`).
    - `skills/` — the directory, empty for now.
-2. Register in `.claude-plugin/marketplace.json` under `plugins[]`: name, `source: ./plugins/ai_editorial`, description.
+2. Register `ai_editorial` in every marketplace file the standing repo rules require for a new plugin, matching each file's existing entry shape. Supply the `ai_editorial`-specific values under `plugins[]`: name `ai_editorial`, source path `./plugins/ai_editorial`, and description.
 3. Update the root `README.md`: add `ai_editorial` to the layout tree and the **Plugins** bullet list.
 
 Non-goal: the skills themselves land in the two sibling tasks — this task ships the shell only.
@@ -35,5 +35,5 @@ Non-goal: the skills themselves land in the two sibling tasks — this task ship
 ## Acceptance
 
 - `plugins/ai_editorial/` holds both `plugin.json` files (the `.codex-plugin` one carrying `"skills": "./skills/"`), a `README.md`, and a `skills/` directory.
-- The plugin appears in `.claude-plugin/marketplace.json` and in the root `README.md` layout tree and **Plugins** list.
+- `ai_editorial` is registered in every marketplace file the standing repo rules require for a new plugin, and appears in the root `README.md` layout tree and **Plugins** list.
 - `./deployment/deployment.sh --global --dry-run` previews `ai_editorial` without error.
