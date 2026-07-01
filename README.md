@@ -45,6 +45,7 @@ ai-modules/
 │       ├── .codex-plugin/plugin.json
 │       ├── README.md
 │       ├── agents/
+│       │   ├── auto_drift_task.md
 │       │   ├── auto_gate_task.md
 │       │   ├── auto_reviewer_task.md
 │       │   ├── auto_verifier_task.md
@@ -108,7 +109,7 @@ The single-task siblings run in lifecycle order, **create → check → select �
 
 - **task_create**: a focused front end over `task` that creates exactly one well-formed task file with little ceremony. It leaves the naming, frontmatter, body, and lint rules to the `task` skill instead of repeating them, so a one-shot "make a task for X" loads a narrow surface rather than the full backlog workflow.
 - **task_check**: decides whether one task is ready to hand to an implementer. It runs a structural check, then a content review (scope sizing, focus, complexity, contradictions, ambiguity, over-specification, behaviour framed as "not X"), and returns `spec_check`'s shape: a `# General assessment` paragraph plus a ranked `## Issues` list. A read-only gate *before* building. It is the counterpart to `task_audit`, which checks *after*.
-- **task_auto_check**: automatically drives one task toward readiness while reusing `task_check` as the only gate. Its helper agents (`auto_gate_task`, `auto_reviewer_task`, `auto_verifier_task`) report the gate result, propose focused repairs, verify intent-safe minimum edits, and stop at `ready` or a surfaced stuck state.
+- **task_auto_check**: automatically drives one task toward readiness while reusing `task_check` as the only gate. Its helper agents (`auto_drift_task`, `auto_gate_task`, `auto_reviewer_task`, `auto_verifier_task`) run a one-time committed-intent check, report the gate result, propose focused repairs, verify intent-safe minimum edits, and stop at `ready` or a surfaced stuck state.
 - **task_select**: recommends what to work on next from the live backlog. It filters eligible tasks, finds dependencies and ordering, ranks by impact, implementation complexity, friction, and viable bug-fix priority, then names one unblocked task and its natural next action. A read-only step between readiness and implementation.
 - **task_implement**: builds one existing task file end to end, following a strict flow: read, load guardrails, understand the codebase, implement, test, verify (ported from staged-spec's `spec_implement`). It does the work and stops at a green test suite, leaving codebase verification to `task_audit` and close-out to `task_finish`.
 - **task_audit**: checks one task's claimed completion against the codebase. It walks every body item, acceptance check, and backing test, runs the suite, and returns a verdict in the `spec_audit` shape (`Success`, or an ordered `Gaps:` list with fixes). A read-only gate that changes nothing; it hands a clean pass to `task_finish` and gaps to `task_implement`.

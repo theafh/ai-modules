@@ -2,9 +2,10 @@
 description: Add a freeze-time auto_drift_task subagent to task_auto_check that, only on meaning-level Goal drift from git history, surfaces a one-time human intention check; task_check stays history-free.
 scope: "task_* family: new auto_drift_task agent + task_auto_check (task_check unchanged)"
 created: 2026-06-28T18:04:01
-updated: 2026-07-01T19:09:39
-status: ready
+updated: 2026-07-01T19:58:13
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # task_auto_check: a freeze-time auto_drift_task agent that surfaces a one-time human intention check on meaning-level Goal drift
@@ -21,7 +22,7 @@ Run it once, at the freeze instant. `<freeze>` holds the at-entry working-tree G
 
 Keep the human in the loop. Reverting toward the recovered origin could revive deliberately-dropped scope and fight the frozen-Goal invariant `<frozen_intent>` sets; intended drift is legitimate, and only a human can separate intended from unintended. So `auto_drift_task` detects and surfaces, the loop human-routes, and neither reverts. The boundary already modeled by `<structural_split_boundary>` is the shape this needs: a class of finding the loop must not auto-fix, surfaced as stuck / human-routed.
 
-`task_check` stays history-free. The complementary current-state concern — a title or `description` that under-names the body from the current file alone — remains the sibling [title/description coverage task](archive/task-skill_title-body-coverage-check.md), a shared `<readiness_checklist>` item that needs no history. Keep them distinct: that one reads the current file; this one reads history for meaning drift. Neither restates the other.
+`task_check` stays history-free. The complementary current-state concern — a title or `description` that under-names the body from the current file alone — remains the sibling [title/description coverage task](task-skill_title-body-coverage-check.md), a shared `<readiness_checklist>` item that needs no history. Keep them distinct: that one reads the current file; this one reads history for meaning drift. Neither restates the other.
 
 Motivating instance: a task's uncommitted rewrite cleanly resolved a labeled open decision, introduced an unreconciled caveat (drift), and left the title naming two of five threads; an agent separated the legitimate resolution from the drift by reading history. That run was human-invoked — this task makes the *detection* a standing, freeze-time agent step while keeping the *reconciliation* human-owned.
 

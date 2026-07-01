@@ -2,7 +2,7 @@
 description: Read-only ai_dev guardrail_audit skill that audits a repo's existing guardrail docs for cross-doc and doc-vs-code divergences, proposes docs where repo substance warrants, and asks how to proceed.
 scope: plugins/ai_dev/skills
 created: 2026-06-29T19:01:01
-updated: 2026-06-30T18:21:32
+updated: 2026-07-01T19:58:13
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,7 +21,7 @@ The hierarchy the skill ranks by is not new. This repo's `CHARTER.md` already co
 
 `CHARTER.md`'s falsifiable structure — the `## Core Purpose`, `## DOES / DOES NOT Domain Boundaries`, `## Key Invariants`, and `## Intentional Constraints` sections — is defined by [charter contract](archive/task-family_charter-guardrail-for-autonomy.md) (finished); the skill keys its top-tier assessment on those four sections and treats the DOES NOT boundaries and the Key Invariants as the falsifiable claims it tests the other docs and the code against. That task also ships the protect hook that hard-blocks edits to `CHARTER.md`; `guardrail_audit` is the read-and-report complement to that fence, not a second enforcement mechanism.
 
-This skill is distinct from the open [intent-drift detection](task-family_intent-drift-detection.md) task, which gives `task_check` a step comparing one task file's `## Goal` against its own committed git history. That is one task drifting from its own past intent; `guardrail_audit` compares guardrail docs against each other and against the current codebase — different artifact, different comparison, and a different edit surface (a new standalone skill, not a step inside `task_check`). Neither subsumes the other, and the skill should not re-implement task-self-history drift.
+This skill is distinct from the archived [intent-drift detection](archive/task-family_intent-drift-detection.md) task, which gives `task_check` a step comparing one task file's `## Goal` against its own committed git history. That is one task drifting from its own past intent; `guardrail_audit` compares guardrail docs against each other and against the current codebase — different artifact, different comparison, and a different edit surface (a new standalone skill, not a step inside `task_check`). Neither subsumes the other, and the skill should not re-implement task-self-history drift.
 
 The skill is a standalone `ai_dev` skill, a sibling to the task family that consumes the same guardrail-doc substrate; it is not a member of the `task_*` family and is not added to that family's roster. It is the only entry point for its capability, so it keeps the ordinary domain-first name (`guardrail_audit`, matching `task_audit`) with no `_auto_` variant.
 

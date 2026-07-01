@@ -21,7 +21,7 @@ The single-task siblings run in lifecycle order, **create → check → select �
 
 - **task_create**: a focused on-ramp that quickly creates exactly one well-formed task file, leaving the naming, frontmatter, body, and lint rules to the `task` skill. Use it when a single "make a task for X" should load a narrow surface instead of the whole backlog workflow.
 - **task_check**: decide whether one task is ready to build. It judges the task against a readiness checklist (structure, scope sizing, focus, complexity, contradictions, ambiguity) and reports a General assessment plus a ranked Issues list. A read-only gate *before* building, ported from staged-spec's `spec_check`.
-- **task_auto_check**: drive one task toward readiness automatically while keeping `task_check` as the only readiness gate. It freezes the task's original goal, asks `auto_gate_task`, `auto_reviewer_task`, and `auto_verifier_task` for gated issue reports, repair proposals, and intent-safe approvals, applies only verified minimum edits, and stops at `ready` or a surfaced stuck state.
+- **task_auto_check**: drive one task toward readiness automatically while keeping `task_check` as the only readiness gate. It freezes the task's current title and goal, asks `auto_drift_task` for a one-time committed-intent check, then asks `auto_gate_task`, `auto_reviewer_task`, and `auto_verifier_task` for gated issue reports, repair proposals, and intent-safe approvals. It applies only verified minimum edits and stops at `ready` or a surfaced stuck state.
 - **task_select**: choose what to work on next from the live backlog. It filters eligible tasks, finds dependencies and ordering, ranks by impact, implementation complexity, friction, and viable bug-fix priority, then recommends one unblocked task and its natural next action. A read-only step between readiness and implementation.
 - **task_implement**: take one existing task file and carry it to done. It reads the task, loads the repo guardrails, builds on the existing code, writes the tests, runs the suite clean, and confirms every acceptance item. It does the work and leaves verification to `task_audit` and close-out to `task_finish`.
 - **task_audit**: check one task's claimed completion against the actual codebase. It confirms every body item, acceptance check, and backing test, runs the suite, and reports a verdict (clean, or ordered gaps with fixes). A read-only gate ported from staged-spec's `spec_audit`; it hands a clean pass to `task_finish` and gaps to `task_implement`.
@@ -49,6 +49,7 @@ Standing apart from that flow:
 
 ## Agents
 
+- **auto_drift_task**: reconstructs a task's earliest committed title and Goal for `task_auto_check`, classifies meaning-level drift, and returns recovered-versus-current evidence without editing files.
 - **auto_gate_task**: wraps `task_check` for `task_auto_check` and returns a compact structured verdict: final status, ready boolean, issue list, and evidence labels.
 - **auto_reviewer_task**: proposes minimum task-body repairs from one assigned stance, citing the base `task` skill's `<body>` repair rules and preserving the frozen task intent.
 - **auto_verifier_task**: verifies reviewer proposals with a refute-by-default stance, keeping only real, minimum, issue-resolving, frozen-intent-preserving edits for the orchestrator to apply.

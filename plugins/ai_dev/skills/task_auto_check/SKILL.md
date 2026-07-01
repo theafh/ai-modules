@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, or run an autonomous readiness loop without implementing the task.
-version: 1.0.3
+version: 1.0.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 <task_auto_check_skill>
 
 <role>
-task_auto_check is the opt-in autonomous readiness loop for one task file. It uses `task_check` as the only readiness gate, then asks modular `auto_*_task` agents to propose and verify minimal task-body repairs until the task becomes `ready` or no verified intent-preserving repair remains. Before reporting any stop result, it finalizes the target file with the base task linter and applies mechanically fixable lint repairs. It prepares a task for `task_implement`; it never implements the task's work and never closes or archives it.
+task_auto_check is the opt-in autonomous readiness loop for one task file. It freezes the task's current title and Goal, runs one committed-intent drift check, uses `task_check` as the only readiness gate, then asks modular `auto_*_task` agents to propose and verify minimal task-body repairs until the task becomes `ready` or no verified intent-preserving repair remains. Before reporting ordinary stop results, it finalizes the target file with the base task linter and applies mechanically fixable lint repairs. It prepares a task for `task_implement`; it never implements the task's work and never closes or archives it.
 </role>
 
 <when_to_activate>
@@ -30,7 +30,7 @@ The base `task` skill owns the task-file format, lifecycle stamps, `<readiness_c
 </authority>
 
 <path_resolution>
-Resolve the base `task` and `task_check` skills from the same plugin bundle as this skill when possible: this skill lives at `skills/task_auto_check/SKILL.md`, so sibling skills live under `../task/` and `../task_check/`. Resolve the helper agents by their published names — `auto_gate_task`, `auto_reviewer_task`, and `auto_verifier_task` — using the current harness's normal agent mechanism. When a harness exposes only file paths, those agents live in the same plugin at `../../agents/` relative to this skill directory.
+Resolve the base `task` and `task_check` skills from the same plugin bundle as this skill when possible: this skill lives at `skills/task_auto_check/SKILL.md`, so sibling skills live under `../task/` and `../task_check/`. Resolve the helper agents by their published names — `auto_drift_task`, `auto_gate_task`, `auto_reviewer_task`, and `auto_verifier_task` — using the current harness's normal agent mechanism. When a harness exposes only file paths, those agents live in the same plugin at `../../agents/` relative to this skill directory.
 </path_resolution>
 
 <inputs>
@@ -47,8 +47,12 @@ Use `task_check` verbatim as the gate. The loop consumes the structured verdict 
 </single_gate>
 
 <frozen_intent>
-Freeze the original task's `## Goal` before the first gate call. When the user supplied creation-time intent, freeze that prompt alongside the goal. Every proposal and every applied edit must preserve this frozen intent; the loop may clarify expression, add missing implementation context, or make acceptance checks verifiable, but it must not change what the task is for.
+Freeze the original task's `# Title` and `## Goal` before the first gate call. When the user supplied creation-time intent, freeze that prompt alongside the title and Goal. Every proposal and every applied edit must preserve this frozen intent; the loop may clarify expression, add missing implementation context, or make acceptance checks verifiable, but it must not change what the task is for.
 </frozen_intent>
+
+<intent_drift_boundary>
+Invoke `auto_drift_task` once at freeze time, before the first `<gate>` call and any repair. A `drift` classification is human-routed through the same surfaced stuck channel as `<structural_split_boundary>` and `<mechanical_lint_boundary>`: report `Attention: this Goal appears to have already drifted from its original intent.` with the recovered-versus-current evidence, halt the auto-repair path for this run, leave the task body unchanged, and keep `<frozen_intent>` intact. Use the recovered origin as evidence for the human, not as an edit target; the loop never auto-repairs toward the recovered original intent. Clean, meaning-preserving, and `low_confidence_clean` results proceed without surfacing the intention check.
+</intent_drift_boundary>
 
 <reviewer_stances>
 Spawn `auto_reviewer_task` once per applicable stance. The standing stance set is selected lazily from the issues `task_check` raised and cites the base `task` skill's `<body>` repair rules by name:
@@ -78,7 +82,7 @@ Pass all proposals to `auto_verifier_task`. Keep only proposals that are real, r
 </verification_standard>
 
 <loop_bounds>
-Use a hard cap of 5 rounds unless the user prompt supplies a positive integer override. A round is one gate call, reviewer pass, verifier pass, edit application, and next loop decision. Stop when `task_check` reports `ready`, when no verified fix remains, when a structural split boundary is the only remaining repair, or when the cap is reached.
+Use a hard cap of 5 rounds unless the user prompt supplies a positive integer override. A round is one gate call, reviewer pass, verifier pass, edit application, and next loop decision. Stop when `task_check` reports `ready`, when no verified fix remains, when a structural split boundary is the only remaining repair, when a freeze-time intent drift boundary fires, or when the cap is reached.
 </loop_bounds>
 </loop_policy>
 
@@ -88,7 +92,7 @@ Read the target task end to end. Read the base `task` skill and `task_check` ski
 </orient>
 
 <freeze>
-Snapshot the original `## Goal` and any creation-time user intent. Keep this snapshot in loop-local state and pass it to every reviewer and verifier call.
+Snapshot the original `# Title`, `## Goal`, and any creation-time user intent. Keep this snapshot in loop-local state and pass it to every reviewer and verifier call. Invoke `auto_drift_task` with the task path, resolved project root, resolved base `task` skill, and frozen title/Goal exactly once, before the first `<gate>` call and any repair. If it returns `clean` or `low_confidence_clean`, continue to `<gate>` without surfacing an intention check. If it returns `drift`, surface the single human intention check from `<intent_drift_boundary>`, report the recovered-versus-current evidence, leave the task body unchanged, preserve `<frozen_intent>`, and stop before `task_check`, body repair, or mechanical lint finalization.
 </freeze>
 
 <gate>
@@ -108,7 +112,7 @@ Apply the surviving fixes as one cohesive minimum-change edit group. Before writ
 </apply_repairs>
 
 <finalize_mechanical_lint>
-Run before every reporting exit path, including an immediate `ready` verdict from `<gate>`, a no-verified-fix stop, a structural split stop, and an iteration-cap stop. Invoke the base task linter directory-wide with `--quiet`, filter the reported findings to the target file across blocking, warn, and info severities, and apply the base `<lint>` mechanically fixable finding set directly to that file.
+Run before every reporting exit path after `<gate>`, including an immediate `ready` verdict from `<gate>`, a no-verified-fix stop, a structural split stop, and an iteration-cap stop. Invoke the base task linter directory-wide with `--quiet`, filter the reported findings to the target file across blocking, warn, and info severities, and apply the base `<lint>` mechanically fixable finding set directly to that file. A freeze-time intent drift stop exits before this step because the run owns no task edits once the committed intent is contested.
 
 Keep this path separate from the body-repair reviewer/verifier path: do not spawn `auto_reviewer_task` or `auto_verifier_task` for mechanical lint findings, and do not re-run `task_check` after applying them because lint cleanliness does not change the readiness verdict. For an over-budget `description`, write one compact replacement that preserves the named scope, important nouns, and user-visible deliverable; the stale over-budget wording disappears. For a determinable broken local link, re-point the link. For an unambiguous non-ISO datetime or malformed frontmatter value, normalise or fill it. For a determinable wikilink or footnote, convert it to standard markdown.
 
@@ -118,7 +122,7 @@ Before writing, resolve the project root through the base task discovery step; w
 </finalize_mechanical_lint>
 
 <iterate>
-Return to `<gate>` until the loop stops by ready verdict, no verified fix, structural split boundary, or cap. At the cap, leave the task at the status from the final `task_check` verdict, proceed to `<finalize_mechanical_lint>`, and surface the remaining issues as stuck.
+Return to `<gate>` until the loop stops by ready verdict, no verified fix, structural split boundary, intent drift boundary, or cap. At the cap, leave the task at the status from the final `task_check` verdict, proceed to `<finalize_mechanical_lint>`, and surface the remaining issues as stuck.
 </iterate>
 </workflow>
 
@@ -127,13 +131,14 @@ Report the loop result with concrete evidence:
 
 - Target task path and final status.
 - Number of gate calls, body edit rounds, and mechanical-lint edit groups.
-- Whether the stop reason was ready, no verified fix, structural split boundary, or iteration cap.
+- Whether the stop reason was ready, no verified fix, structural split boundary, intent drift boundary, or iteration cap.
+- For the freeze-time drift check: the `auto_drift_task` classification, baseline commit when available, recovered-versus-current evidence, whether the run halted before `<gate>`, and the exact human intention check message when surfaced.
 - For each applied edit group: the `task_check` issue it addressed, the reviewer stance(s) that proposed it, the verifier decision, and the base `<body>` repair rule cited.
 - For each rejected or human-routed issue: the reason it was rejected or routed.
 - For mechanical lint finalization: the base `<lint>` findings applied, the target-file findings surfaced-but-not-fixed, whether `updated` changed, and the post-fix linter result.
 - The exact verification commands run, including the base task linter.
 
-Close with the natural next step: `task_implement` when the task is `ready`, or human refinement / `task_fix` with `auto_shaper_task` escalation when the loop stops stuck on structural tree work. Do not point at `task_finish`, because readiness is before implementation.
+Close with the natural next step: `task_implement` when the task is `ready`; human intention confirmation when the intent drift boundary fires; or human refinement / `task_fix` with `auto_shaper_task` escalation when the loop stops stuck on structural tree work. Do not point at `task_finish`, because readiness is before implementation.
 </output_contract>
 
 <family>

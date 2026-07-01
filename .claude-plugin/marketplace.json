@@ -19,8 +19,8 @@
     {
       "name": "ai_dev",
       "source": "./plugins/ai_dev",
-      "description": "Skills and agents for everyday AI-assisted development: structured git commits, day-grouped changelog maintenance, project-local task and todo tracking as plain-markdown files (a base task skill plus create, check, auto-check, explain, select, implement, audit, finish, and fix siblings with auto_*_task helper agents, including task_fix's auto_shaper_task escalation), writing and formatting AI instructions (prompts, rules, skill files, agent definitions), harness portability for bundled scripts and plugin wiring, and language style guides for markdown, Python, and Rust.",
-      "version": "1.9.14"
+      "description": "Skills and agents for everyday AI-assisted development: structured git commits, day-grouped changelog maintenance, project-local task and todo tracking as plain-markdown files (a base task skill plus create, check, auto-check, explain, select, implement, audit, finish, and fix siblings with auto_*_task helper agents, including task_auto_check's auto_drift_task intent check and task_fix's auto_shaper_task escalation), writing and formatting AI instructions (prompts, rules, skill files, agent definitions), harness portability for bundled scripts and plugin wiring, and language style guides for markdown, Python, and Rust.",
+      "version": "1.9.15"
     }
   ]
 }
