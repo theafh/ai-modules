@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.9
+version: 1.3.10
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -178,6 +178,7 @@ The readiness lens for one task file, judged against the self-sufficiency bar `<
    - **Focus** — one atomic item. Flag scope creep that belongs in a sibling task and should be cross-linked rather than folded in.
    - **Complexity** — implementable in a single pass. Flag hidden multi-step or cross-cutting work.
    - **Contradictions** — internal consistency, including behavioural contradictions where one part makes another non-functional; paraphrase drift between sections — what the **State once** rule prevents — is the standard source.
+   - **Title/description coverage** — the H1 title and frontmatter `description` name the deliverable set the body now carries. Flag either one when its named scope is narrower than the body's deliverables or sections; for example, a title naming two workflow threads over a five-thread body flips the finding on, while a title that covers those five threads flips it off. Fix by widening the stale field in place per **Rewrite in place**. Keep this distinct from **Structural check**, which checks presence, and **Contradictions**, which checks consistency rather than under-coverage.
    - **Ambiguity / under-specification** — missing requirements, unstated assumptions, vague pointers, or over-compressed prose that lead to divergent implementations; an unresolved either/or is a **Decide or label** finding, over-compression is judged against **Compact only to the implementable floor**, and any reference carrying a line-number position claim — a `:N` path suffix, a bare `line N`, an `around lines N–M` range — is flagged against the `<markdown_policy>` soft-pointer rule.
    - **Over-specification** — constraints that needlessly narrow an implementation choice the task meant to leave open; a choice meant to stay open is labeled per **Decide or label** rather than silently narrowed.
    - **Restated standing rules** — body passage instructs the implementer with a copy of a rule that the `<body>` corollary says belongs in a standing project instruction; this is a readiness issue, not wording polish, because copied rules drift from their source. Replace the copy with a standing-rule citation, or drop it when the surrounding text carries nothing else. Keep this distinct from **Over-specification**, which narrows an implementation choice, and apply the **Task-specific gates only** acceptance clause for generic project-gate items: a generic gate is a restatement, while a task-specific executable check remains valid.

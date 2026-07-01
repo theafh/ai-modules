@@ -2,7 +2,7 @@
 description: Treat CLAUDE.md / AGENTS.md / GEMINI.md as harness standing-rule files the task family follows even when its guardrail docs are absent, and gate readiness against a body that restates them.
 scope: plugins/ai_dev/skills/task
 created: 2026-06-29T18:56:15
-updated: 2026-07-01T18:59:09
+updated: 2026-07-01T19:09:39
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -34,7 +34,7 @@ Current state, by anchor:
 - The shared `<readiness_checklist>` content lens has no item for a body that restates a standing rule. `task_check` assesses purely by reference to that checklist, so it cannot catch the restatement; its bar prose guards only the opposite direction (do not demand restatement). The asymmetry is the bug: `task_fix`'s *restated standing rules* advisory already detects and proposes the fix for copied rules over the whole tree, but the per-task readiness gate that runs before implementation does not.
 - `CHARTER.md`'s Key Invariants rank the charter above the softer family guardrail docs (`ARCHITECTURE.md` / `FEATURES.md` / `TESTING.md`) but likewise never mention the harness rule files — the same omission this task fixes in the skill. A separate charter invariant ("Skill-family rules live in the family base skill … front-end skills inherit") is the authority for landing this once in the base skill.
 
-This task pairs with [the title/description coverage task](../task-skill_title-body-coverage-check.md): both add one content-lens item to the same shared `<readiness_checklist>`, and that task settles the pattern this one follows — a shared-checklist item that `task_check` inherits by reference with no separate copy, model-applied rather than added to `lint.py`. Reconcile the two items as co-edits of the same block.
+This task pairs with [the title/description coverage task](task-skill_title-body-coverage-check.md): both add one content-lens item to the same shared `<readiness_checklist>`, and that task settles the pattern this one follows — a shared-checklist item that `task_check` inherits by reference with no separate copy, model-applied rather than added to `lint.py`. Reconcile the two items as co-edits of the same block.
 
 ## Approach
 

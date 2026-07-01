@@ -2,7 +2,7 @@
 description: Add a task_auto_check step that auto-fixes a task's mechanical lint findings (overlong description, broken links, datetime/format) before reporting done, even when task_check already stamped it ready.
 scope: "task_* family: task_auto_check + base task <lint>"
 created: 2026-06-29T18:48:53
-updated: 2026-06-29T22:50:09
+updated: 2026-07-01T19:09:39
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -25,7 +25,7 @@ The relevant surfaces, each located by a greppable label:
 - The base `task` skill's `<lint>` defines the blocking / warn / info buckets, and its `<frontmatter>` sets the `description` budget ("roughly 180 characters; the linter warns above 200"). An over-budget `description` is a warn, not a blocker — which is why the narrow blocking-only guard in `<apply_repairs>` never touches it.
 - The family already carries the "mechanical, inline-fixable" repair notion: `task_fix`'s `<workflow>` remediate phase auto-fixes "the safe mechanical findings in place" — frontmatter, status, location, link, datetime, provenance — across the whole tree, and routes the rest to `<surface_for_review>`. This task brings that same notion to `task_auto_check`'s single file. It is a rule two siblings now share, so it is single-sourced per the standing repo rule that a skill-family rule is authored once in the family's base skill (see the Approach open decision for where).
 - Co-edit on `task_auto_check`'s `<loop_policy>`: the [intent-drift task](../task-family_intent-drift-detection.md) adds a *human-route* boundary there, modeled on `<structural_split_boundary>`; this task adds an *auto-fix* path. They compose into one taxonomy — auto-fixable findings (verified body repairs, and now mechanical lint findings) versus surfaced or human-routed findings (structural splits, intent drift, undeterminable mechanical fixes). Land both without duplicating or contradicting the other's boundary wording.
-- A `description` rewrite must preserve the description's *named scope*, not just its gist, so it cannot create the under-naming finding the [title/description coverage task](../task-skill_title-body-coverage-check.md) adds to the readiness checklist.
+- A `description` rewrite must preserve the description's *named scope*, not just its gist, so it cannot create the under-naming finding the [title/description coverage task](task-skill_title-body-coverage-check.md) adds to the readiness checklist.
 - This edits shipped skill content under `plugins/ai_dev/`, so the standing plugin-version-bump and validation gates apply.
 
 ## Approach

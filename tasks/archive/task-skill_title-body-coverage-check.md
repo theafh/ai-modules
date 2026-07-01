@@ -2,9 +2,10 @@
 description: Add a readiness-checklist content-lens item that flags an H1 title or frontmatter description whose named scope is narrower than the body it heads, so a stale under-naming title is caught.
 scope: plugins/ai_dev/skills/task
 created: 2026-06-28T17:33:01
-updated: 2026-06-28T17:46:05
-status: ready
+updated: 2026-07-01T19:09:39
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Readiness checklist: flag a title or description narrower than the body it heads
@@ -15,7 +16,7 @@ The base `task` skill's `<readiness_checklist>` confirms a body has a single `# 
 
 ## Context
 
-The checklist lives once in the base `task` skill's `<readiness_checklist>` as the single source; `task_check` assesses by reference to it and `task_create` self-checks drafts against it. That single-source home was established by [the shared-readiness-checklist task](archive/task-skill_shared-readiness-checklist.md).
+The checklist lives once in the base `task` skill's `<readiness_checklist>` as the single source; `task_check` assesses by reference to it and `task_create` self-checks drafts against it. That single-source home was established by [the shared-readiness-checklist task](task-skill_shared-readiness-checklist.md).
 
 Today's gaps, by anchor:
 
