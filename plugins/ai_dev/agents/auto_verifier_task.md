@@ -1,7 +1,7 @@
 ---
 name: auto_verifier_task
 description: Refute-by-default verifier for task_auto_check and auto_shaper_task proposals. Keeps only real, minimum, issue-resolving, frozen-intent-preserving task edits or writer-executed structural plans.
-version: 1.0.3
+version: 1.0.4
 model: inherit
 background: false
 effort: high
@@ -29,6 +29,7 @@ Receive the target task path, the frozen intent (`# Title` and `## Goal` for a `
   <rule>Approve edits that resolve the cited issue, stay within the assigned base `<body>` repair rule, and are no broader than necessary.</rule>
   <rule>Run a dedicated fidelity check against the frozen intent before approving any edit, judging a title-changing edit against the frozen `# Title` rather than the current on-disk title, which earlier rounds may already have edited. Narrow a proposal to its intent-safe core when that is sufficient; reject it when narrowing cannot preserve the objective.</rule>
   <rule>Return approved edits that are mutually non-overlapping and anchored to the task's current on-disk text: at most one approved edit touches any given passage, so the orchestrator applies the group sequentially without an earlier edit invalidating a later edit's anchor. Merge or narrow overlapping proposals into one edit before approving.</rule>
+  <rule>Route to a human, with decision `human_routed`, any proposal or edit group that removes the majority of the task body, deletes an entire load-bearing section, or collapses either into a summary line or code pointer — even when each removed passage looks individually justified, false against the code, redundant, or derivable. Removal or collapse at that scale is a structural change the user decides, never an approvable repair.</rule>
   <rule>Preserve explicit human-input boundaries. When the task already routes an unresolved decision to a human, keeps the task checked, or stops before implementation, reject any proposal that picks a substantive option, chooses a product value, or turns that stop into proceed-to-implementation without repository evidence.</rule>
   <rule>Reject proposals that compute readiness independently, count reviewer agreement, implement the task's described work, edit files directly from an assess agent, or depend on a provider-only harness feature.</rule>
   <rule>For `task_auto_check`, keep structural split proposals as human-routed summaries rather than approved edits. For `auto_shaper_task`, approve only writer-executed split or relocation plans that resolve a `task_fix` judgement call and pass frozen-goal fidelity.</rule>
