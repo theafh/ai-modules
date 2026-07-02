@@ -2,9 +2,10 @@
 description: Add a git_refresh skill to ai_dev that fast-forwards the repo's default branch and deletes cleanly-merged local branches by default, gating riskier branch pruning behind an explicit opt-in.
 scope: plugins/ai_dev/skills
 created: 2026-06-28T18:53:29
-updated: 2026-07-01T18:29:25
-status: ready
+updated: 2026-07-02T18:32:34
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add a git_refresh skill
@@ -17,7 +18,7 @@ The user-visible outcome: after a default run, the repo sits on an up-to-date de
 
 ## Context
 
-This captures a recurring chore — the post-merge "clear the branches a merged PR left behind and get back to a fresh main" cleanup. The happy path alone (switch default branch, `pull --ff-only`, delete merged branches) is a trivial shell sequence; what earns it a skill is the judgment-and-safety layer around the destructive branch-deletion step, the same justification profile that makes [git_commit](../plugins/ai_dev/skills/git_commit/SKILL.md) a skill rather than an alias.
+This captures a recurring chore — the post-merge "clear the branches a merged PR left behind and get back to a fresh main" cleanup. The happy path alone (switch default branch, `pull --ff-only`, delete merged branches) is a trivial shell sequence; what earns it a skill is the judgment-and-safety layer around the destructive branch-deletion step, the same justification profile that makes [git_commit](../../plugins/ai_dev/skills/git_commit/SKILL.md) a skill rather than an alias.
 
 Two things make naive cleanup wrong. First, `git branch --merged` does not report a **squash-merged** branch as merged, because the squash produced a new commit the branch tip is not an ancestor of — and squash-merged PRs are the most common reason local branches pile up. Catching those needs the "upstream tracking branch is `[gone]`" signal that `git branch -vv` / `git for-each-ref` report after a pruning fetch. Second, an upstream-gone branch can equally be one carrying genuine unpushed or unmerged commits the user would lose on a force-delete, so the skill must tell those two cases apart instead of force-deleting everything that looks gone.
 
@@ -45,7 +46,7 @@ The skill splits into a safe default run and explicit, gated extensions.
 
 These recommended command sequences are the content the user asked to live inline in the skill's sub-rules; keep them as concrete guidance the skill follows when the gate opens, not as steps the default run ever reaches.
 
-Bundle the git logic under `scripts/` per the repo's helper-script rule, and apply the [harness_portability](../plugins/ai_dev/skills/harness_portability/SKILL.md) skill so the script runs under both OpenAI Codex and Anthropic Claude and across macOS and Linux — BSD-vs-GNU differences in `git` porcelain parsing, `sed`, and `grep` are the usual breakage. Write the skill's own `description:` for both audiences per the standing rule: a compact statement of what it does plus router trigger phrases such as "clean up branches", "refresh main", "delete merged branches", "get back to a clean main", and "prune stale local branches". Mirror the `tests/git_commit/` skill-creator-aligned harness pattern for the new test surface.
+Bundle the git logic under `scripts/` per the repo's helper-script rule, and apply the [harness_portability](../../plugins/ai_dev/skills/harness_portability/SKILL.md) skill so the script runs under both OpenAI Codex and Anthropic Claude and across macOS and Linux — BSD-vs-GNU differences in `git` porcelain parsing, `sed`, and `grep` are the usual breakage. Write the skill's own `description:` for both audiences per the standing rule: a compact statement of what it does plus router trigger phrases such as "clean up branches", "refresh main", "delete merged branches", "get back to a clean main", and "prune stale local branches". Mirror the `tests/git_commit/` skill-creator-aligned harness pattern for the new test surface.
 
 This adds shipped content under `plugins/ai_dev/`, so registration and versioning for the landing commit follow the standing repo rules, which own the plugin version-lockstep procedure.
 

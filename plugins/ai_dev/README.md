@@ -1,12 +1,13 @@
 # ai_dev
 
-A plugin of skills and agents for day-to-day AI-assisted development: keeping git history and changelogs clean, writing and formatting the instructions an AI reads, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying per-language style conventions.
+A plugin of skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying per-language style conventions.
 
 ## Skills
 
-### Git history
+### Git
 
 - **git_commit**: stage new files and create one commit that captures the intended repository state, following the project's commit-message conventions.
+- **git_refresh**: refresh the current repository to its detected default branch, fast-forward it only when safe, delete cleanly merged local branches, and offer upstream-gone or force-delete cleanup only behind explicit opt-in.
 - **update_changelog**: build or update a day-grouped `CHANGELOG.md` from git history. It writes newest-first immutable day sections with `- **Category:** Plain-English summary.` entries, and hands large per-day context through a readable file path so long histories stay consumable.
 
 ### Work tracking
@@ -20,7 +21,7 @@ For orientation rather than gating, `task_explain` gives a compact what/why/how 
 The single-task siblings run in lifecycle order, **create → check → select → implement → audit → finish**, with `task_auto_check` available as an opt-in readiness repair loop between create/check and selection:
 
 - **task_create**: a focused on-ramp that quickly creates exactly one well-formed task file, leaving the naming, frontmatter, body, and lint rules to the `task` skill. Use it when a single "make a task for X" should load a narrow surface instead of the whole backlog workflow.
-- **task_check**: decide whether one task is ready to build. It judges the task against a readiness checklist (structure, scope sizing, focus, complexity, contradictions, ambiguity) and reports a General assessment plus a ranked Issues list. A read-only gate *before* building, ported from staged-spec's `spec_check`.
+- **task_check**: decide whether one task is ready to build. It judges the task against a readiness checklist (structure, premise, approach fitness, scope sizing, focus, complexity, contradictions, ambiguity) and reports a General assessment plus a ranked Issues list. A read-only gate *before* building, ported from staged-spec's `spec_check`.
 - **task_auto_check**: drive one task toward readiness automatically while keeping `task_check` as the only readiness gate. It freezes the task's current title and goal, asks `auto_drift_task` for a one-time committed-intent check, then asks `auto_gate_task`, `auto_reviewer_task`, and `auto_verifier_task` for gated issue reports, repair proposals, and intent-safe approvals. It applies only verified minimum edits and stops at `ready` or a surfaced stuck state.
 - **task_select**: choose what to work on next from the live backlog. It filters eligible tasks, finds dependencies and ordering, ranks by impact, implementation complexity, friction, and viable bug-fix priority, then recommends one unblocked task and its natural next action. A read-only step between readiness and implementation.
 - **task_implement**: take one existing task file and carry it to done. It reads the task, loads the repo guardrails, builds on the existing code, writes the tests, runs the suite clean, and confirms every acceptance item. It does the work and leaves verification to `task_audit` and close-out to `task_finish`.
@@ -31,6 +32,10 @@ Standing apart from that flow:
 
 - **task_explain**: explain one task at a high level without editing it. It resolves one live or archived task, names its status and scope, and gives a compact what/why/how readout so a reader can orient before choosing a lifecycle action.
 - **task_fix**: audit and repair the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs the linter, auto-fixes mechanical findings (naming, frontmatter, status/location, links, datetimes), and surfaces judgement calls (splits, cross-task contradictions) for review by default. On explicit opt-in or confirmed scale, it escalates those calls to `auto_shaper_task`, the single serialized writer for that run. It works on the whole backlog, independent of any single task's lifecycle.
+
+### Guardrail documents
+
+- **guardrail**: the hub and source of truth for the repo-root guardrail docs — `CHARTER.md`, `ARCHITECTURE.md`, `TESTING.md`, `SECURITY.md` — that keep AI agents anchored to human intent across sessions. It explains the doc set, the authority hierarchy (charter → domain guardrails → harness rule files), the shared format contract, and the presence-gated consumption convention the task family already follows; it assesses a repository's nature and suggests which guardrails fit it, grounded in how the repo actually works; and it drafts a doc only on explicit user request, marking open decisions and surfacing creation-time divergences instead of guessing. Bundled references carry the general template and rules for each doc type, so sibling skills wire the hub in rather than duplicating them.
 
 ### AI instructions
 

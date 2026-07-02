@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.11
+version: 1.3.12
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -173,7 +173,9 @@ The readiness lens for one task file, judged against the self-sufficiency bar `<
 
 1. **Charter check.** When `CHARTER.md` exists at the project root, validate the task content against its boundaries and invariants. Surface every conflict as a readiness issue, leave the task body unchanged, and keep the task out of `ready` until the conflict is resolved.
 2. **Structural check.** Confirm the body opens with a single `# Title` and carries the `## Goal` / `## Context` / `## Approach` / `## Acceptance` sections, with valid frontmatter, per `<body>` and `<file_format>`. A one-shot implementer follows structure literally, so a structural gap is high-severity — run this before the content lens.
-3. **Content lens.** Read the task thoroughly and surface every issue that could derail a correct, complete one-shot implementation:
+3. **Premise check.** When the task motivates its work with a bug, a defect, or a missing capability in the current code, verify against the codebase that the described problem is real: read the code the task implicates, run the reproducing command when the task names one, and confirm a claimed gap is actually absent rather than already covered. Flag a premise the code contradicts (the defect already fixed, the capability already present, the behaviour misdiagnosed) as a readiness issue; a false premise invalidates the task before any other finding.
+4. **Approach fitness.** Judge the Approach against the code it changes: followed as written, it must deliver the Goal and, when a bug or gap motivates the task, close the described gap completely. Flag an approach that treats a symptom while the named cause stays live, closes only part of the gap, or carries a gap of its own (a missed edit site, an unhandled case, a side effect that breaks adjacent behaviour).
+5. **Content lens.** Read the task thoroughly and surface every issue that could derail a correct, complete one-shot implementation:
    - **Scope sizing** — the most compact scope that still delivers a coherent, independently testable unit. Judge cohesion as well as size: shared rationale, shared edit surface, and one acceptance story favor one task; independent items, duplicated rationale, or 300-line risk favor splitting. Flag too-large (multi-pass risk, past the 300-line split) and too-small (coordination overhead, no standalone capability).
    - **Focus** — one atomic item. Flag scope creep that belongs in a sibling task and should be cross-linked rather than folded in.
    - **Complexity** — implementable in a single pass. Flag hidden multi-step or cross-cutting work.

@@ -16,7 +16,7 @@ Task does this for the work. Running a task through the skill-to-skill lifecycle
 
 The mechanical parts of both (discovery, scaffolding, linting, source hashing) ship as bundled scripts the agent runs, so it does not improvise the bookkeeping each session. This saves back-and-forth turns with your agent, saves tokens, and makes the output more consistent across runs. The same files deploy into Claude Code, Codex, Cursor, Copilot, Gemini, and Antigravity, so the backlog and the knowledge base follow you whichever agent you drive. That also makes it easy to share one codebase across different setups and agents.
 
-Alongside task and wiki, the same two plugins ship smaller day-to-day skills: clean git commits and changelogs, writing and formatting the instructions an AI reads, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
+Alongside task and wiki, the same two plugins ship smaller day-to-day skills: clean git commits, repository refreshes, and changelogs, writing and formatting the instructions an AI reads, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
 
 ## Layout
 
@@ -53,6 +53,7 @@ ai-modules/
 │       ├── hooks/           # shared hook scripts plus Claude/Codex hook configs
 │       └── skills/
 │           ├── git_commit/
+│           ├── git_refresh/
 │           ├── update_changelog/
 │           ├── task/
 │           ├── task_create/
@@ -64,6 +65,7 @@ ai-modules/
 │           ├── task_audit/
 │           ├── task_finish/
 │           ├── task_fix/
+│           ├── guardrail/
 │           ├── ai_instruction_writing/
 │           ├── ai_instruction_formatting/
 │           ├── harness_portability/
@@ -99,16 +101,17 @@ An LLM wiki sits between a full RAG pipeline and a loose pile of notes. It is st
 
 ### ai_dev
 
-Skills and agents for day-to-day AI-assisted development: keeping git history and changelogs clean, writing and formatting the instructions an AI reads, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
+Skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
 
 - **git_commit**: a step-by-step commit workflow with a hardened prepare script that handles special-character paths and detects binary files one by one. It stages changes, works out a sensible commit grouping, and writes a message that matches the project's existing style. A sibling reference covers the manual path when the script can't run.
+- **git_refresh**: a safe repo-refresh workflow that detects the remote default branch, fetches and prunes, switches to that branch, fast-forwards only, deletes cleanly merged local branches, and offers upstream-gone or force-delete cleanup only behind explicit opt-in.
 - **update_changelog**: builds or refreshes a day-grouped `CHANGELOG.md` from git history. It writes newest-first immutable day sections with `- **Category:** Plain-English summary.` entries, and hands large per-day context through a readable file path so long histories stay consumable.
 - **task**: a project-local backlog of upcoming work, as plain-Markdown files under `tasks/` at the project root, with `tasks/archive/` for `finished` and `deferred` items. Each task is a self-contained brief that a single-shot AI coder could pick up and build. The bundled linter checks naming, frontmatter, status/location consistency, and a 300-line split limit. It complements the `wiki` skill: tasks track *what is still to do*, the wiki holds *what is durably known*.
 
 The single-task siblings run in lifecycle order, **create → check → select → implement → audit → finish**, with `task_auto_check` available as an opt-in readiness repair loop between create/check and selection:
 
 - **task_create**: a focused front end over `task` that creates exactly one well-formed task file with little ceremony. It leaves the naming, frontmatter, body, and lint rules to the `task` skill instead of repeating them, so a one-shot "make a task for X" loads a narrow surface rather than the full backlog workflow.
-- **task_check**: decides whether one task is ready to hand to an implementer. It runs a structural check, then a content review (scope sizing, focus, complexity, contradictions, ambiguity, over-specification, behaviour framed as "not X"), and returns `spec_check`'s shape: a `# General assessment` paragraph plus a ranked `## Issues` list. A read-only gate *before* building. It is the counterpart to `task_audit`, which checks *after*.
+- **task_check**: decides whether one task is ready to hand to an implementer. It runs a structural check, verifies that a described bug or gap is real in the code and that the approach closes it, then runs a content review (scope sizing, focus, complexity, contradictions, ambiguity, over-specification, behaviour framed as "not X"), and returns `spec_check`'s shape: a `# General assessment` paragraph plus a ranked `## Issues` list. A read-only gate *before* building. It is the counterpart to `task_audit`, which checks *after*.
 - **task_auto_check**: automatically drives one task toward readiness while reusing `task_check` as the only gate. Its helper agents (`auto_drift_task`, `auto_gate_task`, `auto_reviewer_task`, `auto_verifier_task`) run a one-time committed-intent check, report the gate result, propose focused repairs, verify intent-safe minimum edits, and stop at `ready` or a surfaced stuck state.
 - **task_select**: recommends what to work on next from the live backlog. It filters eligible tasks, finds dependencies and ordering, ranks by impact, implementation complexity, friction, and viable bug-fix priority, then names one unblocked task and its natural next action. A read-only step between readiness and implementation.
 - **task_implement**: builds one existing task file end to end, following a strict flow: read, load guardrails, understand the codebase, implement, test, verify (ported from staged-spec's `spec_implement`). It does the work and stops at a green test suite, leaving codebase verification to `task_audit` and close-out to `task_finish`.
@@ -119,6 +122,7 @@ Standing apart from that flow:
 
 - **task_explain**: explains one task at a high level without editing it. It resolves one live or archived task, names its status and scope, and gives a compact what/why/how readout so a reader can orient before choosing a lifecycle action.
 - **task_fix**: audits and repairs the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs `lint.py`, auto-fixes the mechanical findings, and surfaces the judgement calls (splits, cross-task contradictions) for human review by default, then reports how many it resolved and how many it flagged. On explicit opt-in or confirmed scale, it escalates those calls to `auto_shaper_task`, the single serialized writer for verified splits, body-framing reframes, scope relocations, and link repairs. It works on the whole backlog, independent of any single task's lifecycle.
+- **guardrail**: the hub for the repo-root guardrail docs — `CHARTER.md`, `ARCHITECTURE.md`, `TESTING.md`, `SECURITY.md` — that keep AI agents anchored to human intent. It explains the doc set, hierarchy, format, and the presence-gated way skills consult the docs (the task family already reads them this way), suggests which guardrails fit a given repository based on its nature and substance, and drafts one only on explicit request. Per-type references carry the general template and rules for each doc, so sibling skills wire the hub in instead of duplicating them.
 - **ai_instruction_writing**: writes any artefact an AI reads (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of "don't" rules the model has to invert.
 - **ai_instruction_formatting**: organises content an AI reads into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in its own tag, so the model can find the right section by structure instead of re-reading the prose.
 - **harness_portability**: applies portability rules (across agent harnesses and operating systems) to scripts, hooks, MCP helpers, command wrappers, setup flows, and the execution and configuration wording bundled inside skills and plugins. It covers OpenAI Codex and Anthropic Claude compatibility, checks against official provider docs, and macOS/Linux behaviour.

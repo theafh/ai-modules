@@ -1,7 +1,7 @@
 ---
 name: task_check
-description: Check one task before implementation. Use when the user asks if a task is ready to build. Assess structure, scope, focus, complexity, contradictions, and ambiguity, then stamp ready or checked and report readiness issues.
-version: 1.1.5
+description: Check one task before implementation. Use when the user asks if a task is ready to build. Assess structure, scope, focus, complexity, contradictions, and ambiguity, verify a described bug or gap is real in the code and the approach closes it, then stamp ready or checked and report readiness issues.
+version: 1.1.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -34,7 +34,7 @@ The base `task` skill's `discover_tasks.sh` ships in `scripts/` next to that ski
 <assessment>
 The bar is the base skill's self-sufficiency concept: the task file on its own is enough to produce a full implementation in a single pass, and the implementer draws on everything actually available — the codebase, the project's standing instructions (`CLAUDE.md` / `AGENTS.md` and equivalents), the user. Judge the task the way it is consumed: a task that leans on a standing project instruction is correctly authored when it cites the rule, and flagging the absence of content a standing instruction already owns is a false positive. Evaluate every issue against that bar.
 
-Assess against the base `task` skill's `<readiness_checklist>`, in its order — the structural check first, then the content lens item by item. The checklist lives once in the base skill as the family's single source; apply it from there rather than from a copy here. Every verified checklist finding is a readiness issue and belongs in `## Issues`; do not demote a checklist finding to style notes because the implementation could still proceed around it.
+Assess against the base `task` skill's `<readiness_checklist>`, in its order: the charter and structural checks, then the premise and approach-fitness checks against the codebase, then the content lens item by item. The checklist lives once in the base skill as the family's single source; apply it from there rather than from a copy here. Every verified checklist finding is a readiness issue and belongs in `## Issues`; do not demote a checklist finding to style notes because the implementation could still proceed around it.
 
 Ground every issue before reporting it: an issue enters the report only after you have confirmed it against the repository — read the file it implicates, run the command the acceptance names, check the policy the task cites. An unverifiable suspicion is voiced as a question in the general assessment, never as a numbered issue.
 

@@ -1,0 +1,120 @@
+---
+name: guardrail
+description: Hub and source of truth for the repo-root guardrail documents (CHARTER.md, ARCHITECTURE.md, TESTING.md, SECURITY.md) that keep AI agents anchored to human intent while a project evolves within its declared boundaries. Explains the doc set, the authority hierarchy, the shared format, and how skills consult the docs, suggests which guardrails fit a repository, and drafts one only on explicit user request. Use when the user asks what guardrail docs are, which ones a repo should adopt, to suggest, bootstrap, set up, or draft a charter, architecture, testing, or security doc, how guardrail docs rank against each other or against CLAUDE.md, AGENTS.md, or GEMINI.md, or how agents consult and enforce these docs. For auditing existing guardrail docs against each other and the codebase, route to guardrail_audit.
+version: 1.0.0
+author: Andreas F. Hoffmann
+license: MIT
+---
+
+# guardrail
+
+<guardrail_skill>
+
+<role>
+The guardrail skill is the hub and source of truth of the `guardrail_*` family: it defines what guardrail documents are, which ones can exist, how they rank, what shape they share, and how other skills consume them. A guardrail document is a standing, human-owned markdown file at the project root that carries one domain of durable project truth an AI agent must respect or consult while working. Guardrail docs exist because unattended agents drift: a task to do X quietly becomes Y, and Y becomes Z, with no human in the loop. The guardrail layer is the human's standing voice at the moment of work — direction the agent reads and respects in every session, long after the conversation that set the direction is gone. Humans set direction through these docs; agents execute within the boundaries the docs declare and surface every conflict they meet. A guardrail bounds work; it never freezes it: the project adapts, grows, and is deliberately steered within its declared boundaries, and the docs themselves evolve with the project through their human-owned change path.
+
+The system is universal. It serves a single software system, a knowledge or content repository, a meta-repository whose product is components or documents, and a mixed multi-project layout alike, in any language and any stack. This skill carries only the general knowledge — the what and the how that hold everywhere; every actual guardrail doc is tailored to its repository, and a doc type that fits one repo nature can be a bad fit for another.
+</role>
+
+<when_to_activate>
+Activate this skill when the user:
+
+- Asks what guardrail documents are, which ones exist or could exist, or how the guardrail system works.
+- Asks which guardrail docs their repository should adopt, or asks for a suggestion, recommendation, or assessment of guardrail coverage.
+- Asks to set up, bootstrap, draft, or create a `CHARTER.md`, `ARCHITECTURE.md`, `TESTING.md`, or `SECURITY.md` — or a guardrail layer as a whole.
+- Asks how guardrail docs relate to or rank against each other or against the harness rule files (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` and equivalents).
+- Asks how a skill, agent, or workflow should consult or enforce a guardrail doc.
+
+Route to `guardrail_audit` when the user wants the repo's *existing* guardrail docs audited for contradictions and doc-vs-code divergence. Route to the `task` family for backlog work; the task skills consume guardrail docs but are not the place that defines them.
+</when_to_activate>
+
+<doc_set>
+Four core guardrail types are recognized. Each has a bundled reference (sibling of this `SKILL.md`) carrying its general template, its universally valid rules, and its tailoring guidance — read the reference before explaining, suggesting, drafting, or assessing a doc of that type:
+
+- **`CHARTER.md`** — the falsifiable project-identity contract: core purpose, DOES / DOES NOT domain boundaries, key invariants, intentional constraints. The one doc that stops work rather than informing it. Reference: `references/charter.md`.
+- **`ARCHITECTURE.md`** — the descriptive account of how the project is structured and where its structure is deliberately headed: goals, stack, components and their responsibilities, load-bearing design decisions, declared direction. Reference: `references/architecture.md`.
+- **`TESTING.md`** — the project's verification methodology: what counts as tested, the discipline verification follows, and how the suite runs. Reference: `references/testing.md`.
+- **`SECURITY.md`** — the security constraints that must hold: secrets, trust boundaries, data handling, dependencies, attack surface. Reference: `references/security.md`.
+
+The set is open on two sides. Sideways, a repository may carry further domain guardrails as peers — `FEATURES.md` as a behaviour ledger is an established example — following the same format contract and consumption convention. Below, the harness rule files (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` and equivalents) are the project's standing-instruction baseline: the harness loads them automatically, they are owned by the harness convention rather than created through this family, and they enter the guardrail system only through the hierarchy, where they rank at the bottom.
+</doc_set>
+
+<hierarchy>
+Guardrail docs rank on one authority rule: **statements of what the project is outrank statements of how it is built and verified, which outrank instructions for how the agent operates.**
+
+1. **Tier 1 — identity.** `CHARTER.md`. The falsifiable boundary every other doc and every piece of work stays inside. A conflict between the charter and anything softer resolves in the charter's favor and is reported for human review; a softer doc never overrides the charter and never supplies the authority for work the charter would not bless.
+2. **Tier 2 — domain guardrails.** `ARCHITECTURE.md`, `TESTING.md`, `SECURITY.md`, and peers such as `FEATURES.md`: design-and-verification statements about the project.
+3. **Tier 3 — operating instructions.** The harness rule files. In day-to-day work they govern everything the guardrail docs are silent on; in a conflict over the same question they rank below the docs above.
+
+Orthogonal to authority runs the **enforcement spectrum** — how strongly each doc guards:
+
+- **Hard fence.** The charter: an agent about to produce or change project content validates the proposed work against its boundaries and invariants and stops on a violation, surfacing the conflict instead of proceeding. Where the charter protect hook is deployed, edits to the charter itself are additionally branch-gated (`guardrail/charter-*`), so an agent can never rewrite the contract to license its own drift.
+- **Verified rule.** `TESTING.md` and `SECURITY.md`: consulted whenever work enters their domain; a divergence between the work and the doc is a finding the agent surfaces before claiming done — reported for the user to weigh, never silently passed — while the doc itself never halts the run.
+- **Descriptive context.** `ARCHITECTURE.md` and `FEATURES.md`: they inform work and are refreshed as the project evolves; their guard value is truthfulness, because a description that no longer matches the project — or presents intention as fact — misleads every future agent.
+
+The hierarchy names the default authority direction; a human makes the actual call. Only the charter's hard fence stops work on its own — every other conflict is surfaced with the authoritative doc named and the resolution left to the user.
+</hierarchy>
+
+<format_contract>
+Every guardrail doc, of every type, honours the same format contract:
+
+- **Root `UPPERCASE.md`, one domain per doc.** Project-wide standing material lives at the repository root as an `UPPERCASE.md` file; work-system material (for example the task backlog) lives in its own tree. The filename is the interface — consumers discover a doc by its presence, so no registry, index, or manifest is needed.
+- **Human-owned and evolving.** Agents draft and propose; humans approve. A guardrail doc is a living boundary, not a frozen snapshot: when the human's direction changes, the doc changes with it through its review path — the charter through its branch gate, the softer docs through ordinary review.
+- **Falsifiable where it guards, truthful where it describes.** A guarding statement is written so a reviewer can point at a change and say whether the statement still holds. A describing statement stays true to the repository — describing what stands as it stands, and marking declared direction as direction.
+- **Outcome-level and compact.** Guardrail docs state what must hold or what is, and leave implementation mechanics to the code and the work system. Agents read these docs constantly, so every line costs context in every session — earn each one.
+- **A recognizable core, extendable per repo.** Each type's reference defines the core sections a consumer can rely on finding; a repository adds sections its domain needs. Extension is welcome; renaming or hollowing out the core is drift.
+- **Tailored, never boilerplate.** The template supplies the skeleton; the repository supplies the substance. A guardrail doc that could be pasted into any other repo unchanged guards nothing — treat one as a finding, not a foundation.
+</format_contract>
+
+<consumption>
+The consumption convention is presence-gating: a consuming skill or agent checks `test -f "<root>/<DOC>.md"` (POSIX-portable, root resolved from the consumer's own project-root discovery), reads the doc on a hit, and continues unchanged on a miss. Absence is never an error and never demands creation — a bare repository works exactly as before, and a project adopts guardrails only as it reaches for them.
+
+The touchpoint rule: **a workflow consults the doc whose domain its work enters, at the moment it enters it.** Work about to write project content validates against `CHARTER.md` and stops on a violation. Work that writes or audits tests reads `TESTING.md` first. Work that touches a surface `SECURITY.md` names checks the change against the constraints that must hold. Work that needs design context reads `ARCHITECTURE.md`; work that ships behaviour refreshes the descriptive docs it invalidated. The task-management family is the established consuming instance: task creation reads `FEATURES.md` and `ARCHITECTURE.md` for prior art, the readiness gate and every autonomous writer validate against `CHARTER.md`, implementation and audit read `TESTING.md`, and close-out refreshes `ARCHITECTURE.md` when finished work extended the design.
+
+Three guard behaviours hold at every touchpoint:
+
+- **Surface, never auto-resolve.** A conflict between docs, or between a doc and the work, is reported with the authority direction named (per `<hierarchy>`); the human reconciles. Divergence can be deliberate — the human steering the repo toward where a doc points — so the agent presents both reconcile directions rather than assuming either side is wrong.
+- **Stop at the hard fence.** A charter violation halts the violating work itself, with the conflict surfaced and the target left unchanged.
+- **Never widen a guardrail to legitimize an edit.** When work only becomes permissible after loosening a boundary, invariant, or constraint, the agent leaves the doc unchanged and surfaces the situation. Recording already-permitted work in a doc is maintenance; supplying the authority for the edit that introduces it is drift.
+</consumption>
+
+<workflows>
+
+<orient>
+Run first, for every request. Resolve the project root (git toplevel, else project markers, else the working directory). Read the repository's nature from its contents: a single software system, a knowledge or content repository, a meta-repository whose product is components or documents, or a mixed multi-project layout. Then inventory the root: which guardrail docs exist, which peers, which harness rule files. Nature decides fit — a single root `ARCHITECTURE.md` over several unrelated projects, or software-shaped guardrails over a knowledge base, is a mismatch this skill names instead of suggesting; in a multi-project layout the guardrail root can be the sub-project rather than the repository.
+</orient>
+
+<explain>
+Answer questions about the guardrail system from this skill's body, and questions about one doc type from its bundled reference. Ground the answer in the repository at hand when one is present — name which docs exist here, where each sits in the hierarchy, and which consuming skills are installed.
+</explain>
+
+<suggest>
+When the user wants guardrails to exist — "what should this repo have?" — propose, per core type, only where two tests pass: the type **fits the repo's nature**, and the repo carries **substance that warrants it** (a real test suite or verification surface for `TESTING.md`; a single coherent system for `ARCHITECTURE.md`; secrets, untrusted input, published artefacts, or sensitive content for `SECURITY.md`; autonomous or recurring agent work worth fencing for `CHARTER.md`). For each suggested doc, describe concretely what it would capture in *this* repository — drawn from how the repo already works, per the type's reference — and why it earns its keep; order the suggestions by the value they add, and name the types deliberately left out and why. This flow creates nothing: it ends by presenting the suggestions as decisions for the user.
+</suggest>
+
+<create>
+Draft a guardrail doc only on the user's explicit go-ahead naming which doc(s) to create. Then, per doc, in dependency order (`CHARTER.md` first when it is in the chosen set — identity anchors the rest):
+
+1. **Honour the charter branch gate.** Before drafting `CHARTER.md`, switch to a `guardrail/charter-*` branch: where the protect hook is deployed the edit is blocked anywhere else, and where it is not, the branch still preserves the human-review path the charter contract expects.
+2. **Ground the draft in the repository.** Read the code, docs, history, and conventions the doc will govern; extract the commitments and constraints the repo already reveals as outcome-level statements. Follow the type's reference for the template and rules.
+3. **Mark gaps openly.** Fill what the repo and the conversation settle; mark what only the human can decide as `[UNDERSPECIFIED]` and ask one focused round of questions per doc rather than guessing. A doc is useful and consistent before it is complete.
+4. **Surface creation-time divergence.** Where the repo already diverges from a boundary or constraint the user wants declared, present the divergence with both reconcile directions — soften the statement to match reality, or keep it aspirational and name the code as the thing to evolve — and let the user choose before the doc declares it.
+5. **Hand over, human owns.** Report what was drafted, every `[UNDERSPECIFIED]` marker, and every surfaced divergence. The user reviews and commits; consumers pick the doc up by presence, so no wiring or registration step exists.
+</create>
+
+</workflows>
+
+<output_contract>
+A suggest run reports: the repo nature read in `<orient>`, the inventory of existing docs, each suggested doc with its grounding evidence and what it would capture, each type left out with the reason, and a closing question asking which the user wants — with no file created. A create run reports each drafted doc with its open markers and surfaced divergences, and leaves review and commit to the user. An explain run answers in compact prose and names the reference it drew from.
+</output_contract>
+
+<family>
+This skill is the hub of the `guardrail_*` family and the single home of the family's shared rules — the doc set, hierarchy, format contract, and consumption convention live here and in the bundled references; siblings wire this skill in rather than carrying copies:
+
+- `guardrail` — the hub: explain, assess, suggest, and draft on request **(this skill)**
+- `guardrail_audit` — read-only audit of a repo's existing guardrail docs: doc-vs-doc contradictions, doc-vs-code divergence, and grounded missing-doc proposals, ranked by the hierarchy
+
+These ship together; a sibling may be absent if a deployment excluded it. The family is a sibling of the task family, not a member: task skills consume guardrail docs through `<consumption>`, while defining and maintaining the docs belongs here.
+</family>
+
+</guardrail_skill>
