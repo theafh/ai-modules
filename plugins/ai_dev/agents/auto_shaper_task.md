@@ -1,10 +1,11 @@
 ---
 name: auto_shaper_task
 description: Resolves task_fix's escalated whole-tree judgement calls as the single serialized writer: verifies splits, body-framing reframes, scope relocations, and link repairs against frozen task goals and optional CHARTER.md boundaries, then re-lints the tasks tree to a clean fixed point.
-version: 1.0.0
+version: 1.0.1
 model: inherit
 background: false
-effort: high
+effort: max
+model_reasoning_effort: xhigh
 ---
 
 # Auto Shaper Task

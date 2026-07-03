@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, or run an autonomous readiness loop without implementing the task.
-version: 1.0.6
+version: 1.0.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -43,7 +43,7 @@ The user supplies one task file path or one unambiguous task name. The optional 
 
 <loop_policy>
 <single_gate>
-Use `task_check` verbatim as the gate. The loop consumes the structured verdict returned by `auto_gate_task`: task path, status stamp, ready boolean, issue list, and evidence labels. It does not compute a second readiness score and does not override `task_check`'s `ready` or `checked` stamp.
+Use `task_check` verbatim as the gate. The loop consumes the structured verdict returned by `auto_gate_task`: task path, status stamp, prior status, ready boolean, per-item checklist record, issue list, and evidence labels. It does not compute a second readiness score and does not override `task_check`'s `ready` or `checked` stamp.
 </single_gate>
 
 <frozen_intent>
@@ -108,7 +108,7 @@ Snapshot the original `# Title`, `## Goal`, and any creation-time user intent, a
 </freeze>
 
 <gate>
-Invoke `auto_gate_task` with the task path, the resolved `task_check` skill, and the resolved base `task` skill. Consume only its structured verdict, then re-baseline per `<concurrent_modification_guard>`. A failed or `unassessable` gate invocation follows `<agent_failure_policy>`. If the verdict reports `ready`, skip body-repair planning for this round and proceed to `<finalize_mechanical_lint>` before reporting.
+Invoke `auto_gate_task` with the task path, the resolved `task_check` skill path, the resolved base `task` skill path, the project root, and any frozen creation-time intent. Pass pointers, never a digest: the gate prompt names the readiness authorities by path and leaves reading and applying the `<readiness_checklist>` to the gate agent — a prompt that paraphrases, summarizes, or enumerates checklist items anchors the gate to the named checks and starves the rest of the lens, so the loop writes no checklist content into the prompt beyond the authorities' locations. Consume only the structured verdict, then re-baseline per `<concurrent_modification_guard>`. A failed or `unassessable` gate invocation follows `<agent_failure_policy>`. If the verdict reports `ready`, skip body-repair planning for this round and proceed to `<finalize_mechanical_lint>` before reporting.
 </gate>
 
 <plan_repairs>
@@ -143,6 +143,7 @@ Report the loop result with concrete evidence:
 
 - Target task path and final status.
 - Number of gate calls, body edit rounds, and mechanical-lint edit groups.
+- For each gate verdict: the stamp it wrote and the prior status it read, naming a `checked` → `ready` flip explicitly when one occurs — a flip means an earlier check found blocking issues this verdict no longer reports, and the user reads that movement rather than discovering it in git history.
 - Whether the stop reason was ready, no verified fix, structural split boundary, intent drift boundary, concurrent-modification guard, helper-failure stop, or iteration cap.
 - For the freeze-time drift check: the `auto_drift_task` classification, baseline commit when available, recovered-versus-current evidence, whether the run halted before `<gate>`, and the exact human intention check message when surfaced.
 - For each applied edit group: the `task_check` issue it addressed, the reviewer stance(s) that proposed it, the verifier decision, and the base `<body>` repair rule cited.

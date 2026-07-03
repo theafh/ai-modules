@@ -1,10 +1,11 @@
 ---
 name: auto_drift_task
 description: Reconstructs one task's committed-intent origin for task_auto_check and reports meaning-level Goal/title drift with recovered-versus-current evidence; read-only and human-routed.
-version: 1.0.1
+version: 1.0.2
 model: inherit
 background: false
-effort: high
+effort: max
+model_reasoning_effort: xhigh
 readonly: true
 tools: Read, Grep, Glob, Bash
 ---
