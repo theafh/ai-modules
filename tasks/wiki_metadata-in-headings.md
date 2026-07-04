@@ -2,7 +2,7 @@
 description: Keep wiki headings and bold-prefix labels to a fixed structural vocabulary; route displaced metadata (date, source, qualifier) to its proper channel.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:35
-updated: 2026-06-13T00:06:12
+updated: 2026-07-04T14:43:36
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -34,7 +34,7 @@ Related tasks: [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) 
 
 ## Approach
 
-1. **`plugins/knowledge_management/agents/auto_shaper_wiki.md` `<remediate>` section** — when normalising a heading or bold-prefix label, keep the vocabulary to the SCHEMA-defined set; route displaced metadata (date, source, qualifier, audience, mandate level, scope tag) to its structured channel *before* applying the normalisation. The wiki SCHEMA defines the heading vocabulary per page type; consult it rather than inventing terms.
+1. **`plugins/knowledge_management/agents/auto_shaper_wiki.md` `<remediate>` section** — when normalising a heading or bold-prefix label, route displaced metadata (date, source, qualifier, audience, mandate level, scope tag) to its structured channel *before* applying the normalisation, and take the label vocabulary from the target wiki's SCHEMA where it defines one rather than inventing terms. The canonical SCHEMA template's page-type anatomies describe section content, not verbatim labels, so a fixed label vocabulary exists only when a wiki's SCHEMA declares it (the originating wiki's did); without one, leave the label wording alone and route only the displaced metadata.
 2. **`plugins/knowledge_management/skills/wiki/SKILL.md`** — mirror the rule in the authoring contract.
 3. **`plugins/knowledge_management/skills/wiki/scripts/lint.py`** — add an info-level heuristic flagging either of:
    - A heading line (`^#+\s`) or bold-label line (`^\*\*.*\*\*:?\s*$`) longer than 60 characters.
@@ -46,7 +46,7 @@ Related tasks: [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) 
 
 - Editing the three files above lands the rule + lint heuristic.
 - Fixture wiki with mixed-source entries carrying parenthesised attribution suffixes → after `wiki_fix`:
-  - Labels match SCHEMA vocabulary verbatim (no parenthetical attribution).
+  - The fixture wiki's SCHEMA declares a label vocabulary; labels match it verbatim (no parenthetical attribution).
   - Displaced metadata appears in `sources:` or a `raw/` sidecar.
   - The audit report names the routing as part of the per-file change list.
 - `tests/wiki/run_all.sh --layer2` passes.

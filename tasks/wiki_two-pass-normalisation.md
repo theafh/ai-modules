@@ -2,7 +2,7 @@
 description: Make the auto_shaper_wiki agent route displaced semantics to their proper channel before normalising structure, and surface both halves in the audit report.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:24
-updated: 2026-06-13T00:06:12
+updated: 2026-07-04T14:43:36
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -20,6 +20,8 @@ This is one of a family of **generalisable refinements** to the wiki skills + `a
 During that audit the agent normalised eight labels from "What the session showed" to "What the canon says" (a vocabulary fix), and then **jammed the displaced session date into the heading** as a parenthetical qualifier — producing the same overcompressed labels documented in [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md).
 
 The correct path: route the date+session metadata to `sources:` (creating a `raw/` sidecar if needed) **first**, then normalise the label with no leftover semantic baggage.
+
+The agent already practises the pattern inside single-purpose fix moves — `<fix_external_source_pointer>` migrates an external pointer to `## Derived from` and surfaces "external attribution migrated" in the per-file change report — so this task names the general rule those moves instantiate and applies it to every normalisation.
 
 Skipping the routing step also produces:
 
@@ -41,7 +43,7 @@ Related tasks:
 
 1. **`plugins/knowledge_management/agents/auto_shaper_wiki.md` `<remediate>` section** — add an explicit three-step rule named "two-pass remediation":
    1. **Identify displaced semantics.** Before changing the structure, name what semantic content the existing structure carries that won't fit the target. Examples: date/source in a heading, qualifier in a frontmatter key, scope tag in a section title, mandate level in a page name.
-   2. **Route displaced semantics first.** Move the content to its proper structured channel — frontmatter, `sources:`, `raw/`, inline link, `log.md` — before applying the structural fix.
+   2. **Route displaced semantics first.** Move the content to its proper structured channel — frontmatter, `sources:`, `raw/`, an inline link, `## Derived from`, `log.md` — before applying the structural fix.
    3. **Then normalise.** Apply the structural fix with no leftover semantic baggage.
 2. **Same file, audit-report contract** — when the agent performs a normalisation, the per-file change list must name both halves: the structural fix *and* any displaced-semantics routing it performed. Example phrasing: "label normalised + date/source routed to `sources:`". A normalisation with displaced semantics that were not routed must surface in the report rather than being silently completed.
 3. Reference the new rule by name ("two-pass remediation") from any other section of the agent that triggers normalisation (label vocabulary, page anatomy, frontmatter shape).

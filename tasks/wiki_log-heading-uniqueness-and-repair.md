@@ -2,7 +2,7 @@
 description: Make the append-only wiki log tolerate breakage from a logged entry: heading uniqueness, a repair-not-rewrite carve-out, and a duplicate-heading lint check, rolled out to existing wikis.
 scope: plugins/knowledge_management
 created: 2026-06-18T19:33:04
-updated: 2026-06-18T20:55:05
+updated: 2026-07-04T14:43:36
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -77,6 +77,7 @@ Two coordinated halves: **prevent** (heading uniqueness) and **permit, detect, f
 
    Implementation caveats:
    - `lint.py` detects entries by `line.startswith("## [")`, which is unaffected by adding time inside the brackets, so keep date and time in one `[YYYY-MM-DD HH:MM]` bracket.
+   - The incremental-audit scoping reads the newest prior `audit` entry (its `Audit baseline:` line) as prose when deriving the page-walk scope; a time component inside the bracket leaves that lookup intact as well — re-confirm it alongside the bare-`[YYYY-MM-DD]` assumption grep below.
    - `init_wiki.sh` fills the seed entry through a date-only `{{TODAY}}` substitution. Either leave the single seed entry date-only (no collision risk) or extend the substitution to a date+time stamp; pick one and apply it.
    - Before changing the format, grep the plugin for any code or regex that assumes a bare `[YYYY-MM-DD]` in a log heading; the map found none beyond the `## [` prefix check, but confirm.
 

@@ -1,55 +1,39 @@
 ---
-description: Document the `raw/<kind>/` selection rubric and extend `source_path:` to cover out-of-repo local files in the wiki SCHEMA template and skill.
+description: Introduce documented `source_path:` semantics for out-of-repo local raw sources in the SCHEMA template and ingest guidance; the `raw/<kind>/` rubric already shipped in raw_taxonomy.md.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:04
-updated: 2026-06-13T00:06:12
+updated: 2026-07-04T14:43:36
 status: open
 reported-by: Andreas Hoffmann
 ---
 
-# Document the `raw/` kind rubric and out-of-repo `source_path:` semantics
+# Introduce `source_path:` for out-of-repo local raw sources (kind rubric already shipped)
 
 ## Goal
 
-The wiki convention for ingesting raw artifacts grows two documented rules so different authors pick the same `raw/<kind>/` slot and represent local out-of-repo files consistently:
-
-1. A **`raw/<kind>/` selection rubric** that says exactly which kind covers which artifact type.
-2. **Extended `source_path:` semantics** that permit absolute or `~`-prefixed paths for local files outside the repo, with a portability caveat.
+Raw sidecars gain a documented way to point at a local file that lives outside the repository: a `source_path:` frontmatter field whose semantics cover in-repo mirrors (repo-relative) and out-of-repo local files (absolute or `~`-prefixed), with a portability caveat and the rule that the sidecar body must excerpt enough content to stand alone. Different authors then represent local sources consistently instead of inventing the field ad hoc.
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `auto_shaper_wiki` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case.
-
-Two adjacent gaps in the raw-artifact convention surfaced during that ingest:
-
-- **Kind selection ambiguity.** Kinds are `articles | assets | meetings | notes | papers`. A chat-session transcript could plausibly land under `meetings` or `notes`. Different authors will pick differently, fragmenting the convention.
-- **No documented field for out-of-repo local files.** `source_path:` is documented for in-repo mirrors; `source_url:` is documented for external URLs. A local file outside the repo (e.g., `~/.claude/projects/.../session.jsonl`) fits neither. That ingest used `source_path:` with an absolute `~`-prefixed path, which works but is undocumented and non-portable across machines.
+This task originally carried two halves. The first half — a `raw/<kind>/` selection rubric — has shipped: `references/raw_taxonomy.md` in the wiki skill bundle defines the bucket table, ordered classification heuristics (a transcript routes to `raw/meetings/`, a paste classifies by body shape), and edge-case disambiguations, and both the wiki skill's ingest step and `wiki_import` name it as the canonical reference. Only the second half remains, and its premise needs correcting: `source_path:` is documented nowhere in the plugin. The SCHEMA template's `### raw/ Frontmatter` subsection defines exactly `source_url:`, `ingested:`, and `sha256:`; the `source_path:` convention existed only in the originating downstream wiki, which used an absolute `~`-prefixed path for a chat-session transcript because no documented field fit. A local file outside the repo (for example a session log under the user's home directory) still fits neither `source_url:` nor any other documented field.
 
 Files involved:
 
-- [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) — or the SCHEMA template the skill writes.
-- Target-wiki `SCHEMA.md` template inside the wiki skill bundle — extend `source_path:` documentation and add the rubric.
+- [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md) — the `### raw/ Frontmatter` subsection where the field and its semantics land.
+- [SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) — the ingest workflow's raw-capture guidance, so authors know when to reach for `source_path:` instead of `source_url:`.
 
-Related task: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) (this task supplies the kind-picking rubric that task assumes).
+Related tasks: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) (consumes this field for mid-conversation machine-local artifacts) and [wiki_file-access-for-edits-and-sources.md](wiki_file-access-for-edits-and-sources.md) (documents how such paths are opened). Implement this task first or together with those.
 
 ## Approach
 
-1. **`plugins/knowledge_management/skills/wiki/SKILL.md` (or the SCHEMA template)** — document the `raw/<kind>/` selection rubric:
-   - `articles` — published web articles, blog posts, news.
-   - `papers` — academic papers, RFCs, formal specs.
-   - `meetings` — recorded meetings, calls, chat sessions, interviews; **any multi-turn dialogic source**.
-   - `notes` — unstructured text artifacts: personal notes, scratch pads, internal drafts, in-repo doc mirrors.
-   - `assets` — non-text artifacts: images, audio, video, diagrams.
-2. **SCHEMA frontmatter docs** — extend `source_path:` semantics to permit:
-   - Repo-relative paths (existing behaviour, for in-repo mirrors).
-   - Absolute paths (`/Users/...`, `/home/...`).
-   - `~`-prefixed paths (`~/.claude/projects/.../session.jsonl`).
-
-   Document the use case. Note that such paths are non-portable across machines, so the sidecar body must carry enough excerpted content to be useful without the original file.
-3. **SCHEMA template** — optionally add a note that out-of-repo local sources should mark their host machine in the body, e.g., "Local file on the author's workstation; full transcript excerpted below."
+1. **`### raw/ Frontmatter` in the SCHEMA template** — add `source_path:` beside `source_url:` with these semantics: a repo-relative path for in-repo mirrors, an absolute or `~`-prefixed path for local files outside the repo. Document the use case (session transcripts, local notes) and the caveat that out-of-repo paths are non-portable across machines, so the sidecar body must carry enough excerpted content to be useful without the original file.
+2. **Host note** — recommend that out-of-repo sources mark their locality in the sidecar body, for example "Local file on the author's workstation; relevant content excerpted below."
+3. **Ingest guidance in SKILL.md** — one sentence in the raw-capture guidance: use `source_url:` for externally published sources and `source_path:` for local files; a sidecar carries at least one of the two.
+4. Leave the linter unchanged: `check_source_paths_exist` validates page-level `sources:` entries, not raw-sidecar origin fields, and an out-of-repo `source_path:` is expected to be unresolvable on other machines — an existence check would misfire by design.
 
 ## Acceptance
 
-- Both the wiki skill and the wiki SCHEMA template carry the rubric and the extended `source_path:` semantics.
-- Chat-session ingestion fixture through `wiki_import` with no kind hint → lands under `raw/meetings/` per the rubric, uses `source_path:` for an out-of-repo absolute path, body excerpt large enough to stand on its own.
+- The SCHEMA template's `### raw/ Frontmatter` subsection documents `source_path:` with the repo-relative, absolute, and `~`-prefixed forms, the portability caveat, and the excerpt-must-stand-alone rule.
+- The SKILL.md ingest raw-capture guidance states when to use `source_path:` versus `source_url:`.
+- A `wiki_import` ingestion fixture for an out-of-repo local chat-session file produces a `raw/meetings/` sidecar (routing per the shipped `raw_taxonomy.md` heuristics) whose frontmatter uses `source_path:` with the local path and whose body excerpt stands on its own.
 - `tests/wiki/run_all.sh --layer2` passes.

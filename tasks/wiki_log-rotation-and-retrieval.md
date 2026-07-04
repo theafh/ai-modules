@@ -2,7 +2,7 @@
 description: Enforce log.md rotation (so it never reaches tens of thousands of tokens) and switch the prescribed log-read idiom from tail -n N to entry-aware bounded retrieval.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-06-13T01:47:36
+updated: 2026-07-04T14:43:36
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -22,6 +22,8 @@ Once the log is that large, the prescribed read idiom breaks:
 - The `tail -n 350` log-read idiom in [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md), and the auto-shaper's `<read_recent_log>` step in [agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) (`tail -n 350 "$WIKI/log.md"`), all reach for a fixed line count.
 - On an oversized log, `tail -n 350` produces a result large enough to trip the "output too large" handling, and a `Read` with offset/limit can exceed the 25000-token cap that [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) itself warns about (the `exceeds maximum allowed tokens (25000)` caution). Every orientation pass pays this.
 
+Rotation also interacts with the auto-shaper's incremental audits: the agent scopes its page walk from the newest prior `audit` entry in `log.md` that records a usable git baseline (the `Audit baseline:` line written by `<append_audit_log_entry>`). Rotating moves every prior audit entry into `log-YYYY.md`, so the first audit after a rotation finds no baseline in the fresh log and falls back to the full cold walk.
+
 Agents have independently rediscovered an entry-aware idiom (`grep -n '^## \[' log.md` to get entry anchors, then read a bounded slice). That idiom should be baked into the prescribed steps, and rotation should be enforced so the log never reaches the failure size in the first place.
 
 Files involved:
@@ -33,13 +35,14 @@ Files involved:
 
 ## Approach
 
-1. **Raise the severity / add teeth to rotation.** In `check_log_rotation`, escalate the over-threshold finding beyond bare info so it does not get silently accepted forever — e.g. a `warn` past 500 and a stronger finding well past it (say 1000). Decide the thresholds against the convention in `template_log.md` and keep them consistent. Alternatively (or additionally), have the `auto_shaper_wiki` auto-rotate the log during remediation: rename to `log-YYYY.md`, start a fresh `log.md`, and record the rotation in the new log. Pick the approach that fits the skill's autofix posture; the goal is that the log stops reaching the failure size.
+1. **Raise the severity / add teeth to rotation.** In `check_log_rotation`, escalate the over-threshold finding beyond bare info so it does not get silently accepted forever — e.g. a `warn` past 500 and a stronger finding well past it (say 1000). Decide the thresholds against the convention in `template_log.md` and keep them consistent. Alternatively (or additionally), have the `auto_shaper_wiki` auto-rotate the log during remediation: rename to `log-YYYY.md`, start a fresh `log.md`, and record the rotation in the new log. Pick the approach that fits the skill's autofix posture; the goal is that the log stops reaching the failure size. Either way, rotation deliberately accepts a one-time post-rotation cold walk from the incremental-audit mechanism — rare (once per 500 entries) and self-healing, since the first audit after rotation records a fresh baseline in the new log — and the rotation rule states that fallback so it is designed rather than accidental.
 2. **Replace the fixed-line-count read idiom with entry-aware retrieval** everywhere it appears (the `tail -n 350` idiom in SKILL.md, and the agent's `<read_recent_log>`). Prescribe: get entry anchors with `grep -n '^## \[' "$WIKI/log.md" | tail -<N>`, then `Read` a bounded slice from the earliest needed offset. This reads the last N *entries* regardless of their length and never dumps the whole tail of a huge file.
 3. **Cross-reference the cap warning.** Tie the new idiom to the existing 25000-token caution in SKILL.md so the two are coherent.
 
 ## Acceptance
 
 - `check_log_rotation` reports the oversized log above info severity (or the auto-shaper auto-rotates), so an unbounded log is no longer silently tolerated.
+- The rotation rule (the `template_log.md` preamble and the `<rotate_log_at_500>` statement) names the post-rotation audit behaviour: the next audit cold-walks once and records a fresh baseline in the new log.
 - The prescribed log-read step in SKILL.md and the agent uses entry-anchor + bounded-slice retrieval, not `tail -n <fixed>`.
 - On a fixture wiki with an oversized `log.md`, the orientation read returns the last N entries without tripping "output too large" or the 25000-token Read cap.
 - Script unit tests under `tests/wiki/` cover the rotation severity threshold.

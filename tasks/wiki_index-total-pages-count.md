@@ -2,7 +2,7 @@
 description: Add a lint.py check that the "Total pages:" header in index.md matches the real page count, so the count stops drifting and being hand-recomputed.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:06:45
-updated: 2026-06-13T01:47:36
+updated: 2026-07-04T14:43:36
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -28,7 +28,7 @@ Files involved:
 ## Approach
 
 1. **Parse the header.** In `lint.py`, read the `Total pages: N` line from `index.md` with a tolerant regex (allow surrounding markdown, e.g. a bold `**Total pages:** N` form — check `template_index.md` for the exact shape and match it). If the line is absent, decide whether that is itself a finding (recommended: a low/info finding "index.md has no Total pages header") rather than silently skipping.
-2. **Compute ground truth.** Count `len(list(iter_wiki_pages(wiki)))`. Confirm what `iter_wiki_pages` includes/excludes (special files like `SCHEMA.md`/`index.md`/`log.md` should not be counted as pages) so the header convention and the count agree on what "a page" is; document the definition in `lint_checks.md`.
+2. **Compute ground truth.** Count `len(list(iter_wiki_pages(wiki)))`. Confirm what `iter_wiki_pages` includes/excludes (special files like `SCHEMA.md`/`index.md`/`log.md` are not pages, and the walk also skips `raw/`, `_archive/`, and any directories a wiki lists on the SCHEMA `## Lint` section's `Page-check exclusions:` bullet) so the header convention and the count agree on what "a page" is; document the definition in `lint_checks.md`.
 3. **Emit the finding.** On mismatch, report which severity fits the project's tolerance. A `warn`-level finding with both numbers ("index Total pages says N, found M pages on disk") is appropriate — it surfaces the drift without blocking a mid-edit state. Register the check in the main runner alongside `check_index_completeness`.
 4. **Optional autofix hook.** If the linter grows an autofix path elsewhere, this is a safe candidate (rewrite the header to the computed count); otherwise leave it as a report-only finding.
 
