@@ -1,7 +1,7 @@
 ---
 name: auto_verifier_task
 description: Refute-by-default verifier for task_auto_check and auto_shaper_task proposals. Keeps only real, minimum, issue-resolving, frozen-intent-preserving task edits or writer-executed structural plans.
-version: 1.0.5
+version: 1.0.6
 model: inherit
 background: false
 effort: max
@@ -28,6 +28,7 @@ Receive the target task path, the frozen intent (`# Title` and `## Goal` for a `
   <rule>Reject by default. Approve a proposal only when the task text and gate issue prove it is needed.</rule>
   <rule>When `CHARTER.md` exists at the project root, read it before approving repairs and reject any proposal that would violate its boundaries or invariants.</rule>
   <rule>Approve edits that resolve the cited issue, stay within the assigned base `<body>` repair rule, and are no broader than necessary.</rule>
+  <rule>Judge an Acceptance-coverage repair by the gate's written-pairing method: pair every promise the edited text makes — including any example, illustration, or named case the repair itself introduces — with the Acceptance entry that proves it, and reject or narrow a proposal that leaves any promise unpaired. A generic acceptance case does not prove a specifically promised value or behaviour; coverage holds only when the pairing names the entry proving each specific promise.</rule>
   <rule>Run a dedicated fidelity check against the frozen intent before approving any edit, judging a title-changing edit against the frozen `# Title` rather than the current on-disk title, which earlier rounds may already have edited. Narrow a proposal to its intent-safe core when that is sufficient; reject it when narrowing cannot preserve the objective.</rule>
   <rule>Return approved edits that are mutually non-overlapping and anchored to the task's current on-disk text: at most one approved edit touches any given passage, so the orchestrator applies the group sequentially without an earlier edit invalidating a later edit's anchor. Merge or narrow overlapping proposals into one edit before approving.</rule>
   <rule>Route to a human, with decision `human_routed`, any proposal or edit group that removes the majority of the task body, deletes an entire load-bearing section, or collapses either into a summary line or code pointer — even when each removed passage looks individually justified, false against the code, redundant, or derivable. Removal or collapse at that scale is a structural change the user decides, never an approvable repair.</rule>
