@@ -2,7 +2,7 @@
 description: Move the "changelog is committed-history-derived, never hand-edited" invariant into the update_changelog skill so the artifact owns it, then remove the duplicated standing repo rule.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-21T13:25:38
-updated: 2026-06-21T13:25:38
+updated: 2026-07-04T13:31:02
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -25,8 +25,10 @@ the skill states it.
 
 - Skill: `plugins/ai_dev/skills/update_changelog/SKILL.md`. The `<policy>` block
   governs day ordering, entry granularity, date immutability, and summary style,
-  but no clause states where changelog content comes from or forbids hand-editing.
-  The `<objective>` calls the file "derived from git commits" without making the
+  and its `<run_scope>` clause states "Build each run from committed git history
+  only" — scoped to which days a run rebuilds. No clause forbids hand-editing or
+  names committing the skill's output as how the file is persisted. The
+  `<objective>` calls the file "derived from git commits" without making the
   never-hand-edit prohibition explicit.
 - The invariant currently lives as a standing repo instruction, mirrored in this
   repo's `CLAUDE.md` and `AGENTS.md`: "CHANGELOG.md is git-history-derived. Update
@@ -35,9 +37,9 @@ the skill states it.
   That binds the rule to this one repo rather than to the skill that should own it.
   This task is the follow-up the "Only committed work counts" bullet in
   [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md)
-  points at — that task also states the run-scope corollary ("only committed
-  history is in scope" for which days a run rebuilds), and this task owns the
-  general invariant the corollary specializes.
+  points at — that task's run-scope corollary now ships as the skill's
+  `<run_scope>` clause, and this task owns the general invariant the corollary
+  specializes.
 - Motivating case: session `07a4d5ec`, where an agent hand-wrote entries for
   uncommitted working-tree changes and they had to be reverted — the failure this
   invariant prevents.
@@ -59,14 +61,10 @@ the skill states it.
   prohibition and the commit-the-output mechanics in the `<source_of_truth>` clause
   alone, so `<objective>` stays a one-liner rather than duplicating the policy clause.
 - State the invariant once. The skill's `<source_of_truth>` clause is the canonical
-  statement; where
-  [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md)
-  adds a run-scope clause about committed history, keep it pointing at this clause
-  rather than restating it, so the two stay in agreement. The two tasks name no
-  ordering: if the incremental-day-boundaries task lands first and writes a
-  standalone committed-history sentence into the skill, fold that wording into this
-  canonical clause rather than leaving two — the merge direction holds whichever
-  task lands first.
+  statement, and the shipped `<run_scope>` clause already carries a standalone
+  committed-history sentence: reconcile the two so the general invariant lives only
+  in `<source_of_truth>`, with `<run_scope>` staying scoped to which days a run
+  rebuilds and deferring to the canonical clause rather than restating it.
 - After the skill carries the invariant, remove the duplicated changelog paragraph
   from the standing repo instructions mirrored in `CLAUDE.md` and `AGENTS.md`, since
   the portable artifact now owns it. Run this removal only once the skill change is
@@ -83,13 +81,14 @@ here.
 - The skill's `<policy>` carries a clause stating the changelog records committed
   git history only, entries are produced by running the skill, the file is never
   hand-authored or hand-edited, and committing the skill's output is how it is
-  persisted. (No such clause exists today.)
+  persisted. (Today `<run_scope>` covers only committed-history run scope; the
+  hand-edit prohibition and output-persistence mechanics appear nowhere.)
 - The `<objective>` names committed git history as the sole source of changelog
   content.
-- The invariant is stated once across the changelog skill and tasks: the skill
-  clause is canonical, and any committed-history wording in the
-  [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md)
-  run-scope clause references it rather than restating it.
+- The invariant is stated once in the skill: the `<source_of_truth>` clause is
+  canonical, and the `<run_scope>` clause stays scoped to which days a run
+  rebuilds, deferring to the canonical clause rather than restating the general
+  invariant.
 - After the skill carries the invariant, the standing repo instructions in
   `CLAUDE.md` and `AGENTS.md` no longer carry the changelog hand-edit paragraph (the
   duplicate is gone from both mirrored files), and no other passage in those files

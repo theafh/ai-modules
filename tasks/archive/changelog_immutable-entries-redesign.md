@@ -36,7 +36,7 @@ header**, not appended at the bottom.
   - **Preserve-vs-annotate collision.** `<preserve_existing>` says "do not rewrite prior summaries," yet a bare `[superseded]` marker is uninformative ("superseded by what?"), so the model appends parentheticals to old entries to make the marker meaningful — breaking the preserve rule. Live example in the repo's own `CHANGELOG.md`: the `2026-05-29` entry was edited on a later run to append "(`task_health` was renamed to `task_fix` later.)" — the rename happened `2026-05-31`.
 - The model being adopted: past entries are immutable (add-only), and the *kind* of change is carried by the new entry's category rather than by a mutated status marker. The skill's current `<categories>` axis is a custom vocabulary (`Implementation/runtime`, `Refactor`, `Refactor/perf` / `Perf/runtime`, `Refactor/runtime reliability`, `Docs/specs-only`); this redesign replaces it with the small standard set defined in the Approach. Supersession folds into that axis cleanly — a replacement or removal becomes a fresh entry under its own day, so the old entry is never touched.
 - This was assessed in the session that filed this task; the author chose the immutable-entries direction over keeping the marker overlay.
-- Sibling cleanup task that depends on this one landing first: [changelog_history-driven-rebuild.md](../changelog_history-driven-rebuild.md) — the one-time manual rebuild of the existing `CHANGELOG.md`. Land this skill redesign first.
+- Sibling cleanup task that depends on this one landing first: [changelog_history-driven-rebuild.md](changelog_history-driven-rebuild.md) — the one-time manual rebuild of the existing `CHANGELOG.md`. Land this skill redesign first.
 
 ## Approach
 

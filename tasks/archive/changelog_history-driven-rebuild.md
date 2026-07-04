@@ -2,12 +2,27 @@
 description: After the changelog skill fixes ship, delete CHANGELOG.md and cold-regenerate it from git history with the fixed skill, then verify a re-run is a no-op.
 scope: "CHANGELOG.md regeneration"
 created: 2026-06-02T19:37:57
-updated: 2026-06-22T23:40:52
-status: open
+updated: 2026-07-04T13:31:02
+status: deferred
 reported-by: Andreas Hoffmann
 ---
 
 # Delete and cold-regenerate CHANGELOG.md with the fixed skill
+
+## Deferral note
+
+Deferred 2026-07-04. The migration this task exists to deliver already happened
+without it: the changelog regeneration committed on 2026-06-26 (commit `9f42a8b`,
+"Regenerate the changelog and advance the task backlog") retired the
+status-marker legend, dropped the retroactive back-annotations, and rewrote the
+older days into the immutable-entries vocabulary, so `CHANGELOG.md` already sits
+in the new format. A delete-and-cold-rebuild would now buy only test coverage —
+an end-to-end proof of the skill's cold-build path plus the no-op re-run check —
+at the cost of re-wording every already-clean day section. Reviving this means
+re-scoping it to that verification-only goal, gated on
+[changelog_anchored-newest-first-insert.md](../changelog_anchored-newest-first-insert.md)
+shipping first, since a long-history cold build is exactly what that task's
+insert mechanics change.
 
 ## Goal
 
@@ -32,7 +47,7 @@ end-to-end proof that the changelog skill fixes work together.
   deleting and regenerating is safe rather than lossy.
 - Do this **only after all the changelog skill-fix tasks have shipped**, the
   format keystone being
-  [changelog_immutable-entries-redesign.md](archive/changelog_immutable-entries-redesign.md):
+  [changelog_immutable-entries-redesign.md](changelog_immutable-entries-redesign.md):
   a cold build against the unfixed skill would just reproduce the old marker
   format.
 

@@ -2,9 +2,10 @@
 description: Add to harness_portability a principle that harness-scoped carve-outs are a valid cross-harness-compat mechanism for skill behaviour, keyed on capability when a harness's capability changes.
 scope: plugins/ai_dev/skills/harness_portability
 created: 2026-06-30T19:33:12
-updated: 2026-07-04T13:13:40
-status: ready
+updated: 2026-07-04T13:49:12
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # State harness-scoped carve-outs as a cross-harness-compatibility mechanism in harness_portability
@@ -18,7 +19,7 @@ The user-visible outcome: an author reading `harness_portability` finds an expli
 ## Context
 
 - The skill lives in `SKILL.md` under the `<harness_portability>` element. Its `<policy>` block already carries the design-for-the-running-harness rule, the use-official-provider-docs rule, the provider-specific-configuration rules, and the union-of-native-fields rule (the rule opening "Compose cross-harness behavior as a union of native fields"), which sanctions carrying each harness's native config fields side by side in one shared artefact. Two body blocks special-case harnesses extensively: `<hook_portability>` for Codex hook wiring (`<codex_hook_layers>`, `<codex_plugin_hooks>`, `<dual_harness_layout>`) and `<agent_portability>` for agent definitions (`<codex_model_inheritance>`, `<reasoning_effort_portability>`, `<readonly_agent_enforcement>`). What is missing is the general principle that a behaviour/prose rule may be scoped to a single harness as a sanctioned compatibility technique — both blocks demonstrate the pattern without naming it as a reusable principle, and the union-of-native-fields rule states the analogous idea only for structured config fields, not for skill behaviour and prose.
-- Motivating instance (rides along as illustration, not as the content): the [git_commit consume-context task](ai-dev_git-commit-consume-context-contract.md) needed a shell-based read recipe because OpenAI Codex has historically had no dedicated file-reading tool and reads through the shell (`cat`/`sed`), while Claude, Cursor, and the other supported harnesses expose a Read tool. A Read-tool-only instruction errors on Codex; a harness/capability-scoped clause restores equivalent UX without changing the other harnesses' path.
+- Motivating instance (rides along as illustration, not as the content): the [git_commit consume-context task](../ai-dev_git-commit-consume-context-contract.md) needed a shell-based read recipe because OpenAI Codex has historically had no dedicated file-reading tool and reads through the shell (`cat`/`sed`), while Claude, Cursor, and the other supported harnesses expose a Read tool. A Read-tool-only instruction errors on Codex; a harness/capability-scoped clause restores equivalent UX without changing the other harnesses' path.
 - Capability-keying detail, also from that instance: Codex's file-reading surface changes across versions (a dedicated `read_file` tool arriving where historically only shell reads existed), so a carve-out keyed on the Codex identity goes stale while one keyed on the capability ("this agent has no Read tool") stays correct whatever the rollout state. This is the concrete case the capability-keying guidance generalises. The skill already keys one classification on a harness property rather than a harness name: `<frontmatter_schema_tolerance>` sorts targets into ignore-unknown versus strict-schema and lets downstream rules key on that property — in-file prior art the new guidance can align with.
 - The principle reinforces the existing `<policy>` rule that says design for the harness that will run the skill, and the `<scope>`/`<target_harnesses>` framing; it does not contradict them. Its nearest `<policy>` neighbour is the union-of-native-fields rule: that rule handles per-harness config fields coexisting in a shared artefact, the new rule handles per-harness behaviour and prose, and the two read as siblings rather than overlapping statements.
 

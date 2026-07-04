@@ -2,7 +2,7 @@
 description: Trigger git_commit's context consumption by blob byte/token size instead of file count, and give it a read recipe every harness can run, not only a Read tool.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-06-28T17:45:21
-updated: 2026-07-02T18:43:57
+updated: 2026-07-04T13:48:50
 status: ready
 reported-by: Andreas Hoffmann
 ---
