@@ -18,10 +18,15 @@ unique context path with `ctx_file=$(mktemp "${TMPDIR:-/tmp}/git_commit_context.
 (pass the full template — `mktemp -t prefix` leaves the literal `XXXXXX` in
 the filename on BSD/macOS)
 and write the captured evidence there so the rest of the workflow can consume
-it the same way as the scripted path; consume it with `Read`, paginated
-`Read` if it overflows, or sequential `grep`/`awk` slicing only as a last
-resort. Keep the `ctx_file` value — you will pass it to the commit step so
-it gets cleaned up on success.
+it the same way as the scripted path, by the same size-driven contract
+`SKILL.md`'s `<consume_context>` defines: read the whole blob in one call when
+it fits under your reader's per-read cap; when it exceeds the cap, cover every
+byte with sequential non-overlapping pages, halving the span on overflow; and
+when even paginated reading cannot cover it, or where this agent has no Read
+tool, read ordered non-overlapping shell slices (`wc -l` for the line count,
+then consecutive `sed -n` spans) that cover every byte in order — never
+sampling by filename. Keep the `ctx_file` value — you will pass it to the
+commit step so it gets cleaned up on success.
 
 1. Stage every untracked, non-ignored file:
 

@@ -2,9 +2,10 @@
 description: Trigger git_commit's context consumption by blob byte/token size instead of file count, and give it a read recipe every harness can run, not only a Read tool.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-06-28T17:45:21
-updated: 2026-07-04T13:48:50
-status: ready
+updated: 2026-07-04T19:13:42
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Make git_commit's consume-context contract size-triggered and harness-portable
@@ -24,7 +25,7 @@ The whole contract lives in `SKILL.md` under the `<consume_context>` element, wi
 - The same instruction is printed at runtime: `prepare_commit_context.sh` emits a stdout consumption directive beginning "Read this entire file with the Read tool. Do NOT re-run git diff…". This directive and the `<consume_context>` prose must stay in step — a fix to one without the other splits the contract. The stdout **shape** is separately pinned as two lines in three passages this task supersedes when it adds the size line: `SKILL.md`'s `<gather_context>` ("Its stdout prints exactly two lines: the context file's absolute path, then a one-line consumption directive." and "the path on stdout is the only thing you carry forward."), `prepare_commit_context.sh`'s header comment ("Prints exactly two lines to stdout: the context file's absolute path, and a one-line consumption directive telling the consumer to Read the whole file."), and its inline comment ("Stdout is intentionally tiny: the path on its own line so simple tools can pick it up, then a one-line consumption directive."). Each is rewritten in place to state the new path-line / size-line / consumption-directive shape, keeping the path on its own line as the single value carried forward to `commit_with_message.sh`.
 - `references/manual_fallback.md` restates the consume guidance for the post-failure path; it has to match the reframed contract so the scripted and manual paths do not diverge.
 - The skill already special-cases one harness in `<codex_agent_only>`, which adjusts sandbox-escalation behaviour for that harness while the primary workflow stays unchanged for others. A harness-scoped carve-out like that is a valid cross-harness-compatibility mechanism — it special-cases the one harness needing attention so every other harness's UX is unchanged and no error fires in the special one. The Read-tool gap is what motivates this clause: OpenAI Codex has historically had no dedicated file-reading tool and reads through the shell (`cat`/`sed`), while the other supported harnesses expose a Read tool. Recent Codex versions are adding a `read_file` tool, though, so the durable trigger is the **capability** an agent actually has, not the Codex identity: key the clause on "this agent has no Read tool" and place it in the harness-neutral `<consume_context>` contract that every harness runs, so an agent self-selects the shell recipe by capability and a Codex session that gained `read_file` simply takes the Read path. (The same outcome could be reached with a capability-scoped carve-out; the harness-neutral placement is chosen because the trigger is capability, not harness.)
-- The sibling [git_commit drift-guard task](ai-dev_git-commit-concurrent-session-staging.md) edits a **different** passage (`<commit_scope>` / `<execution_default>` / `<pause_conditions>` and the staging mechanism) but touches the **same** four artifacts — `SKILL.md`, `prepare_commit_context.sh`, `commit_with_message.sh`, and `references/manual_fallback.md`. Whichever lands second reconciles against the first rather than re-deriving those files, so the two contracts stay consistent and neither introduces a competing mechanism.
+- The sibling [git_commit drift-guard task](../ai-dev_git-commit-concurrent-session-staging.md) edits a **different** passage (`<commit_scope>` / `<execution_default>` / `<pause_conditions>` and the staging mechanism) but touches the **same** four artifacts — `SKILL.md`, `prepare_commit_context.sh`, `commit_with_message.sh`, and `references/manual_fallback.md`. Whichever lands second reconciles against the first rather than re-deriving those files, so the two contracts stay consistent and neither introduces a competing mechanism.
 
 ## Approach
 

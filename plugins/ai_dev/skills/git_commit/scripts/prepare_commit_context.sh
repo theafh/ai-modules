@@ -18,12 +18,15 @@ Behavior:
     fresh unique file under the system tmp dir (TMPDIR or /tmp) created
     via mktemp. Every run gets its own path so stale files from prior
     runs never collide and never block a fresh write.
-  - Prints exactly two lines to stdout: the context file's absolute path,
-    and a one-line consumption directive telling the consumer to Read the
-    whole file. This keeps stdout small regardless of changeset size so
-    no agent harness ever truncates or persists it separately. The
-    consumer is expected to pass this path back to commit_with_message.sh
-    so the file is cleaned up on a successful commit.
+  - Prints three lines to stdout: the context file's absolute path on its
+    own line, the context blob's byte size on its own line, and a one-line
+    consumption directive telling the consumer to read the whole file with
+    a Read tool, or with ordered shell slices on a harness that has none.
+    This keeps stdout small regardless of changeset size so no agent
+    harness ever truncates or persists it separately. The consumer carries
+    the path line back to commit_with_message.sh so the file is cleaned up
+    on a successful commit, and reads the size line to pick full-read vs.
+    ordered slicing up front.
   - Prints generic placeholders for binary diffs.
   - Handles paths with embedded newlines, tabs, or other special characters
     by routing every path list through NUL-delimited git output.
@@ -197,9 +200,16 @@ ctx_file="$(mktemp "$tmp_root/git_commit_context.XXXXXX")"
   printf '</commit_context>\n'
 } > "$ctx_file"
 
+# Byte size of the blob, normalized to a bare integer (wc pads with leading
+# spaces on BSD/macOS; arithmetic expansion strips them). The consumer reads
+# this to choose full-read vs. ordered slicing before it ever opens the file.
+blob_bytes=$(( $(wc -c < "$ctx_file") ))
+
 # Stdout is intentionally tiny: the path on its own line so simple tools can
-# pick it up, then a one-line consumption directive. The blob lives in the
-# file above; do NOT inline it here, or agent harnesses with output-size
-# limits will truncate or persist it and confuse downstream consumers.
+# pick it up, then the blob's byte size on its own line, then a one-line
+# consumption directive. The blob lives in the file above; do NOT inline it
+# here, or agent harnesses with output-size limits will truncate or persist
+# it and confuse downstream consumers.
 printf '%s\n' "$ctx_file"
-printf 'Read this entire file with the Read tool. Do NOT re-run git diff, git status, or git log — the per-file <file_change> sections inside are authoritative and need to be consumed whole to write a coherent message. If Read paginates, continue with offset/limit until every byte is covered. Only fall back to grep/awk/sed for files so large that paginated Read is impractical, and even then iterate sequentially over every <file_change> section rather than querying for a specific file.\n'
+printf '%s\n' "$blob_bytes"
+printf 'Read this entire file — with a Read tool, or with ordered shell slices (wc -l for the line count, then consecutive sed -n spans) on a harness that has no Read tool. Do NOT re-run git diff, git status, or git log — the per-file <file_change> sections inside are authoritative and must be consumed whole to write a coherent message. Pick the path from the byte size above against how much a single read returns: read the file in one call when it fits, otherwise cover every byte with sequential, non-overlapping pages or slices in order, halving the span on overflow, and never sampling by filename.\n'

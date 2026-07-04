@@ -1,7 +1,7 @@
 ---
 name: task_check
-description: Check one task before implementation. Use when the user asks if a task is ready to build. Assess structure, scope, focus, complexity, contradictions, and ambiguity, verify a described bug or gap is real in the code and the approach closes it, then stamp ready or checked and report readiness issues.
-version: 1.1.6
+description: Check one task before implementation. Use when the user asks if a task is ready to build or still valid. Assess structure, scope, focus, complexity, contradictions, and ambiguity, verify the task's premise and described current state against the codebase, surface a stale invalidated task with deferral as the user's option, then stamp ready or checked and report readiness issues.
+version: 1.1.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -37,6 +37,8 @@ The bar is the base skill's self-sufficiency concept: the task file on its own i
 Assess against the base `task` skill's `<readiness_checklist>`, in its order: the charter and structural checks, then the premise and approach-fitness checks against the codebase, then the content lens item by item. The checklist lives once in the base skill as the family's single source; apply it from there rather than from a copy here. Every verified checklist finding is a readiness issue and belongs in `## Issues`; do not demote a checklist finding to style notes because the implementation could still proceed around it.
 
 Ground every issue before reporting it: an issue enters the report only after you have confirmed it against the repository — read the file it implicates, run the command the acceptance names, check the policy the task cites. An unverifiable suspicion is voiced as a question in the general assessment, never as a numbered issue.
+
+When the premise check returns its invalidated outcome, state that plainly in the general assessment and surface the base rule's disposition options — close as `deferred` through `task_finish`, re-scope the intent, or refute the finding with evidence — as the user's decision to make; the status stamp stays this skill's only mutation either way.
 
 After assessing, stamp the outcome only: `status: ready` for a clean implementation-ready verdict, otherwise `status: checked`, honoring the base skill's `<backward_move_guard>`, and bump `updated`. Preserve the task body, all other frontmatter fields, and the file path.
 </assessment>
