@@ -2,7 +2,7 @@
 description: Keep git_commit's whole-repo staging as the default; add a drift guard that pauses to ask when files outside the reviewed set appear, biasing to commit-all when uncertain.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-06-26T18:38:55
-updated: 2026-07-04T13:48:24
+updated: 2026-07-04T20:51:41
 reported-by: Andreas Hoffmann
 status: ready
 ---
@@ -23,7 +23,7 @@ The `git_commit` skill stages the entire working tree (`git add -A`) before comm
 
 ## Approach
 
-Author the staging protocol once in `SKILL.md` (extend the `<commit_scope>` / `<execution_default>` / `<pause_conditions>` directives into a small decision tree), then implement its mechanism across `prepare_commit_context.sh`, `commit_with_message.sh`, and the matching `references/manual_fallback.md` sequences so prose, scripts, and fallback agree.
+Author the staging protocol once in `SKILL.md` (extend the `<commit_scope>` / `<execution_default>` / `<pause_conditions>` directives into a small decision tree) and add the model-side detection step to the workflow, then mirror the protocol in the `references/manual_fallback.md` sequences so prose and fallback agree. The two scripts stay functionally unchanged and carry no drift logic: `prepare_commit_context.sh` keeps emitting the `<status_after_staging_new_files>` snapshot that serves as the reviewed-set baseline, and `commit_with_message.sh` keeps its atomic `git add -A` then `git commit -F -`. If either script's help text or comments need to name the new protocol, treat that as a doc-consistency touch-up rather than implementing the guard inside the script.
 
 The protocol has three branches:
 
@@ -40,6 +40,6 @@ Non-goals: changing commit-message generation; adding prompts to the no-drift si
 ## Acceptance
 
 - `SKILL.md` carries the protocol: `<commit_scope>` keeps commit-all as the default and documents the drift branch and the commit-all-in-doubt tiebreaker; `<pause_conditions>` gains the narrow foreign-drift carve-out; `<execution_default>` still forbids prompts in the no-drift case. One canonical description remains.
-- The workflow detects paths outside the reviewed set that newly appear in commit-time status after context preparation and pauses to ask before including them. Prove this with a staged, deterministic stand-in for a concurrent session — no real second session: after `prepare_commit_context.sh` captures the reviewed context, an injected step creates a new file or modifies a previously clean tracked file outside the reviewed set in the window before `commit_with_message.sh` runs, and the skill then surfaces that path and pauses rather than committing it silently. A fixture mirroring the existing `tests/git_commit/` pattern (a per-scenario `setup.sh` reachable from `stage.sh`, on the conservative no-miss tradeoff recorded in `## Context`) or an inline injection step both satisfy this; the implementer picks the mechanism. On a clean single-session tree with no such injected drift, the skill commits all intended new and modified files with no prompt.
+- The workflow detects paths outside the reviewed set that newly appear in commit-time status after context preparation and pauses to ask before including them. Prove this with a staged, deterministic stand-in for a concurrent session — no real second session: after `prepare_commit_context.sh` captures the reviewed context, an injected step creates a new file or modifies a previously clean tracked file outside the reviewed set in the window before `commit_with_message.sh` runs, and the skill then surfaces that path and pauses rather than committing it silently. A fixture mirroring the existing `tests/git_commit/` pattern (a per-scenario `setup.sh` reachable from `stage.sh`) or an inline injection step both satisfy this; the implementer picks the mechanism. On a clean single-session tree with no such injected drift, the skill commits all intended new and modified files with no prompt.
 - When detection is ambiguous, the workflow commits all rather than dropping any file — no intended file is ever silently excluded.
 - `references/manual_fallback.md` matches the protocol, including the pause-on-drift step, with no behavior that contradicts the scripted path.

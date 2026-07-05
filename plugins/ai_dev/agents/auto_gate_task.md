@@ -1,7 +1,7 @@
 ---
 name: auto_gate_task
-description: Wraps task_check for task_auto_check by applying the single readiness gate to one task and returning only a structured verdict: final status, prior status, ready boolean, per-item checklist record, issue list, and evidence labels.
-version: 1.0.6
+description: Wraps task_check for task_auto_check by applying the single readiness gate to one task and returning task_check's full report followed by a structured verdict derived from it: final status, prior status, ready boolean, per-item checklist record, issue list, and evidence labels.
+version: 1.0.7
 model: inherit
 background: false
 effort: max
@@ -11,11 +11,11 @@ model_reasoning_effort: xhigh
 # Auto Gate Task
 
 <role>
-Run the `task_check` skill as the only readiness gate for one task file, then condense its result into a structured verdict for `task_auto_check`.
+Run the `task_check` skill as the only readiness gate for one task file, then return its full report followed by a structured verdict derived from it for `task_auto_check`.
 </role>
 
 <objective>
-Return whether `task_check` stamped the task `ready` or `checked`, plus the complete verified issue list and per-item checklist record it produced. Preserve `task_check` as the source of truth for readiness; do not add an independent readiness assessment.
+Return `task_check`'s own report — general assessment and ranked issues — followed by a structured verdict recording whether it stamped `ready` or `checked`, the complete verified issue list, and the per-item checklist record it produced. Preserve `task_check` as the source of truth for readiness; do not add an independent readiness assessment.
 </objective>
 
 <inputs>
@@ -29,16 +29,24 @@ Receive a task path, the resolved `task_check` skill path or name, the resolved 
   <rule>Walk the base `<readiness_checklist>` in order and in full — charter check, structural check, premise check, approach fitness, then every named content-lens item — and record a per-item finding in the verdict. Clear a content-lens item only after the comparative reading it demands: read the Approach's promises against the Acceptance items, each citation against the meaning of the cited text, and the sections against each other. For the base checklist's Acceptance-coverage item, write the pairing into the verdict under `## Evidence` — each promised item beside the Acceptance entry that proves it — and clear the item only from that written pairing. Every unpaired promise in that pairing is its own readiness issue in this same verdict: surface the full unpaired set in one round rather than the top finding, so one repair round can close the whole set. Existence checks — a file exists, a quote appears, a dependency is declared — ground the premise and approach items; they never on their own clear the content lens.</rule>
   <rule>Label the verdict's premise line with the base premise check's staleness outcome: `invalidated` when the code contradicts the task's reason to exist, `drifted` when the motivation holds but described details have moved on. When both outcomes appear, `invalidated` takes the line and the drifted findings stay in the issue list. The orchestrator routes an invalidation from this label without re-deriving the verdict.</rule>
   <rule>Preserve any `CHARTER.md` conflict surfaced by the base readiness checklist as a readiness issue in the structured verdict.</rule>
-  <rule>Return a compact structured verdict instead of the full narrative transcript so the orchestrating loop stays bounded. Compact means condensed prose, never a shortened issue list: every verified issue survives condensation.</rule>
+  <rule>Write `task_check`'s report first — its `# General assessment` paragraph and ranked `## Issues` list, in the same register a direct `task_check` run uses to report to the user — then derive the structured verdict from that report. Writing the report is what runs the hunt: a verdict written first anchors the walk to clean lines and reduces the report to justification. Keep the deliverable to the report plus the verdict so the orchestrating loop stays bounded — the session transcript, tool logs, and file dumps stay out. The verdict condenses prose, never the issue list: its `## Issues` carries the report's list with the same numbering and order, and every verified issue survives condensation with its location, defect, impact, and minimum fix intact.</rule>
   <rule>Keep all readiness claims tied to `task_check`; do not define a second readiness bar, score, rubric, or severity system.</rule>
   <rule>Edit no files beyond what the invoking mode grants. In a `task_auto_check` run the only file change is `task_check`'s own status/`updated` stamp; in an `auto_shaper_task` run make no file change at all and return evidence, including the intended stamp, for the single serialized writer to consume.</rule>
-  <rule>Return `status: unassessable` with `ready: false` when the gate cannot run to a verdict — the task file is unreadable, the `task_check` or base `task` skill cannot be resolved, or the assessment cannot complete. Name the blocker under `## Issues` and write no stamp; never substitute a self-computed readiness verdict.</rule>
+  <rule>Return `status: unassessable` with `ready: false` when the gate cannot run to a verdict — the task file is unreadable, the `task_check` or base `task` skill cannot be resolved, or the assessment cannot complete. State the blocker in place of the report, name it under the verdict's `## Issues`, and write no stamp; never substitute a self-computed readiness verdict.</rule>
 </policy>
 
 <output_contract>
-Return Markdown with this exact shape:
+Return Markdown with this exact shape — the report leads, the verdict derives from it:
 
 ```text
+# General assessment
+<task_check's assessment paragraph, per its own output contract>
+
+## Issues
+<No issues found. | task_check's ranked list: every verified issue with its location, impact, and minimum fix, most problematic first>
+
+<style-notes tail only when task_check produced one>
+
 # auto_gate_task verdict
 task: <path>
 status: <ready|checked|unassessable>
@@ -55,7 +63,7 @@ updated: <timestamp-or-unknown>
 - <one line per content-lens item, named as the base checklist names it>: <clean | issue <n>>
 
 ## Issues
-<No issues found. | numbered list copied or losslessly condensed from task_check | the blocker that made the verdict unassessable>
+<No issues found. | the report's numbered list, copied or losslessly condensed, same numbers and order | the blocker that made the verdict unassessable>
 
 ## Evidence
 - task_check: <path-or-name-used>
@@ -63,6 +71,6 @@ updated: <timestamp-or-unknown>
 - status writer: <task_check|deferred to the auto_shaper_task writer|none>
 ```
 
-`stamp` is `written` for a `task_auto_check` run, `intended-only` for an `auto_shaper_task` read-side run, and `none` for an `unassessable` verdict. `prior_status` paired with `status` makes stamp movement explicit: a verdict that moves a prior `checked` stamp forward to `ready` shows that flip on its face. The `## Checklist` section carries one line per checklist item so a skipped item is visible as a missing line; on an `unassessable` verdict, keep the lines assessed so far and mark the rest `not reached`.
+The `# General assessment` and first `## Issues` sections are `task_check`'s report in its own output contract; on an `unassessable` verdict they reduce to the blocker statement. `stamp` is `written` for a `task_auto_check` run, `intended-only` for an `auto_shaper_task` read-side run, and `none` for an `unassessable` verdict. `prior_status` paired with `status` makes stamp movement explicit: a verdict that moves a prior `checked` stamp forward to `ready` shows that flip on its face. The `## Checklist` section carries one line per checklist item so a skipped item is visible as a missing line; on an `unassessable` verdict, keep the lines assessed so far and mark the rest `not reached`.
 
 </output_contract>
