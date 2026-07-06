@@ -35,7 +35,10 @@ commit step so it gets cleaned up on success.
      | xargs -0 -I{} git add -- "{}"
    ```
 
-2. Inspect status: `git status --short --untracked-files=all`.
+2. Inspect status: `git status --short --untracked-files=all`. This snapshot
+   is the reviewed-set baseline the drift check below compares against, exactly
+   as the script's `<status_after_staging_new_files>` block serves the scripted
+   path.
 3. Inspect recent commits: `git --no-pager log --oneline -8`.
 4. List staged new files: `git diff --cached --name-only --diff-filter=A`.
 5. List every staged path: `git diff --cached --name-only`.
@@ -49,6 +52,31 @@ commit step so it gets cleaned up on success.
 10. Treat binary diffs as a generic file-level commit line; do not try to
     summarize their bytes.
 
+## Drift check before staging
+
+This is the same model-side `<detect_drift>` step the primary `SKILL.md`
+workflow runs at the seam before committing — not a per-script fallback
+section, so it runs once here whether the context came from the script or the
+manual replacement above. Run it after the context is in hand and the message
+composed, and before the `git add -A` in the commit step below.
+
+Re-run `git status --short --untracked-files=all` and compare its paths to the
+reviewed-set baseline captured in the status step above, on equal footing.
+
+1. **No drift — commit all.** The re-check surfaces no path outside the
+   baseline — the path set matches. Proceed to the commit step with no prompt.
+   This is the common case, a clean single-session tree included.
+2. **Foreign drift — pause and ask.** One or more paths appear that were
+   outside the reviewed-set baseline and entered commit-time status after it was
+   captured (a new file, or a path that was clean or absent from the baseline
+   and is now changed). Pause, list those paths to the user, and ask whether
+   they belong in this commit before staging them.
+3. **In doubt — commit all.** A concurrent session's edit to a path already in
+   the baseline adds no path outside it, so this path-level comparison cannot
+   separate that further edit from your own — such a same-path change stays on
+   the commit-all path rather than pausing. The tiebreaker favors no-miss over
+   no-sweep.
+
 ## Replacement for `commit_with_message.sh`
 
 Goal: stage the full repo state and commit from the composed message via
@@ -56,8 +84,10 @@ stdin without altering its line breaks, and clean up the context file on
 success. There is no intermediate message file.
 
 1. Confirm the composed message is non-empty.
-2. Stage everything: `git add -A`.
-3. Commit from stdin via a single-quoted heredoc so no shell expansion runs
+2. Confirm the drift check above has cleared — no drift, or the user confirmed
+   the drifted paths belong.
+3. Stage everything: `git add -A`.
+4. Commit from stdin via a single-quoted heredoc so no shell expansion runs
    inside the message:
 
    ```bash
@@ -68,8 +98,8 @@ success. There is no intermediate message file.
    COMMIT_MSG_END
    ```
 
-4. Print final status: `git status --short --untracked-files=all`.
-5. On successful commit, delete the context file from the previous step:
+5. Print final status: `git status --short --untracked-files=all`.
+6. On successful commit, delete the context file from the previous step:
    `rm -f "$ctx_file"` (using the `mktemp` path you kept). Skip this step
    if the commit failed so the context survives for a retry.
 
