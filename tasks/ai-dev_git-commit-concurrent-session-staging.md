@@ -2,7 +2,7 @@
 description: Keep git_commit's whole-repo staging as the default; add a drift guard that pauses to ask when files outside the reviewed set appear, biasing to commit-all when uncertain.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-06-26T18:38:55
-updated: 2026-07-05T17:41:55
+updated: 2026-07-06T19:07:55
 reported-by: Andreas Hoffmann
 status: ready
 ---
@@ -41,5 +41,5 @@ Non-goals: changing commit-message generation; adding prompts to the no-drift si
 
 - `SKILL.md` carries the protocol: `<commit_scope>` keeps commit-all as the default and documents the drift branch and the commit-all-in-doubt tiebreaker; `<pause_conditions>` gains the narrow foreign-drift carve-out; `<execution_default>` still forbids prompts in the no-drift case. `<hard_rules>` gains a sentence distinguishing its ban on re-deriving the commit context (`prepare_commit_context.sh`'s one-time diff/status/log bundle) from the new narrow drift re-check, so the tag's existing ban and the added step read as one consistent rule. One canonical description remains.
 - The workflow detects paths outside the reviewed set that newly appear in commit-time status after context preparation and pauses to ask before including them. Prove this with a staged, deterministic stand-in for a concurrent session — no real second session: a fixture `setup.sh` launches a detached background process (`setsid`/`&`-backgrounded, a short fixed delay then a file write) before the agent starts, so a new file or a previously clean tracked file's modification lands on disk outside the reviewed set sometime during the agent's run, after `prepare_commit_context.sh` captures the reviewed baseline. Size the delay generously against a real agent turn's latency so the file reliably lands before the skill's commit-time re-check, not as a tight race. The skill must then surface that path and pause rather than committing it silently. A fixture mirroring the existing `tests/git_commit/` pattern (a per-scenario `setup.sh` reachable from `stage.sh`) satisfies this. On a clean single-session tree with no such injected drift, the skill commits all intended new and modified files with no prompt.
-- When detection is ambiguous, the workflow commits all rather than dropping any file — no intended file is ever silently excluded.
+- When detection is ambiguous, the workflow commits all rather than dropping any file — no intended file is ever silently excluded. Prove this branch by reusing the drift-detection item's detached-writer fixture with one change: the pre-existing dirty state and the background write both target a path **already present** in the reviewed baseline. Its `setup.sh` first dirties a tracked file so that path appears in the `<status_after_staging_new_files>` snapshot, then the detached process re-edits that same path after `prepare_commit_context.sh` captures the baseline, so no path outside the baseline newly appears. The skill then commits without pausing and the commit includes that path.
 - `references/manual_fallback.md` matches the protocol, including the pause-on-drift step, with no behavior that contradicts the scripted path.
