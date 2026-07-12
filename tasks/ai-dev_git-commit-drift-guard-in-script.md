@@ -1,0 +1,45 @@
+---
+description: Move git_commit's foreign-drift guard from the prose-only detect_drift step into commit_with_message.sh as a mechanical backstop that no longer depends on which model runs.
+scope: plugins/ai_dev/skills/git_commit
+created: 2026-07-12T16:31:50
+updated: 2026-07-12T16:31:50
+status: open
+reported-by: Andreas Hoffmann
+---
+
+# Enforce git_commit's foreign-drift guard inside commit_with_message.sh
+
+## Goal
+
+The `git_commit` skill's foreign-drift guard lives entirely in the prose `<detect_drift>` step of `SKILL.md`: the model is instructed to re-run `git status --short --untracked-files=all` after the context blob is prepared, compare it against the reviewed-set baseline, and pause before committing when paths outside that baseline appear. A 2026-07-12 transcript audit of the twelve `/git_commit` runs since the guard shipped found the step is model-sensitive — Claude Opus 4.8 ran the re-check in nine of nine sessions, while Claude Sonnet 5 silently skipped it in two of three (it ran `prepare_commit_context.sh`, then `commit_with_message.sh`, with no status re-check between them and no mention of the step in its reasoning). The guarantee therefore holds or fails by which model happens to be running.
+
+Move the guard from prose-only enforcement into `commit_with_message.sh` as a mechanical backstop. The script already receives the context file path and the baseline is inside it, so the script can re-run the status check itself and refuse to commit when foreign paths appear, unless an explicit override signals the drift was reviewed and accepted. The model-facing `<detect_drift>` protocol stays as the first-line check that can pause and ask the user interactively; the script becomes the backstop that catches any model that skips the prose step. After this change the drift guarantee no longer depends on the running model following a prose instruction.
+
+## Context
+
+- The guard shipped as a prose, model-side protocol in the predecessor task [archive/ai-dev_git-commit-concurrent-session-staging.md](archive/ai-dev_git-commit-concurrent-session-staging.md), which deliberately kept the scripts free of drift logic ("the two scripts stay functionally unchanged and carry no drift logic") and ran detection model-side "at the one boundary the model controls." This task reverses that one design decision in response to evidence the predecessor could not have had: the audit showing the model-side step is not reliably executed across models. Everything else the predecessor established — the commit-all default, the no-miss-over-no-sweep tiebreaker, and the same-path reach limit — carries forward unchanged.
+- `prepare_commit_context.sh` writes the reviewed-set baseline into the context file as a `status_after_staging_new_files` block: a pseudo-XML element wrapping the verbatim output of `git status --short --untracked-files=all`, captured right after the script stages untracked files. Each line inside the block is a short-status code plus a path.
+- `commit_with_message.sh` already takes the context file as its optional first argument (the `context_file` assignment reads `${1:-}`) and today uses it only to remove the file after a successful commit. Its body is a linear `git add -A`, then `git commit -F -`, then a final status print, and it removes the context file only on success — a comment records that the file "is preserved if the commit fails so the next attempt can reuse it." The drift check must sit ahead of `git add -A` so that a block exits (under `set -e`) before both the commit and that cleanup, preserving the persist-on-failure behavior the audit observed working.
+- The `SKILL.md` seam is `<execute_commit>`, which invokes `commit_with_message.sh` once `<detect_drift>` clears — either no drift, or the user confirmed the drifted paths belong. That confirmed-drift branch is where the model passes the override so the backstop does not re-block a commit the user already approved.
+- `references/manual_fallback.md` already mirrors a manual drift check before staging from the predecessor; the manual path and the scripted path must stay in agreement after this change.
+
+## Approach
+
+Add the drift check to `commit_with_message.sh`, ahead of `git add -A`, gated on a baseline being available. Parse the `status_after_staging_new_files` block from the context file named by the `context_file` argument, extract its path set, re-run `git status --short --untracked-files=all` at commit time, and extract the current path set. When the current set contains paths absent from the baseline set — the foreign-drift signal — print those paths to stderr and exit non-zero without staging, committing, or removing the context file. When the two path sets carry no foreign path, stage and commit exactly as today.
+
+Gate the check on an accepted-drift override so the model-side "user confirmed the paths belong" branch can proceed. Add an explicit `--accept-drift` flag to `commit_with_message.sh`, parsed alongside the existing optional context-file argument; when it is present the script skips the block-and-exit and commits the full tree. `<execute_commit>` in `SKILL.md` passes `--accept-drift` only after `<detect_drift>` has paused, listed the drifted paths, and the user has confirmed they belong. The script stays non-interactive: the override is an argument, never a TTY prompt.
+
+Degrade safely when no baseline is available. `commit_with_message.sh` accepts an absent context file, a manual or fallback invocation may pass none, and a context file may also lack the block. In any of those cases the script cannot manufacture a baseline, so it proceeds with the full-tree commit rather than blocking — the commit-all, no-miss default is preserved and no false drift block is introduced. The script blocks only when it has a real baseline to compare against.
+
+Keep the two layers explicit in `SKILL.md`. The `<detect_drift>` protocol stays as the model-facing first check — the richer one, because it can pause and ask the user mid-run, which the non-interactive script cannot. Record that `commit_with_message.sh` now enforces the same guard as a backstop for any model that skips the prose step, and that a confirmed-drift commit passes `--accept-drift`. The script inherits the same path-level reach limit as the model-side check: a concurrent same-path edit adds no new path and so is caught by neither layer, exactly as the predecessor documented. Mirror the enforcement and the override into `references/manual_fallback.md` so prose, fallback, and script agree.
+
+Non-goals: changing commit-message generation; changing the commit-all default or the no-miss-over-no-sweep tiebreaker; removing or weakening the model-side `<detect_drift>` protocol; adding any interactive prompt or TTY read to the script.
+
+## Acceptance
+
+- **Foreign drift blocks.** Given a context file whose `status_after_staging_new_files` baseline omits a path that is present in the working tree's current `git status --short --untracked-files=all`, `commit_with_message.sh` exits non-zero, creates no commit, leaves the context file in place, and prints the offending path(s). Prove with a staged fixture under `tests/git_commit/script_tests/`: a hand-written context file carrying a known baseline, a working tree seeded with one extra path outside it, and assertions on the non-zero exit, `git rev-parse HEAD` unchanged, and the context file still present.
+- **Override commits.** Re-running the same drifted state with `--accept-drift` creates the commit including every path and removes the context file. Assert a new commit exists and the context file is gone.
+- **No-drift pass-through preserved.** When the current status path set matches the baseline, the script commits with no override and removes the context file, exactly as before the change.
+- **Missing baseline degrades to commit-all.** Invoked with no context file, and separately with a context file that lacks the `status_after_staging_new_files` block, the script commits the full tree without blocking — no false drift block, no-miss default intact.
+- **SKILL.md documents both layers.** `<detect_drift>` remains the model-facing first check that can pause and ask; a statement records that `commit_with_message.sh` enforces the same guard as a backstop and that a confirmed-drift commit passes `--accept-drift`. Any wording implying the guard is prose-only is superseded, and one canonical description of each layer remains.
+- **Manual fallback matches.** `references/manual_fallback.md` carries the same baseline re-check before `git add -A` and names the accepted-drift path, with no step that contradicts the scripted behavior.
