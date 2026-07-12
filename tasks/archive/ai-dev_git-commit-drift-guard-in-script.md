@@ -2,9 +2,10 @@
 description: Move git_commit's foreign-drift guard from the prose-only detect_drift step into commit_with_message.sh as a mechanical backstop that no longer depends on which model runs.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-07-12T16:31:50
-updated: 2026-07-12T17:34:16
-status: ready
+updated: 2026-07-12T18:19:48
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Enforce git_commit's foreign-drift guard inside commit_with_message.sh
@@ -17,7 +18,7 @@ Move the guard from prose-only enforcement into `commit_with_message.sh` as a me
 
 ## Context
 
-- The guard shipped as a prose, model-side protocol in the predecessor task [archive/ai-dev_git-commit-concurrent-session-staging.md](archive/ai-dev_git-commit-concurrent-session-staging.md), which deliberately kept the scripts free of drift logic ("the two scripts stay functionally unchanged and carry no drift logic") and ran detection model-side "at the one boundary the model controls." This task reverses that one design decision in response to evidence the predecessor could not have had: the audit showing the model-side step is not reliably executed across models. Everything else the predecessor established — the commit-all default, the no-miss-over-no-sweep tiebreaker, and the same-path reach limit — carries forward unchanged.
+- The guard shipped as a prose, model-side protocol in the predecessor task [ai-dev_git-commit-concurrent-session-staging.md](ai-dev_git-commit-concurrent-session-staging.md), which deliberately kept the scripts free of drift logic ("the two scripts stay functionally unchanged and carry no drift logic") and ran detection model-side "at the one boundary the model controls." This task reverses that one design decision in response to evidence the predecessor could not have had: the audit showing the model-side step is not reliably executed across models. Everything else the predecessor established — the commit-all default, the no-miss-over-no-sweep tiebreaker, and the same-path reach limit — carries forward unchanged.
 - `prepare_commit_context.sh` writes the reviewed-set baseline into the context file as a `status_after_staging_new_files` block: a pseudo-XML element wrapping the verbatim output of `git status --short --untracked-files=all`, captured right after the script stages untracked files. Each line inside the block is a short-status code plus a path.
 - `commit_with_message.sh` already takes the context file as its optional first argument (the `context_file` assignment reads `${1:-}`) and today uses it only to remove the file after a successful commit. Its body is a linear `git add -A`, then `git commit -F -`, then a final status print, and it removes the context file only on success — a comment records that the file "is preserved if the commit fails so the next attempt can reuse it." The drift check must sit ahead of `git add -A` so that a block exits (under `set -e`) before both the commit and that cleanup, preserving the persist-on-failure behavior the audit observed working.
 - The `SKILL.md` seam is `<execute_commit>`, which invokes `commit_with_message.sh` once `<detect_drift>` clears — either no drift, or the user confirmed the drifted paths belong. That confirmed-drift branch is where the model passes the override so the backstop does not re-block a commit the user already approved.

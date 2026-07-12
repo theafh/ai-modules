@@ -59,11 +59,15 @@ This repo manages upcoming work and todos with the `task` skill (`/task`). Live 
 
 Task files stay agent-harness agnostic. When a task needs standing repo instructions, cite them as the **repo rules** or **standing repo rules** rather than naming `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or another harness-specific file. Name a harness file in a task only when that file itself is the implementation target.
 
+## Committing
+
+**Lint clean before every commit.** Run `make lint` before creating any commit. When it flags something, run `make fix` for the auto-fixable markdown and correct the rest by hand, then re-run `make lint`, repeating until it passes with no issues. Create the commit only after that clean pass.
+
 ## Editing a skill
 
 1. Edit `plugins/<plugin>/skills/<name>/SKILL.md`. Keep the directory name, the frontmatter `name:`, and the H1 heading aligned.
 2. When the skill list changes, also update the plugin's `README.md`, both `plugin.json` files, the root `README.md`, and marketplace registrations.
-3. Run `make lint` before committing.
+3. Lint clean before committing (see **Committing**).
 
 ## Adding a plugin
 

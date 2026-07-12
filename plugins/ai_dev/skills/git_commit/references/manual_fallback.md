@@ -1,9 +1,13 @@
 # git_commit — manual fallback
 
 Trigger: a primary `git_commit` script (`scripts/prepare_commit_context.sh` or
-`scripts/commit_with_message.sh`) exited with a non-zero status during the
-current run. This is the only authorized trigger. If neither script has been
-invoked yet, return to `SKILL.md` and run the primary workflow first.
+`scripts/commit_with_message.sh`) failed during the current run — a non-zero
+exit other than status `3`. A `commit_with_message.sh` exit of `3` is an
+intentional foreign-drift refusal, not a failure, and does not open this manual
+path; handle it in `SKILL.md`'s `<execute_commit>` by surfacing the printed
+paths, asking the user, and re-invoking with `--accept-drift`. A genuine script
+failure is the only authorized trigger here. If neither script has been invoked
+yet, return to `SKILL.md` and run the primary workflow first.
 
 The sections below replace the failing script step-for-step. Run only the
 section that corresponds to the script that failed; return to the primary
@@ -57,8 +61,10 @@ commit step so it gets cleaned up on success.
 This is the same model-side `<detect_drift>` step the primary `SKILL.md`
 workflow runs at the seam before committing — not a per-script fallback
 section, so it runs once here whether the context came from the script or the
-manual replacement above. Run it after the context is in hand and the message
-composed, and before the `git add -A` in the commit step below.
+manual replacement above. `commit_with_message.sh` enforces the same guard as a
+mechanical backstop, refusing with exit status `3`; this manual re-check and
+that scripted backstop stay in agreement. Run it after the context is in hand
+and the message composed, and before the `git add -A` in the commit step below.
 
 Re-run `git status --short --untracked-files=all` and compare its paths to the
 reviewed-set baseline captured in the status step above, on equal footing.
@@ -70,7 +76,9 @@ reviewed-set baseline captured in the status step above, on equal footing.
    outside the reviewed-set baseline and entered commit-time status after it was
    captured (a new file, or a path that was clean or absent from the baseline
    and is now changed). Pause, list those paths to the user, and ask whether
-   they belong in this commit before staging them.
+   they belong in this commit before staging them. On the scripted path a commit
+   the user confirms passes `--accept-drift` to `commit_with_message.sh`; in this
+   manual replacement, proceed to `git add -A` once the user confirms.
 3. **In doubt — commit all.** A concurrent session's edit to a path already in
    the baseline adds no path outside it, so this path-level comparison cannot
    separate that further edit from your own — such a same-path change stays on
