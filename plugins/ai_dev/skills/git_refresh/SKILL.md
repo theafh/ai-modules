@@ -1,8 +1,7 @@
 ---
 name: git_refresh
-description: "Refresh a local git repo back to a clean current default branch: fetch/prune, detect the remote HEAD, fast-forward main/master by --ff-only, delete merged local branches, and offer gated cleanup for upstream-gone, squash-merged, stale, or force-delete branch pruning. Use when the user asks to clean up branches, refresh main, refresh master, delete merged branches, get back to a clean main, prune stale local branches, or tidy local branches after merged PRs."
-disable-model-invocation: true
-version: 1.0.0
+description: "Refresh a local git repo back to a clean current default branch: fetch/prune, detect the remote HEAD, fast-forward main/master by --ff-only, delete merged local branches, and offer gated cleanup for upstream-gone, squash-merged, stale, or force-delete branch pruning. Use when the user asks to clean up branches, refresh main, refresh master, delete merged branches, get back to a clean main, prune stale local branches, or tidy local branches after merged PRs. Invoke only on that explicit request in the current turn; noticing stale or merged branches during other work leaves the cleanup to the user."
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---

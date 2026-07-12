@@ -1,8 +1,7 @@
 ---
 name: git_commit
-description: Create one structured git commit covering the full current working-tree state. Use when the user asks to commit, commit changes, save changes, save work, make a commit, write a commit message, wrap up changes, "commit this", "git commit", or otherwise put the current repo state into git history.
-disable-model-invocation: true
-version: 3.4.3
+description: Create one structured git commit covering the full current working-tree state. Use when the user explicitly asks to commit in the current turn — "commit", "commit this", "commit changes", "make a commit", "write a commit message", "git commit", or an equally direct ask to put the current repo state into git history. Invoke only on that explicit request; a turn that merely finishes other work, saves files, or wraps up without a commit ask leaves committing to the user.
+version: 3.4.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
