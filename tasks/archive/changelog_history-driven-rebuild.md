@@ -20,7 +20,7 @@ in the new format. A delete-and-cold-rebuild would now buy only test coverage â€
 an end-to-end proof of the skill's cold-build path plus the no-op re-run check â€”
 at the cost of re-wording every already-clean day section. Reviving this means
 re-scoping it to that verification-only goal, gated on
-[changelog_anchored-newest-first-insert.md](../changelog_anchored-newest-first-insert.md)
+[changelog_anchored-newest-first-insert.md](changelog_anchored-newest-first-insert.md)
 shipping first, since a long-history cold build is exactly what that task's
 insert mechanics change.
 

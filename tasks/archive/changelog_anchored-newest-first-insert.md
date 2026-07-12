@@ -2,9 +2,10 @@
 description: Make the newest-first day insertion a single anchored prepend against a stable header boundary, so the agent stops mis-splicing day order.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:21:26
-updated: 2026-07-12T15:33:18
-status: ready
+updated: 2026-07-12T17:31:51
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Anchor the newest-first day insertion so the agent stops mis-ordering
@@ -26,13 +27,13 @@ against it.
 - Why the order stays newest-first (decided in the session that filed this task): it is the preferred read and what a changelog reader expects — latest at the top; oldest-first/append would be easier for the agent but would make *human* readers scroll to the bottom for the latest. The right fix is to make the producer reliable, not to flip a reader-facing order.
 - Root of the struggle: "insert after the header" has no crisp anchor, and a cold build over a long history does many such inserts in a row (process oldest→newest, each inserted at top), multiplying the chance of a misplaced or reordered day.
 - Interaction with sibling tasks (cross-link, sequence deliberately):
-  - [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md) owns `<enumerate_dates>` and which days a run (re)builds. This task owns *how* those day sections land in the file. They meet at the insert step — keep their wording consistent.
-  - [changelog_immutable-entries-redesign.md](archive/changelog_immutable-entries-redesign.md) makes the common run purely additive at the top (no marker re-walk), which is what makes a single clean prepend possible.
-  - [changelog_large-output-protocol.md](archive/changelog_large-output-protocol.md) governs reading the per-day blob; unrelated to the insert seam but part of the same write loop.
+  - [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md) owns `<enumerate_dates>` and which days a run (re)builds. This task owns *how* those day sections land in the file. They meet at the insert step — keep their wording consistent.
+  - [changelog_immutable-entries-redesign.md](changelog_immutable-entries-redesign.md) makes the common run purely additive at the top (no marker re-walk), which is what makes a single clean prepend possible.
+  - [changelog_large-output-protocol.md](changelog_large-output-protocol.md) governs reading the per-day blob; unrelated to the insert seam but part of the same write loop.
 
 ## Approach
 
-- **Define a stable anchor in `<output_contract>`.** The header block (H1 + legend/intro lines) ends at a recognizable boundary; the first `## YYYY-MM-DD` heading is the top of the day list. The invariant: new day sections always go **immediately between the header block and the current first day heading**, never inside the header, never below an existing day. The invariant governs **new** day sections: when a run reopens the last recorded day (the day-`D` reconciliation in [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md)), that day's existing section is extended in place, not re-inserted.
+- **Define a stable anchor in `<output_contract>`.** The header block (H1 + legend/intro lines) ends at a recognizable boundary; the first `## YYYY-MM-DD` heading is the top of the day list. The invariant: new day sections always go **immediately between the header block and the current first day heading**, never inside the header, never below an existing day. The invariant governs **new** day sections: when a run reopens the last recorded day (the day-`D` reconciliation in [changelog_incremental-day-boundaries.md](changelog_incremental-day-boundaries.md)), that day's existing section is extended in place, not re-inserted.
 - **Incremental run (few new days — the common case): one anchored prepend.** Build all the run's day sections into a single block already ordered newest-first, then perform **one** insert that splices that block between the header and the first existing day heading (anchor the edit on that first existing heading). One edit, one seam, nothing reordered.
 - **Cold build (no `CHANGELOG.md`, long history): per-day insert against the same anchor.** Rescope `<context_safety>` so its two flushed things stay distinct. The large per-day context blob read via `<consume_context>` is consumed and released one day at a time on **both** paths, since it is that blob — not the few-line composed section — that can overflow the context window on a long history. Flushing each composed day section to disk before the next is scoped to this cold-build path, which is why the incremental single-block prepend above can accumulate its few small sections and land them in one insert with no per-day section flush. Each completed cold-build day is inserted immediately after the header block — the same stable anchor as the incremental case — so processing oldest→newest yields newest-first without holding the whole history in context. Only the composed-section batch size differs between the two paths, and this rescoped `<context_safety>` governs it.
 - **Bound the read needed to find the seam.** To locate the insertion point, read only the header block plus the first existing `##` heading (a small bounded read), not the whole file.
