@@ -1,9 +1,9 @@
 ---
-description: Lift a stage-agnostic reconcile-or-surface rule for open decisions into the base task skill; wire the create, check, auto_check, and implement siblings to apply it.
+description: Lift a stage-agnostic reconcile-or-surface rule for open decisions into the base task skill; wire the check, auto_check, and implement siblings to apply it.
 scope: plugins/ai_dev/skills
 created: 2026-07-14T20:11:35
-updated: 2026-07-14T21:48:17
-status: open
+updated: 2026-07-15T00:21:16
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -116,11 +116,12 @@ fit to the task's spirit using related tasks and the existing code.
 renumbering the steps that follow, and the open
 [unattended-code-interaction task](task-family_unattended-code-interaction-check.md)
 adds a `<readiness_checklist>` lens whose findings route through this
-reconcile-or-surface rule as their disposition. All three edit `task/SKILL.md` and
-the `task_check` / `task_auto_check` family; whichever task lands second re-reads
-the shared files and anchors its edits to the target passages by their verbatim
-labels rather than by position, so the changes compose without clobbering each
-other.
+reconcile-or-surface rule as their disposition. All three edit `task/SKILL.md`; beyond that base skill, this task shares the
+`task_check` / `task_auto_check` family only with the unattended-code-interaction
+task, and shares `task_implement/SKILL.md` only with the honor-task-dependencies
+task. On each shared file, whichever task lands second re-reads it and anchors its
+edits to the target passages by their verbatim labels rather than by position, so
+the changes compose without clobbering each other.
 
 ## Approach
 
@@ -131,8 +132,15 @@ siblings cite it rather than restating it.
 **Base `task` skill — author the reconciliation rule once:**
 
 1. Rewrite the `<body>` **Decide or label** rule in place so it becomes the
-   family's stage-agnostic **open-decision reconciliation** procedure while keeping
-   its authoring-time ceiling of one labeled open decision. The rewritten rule
+   family's stage-agnostic open-decision reconciliation procedure while keeping
+   its authoring-time ceiling of one labeled open decision. Keep the
+   **Decide or label** bold lead-in verbatim as the rule's greppable anchor and
+   expand only its body into the reconciliation procedure, so the family's
+   existing citations of that label stay valid — the `<readiness_checklist>`
+   **Over-specification** entry and `task_create`'s **Self-check the draft** step,
+   both outside this task's edit set, and the `task_auto_check`
+   **Decide-or-label advocate** stance name — and the verbatim label the
+   Acceptance has each sibling cite resolves to **Decide or label**. The rewritten rule
    states: on an open decision, first reconcile it to the single path that best
    fits the task's spirit using an ordered evidence base — (a) the task's own
    stated intent in its Goal, Approach, Acceptance, and description; (b) the
@@ -166,9 +174,7 @@ resolve-now / defer ask. That carry-forward-and-ask structure is the
 reconcile-or-surface threshold at the authoring stage, so the refined central rule
 reaches `task_create` unchanged; adding the procedure or threshold text here would
 duplicate a base rule against its own "follow, don't copy" authority and
-**State once**. Optionally cite the reconciliation rule in `task_create`'s
-`<authority>` bullet list for discoverability — a clarity touch, not a behaviour
-change.
+**State once**.
 
 **`task_check` — reconcile while assessing, stay read-only:**
 
@@ -224,9 +230,9 @@ and lint-clean-before-commit rules apply at commit time.
   risking an unintended change the context cannot settle, surface otherwise), and
   the ordered evidence base (task intent, guardrail docs with `CHARTER.md` as hard
   boundary, related and older tasks, existing code), and is stage-agnostic rather
-  than authoring-only;
-  the prior authoring-only **Decide or label** wording no longer stands alone, and
-  the one-labeled-open-decision ceiling is preserved inside the rewritten rule.
+  than authoring-only; the rewritten rule keeps its greppable **Decide or label**
+  bold lead-in, its prior authoring-only wording no longer stands alone, and the
+  one-labeled-open-decision ceiling is preserved inside the rewritten rule.
 - The `<readiness_checklist>` **Ambiguity / under-specification** entry is rewritten
   in place to route a surfaced open decision through that rule — recommended
   resolution when reconcilable, labeled decision with suggested options when not —
@@ -262,7 +268,7 @@ and lint-clean-before-commit rules apply at commit time.
   contradiction: every stage that meets an open decision either settles it from
   evidence or surfaces it with suggestions, and no stage decides arbitrarily.
 - Each edited skill's staged fixture proves its stage behaviour: a task carrying a
-  labeled open decision reconcilable from a `CHARTER.md`/related-task/code cue is
-  settled to the recommended path by `task_check` and `task_auto_check` and by
+  labeled open decision reconcilable from a `CHARTER.md`/related-task/code cue has the reconciled
+  path recommended by `task_check` and settled by `task_auto_check` and
   `task_implement`, and a task whose decision no evidence settles is surfaced with
   suggested options at each stage rather than resolved.
