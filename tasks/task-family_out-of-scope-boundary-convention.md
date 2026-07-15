@@ -123,7 +123,7 @@ proposes-and-verifies the move silently.
 
 **Disposition reuses the reconcile-or-surface rule.** A surfaced boundary
 contradiction is handled by the family rule from
-[the open-decision reconciliation task](task-family_reconcile-or-surface-open-decisions.md):
+[the open-decision reconciliation task](archive/task-family_reconcile-or-surface-open-decisions.md):
 reconcile against the evidence when it settles which side wins, otherwise
 surface with suggested options. This task supplies the detection and the form;
 that rule supplies the disposition. That task should land first so the lens and
@@ -131,7 +131,7 @@ the backstop can cite its rule; if it has not, they still surface findings and
 name the disposition inline.
 
 **Co-edit coordination.** The three open siblings —
-[the reconciliation task](task-family_reconcile-or-surface-open-decisions.md),
+[the reconciliation task](archive/task-family_reconcile-or-surface-open-decisions.md),
 [the honor-task-dependencies task](task-family_honor-task-dependencies.md), and
 [the code-interaction task](task-family_unattended-code-interaction-check.md) —
 also edit `task/SKILL.md`, `task_implement/SKILL.md`, and the `task_check` /

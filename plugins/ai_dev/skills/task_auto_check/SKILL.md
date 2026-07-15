@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, refresh a stale task against the current codebase, or run an autonomous readiness loop without implementing the task. A task whose premise the code invalidates stops the loop and surfaces deferral as the user's option.
-version: 1.0.9
+version: 1.0.10
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -64,7 +64,7 @@ Spawn `auto_reviewer_task` once per applicable stance. The standing stance set i
 - Self-sufficiency advocate — cite the base `<body>` self-sufficient / single-shot-ready rule.
 - Minimum-change advocate — cite **Compact only to the implementable floor**.
 - State-once advocate — cite **State once**.
-- Decide-or-label advocate — cite **Decide or label**.
+- Decide-or-label advocate — cite **Decide or label**. Propose an evidence-grounded reconciliation of an open decision drawn from that rule's ordered evidence base rather than a bare relabel; when no evidence in that base settles the decision, propose surfacing it as a labeled decision with suggested options through the existing human-routed stuck channel rather than inventing a choice.
 - Acceptance-contract advocate — cite the base `<body>` **Acceptance** contract.
 - Rewrite-in-place advocate — cite **Rewrite in place, don't append**.
 - Positive-reframe advocate — cite the base `<body>` positive, action-oriented authoring rule.
@@ -86,7 +86,7 @@ Track the target file's on-disk state the loop last established: the freeze-time
 </concurrent_modification_guard>
 
 <verification_standard>
-Pass all proposals to `auto_verifier_task`. Keep only proposals that are real, resolve the cited `task_check` issue, are the minimum sufficient edit, preserve frozen intent, and remain faithful to standing repo rules. Reject by default when evidence is missing or the proposal is broader than the issue requires. Preserve explicit human-input boundaries: when the task already says the default is to leave the task checked, request a decision, or stop before implementation, the verifier keeps that route unless repository evidence supplies the missing decision. The verifier may narrow a proposal to its intent-safe core. Treat an edit group that would remove the majority of the task body, delete an entire load-bearing section, or collapse either into a summary line or code pointer as a structural change rather than a repair: human-route it through the `<structural_split_boundary>` reporting channel instead of applying it, even when each removed passage looks individually justified as false, redundant, or derivable — a finding at that scale needs the user's read on whether the task is misconceived, not silent gutting.
+Pass all proposals to `auto_verifier_task`. Keep only proposals that are real, resolve the cited `task_check` issue, are the minimum sufficient edit, preserve frozen intent, and remain faithful to standing repo rules. Reject by default when evidence is missing or the proposal is broader than the issue requires. Preserve explicit human-input boundaries: when the task already says the default is to leave the task checked, request a decision, or stop before implementation, the verifier keeps that route unless the base **Decide or label** rule's evidence base supplies the missing decision — so it keeps a proposed open-decision reconciliation only when that reconciliation is evidence-supported from that base and intent-preserving, and otherwise preserves the surface-to-human route through the existing stuck channel with suggested options. The verifier may narrow a proposal to its intent-safe core. Treat an edit group that would remove the majority of the task body, delete an entire load-bearing section, or collapse either into a summary line or code pointer as a structural change rather than a repair: human-route it through the `<structural_split_boundary>` reporting channel instead of applying it, even when each removed passage looks individually justified as false, redundant, or derivable — a finding at that scale needs the user's read on whether the task is misconceived, not silent gutting.
 </verification_standard>
 
 <agent_failure_policy>

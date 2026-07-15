@@ -92,7 +92,7 @@ the whole repo."
 
 **Disposition reuses the reconcile-or-surface rule.** A surfaced interaction is
 handled by the family's reconcile-or-surface rule from
-[the open-decision reconciliation task](task-family_reconcile-or-surface-open-decisions.md):
+[the open-decision reconciliation task](archive/task-family_reconcile-or-surface-open-decisions.md):
 reconcile the conflict against the found code when the evidence settles the fix,
 otherwise surface it with suggested options. This lens supplies the *detection*;
 that rule supplies the *disposition*. That reconciliation task should land first so

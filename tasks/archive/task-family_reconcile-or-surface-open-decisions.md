@@ -2,9 +2,10 @@
 description: Lift a stage-agnostic reconcile-or-surface rule for open decisions into the base task skill; wire the check, auto_check, and implement siblings to apply it.
 scope: plugins/ai_dev/skills
 created: 2026-07-14T20:11:35
-updated: 2026-07-15T00:21:16
-status: ready
+updated: 2026-07-15T19:27:39
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Centralize open-decision reconciliation and wire the task_* family to reconcile-or-surface before implementing
@@ -77,12 +78,12 @@ copied into each front-end.
 carries the **Decide or label** rule — resolve every fork derivable from the
 authoring material, and label at most one genuinely-open decision with its
 options and a default — added by the finished
-[single-statement-open-decision task](archive/task-skill_single-statement-open-decision.md).
+[single-statement-open-decision task](task-skill_single-statement-open-decision.md).
 The `<readiness_checklist>` **Ambiguity / under-specification** lens already
 routes an unresolved either/or into a **Decide or label** finding.
 `task_create` already surfaces that one residual decision after writing and
 offers resolve-now or defer, shipped by the finished
-[create-reconcile-open-questions task](archive/task-family_create-reconcile-open-questions.md).
+[create-reconcile-open-questions task](task-family_create-reconcile-open-questions.md).
 `task_auto_check` already runs a **Decide-or-label advocate** reviewer stance and
 a verifier clause that preserves explicit human-input boundaries "unless
 repository evidence supplies the missing decision." The guardrail-doc reads this
@@ -111,10 +112,10 @@ and test intent — and within the space the guardrails leave open, the decision
 fit to the task's spirit using related tasks and the existing code.
 
 **Co-edit coordination.** The open
-[honor-task-dependencies task](task-family_honor-task-dependencies.md) also edits
+[honor-task-dependencies task](../task-family_honor-task-dependencies.md) also edits
 `task/SKILL.md` and inserts a step into `task_implement/SKILL.md`'s `<workflow>`,
 renumbering the steps that follow, and the open
-[unattended-code-interaction task](task-family_unattended-code-interaction-check.md)
+[unattended-code-interaction task](../task-family_unattended-code-interaction-check.md)
 adds a `<readiness_checklist>` lens whose findings route through this
 reconcile-or-surface rule as their disposition. All three edit `task/SKILL.md`; beyond that base skill, this task shares the
 `task_check` / `task_auto_check` family only with the unattended-code-interaction
