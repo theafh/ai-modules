@@ -1,9 +1,9 @@
 ---
-description: Add a git_commit pre-flight step before gather_context that discovers and satisfies the agent-directed rules bearing on the commit, applying the tree-mutating ones first, so obligations like a version bump are not silently skipped, context builds once, and drift never flags the model's own edits.
+description: git_commit pre-flight step before gather_context that satisfies tree-mutating agent-directed obligations first, so they aren't skipped, context builds once, and drift ignores self-edits.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-07-14T18:41:53
-updated: 2026-07-15T18:40:57
-status: open
+updated: 2026-07-16T10:27:59
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
