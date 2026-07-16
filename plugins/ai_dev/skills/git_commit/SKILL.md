@@ -1,7 +1,7 @@
 ---
 name: git_commit
 description: Create one structured git commit covering the full current working-tree state. Use when the user explicitly asks to commit in the current turn — "commit", "commit this", "commit changes", "make a commit", "write a commit message", "git commit", or an equally direct ask to put the current repo state into git history. Invoke only on that explicit request; a turn that merely finishes other work, saves files, or wraps up without a commit ask leaves committing to the user.
-version: 3.4.5
+version: 3.4.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -19,6 +19,12 @@ license: MIT
     <fallback_boundary>Apply this only from visible Codex sandbox metadata. When `.git` is writable or sandbox metadata is unavailable, follow the primary workflow normally and use fallback handling only after an actual script failure.</fallback_boundary>
   </codex_agent_only>
   <primary_workflow>
+    <prepare_worktree>
+      Clear this pre-flight gate before gathering commit context so the working tree is already in its final committable state.
+      <discover>Discover every agent-directed rule that bears on this commit: a standing instruction addressed to the agent, invoked only when the agent chooses to act, wherever the current harness surfaces it. Search the available rule sources openly — repository and user standing instructions, agent memory, prompts, and any other source the harness provides all qualify without making any one surface authoritative.</discover>
+      <satisfy>Satisfy every discovered tree-mutating obligation before `<gather_context>`, including any required coordinated artifact update, generated output, or rewrite-producing format or lint pass. Check-only obligations may also run here to expose a failing gate before context work begins; only obligations that mutate the tree must precede context capture. Leave command-triggered mechanical hooks, including git hooks and harness commit hooks, to the commit command that fires them: running or pre-empting their logic here would execute it twice.</satisfy>
+      <confirm>Confirm each discovered tree-mutating obligation is settled before proceeding to `<gather_context>`. Clearing this checkpoint ensures agent-directed obligations are honored rather than skipped, lets `prepare_commit_context.sh` build and the model read the context once without a rebuild or re-read, and makes the reviewed-set baseline include the model's own pre-commit edits so `<detect_drift>` and the `commit_with_message.sh` backstop reserve foreign-drift findings for paths that appear afterward.</confirm>
+    </prepare_worktree>
     <gather_context>Invoke `scripts/prepare_commit_context.sh`. The script stages every untracked file and writes one structured context blob (status, recent commits, per-file staged/unstaged diffs, binary markers) to a file under the system tmp dir. Its stdout prints the context file's absolute path on its own line, then the blob's byte size on its own line, then a one-line consumption directive. Treat that file as the authoritative source for the commit; carry the path line forward unchanged as the argument you pass to `commit_with_message.sh`, and read the size line to pick your read strategy up front per `<consume_context>`.</gather_context>
     <consume_context>
       Choose the read strategy from the blob's byte/token size against your file-reading tool's per-read cap — the size the script prints on its own stdout line — not from a file count: a diff-dense or large blob overflows that cap far below any file-count threshold, and when the cap denies even a paginated read the ordered-slice path below still covers the blob. Every path covers the whole blob, in order.

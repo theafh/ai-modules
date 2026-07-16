@@ -13,6 +13,25 @@ The sections below replace the failing script step-for-step. Run only the
 section that corresponds to the script that failed; return to the primary
 workflow for any remaining steps.
 
+## Pre-flight ordering before context capture
+
+Preserve the primary workflow's `<prepare_worktree>` → `<gather_context>`
+ordering on the manual path. Before capturing context, discover every
+agent-directed rule that bears on the commit from all rule sources the current
+harness provides, satisfy every discovered tree-mutating obligation, and
+confirm each one is settled. A qualifying rule is a standing instruction
+addressed to the agent that only the agent invokes; repository and user
+standing instructions, agent memory, prompts, and further harness-provided
+sources are open-ended examples rather than an exhaustive source list.
+
+Tree-mutating obligations clear this gate before either context path runs;
+check-only obligations may run here to expose a failure early. Leave
+command-triggered mechanical hooks, including git hooks and harness commit
+hooks, to the commit command that fires them so their logic runs once. This
+ordering honors agent-directed obligations, lets context be built and read once,
+and places the model's own pre-commit edits inside the reviewed-set baseline
+used by both drift-guard layers.
+
 ## Replacement for `prepare_commit_context.sh`
 
 Goal: produce the same evidence the script would have written to its context
