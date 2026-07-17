@@ -78,7 +78,7 @@ copied into each front-end.
 carries the **Decide or label** rule — resolve every fork derivable from the
 authoring material, and label at most one genuinely-open decision with its
 options and a default — added by the finished
-[single-statement-open-decision task](task-skill_single-statement-open-decision.md).
+[single-statement-open-decision task](task-family_single-statement-open-decision.md).
 The `<readiness_checklist>` **Ambiguity / under-specification** lens already
 routes an unresolved either/or into a **Decide or label** finding.
 `task_create` already surfaces that one residual decision after writing and

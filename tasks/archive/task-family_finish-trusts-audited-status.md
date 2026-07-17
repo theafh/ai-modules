@@ -51,7 +51,7 @@ existing hand-off as-is.
 This restores the original design intent. The task that introduced the skill
 stated finish should let a user "close without re-running a full audit" (the
 **Audit verifies; finish acts** rationale in
-[task-skill_finish-sibling-skill.md](task-skill_finish-sibling-skill.md));
+[task-family_finish-sibling-skill.md](task-family_finish-sibling-skill.md));
 a later lifecycle pass renamed step 3 to the `finished` close and the wording
 drifted into the unconditional re-check this task corrects.
 
