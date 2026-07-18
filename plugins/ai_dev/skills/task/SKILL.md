@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.18
+version: 1.3.19
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -311,24 +311,24 @@ Edit the body or frontmatter as needed, then bump `updated` to the current datet
 </update>
 
 <archive>
-When a task is finished or being dropped, run all five steps:
+When a task is finished or being dropped, run all six steps:
 
 1. Set `status` in the frontmatter to `finished` (work is done and shipped) or `deferred` (parked, not pursued for now).
 2. Bump `updated` to the current datetime.
 3. Move the file from `<tasks>/` to `<tasks>/archive/` with `git mv` (or plain `mv` if the project is not a git repo). The filename does not change.
-4. Update cross-references. Re-point any link inside the moved task that still names a sibling at `<tasks>/` to its new relative path. Then scan the whole tasks tree — `tasks/` and `tasks/archive/` alike (e.g. `rg` the moving filename across both) — for inbound links to the moving file, and rewrite every hit to either point at the archived location or convert to plain text plus `(archived)` when the link is no longer load-bearing.
+4. Update cross-references. Re-point every relative link inside the moved task so it still resolves from the file's new home under `archive/`, covering all three outbound classes: a live sibling still at `<tasks>/` (`foo.md` becomes `../foo.md`), an already-archived sibling (`archive/foo.md` becomes `foo.md`), and a target outside the tasks tree, now one `../` deeper (`../plugins/…` becomes `../../plugins/…`). Then scan the whole tasks tree — `tasks/` and `tasks/archive/` alike (e.g. `rg` the moving filename across both) — for inbound links to the moving file, and rewrite every hit to either point at the archived location or convert to plain text plus `(archived)` when the link is no longer load-bearing.
 5. When closing as `finished`, `ARCHITECTURE.md` exists at the project root, and the completed work extended the system's design, update `ARCHITECTURE.md` in the same archive pass. When the doc is absent or the task did not change the design, continue unchanged.
-6. Run `python3 scripts/lint.py --quiet` and resolve every blocking finding before declaring the archive complete.
+6. Run `python3 scripts/lint.py --include-archive --quiet` so the just-moved file is checked in its new location, and resolve every blocking finding for that file before declaring the archive complete; findings in other archived files are pre-existing context for `task_fix` rather than blockers of this close-out.
 </archive>
 
 <lint>
-The linter checks naming, frontmatter completeness, provenance, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across live + archive. By default it iterates live files in `tasks/*.md`, while still resolving links into `archive/` and checking filename collisions across both roots. `task_fix` is the archive owner: it passes `--include-archive` to include archived files in per-file checks, surface legacy provenance retrofit hints, and migrate non-terminal archived statuses to `finished`.
+The linter checks naming, frontmatter completeness, provenance, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across live + archive. By default it iterates live files in `tasks/*.md`, while still resolving links into `archive/` and checking filename collisions across both roots. `--include-archive` is dual-use. `task_fix` is the archive-maintenance owner: it passes the flag to extend the per-file checks across the whole archive, surface legacy provenance retrofit hints, and migrate non-terminal archived statuses to `finished`. The `<archive>` close-out passes the same flag for a narrower purpose — to verify the single file it just moved, resolving that file's findings and leaving the rest of the archive to `task_fix`.
 
 ```bash
 python3 scripts/lint.py              # auto-discover via discover_tasks.sh
 python3 scripts/lint.py /custom/path # explicit tasks directory
 python3 scripts/lint.py --quiet      # blocking + warn only
-python3 scripts/lint.py --include-archive  # task_fix archive-maintenance mode
+python3 scripts/lint.py --include-archive  # archive-inclusive: task_fix maintenance + close-out verify
 ```
 
 Findings come in three buckets:

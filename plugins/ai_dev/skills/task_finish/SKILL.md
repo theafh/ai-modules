@@ -1,7 +1,7 @@
 ---
 name: task_finish
 description: Close one completed or parked task. Use when the user asks to finish, mark done, defer, park, drop, or archive a task. Set finished or deferred, move the file to archive, update links, and relint.
-version: 1.0.8
+version: 1.0.9
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -25,7 +25,7 @@ Route elsewhere when the user wants to create a task (`task_create` or the base 
 </when_to_activate>
 
 <authority>
-The base `task` skill's `SKILL.md` is the single source of truth; keep every shared rule there and follow it rather than copying it. Read that skill and apply its `<discover>` step to locate `tasks/`, its `<archive>` workflow for the five close-out steps, and its `<lint>` step (the bundled `lint.py`) to confirm the result. These assets ship in the same plugin as task_finish, so they are present wherever task_finish is.
+The base `task` skill's `SKILL.md` is the single source of truth; keep every shared rule there and follow it rather than copying it. Read that skill and apply its `<discover>` step to locate `tasks/`, its `<archive>` workflow for the six close-out steps, and its `<lint>` step (the bundled `lint.py`) to confirm the result. These assets ship in the same plugin as task_finish, so they are present wherever task_finish is.
 </authority>
 
 <path_resolution>

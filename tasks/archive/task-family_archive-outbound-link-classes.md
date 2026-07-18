@@ -2,9 +2,10 @@
 description: Rewrite the archive close-out to re-point all three outbound link classes and verify the moved file with an archive-inclusive lint, plus fix the step count in task and task_finish.
 scope: plugins/ai_dev/skills/task
 created: 2026-07-02T19:03:00
-updated: 2026-07-18T09:14:49
-status: ready
+updated: 2026-07-18T21:59:57
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Archive close-out re-points all outbound link classes, verifies the moved file, and corrects its step count
@@ -21,7 +22,7 @@ The verification backstop cannot catch the miss: the workflow's closing lint ite
 
 The into-archive class is manufactured by the system itself: when task B archives, B's close-out inbound scan correctly rewrites live task A's link from `B.md` to `archive/B.md`; when A later archives, that link is the one the outbound instruction does not cover. Motivating incident (2026-07-02): deferring a task carrying exactly one such link followed the close-out choreography — status, `updated`, deferral note, `git mv`, inbound re-points in a sibling — yet left that link broken, and the default-mode lint reported clean. A git-history scan of every committed archive move found no earlier occurrence of the class at move time, while the live tree at the time of writing holds 16 into-archive links across 7 tasks — each a future occurrence of the same precondition. The out-of-tree depth class has occurred and was handled by agents generalizing beyond the written rule, which is judgment variance, not a guarantee.
 
-The inbound half of archive-time link repair shipped in [archive-aware inbound link scan](archive/task-family_archive-inbound-link-scan.md); this task completes the outbound half. `task_finish` needs no link-repair edit: its workflow already says "outbound links inside the moved file" broadly and defers to the base `<archive>` rules through its `<authority>` section, so fixing the base link rules fixes the family. Its `<authority>` does, though, gloss the base step count on its own ("its `<archive>` workflow for the five close-out steps"), so the step-count correction below reaches task_finish as well — the single edit this task makes there.
+The inbound half of archive-time link repair shipped in [archive-aware inbound link scan](task-family_archive-inbound-link-scan.md); this task completes the outbound half. `task_finish` needs no link-repair edit: its workflow already says "outbound links inside the moved file" broadly and defers to the base `<archive>` rules through its `<authority>` section, so fixing the base link rules fixes the family. Its `<authority>` does, though, gloss the base step count on its own ("its `<archive>` workflow for the five close-out steps"), so the step-count correction below reaches task_finish as well — the single edit this task makes there.
 
 ## Approach
 

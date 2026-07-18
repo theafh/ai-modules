@@ -4,8 +4,10 @@
 Audits live `*.md` task files under the resolved tasks/ tree by default:
 filename naming convention, frontmatter completeness, provenance,
 status/location consistency, datetime format, title presence, page size,
-and name collisions across live + archive. Pass `--include-archive` for
-the archive-maintenance mode used by task_fix.
+and name collisions across live + archive. Pass `--include-archive` to
+extend per-file checks over archived files: task_fix runs it for
+whole-archive maintenance, and the task archive close-out runs it to
+verify the single file it just moved.
 
 Usage:
     python3 lint.py [TASKS_PATH] [--quiet] [--include-archive]
