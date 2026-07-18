@@ -2,8 +2,8 @@
 description: Make Out of scope the task family's one canonical exclusion convention, authored once in the base skill, with body/boundary contradictions surfaced at check and the boundary honored at implement.
 scope: plugins/ai_dev/skills
 created: 2026-07-14T18:15:07
-updated: 2026-07-14T19:32:19
-status: open
+updated: 2026-07-18T09:17:26
+status: ready
 reported-by: Andreas Hoffmann
 ---
 

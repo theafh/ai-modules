@@ -2,8 +2,8 @@
 description: git_commit pre-flight step before gather_context that satisfies tree-mutating agent-directed obligations first, so they aren't skipped, context builds once, and drift ignores self-edits.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-07-14T18:41:53
-updated: 2026-07-16T23:04:29
-status: audited
+updated: 2026-07-18T05:21:05
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 ---
@@ -18,7 +18,7 @@ Three payoffs follow. First, reliability: the step is the single anchor that con
 
 ## Context
 
-`git_commit`'s `SKILL.md` wraps its workflow in `<git_commit_skill>`; `<primary_workflow>` holds the ordered children `<gather_context>`, `<consume_context>`, `<compose_message>`, `<detect_drift>`, `<execute_commit>`. Nothing runs before `<gather_context>` today. The drift guard spans two layers — the model-side `<detect_drift>` prose step and the mechanical backstop inside `commit_with_message.sh` — both comparing a commit-time `git status` against the reviewed-set baseline that `prepare_commit_context.sh` captured right after staging. That two-layer guard shipped in [archive/ai-dev_git-commit-drift-guard-in-script.md](archive/ai-dev_git-commit-drift-guard-in-script.md); this task edits the same `<detect_drift>` / `<execute_commit>` region and `references/manual_fallback.md`, so the two must stay in agreement.
+`git_commit`'s `SKILL.md` wraps its workflow in `<git_commit_skill>`; `<primary_workflow>` holds the ordered children `<gather_context>`, `<consume_context>`, `<compose_message>`, `<detect_drift>`, `<execute_commit>`. Nothing runs before `<gather_context>` today. The drift guard spans two layers — the model-side `<detect_drift>` prose step and the mechanical backstop inside `commit_with_message.sh` — both comparing a commit-time `git status` against the reviewed-set baseline that `prepare_commit_context.sh` captured right after staging. That two-layer guard shipped in [ai-dev_git-commit-drift-guard-in-script.md](ai-dev_git-commit-drift-guard-in-script.md); this task edits the same `<detect_drift>` / `<execute_commit>` region and `references/manual_fallback.md`, so the two must stay in agreement.
 
 When a tree-mutating obligation is handled only after context capture, its edits land paths absent from the reviewed-set baseline, so `<detect_drift>` and the `commit_with_message.sh` backstop read the committer's own changes as a concurrent session's foreign drift and pause. Recovering then forces a rebuild and re-read of the context blob against the now-mutated tree. Both harms trace to the same gap: the tree is still changing after the step that snapshots it.
 

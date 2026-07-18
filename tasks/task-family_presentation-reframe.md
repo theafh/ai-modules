@@ -2,8 +2,8 @@
 description: Reframe task family docs to a five-step lifecycle spine, task_select demoted to a chooser, check/auto-check merged into one entry, staged-spec lineage removed, and 'Work tracking' header retitled.
 scope: plugins/ai_dev
 created: 2026-07-14T19:38:42
-updated: 2026-07-14T20:25:34
-status: open
+updated: 2026-07-18T10:42:50
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -138,7 +138,7 @@ by position or line number.
 Edit orientation prose only, in positive language and the existing pseudo-XML /
 Markdown structure, rewriting each affected passage in place to its target form.
 
-**Skill `<family>` blocks (all ten skills + base):**
+**Skill `<family>` blocks (all ten `task_*` skills, the base `task` included):**
 
 1. In every `task_*` skill's `<family>` chain sentence, rewrite the arrow
    `create → check → select → implement → audit → finish` to
@@ -182,15 +182,17 @@ Markdown structure, rewriting each affected passage in place to its target form.
 **Root README (`README.md`):**
 
 1. Apply the same five-step arrow and select-relocation to the `### ai_dev`
-   task passage: rewrite the line-13 lifecycle sentence and the
-   "single-task siblings" lead-in, reframe the "three questions" passage so
-   select's "what to work on next" is the separate chooser rather than a third
-   gate, move the `task_select` bullet into the "Standing apart from that flow:"
-   sub-list, merge the `task_check`/`task_auto_check` bullets as in step 5, and
-   soften the "Jira or Trello" framing to lead with the readiness-prep purpose.
-   Remove the `spec_check`, `spec_implement`, and `spec_audit` attributions from
-   the `task_check`, `task_implement`, and `task_audit` bullets, keeping each
-   described shape and flow.
+   task passage: rewrite the intro lifecycle sentence ("create → check →
+   select → implement → audit → finish lifecycle gives each step its own
+   skill") and the "single-task siblings" lead-in, reframe the "three
+   questions" passage so select's "what to work on next" is the separate
+   chooser rather than a third gate, move the `task_select` bullet into the
+   "Standing apart from that flow:" sub-list, merge the
+   `task_check`/`task_auto_check` bullets into one readiness entry as described
+   for the plugin README, and soften the "Jira or Trello" framing to lead with
+   the readiness-prep purpose. Remove the `spec_check`, `spec_implement`, and
+   `spec_audit` attributions from the `task_check`, `task_implement`, and
+   `task_audit` bullets, keeping each described shape and flow.
 
 **Skill body staged-spec attribution:**
 
@@ -202,8 +204,9 @@ Markdown structure, rewriting each affected passage in place to its target form.
 **Out of scope:**
 
 - No skill behavior, workflow logic, script, schema, or linter change; the
-  merge in steps 5 and 7 is a README *entry* merge, and `task_check` and
-  `task_auto_check` remain separate skills.
+  merge of the `task_check` and `task_auto_check` bullets in each README is a
+  README *entry* merge, and `task_check` and `task_auto_check` remain separate
+  skills.
 - `task_select` is not removed, renamed, or deprecated — it stays a listed
   sibling and a real skill; only its place in the advertised arrow changes.
 - Routing / cross-reference mentions of `task_select` by function in other
@@ -214,10 +217,8 @@ Markdown structure, rewriting each affected passage in place to its target form.
   discuss StagedSpec as the family's predecessor) — this task governs shipped
   skill and README prose only.
 
-The standing repo rules for versioning, plugin-lockstep, and
-lint-clean-before-commit apply at commit time: this edits shipped skill content,
-so each edited skill's `version` rises and the plugin metadata plus both
-marketplace registrations move to the same new plugin version in that commit.
+This edits shipped skill content, so the standing repo version-bump,
+plugin-lockstep, and lint-clean-before-commit rules apply at commit time.
 
 ## Acceptance
 
@@ -229,6 +230,19 @@ marketplace registrations move to the same new plugin version in that commit.
   READMEs' lead-in. In each skill `<family>` sentence, `task_auto_check`,
   `task_select`, and `task_fix` are named in the tail beside the arrow rather
   than inside it.
+- The `task_auto_check` variant survives the five-step rewrite as the one
+  canonical exception, verified against the rewritten (five-step) state so the
+  check flips rather than passing on today's six-step text:
+  `task_auto_check/SKILL.md`'s `<family>` block now contains both the five-step
+  `create → check → implement → audit → finish` arrow and the tail wording
+  "opt-in replacement for manual readiness refinement" (and never "opt-in
+  readiness repair loop"), while each of the other nine `task_*` `<family>`
+  blocks contains both the five-step arrow (the `->` variant in `task_explain`)
+  and "opt-in readiness repair loop" (and never "replacement for manual
+  readiness refinement"); equivalently, a grep for `replacement for manual
+  readiness refinement` across the ten blocks matches only
+  `task_auto_check/SKILL.md`, and a grep for `opt-in readiness repair loop`
+  matches the other nine and never `task_auto_check`.
 - Every `task_*` skill's `<family>` bulleted sibling list still lists
   `task_select`, confirming select was demoted in the arrow only, not delisted.
 - In `plugins/ai_dev/README.md`, the lifecycle list runs `task_create` → one
@@ -253,6 +267,19 @@ marketplace registrations move to the same new plugin version in that commit.
 - `ai_instruction_formatting/SKILL.md` is byte-identical before and after
   (its `<after_spec_execution>` example tag is untouched), confirming the sweep
   hit framework lineage only.
+- A read-through of both READMEs confirms each reframed passage carries its new
+  wording, not only its new location: in both READMEs the `task_select` bullet
+  describes the read-only chooser that recommends the next task to work on — the
+  one that most advances the project — and names its natural next action,
+  without implying the task is already at the `ready` status, superseding the
+  plugin README's prior "A read-only step between readiness and implementation"
+  line; in `README.md`, the task section leads with the readiness-prep purpose
+  rather than the "Jira or Trello" comparison (kept, if at all, as a means
+  rather than the headline), and its combined check/auto-check entry is the same
+  three-to-four-line entry led by `task_auto_check` with the `task_check` gate
+  folded in inline that the plugin README's entry carries; and in
+  `plugins/ai_dev/README.md`, the beside-the-spine sub-list opens with a lead-in
+  that frames its members as tools beside the spine.
 - A read-through of both READMEs finds no remaining "single-task siblings"
   label, no "between create/check and selection" tail, and no prose that still
   calls `task_select` a lifecycle gate or station.

@@ -1,9 +1,9 @@
 ---
-description: Lift the task-dependency signal taxonomy into the base task skill, add a pre-flight dependency gate to task_implement that stops on live prerequisites, and repoint task_select to inherit it.
+description: Lift the dependency-signal taxonomy into the base task skill, add a task_implement pre-flight stop on live prerequisites, and repoint task_select to inherit it and honor an out-of-scope inbound note.
 scope: plugins/ai_dev/skills
 created: 2026-07-14T19:30:46
-updated: 2026-07-14T20:39:31
-status: open
+updated: 2026-07-18T05:54:38
+status: ready
 reported-by: Andreas Hoffmann
 ---
 

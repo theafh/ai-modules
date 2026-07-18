@@ -2,8 +2,8 @@
 description: Add a code-anchored readiness lens so task_check and task_auto_check surface interacting or contradicting code a task is silent about, found by a keyed repo search over its touch-points.
 scope: plugins/ai_dev/skills
 created: 2026-07-14T20:48:17
-updated: 2026-07-14T20:59:04
-status: open
+updated: 2026-07-18T07:24:12
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -91,20 +91,18 @@ those touch-points reach; "search the whole repo for my touch-points" is not "re
 the whole repo."
 
 **Disposition reuses the reconcile-or-surface rule.** A surfaced interaction is
-handled by the family's reconcile-or-surface rule from
-[the open-decision reconciliation task](archive/task-family_reconcile-or-surface-open-decisions.md):
+handled by the family's reconcile-or-surface rule, now live in the base `task`
+skill's `<body>` as **Decide or label** (landed by [the open-decision
+reconciliation task](archive/task-family_reconcile-or-surface-open-decisions.md)):
 reconcile the conflict against the found code when the evidence settles the fix,
 otherwise surface it with suggested options. This lens supplies the *detection*;
-that rule supplies the *disposition*. That reconciliation task should land first so
-this lens can cite its rule; if it has not, this lens still surfaces findings and
-names the disposition inline.
+that rule supplies the *disposition*.
 
-**Co-edit coordination.** The reconciliation task and the open
-[honor-task-dependencies task](task-family_honor-task-dependencies.md) also edit
-`task/SKILL.md` and the `task_check` / `task_auto_check` family. Whichever task
-lands second re-reads the shared files and anchors its edits to the target passages
-by their verbatim labels rather than by position, so the changes compose without
-clobbering each other.
+**Co-edit coordination.** The
+[honor-task-dependencies task](task-family_honor-task-dependencies.md) also edits
+`task/SKILL.md`. Whichever of the two tasks lands second re-reads that shared file
+and anchors its edits to the target passages by their verbatim labels rather than
+by position, so the changes compose without clobbering each other.
 
 ## Approach
 
@@ -209,6 +207,8 @@ lint-clean-before-commit rules apply at commit time.
   has the interaction surfaced by `task_check` and repaired-or-surfaced by
   `task_auto_check`; the repository search reaches the unlinked interacting file
   through a touch-point reference, and the run does not require reading files the
-  touch-points never reach.
+  touch-points never reach. When `task_auto_check` repairs this fixture's
+  interaction, the refreshed fixture task carries a new edit-supersedes Acceptance
+  item that supersedes the stale silence and proves the interaction is now handled.
 - A second fixture confirms no false alarm: a task whose change shares no
   touch-point with surrounding code raises no interaction finding.
