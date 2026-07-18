@@ -99,7 +99,7 @@ otherwise surface it with suggested options. This lens supplies the *detection*;
 that rule supplies the *disposition*.
 
 **Co-edit coordination.** The
-[honor-task-dependencies task](task-family_honor-task-dependencies.md) also edits
+[honor-task-dependencies task](archive/task-family_honor-task-dependencies.md) also edits
 `task/SKILL.md`. Whichever of the two tasks lands second re-reads that shared file
 and anchors its edits to the target passages by their verbatim labels rather than
 by position, so the changes compose without clobbering each other.

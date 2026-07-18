@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.17
+version: 1.3.18
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -167,6 +167,26 @@ Keep each task scoped to **one** atomic item. Size by cohesion when one change s
 </body>
 
 </file_format>
+
+<dependency_signals>
+The family's single definition of when one task is a prerequisite of another and how that relationship is read from the backlog. The single-task front ends inherit this block rather than each carrying a copy: `task_select` uses it to sequence candidates during ranking, and `task_implement` uses it to gate a build behind unbuilt prerequisites. The relationships stay inferred from existing task content — no frontmatter dependency field exists.
+
+A **prerequisite** is a live eligible task — frontmatter status `open`, `checked`, or `ready` — that is not yet done and must ship before the task depending on it. A relationship pointing at an `implemented`, `audited`, `finished`, `deferred`, or archived task is already satisfied and imposes no order.
+
+Read the relationship from four signals already present in the task data:
+
+- **Explicit ordering prose** — a task body names the order in words: `depends on`, `blocked by`, `must follow`, `after`, or a companion reference naming another task file.
+- **Dependency cross-links** — a task-to-task markdown link that marks a dependency under the `<markdown_policy>` **Link to another task file when the cross-reference carries weight** rule, rather than a relatedness-only "see also".
+- **Forward references** — a task names a block, section, rule, symbol, or artefact that another task is the one to create.
+- **Shared-surface collisions** — two tasks edit the same file or surface.
+
+A relationship runs in **both directions**. A task is a prerequisite either by its own outbound signal — its body names what it waits on — or by another live task's inbound declaration — another live task's body names a first-ship order over it or forward-references an artefact it creates. Read both directions: a task silent about its own ordering can still be blocked by an inbound note authored in another live task, including one outside a user-applied scope filter.
+
+Split the relationship strength two ways:
+
+- A **hard ordering dependency** sets a required build order. It holds when a task forward-references an artefact another task creates, when explicit prose names the required order, or when a shared-surface collision carries **directional evidence** — one task creates, renames, removes, or rewrites a specific block, symbol, rule, or file state that the other task consumes.
+- A **soft companion relationship** carries no required order but is worth surfacing: a coherence or cross-reference tie, or a shared surface without directional evidence.
+</dependency_signals>
 
 <readiness_checklist>
 The readiness lens for one task file, judged against the self-sufficiency bar `<body>` defines. It lives here as the family's single source: judge a draft against it before writing the file, and judge an existing task against it before handing it to an implementer.

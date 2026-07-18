@@ -1,7 +1,7 @@
 ---
 name: task_select
 description: Select and rank eligible live tasks from the project backlog. Use when the user asks what task to work on next, asks Codex to pick or prioritize backlog work, rank open tasks, choose from tasks/, or recommend the next task/action without editing task files.
-version: 1.0.3
+version: 1.0.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -61,9 +61,7 @@ Implementation friction measures how likely the work is to stall because context
 </criterion>
 
 <criterion>
-Dependency and ordering relationships measure how candidate tasks sequence with each other inside the live eligible backlog. Use explicit relationship prose (`depends on`, `blocked by`, `must follow`, `after`, companion references), dependency cross-links to other task files, forward references to a block, section, rule, or artefact that another candidate creates, and shared-surface collisions as relationship signals. A prerequisite is a live eligible candidate that is not yet done; relationships to `implemented`, `audited`, `finished`, `deferred`, or archived tasks are already satisfied for selection purposes.
-
-Classify hard ordering dependencies separately from soft companion relationships. A hard ordering dependency exists when a task forward-references an artefact another candidate creates, explicit prose names the required order, or a shared-surface collision has directional evidence that one task creates, renames, removes, or rewrites a specific block, symbol, rule, or file state that the other task consumes. A soft companion relationship exists when candidates carry a coherence or cross-reference tie, or share a surface without directional evidence. Surface soft companions in the report while keeping them out of the required build order.
+Dependency and ordering relationships measure how candidate tasks sequence with each other inside the live eligible backlog. Read prerequisites and classify each tie using the base `task` skill's `<dependency_signals>` taxonomy — the prerequisite rule, the relationship signals, the bidirectional outbound/inbound reading, and the hard-ordering-dependency versus soft-companion-relationship split with its directional-evidence rule all live there. Applied to ranking: a hard ordering dependency sequences the prerequisite ahead of its dependent, while a soft companion relationship is surfaced in the report without reordering the candidates.
 </criterion>
 
 <criterion>
@@ -91,7 +89,7 @@ Use status to select the next action after ranking:
 3. **Apply narrowing.** When the user supplied a scope, prefix, label, or task name, filter the eligible set before ranking using the forms in `<candidate_policy>`.
 4. **Handle empty sets.** If discovery or filtering leaves no eligible candidates, report that state and stop without recommending archived work.
 5. **Read candidates.** Read each remaining task file in full, including frontmatter, Goal, Context, Approach, and Acceptance.
-6. **Derive dependency and ordering relationships.** Check the filtered candidates' dependency cross-links, relationship prose, forward references, and shared surfaces against the full live eligible set when needed, then classify hard ordering dependencies and soft companion relationships before scoring and ranking.
+6. **Derive dependency and ordering relationships.** Apply the base `task` skill's `<dependency_signals>` taxonomy in both directions. Read each filtered candidate's own outbound signals, and also scan the full live eligible set for inbound ordering declarations that point at any candidate — a live task whose body names a first-ship order over a candidate or forward-references an artefact the candidate creates. Honor such an ordering note whether it was authored in the candidate or in the pointing task, including when the pointing task sits outside the applied scope filter. Then classify hard ordering dependencies and soft companion relationships before scoring and ranking.
 7. **Score and rank.** Evaluate impact, implementation complexity, implementation friction, dependency and ordering relationships, and bug-fix preference from the task body and available repo context. Keep the reasoning compact and evidence-based.
 8. **Recommend the next action.** Name the best unblocked candidate first, state the suggested next action for its current status, then list top alternatives and the tradeoff that kept them behind the recommendation. In the all-blocked filtered case, name the outside-scope prerequisite that should be handled next instead of presenting a blocked filtered task as the recommendation.
 </workflow>

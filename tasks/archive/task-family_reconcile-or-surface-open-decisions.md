@@ -112,7 +112,7 @@ and test intent — and within the space the guardrails leave open, the decision
 fit to the task's spirit using related tasks and the existing code.
 
 **Co-edit coordination.** The open
-[honor-task-dependencies task](../task-family_honor-task-dependencies.md) also edits
+[honor-task-dependencies task](task-family_honor-task-dependencies.md) also edits
 `task/SKILL.md` and inserts a step into `task_implement/SKILL.md`'s `<workflow>`,
 renumbering the steps that follow, and the open
 [unattended-code-interaction task](../task-family_unattended-code-interaction-check.md)
