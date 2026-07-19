@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, refresh a stale task against the current codebase, or run an autonomous readiness loop without implementing the task. A task whose premise the code invalidates stops the loop and surfaces deferral as the user's option.
-version: 1.0.10
+version: 1.0.11
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -69,6 +69,7 @@ Spawn `auto_reviewer_task` once per applicable stance. The standing stance set i
 - Rewrite-in-place advocate — cite **Rewrite in place, don't append**.
 - Positive-reframe advocate — cite the base `<body>` positive, action-oriented authoring rule.
 - Redact-by-generalizing advocate — cite **Redact by generalizing**.
+- Boundary advocate — cite the base `<body>` **Declare exclusions as an Out of scope boundary** rule. Propose normalizing a variant exclusion phrasing to the canonical `**Out of scope:**` block, or reconciling a body-versus-boundary contradiction against the evidence per **Decide or label**; when no evidence settles which side wins, propose surfacing it as a labeled decision with options through the existing human-routed stuck channel rather than crossing or dropping the boundary silently.
 
 Add emergent task-specific stances only as concrete applications of those same base repair rules to the task's domain, for example an exit-code skeptic for a script task or an overcompression skeptic for dense prose. Union the proposals across stances; never count agreement, votes, consensus, or majority.
 </reviewer_stances>

@@ -2,9 +2,10 @@
 description: Make Out of scope the task family's one canonical exclusion convention, authored once in the base skill, with body/boundary contradictions surfaced at check and the boundary honored at implement.
 scope: plugins/ai_dev/skills
 created: 2026-07-14T18:15:07
-updated: 2026-07-18T09:17:26
-status: ready
+updated: 2026-07-19T17:37:58
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Make "Out of scope" the task family's one canonical exclusion convention, checked at readiness and honored at implementation
@@ -123,7 +124,7 @@ proposes-and-verifies the move silently.
 
 **Disposition reuses the reconcile-or-surface rule.** A surfaced boundary
 contradiction is handled by the family rule from
-[the open-decision reconciliation task](archive/task-family_reconcile-or-surface-open-decisions.md):
+[the open-decision reconciliation task](task-family_reconcile-or-surface-open-decisions.md):
 reconcile against the evidence when it settles which side wins, otherwise
 surface with suggested options. This task supplies the detection and the form;
 that rule supplies the disposition. That task should land first so the lens and
@@ -131,9 +132,9 @@ the backstop can cite its rule; if it has not, they still surface findings and
 name the disposition inline.
 
 **Co-edit coordination.** The three open siblings —
-[the reconciliation task](archive/task-family_reconcile-or-surface-open-decisions.md),
-[the honor-task-dependencies task](archive/task-family_honor-task-dependencies.md), and
-[the code-interaction task](task-family_unattended-code-interaction-check.md) —
+[the reconciliation task](task-family_reconcile-or-surface-open-decisions.md),
+[the honor-task-dependencies task](task-family_honor-task-dependencies.md), and
+[the code-interaction task](../task-family_unattended-code-interaction-check.md) —
 also edit `task/SKILL.md`, `task_implement/SKILL.md`, and the `task_check` /
 `task_auto_check` surfaces; `task_audit` and `task_fix` here are touched by this
 task alone. Whichever task lands later re-reads the shared files and anchors its

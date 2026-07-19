@@ -1,7 +1,7 @@
 ---
 name: task_audit
 description: Audit one implemented or finished task against the actual codebase. Use after implementation or for drift checks before close out. Inspect code and tests, run verification, stamp audited only on clean implemented work, and report gaps otherwise.
-version: 1.0.8
+version: 1.0.9
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -37,7 +37,7 @@ The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to 
 <workflow>
 Run in order. Change no code and change the task only for the clean-verdict `audited`/`updated` stamp described here.
 
-1. **Read the task end-to-end.** Understand the desired behaviour, the `## Approach`, the scope / non-goals, and every `## Acceptance` item. This is the contract you audit against.
+1. **Read the task end-to-end.** Understand the desired behaviour, the `## Approach`, the scope and any Out of scope block, and every `## Acceptance` item. This is the contract you audit against.
 2. **Understand what is actually built.** Read the implemented code and the existing tests around the work to establish what is really in place — not what the task claims.
 3. **Verify each item against the code.** Walk every body item and every `## Acceptance` check and confirm the codebase covers it. Trust the code, not the prose.
 4. **Audit the tests as first-class.** When `TESTING.md` exists at the project root, read it for project-specific testing details — stack, runner, layout, thresholds — before judging the test surface. When it is absent, continue with the repo and task context already loaded. Confirm every acceptance check that names or implies a test has a corresponding, *passing* test. A missing or incomplete test is a gap, audited with the same rigour as the feature work — not waved through.
