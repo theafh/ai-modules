@@ -88,13 +88,31 @@ Raw sources ALSO get a small frontmatter block so re-ingests can detect drift:
 
 ```yaml
 ---
-source_url: https://example.com/article   # original URL, if applicable
+source_url: https://example.com/article    # for an externally-published source (its public URL)
+source_path: ../shared/spec.md             # for an in-repo source, relative from the wiki root
 ingested: YYYY-MM-DD
 sha256: <hex digest of the raw content below the frontmatter>
 ---
 ```
 
-The `sha256:` lets a future re-ingest of the same URL skip processing when content is unchanged,
+`source_url:` records where an externally-published source was fetched from. `source_path:`
+records a source kept **inside the repository the wiki ships within**, written as a relative path
+from the wiki root — it may point outside the wiki directory (for example `../shared/spec.md`) but
+must stay inside the repo, and it is never an absolute or `~`-prefixed path, since a path that
+leaves the repo or names a machine-specific prefix resolves only on the machine that wrote it and
+dangles on every clone. Reach for it when the ingested source is a file the repo already tracks;
+the linter blocks an absolute or repo-escaping `source_path:` and a relative one that does not
+resolve on disk. (A wiki that is not in a repository is local-only and ships nowhere, so this rule
+does not apply to it — its paths only ever resolve on the one machine that holds them.)
+
+A local file that lives **outside the repository** — a chat-session transcript, a local note, a
+working file under a home directory with no public URL — takes no path at all. Excerpt enough of
+its content into the sidecar body to stand on its own, and note its locality in prose, for example
+"Local file on the author's workstation; relevant content excerpted below." A machine-local
+absolute path would only add a pointer that breaks everywhere else, so the excerpt is the
+authoritative copy and the sidecar carries neither `source_url:` nor `source_path:`.
+
+The `sha256:` lets a future re-ingest of the same source skip processing when content is unchanged,
 and flag drift when it has changed. Compute over the body only (everything after the closing
 `---`), not the frontmatter itself. Use `python3 scripts/compute_sha256.py raw/<kind>/<slug>.md`
 to write or refresh the field — the script handles the body-boundary detail correctly and

@@ -946,6 +946,75 @@ def check_source_drift(wiki: Path) -> list[Issue]:
     return issues
 
 
+def _git_repo_root(wiki: Path) -> Path | None:
+    """The git repo the wiki ships within — the nearest ancestor holding a
+    `.git` — or None when the wiki is not inside a git repo. A wiki with no repo
+    is local-only: it ships nowhere, so its `source_path:` values face no
+    portability constraint and the caller skips the check.
+    """
+    cur = wiki.resolve()
+    while True:
+        if (cur / ".git").exists():
+            return cur
+        if cur.parent == cur:
+            return None
+        cur = cur.parent
+
+
+def check_source_path_portable(wiki: Path) -> list[Issue]:
+    """Validate every raw sidecar's `source_path:` is a portable path to an
+    in-repo source.
+
+    A wiki that is not inside a git repository is local-only — it ships nowhere,
+    so every `source_path:` resolves on the single machine that holds it and this
+    check does not apply. A wiki inside a git repo ships with the repo, so a
+    `source_path:` records a source kept inside that repo; it may sit outside the
+    wiki directory (e.g. `../shared/spec.md`) but must stay inside the repo. An
+    absolute or `~`-prefixed value, or a relative value that escapes the repo,
+    resolves only on the machine that wrote it (or points outside the versioned
+    tree) and dangles on every clone, so it is blocking; a surviving relative
+    value must resolve on disk. A file that lives outside the repo takes no
+    `source_path:` at all — it is captured by the sidecar body excerpt and a
+    prose locality note — so a sidecar without the field is fine.
+    """
+    issues: list[Issue] = []
+    repo_root = _git_repo_root(wiki)
+    if repo_root is None:
+        return issues  # local-only wiki: nothing ships, so no source_path is non-portable
+    for raw in iter_raw_files(wiki):
+        fm, _ = parse_frontmatter(raw.read_text(encoding="utf-8"))
+        if not fm:
+            continue
+        src = fm.get("source_path")
+        if not src or not isinstance(src, str):
+            continue
+        if Path(src).is_absolute() or src.startswith("~"):
+            issues.append(Issue(
+                SEV_BLOCKING, "raw-source-path", raw,
+                f"`source_path:` is an absolute/home path — use a relative path to "
+                f"an in-repo source, or drop it and excerpt a local file outside "
+                f"the repo into the body: {src}",
+            ))
+            continue
+        resolved = (wiki / src).resolve()
+        try:
+            resolved.relative_to(repo_root)
+        except ValueError:
+            issues.append(Issue(
+                SEV_BLOCKING, "raw-source-path", raw,
+                f"`source_path:` escapes the repository — reference an in-repo source "
+                f"by a relative path, or excerpt a local file outside the repo into "
+                f"the body: {src}",
+            ))
+            continue
+        if not resolved.is_file():
+            issues.append(Issue(
+                SEV_BLOCKING, "raw-source-path", raw,
+                f"`source_path:` does not resolve on disk: {src}",
+            ))
+    return issues
+
+
 # ---------------------------------------------------------------------------
 # Markdown style (subset matching the format_markdown skill)
 #
@@ -1083,15 +1152,21 @@ FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^([^\]\s]+)\]:")
 
 
 def check_source_paths_exist(wiki: Path) -> list[Issue]:
-    """Validate every `sources:` frontmatter entry resolves to a file on disk.
+    """Validate every `sources:` entry is a portable, repo-relative `raw/…`
+    path that resolves on disk.
 
-    Each path is interpreted relative to the wiki root (same convention as
-    the stale-content check that joins these paths to raw `ingested` dates).
-    Missing files are blocking — the same severity as broken markdown links —
+    Entries are interpreted relative to the wiki root. An absolute or
+    `~`-prefixed entry, or one that escapes the wiki's `raw/` tree, is
+    non-portable — it resolves only on the machine that wrote it, and Python's
+    `pathlib` even lets an absolute entry silently override the `wiki /` join —
+    so it is blocking regardless of whether it happens to exist locally. A
+    surviving repo-relative `raw/…` entry must still resolve on disk. All
+    findings are blocking — the same severity as broken markdown links —
     because a non-resolvable `sources:` entry breaks the provenance contract
     the frontmatter exists to enforce.
     """
     issues: list[Issue] = []
+    raw_root = (wiki / "raw").resolve()
     for page in iter_wiki_pages(wiki):
         fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
         if not fm:
@@ -1102,7 +1177,21 @@ def check_source_paths_exist(wiki: Path) -> list[Issue]:
         for src in sources:
             if not src or not isinstance(src, str):
                 continue
+            if Path(src).is_absolute() or src.startswith("~"):
+                issues.append(Issue(
+                    SEV_BLOCKING, "broken-source", page,
+                    f"`sources:` entry is an absolute/home path — use a repo-relative `raw/…` path: {src}",
+                ))
+                continue
             target = (wiki / src).resolve()
+            try:
+                target.relative_to(raw_root)
+            except ValueError:
+                issues.append(Issue(
+                    SEV_BLOCKING, "broken-source", page,
+                    f"`sources:` entry escapes the wiki's `raw/` tree — use a repo-relative `raw/…` path: {src}",
+                ))
+                continue
             if not target.is_file():
                 issues.append(Issue(
                     SEV_BLOCKING, "broken-source", page,
@@ -1338,6 +1427,7 @@ def main() -> int:
     issues.extend(check_taxonomy_style(wiki))
     issues.extend(check_log_rotation(wiki))
     issues.extend(check_source_drift(wiki))
+    issues.extend(check_source_path_portable(wiki))
 
     print(render_report(wiki, issues, args.quiet))
     return 1 if any(i.severity == SEV_BLOCKING for i in issues) else 0

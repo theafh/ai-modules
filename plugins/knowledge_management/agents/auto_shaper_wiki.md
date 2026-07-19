@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.7.4
+version: 1.7.5
 model: inherit
 background: false
 effort: high
@@ -456,7 +456,7 @@ the fix move.
       a single `transcripts/` slot that has since been split), or
       a deliberate user customization. Do not pick. Surface the
       directory in the report along with every file inside it
-      (path, `source_url`, first body paragraph) and the current
+      (path, its `source_url` or `source_path` origin, first body paragraph) and the current
       canonical buckets, so the user can decide whether to keep
       the directory as a customization, relocate its contents
       into canonical buckets, or retire it. An empty extra
@@ -579,8 +579,8 @@ the fix move.
         is missing from the wiki's `## Frontmatter` yaml block
         (e.g., `confidence`, `contested`, `contradictions`, the
         custom-fields paragraph), or the canonical `raw/`
-        frontmatter shape (`source_url`, `ingested`, `sha256`) is
-        not declared in `### raw/ Frontmatter`.
+        frontmatter shape (`source_url` or `source_path`, `ingested`,
+        `sha256`) is not declared in `### raw/ Frontmatter`.
       - **`index.md` scaffold drift.** The wiki's `index.md` is
         missing the canonical header (`Total pages`, `Last
         updated`), its sections do not cover every page type the
@@ -593,9 +593,13 @@ the fix move.
         the assess phase, since the canonical raw layout is
         defined by `init_wiki.sh` rather than `SCHEMA.md`.
       - **Raw-source frontmatter drift.** Files under `raw/` are
-        missing the canonical `source_url`, `ingested`, or `sha256`
-        fields the schema's `### raw/ Frontmatter` subsection
-        declares.
+        missing `ingested` or body-only `sha256`, or carry a
+        `source_path:` that is absolute, `~`-prefixed, or escapes the
+        repository rather than a relative in-repo path. A sidecar that captures a local source
+        outside the repo by body excerpt and carries neither `source_url`
+        nor `source_path` is correct, not drift. The `source_path:` portability
+        rule applies only to a repo-backed wiki; a wiki with no repo is
+        local-only, so its paths are unconstrained.
     </common_hunk_kinds>
 
   </scaffold_drift>
@@ -920,8 +924,8 @@ affect the same file so each file is opened, read, and rewritten once.
     <fix_raw_frontmatter_subsection_missing>
       Add the `### raw/ Frontmatter` subsection to `SCHEMA.md` from
       the canonical template, with the
-      `source_url`/`ingested`/`sha256` shape and the body-only
-      sha256 computation note.
+      `source_url`-or-`source_path`/`ingested`/`sha256` shape and the
+      body-only sha256 computation note.
     </fix_raw_frontmatter_subsection_missing>
 
     <fix_raw_source_frontmatter_missing>
@@ -929,8 +933,12 @@ affect the same file so each file is opened, read, and rewritten once.
       running
       `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>` —
       the script handles the body-only boundary correctly and inserts
-      the field if missing. Edit other frontmatter fields directly; raw
-      bodies stay untouched.
+      the field if missing. Edit `ingested` directly. Never fabricate an
+      origin field — a sidecar carrying neither `source_url` nor
+      `source_path` is valid when its body captures a local source outside
+      the repo, and an absolute `source_path:` is surfaced for the user to
+      make relative or drop, never auto-rewritten. Raw bodies stay
+      untouched.
     </fix_raw_source_frontmatter_missing>
 
     <fix_index_scaffold_drift>

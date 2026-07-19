@@ -21,7 +21,7 @@ Two distinct but small failure modes recur during wiki editing, both fixable wit
 
 2. **`sources:` paths read as CWD-relative.** By convention, `sources:` entries are paths relative to the **wiki root** (the linter resolves them that way — `check_source_paths_exist` in [skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py)). But nothing in the agent-facing prose says so, so when the agent reads a `sources:` value literally (e.g. `raw/notes/<slug>.md`) it opens the wrong path, gets "file does not exist", and falls back to a `find` to locate the real `<wiki>/raw/notes/<slug>.md`. A one-line note removes the failed-Read-then-find detour.
 
-This task is the *read-time* counterpart to the provenance tasks. [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) and [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rubric-and-out-of-repo-paths.md) define how provenance is *written* (the `raw/` sidecar + `sources:` convention, and the `source_path:` field the rubric task introduces); this task only adds the guidance for correctly *opening* those paths and for staging edits. Keep the write-side conventions in those tasks; do not duplicate them here.
+This task is the *read-time* counterpart to the provenance tasks. [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) and [wiki_raw-kind-rubric-and-out-of-repo-paths.md](archive/wiki_raw-kind-rubric-and-out-of-repo-paths.md) define how provenance is *written* (the `raw/` sidecar + `sources:` convention, and the `source_path:` field the rubric task introduces); this task only adds the guidance for correctly *opening* those paths and for staging edits. Keep the write-side conventions in those tasks; do not duplicate them here.
 
 Files involved:
 
@@ -31,7 +31,7 @@ Files involved:
 ## Approach
 
 1. **Read-to-stage-edits rule.** Add a fourth rule to the `<file_handling_discipline>` section (mirrored beside the agent's re-read rule): to locate a span you intend to `Edit`, use `Read` (it both shows the content and satisfies Edit's read requirement); reserve Bash `grep`/`cat`/`tail` for counting and log-offset work, not for preparing an edit. Pair this with the entry-aware log retrieval from [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md) so the log case is covered consistently.
-2. **`sources:` resolution note.** Near the `**Provenance**` description, add one line: `sources:` entries are paths relative to the **wiki root**; prefix with `$WIKI/` (or the wiki dir) when opening one with `Read`. Extend the note to `source_path:` once [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rubric-and-out-of-repo-paths.md) introduces the field. Mirror the same note in the auto-shaper.
+2. **`sources:` resolution note.** Near the `**Provenance**` description, add one line: `sources:` entries are paths relative to the **wiki root**; prefix with `$WIKI/` (or the wiki dir) when opening one with `Read`. Extend the note to `source_path:` once [wiki_raw-kind-rubric-and-out-of-repo-paths.md](archive/wiki_raw-kind-rubric-and-out-of-repo-paths.md) introduces the field. Mirror the same note in the auto-shaper.
 3. Keep both additions to a sentence or two each — these are tool-use clarifications, not new conventions. Respect the no-meta-in-body and minimal-addition postures established elsewhere in the family.
 
 ## Acceptance

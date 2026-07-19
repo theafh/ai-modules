@@ -34,7 +34,7 @@ Files involved:
 - [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — `<remediate>` section.
 - [plugins/knowledge_management/skills/wiki/references/template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md) — the **Provenance** convention block.
 
-Related task: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rubric-and-out-of-repo-paths.md) — introduces the documented `source_path:` field these sidecars use for machine-local origins; implement it first or together with this one.
+Related task: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](archive/wiki_raw-kind-rubric-and-out-of-repo-paths.md) — introduces the documented `source_path:` field these sidecars use for machine-local origins; implement it first or together with this one.
 
 ## Approach
 

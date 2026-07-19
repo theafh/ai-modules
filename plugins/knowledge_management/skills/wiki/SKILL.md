@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.16.2
+version: 1.16.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -444,10 +444,15 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
 - Pasted text → save to the appropriate `raw/` subdirectory by kind, not by source format.
 - For edge cases (article that embeds a transcript, transcript of a private meeting, paste of unknown provenance, etc.) consult `references/raw_taxonomy.md` — the canonical reference for bucket meanings and classification heuristics.
 - Name files descriptively: `raw/articles/transformer-architecture-2024.md`.
-- Add raw frontmatter (`source_url`, `ingested`, `sha256` of the body —
-  body-only). Compute and write the hash with
+- Add raw frontmatter (`ingested`, body-only `sha256`, plus an origin field
+  where one applies). Use `source_url:` for an externally-published source and
+  a relative `source_path:` for a source the repo tracks (it may sit outside the
+  wiki dir but must stay inside the repo) — never an absolute, `~`-prefixed, or
+  repo-escaping path. A local file outside the repo takes no path:
+  excerpt it into the body and note its locality in prose, per
+  `references/template_schema.md`. Compute and write the hash with
   `python3 scripts/compute_sha256.py raw/<kind>/<slug>.md` — never invent
-  the value by hand. On re-ingest of the same URL: run the same command,
+  the value by hand. On re-ingest of the same source: run the same command,
   skip if it reports `ok`, flag drift if it reports `update`.
 - **Keep cross-references out of the raw body.** A relative `.md`
   link from one raw file to another is ingester synthesis, not source
