@@ -2,8 +2,8 @@
 description: Replace the query workflow's file-valuable-answers judgment call with a deterministic filing default, explicit first-synthesis handling, and a mandatory one-line filed-or-not report.
 scope: plugins/knowledge_management
 created: 2026-06-11T17:46:27
-updated: 2026-06-11T17:46:27
-status: open
+updated: 2026-07-18T22:55:57
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -21,7 +21,7 @@ session.
 ## Context
 
 `plugins/knowledge_management/skills/wiki/SKILL.md`, `<query>` section,
-step 5 is the entire current trigger: "File valuable answers back if the
+the **File valuable answers back** step is the entire current trigger: "File valuable answers back if the
 answer would be painful to re-derive (multi-source synthesis, structured
 comparison, novel reasoning) … Skip trivial lookups." It names no default,
 no threshold, no user-visible decision, and no handling for an answer the
@@ -39,7 +39,7 @@ three different behaviours):
    synthesis, user reaction pending", citing a perceived wiki norm of
    persisting only after a correction round) and wrote only a log entry.
 
-Each behaviour is a defensible reading of step 5. Corroboration that the
+Each behaviour is a defensible reading of the **File valuable answers back** step. Corroboration that the
 trigger under-fires generally: across the user's five active wikis,
 `queries/` holds one page in total, and an unrelated wiki's log likewise
 records a 2026-06-04 query entry stating "not filed as a query page".
@@ -64,14 +64,14 @@ Implement that task first or together with this one.
 
 ## Approach
 
-Rewrite `<query>` step 5 (and add the closing report step) in place:
+Rewrite the `<query>` **File valuable answers back** step (and add the closing report step) in place:
 
 1. **Deterministic default.** When the synthesized answer draws on three or
    more wiki pages, or contains cross-page reasoning present on no single
    page, filing the answer back is the default action. A direct lookup
    restating one or two pages skips filing. Skipping a
    default-filing-worthy answer requires a concrete stated reason in the
-   report (step 3 below).
+   **Mandatory one-line decision report** below.
 2. **First-synthesis handling.** Pending user validation is explicitly
    named as not a skip reason: file the first synthesis and record its
    unvalidated status under the page's "Confidence and caveats" section;

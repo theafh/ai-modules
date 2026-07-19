@@ -2,8 +2,8 @@
 description: Make the wiki log contract single-voiced: log.md entries only when wiki files changed — fix the query step, log-template preamble, and schema-template every-action rule.
 scope: plugins/knowledge_management
 created: 2026-06-11T17:46:27
-updated: 2026-06-27T12:37:09
-status: open
+updated: 2026-07-18T22:49:15
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -111,13 +111,16 @@ existing audit-trail convention, which is out of this task's scope.
    log write on files created or updated by the query.
 2. `rg "all wiki actions" plugins/knowledge_management/skills/wiki/references/template_log.md`
    returns no match, and the preamble states the changes-only rule plus the
-   explicit no-entry handling for zero-change operations.
+   explicit no-entry handling for zero-change operations, and the action
+   enum still lists `query`.
 3. `rg "Every action must be appended" plugins/knowledge_management/skills/wiki/references/template_schema.md`
    returns no match, replaced by change-scoped wording.
 4. Reading the `<query>` log step, `<update_navigation>`, and
    `<log_only_what_changed>` together yields one consistent rule; no
-   sentence in the wiki skill instructs writing a log entry for a session
-   that changed no wiki file.
+   sentence in the wiki skill instructs writing a log entry for a content
+   operation that changed no wiki file, while the `<inline_iteration_loop>`
+   outcome line in SKILL.md and the `auto_shaper_wiki`
+   `<append_audit_log_entry>` audit entry stay sanctioned.
 5. A behaviour-layer scenario in the wiki test harness stages a fixture
    wiki, runs an answer-only query session (no page filed), and asserts
    `log.md` is byte-identical before and after (e.g. checksum comparison);
