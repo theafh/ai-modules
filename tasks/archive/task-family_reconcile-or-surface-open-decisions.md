@@ -115,7 +115,7 @@ fit to the task's spirit using related tasks and the existing code.
 [honor-task-dependencies task](task-family_honor-task-dependencies.md) also edits
 `task/SKILL.md` and inserts a step into `task_implement/SKILL.md`'s `<workflow>`,
 renumbering the steps that follow, and the open
-[unattended-code-interaction task](../task-family_unattended-code-interaction-check.md)
+[unattended-code-interaction task](task-family_unattended-code-interaction-check.md)
 adds a `<readiness_checklist>` lens whose findings route through this
 reconcile-or-surface rule as their disposition. All three edit `task/SKILL.md`; beyond that base skill, this task shares the
 `task_check` / `task_auto_check` family only with the unattended-code-interaction

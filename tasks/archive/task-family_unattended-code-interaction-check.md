@@ -2,9 +2,10 @@
 description: Add a code-anchored readiness lens so task_check and task_auto_check surface interacting or contradicting code a task is silent about, found by a keyed repo search over its touch-points.
 scope: plugins/ai_dev/skills
 created: 2026-07-14T20:48:17
-updated: 2026-07-18T07:24:12
-status: ready
+updated: 2026-07-19T22:52:27
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add a code-interaction readiness lens that surfaces shipped code a task is silent about
@@ -93,13 +94,13 @@ the whole repo."
 **Disposition reuses the reconcile-or-surface rule.** A surfaced interaction is
 handled by the family's reconcile-or-surface rule, now live in the base `task`
 skill's `<body>` as **Decide or label** (landed by [the open-decision
-reconciliation task](archive/task-family_reconcile-or-surface-open-decisions.md)):
+reconciliation task](task-family_reconcile-or-surface-open-decisions.md)):
 reconcile the conflict against the found code when the evidence settles the fix,
 otherwise surface it with suggested options. This lens supplies the *detection*;
 that rule supplies the *disposition*.
 
 **Co-edit coordination.** The
-[honor-task-dependencies task](archive/task-family_honor-task-dependencies.md) also edits
+[honor-task-dependencies task](task-family_honor-task-dependencies.md) also edits
 `task/SKILL.md`. Whichever of the two tasks lands second re-reads that shared file
 and anchors its edits to the target passages by their verbatim labels rather than
 by position, so the changes compose without clobbering each other.

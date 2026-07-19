@@ -1,7 +1,7 @@
 ---
 name: task_check
 description: Check one task before implementation. Use when the user asks if a task is ready to build or still valid. Assess structure, scope, focus, complexity, contradictions, and ambiguity, verify the task's premise and described current state against the codebase, surface a stale invalidated task with deferral as the user's option, then stamp ready or checked and report readiness issues.
-version: 1.1.8
+version: 1.1.9
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -34,13 +34,15 @@ The base `task` skill's `discover_tasks.sh` ships in `scripts/` next to that ski
 <assessment>
 The bar is the base skill's self-sufficiency concept: the task file on its own is enough to produce a full implementation in a single pass, and the implementer draws on everything actually available — the codebase, the project's standing instructions (`CLAUDE.md` / `AGENTS.md` and equivalents), the user. Judge the task the way it is consumed: a task that leans on a standing project instruction is correctly authored when it cites the rule, and flagging the absence of content a standing instruction already owns is a false positive. Evaluate every issue against that bar.
 
-Assess against the base `task` skill's `<readiness_checklist>`, in its order: the charter and structural checks, then the premise and approach-fitness checks against the codebase, then the content lens item by item. The checklist lives once in the base skill as the family's single source; apply it from there rather than from a copy here. Every verified checklist finding is a readiness issue and belongs in `## Issues`; do not demote a checklist finding to style notes because the implementation could still proceed around it.
+Assess against the base `task` skill's `<readiness_checklist>`, in its order: the charter and structural checks, then the premise, approach-fitness, and **Interaction scan** checks against the codebase, then the content lens item by item. The checklist lives once in the base skill as the family's single source; apply it from there rather than from a copy here. Every verified checklist finding is a readiness issue and belongs in `## Issues`; do not demote a checklist finding to style notes because the implementation could still proceed around it.
 
 Ground every issue before reporting it: an issue enters the report only after you have confirmed it against the repository — read the file it implicates, run the command the acceptance names, check the policy the task cites. An unverifiable suspicion is voiced as a question in the general assessment, never as a numbered issue.
 
 When the **Ambiguity / under-specification** lens surfaces an open decision, apply the base skill's **Decide or label** reconciliation rule against its evidence base: when that evidence settles the decision, report the reconciled resolution as the issue's minimum fix; when it does not, surface the decision in the issue with its options and at least one suggested path for the user. Either way task_check stays read-only — it recommends and surfaces, leaving writing the reconciled decision to the editing siblings and the user's apply-findings edit, so the status/`updated` stamp remains its only mutation.
 
 When the premise check returns its invalidated outcome, state that plainly in the general assessment and surface the base rule's disposition options — close as `deferred` through `task_finish`, re-scope the intent, or refute the finding with evidence — as the user's decision to make; the status stamp stays this skill's only mutation either way.
+
+When the base checklist's **Interaction scan** lens confirms a contradiction or an unattended interaction, report it as a readiness issue carrying its code evidence — the written juxtaposition of the interacting code against the task's change — and apply the base **Decide or label** rule: recommend the reconciled fix as the issue's resolution when the found code settles it, or surface the interaction with its options and at least one suggested path when it does not. task_check stays read-only either way — it recommends and surfaces and writes no task body content, so the status/`updated` stamp remains its only mutation.
 
 After assessing, stamp the outcome only: `status: ready` for a clean implementation-ready verdict, otherwise `status: checked`, honoring the base skill's `<backward_move_guard>`, and bump `updated`. Preserve the task body, all other frontmatter fields, and the file path.
 </assessment>

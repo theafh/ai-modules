@@ -81,4 +81,4 @@ Task files stay agent-harness agnostic. When a task needs standing repo instruct
 - **One harness per skill under `tests/<skill_name>/`.** The whole `tests/` tree is in `.gitignore` and excluded from `make lint`; nothing in it gets committed. See `tests/README.md` for the full layout.
 - **Prefer the skill-creator-aligned pattern for new harnesses.** Keep evals in `evals/evals.json`, fixtures in `evals/fixtures/`, run output in `workspace/iteration-N/`, and script unit tests in `script_tests/`.
 - **`tests/wiki/` uses the legacy two-layer pattern.** Keep it as-is until its next significant iteration; create new harnesses with the skill-creator-aligned pattern.
-- **Keep skill changes and harness expansion separate.** Land the skill change first with a tight scenario and existing-suite verification. Put broader test growth in its own session.
+- **Test every skill change in the same session.** Add the tight scenarios and targeted harness coverage needed to validate the change, then run the relevant existing suite. Put only broader, exploratory harness expansion that exceeds the change's regression needs in its own session.

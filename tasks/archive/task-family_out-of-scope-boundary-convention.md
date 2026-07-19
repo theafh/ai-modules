@@ -134,7 +134,7 @@ name the disposition inline.
 **Co-edit coordination.** The three open siblings —
 [the reconciliation task](task-family_reconcile-or-surface-open-decisions.md),
 [the honor-task-dependencies task](task-family_honor-task-dependencies.md), and
-[the code-interaction task](../task-family_unattended-code-interaction-check.md) —
+[the code-interaction task](task-family_unattended-code-interaction-check.md) —
 also edit `task/SKILL.md`, `task_implement/SKILL.md`, and the `task_check` /
 `task_auto_check` surfaces; `task_audit` and `task_fix` here are touched by this
 task alone. Whichever task lands later re-reads the shared files and anchors its
