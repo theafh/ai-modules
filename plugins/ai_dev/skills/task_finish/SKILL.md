@@ -1,7 +1,7 @@
 ---
 name: task_finish
 description: Close one completed or parked task. Use when the user asks to finish, mark done, defer, park, drop, or archive a task. Set finished or deferred, move the file to archive, update links, and relint.
-version: 1.0.9
+version: 1.0.10
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -37,8 +37,8 @@ Close one task, in order:
 
 1. **Identify the target task.** Run the base skill's `<discover>` step to resolve `tasks/`, and confirm which single task file is being closed. Read it so you know its current `status`, links, and the work it claims.
 2. **Decide the outcome.** Set `finished` when the work is done and shipped, or `deferred` when the task is parked or dropped and not pursued for now. When the user's intent is ambiguous between the two, ask before changing anything.
-3. **Verify before a `finished` close when needed.** Marking a task `finished` asserts the work is genuinely done, so make the verification decision from the task's current `status`: when it is `audited`, treat the codebase-verification gate as already satisfied and proceed to close-out; when it is `implemented` or any other non-`audited` live status being closed as `finished`, run `task_audit` (the read-only gate) or carry out its check, and resolve or report any gap before closing. Trust a current `audited` stamp; when you have concrete evidence the code changed since that audit, re-verify rather than relying on the stamp. A `deferred` close skips this step, since parking a task makes no claim about completion. Mark a task `finished` on codebase evidence, not on prose.
-4. **Run the base skill's `<archive>` close-out.** Follow the `task` skill's `<archive>` workflow end to end — set `status`, bump `updated` from `date`, `git mv` the file to `archive/`, re-point every cross-reference the move touches (outbound links inside the moved file, inbound links from anywhere in the tasks tree — open and archived alike), and re-lint until no blocking finding remains. Those rules live in the base skill; follow them there rather than restating them here.
+3. **Verify before a `finished` close when needed.** Marking a task `finished` asserts the work is genuinely done, so make the verification decision from the task's current `status`: when it is `audited`, treat the codebase-verification gate as already satisfied and proceed to close-out; when it is `implemented` or any other non-`audited` live status being closed as `finished`, run `task_audit` (the read-only gate) or carry out its check, and resolve or report any gap before closing. Trust a current `audited` stamp; when you have concrete evidence the code changed since that audit, re-verify rather than relying on the stamp. A `deferred` close skips this step, since parking a task makes no claim about completion. Mark a task `finished` on codebase evidence, not on prose. This trust-the-stamp gate is the lifecycle-scale instance of the base `<verification_economy>` rule: the audit is the prior run whose evidence stands until an input changes, and code that changed since the audit is that input change — so the stamp is trusted by default and re-verification fires exactly on fresh evidence.
+4. **Run the base skill's `<archive>` close-out.** Follow the `task` skill's `<archive>` workflow end to end — set `status`, bump `updated` from `date`, `git mv` the file to `archive/`, re-point every cross-reference the move touches (outbound links inside the moved file, inbound links from anywhere in the tasks tree — open and archived alike), and re-lint once after the move per the base `<verification_economy>` rule, re-running only after a fix changes the tree, until no blocking finding remains. Those rules live in the base skill; follow them there rather than restating them here.
 </workflow>
 
 <output_contract>

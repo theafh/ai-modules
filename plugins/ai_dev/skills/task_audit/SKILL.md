@@ -1,7 +1,7 @@
 ---
 name: task_audit
 description: Audit one implemented or finished task against the actual codebase. Use after implementation or for drift checks before close out. Inspect code and tests, run verification, stamp audited only on clean implemented work, and report gaps otherwise.
-version: 1.0.9
+version: 1.0.10
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -27,7 +27,7 @@ Route elsewhere when the user wants to assess a task's readiness *before* buildi
 </when_to_activate>
 
 <authority>
-The base `task` skill's `SKILL.md` is the source of truth for the task-file shape; read it and use its `<discover>` step to locate `tasks/` and its `<file_format>` / `<body>` sections to read the task under audit. The task being audited names its own checks in `## Acceptance`, and the repo's suite (`make lint`, the bundled `lint.py`, the matching `tests/<skill>/script_tests`) is the verification surface — run what the task and repo name.
+The base `task` skill's `SKILL.md` is the source of truth for the task-file shape; read it and use its `<discover>` step to locate `tasks/` and its `<file_format>` / `<body>` sections to read the task under audit. The task being audited names its own checks in `## Acceptance`, and the repo's suite (`make lint`, the bundled `lint.py`, the matching `tests/<skill>/script_tests`) is the verification surface — run what the task and repo name under the base `<verification_economy>` rule: run fresh wherever this session holds no citable prior run, and accept a recorded expensive-surface result only when it postdates every artifact under test.
 </authority>
 
 <path_resolution>
@@ -41,7 +41,7 @@ Run in order. Change no code and change the task only for the clean-verdict `aud
 2. **Understand what is actually built.** Read the implemented code and the existing tests around the work to establish what is really in place — not what the task claims.
 3. **Verify each item against the code.** Walk every body item and every `## Acceptance` check and confirm the codebase covers it. Trust the code, not the prose.
 4. **Audit the tests as first-class.** When `TESTING.md` exists at the project root, read it for project-specific testing details — stack, runner, layout, thresholds — before judging the test surface. When it is absent, continue with the repo and task context already loaded. Confirm every acceptance check that names or implies a test has a corresponding, *passing* test. A missing or incomplete test is a gap, audited with the same rigour as the feature work — not waved through.
-5. **Run the suite and attribute every failure.** Execute the verifications the task and repo name, recording each failure or warning as evidence. Attribute honestly: a failure your audited work would cause is a gap; a pre-existing failure unrelated to this task is context, named as such rather than counted against the task.
+5. **Run the suite and attribute every failure.** Execute the verifications the task and repo name under the base `<verification_economy>` rule, running fresh wherever this session holds no citable prior run — a cross-session audit inherits no run from the session that built the work, so it runs the checks itself — and accepting a recorded expensive-surface result as evidence only when it postdates every artifact under test. Record each failure or warning as evidence. Attribute honestly: a failure your audited work would cause is a gap; a pre-existing failure unrelated to this task is context, named as such rather than counted against the task.
 6. **Stamp only a clean current implementation.** When every body item, acceptance check, and required test is confirmed and the current task status is `implemented`, stamp `status: audited` and bump `updated`. When the task is already archived as `finished`, leave it `finished`. When any gap remains, leave `status: implemented` and route the gaps to `task_implement`.
 </workflow>
 

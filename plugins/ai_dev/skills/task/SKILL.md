@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.21
+version: 1.3.22
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -221,6 +221,20 @@ The readiness lens for one task file, judged against the self-sufficiency bar `<
 <path_resolution>
 The bundled scripts (`discover_tasks.sh`, `init_tasks.sh`, `lint.py`) live in `scripts/` next to this `SKILL.md`. Resolve each script's absolute path by combining the directory of this `SKILL.md` with `scripts/<script-name>` and invoke that absolute path — never a bare `scripts/...`, which resolves against the current working directory (the target project) rather than the skill, and so finds the project's own `scripts/` or nothing. Every agentic IDE that surfaces a skill exposes the file path it loaded the skill from, so the parent directory is always knowable. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed; never conclude the script is absent because of perceived path uncertainty.
 </path_resolution>
+
+<verification_economy>
+Each linter, test suite, or named check runs to produce evidence about the current state of what it inspects, so run it once per that state rather than once per workflow step. One run's output is evidence for every later step in the same session that faces the identical state, so the family reuses it instead of repeating the run on unchanged inputs. This trims cost and latency while preserving coverage: a re-run skipped on unchanged inputs would surface exactly what the prior run on that same state already surfaced, so the rule keeps every finding available and stays within the project coverage guardrail a `CHARTER.md` sets when present (consulted through `<standing_doc_consumption>`).
+
+Running is the default, and three runs are always sound:
+
+- **First run in a session.** The session holds no prior output for this check, so run it — including a deliberate pre-edit baseline run taken to record the starting state before any change.
+- **Post-change re-run.** The tool, or anything the check inspects, changed since the last run whose output is in hand, so run it again to refresh the evidence against the new state.
+- **Standing gate at its moment.** A standing repo gate runs at its standing moment regardless of earlier runs; a lint-before-commit rule, for example, fires at commit time even when lint already ran earlier in the session.
+
+Skipping a run is the exception and carries the burden of proof. Skip only when both grounds hold — the prior run's output is visible in the current session, and neither the tool nor anything it inspects has changed since that run — and name the relied-on run when you skip. Run when either ground is uncertain. Skipping a check whose inputs changed, or a standing gate at its moment, stays out of bounds.
+
+Expensive or stochastic surfaces need one more provision. For costly or sampling-noisy checks — LLM evals, long integration runs — repetition on unchanged inputs adds cost and noise rather than assurance, so record the graded result where the project's testing conventions keep it and let a later stage accept that recorded result as evidence when it postdates every artifact under test, re-running only when the record predates an artifact under test or is missing. `TESTING.md`, when present at the project root, names which surfaces count as expensive and where their recorded results live.
+</verification_economy>
 
 <discover>
 Run the bundled discovery before touching any task file. The script finds the project root (git toplevel first, then project markers like `.git`, `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `CLAUDE.md`, `AGENTS.md`, `Makefile`; fall back to CWD), prints `<root>/tasks`, and exits 0 if it exists, 1 if not.

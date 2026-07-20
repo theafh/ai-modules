@@ -2,9 +2,10 @@
 description: Add a base-task `<verification_economy>` rule — run each linter, suite, or check once per state and re-run only when its inputs changed — and point task_implement, task_audit, and task_finish at it.
 scope: plugins/ai_dev/skills
 created: 2026-07-16T11:07:19
-updated: 2026-07-19T17:37:58
-status: ready
+updated: 2026-07-20T04:58:49
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add a verification-economy rule to the base task skill, consumed by implement, audit, and finish
@@ -25,8 +26,8 @@ The user-visible outcome: the same verification discipline and coverage, at mark
 - The base skill is the consumption vector. Every sibling reads the whole base `SKILL.md` through its `<authority>` step and applies named sections, and every sibling already cites `<path_resolution>` inside `<workflows>`. A new operational rule placed beside `<path_resolution>` is consumed the same way, so the family inherits it rather than each sibling carrying a divergent copy.
 - Governing guardrail: the repo `CHARTER.md` invariant that an autonomous component "keeps its audit, detection, and coverage scope intact when it optimizes for cost or speed … surfaces the tradeoff for human review rather than taking it silently." The rule stays on the right side of it because skipping a re-run on unchanged inputs surfaces every finding the skipped run would have — the prior run on the identical state already did — so it narrows no coverage, gates no check behind a shortcut, and skips no check whose inputs changed. Cite the charter as a standing repo rule; do not restate it.
 - Motivating episode, as illustration only: a task_implement run in this repo re-ran the `git_commit` script suite a third time at phase end after a 25/25 pass, when only unrelated `SKILL.md` prose and the task frontmatter had changed since — nothing the script suite exercises. The general rule, not this one case, is the deliverable.
-- Coordination — shared edit surface: [honor-task-dependencies](archive/task-family_honor-task-dependencies.md) and [out-of-scope-boundary-convention](archive/task-family_out-of-scope-boundary-convention.md) both add sections to the base `SKILL.md` and steps to task_implement, and [presentation-reframe](task-family_presentation-reframe.md) reshapes the family docs' step spine. Place the new base section and the pointers to coexist with theirs, and anchor every pointer by the step's verbatim bold label (per the base `<markdown_policy>` soft-pointer rule), never by an ordinal step number a reframe would shift.
-- Interaction: [autonomous-implement-loop](task-family_autonomous-implement-loop.md), a future opt-in skill that runs implement → audit → finish, is the largest beneficiary of cross-stage economy and the sharpest test of the audit-independence clause — its build step runs in a separate worktree-isolated agent context, so the loop's audit holds no citable prior run from its own context and the rule requires a fresh run there. Read it before wording the cross-stage clause so the two stay consistent.
+- Coordination — shared edit surface: [honor-task-dependencies](task-family_honor-task-dependencies.md) and [out-of-scope-boundary-convention](task-family_out-of-scope-boundary-convention.md) both add sections to the base `SKILL.md` and steps to task_implement, and [presentation-reframe](../task-family_presentation-reframe.md) reshapes the family docs' step spine. Place the new base section and the pointers to coexist with theirs, and anchor every pointer by the step's verbatim bold label (per the base `<markdown_policy>` soft-pointer rule), never by an ordinal step number a reframe would shift.
+- Interaction: [autonomous-implement-loop](../task-family_autonomous-implement-loop.md), a future opt-in skill that runs implement → audit → finish, is the largest beneficiary of cross-stage economy and the sharpest test of the audit-independence clause — its build step runs in a separate worktree-isolated agent context, so the loop's audit holds no citable prior run from its own context and the rule requires a fresh run there. Read it before wording the cross-stage clause so the two stay consistent.
 
 ## Approach
 
@@ -38,7 +39,7 @@ Author the rule once in the base skill, then add point-of-use pointers to the th
 4. **task_finish pointer.** Connect the **Verify before a `finished` close when needed** step's trust-the-`audited`-stamp gate to the base rule as its lifecycle-scale instance — a trailing clause, not a rewrite of the correct trust-the-stamp / re-verify-on-evidence logic — and state that the close-out re-lint runs once after the archive move rather than repeatedly.
 5. **Consistency pass.** Confirm the new rule contradicts none of the already-correct state-triggered runs (base `<update>` re-lint-once-at-end, `<lint_after_create>`, `<archive>`'s final re-lint, the `task_fix` / `task_auto_check` re-gate-after-repair loops) and reads as the generalization the task_auto_check mechanical-lint and task_finish trust-the-stamp instances already follow.
 
-Non-goals:
+**Out of scope:**
 
 - Editing task_auto_check, task_check, task_select, task_fix, or the agents here — this task is scoped to the base skill plus implement, audit, and finish, and those siblings' runs are already state-triggered or already instance the rule. A later task may add pointers there for symmetry.
 - The mechanical eval-runner cache backstop — a content-hash short-circuit in `tests/*/evals/run.py` with a `--force` override — which is separate, machine-local `tests/` work belonging in its own task; this task ships the prose rule only.
