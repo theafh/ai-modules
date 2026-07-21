@@ -1,7 +1,7 @@
 ---
 name: task_fix
 description: Repair the whole tasks backlog tree in one pass, with an optional autonomous escalation. Use when the user asks to health check, clean up, audit, lint, or autonomously resolve backlog judgement calls. Run the archive inclusive linter, fix mechanical frontmatter, status, location, link, datetime, and provenance issues inline by default, and escalate to auto_shaper_task only on explicit opt-in or confirmed scale.
-version: 1.3.9
+version: 1.3.10
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -75,7 +75,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree **(this skill)**
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>
 
 </task_fix_skill>

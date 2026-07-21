@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one new task file for one upcoming work item. Use when the user asks to make, add, file, write, or capture a single task or todo. Use task for listing, querying, updating, archiving, linting, or multi task backlog work.
-version: 1.1.6
+version: 1.1.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -76,7 +76,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>
 
 </task_create_skill>

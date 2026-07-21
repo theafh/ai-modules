@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.22
+version: 1.3.23
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -411,7 +411,7 @@ This base `task` skill is the hub of a `task_*` family and can do all of the bac
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The family layers as a graduated drift-prevention spectrum: the plain manual chain follows the harness-loaded standing-instruction baseline and adds no autonomous hard gate; `task_auto_check` adds the optional readiness loop; autonomous writers, including future implementer and shaper surfaces, carry the hard `CHARTER.md` guardrail; and softer standing docs inform work through the verified test-discipline rule, the descriptive `ARCHITECTURE.md`, and the `FEATURES.md` ledger. `ARCHITECTURE.md` describes goals, stack, and design decisions; it is distinct from the charter's falsifiable boundary role and from any status-board, stage-index, or build-order view. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The family layers as a graduated drift-prevention spectrum: the plain manual chain follows the harness-loaded standing-instruction baseline and adds no autonomous hard gate; `task_auto_check` adds the optional readiness loop; autonomous writers, including future implementer and shaper surfaces, carry the hard `CHARTER.md` guardrail; and softer standing docs inform work through the verified test-discipline rule, the descriptive `ARCHITECTURE.md`, and the `FEATURES.md` ledger. `ARCHITECTURE.md` describes goals, stack, and design decisions; it is distinct from the charter's falsifiable boundary role and from any status-board, stage-index, or build-order view. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>
 
 </task_skill>

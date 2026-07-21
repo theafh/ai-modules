@@ -1,7 +1,7 @@
 ---
 name: task_check
 description: Check one task before implementation. Use when the user asks if a task is ready to build or still valid. Assess structure, scope, focus, complexity, contradictions, and ambiguity, verify the task's premise and described current state against the codebase, surface a stale invalidated task with deferral as the user's option, then stamp ready or checked and report readiness issues.
-version: 1.1.9
+version: 1.1.10
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -48,7 +48,7 @@ After assessing, stamp the outcome only: `status: ready` for a clean implementat
 </assessment>
 
 <output_contract>
-Borrow `spec_check`'s shape exactly:
+Structure the report in exactly this shape:
 
 - Lead with a `# General assessment` paragraph: one short paragraph stating whether the task is ready to build and why.
 - Then a `## Issues` section carrying verified implementation-divergence issues exclusively. When clean, output exactly `No issues found.` Otherwise list every verified issue as a single ordered list, ranked by how likely each is to cause a wrong or divergent one-shot implementation — most problematic first. Each entry: `**[short title]** — where it sits, what is wrong, the implementation impact, and the minimum fix.` Locate each issue by label or unambiguous description — the section heading, the pseudo-XML tag, a quoted phrase — per the base skill's soft-pointer rule.
@@ -70,7 +70,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>
 
 </task_check_skill>

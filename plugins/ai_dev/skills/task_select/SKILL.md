@@ -1,7 +1,7 @@
 ---
 name: task_select
 description: Select and rank eligible live tasks from the project backlog. Use when the user asks what task to work on next, asks Codex to pick or prioritize backlog work, rank open tasks, choose from tasks/, or recommend the next task/action without editing task files.
-version: 1.0.4
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -122,7 +122,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>
 
 </task_select_skill>

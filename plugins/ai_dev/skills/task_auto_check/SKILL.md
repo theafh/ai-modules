@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, refresh a stale task against the current codebase, or run an autonomous readiness loop without implementing the task. A task whose premise the code invalidates stops the loop and surfaces deferral as the user's option.
-version: 1.0.12
+version: 1.0.13
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -176,7 +176,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in replacement for manual readiness refinement and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in replacement for manual readiness refinement, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>
 
 </task_auto_check_skill>

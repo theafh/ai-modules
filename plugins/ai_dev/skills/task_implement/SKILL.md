@@ -1,7 +1,7 @@
 ---
 name: task_implement
 description: Implement one existing task file end to end. Use when the user asks to build, do, or implement the work described by a task. Edit code and tests, run verification, stamp implemented, and leave audit and finish to sibling skills.
-version: 1.0.12
+version: 1.0.13
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -70,7 +70,7 @@ The `task_*` family — each sibling does one job, then points to the next; the 
 - `task_finish` — close out: set status, bump `updated`, archive
 - `task_fix` — audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → select → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop and fix maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>
 
 </task_implement_skill>

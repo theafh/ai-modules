@@ -2,9 +2,10 @@
 description: Reframe task family docs to a five-step lifecycle spine, task_select demoted to a chooser, check/auto-check merged into one entry, staged-spec lineage removed, and 'Work tracking' header retitled.
 scope: plugins/ai_dev
 created: 2026-07-14T19:38:42
-updated: 2026-07-19T17:37:58
-status: ready
+updated: 2026-07-21T08:47:33
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Reframe the task family's docs around a five-step lifecycle spine and a readiness-prep purpose
@@ -124,7 +125,7 @@ leftovers.
   readiness-prep purpose so tracking reads as a means, not the headline.
 
 **Co-edit coordination.** Several open siblings also edit these skill files —
-notably [the Out of scope boundary task](archive/task-family_out-of-scope-boundary-convention.md),
+notably [the Out of scope boundary task](task-family_out-of-scope-boundary-convention.md),
 which enumerates the shared co-edit set (`task/SKILL.md`,
 `task_implement/SKILL.md`, `task_auto_check/SKILL.md`, `task_audit/SKILL.md`,
 `task_fix/SKILL.md`). This task touches a different region (the `<family>`
