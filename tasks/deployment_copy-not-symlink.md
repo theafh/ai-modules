@@ -2,8 +2,8 @@
 description: Copy every skill and command on deploy instead of symlinking the unaltered ones, and delete the now-dead symlink-creation path so no symlinks land in the target config dirs.
 scope: deployment
 created: 2026-07-21T12:52:26
-updated: 2026-07-21T13:06:44
-status: open
+updated: 2026-07-21T14:00:23
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -34,10 +34,10 @@ Removing the symlink mechanism means removing the code that *creates* a symlink,
 
 Documentation that describes the current symlink mechanism and goes stale with this change:
 
-- `deployment/README.md` — the deployment matrix rows that read `via symlink` for commands and skills across the tools; the live-edit passage `Symlinked artifacts reflect repo changes immediately`; the two `replace:` descriptions phrased as `Force a copied (not symlinked)` deployment; and the note `Symlink installs refuse to overwrite an existing non-symlink path`.
-- Root `README.md` — the phrases `symlink it into vendor config dirs` and `symlinks the skills`.
+- `deployment/README.md` — the deployment matrix rows that read `via symlink` for commands and skills across the tools; the live-edit passage `Symlinked artifacts reflect repo changes immediately`; the two `replace:` descriptions phrased as `Force a copied (not symlinked)` deployment; the note `Symlink installs refuse to overwrite an existing non-symlink path`; and the Platform Notes `standard Unix tools` list, which drops the now-unused `ln -s` once `create_symlink()` is deleted.
+- Root `README.md` — the phrases `symlink it into vendor config dirs` and `symlinks the skills`, and the `--project-dir` install clause `symlink it into a single repo's local config`.
 - Root `CLAUDE.md` — the `make deploy` line `symlink components into vendor config dirs`.
-- In-tree comments — the `deployment.conf` line `replace:path VAR=value` described as `Force copied deployment`, and the script comments `# Symlink creation` and `# Copy a file (used where a target's file watcher does not follow symlinks)`.
+- In-tree comments — the `deployment.conf` line `replace:path VAR=value` described as `Force copied deployment`, plus the same `Force copied deployment` wording in `deployment.sh`'s header `Current directives:` block, and the script comments `# Symlink creation` and `# Copy a file (used where a target's file watcher does not follow symlinks)`.
 
 The `replace:` mechanism keeps working but its meaning narrows: because every artifact is now copied, `replace:` no longer needs to *force a copy* — it only requests `$VAR$` substitution inside the copy. The conf/README wording reduces to that substitution-only meaning.
 
@@ -45,7 +45,7 @@ Companion, not a prerequisite: [deployment_relocate-state-to-home.md](deployment
 
 ## Approach
 
-Replace each of the four `create_symlink` fallback branches in `install_for_app()` with a single unconditional `copy_path_with_replacements "$source_abs" "$dest" "$app_id" "$type" "${replacement_specs[@]}"`, collapsing the `if replacements / else symlink` fork to one copy call. A skill then `cp -R`s as a real directory tree, a markdown command copies as a real file, and a `replace:` match still layers substitution on top for the paths it names.
+Replace each of the four `create_symlink` fallback branches in `install_for_app()` with a single unconditional `copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"`, collapsing the `if replacements / else symlink` fork to one copy call. A skill then `cp -R`s as a real directory tree, a markdown command copies as a real file, and a `replace:` match still layers substitution on top for the paths it names.
 
 With no caller left, delete the symlink-creation mechanism: remove `create_symlink()` and its `# Symlink creation` section, including the `is not a symlink — refusing to overwrite` skip that lived inside it. Copy is then the only deployment mode, so the `# Copy a file (used where a target's file watcher does not follow symlinks)` comment loses its contrast and reduces to describing a plain copy. Keep the defensive `-L` guards named in Context — they migrate over and uninstall old symlinks rather than create new ones.
 
@@ -74,6 +74,6 @@ Future deploys produce copies, but the symlinks already on this machine (under `
 - A deploy into a throwaway `--project-dir` scratch directory produces a regular directory for a skill (`test -d` true, `test -L` false at the deployed path) and a regular file for a markdown command (`test -f` true, `test -L` false) — neither is a symlink.
 - Deploying into a scratch destination path that already holds a symlink replaces it with the real copy: place a symlink at a dest path, deploy, and confirm the dest is afterward a regular file or directory. This proves the migration path that a re-deploy takes over the user's existing symlinked targets.
 - `--uninstall` scoped to that scratch deployment removes a copied skill directory and a copied command file recorded in the log, leaving both target paths absent.
-- `deployment/README.md` no longer presents symlink as the mechanism for commands or skills: the matrix rows read as copy, the `Symlinked artifacts reflect repo changes immediately` passage is superseded by the re-deploy-to-refresh statement, and the `replace:` description drops `Force a copied (not symlinked)` for the substitution-only meaning — a grep for the superseded phrases returns nothing outside historical or uninstall context.
-- Root `README.md` (`symlink it into vendor config dirs`, `symlinks the skills`) and root `CLAUDE.md` (`symlink components into vendor config dirs`) are reworded to copy-based deployment, with the stale phrasing gone.
-- The `deployment.conf` `replace:` comment and the script's surviving `# Copy a file (…does not follow symlinks)` comment are reworded to the copy-only mechanism (the `# Symlink creation` section is gone per the first item, not reworded).
+- `deployment/README.md` no longer presents symlink as the mechanism for commands or skills: the matrix rows read as copy, the `Symlinked artifacts reflect repo changes immediately` passage is superseded by the re-deploy-to-refresh statement, the `replace:` description drops `Force a copied (not symlinked)` for the substitution-only meaning, and the Platform Notes Unix-tools list drops `ln -s` (whose only user was the deleted `create_symlink()`) while keeping `cp -a` for the surviving backup path — a grep for the superseded symlink phrases returns nothing outside historical or uninstall context, a grep of `deployment/README.md` for `ln -s` returns nothing, and `cp -a` is still listed.
+- Root `README.md` (`symlink it into vendor config dirs`, `symlink it into a single repo's local config`, `symlinks the skills`) and root `CLAUDE.md` (`symlink components into vendor config dirs`) are reworded to copy-based deployment, with the stale phrasing gone.
+- The `deployment.conf` `replace:` comment and the matching `replace:path VAR=value` directive in `deployment.sh`'s header comment block both drop `Force copied deployment` for the substitution-only meaning — a grep for `Force copied deployment` across `deployment.conf` and `deployment.sh` returns nothing. The script's surviving `# Copy a file (…does not follow symlinks)` comment is reworded to the copy-only mechanism (the `# Symlink creation` section is gone per the first item, not reworded).
