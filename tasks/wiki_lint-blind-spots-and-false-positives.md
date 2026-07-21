@@ -2,9 +2,10 @@
 description: Fix seven wiki linter defects: block-list frontmatter bypass, fenced-link false blockings, live example taxonomy, index blind spots, bad drift hint, absolute links, unchecked raw frontmatter.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-07-19T19:01:19
-status: open
+updated: 2026-07-21T11:20:43
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Harden the wiki linter: close validation bypasses and false positives
@@ -53,6 +54,7 @@ Update the affected rows in `references/lint_checks.md` in place for every chang
 Each item is proven on staged fixtures under the wiki test harness (`tests/wiki/`):
 
 1. A page with block-style `tags:` including an off-taxonomy tag yields the same `tag` warn as its inline-list twin; block-style `sources:` with a missing path and with an absolute path yields the same blocking `broken-source` findings as inline form.
+   - A page whose `tags:` (or `sources:`) has an empty value followed by indented content the scalar-list extension does not read — a nested mapping such as an indented `domain: ai` line rather than `- item` lines — still parses that field to empty and yields the `frontmatter` warn.
 2. A page with a broken example link inside a fenced block and one inside inline code yields no `broken-link` finding; a genuinely broken link outside code still blocks; a page whose only inbound link sits inside a fence is reported as an orphan.
 3. A wiki freshly materialized by `init_wiki.sh` yields zero unused-tag findings for the template example tags and fires the "no Tag Taxonomy" warn until tags are defined; a customized taxonomy parses exactly as before.
 4. An unlisted page whose filename is a substring of a listed filename yields the "not referenced in index.md" warn; an index entry pointing at a nonexistent page yields the new dangling-entry finding; the rewritten `<archive>` sentence in `SKILL.md` no longer claims coverage lint does not provide, and `rg "catch any inbound link you missed"` confirms the old wording is superseded.

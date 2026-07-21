@@ -202,12 +202,20 @@ class Issue:
 # Minimal YAML-frontmatter parser (stdlib-only)
 #
 # Handles the subset the wiki uses: scalar key:value, inline list [a, b],
-# bool true/false, and trailing # comments. Returns None when frontmatter is
-# absent so the caller can flag the page distinctly from "frontmatter parsed
-# but missing fields".
+# block-style scalar list (a key with an empty value followed by indented
+# `- item` lines), bool true/false, and trailing # comments. Returns None when
+# frontmatter is absent so the caller can flag the page distinctly from
+# "frontmatter parsed but missing fields". A general-purpose YAML parser stays
+# out of scope — only block scalar lists grow the parser beyond inline lists.
 # ---------------------------------------------------------------------------
 
-def parse_frontmatter(text: str) -> tuple[dict | None, str]:
+def _split_frontmatter(text: str) -> tuple[str | None, str]:
+    """Split `text` into (frontmatter_block, body).
+
+    Returns (None, text) when there is no leading `---` frontmatter. Shared by
+    ``parse_frontmatter`` and the frontmatter block-content belt check so the
+    fence-boundary logic lives in exactly one place.
+    """
     if not text.startswith("---\n"):
         return None, text
     end = text.find("\n---\n", 4)
@@ -218,15 +226,58 @@ def parse_frontmatter(text: str) -> tuple[dict | None, str]:
             return None, text
     block = text[4:end]
     body = text[end + 5:] if text[end:end + 5] == "\n---\n" else ""
+    return block, body
+
+
+def _collect_block_list(lines: list[str], i: int) -> tuple[list[str], int]:
+    """From line index `i`, collect a YAML block-style list of scalars — a run
+    of indented ``- item`` lines — and return (items, next_index).
+
+    Stops at the first blank line, non-indented line, or indented line that is
+    not a ``- `` item (for example an indented ``key: value`` nested mapping),
+    leaving that line for the caller to handle. Only block scalar lists grow
+    the parser; nested structures are deliberately left unread so the belt
+    check can flag them.
+    """
+    items: list[str] = []
+    n = len(lines)
+    while i < n:
+        raw = lines[i]
+        stripped = raw.split("#", 1)[0].strip()
+        if not stripped:
+            break                        # blank/comment-only line ends the value
+        if not raw[:1].isspace():
+            break                        # not indented -> end of this value
+        if stripped[0] == "-" and (len(stripped) == 1 or stripped[1] in (" ", "\t")):
+            item = stripped[1:].strip().strip("'\"")
+            if item:
+                items.append(item)
+            i += 1
+        else:
+            break                        # indented, but not a `- ` list item
+    return items, i
+
+
+def parse_frontmatter(text: str) -> tuple[dict | None, str]:
+    block, body = _split_frontmatter(text)
+    if block is None:
+        return None, body
     data: dict = {}
-    for raw_line in block.splitlines():
-        line = raw_line.split("#", 1)[0].rstrip()
-        if not line or line.startswith(" ") or ":" not in line:
+    lines = block.splitlines()
+    i, n = 0, len(lines)
+    while i < n:
+        line = lines[i].split("#", 1)[0].rstrip()
+        i += 1
+        if not line or line[0] in (" ", "\t") or ":" not in line:
             continue
         key, _, value = line.partition(":")
         key, value = key.strip(), value.strip()
         if not value:
-            data[key] = ""
+            # A key with no inline value may head a block-style list; collect
+            # any indented `- item` lines that follow. Unreadable indented
+            # content leaves the value empty for the belt check to flag.
+            items, i = _collect_block_list(lines, i)
+            data[key] = items if items else ""
         elif value.startswith("[") and value.endswith("]"):
             inner = value[1:-1].strip()
             data[key] = [
@@ -239,6 +290,29 @@ def parse_frontmatter(text: str) -> tuple[dict | None, str]:
         else:
             data[key] = value.strip("'\"")
     return data, body
+
+
+def _field_has_indented_block(text: str, key: str) -> bool:
+    """True when frontmatter ``key:`` carries an empty inline value and is
+    immediately followed by indented block content.
+
+    Used to flag a required list field whose block the scalar-list parser
+    could not read (for example a nested mapping such as an indented
+    ``domain: ai`` line rather than ``- item`` lines).
+    """
+    block, _ = _split_frontmatter(text)
+    if block is None:
+        return False
+    lines = block.splitlines()
+    for idx, raw in enumerate(lines):
+        if raw[:1].isspace():
+            continue
+        k, sep, v = raw.split("#", 1)[0].rstrip().partition(":")
+        if not sep or k.strip() != key or v.strip():
+            continue
+        nxt = lines[idx + 1] if idx + 1 < len(lines) else ""
+        return bool(nxt[:1].isspace()) and bool(nxt.split("#", 1)[0].strip())
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -460,7 +534,10 @@ def load_taxonomy(wiki: Path) -> set[str] | None:
         return None
 
     tags: set[str] = set()
-    for bullet in _coalesce_taxonomy_bullets(match.group(1)):
+    # Skip fenced code blocks, mirroring load_excluded_roots: a taxonomy shown
+    # inside a fenced example (the canonical template's "Example for AI/ML:"
+    # block) is documentation, never read as the live tag set.
+    for bullet in _coalesce_taxonomy_bullets(strip_fenced_blocks(match.group(1))):
         _, sep, body = bullet.partition(":")
         if not sep:
             continue
@@ -504,10 +581,17 @@ def check_taxonomy_style(wiki: Path) -> list[Issue]:
 
     issues: list[Issue] = []
     in_bullet = False
+    in_fence = False
     bullet_start_line = 0
     for offset, raw_line in enumerate(match.group(1).splitlines()):
         line_no = section_start_line + offset
         stripped = raw_line.lstrip()
+        if FENCE_RE.match(raw_line.strip()):
+            in_fence = not in_fence
+            in_bullet = False
+            continue
+        if in_fence:
+            continue
         if not stripped:
             in_bullet = False
             continue
@@ -649,6 +733,19 @@ def check_frontmatter(
         if field not in fm:
             issues.append(Issue(SEV_BLOCKING, "frontmatter", page, f"missing required field: {field}"))
 
+    # Belt for a list-valued field the parser could not read: present with an
+    # empty value while the raw block shows indented content (a nested mapping
+    # or other non-`- item` shape). A readable inline or block list parses to a
+    # list and clears this.
+    for list_field in ("tags", "sources"):
+        if fm.get(list_field) == "" and _field_has_indented_block(text, list_field):
+            issues.append(Issue(
+                SEV_WARN, "frontmatter", page,
+                f"`{list_field}:` has an empty value with indented block content "
+                f"the parser could not read as a list — write it as an inline "
+                f"`[a, b]` list or a block list of `- item` lines",
+            ))
+
     if valid_types and "type" in fm and fm["type"] not in valid_types:
         issues.append(Issue(
             SEV_WARN, "frontmatter", page,
@@ -678,8 +775,16 @@ def check_frontmatter(
 LINK_RE = re.compile(r"(?<!\!)\[([^\^\]][^\]]*)\]\(([^)]+)\)")
 
 
-def extract_md_links(body: str, page: Path) -> list[tuple[Path, str]]:
-    out: list[tuple[Path, str]] = []
+def extract_md_links(body: str, page: Path) -> list[tuple[Path, str, str]]:
+    """Resolve every local `.md` markdown link in `body`.
+
+    Yields ``(resolved_target, link_text, target)`` per link. ``target`` is the
+    path exactly as written (anchor and query string stripped) so a caller can
+    flag a non-portable absolute or ``~``-prefixed link that would still
+    resolve on the author's machine. Image links, footnotes, external URLs,
+    ``mailto:``, and non-``.md`` targets are dropped.
+    """
+    out: list[tuple[Path, str, str]] = []
     for match in LINK_RE.finditer(body):
         text, raw_target = match.group(1), match.group(2)
         target = raw_target.split("#", 1)[0].split(" ", 1)[0].strip()
@@ -688,7 +793,7 @@ def extract_md_links(body: str, page: Path) -> list[tuple[Path, str]]:
         if not target.endswith(".md"):
             continue
         candidate = (page.parent / target).resolve()
-        out.append((candidate, text))
+        out.append((candidate, text, target))
     return out
 
 
@@ -699,8 +804,17 @@ def check_links_and_orphans(wiki: Path) -> list[Issue]:
 
     for page in pages:
         _, body = parse_frontmatter(page.read_text(encoding="utf-8"))
-        for target, link_text in extract_md_links(body, page):
-            if not target.exists():
+        # Skip fenced and inline code so a documentation example link is never
+        # read as a live link — neither blocking as broken nor counted inbound.
+        for target, link_text, raw_target in extract_md_links(strip_code(body), page):
+            if Path(raw_target).is_absolute() or raw_target.startswith("~"):
+                issues.append(Issue(
+                    SEV_BLOCKING, "broken-link", page,
+                    f"link target is an absolute/home path — use a relative path "
+                    f"that resolves on every clone, not just this machine: "
+                    f"{raw_target} ({link_text!r})",
+                ))
+            elif not target.exists():
                 try:
                     rel = target.relative_to(wiki)
                 except ValueError:
@@ -781,10 +895,31 @@ def check_index_completeness(wiki: Path) -> list[Issue]:
         return [Issue(SEV_BLOCKING, "structure", index, "index.md missing")]
     index_text = index.read_text(encoding="utf-8")
     issues: list[Issue] = []
+    # Resolve the index's markdown link targets once, then match both
+    # directions on resolved paths rather than substring containment — so a
+    # filename that is a substring of a listed one (alignment.md inside
+    # misalignment.md) no longer counts as listed. Fenced/inline code is
+    # stripped so a documented example link is never read as a live entry.
+    linked = {target for target, _text, _raw in extract_md_links(strip_code(index_text), index)}
+
+    # Membership: every content page on disk must be linked from the index.
     for page in iter_wiki_pages(wiki):
-        rel = page.relative_to(wiki).as_posix()
-        if rel not in index_text and page.name not in index_text:
+        if page.resolve() not in linked:
             issues.append(Issue(SEV_WARN, "index", page, "page not referenced in index.md"))
+
+    # Dangling: every page the index links must resolve on disk. index.md sits
+    # outside the page walk, so this is the only check that sees a stale entry
+    # left behind when a page is renamed, moved, or archived.
+    for target in sorted(linked):
+        if not target.exists():
+            try:
+                rel = target.relative_to(wiki)
+            except ValueError:
+                rel = target
+            issues.append(Issue(
+                SEV_WARN, "index", index,
+                f"index.md links a page that does not exist on disk: {rel}",
+            ))
     return issues
 
 
@@ -937,10 +1072,11 @@ def check_source_drift(wiki: Path) -> list[Issue]:
             continue
         actual = hashlib.sha256(body.encode("utf-8")).hexdigest()
         if recorded != actual:
+            rel = raw.relative_to(wiki).as_posix()
             issues.append(Issue(
                 SEV_WARN, "drift", raw,
                 f"sha256 mismatch (recorded {recorded[:12]}…, actual {actual[:12]}…); "
-                f"run `python3 scripts/compute_sha256.py {raw.name}` to refresh, "
+                f"run `python3 scripts/compute_sha256.py {rel}` to refresh, "
                 f"or re-ingest the source if the body should not have drifted",
             ))
     return issues
@@ -1015,6 +1151,46 @@ def check_source_path_portable(wiki: Path) -> list[Issue]:
     return issues
 
 
+def check_raw_frontmatter(wiki: Path) -> list[Issue]:
+    """Every raw sidecar outside `raw/assets/` carries the re-ingest metadata a
+    future drift check needs: an `ingested` date and a `sha256` body digest.
+
+    Without them drift detection is silently inert — `check_source_drift` skips
+    any file lacking `sha256`, so a source that skipped hashing is never
+    checked for drift and the common narrow post-ingest lint never surfaces the
+    omission. Warn severity, because both are mechanically fixable:
+    `compute_sha256.py` writes the digest and the ingest stamps the date. The
+    origin field (`source_url` / `source_path`) stays optional — a sidecar for
+    an out-of-repo local source legitimately carries neither. `raw/assets/`
+    holds binary companions with no frontmatter, so it is exempt.
+    """
+    issues: list[Issue] = []
+    for raw in iter_raw_files(wiki):
+        rel = raw.relative_to(wiki)
+        if len(rel.parts) >= 2 and rel.parts[1] == "assets":
+            continue
+        rel_posix = rel.as_posix()
+        fm, _ = parse_frontmatter(raw.read_text(encoding="utf-8"))
+        if fm is None:
+            issues.append(Issue(
+                SEV_WARN, "raw-frontmatter", raw,
+                f"raw source has no frontmatter — add `ingested` and `sha256` "
+                f"(run `python3 scripts/compute_sha256.py {rel_posix}` for the digest)",
+            ))
+            continue
+        for field in ("ingested", "sha256"):
+            if not fm.get(field):
+                hint = (
+                    f" — run `python3 scripts/compute_sha256.py {rel_posix}` to write it"
+                    if field == "sha256" else " — stamp it with the ingest date"
+                )
+                issues.append(Issue(
+                    SEV_WARN, "raw-frontmatter", raw,
+                    f"raw source missing `{field}`, so a re-ingest cannot detect drift{hint}",
+                ))
+    return issues
+
+
 # ---------------------------------------------------------------------------
 # Markdown style (subset matching the format_markdown skill)
 #
@@ -1030,6 +1206,36 @@ LIST_MARKER_RE = re.compile(r"^(\s*-)([^\s])")
 BARE_URL_RE = re.compile(r"(?<![<\(\"\[/])(https?://\S+)")
 WIKILINK_RE = re.compile(r"\[\[([^\[\]\n]+)\]\]")
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+
+
+def strip_fenced_blocks(text: str) -> str:
+    """Return `text` with fenced code blocks dropped, inline code left intact.
+
+    Used where a scanner must ignore ``` fenced examples but still read
+    inline-code content on live lines (the taxonomy loader keeps `` `model` ``
+    inside a live bullet). Mirrors the fence handling in the body scanners.
+    """
+    out: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        if FENCE_RE.match(line.strip()):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            out.append(line)
+    return "\n".join(out)
+
+
+def strip_code(text: str) -> str:
+    """Return `text` with both fenced code blocks and inline code removed, so
+    link and citation scanners never read a documentation example as live
+    markup. Combines ``strip_fenced_blocks`` with the inline-code scrub the
+    footnote/wikilink checks already apply per line.
+    """
+    return "\n".join(
+        INLINE_CODE_RE.sub("", line)
+        for line in strip_fenced_blocks(text).splitlines()
+    )
 
 
 def check_markdown_style(wiki: Path) -> list[Issue]:
@@ -1428,6 +1634,7 @@ def main() -> int:
     issues.extend(check_log_rotation(wiki))
     issues.extend(check_source_drift(wiki))
     issues.extend(check_source_path_portable(wiki))
+    issues.extend(check_raw_frontmatter(wiki))
 
     print(render_report(wiki, issues, args.quiet))
     return 1 if any(i.severity == SEV_BLOCKING for i in issues) else 0

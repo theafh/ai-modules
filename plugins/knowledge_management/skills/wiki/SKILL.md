@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.16.3
+version: 1.16.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -627,7 +627,11 @@ When content is fully superseded or the domain scope changes:
 2. Remove from `index.md`.
 3. Update inbound links — replace with plain text + "(archived)".
 4. Log the archive action.
-5. Run `python3 scripts/lint.py` to catch any inbound link you missed.
+5. Run `python3 scripts/lint.py`: a page link left pointing at the moved file
+   surfaces as a blocking `broken-link`, and an `index.md` entry you left
+   behind surfaces as an `index` warn (the linter parses index link targets and
+   flags dangling ones), so both the inbound-link and index-removal steps are
+   backstopped.
 </archive>
 
 <lint_and_audit>

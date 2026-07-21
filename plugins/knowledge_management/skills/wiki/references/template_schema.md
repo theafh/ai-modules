@@ -125,10 +125,17 @@ once (it walks the discovered wiki's `raw/` tree).
 
 Example for AI/ML:
 
+```text
 - Models: model, architecture, benchmark, training
 - People/Orgs: person, company, lab, open-source
 - Techniques: optimization, fine-tuning, inference, alignment, data
 - Meta: comparison, timeline, controversy, prediction
+```
+
+The linter reads only unfenced `- Label: tag, …` bullets, so the block above is
+documentation rather than the live taxonomy — replace it with your own unfenced
+bullets. Until you do, the linter reports "no Tag Taxonomy section" rather than
+validating pages against these placeholder tags.
 
 Rule: every tag on a page must appear in this taxonomy. If a new tag is needed,
 add it here first, then use it. This prevents tag sprawl.
