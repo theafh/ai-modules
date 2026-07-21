@@ -138,9 +138,9 @@ global or project activation outside plugin installs.
 ## Installing and deploying
 
 The same source of truth ships through several paths. You can install it from
-the bundled Claude Code marketplace; symlink it into vendor config dirs globally
+the bundled Claude Code marketplace; copy it into vendor config dirs globally
 with `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Gemini
-CLI, Google Antigravity); symlink it into a single repo's local config with
+CLI, Google Antigravity); copy it into a single repo's local config with
 `--project-dir`; or use it in place from a checkout. The deployment script finds
 artefacts by their plugin layout and installs them where each tool expects them.
 
@@ -148,7 +148,7 @@ For OpenAI Codex, prefer the deployment script when you need the helper agents.
 The Codex marketplace registration remains available, but plugin-only installs
 do not create Codex-compatible agent definitions from the bundled `agents/*.md`
 files. `./deployment/deployment.sh --global --target codex` generates
-`~/.codex/agents/*.toml`, symlinks the skills, and installs the Codex hook layer
+`~/.codex/agents/*.toml`, copies the skills, and installs the Codex hook layer
 from the same plugin source. Use the project form,
 `./deployment/deployment.sh --project-dir /path/to/repo --target codex`, for a
 repo-local install.

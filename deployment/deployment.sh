@@ -15,8 +15,7 @@ set -euo pipefail
 # (robots.txt-style). Current directives:
 #   #tool                     Section heading
 #   disallow:path             Relative path to exclude for that tool
-#   replace:path VAR=value    Force copied deployment for matching assets and
-#                             replace $VAR$ in the deployed copy only
+#   replace:path VAR=value    Replace $VAR$ in matching deployed copies
 #
 # Features:
 #   --global         Deploy into global config dirs (explicit mode)
@@ -624,40 +623,7 @@ discover_artifacts() {
 }
 
 # ---------------------------------------------------------------------------
-# Symlink creation
-# ---------------------------------------------------------------------------
-create_symlink() {
-  local source="$1"
-  local target="$2"
-  local target_id="$3"
-  local artifact_type="$4"
-
-  if [[ ! -e "$source" && ! -d "$source" ]]; then
-    err "missing" "source not found: $source"
-    return 1
-  fi
-
-  if $DRY_RUN; then
-    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-    info "would-link" "$target -> $source"
-    return 0
-  fi
-
-  if [[ -L "$target" ]]; then
-    rm "$target"
-  elif [[ -e "$target" ]]; then
-    warn "skip" "$target exists and is not a symlink — refusing to overwrite"
-    return 1
-  fi
-
-  ln -s "$source" "$target"
-  ok "linked" "$target -> $source"
-  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-  append_deployed_artifact_log "$target" "$target_id" "$artifact_type" "$source"
-}
-
-# ---------------------------------------------------------------------------
-# Copy a file (used where a target's file watcher does not follow symlinks)
+# Copy a file into a deployment target.
 # ---------------------------------------------------------------------------
 copy_file() {
   local source="$1"
@@ -1370,11 +1336,7 @@ install_for_app() {
         vscode)
           ensure_dir "$VSCODE_PROMPTS_DIR"
           local dest_path="${VSCODE_PROMPTS_DIR}/${name}.prompt.md"
-          if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-            copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
-          else
-            create_symlink "$source_abs" "$dest_path" "$app_id" "$type"
-          fi
+          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
           ;;
         gemini)
           local dest_dir="${app_dir}/commands"
@@ -1394,21 +1356,13 @@ install_for_app() {
           local dest_dir="${app_dir}/prompts"
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.md"
-          if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-            copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
-          else
-            create_symlink "$source_abs" "$dest_path" "$app_id" "$type"
-          fi
+          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
           ;;
         *)
           local dest_dir="${app_dir}/commands"
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.md"
-          if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-            copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
-          else
-            create_symlink "$source_abs" "$dest_path" "$app_id" "$type"
-          fi
+          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
           ;;
       esac
       ;;
@@ -1422,11 +1376,7 @@ install_for_app() {
       fi
       ensure_dir "$dest_dir"
       local dest_path="${dest_dir}/${name}"
-      if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-        copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
-      else
-        create_symlink "$source_abs" "$dest_path" "$app_id" "$type"
-      fi
+      copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
       ;;
     agent)
       case "$app_id" in
