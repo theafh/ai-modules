@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.16.4
+version: 1.17.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -449,8 +449,11 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   a relative `source_path:` for a source the repo tracks (it may sit outside the
   wiki dir but must stay inside the repo) — never an absolute, `~`-prefixed, or
   repo-escaping path. A local file outside the repo takes no path:
-  excerpt it into the body and note its locality in prose, per
-  `references/template_schema.md`. Compute and write the hash with
+  excerpt it into the body and note its locality in prose. The
+  `### raw/ Frontmatter` contract in `references/template_schema.md` is the
+  canonical statement of these field meanings and of how a mislabeled or legacy
+  sidecar reconciles onto them — follow it rather than restating it here.
+  Compute and write the hash with
   `python3 scripts/compute_sha256.py raw/<kind>/<slug>.md` — never invent
   the value by hand. On re-ingest of the same source: run the same command,
   skip if it reports `ok`, flag drift if it reports `update`.

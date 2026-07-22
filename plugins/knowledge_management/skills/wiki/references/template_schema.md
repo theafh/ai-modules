@@ -112,6 +112,29 @@ its content into the sidecar body to stand on its own, and note its locality in 
 absolute path would only add a pointer that breaks everywhere else, so the excerpt is the
 authoritative copy and the sidecar carries neither `source_url:` nor `source_path:`.
 
+**Reconciling a mislabeled or legacy sidecar.** A sidecar written before the two-field split, or
+one that mis-filed its origin, reconciles onto this contract by a single test: *is the corrected
+state deterministically recoverable from the values present, without inventing or discarding
+provenance?* When it is, the move is deterministic and lossless, and applies automatically:
+
+- A `file://` URL or a bare path in `source_url:` that names an in-repo target becomes a
+  repo-relative `source_path:`, and the `source_url:` is dropped.
+- An absolute or `~`-prefixed `source_path:` that resolves to an in-repo file normalizes to its
+  repo-relative equivalent — the same file, portably spelled.
+- A remote URL sitting in `source_path:` becomes `source_url:`.
+- Two fields naming the *same* origin collapse to the one field whose form fits, dropping the
+  duplicate.
+
+When the values do not settle it, a human decides — reconciliation stops and the case is surfaced
+rather than guessed:
+
+- Two fields naming *different* plausible origins: choosing one discards provenance, so the user picks.
+- A value that fits no field and whose removal would strand the source — an out-of-repo `file://`
+  or absolute path with no stand-alone body excerpt — drops to a body excerpt plus a prose locality
+  note only once a human confirms it.
+
+These cases illustrate the recoverable-without-inventing-or-discarding test; they are not a closed list.
+
 The `sha256:` lets a future re-ingest of the same source skip processing when content is unchanged,
 and flag drift when it has changed. Compute over the body only (everything after the closing
 `---`), not the frontmatter itself. Use `python3 scripts/compute_sha256.py raw/<kind>/<slug>.md`

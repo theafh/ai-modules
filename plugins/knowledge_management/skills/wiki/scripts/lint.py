@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import re
 import sys
 from collections import Counter, defaultdict
@@ -156,6 +157,20 @@ CANONICAL_FRONTMATTER = set(REQUIRED_FRONTMATTER) | {"confidence", "contested", 
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TYPE_ENUM_RE = re.compile(r"^\s*type\s*:\s*([^\n]+)$", re.MULTILINE)
+
+# A leading `scheme://` on an origin-field value. `file://` denotes a local
+# file; every other scheme (`https`, `http`, `s3`, `ftp`, …) denotes a remote,
+# externally-fetched resource. The raw origin-field-form check keys off this
+# split: `source_url:` wants a remote scheme, `source_path:` wants a bare
+# repo-relative path carrying no scheme at all.
+SCHEME_RE = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.\-]*)://")
+
+
+def uri_scheme(value: str) -> str | None:
+    """Return the lowercased `scheme` of a `scheme://…` value, or None when the
+    value carries no `scheme://` prefix (a bare relative or absolute path)."""
+    match = SCHEME_RE.match(value.strip())
+    return match.group(1).lower() if match else None
 
 
 def pluralize_page_dir(page_type: str) -> str:
@@ -1097,6 +1112,25 @@ def _git_repo_root(wiki: Path) -> Path | None:
         cur = cur.parent
 
 
+def portable_rewrite(resolved: Path, containing_root: Path, wiki: Path) -> str | None:
+    """When `resolved` is an existing file inside `containing_root`, return its
+    path spelled relative to the wiki root — the portable form the provenance
+    field uses (`source_path:` reads from the wiki root; `sources:` as `raw/…`).
+
+    Return None when the file is missing or resolves outside `containing_root`:
+    that case has no in-tree equivalent, so the caller keeps it blocking. The
+    rewrite is a deterministic, lossless normalization — the same file, portably
+    spelled — so the caller surfaces it as a safe auto-fix warn.
+    """
+    if not resolved.is_file():
+        return None
+    try:
+        resolved.relative_to(containing_root)
+    except ValueError:
+        return None
+    return os.path.relpath(resolved, wiki)
+
+
 def check_source_path_portable(wiki: Path) -> list[Issue]:
     """Validate every raw sidecar's `source_path:` is a portable path to an
     in-repo source.
@@ -1105,13 +1139,21 @@ def check_source_path_portable(wiki: Path) -> list[Issue]:
     so every `source_path:` resolves on the single machine that holds it and this
     check does not apply. A wiki inside a git repo ships with the repo, so a
     `source_path:` records a source kept inside that repo; it may sit outside the
-    wiki directory (e.g. `../shared/spec.md`) but must stay inside the repo. An
-    absolute or `~`-prefixed value, or a relative value that escapes the repo,
-    resolves only on the machine that wrote it (or points outside the versioned
-    tree) and dangles on every clone, so it is blocking; a surviving relative
-    value must resolve on disk. A file that lives outside the repo takes no
-    `source_path:` at all — it is captured by the sidecar body excerpt and a
-    prose locality note — so a sidecar without the field is fine.
+    wiki directory (e.g. `../shared/spec.md`) but must stay inside the repo. A
+    relative value that escapes the repo, or does not resolve, dangles on every
+    clone and stays blocking. An absolute or `~`-prefixed value that resolves to
+    an in-repo file has a deterministic repo-relative equivalent — the same file,
+    portably spelled — so it is a safe-auto-fix **warn** carrying that rewrite;
+    only an absolute value resolving outside the repo (or to no file) stays
+    blocking. A file that lives outside the repo takes no `source_path:` at all —
+    it is captured by the sidecar body excerpt and a prose locality note — so a
+    sidecar without the field is fine.
+
+    A `source_path:` carrying a remote URL scheme (a URL misfiled where a
+    repo-relative path belongs) is yielded to `check_raw_origin_form`, which
+    emits the single redirecting warn everywhere; skipping it here keeps a repo
+    wiki from stacking a misleading blocking "does not resolve" error on top of
+    that warn.
     """
     issues: list[Issue] = []
     repo_root = _git_repo_root(wiki)
@@ -1124,13 +1166,27 @@ def check_source_path_portable(wiki: Path) -> list[Issue]:
         src = fm.get("source_path")
         if not src or not isinstance(src, str):
             continue
+        scheme = uri_scheme(src)
+        if scheme is not None and scheme != "file":
+            continue  # URL-in-source_path is redirected by check_raw_origin_form
         if Path(src).is_absolute() or src.startswith("~"):
-            issues.append(Issue(
-                SEV_BLOCKING, "raw-source-path", raw,
-                f"`source_path:` is an absolute/home path — use a relative path to "
-                f"an in-repo source, or drop it and excerpt a local file outside "
-                f"the repo into the body: {src}",
-            ))
+            resolved = Path(src).expanduser().resolve()
+            rel = portable_rewrite(resolved, repo_root, wiki)
+            if rel is not None:
+                issues.append(Issue(
+                    SEV_WARN, "raw-source-path", raw,
+                    f"`source_path:` is an absolute/home path but resolves to an "
+                    f"in-repo file — rewrite it repo-relative (same file, portable "
+                    f"spelling): {src} -> {rel}",
+                ))
+            else:
+                issues.append(Issue(
+                    SEV_BLOCKING, "raw-source-path", raw,
+                    f"`source_path:` is an absolute/home path resolving outside the "
+                    f"repository (or to no file) — use a relative path to an in-repo "
+                    f"source, or drop it and excerpt a local file outside the repo "
+                    f"into the body: {src}",
+                ))
             continue
         resolved = (wiki / src).resolve()
         try:
@@ -1148,6 +1204,75 @@ def check_source_path_portable(wiki: Path) -> list[Issue]:
                 SEV_BLOCKING, "raw-source-path", raw,
                 f"`source_path:` does not resolve on disk: {src}",
             ))
+    return issues
+
+
+def check_raw_origin_form(wiki: Path) -> list[Issue]:
+    """Validate the *form* of whichever origin field a raw sidecar carries.
+
+    The two origin fields name mutually-exclusive origin kinds: `source_url:` is
+    a remote URL for an externally-published source, `source_path:` is a
+    repo-relative path to a source the repo tracks. This check flags a value
+    filed under the wrong field and a sidecar carrying both at once, so a legacy
+    or mis-filled sidecar migrates onto the two-field contract. It never
+    requires an origin field — a sidecar for an out-of-repo local source
+    legitimately carries neither (see `check_raw_frontmatter`); it only checks
+    the form of a value that is present.
+
+    All findings are **warn**: these are overwhelmingly legacy or mis-filled
+    sidecars to migrate, so a warn surfaces every one without hard-breaking a
+    pre-split wiki's lint on upgrade. Unlike `check_source_path_portable`, this
+    runs everywhere — including a wiki outside a git repo, where the portable
+    check is skipped and a URL-valued `source_path:` would otherwise pass
+    silently.
+    """
+    issues: list[Issue] = []
+    for raw in iter_raw_files(wiki):
+        fm, _ = parse_frontmatter(raw.read_text(encoding="utf-8"))
+        if not fm:
+            continue
+        url = fm.get("source_url")
+        path = fm.get("source_path")
+        has_url = isinstance(url, str) and url.strip() != ""
+        has_path = isinstance(path, str) and path.strip() != ""
+
+        if has_url and has_path:
+            issues.append(Issue(
+                SEV_WARN, "raw-origin", raw,
+                "sidecar carries both `source_url:` and `source_path:` — the two "
+                "name mutually-exclusive origin kinds; keep the one that fits (a "
+                "remote URL in `source_url:`, a repo-relative path in "
+                "`source_path:`) and drop the other",
+            ))
+
+        if has_url:
+            scheme = uri_scheme(url)
+            if scheme == "file":
+                issues.append(Issue(
+                    SEV_WARN, "raw-origin", raw,
+                    f"`source_url:` is a `file://` URL, not an externally-published "
+                    f"source — use a repo-relative `source_path:` for an in-repo "
+                    f"file, or drop the field and excerpt an out-of-repo local file "
+                    f"into the body: {url}",
+                ))
+            elif scheme is None:
+                issues.append(Issue(
+                    SEV_WARN, "raw-origin", raw,
+                    f"`source_url:` is a bare path, not a remote URL — use a "
+                    f"repo-relative `source_path:` for an in-repo file, or drop the "
+                    f"field and excerpt an out-of-repo local file into the body: "
+                    f"{url}",
+                ))
+
+        if has_path:
+            scheme = uri_scheme(path)
+            if scheme is not None and scheme != "file":
+                issues.append(Issue(
+                    SEV_WARN, "raw-origin", raw,
+                    f"`source_path:` holds a remote URL where a repo-relative path "
+                    f"belongs — put an externally-published source's URL in "
+                    f"`source_url:` instead: {path}",
+                ))
     return issues
 
 
@@ -1361,15 +1486,16 @@ def check_source_paths_exist(wiki: Path) -> list[Issue]:
     """Validate every `sources:` entry is a portable, repo-relative `raw/…`
     path that resolves on disk.
 
-    Entries are interpreted relative to the wiki root. An absolute or
-    `~`-prefixed entry, or one that escapes the wiki's `raw/` tree, is
-    non-portable — it resolves only on the machine that wrote it, and Python's
-    `pathlib` even lets an absolute entry silently override the `wiki /` join —
-    so it is blocking regardless of whether it happens to exist locally. A
-    surviving repo-relative `raw/…` entry must still resolve on disk. All
-    findings are blocking — the same severity as broken markdown links —
-    because a non-resolvable `sources:` entry breaks the provenance contract
-    the frontmatter exists to enforce.
+    Entries are interpreted relative to the wiki root. A `~`-prefixed entry, or
+    one that escapes the wiki's `raw/` tree, is non-portable — it resolves only
+    on the machine that wrote it, and Python's `pathlib` even lets an absolute
+    entry silently override the `wiki /` join — so it is blocking regardless of
+    whether it happens to exist locally. An absolute or `~`-prefixed entry that
+    resolves to an existing file inside `raw/` has a deterministic
+    `raw/…`-relative equivalent — the same file, portably spelled — so it is a
+    safe-auto-fix **warn** carrying that rewrite; only an entry resolving
+    outside `raw/` (or to no file) stays the blocking `broken-source` finding. A
+    surviving repo-relative `raw/…` entry must still resolve on disk.
     """
     issues: list[Issue] = []
     raw_root = (wiki / "raw").resolve()
@@ -1384,10 +1510,22 @@ def check_source_paths_exist(wiki: Path) -> list[Issue]:
             if not src or not isinstance(src, str):
                 continue
             if Path(src).is_absolute() or src.startswith("~"):
-                issues.append(Issue(
-                    SEV_BLOCKING, "broken-source", page,
-                    f"`sources:` entry is an absolute/home path — use a repo-relative `raw/…` path: {src}",
-                ))
+                resolved = Path(src).expanduser().resolve()
+                rel = portable_rewrite(resolved, raw_root, wiki)
+                if rel is not None:
+                    issues.append(Issue(
+                        SEV_WARN, "broken-source", page,
+                        f"`sources:` entry is an absolute/home path but resolves "
+                        f"inside `raw/` — rewrite it repo-relative (same file, "
+                        f"portable spelling): {src} -> {rel}",
+                    ))
+                else:
+                    issues.append(Issue(
+                        SEV_BLOCKING, "broken-source", page,
+                        f"`sources:` entry is an absolute/home path resolving "
+                        f"outside the wiki's `raw/` tree (or to no file) — use a "
+                        f"repo-relative `raw/…` path: {src}",
+                    ))
                 continue
             target = (wiki / src).resolve()
             try:
@@ -1634,6 +1772,7 @@ def main() -> int:
     issues.extend(check_log_rotation(wiki))
     issues.extend(check_source_drift(wiki))
     issues.extend(check_source_path_portable(wiki))
+    issues.extend(check_raw_origin_form(wiki))
     issues.extend(check_raw_frontmatter(wiki))
 
     print(render_report(wiki, issues, args.quiet))

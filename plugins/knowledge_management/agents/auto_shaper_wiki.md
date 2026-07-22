@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.7.5
+version: 1.8.0
 model: inherit
 background: false
 effort: high
@@ -18,6 +18,23 @@ with every applicable semantic check), remediate
 (fix every finding in place), verify (re-lint until clean and record
 the audit).
 </role>
+
+<remediation_contract>
+The one governing rule for how the agent resolves what it finds: **autonomously
+apply every fix that is safe and deterministic, and surface only genuine
+judgment calls.** A fix is safe and deterministic when it loses no meaning,
+invents no value, and resolves no genuine ambiguity — the corrected state is
+recoverable from what is already present. Apply every such fix in place and
+record it in the per-file change report (`<report_changes>`). Route everything
+else — a contradiction, a conflict between two real values, a genuinely broken
+or ambiguous case — to the user through the existing contested-page protocol
+(`<contradictions_surfaced>`, `<fix_contested_page>`, `<leave_contested_pages>`),
+never guessing a resolution. This makes explicit what the agent already does
+across its per-check fix moves; stating it once keeps every check — origin-field
+handling included — from re-deriving it and drifting. It is what makes the agent
+safe to run unattended: nothing is fabricated, no genuine ambiguity is resolved
+silently, and everything done is reported.
+</remediation_contract>
 
 <orient_first_top>
 **Read `$WIKI/SCHEMA.md` once at the start of the audit.** The schema
@@ -456,7 +473,9 @@ the fix move.
       a single `transcripts/` slot that has since been split), or
       a deliberate user customization. Do not pick. Surface the
       directory in the report along with every file inside it
-      (path, its `source_url` or `source_path` origin, first body paragraph) and the current
+      (path, its origin — a remote `source_url:`, a repo-relative
+      `source_path:`, or neither for an out-of-repo source captured by
+      body excerpt — and first body paragraph) and the current
       canonical buckets, so the user can decide whether to keep
       the directory as a customization, relocate its contents
       into canonical buckets, or retire it. An empty extra
@@ -530,8 +549,15 @@ the fix move.
         paragraph, sentence, bullet, table row, enum entry, or yaml
         field) → drift, flag for the matching remediate-phase fix
         move.
-      - **Wiki has content the canonical lacks** → customization,
-        preserve as-is.
+      - **Wiki has content the canonical lacks** → when it *extends*
+        the canon (adds without contradicting), it is a customization,
+        preserve as-is; when it *contradicts* canonical semantics,
+        surface it for the user rather than preserving it — the same
+        human-routes-the-conflict posture the contested-page protocol
+        uses. A `### raw/ Frontmatter` block teaching the superseded
+        `source_url: file://…` form is the motivating illustration: it
+        is not an extension but a contradiction of the current two-field
+        origin contract, so it is surfaced, not kept.
       - **Same content, different wording, no rule broken** →
         preserve the wiki's wording.
       - **Same content, different order, rule broken** (e.g.,
@@ -579,8 +605,10 @@ the fix move.
         is missing from the wiki's `## Frontmatter` yaml block
         (e.g., `confidence`, `contested`, `contradictions`, the
         custom-fields paragraph), or the canonical `raw/`
-        frontmatter shape (`source_url` or `source_path`, `ingested`,
-        `sha256`) is not declared in `### raw/ Frontmatter`.
+        frontmatter shape is not declared in `### raw/ Frontmatter`:
+        the two origin fields `source_url:` and `source_path:` with
+        distinct meanings — at most one carrying a value on a given
+        sidecar — plus `ingested` and body-only `sha256`.
       - **`index.md` scaffold drift.** The wiki's `index.md` is
         missing the canonical header (`Total pages`, `Last
         updated`), its sections do not cover every page type the
@@ -593,13 +621,23 @@ the fix move.
         the assess phase, since the canonical raw layout is
         defined by `init_wiki.sh` rather than `SCHEMA.md`.
       - **Raw-source frontmatter drift.** Files under `raw/` are
-        missing `ingested` or body-only `sha256`, or carry a
-        `source_path:` that is absolute, `~`-prefixed, or escapes the
-        repository rather than a relative in-repo path. A sidecar that captures a local source
-        outside the repo by body excerpt and carries neither `source_url`
-        nor `source_path` is correct, not drift. The `source_path:` portability
-        rule applies only to a repo-backed wiki; a wiki with no repo is
-        local-only, so its paths are unconstrained.
+        missing `ingested` or body-only `sha256`; carry a mislabeled or
+        redundant origin field (a `file://` or bare-path `source_url:`,
+        a remote-URL `source_path:`, an absolute or `~`-prefixed
+        `source_path:`, or both origin fields at once); or carry a
+        `source_path:` that escapes the repository. Classify each origin
+        case by the reconciliation test in
+        `references/template_schema.md`'s `### raw/ Frontmatter`: a
+        deterministically recoverable case — a value whose form fits the
+        other field, an absolute in-repo `source_path:` normalizable to its
+        repo-relative equivalent, a same-origin duplicate — is reconcilable
+        and auto-fixed under the `<remediation_contract>`; a value naming a
+        different origin, or one whose removal would strand the source, is
+        irreducible and surfaced. A sidecar that captures a local source
+        outside the repo by body excerpt and carries neither `source_url:`
+        nor `source_path:` is correct, not drift. The `source_path:`
+        portability rule applies only to a repo-backed wiki; a wiki with no
+        repo is local-only, so its paths are unconstrained.
     </common_hunk_kinds>
 
   </scaffold_drift>
@@ -823,6 +861,14 @@ affect the same file so each file is opened, read, and rewritten once.
          exist yet). Lint's `broken-source` blocking finding clears
          because the remaining `sources:` entries all resolve under
          `raw/`.
+      5. **Absolute `sources:` entries resolving inside `raw/`.** An
+         absolute or `~`-prefixed entry that resolves to an existing file
+         under `$WIKI/raw/` is a portability mis-spelling, not an external
+         pointer — rewrite it in place to its `raw/…`-relative form (the
+         same file, portably spelled) under the `<remediation_contract>`
+         and record it in the change report. This clears lint's
+         `broken-source` **warn** and is distinct from step 4's
+         outside-`raw/` case, which migrates to `## Derived from`.
 
       The `## Derived from` section is intentionally unstructured: it
       is the unstructured channel for material the wiki points at but
@@ -922,10 +968,12 @@ affect the same file so each file is opened, read, and rewritten once.
     </fix_canonical_frontmatter_field_missing>
 
     <fix_raw_frontmatter_subsection_missing>
-      Add the `### raw/ Frontmatter` subsection to `SCHEMA.md` from
-      the canonical template, with the
-      `source_url`-or-`source_path`/`ingested`/`sha256` shape and the
-      body-only sha256 computation note.
+      Add the `### raw/ Frontmatter` subsection to `SCHEMA.md` verbatim from
+      the canonical template — both origin fields (`source_url:` for a remote
+      URL, `source_path:` for a repo-relative in-repo path; distinct meanings,
+      at most one valued per sidecar), `ingested`, body-only `sha256`, the
+      sha256 computation note, and the reconciliation contract for a mislabeled
+      or legacy sidecar.
     </fix_raw_frontmatter_subsection_missing>
 
     <fix_raw_source_frontmatter_missing>
@@ -933,12 +981,25 @@ affect the same file so each file is opened, read, and rewritten once.
       running
       `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>` —
       the script handles the body-only boundary correctly and inserts
-      the field if missing. Edit `ingested` directly. Never fabricate an
-      origin field — a sidecar carrying neither `source_url` nor
-      `source_path` is valid when its body captures a local source outside
-      the repo, and an absolute `source_path:` is surfaced for the user to
-      make relative or drop, never auto-rewritten. Raw bodies stay
+      the field if missing. Edit `ingested` directly. Raw bodies stay
       untouched.
+
+      Reconcile a mislabeled or redundant origin field under the
+      `<remediation_contract>`, applying the deterministic, lossless moves the
+      reconciliation contract in `references/template_schema.md`'s
+      `### raw/ Frontmatter` defines: move a value whose form fits the other
+      field (a `file://` or bare-path `source_url:` naming an in-repo target
+      becomes a repo-relative `source_path:` with the `source_url:` dropped; a
+      remote-URL `source_path:` becomes `source_url:`), normalize an absolute or
+      `~`-prefixed `source_path:` that resolves in-repo to its repo-relative
+      equivalent, and collapse two fields naming the same origin to the one
+      matching field. Record each move in the change report. **Never fabricate
+      an origin field** — a sidecar carrying neither `source_url:` nor
+      `source_path:` is valid when its body captures a local source outside the
+      repo. **Never silently resolve a conflict** — an origin that fits no field
+      and whose removal would strand the source (an out-of-repo `file://` or
+      absolute path with no stand-alone excerpt), or two fields naming
+      *different* plausible origins, is surfaced for the user, not guessed.
     </fix_raw_source_frontmatter_missing>
 
     <fix_index_scaffold_drift>
