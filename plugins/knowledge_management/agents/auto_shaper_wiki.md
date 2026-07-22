@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.8.0
+version: 1.8.1
 model: inherit
 background: false
 effort: high
@@ -473,7 +473,7 @@ the fix move.
       a single `transcripts/` slot that has since been split), or
       a deliberate user customization. Do not pick. Surface the
       directory in the report along with every file inside it
-      (path, its origin — a remote `source_url:`, a repo-relative
+      (path, its origin — a remote `source_url:`, a wiki-root-relative
       `source_path:`, or neither for an out-of-repo source captured by
       body excerpt — and first body paragraph) and the current
       canonical buckets, so the user can decide whether to keep
@@ -630,7 +630,7 @@ the fix move.
         `references/template_schema.md`'s `### raw/ Frontmatter`: a
         deterministically recoverable case — a value whose form fits the
         other field, an absolute in-repo `source_path:` normalizable to its
-        repo-relative equivalent, a same-origin duplicate — is reconcilable
+        wiki-root-relative equivalent, a same-origin duplicate — is reconcilable
         and auto-fixed under the `<remediation_contract>`; a value naming a
         different origin, or one whose removal would strand the source, is
         irreducible and surfaced. A sidecar that captures a local source
@@ -970,7 +970,7 @@ affect the same file so each file is opened, read, and rewritten once.
     <fix_raw_frontmatter_subsection_missing>
       Add the `### raw/ Frontmatter` subsection to `SCHEMA.md` verbatim from
       the canonical template — both origin fields (`source_url:` for a remote
-      URL, `source_path:` for a repo-relative in-repo path; distinct meanings,
+      URL, `source_path:` for a wiki-root-relative in-repo path; distinct meanings,
       at most one valued per sidecar), `ingested`, body-only `sha256`, the
       sha256 computation note, and the reconciliation contract for a mislabeled
       or legacy sidecar.
@@ -989,11 +989,13 @@ affect the same file so each file is opened, read, and rewritten once.
       reconciliation contract in `references/template_schema.md`'s
       `### raw/ Frontmatter` defines: move a value whose form fits the other
       field (a `file://` or bare-path `source_url:` naming an in-repo target
-      becomes a repo-relative `source_path:` with the `source_url:` dropped; a
-      remote-URL `source_path:` becomes `source_url:`), normalize an absolute or
-      `~`-prefixed `source_path:` that resolves in-repo to its repo-relative
-      equivalent, and collapse two fields naming the same origin to the one
-      matching field. Record each move in the change report. **Never fabricate
+      becomes a `source_path:` — set it to the wiki-root-relative path the
+      linter's `raw-origin` warn already computed and carries as its `-> ../…`
+      rewrite, verbatim, rather than hand-spelling the path itself — with the
+      `source_url:` dropped; a remote-URL `source_path:` becomes `source_url:`),
+      normalize an absolute or `~`-prefixed `source_path:` that resolves in-repo
+      to its wiki-root-relative equivalent, and collapse two fields naming the
+      same origin to the one matching field. Record each move in the change report. **Never fabricate
       an origin field** — a sidecar carrying neither `source_url:` nor
       `source_path:` is valid when its body captures a local source outside the
       repo. **Never silently resolve a conflict** — an origin that fits no field

@@ -2,9 +2,10 @@
 description: Retire "repo-relative" for the wiki-root-resolved raw-sidecar `source_path:` anchor wherever taught, and compute the `file://` reconciliation form so the auto-fix can't emit a lint-failing path.
 scope: plugins/knowledge_management
 created: 2026-07-22T12:32:59
-updated: 2026-07-22T13:41:05
-status: ready
+updated: 2026-07-22T15:08:52
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Disambiguate the raw-sidecar `source_path:` anchor language, and compute the form in the `file://` reconciliation
@@ -30,7 +31,7 @@ no longer emit a path the linter then rejects.
 
 The anchor itself is settled and correct, and this task does not reopen it. The
 Option-A decision in
-[wiki_lint-local-path-portability.md](archive/wiki_lint-local-path-portability.md)
+[wiki_lint-local-path-portability.md](wiki_lint-local-path-portability.md)
 established that `source_path:` is a portable relative path that may sit outside
 the wiki dir but must stay inside the repo, and the linter implements it by
 resolving `(wiki / src)` against the wiki root, with the canonical
@@ -38,11 +39,11 @@ resolving `(wiki / src)` against the wiki root, with the canonical
 and one reconciliation code path, not that contract.
 
 The defect is terminological, and it has teeth. Across
-[lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py)'s
+[lint.py](../../plugins/knowledge_management/skills/wiki/scripts/lint.py)'s
 `raw-origin` and `raw-source-path` messages,
-[lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md),
+[lint_checks.md](../../plugins/knowledge_management/skills/wiki/references/lint_checks.md),
 and the reconciliation bullets of
-[template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md),
+[template_schema.md](../../plugins/knowledge_management/skills/wiki/references/template_schema.md),
 the anchor is called "repo-relative" — the Option-A task even writes
 "repo-relative, resolved against the wiki root", equating the two in one
 phrase. In this codebase's vocabulary "repo" names the *bound* (stay inside the
@@ -73,7 +74,7 @@ tolerating:
 - A human (or agent) following the message or the reconciliation prose writes
   the repo-root-relative path and the linter rejects it.
 - The `file://`/bare-path → `source_path:` reconciliation shipped in
-  [wiki_origin-field-contract.md](archive/wiki_origin-field-contract.md)
+  [wiki_origin-field-contract.md](wiki_origin-field-contract.md)
   (gaps 2 and 5) is **prose-guided** — "a `file://` … naming an in-repo target
   becomes a repo-relative `source_path:`" — with no code computing the form for
   the `file://` case, unlike the absolute-path safe-fix (gap 6) where
@@ -98,7 +99,7 @@ and `raw/notes/` origin cells and the classification-heuristics preamble — a
 teaching reference consulted on ingest and by the agent),
 `references/template_schema.md` (the reconciliation bullets, aligned to the
 already-correct main body), the
-[auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md)
+[auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md)
 `file://`-reconciliation move so it applies the computed form **and** its
 remaining anchor-wording occurrences (`<fix_raw_frontmatter_subsection_missing>`,
 `<fix_raw_source_frontmatter_missing>`, the `<common_hunk_kinds>` "repo-relative

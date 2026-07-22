@@ -118,9 +118,10 @@ state deterministically recoverable from the values present, without inventing o
 provenance?* When it is, the move is deterministic and lossless, and applies automatically:
 
 - A `file://` URL or a bare path in `source_url:` that names an in-repo target becomes a
-  repo-relative `source_path:`, and the `source_url:` is dropped.
+  `source_path:` — a relative path from the wiki root, which may point outside the wiki directory
+  via `../` — and the `source_url:` is dropped.
 - An absolute or `~`-prefixed `source_path:` that resolves to an in-repo file normalizes to its
-  repo-relative equivalent — the same file, portably spelled.
+  wiki-root-relative equivalent — the same file, portably spelled.
 - A remote URL sitting in `source_path:` becomes `source_url:`.
 - Two fields naming the *same* origin collapse to the one field whose form fits, dropping the
   duplicate.

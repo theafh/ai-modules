@@ -1176,8 +1176,8 @@ def check_source_path_portable(wiki: Path) -> list[Issue]:
                 issues.append(Issue(
                     SEV_WARN, "raw-source-path", raw,
                     f"`source_path:` is an absolute/home path but resolves to an "
-                    f"in-repo file — rewrite it repo-relative (same file, portable "
-                    f"spelling): {src} -> {rel}",
+                    f"in-repo file — rewrite it wiki-root-relative (same file, "
+                    f"portable spelling): {src} -> {rel}",
                 ))
             else:
                 issues.append(Issue(
@@ -1227,6 +1227,7 @@ def check_raw_origin_form(wiki: Path) -> list[Issue]:
     silently.
     """
     issues: list[Issue] = []
+    repo_root = _git_repo_root(wiki)
     for raw in iter_raw_files(wiki):
         fm, _ = parse_frontmatter(raw.read_text(encoding="utf-8"))
         if not fm:
@@ -1241,27 +1242,38 @@ def check_raw_origin_form(wiki: Path) -> list[Issue]:
                 SEV_WARN, "raw-origin", raw,
                 "sidecar carries both `source_url:` and `source_path:` — the two "
                 "name mutually-exclusive origin kinds; keep the one that fits (a "
-                "remote URL in `source_url:`, a repo-relative path in "
-                "`source_path:`) and drop the other",
+                "remote URL in `source_url:`, a path resolved from the wiki root "
+                "in `source_path:`) and drop the other",
             ))
 
         if has_url:
             scheme = uri_scheme(url)
-            if scheme == "file":
+            if scheme == "file" or scheme is None:
+                # A legacy `file://`/bare `source_url:` value is repo-root-relative
+                # (the historical migration form names a repo-root sibling of the
+                # wiki), so resolve it against the repo root — not the wiki root,
+                # which would miss the file and, if forced, re-emit a lint-failing
+                # wiki-root join. When it lands on an existing in-repo file, carry
+                # the wiki-root-relative rewrite `portable_rewrite` returns so the
+                # redirect names the exact `source_path:` to write; when it resolves
+                # to no in-repo file (or the wiki is not in a repo), carry nothing
+                # and emit the plain redirect the out-of-repo excerpt case wants.
+                target = url
+                if repo_root is not None:
+                    resolved = (repo_root / SCHEME_RE.sub("", url.strip())).resolve()
+                    rewrite = portable_rewrite(resolved, repo_root, wiki)
+                    if rewrite is not None:
+                        target = f"{url} -> {rewrite}"
+                kind = ("a `file://` URL, not an externally-published source"
+                        if scheme == "file"
+                        else "a bare path, not a remote URL")
                 issues.append(Issue(
                     SEV_WARN, "raw-origin", raw,
-                    f"`source_url:` is a `file://` URL, not an externally-published "
-                    f"source — use a repo-relative `source_path:` for an in-repo "
-                    f"file, or drop the field and excerpt an out-of-repo local file "
-                    f"into the body: {url}",
-                ))
-            elif scheme is None:
-                issues.append(Issue(
-                    SEV_WARN, "raw-origin", raw,
-                    f"`source_url:` is a bare path, not a remote URL — use a "
-                    f"repo-relative `source_path:` for an in-repo file, or drop the "
-                    f"field and excerpt an out-of-repo local file into the body: "
-                    f"{url}",
+                    f"`source_url:` is {kind} — use a `source_path:` for an in-repo "
+                    f"file (a path resolved from the wiki root, reaching an in-repo "
+                    f"target outside the wiki dir via `../` when needed), or drop "
+                    f"the field and excerpt an out-of-repo local file into the "
+                    f"body: {target}",
                 ))
 
         if has_path:
@@ -1269,8 +1281,8 @@ def check_raw_origin_form(wiki: Path) -> list[Issue]:
             if scheme is not None and scheme != "file":
                 issues.append(Issue(
                     SEV_WARN, "raw-origin", raw,
-                    f"`source_path:` holds a remote URL where a repo-relative path "
-                    f"belongs — put an externally-published source's URL in "
+                    f"`source_path:` holds a remote URL where a wiki-root-relative "
+                    f"path belongs — put an externally-published source's URL in "
                     f"`source_url:` instead: {path}",
                 ))
     return issues
