@@ -1,6 +1,6 @@
 # Deployment Script
 
-`deployment/deployment.sh` deploys repo artifacts into config directories for VS Code GitHub Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, and Google Antigravity. It can deploy to global config dirs or into a single project directory.
+`deployment/deployment.sh` deploys repo artifacts into config directories for VS Code GitHub Copilot, Cursor, Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity, and OpenCode. It can deploy to global config dirs or into a single project directory.
 
 It autodiscovers artifacts by plugin layout, backs up only the selected targets (global mode only), records deployed paths in `deployment/deployed_artefacts.log`, and can uninstall previously deployed artifacts from that log.
 
@@ -25,7 +25,7 @@ Run with no arguments to see help. Pass `--global` to deploy globally, or `--pro
 | `--global` | Deploy into global config dirs (`~/.cursor`, `~/.claude`, …). Mutually exclusive with `--project-dir`. |
 | `--project-dir DIR` | Deploy into a project directory's local config (`<DIR>/.cursor/`, `<DIR>/.claude/`, …). Backups are disabled in this mode. |
 | `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`. Requires `--global` or `--project-dir` unless used with `--uninstall`. |
-| `--target TARGETS` | Comma-separated target filter: `vscode`, `cursor`, `claude`, `codex`, `gemini`, `antigravity`. |
+| `--target TARGETS` | Comma-separated target filter: `vscode`, `cursor`, `claude`, `codex`, `gemini`, `antigravity`, `opencode`. |
 | `--uninstall` | Remove previously deployed artifacts that match the active filters. Can run without `--global` or `--project-dir`; backups still run first unless combined with no-scope `--clear-backups`. |
 | `--clear-backups` | Remove old managed backups for the selected targets before creating a fresh backup. Without `--global` or `--project-dir`, this clears matching global backups and exits before deploy. No effect in `--project-dir` mode. |
 | `--dry-run` | Preview backups, installs, and uninstall actions without writing changes. |
@@ -53,7 +53,7 @@ The script walks up from its own location until it finds a directory containing 
 `deployment/deployment.conf` controls what gets deployed where, in robots.txt-style sections:
 
 ```text
-#tool                     Section heading: vscode, cursor, claude, codex, gemini, antigravity
+#tool                     Section heading: vscode, cursor, claude, codex, gemini, antigravity, opencode
 disallow:path             Skip a path (relative to repo root) for this tool. Trailing slash matches a subtree. Glob patterns supported (* and **).
 replace:path VAR=value    Substitute $VAR$ in matching deployed copies.
 ```
@@ -72,8 +72,9 @@ The table below shows global-mode paths. Project-dir mode replaces `~` with `<pr
 | OpenAI Codex | `~/.codex/prompts/<name>.md` copied | `~/.codex/skills/<name>` copied (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | `hooks` key merged into `~/.codex/hooks.json` (from `codex-custom-deploy-hooks.json`); shell scripts copied to `~/.codex/hooks/<file>` |
 | Gemini CLI | `~/.gemini/commands/<name>.toml` generated from command source | `~/.gemini/skills/<name>` copied | `~/.gemini/agents/<name>.md` generated with Gemini's schema whitelist and tool-name mapping | not implemented |
 | Antigravity | `~/.gemini/antigravity/workflows/<name>.md` generated from command source | `~/.gemini/antigravity/skills/<name>` copied | not supported (skipped) | not implemented |
+| OpenCode | `~/.config/opencode/commands/<name>.md` copied | `~/.config/opencode/skills/<name>` copied | `~/.config/opencode/agents/<name>.md` generated with OpenCode frontmatter and permission mapping | not implemented |
 
-Project-dir mode skips Gemini and Antigravity (no documented project-level config convention) and warns if you request them via `--target`.
+Project-dir mode uses each tool's project path, including `<project>/.opencode/` for OpenCode. It skips Gemini and Antigravity (no documented project-level config convention) and warns if you request them via `--target`.
 
 ## Generated Formats
 
@@ -87,6 +88,7 @@ Several targets do not consume the repo source files directly:
 | agent (`agents/*.md`) | VS Code, Cursor, Claude | frontmatter rewritten — vendor-prefixed fields (`CLAUDE_model:`, `CURSOR_model:`, …) are kept and stripped of prefix for the matching target; fields prefixed for other tools are dropped |
 | agent (`agents/*.md`) | Gemini CLI | generated copy for Gemini's strict frontmatter schema: after vendor-prefix rewriting, only Gemini's allowed keys survive (`kind`, `name`, `description`, `display_name`, `tools`, `mcp_servers`, `model`, `temperature`, `max_turns`, `timeout_mins`); a Claude-style `tools:` string is mapped to Gemini slugs as a YAML array (`Read`→`read_file`, `Grep`→`grep_search`, `Glob`→`glob`, `Bash`→`run_shell_command`, …) with the field dropped on any unmappable name; `model: inherit` is dropped; an explicit `GEMINI_tools:` array wins over the mapped value; every other field is dropped so the agent passes Gemini's validation |
 | agent (`agents/*.md`) | OpenAI Codex | `.toml` mapping frontmatter `name`, `description`, `model`, `model_reasoning_effort`, and `readonly` (`readonly: true` becomes `sandbox_mode = "read-only"`); `model: inherit` is dropped so Codex inherits the parent/default model by omission; body becomes `developer_instructions` |
+| agent (`agents/*.md`) | OpenCode | generated markdown with only OpenCode schema keys: `mode: subagent`, `description`, concrete `model` values, `temperature`, and `permission`; `model: inherit` is dropped for session inheritance, `readonly: true` maps to `permission: { edit: deny }` plus `bash: deny` unless the source allowlist includes `Bash`, and source-only keys such as `name`, `version`, `background`, `effort`, and `model_reasoning_effort` are omitted so they are not passed to the provider as model options |
 | hook (`hooks/claude-code-hooks*.json`) | Claude Code | `.hooks` key merged into `~/.claude/settings.json`; relative `./hooks/` command paths are rewritten to absolute (global) or `.claude/hooks/` (project-dir) so the config stays portable |
 | hook (`hooks/codex-custom-deploy-hooks.json`) | OpenAI Codex | `hooks` key merged into `~/.codex/hooks.json`; relative `./hooks/` command paths are rewritten to absolute (global) or `.codex/hooks/` (project-dir) so the config stays portable |
 | hook (`hooks/cursor-hooks*.json`) | Cursor | copied to `~/.cursor/hooks.json` |
@@ -105,8 +107,9 @@ Before deploy, and before uninstall outside project-dir mode, the script backs u
 - `codex` backs up `~/.codex`
 - `gemini` backs up `~/.gemini`
 - `antigravity` also backs up `~/.gemini` (Antigravity lives inside that tree)
+- `opencode` backs up `~/.config/opencode`
 
-Backups land in `$HOME` as `<name>_YYYYMMDD_HHMMSS`, e.g. `~/.cursor_YYYYMMDD_HHMMSS`, `~/.claude_YYYYMMDD_HHMMSS`. `<name>` defaults to the basename of the target directory; it is overridden when the basename isn't tool-distinctive — currently the VS Code user-prompts dir on macOS (`~/Library/Application Support/Code/User/prompts`) backs up to `~/.vscode-prompts_YYYYMMDD_HHMMSS` rather than the misleading `~/prompts_YYYYMMDD_HHMMSS`. If a selected target dir does not exist yet, the script skips that backup. `--project-dir` mode skips backups entirely.
+Backups land in `$HOME` as `<name>_YYYYMMDD_HHMMSS`, e.g. `~/.cursor_YYYYMMDD_HHMMSS`, `~/.claude_YYYYMMDD_HHMMSS`. `<name>` defaults to the basename of the target directory; it is overridden when the basename isn't tool-distinctive: the VS Code user-prompts dir on macOS (`~/Library/Application Support/Code/User/prompts`) backs up to `~/.vscode-prompts_YYYYMMDD_HHMMSS` rather than the misleading `~/prompts_YYYYMMDD_HHMMSS`, and OpenCode's `~/.config/opencode` backs up to `~/.opencode-config_YYYYMMDD_HHMMSS`. If a selected target dir does not exist yet, the script skips that backup. `--project-dir` mode skips backups entirely.
 
 `--clear-backups` removes only backups that match the script's managed naming scheme before creating the fresh backup for that target. When run without a deployment scope, it is a cleanup-only operation: `--target` narrows the global target roots, `--dry-run` previews removals, and the script exits without creating backups or deploying.
 

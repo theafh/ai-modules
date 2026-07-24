@@ -2,8 +2,8 @@
 description: Copy every skill and command on deploy instead of symlinking the unaltered ones, and delete the now-dead symlink-creation path so no symlinks land in the target config dirs.
 scope: deployment
 created: 2026-07-21T12:52:26
-updated: 2026-07-21T14:42:44
-status: audited
+updated: 2026-07-24T22:34:34
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 ---

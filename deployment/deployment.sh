@@ -4,7 +4,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # deployment.sh — deploy repo artifacts into global config dirs
 #                 for VS Code GitHub Copilot, Cursor, Claude Code,
-#                 OpenAI Codex, Gemini CLI, and Google Antigravity
+#                 OpenAI Codex, Gemini CLI, Google Antigravity, and OpenCode
 #
 # Discovery is plugin- and folder-based: artifacts live under
 # plugins/<plugin>/<asset-folder>/ where the asset-folder name determines
@@ -20,7 +20,7 @@ set -euo pipefail
 # Features:
 #   --global         Deploy into global config dirs (explicit mode)
 #   --type TYPES     Filter by artifact type (command,skill,agent,hook)
-#   --target TARGETS Filter by deploy target (vscode,claude,cursor,codex,gemini,antigravity)
+#   --target TARGETS Filter by deploy target (vscode,claude,cursor,codex,gemini,antigravity,opencode)
 #   --project-dir D  Deploy into a project directory instead of global config dirs
 #   --dry-run        Preview changes without applying them
 #   --uninstall      Remove previously deployed artifacts from deployed_artefacts.log
@@ -29,9 +29,8 @@ set -euo pipefail
 #   Backs up only activated targets (disabled in project-dir mode).
 #   Backups land in $HOME as <name>_<timestamp>, where <name> defaults to
 #   basename(target_dir). The caller can override <name> when the basename
-#   isn't tool-distinctive — e.g. VS Code's user-prompts dir on macOS is
-#   ~/Library/.../prompts, whose basename "prompts" would otherwise produce
-#   a confusing ~/prompts_<timestamp> backup that looks unrelated to VS Code.
+#   isn't tool-distinctive — e.g. VS Code's user-prompts dir on macOS and
+#   OpenCode's ~/.config/opencode config dir both have generic basenames.
 #
 # Usage:
 #   ./deployment.sh                              # show usage and examples
@@ -74,7 +73,7 @@ Options:
                     behavior of running the script with no arguments.
   --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook.
                     Requires --global or --project-dir unless used with --uninstall.
-  --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,gemini,antigravity
+  --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,gemini,antigravity,opencode
   --project-dir DIR Deploy into a project directory instead of global config dirs.
                     Backups are disabled in this mode.
   --uninstall       Uninstall mode; remove matching logged deployed artifacts after backup.
@@ -210,6 +209,7 @@ if [[ -n "$PROJECT_DIR" ]]; then
   CODEX_SKILLS_DIR="${PROJECT_DIR}/.agents/skills"
   VSCODE_COPILOT_DIR="${PROJECT_DIR}/.github"
   VSCODE_PROMPTS_DIR="${PROJECT_DIR}/.github/prompts"
+  OPENCODE_DIR="${PROJECT_DIR}/.opencode"
   # Gemini and Antigravity have no documented project-level config convention.
   # Set to empty so the filter logic can skip them with a warning.
   GEMINI_DIR=""
@@ -220,6 +220,7 @@ else
   CODEX_DIR="${HOME_DIR}/.codex"
   CODEX_SKILLS_DIR=""
   VSCODE_COPILOT_DIR="${HOME_DIR}/.copilot"
+  OPENCODE_DIR="${HOME_DIR}/.config/opencode"
   GEMINI_DIR="${HOME_DIR}/.gemini"
   ANTIGRAVITY_DIR="${HOME_DIR}/.gemini/antigravity"
   if [[ "$OSTYPE" == darwin* ]]; then
@@ -468,7 +469,7 @@ get_matching_replacements() {
 # Validate flags
 # ---------------------------------------------------------------------------
 VALID_TYPES="command,skill,agent,hook"
-VALID_TARGETS="vscode,claude,cursor,codex,gemini,antigravity"
+VALID_TARGETS="vscode,claude,cursor,codex,gemini,antigravity,opencode"
 
 if [[ -n "$TYPE_FILTER" ]]; then
   IFS=',' read -ra _type_items <<< "$TYPE_FILTER"
@@ -526,6 +527,7 @@ ALL_APP_TARGETS=(
   "codex|OpenAI Codex|${CODEX_DIR}"
   "gemini|Gemini CLI|${GEMINI_DIR}"
   "antigravity|Antigravity|${ANTIGRAVITY_DIR}"
+  "opencode|OpenCode|${OPENCODE_DIR}"
 )
 
 # Build filtered target list. In project-dir mode, skip Gemini and
@@ -1319,6 +1321,107 @@ generate_gemini_agent() {
 }
 
 # ---------------------------------------------------------------------------
+# Generate an OpenCode agent from a vendor-rewritten .md agent
+#
+# OpenCode passes unrecognized frontmatter options through to the provider as
+# model options (opencode.ai/docs/agents, verified July 2026), so this bridge
+# emits only OpenCode schema keys and drops repo-maintenance fields such as
+# version, background, effort, model_reasoning_effort, and name.
+# ---------------------------------------------------------------------------
+generate_opencode_agent() {
+  local source="$1" dest="$2" target_id="$3" artifact_type="$4"
+
+  if [[ ! -f "$source" ]]; then
+    err "missing" "source not found: $source"
+    return 1
+  fi
+
+  # Resolve vendor prefixes first (quiet mode always writes the temp file).
+  local tmp_rewritten
+  tmp_rewritten="$(mktemp)"
+  rewrite_agent_frontmatter "$source" "$tmp_rewritten" "$target_id" true
+
+  local in_frontmatter=false frontmatter_done=false in_body=false
+  local skip_block=false body="" line key value
+  local description="" model="" temperature="" readonly="" tools=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if ! $frontmatter_done && [[ "$line" == "---" ]]; then
+      if $in_frontmatter; then
+        in_frontmatter=false
+        frontmatter_done=true
+      else
+        in_frontmatter=true
+      fi
+      continue
+    fi
+
+    if $in_frontmatter; then
+      if $skip_block; then
+        if [[ -z "$line" || "$line" == [[:space:]]* ]]; then
+          continue
+        fi
+        skip_block=false
+      fi
+
+      if [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*(.*)$ ]]; then
+        key="${BASH_REMATCH[1]}"
+        value="${BASH_REMATCH[2]}"
+        case "$key" in
+          description) [[ -z "$description" ]] && description="$value" ;;
+          model) [[ -z "$model" ]] && model="$value" ;;
+          temperature) [[ -z "$temperature" ]] && temperature="$value" ;;
+          readonly) [[ -z "$readonly" ]] && readonly="$value" ;;
+          tools) [[ -z "$tools" ]] && tools="$value" ;;
+        esac
+        skip_block=true
+      fi
+      continue
+    fi
+
+    if $frontmatter_done; then
+      if ! $in_body && [[ -z "$line" ]]; then continue; fi
+      in_body=true
+      body+="${line}"$'\n'
+    fi
+  done < "$tmp_rewritten"
+
+  rm -f "$tmp_rewritten"
+  body="${body%$'\n'}"
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    info "would-gen" "$dest (opencode agent)"
+    return 0
+  fi
+
+  if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
+
+  {
+    printf '%s\n' '---'
+    printf '%s\n' 'mode: subagent'
+    [[ -n "$description" ]] && printf 'description: %s\n' "$description"
+    if [[ -n "$model" ]] && ! is_model_inherit_value "$model"; then
+      printf 'model: %s\n' "$model"
+    fi
+    [[ -n "$temperature" ]] && printf 'temperature: %s\n' "$temperature"
+    if [[ "$readonly" == "true" ]]; then
+      if [[ ",${tools// /}," == *",Bash,"* ]]; then
+        printf '%s\n' 'permission: { edit: deny }'
+      else
+        printf '%s\n' 'permission: { edit: deny, bash: deny }'
+      fi
+    fi
+    printf '%s\n\n' '---'
+    printf '%s\n' "$body"
+  } > "$dest"
+
+  ok "generated" "$dest (opencode agent)"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+  append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
+}
+
+# ---------------------------------------------------------------------------
 # Install a single artifact into one app target
 # ---------------------------------------------------------------------------
 install_for_app() {
@@ -1408,6 +1511,13 @@ install_for_app() {
           ensure_dir "$dest_dir"
           local dest_path="${dest_dir}/${name}.toml"
           generate_toml_agent "$source_abs" "$dest_path" "$app_id" "$type"
+          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
+          ;;
+        opencode)
+          local dest_dir="${app_dir}/agents"
+          ensure_dir "$dest_dir"
+          local dest_path="${dest_dir}/${name}.md"
+          generate_opencode_agent "$source_abs" "$dest_path" "$app_id" "$type"
           maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
           ;;
         antigravity)
@@ -1601,6 +1711,8 @@ clear_backups_for_active_targets() {
     local backup_roots=("$base_dir|")
     if [[ "$app_id" == "antigravity" ]]; then
       backup_roots=("${GEMINI_DIR}|")
+    elif [[ "$app_id" == "opencode" ]]; then
+      backup_roots=("${OPENCODE_DIR}|.opencode-config")
     elif [[ "$app_id" == "vscode" ]]; then
       backup_roots=("${VSCODE_COPILOT_DIR}|" "${VSCODE_PROMPTS_DIR}|.vscode-prompts")
     fi
@@ -1811,6 +1923,8 @@ else
     backup_roots=("$base_dir|")
     if [[ "$app_id" == "antigravity" ]]; then
       backup_roots=("${GEMINI_DIR}|")
+    elif [[ "$app_id" == "opencode" ]]; then
+      backup_roots=("${OPENCODE_DIR}|.opencode-config")
     elif [[ "$app_id" == "vscode" ]]; then
       backup_roots=("${VSCODE_COPILOT_DIR}|" "${VSCODE_PROMPTS_DIR}|.vscode-prompts")
     fi

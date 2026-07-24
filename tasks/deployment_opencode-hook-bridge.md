@@ -17,7 +17,7 @@ The user-visible outcome is that on OpenCode, an attempt to mutate CHARTER.md th
 
 ## Context
 
-This task builds on the `opencode` deploy target created by [deployment_opencode-target.md](deployment_opencode-target.md): it consumes that target's `OPENCODE_DIR`, its `opencode` entry in `VALID_TARGETS`/`ALL_APP_TARGETS`, and the `opencode` arms already added to `install_for_app()`. It must follow that task.
+This task builds on the `opencode` deploy target created by [deployment_opencode-target.md](archive/deployment_opencode-target.md): it consumes that target's `OPENCODE_DIR`, its `opencode` entry in `VALID_TARGETS`/`ALL_APP_TARGETS`, and the `opencode` arms already added to `install_for_app()`. It must follow that task.
 
 **Why OpenCode needs a different mechanism.** The script deploys hooks to the other harnesses declaratively: the `claude` arm of the `hook)` case in `install_for_app()` merges the `hooks` key from a `claude-code-hooks*.json` config into `~/.claude/settings.json` (rewriting relative `./hooks/` command paths to absolute), the `codex` arm merges into `~/.codex/hooks.json`, and the `cursor` arm copies a `cursor-hooks*.json`; all three then copy the `.sh` into the tool's `hooks/` dir. OpenCode has **no equivalent** — no `settings.json` hooks key and no `hooks.json`. Its hooks are code: a plugin, loaded from `~/.config/opencode/plugins/` (or project `.opencode/plugins/`) at startup and executed by OpenCode's embedded Bun runtime, so a local `.ts` file needs no npm publish and no build step. This is confirmed by OpenCode's official plugin and permissions docs (opencode.ai/docs/plugins, /permissions); the `harness_portability` skill carries the general knowledge as background.
 
@@ -45,7 +45,7 @@ Document the OpenCode hook mechanism in `deployment/README.md` as its own row di
 
 - This task adds no new guardrail policy and does not modify `charter_guardrail.sh`'s logic; it reuses the script as-is and only bridges it.
 - It does not attempt to close the subagent-bypass gap (OpenCode issue #5894) or work around the inert `permission.ask` hook (issue #7006); both are documented as accepted limitations.
-- The `opencode` target infrastructure (target dirs, `VALID_TARGETS`, file-artefact arms) is owned by [deployment_opencode-target.md](deployment_opencode-target.md).
+- The `opencode` target infrastructure (target dirs, `VALID_TARGETS`, file-artefact arms) is owned by [deployment_opencode-target.md](archive/deployment_opencode-target.md).
 
 ## Acceptance
 

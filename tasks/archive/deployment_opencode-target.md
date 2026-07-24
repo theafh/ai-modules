@@ -2,9 +2,10 @@
 description: Add an `opencode` deploy target to deployment.sh so skills, agents, and commands copy into OpenCode's own config dirs, with an agent-frontmatter transform for OpenCode's schema.
 scope: deployment
 created: 2026-07-23T19:48:14
-updated: 2026-07-24T19:55:21
-status: ready
+updated: 2026-07-24T20:17:49
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Add an OpenCode deploy target for skills, agents, and commands
