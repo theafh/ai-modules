@@ -4,7 +4,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # deployment.sh — deploy repo artifacts into global config dirs
 #                 for VS Code GitHub Copilot, Cursor, Claude Code,
-#                 OpenAI Codex, Gemini CLI, Google Antigravity, and OpenCode
+#                 OpenAI Codex, Google Antigravity, and OpenCode
 #
 # Discovery is plugin- and folder-based: artifacts live under
 # plugins/<plugin>/<asset-folder>/ where the asset-folder name determines
@@ -20,7 +20,7 @@ set -euo pipefail
 # Features:
 #   --global         Deploy into global config dirs (explicit mode)
 #   --type TYPES     Filter by artifact type (command,skill,agent,hook)
-#   --target TARGETS Filter by deploy target (vscode,claude,cursor,codex,gemini,antigravity,opencode)
+#   --target TARGETS Filter by deploy target (vscode,claude,cursor,codex,antigravity,opencode)
 #   --project-dir D  Deploy into a project directory instead of global config dirs
 #   --dry-run        Preview changes without applying them
 #   --uninstall      Remove previously deployed artifacts from deployed_artefacts.log
@@ -73,7 +73,7 @@ Options:
                     behavior of running the script with no arguments.
   --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook.
                     Requires --global or --project-dir unless used with --uninstall.
-  --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,gemini,antigravity,opencode
+  --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,antigravity,opencode
   --project-dir DIR Deploy into a project directory instead of global config dirs.
                     Backups are disabled in this mode.
   --uninstall       Uninstall mode; remove matching logged deployed artifacts after backup.
@@ -210,10 +210,9 @@ if [[ -n "$PROJECT_DIR" ]]; then
   VSCODE_COPILOT_DIR="${PROJECT_DIR}/.github"
   VSCODE_PROMPTS_DIR="${PROJECT_DIR}/.github/prompts"
   OPENCODE_DIR="${PROJECT_DIR}/.opencode"
-  # Gemini and Antigravity have no documented project-level config convention.
-  # Set to empty so the filter logic can skip them with a warning.
-  GEMINI_DIR=""
-  ANTIGRAVITY_DIR=""
+  # Antigravity's native project-level convention is the workspace .agents/ tree.
+  ANTIGRAVITY_TREE_DIR="${PROJECT_DIR}/.agents"
+  ANTIGRAVITY_DIR="${PROJECT_DIR}/.agents"
 else
   CLAUDE_DIR="${HOME_DIR}/.claude"
   CURSOR_DIR="${HOME_DIR}/.cursor"
@@ -221,8 +220,8 @@ else
   CODEX_SKILLS_DIR=""
   VSCODE_COPILOT_DIR="${HOME_DIR}/.copilot"
   OPENCODE_DIR="${HOME_DIR}/.config/opencode"
-  GEMINI_DIR="${HOME_DIR}/.gemini"
-  ANTIGRAVITY_DIR="${HOME_DIR}/.gemini/antigravity"
+  ANTIGRAVITY_TREE_DIR="${HOME_DIR}/.gemini"
+  ANTIGRAVITY_DIR="${ANTIGRAVITY_TREE_DIR}/config"
   if [[ "$OSTYPE" == darwin* ]]; then
     VSCODE_PROMPTS_DIR="${HOME_DIR}/Library/Application Support/Code/User/prompts"
   elif [[ "$OSTYPE" == linux* ]]; then
@@ -239,7 +238,7 @@ fi
 # the marker-delimited block into each instruction file.
 # CLAUDE_MD="${CLAUDE_DIR}/CLAUDE.md"
 # AGENTS_MD="${CODEX_DIR}/AGENTS.md"
-# GEMINI_MD="${GEMINI_DIR}/GEMINI.md"
+# ANTIGRAVITY_RULES_MD="${ANTIGRAVITY_TREE_DIR}/GEMINI.md"
 # MARKER_BEGIN="<!-- BEGIN GLOBAL RULES -->"
 # MARKER_END="<!-- END GLOBAL RULES -->"
 DEPLOYED_ARTIFACTS_LOG="${SCRIPT_DIR}/deployed_artefacts.log"
@@ -469,7 +468,7 @@ get_matching_replacements() {
 # Validate flags
 # ---------------------------------------------------------------------------
 VALID_TYPES="command,skill,agent,hook"
-VALID_TARGETS="vscode,claude,cursor,codex,gemini,antigravity,opencode"
+VALID_TARGETS="vscode,claude,cursor,codex,antigravity,opencode"
 
 if [[ -n "$TYPE_FILTER" ]]; then
   IFS=',' read -ra _type_items <<< "$TYPE_FILTER"
@@ -487,6 +486,10 @@ if [[ -n "$TARGET_FILTER" ]]; then
   IFS=',' read -ra _target_items <<< "$TARGET_FILTER"
   for _tgt in "${_target_items[@]}"; do
     _tgt="${_tgt// /}"
+    if [[ "$_tgt" == "gemini" ]]; then
+      err "abort" "Gemini CLI support is retired because Google is removing that app and porting it to Antigravity; use --target antigravity instead."
+      exit 1
+    fi
     if ! matches_filter "$_tgt" "$VALID_TARGETS"; then
       err "abort" "Unknown deploy target '${_tgt}' in --target (valid: ${VALID_TARGETS})"
       exit 1
@@ -525,14 +528,12 @@ ALL_APP_TARGETS=(
   "cursor|Cursor|${CURSOR_DIR}"
   "claude|Claude Code|${CLAUDE_DIR}"
   "codex|OpenAI Codex|${CODEX_DIR}"
-  "gemini|Gemini CLI|${GEMINI_DIR}"
   "antigravity|Antigravity|${ANTIGRAVITY_DIR}"
   "opencode|OpenCode|${OPENCODE_DIR}"
 )
 
-# Build filtered target list. In project-dir mode, skip Gemini and
-# Antigravity (no documented project-level config convention) and warn
-# if the user explicitly requested them.
+# Build filtered target list. In project-dir mode, every remaining target has
+# a configured project-level path; an empty path is a configuration error.
 APP_TARGETS=()
 for target in "${ALL_APP_TARGETS[@]}"; do
   IFS='|' read -r app_id app_label _dir <<< "$target"
@@ -552,6 +553,19 @@ if [[ ${#APP_TARGETS[@]} -eq 0 ]]; then
 fi
 
 logged_path_matches_active_targets() {
+  local target_id="$1"
+  local target
+
+  for target in "${APP_TARGETS[@]}"; do
+    local active_target_id _label _base_dir
+    IFS='|' read -r active_target_id _label _base_dir <<< "$target"
+    [[ "$active_target_id" == "$target_id" ]] && return 0
+  done
+
+  return 1
+}
+
+target_is_active() {
   local target_id="$1"
   local target
 
@@ -826,109 +840,6 @@ strip_json_key() {
 }
 
 # ---------------------------------------------------------------------------
-# Generate a .toml command for Gemini CLI from a .md source
-# ---------------------------------------------------------------------------
-generate_toml_command() {
-  local source="$1"
-  local dest="$2"
-  local target_id="$3"
-  local artifact_type="$4"
-
-  if [[ ! -f "$source" ]]; then
-    err "missing" "source not found: $source"
-    return 1
-  fi
-
-  local description=""
-  local prompt=""
-  local in_body=false
-
-  while IFS= read -r line; do
-    if [[ -z "$description" && "$line" =~ ^#[[:space:]]+(.*) ]]; then
-      description="${BASH_REMATCH[1]}"
-      continue
-    fi
-    if [[ -z "$description" ]]; then continue; fi
-    if ! $in_body && [[ -z "$line" ]]; then continue; fi
-    in_body=true
-    prompt+="${line}"$'\n'
-  done < "$source"
-
-  prompt="${prompt%$'\n'}"
-
-  if $DRY_RUN; then
-    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-    info "would-gen" "$dest (.toml)"
-    return 0
-  fi
-
-  if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
-
-  cat > "$dest" <<TOML
-description = "${description//\"/\\\"}"
-prompt = """
-${prompt}
-"""
-TOML
-
-  ok "generated" "$dest (.toml)"
-  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-  append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
-}
-
-# ---------------------------------------------------------------------------
-# Generate a .md workflow for Antigravity from a .md command source
-# ---------------------------------------------------------------------------
-generate_antigravity_workflow() {
-  local source="$1"
-  local dest="$2"
-  local target_id="$3"
-  local artifact_type="$4"
-
-  if [[ ! -f "$source" ]]; then
-    err "missing" "source not found: $source"
-    return 1
-  fi
-
-  local description=""
-  local body=""
-  local in_body=false
-
-  while IFS= read -r line; do
-    if [[ -z "$description" && "$line" =~ ^#[[:space:]]+(.*) ]]; then
-      description="${BASH_REMATCH[1]}"
-      continue
-    fi
-    if [[ -z "$description" ]]; then continue; fi
-    if ! $in_body && [[ -z "$line" ]]; then continue; fi
-    in_body=true
-    body+="${line}"$'\n'
-  done < "$source"
-
-  body="${body%$'\n'}"
-
-  if $DRY_RUN; then
-    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-    info "would-gen" "$dest (.md workflow)"
-    return 0
-  fi
-
-  if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
-
-  cat > "$dest" <<WORKFLOW
----
-description: ${description}
----
-
-${body}
-WORKFLOW
-
-  ok "generated" "$dest (.md workflow)"
-  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-  append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
-}
-
-# ---------------------------------------------------------------------------
 # Rewrite agent frontmatter for a specific target tool.
 #
 # Source .md files may contain vendor-prefixed frontmatter fields:
@@ -1139,32 +1050,23 @@ generate_toml_agent() {
 }
 
 # ---------------------------------------------------------------------------
-# Generate a Gemini CLI agent from a vendor-rewritten .md agent
+# Generate an Antigravity agent from a vendor-rewritten .md agent.
 #
-# Gemini validates agent frontmatter against a strict schema: one unknown key
-# fails validation and the agent silently stays unloaded. This generator
-# keeps only the keys Gemini accepts, maps Claude-style tool names in
-# `tools:` to Gemini slugs emitted as a YAML array, and drops every other
-# header. GEMINI_-prefixed source fields are honored first through
-# rewrite_agent_frontmatter, so an explicit GEMINI_ override still wins.
+# Antigravity uses markdown agents with its own frontmatter schema and native
+# tool vocabulary. Emit only documented Antigravity keys so source-maintenance
+# keys never become runtime options on a loader whose unknown-field tolerance is
+# still unverified.
 # ---------------------------------------------------------------------------
-GEMINI_AGENT_ALLOWED_KEYS=(kind name description display_name tools mcp_servers model temperature max_turns timeout_mins)
-
-map_gemini_tool_name() {
+map_antigravity_tool_name() {
   case "$1" in
-    Read)      printf 'read_file' ;;
+    Read)      printf 'view_file' ;;
     Grep)      printf 'grep_search' ;;
-    Glob)      printf 'glob' ;;
-    Bash)      printf 'run_shell_command' ;;
-    Edit)      printf 'replace' ;;
-    Write)     printf 'write_file' ;;
-    WebFetch)  printf 'web_fetch' ;;
-    WebSearch) printf 'google_web_search' ;;
+    Bash)      printf 'run_command' ;;
     *) return 1 ;;
   esac
 }
 
-generate_gemini_agent() {
+generate_antigravity_agent() {
   local source="$1" dest="$2" target_id="$3" artifact_type="$4"
 
   if [[ ! -f "$source" ]]; then
@@ -1177,21 +1079,18 @@ generate_gemini_agent() {
   tmp_rewritten="$(mktemp)"
   rewrite_agent_frontmatter "$source" "$tmp_rewritten" "$target_id" true
 
-  local in_frontmatter=false frontmatter_done=false skip_block=false
-  local output="" line key value
-  local seen_emitted=" " tools_line="" tools_explicit=false
+  local in_frontmatter=false frontmatter_done=false in_body=false skip_block=false
+  local line key value body=""
+  local name="" description="" model="" readonly="" tools=""
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     if ! $frontmatter_done && [[ "$line" == "---" ]]; then
       if $in_frontmatter; then
-        # Flush the buffered tools decision before closing the frontmatter
-        [[ -n "$tools_line" ]] && output+="${tools_line}"$'\n'
         in_frontmatter=false
         frontmatter_done=true
       else
         in_frontmatter=true
       fi
-      output+="---"$'\n'
       continue
     fi
 
@@ -1206,116 +1105,76 @@ generate_gemini_agent() {
       if [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*(.*)$ ]]; then
         key="${BASH_REMATCH[1]}"
         value="${BASH_REMATCH[2]}"
-
-        local allowed=false k
-        for k in "${GEMINI_AGENT_ALLOWED_KEYS[@]}"; do
-          if [[ "$key" == "$k" ]]; then
-            allowed=true
-            break
-          fi
-        done
-        if ! $allowed; then
-          skip_block=true
-          continue
-        fi
-
         case "$key" in
-          model)
-            # `inherit` is a Claude/Cursor value; Gemini falls back to the
-            # session default when the key is absent. Emitting nothing also
-            # leaves room for a later explicit GEMINI_model value.
-            if [[ "$value" == "inherit" ]]; then
-              skip_block=true
-              continue
-            fi
-            if [[ "$seen_emitted" == *" ${key} "* ]]; then
-              warn "gemini-agent" "dropped duplicate '${key}' for ${dest##*/}"
-              skip_block=true
-              continue
-            fi
-            seen_emitted+="${key} "
-            output+="${line}"$'\n'
-            ;;
-          tools)
-            # An array value is Gemini-native (e.g. from a GEMINI_tools
-            # override) and wins over a mapped generic value in any order.
-            if [[ "$value" == \[* ]]; then
-              if $tools_explicit; then
-                warn "gemini-agent" "dropped duplicate tools array for ${dest##*/}"
-              else
-                tools_line="${line}"
-                tools_explicit=true
-              fi
-              skip_block=true
-              continue
-            fi
-            if $tools_explicit; then
-              skip_block=true
-              continue
-            fi
-            if [[ -n "$tools_line" ]]; then
-              warn "gemini-agent" "dropped duplicate tools for ${dest##*/}"
-              skip_block=true
-              continue
-            fi
-            # Map a Claude-style comma-separated string to Gemini slugs.
-            local mapped=() raw_tools=() tool slug all_mapped=true
-            IFS=',' read -ra raw_tools <<< "$value"
-            for tool in "${raw_tools[@]}"; do
-              tool="${tool#"${tool%%[![:space:]]*}"}"
-              tool="${tool%"${tool##*[![:space:]]}"}"
-              [[ -z "$tool" ]] && continue
-              if slug="$(map_gemini_tool_name "$tool")"; then
-                mapped+=("$slug")
-              else
-                all_mapped=false
-                warn "gemini-agent" "dropped tools for ${dest##*/}: no Gemini mapping for '${tool}'"
-                break
-              fi
-            done
-            if $all_mapped && [[ ${#mapped[@]} -gt 0 ]]; then
-              local joined
-              joined="$(printf '%s, ' "${mapped[@]}")"
-              tools_line="tools: [${joined%, }]"
-            elif $all_mapped; then
-              warn "gemini-agent" "dropped empty tools for ${dest##*/}"
-            fi
-            skip_block=true
-            ;;
-          *)
-            if [[ "$seen_emitted" == *" ${key} "* ]]; then
-              warn "gemini-agent" "dropped duplicate '${key}' for ${dest##*/}"
-              skip_block=true
-              continue
-            fi
-            seen_emitted+="${key} "
-            output+="${line}"$'\n'
-            ;;
+          name) [[ -z "$name" ]] && name="$value" ;;
+          description) [[ -z "$description" ]] && description="$value" ;;
+          model) [[ -z "$model" ]] && model="$value" ;;
+          readonly) [[ -z "$readonly" ]] && readonly="$value" ;;
+          tools) [[ -z "$tools" ]] && tools="$value" ;;
         esac
+        skip_block=true
         continue
       fi
 
-      # Continuation line of a kept key — keep as-is
-      output+="${line}"$'\n'
       continue
     fi
 
-    # Body — pass through unchanged
-    output+="${line}"$'\n'
+    if $frontmatter_done; then
+      if ! $in_body && [[ -z "$line" ]]; then continue; fi
+      in_body=true
+      body+="${line}"$'\n'
+    fi
   done < "$tmp_rewritten"
 
   rm -f "$tmp_rewritten"
+  body="${body%$'\n'}"
+
+  local mapped_tools=() raw_tools=() tool slug
+  if [[ -n "$tools" ]]; then
+    IFS=',' read -ra raw_tools <<< "$tools"
+    for tool in "${raw_tools[@]}"; do
+      tool="${tool#"${tool%%[![:space:]]*}"}"
+      tool="${tool%"${tool##*[![:space:]]}"}"
+      [[ -z "$tool" ]] && continue
+      if slug="$(map_antigravity_tool_name "$tool")"; then
+        mapped_tools+=("$slug")
+      else
+        warn "antigravity-agent" "dropped tool for ${dest##*/}: no Antigravity mapping for '${tool}'"
+      fi
+    done
+  fi
 
   if $DRY_RUN; then
     SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-    info "would-gen" "$dest (gemini agent)"
+    info "would-gen" "$dest (antigravity agent)"
     return 0
   fi
 
   if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
 
-  printf '%s' "$output" > "$dest"
-  ok "generated" "$dest (gemini agent)"
+  {
+    printf '%s\n' '---'
+    [[ -n "$name" ]] && printf 'name: %s\n' "$name"
+    [[ -n "$description" ]] && printf 'description: %s\n' "$description"
+    if [[ ${#mapped_tools[@]} -gt 0 ]]; then
+      local joined
+      joined="$(printf '%s, ' "${mapped_tools[@]}")"
+      printf 'tools: [%s]\n' "${joined%, }"
+    fi
+    if [[ -n "$model" ]] && ! is_model_inherit_value "$model"; then
+      printf 'model: %s\n' "$model"
+    fi
+    if [[ "$readonly" == "true" && ",${tools// /}," != *",Bash,"* ]]; then
+      printf '%s\n' 'commandExecutionPolicy: off'
+    else
+      printf '%s\n' 'commandExecutionPolicy: sandbox'
+    fi
+    printf '%s\n' 'mainAgent: false'
+    printf '%s\n\n' '---'
+    printf '%s\n' "$body"
+  } > "$dest"
+
+  ok "generated" "$dest (antigravity agent)"
   SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
   append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
 }
@@ -1441,19 +1300,8 @@ install_for_app() {
           local dest_path="${VSCODE_PROMPTS_DIR}/${name}.prompt.md"
           copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
           ;;
-        gemini)
-          local dest_dir="${app_dir}/commands"
-          ensure_dir "$dest_dir"
-          local dest_path="${dest_dir}/${name}.toml"
-          generate_toml_command "$source_abs" "$dest_path" "$app_id" "$type"
-          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
-          ;;
         antigravity)
-          local dest_dir="${app_dir}/workflows"
-          ensure_dir "$dest_dir"
-          local dest_path="${dest_dir}/${name}.md"
-          generate_antigravity_workflow "$source_abs" "$dest_path" "$app_id" "$type"
-          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
+          info "skip" "[$name] Antigravity command workflow deployment is not supported"
           ;;
         codex)
           local dest_dir="${app_dir}/prompts"
@@ -1471,15 +1319,32 @@ install_for_app() {
       ;;
     skill)
       # Codex project-level skills go to .agents/skills/ not .codex/skills/
-      local dest_dir
+      local dest_dirs=()
+      local log_owner="$app_id"
       if [[ "$app_id" == "codex" && -n "$CODEX_SKILLS_DIR" ]]; then
-        dest_dir="$CODEX_SKILLS_DIR"
+        dest_dirs=("$CODEX_SKILLS_DIR")
+      elif [[ "$app_id" == "antigravity" && -n "$PROJECT_DIR" ]]; then
+        if target_is_active "codex"; then
+          info "skip" "[$name] shared .agents/skills tree owned by codex in project-dir mode"
+          return 0
+        fi
+        dest_dirs=("${ANTIGRAVITY_DIR}/skills")
+        log_owner="codex"
+      elif [[ "$app_id" == "antigravity" ]]; then
+        dest_dirs=(
+          "${ANTIGRAVITY_TREE_DIR}/config/skills"
+          "${ANTIGRAVITY_TREE_DIR}/antigravity/skills"
+          "${ANTIGRAVITY_TREE_DIR}/antigravity-cli/skills"
+        )
       else
-        dest_dir="${app_dir}/skills"
+        dest_dirs=("${app_dir}/skills")
       fi
-      ensure_dir "$dest_dir"
-      local dest_path="${dest_dir}/${name}"
-      copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
+      local dest_dir
+      for dest_dir in "${dest_dirs[@]}"; do
+        ensure_dir "$dest_dir"
+        local dest_path="${dest_dir}/${name}"
+        copy_path_with_replacements "$source_abs" "$dest_path" "$log_owner" "$type" "${replacement_specs[@]}"
+      done
       ;;
     agent)
       case "$app_id" in
@@ -1499,13 +1364,6 @@ install_for_app() {
           $DRY_RUN || append_deployed_artifact_log "$dest_path" "$app_id" "$type" "$source_abs"
           maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
           ;;
-        gemini)
-          local dest_dir="${app_dir}/agents"
-          ensure_dir "$dest_dir"
-          local dest_path="${dest_dir}/${name}.md"
-          generate_gemini_agent "$source_abs" "$dest_path" "$app_id" "$type"
-          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
-          ;;
         codex)
           local dest_dir="${app_dir}/agents"
           ensure_dir "$dest_dir"
@@ -1521,7 +1379,11 @@ install_for_app() {
           maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
           ;;
         antigravity)
-          info "skip" "[$name] Antigravity does not support agent definitions"
+          local dest_dir="${app_dir}/agents"
+          ensure_dir "$dest_dir"
+          local dest_path="${dest_dir}/${name}.md"
+          generate_antigravity_agent "$source_abs" "$dest_path" "$app_id" "$type"
+          maybe_apply_replacements "$dest_path" "${replacement_specs[@]}"
           ;;
       esac
       ;;
@@ -1608,6 +1470,34 @@ install_for_app() {
             fi
             local hooks_dir="${app_dir}/hooks"
             merge_json_key "$source_abs" "${app_dir}/hooks.json" "hooks" "$app_id" "$type" "$hooks_dir"
+          elif [[ "$src_ext" == "sh" ]]; then
+            local dest_dir="${app_dir}/hooks"
+            ensure_dir "$dest_dir"
+            local dest_file
+            dest_file="${dest_dir}/$(basename "$source_abs")"
+            if [[ ${#replacement_specs[@]} -gt 0 ]]; then
+              copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" "${replacement_specs[@]}"
+            else
+              copy_file "$source_abs" "$dest_file" "$app_id" "$type"
+            fi
+            if ! $DRY_RUN; then chmod +x "$dest_file"; fi
+          fi
+          ;;
+        antigravity)
+          if [[ "$src_ext" == "json" ]]; then
+            local source_file
+            source_file="$(basename "$source_abs")"
+            if [[ "$source_file" != "antigravity-hooks.json" ]]; then
+              info "skip" "[$name] not an Antigravity hook config"
+              return 0
+            fi
+            local hooks_dir
+            if [[ -n "$PROJECT_DIR" ]]; then
+              hooks_dir=".agents/hooks"
+            else
+              hooks_dir="${app_dir}/hooks"
+            fi
+            merge_json_key "$source_abs" "${app_dir}/hooks.json" "charter_guardrail" "$app_id" "$type" "$hooks_dir"
           elif [[ "$src_ext" == "sh" ]]; then
             local dest_dir="${app_dir}/hooks"
             ensure_dir "$dest_dir"
@@ -1710,7 +1600,7 @@ clear_backups_for_active_targets() {
     # isn't tool-distinctive — see the header comment for context.
     local backup_roots=("$base_dir|")
     if [[ "$app_id" == "antigravity" ]]; then
-      backup_roots=("${GEMINI_DIR}|")
+      backup_roots=("${ANTIGRAVITY_TREE_DIR}|")
     elif [[ "$app_id" == "opencode" ]]; then
       backup_roots=("${OPENCODE_DIR}|.opencode-config")
     elif [[ "$app_id" == "vscode" ]]; then
@@ -1922,7 +1812,7 @@ else
     # isn't tool-distinctive — see the header comment for context.
     backup_roots=("$base_dir|")
     if [[ "$app_id" == "antigravity" ]]; then
-      backup_roots=("${GEMINI_DIR}|")
+      backup_roots=("${ANTIGRAVITY_TREE_DIR}|")
     elif [[ "$app_id" == "opencode" ]]; then
       backup_roots=("${OPENCODE_DIR}|.opencode-config")
     elif [[ "$app_id" == "vscode" ]]; then

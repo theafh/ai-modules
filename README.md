@@ -14,7 +14,7 @@ Task does this for the work. Running a task through the skill-to-skill lifecycle
 
 **Wiki is a knowledge base an AI can build and navigate on its own.** It finds itself from the current directory and holds far more context than a chat window. The content is interlinked Markdown pages, grouped by type: entities, concepts, comparisons, procedures, and more. Each page is written once as sources arrive, not rebuilt on every query. The agent writes the wiki, and you read it back with the agent's help. Because of this, it surfaces contradictions instead of hiding them, and it gets reshaped over time so it stays usable instead of decaying into scattered notes. It stays reachable through ordinary tools. And because it lives in the repo, the context it gathers compounds as the project grows, which makes later work easier, for both knowledge and code.
 
-The mechanical parts of both (discovery, scaffolding, linting, source hashing) ship as bundled scripts the agent runs, so it does not improvise the bookkeeping each session. This saves back-and-forth turns with your agent, saves tokens, and makes the output more consistent across runs. The same files deploy into Claude Code, Codex, Cursor, Copilot, Gemini, Antigravity, and OpenCode, so the backlog and the knowledge base follow you whichever agent you drive. That also makes it easy to share one codebase across different setups and agents.
+The mechanical parts of both (discovery, scaffolding, linting, source hashing) ship as bundled scripts the agent runs, so it does not improvise the bookkeeping each session. This saves back-and-forth turns with your agent, saves tokens, and makes the output more consistent across runs. The same files deploy into Claude Code, Codex, Cursor, Copilot, Antigravity, and OpenCode, so the backlog and the knowledge base follow you whichever agent you drive. That also makes it easy to share one codebase across different setups and agents.
 
 Alongside task and wiki, the same two plugins ship smaller day-to-day skills: clean git commits, repository refreshes, and changelogs, writing and formatting the instructions an AI reads, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
 
@@ -50,7 +50,7 @@ ai-modules/
 │       │   ├── auto_reviewer_task.md
 │       │   ├── auto_verifier_task.md
 │       │   └── auto_shaper_task.md
-│       ├── hooks/           # shared hook scripts plus Claude/Codex hook configs
+│       ├── hooks/           # shared hook scripts plus Claude/Codex/Antigravity hook configs
 │       └── skills/
 │           ├── git_commit/
 │           ├── git_refresh/
@@ -128,19 +128,20 @@ Standing apart from that flow:
 - **format_markdown / format_python / format_rust**: style guides aligned with the linters (`markdownlint`; `flake8`, `ruff`, and `pylint`; `clippy`), read as you write. The point is to produce code that already passes the linter, instead of spending a follow-up turn fixing what it reports.
 
 The `ai_dev` hook surface ships a shared `charter_guardrail` script and
-harness-specific hook configs for Claude and Codex. It protects a repository's
-root `CHARTER.md` by allowing charter edits only on `guardrail/charter-*`
-branches, while staying inert in projects that have not adopted a charter. Codex
-loads its plugin-bundled config from the plugin manifest after hook trust review.
-The deployable config-layer Codex hook source remains available for explicit
-global or project activation outside plugin installs.
+harness-specific hook configs for Claude, Codex, and Antigravity. It protects a
+repository's root `CHARTER.md` by allowing charter edits only on
+`guardrail/charter-*` branches, while staying inert in projects that have not
+adopted a charter. Codex loads its plugin-bundled config from the plugin
+manifest after hook trust review. The deployable config-layer Codex and
+Antigravity hook sources remain available for explicit global or project
+activation outside plugin installs.
 
 ## Installing and deploying
 
 The same source of truth ships through several paths. You can install it from
 the bundled Claude Code marketplace; copy it into vendor config dirs globally
-with `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Gemini
-CLI, Google Antigravity, OpenCode); copy it into a single repo's local config with
+with `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Google
+Antigravity, OpenCode); copy it into a single repo's local config with
 `--project-dir`; or use it in place from a checkout. The deployment script finds
 artefacts by their plugin layout and installs them where each tool expects them.
 

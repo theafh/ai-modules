@@ -1,0 +1,16 @@
+{
+  "charter_guardrail": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/charter_guardrail.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -63,4 +63,4 @@ Three tools sit beside the spine rather than on it:
 
 ## Hooks
 
-- **charter_guardrail**: protects a repository's root `CHARTER.md` by allowing charter edits only on `guardrail/charter-*` branches. Claude loads it through plugin-root `hooks/hooks.json`; Codex loads a Codex-native plugin hook config from `hooks/codex-plugin-hooks.json` after hook trust review, while `hooks/codex-custom-deploy-hooks.json` feeds explicit config-layer deployment outside plugin installs.
+- **charter_guardrail**: protects a repository's root `CHARTER.md` by allowing charter edits only on `guardrail/charter-*` branches. Claude loads it through plugin-root `hooks/hooks.json`; Codex loads a Codex-native plugin hook config from `hooks/codex-plugin-hooks.json` after hook trust review, while `hooks/codex-custom-deploy-hooks.json` feeds explicit config-layer deployment outside plugin installs; Antigravity uses `hooks/antigravity-hooks.json` for explicit config-layer deployment.
