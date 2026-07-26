@@ -41,7 +41,7 @@ how to expand the project; AI executes within the boundary the human set.
 - Keep task and knowledge-management components plain-file, repo-local, and
   portable across supported agent harnesses.
 - Improve cross-harness behavior for OpenAI Codex, Anthropic Claude, Cursor,
-  VS Code, Gemini, Antigravity, and future harnesses when the behavior is
+  VS Code, Antigravity, OpenCode, and future harnesses when the behavior is
   encoded in published components or deployment support.
 - Maintain local backlog tasks and regression harnesses that verify published
   components.
