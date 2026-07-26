@@ -2,7 +2,7 @@
 description: Retire the Gemini CLI deploy target in deployment.sh and correct the Antigravity target so it deploys skills and (sub)agents into ~/.gemini/config and .agents, ideally with hooks.
 scope: deployment
 created: 2026-07-24T12:54:02
-updated: 2026-07-25T15:14:17
+updated: 2026-07-26T12:29:33
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -17,7 +17,7 @@ The user-visible outcome is that `./deployment/deployment.sh --target antigravit
 
 ## Context
 
-The verified Antigravity facts, their sources, and the frontmatter-tolerance finding this task's agent transform depends on are owned by [ai-dev_harness-portability-antigravity-gemini-retire.md](ai-dev_harness-portability-antigravity-gemini-retire.md); this task consumes them and should follow it, or re-verify the paths against official `antigravity.google` docs if built first. The deploy-relevant facts are restated here so this file stands alone.
+The verified Antigravity facts, their sources, and the frontmatter-tolerance finding this task's agent transform depends on are owned by [ai-dev_harness-portability-antigravity-gemini-retire.md](archive/ai-dev_harness-portability-antigravity-gemini-retire.md); this task consumes them and should follow it, or re-verify the paths against official `antigravity.google` docs if built first. The deploy-relevant facts are restated here so this file stands alone.
 
 **Why retire Gemini.** Consumer Gemini CLI was retired on 18 June 2026 (`410 Gone`; only paid/enterprise API-key access survives), and Google's live surface is Antigravity, which shares the `~/.gemini` tree. Deploying to live consumer Gemini CLI no longer reaches a working tool, so the `gemini` target is removed rather than maintained.
 
@@ -48,7 +48,7 @@ The verified Antigravity facts, their sources, and the frontmatter-tolerance fin
 
 **Out of scope:**
 
-- The `harness_portability` skill's Antigravity/Gemini documentation is owned by [ai-dev_harness-portability-antigravity-gemini-retire.md](ai-dev_harness-portability-antigravity-gemini-retire.md); this task edits only the deployment surface.
+- The `harness_portability` skill's Antigravity/Gemini documentation is owned by [ai-dev_harness-portability-antigravity-gemini-retire.md](archive/ai-dev_harness-portability-antigravity-gemini-retire.md); this task edits only the deployment surface.
 - OpenCode's target and hook bridge stay owned by [deployment_opencode-target.md](archive/deployment_opencode-target.md) and [deployment_opencode-hook-bridge.md](deployment_opencode-hook-bridge.md).
 - Relocating the deploy conf/log into `$HOME` stays owned by [deployment_relocate-state-to-home.md](deployment_relocate-state-to-home.md).
 
