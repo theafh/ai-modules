@@ -42,7 +42,7 @@ Documentation that describes the current symlink mechanism and goes stale with t
 
 The `replace:` mechanism keeps working but its meaning narrows: because every artifact is now copied, `replace:` no longer needs to *force a copy* — it only requests `$VAR$` substitution inside the copy. The conf/README wording reduces to that substitution-only meaning.
 
-Companion, not a prerequisite: [deployment_relocate-state-to-home.md](deployment_relocate-state-to-home.md) co-edits the same `deployment.conf` `replace:` comment — it ships an `ai_asset_deploy.conf.template` carrying that header verbatim. Whichever lands second reconciles the comment wording; neither blocks the other.
+Companion, not a prerequisite: [deployment_relocate-state-to-home.md](../deployment_relocate-state-to-home.md) co-edits the same `deployment.conf` `replace:` comment — it ships an `ai_asset_deploy.conf.template` carrying that header verbatim. Whichever lands second reconciles the comment wording; neither blocks the other.
 
 ## Approach
 
@@ -56,7 +56,7 @@ Rewrite the stale documentation passages named in Context in place, so each stat
 
 - This task adds no watch or auto-redeploy mechanism to offset the loss of live editing; the workflow after editing a source artifact is to re-run `make deploy`.
 - This task does not change which artifacts deploy or how `disallow:` / `replace:` matching selects them — only the copy-vs-symlink mechanism for the ones that already deploy.
-- Relocating the deploy conf and log into `$HOME` is owned by [deployment_relocate-state-to-home.md](deployment_relocate-state-to-home.md).
+- Relocating the deploy conf and log into `$HOME` is owned by [deployment_relocate-state-to-home.md](../deployment_relocate-state-to-home.md).
 
 ## Migration
 
