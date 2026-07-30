@@ -2,7 +2,7 @@
 description: Make the append-only wiki log tolerate breakage from a logged entry: heading uniqueness, a repair-not-rewrite carve-out, and a duplicate-heading lint check, rolled out to existing wikis.
 scope: plugins/knowledge_management
 created: 2026-06-18T19:33:04
-updated: 2026-07-04T14:43:36
+updated: 2026-07-30T11:23:55
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -58,7 +58,7 @@ Consequence for placement: the carve-out and the uniqueness convention belong in
 
 ### Dedup and related work
 
-No existing task covers append-only-log repair, heading uniqueness, duplicate-heading handling, or MD024. Distinct neighbors: [wiki_log-entries-only-on-changes.md](wiki_log-entries-only-on-changes.md) (whether to write an entry at all), [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md) (rotation and entry-aware reads), [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md) (heading vocabulary). [task-family_decided-general-positive-body.md](archive/task-family_decided-general-positive-body.md) already frames "append-only by design" surfaces as a carve-out from the rewrite-in-place rule, which supports the framing here.
+No existing task covers append-only-log repair, heading uniqueness, duplicate-heading handling, or MD024. Distinct neighbors: [wiki_log-entries-only-on-changes.md](archive/wiki_log-entries-only-on-changes.md) (whether to write an entry at all, now shipped), [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md) (rotation and entry-aware reads), [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md) (heading vocabulary). [task-family_decided-general-positive-body.md](archive/task-family_decided-general-positive-body.md) already frames "append-only by design" surfaces as a carve-out from the rewrite-in-place rule, which supports the framing here.
 
 ## Approach
 

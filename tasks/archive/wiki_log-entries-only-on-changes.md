@@ -2,9 +2,10 @@
 description: Make the wiki log contract single-voiced: log.md entries only when wiki files changed — fix the query step, log-template preamble, and schema-template every-action rule.
 scope: plugins/knowledge_management
 created: 2026-06-11T17:46:27
-updated: 2026-07-18T22:49:15
-status: ready
+updated: 2026-07-30T11:23:55
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Log entries only on wiki changes
@@ -58,16 +59,16 @@ designed propagation path, no extra action needed here.
 
 Related tasks:
 
-- [wiki_log-rotation-and-retrieval](wiki_log-rotation-and-retrieval.md) —
+- [wiki_log-rotation-and-retrieval](../wiki_log-rotation-and-retrieval.md) —
   co-edits the same `template_log.md` preamble region (rotation rule) and
   the SKILL.md log-handling prose; coordinate the preamble wording if both
   land near each other.
-- [wiki_query-page-filing-decision](wiki_query-page-filing-decision.md) —
+- [wiki_query-page-filing-decision](../wiki_query-page-filing-decision.md) —
   co-edits the same `<query>` numbered workflow; its mandatory one-line
   in-chat report becomes the only trace of an unfiled query once this task
   removes the log trace. Implement that task after or together with this
   one.
-- [wiki_auto-shaper-fidelity-safe-token-cost](archive/wiki_auto-shaper-fidelity-safe-token-cost.md) —
+- [wiki_auto-shaper-fidelity-safe-token-cost](wiki_auto-shaper-fidelity-safe-token-cost.md) —
   depends on the zero-change `audit` outcome entry the Constraint above
   sanctions: its incremental page-walk scoping reads the baseline a clean
   audit records, so keep the carve-out for `audit` outcome entries when

@@ -2,7 +2,7 @@
 description: Cut auto_shaper_wiki token cost via a safe orient-phase trim and change-scoped page reads, while preserving every reflective prose check the linter cannot catch.
 scope: plugins/knowledge_management
 created: 2026-06-27T11:12:00
-updated: 2026-06-27T12:49:50
+updated: 2026-07-30T11:23:55
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -35,7 +35,7 @@ Facet 2 — page-walk reads scoped to change, not wiki size (fidelity-preserving
 
 - Incremental working-set scoping: derive the pages new or changed since the last recorded audit — from the last `audit` entry in `log.md` and/or a `git` comparison against that point — and give those the full page-first cold walk. A page unchanged since it last passed a cold walk is not re-read.
 - First-audit and unknown-baseline fallback: when no prior audit baseline exists, the working set is every page (today's behaviour); the saving begins on the second audit.
-- Clean-audit baseline record: every completed audit, including one that finds nothing to fix, appends a zero-change `audit` outcome entry carrying the baseline and cold-read set, so the saving begins on the second audit even when the first audit was clean on arrival. Without it a clean audit leaves no baseline and the next run re-reads the whole wiki. This is the sanctioned process record [wiki_log-entries-only-on-changes.md](../wiki_log-entries-only-on-changes.md) preserves when it scopes the log to content changes.
+- Clean-audit baseline record: every completed audit, including one that finds nothing to fix, appends a zero-change `audit` outcome entry carrying the baseline and cold-read set, so the saving begins on the second audit even when the first audit was clean on arrival. Without it a clean audit leaves no baseline and the next run re-reads the whole wiki. This is the sanctioned process record [wiki_log-entries-only-on-changes.md](wiki_log-entries-only-on-changes.md) preserves when it scopes the log to content changes.
 - Optional parallelism: spread the cold per-page reads across parallel per-page sub-agents to amortise token and latency cost. This preserves the `<iterate_page_first_not_check_first>` cold-verdict independence, since each page is judged in its own context.
 - Grep stays an additive prefilter only, for `procedure_instance_leakage`'s lexical subset (dates, paths, proper nouns): a grep hit adds a page to the read set, and a grep miss never removes a page from the cold walk.
 - `cross_page_contradiction` reads both sides of a same-subject pair whenever either side is in the working set.

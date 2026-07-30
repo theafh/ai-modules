@@ -1,8 +1,12 @@
 # Wiki Log
 
-> Chronological record of all wiki actions. Append-only.
+> Chronological record of wiki changes. Append-only.
 > Format: `## [YYYY-MM-DD] action | subject`
 > Actions: ingest, update, query, lint, create, archive, delete
+> Entries: an operation that creates or updates wiki files appends one entry; an
+> operation that changes no file appends none. Lint and audit runs are the
+> exception — each records its outcome, including a zero-change one, as a
+> process record.
 > Body: list only files actually created or updated. Skip files that were
 > inspected, considered, or deliberately left unchanged, and do not narrate
 > decisions about what not to do. Aim for roughly 20 lines per entry.

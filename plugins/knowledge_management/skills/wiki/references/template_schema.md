@@ -22,7 +22,9 @@ This LLM-Wiki is managed by the `wiki` skill created by Andreas F. Hoffmann from
   Minimum 2 outbound links per page.
 - When updating a page, always bump the `updated` date
 - Every new page must be added to `index.md` under the correct section
-- Every action must be appended to `log.md`
+- Every operation that creates or updates wiki files must be appended to
+  `log.md`; an operation that changes no file writes no entry (lint and audit
+  runs excepted — each records its outcome as a process record)
 - **Provenance:** this is an LLM-first wiki — attribution belongs *next to*
   the claim it attributes, not collected at the bottom of the page. The
   `sources:` frontmatter is the canonical list of every raw file the page

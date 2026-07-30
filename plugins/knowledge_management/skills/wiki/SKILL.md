@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.17.1
+version: 1.18.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -619,7 +619,11 @@ When the user asks a question about the wiki's domain:
    type by entry point: `comparisons/` for X-vs-Y, `summaries/` for
    topic-organized digests, `queries/` for question-organized answers (see
    `<page_types>`). Skip trivial lookups.
-6. **Update `log.md`** with the query and whether it was filed.
+6. **Append a `query` log entry when the query changed files** — a query that
+   filed a page or updated existing pages appends one entry listing exactly
+   those files. A query that answered from what was already there changed
+   nothing, so it appends nothing and the in-chat answer is its only trace
+   (see `<appending_to_log>`).
 </query>
 
 <archive>
@@ -714,6 +718,14 @@ tail -n 350 "$WIKI/log.md"                    # ~last 20 log entries
 </searching>
 
 <appending_to_log>
+**An entry records a change.** Append to `log.md` when the operation created
+or updated wiki files, and write no entry at all when it changed none — a
+question answered from existing pages, an inspection that found nothing to
+fix, a proposal the user declined. Lint and audit runs are the one exception:
+each records its outcome as a process record even when it changed nothing
+(`<inline_iteration_loop>` below and the `auto_shaper_wiki` audit entry), so
+the next run has a baseline to read.
+
 "Append-only" means newest at the *bottom* of the file. The Edit tool's
 `old_string` matching makes it easy to anchor on a header and insert
 *before* it, producing inverted order. Avoid that:
@@ -814,7 +826,7 @@ Quick-scan reminders. See the named section for full guidance.
 </update_navigation_reminder>
 
 <log_only_what_changed>
-**Log only what changed** — log entries list files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. *(see `<update_navigation>` in `<ingest>`)*
+**Log only what changed** — an operation that created or updated no wiki file writes no entry at all, and an entry that is written lists the files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. Lint and audit outcome entries are the sanctioned exception. *(see `<appending_to_log>` for when an entry is written, `<update_navigation>` in `<ingest>` for what it lists)*
 </log_only_what_changed>
 
 <page_thresholds>

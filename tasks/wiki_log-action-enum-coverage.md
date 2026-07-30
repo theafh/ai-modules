@@ -2,7 +2,7 @@
 description: Extend the log template's verbatim-enforced action enum to cover the shipped writers — audit, import, session-wrapup — so the plugin's own components stop writing off-enum log entries.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-07-19T18:51:20
+updated: 2026-07-30T11:23:55
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -23,7 +23,7 @@ The action enum declared in the log template's preamble names every entry action
 
 The gap cannot be fixed wiki-side: the linter's `boilerplate` check enforces the `log.md` preamble verbatim against the template, and the agent's `<fix_log_preamble_drift>` move instructs "Restore the canonical preamble lines (entry format, action enum, …)" — so an owner who adds `audit` to their own preamble gets a warn and then has the edit reverted at the next audit. The template line is the only legitimate edit point.
 
-Editing the template makes every existing wiki's preamble drift (one warn) until its next audit aligns it — the designed propagation path, as [wiki_log-entries-only-on-changes.md](wiki_log-entries-only-on-changes.md) documents in its Ripple note. That same `ready` sibling rewrites this exact preamble region (change-scoped header wording, an added sentence, `query` kept in the enum): implement this task after or together with it, wording the Actions line once against whichever preamble text is then current.
+Editing the template makes every existing wiki's preamble drift (one warn) until its next audit aligns it — the designed propagation path, as [wiki_log-entries-only-on-changes.md](archive/wiki_log-entries-only-on-changes.md) documents in its Ripple note. That sibling has shipped its rewrite of this exact preamble region (change-scoped header wording, an added `Entries:` sentence, `query` kept in the enum), so word the Actions line once against that current preamble text.
 
 ## Approach
 
@@ -39,5 +39,5 @@ Rewrite the "Actions:" line in `template_log.md` in place so the enum lists the 
 
 1. The "Actions:" line in `template_log.md` lists `audit`, `import`, and `session-wrapup` alongside the pre-existing actions, as one canonical line (no second Actions line or appended addendum).
 2. A fixture wiki materialized from the updated template, carrying one `audit |`, one `import |`, and one `session-wrapup |` entry, passes the linter's boilerplate check with no preamble finding — the declared enum and the shipped writers agree.
-3. When [wiki_log-entries-only-on-changes.md](wiki_log-entries-only-on-changes.md) has landed first, its wording survives: after this task's edit the preamble still carries the change-scoped rule and `rg "all wiki actions"` on the template still returns no match; when it has not landed, this task's edit touches only the Actions line.
+3. The shipped wording from [wiki_log-entries-only-on-changes.md](archive/wiki_log-entries-only-on-changes.md) survives this task's edit: the preamble still carries the change-scoped rule and its `Entries:` sentence, and `rg "all wiki actions"` on the template still returns no match.
 4. The wiki test harness's boilerplate fixture is updated to the new canonical preamble and `tests/wiki/run_all.sh` passes.

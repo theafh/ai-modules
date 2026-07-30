@@ -2,7 +2,7 @@
 description: Replace the query workflow's file-valuable-answers judgment call with a deterministic filing default, explicit first-synthesis handling, and a mandatory one-line filed-or-not report.
 scope: plugins/knowledge_management
 created: 2026-06-11T17:46:27
-updated: 2026-07-18T22:55:57
+updated: 2026-07-30T11:23:55
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -57,10 +57,10 @@ Anchors in the same SKILL.md that this task builds on:
   only *whether and when* to persist, and how the decision is surfaced.
 
 Related task:
-[wiki_log-entries-only-on-changes](wiki_log-entries-only-on-changes.md) —
-co-edits the same `<query>` numbered workflow, and once it lands the
-one-line report defined here is the only trace an unfiled query leaves.
-Implement that task first or together with this one.
+[wiki_log-entries-only-on-changes](archive/wiki_log-entries-only-on-changes.md) —
+co-edited the same `<query>` numbered workflow and has shipped, so its
+changes-only log rule is already in place and the one-line report defined
+here is now the only trace an unfiled query leaves.
 
 ## Approach
 
