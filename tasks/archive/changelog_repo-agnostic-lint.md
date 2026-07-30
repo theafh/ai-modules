@@ -2,9 +2,10 @@
 description: Pin changelog verification to whatever lint tooling the target repo actually provides — never assume make lint, never pull a network linter.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-02T20:06:20
-updated: 2026-07-30T09:40:58
-status: ready
+updated: 2026-07-30T18:06:16
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Verify the changelog with the repo's own lint tooling, whatever it is

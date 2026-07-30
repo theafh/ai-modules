@@ -1,7 +1,7 @@
 ---
 name: update_changelog
 description: Create or update a day-grouped, add-only CHANGELOG.md from git commit history. Use when asked to generate, refresh, or maintain a repository changelog. Produces newest-first day sections while keeping existing entries immutable and processes one day at a time to stay within context limits.
-version: 3.0.4
+version: 3.1.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -58,5 +58,13 @@ license: MIT
       </substeps>
     </day_loop>
     <land_new_days>On an incremental run, after the loop has composed every selected day, perform the one anchored prepend: splice the accumulated newest-first block into the seam between the header block and the first existing day heading, per `<newest_first>`. On a cold build, each day section was already inserted during the loop, so no separate splice runs here.</land_new_days>
+    <verify>Verify the changelog with the lint tooling the target repository itself provides, reading `CHANGELOG.md` as it stands on disk at this point: an incremental run has just landed its day sections in the single splice above, and a cold build flushed every section during the loop, so both run types inspect the file the run actually wrote. Discover the available tooling in the priority order below and run the first entry that applies, letting the owner of the invocation set the target — a repo entry point runs in the form the repo authored it, whole-repo scope included, while a linter this step invokes itself is pointed at `CHANGELOG.md`. The step reports its findings and leaves the written `CHANGELOG.md` in place on every branch; a lint-fix pass that rewrites the file belongs to the target repo's own standing rules.
+      <repo_lint_entry_point>Run the repository's own lint entry point when it has one, in the form the repo authored it: a `lint` or `lint-md` Make target where the repo ships one (confirm the target exists with `make -n <target>` before running it), a `package.json` lint script, a configured `pre-commit` hook set, or a lint command the project documents.</repo_lint_entry_point>
+      <project_configured_markdown_linter>Failing that, run a markdown linter the repo or its toolchain already provides and that honors the repo's own configuration — for example a locally available `markdownlint` or `markdownlint-cli2` resolving the repo's `.markdownlint*` config — pointed at `CHANGELOG.md`.</project_configured_markdown_linter>
+      <no_linter_available>When the repository provides neither, skip the check and name the reason: report "no repo lint tooling found; skipped markdown verification" and treat the changelog as delivered.</no_linter_available>
+      <authoritative_tooling_only>Keep the verdict authoritative by running only tooling the target repo already provides. Two forms yield a non-authoritative result and stay out: fetching a linter over the network at run time (`npx --yes <linter>` and equivalents), and applying a linter's default ruleset in place of the repo's own lint config.</authoritative_tooling_only>
+      <report_outcome>Report which branch ran and what it found. Tooling found and clean: name the command and report the changelog as verified against it. Tooling found with findings on `CHANGELOG.md`: report what the linter said about the changelog and leave the file as written, so the operator decides the follow-up. No tooling found: report the skip with its stated reason. The changelog stands as delivered on all three branches, and verification stays best-effort against whatever the repo offers.</report_outcome>
+      <changelog_scoped_verdict>Answer for `CHANGELOG.md` alone. Findings on the changelog are this step's verdict; a non-zero exit or a finding in a file this run did not write is pre-existing repo state, reported as such and settling nothing about the changelog.</changelog_scoped_verdict>
+    </verify>
   </procedure>
 </update_changelog_skill>
