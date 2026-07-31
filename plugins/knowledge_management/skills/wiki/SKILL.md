@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.18.0
+version: 1.19.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -614,16 +614,40 @@ When the user asks a question about the wiki's domain:
 3. **Read the relevant pages.**
 4. **Synthesize an answer** with citations: "Based on
    [page-a](concepts/page-a.md) and [page-b](entities/page-b.md)…"
-5. **File valuable answers back** if the answer would be painful to re-derive
-   (multi-source synthesis, structured comparison, novel reasoning). Pick the
-   type by entry point: `comparisons/` for X-vs-Y, `summaries/` for
-   topic-organized digests, `queries/` for question-organized answers (see
-   `<page_types>`). Skip trivial lookups.
+5. **File the answer back on the three-page-or-novel-reasoning trigger** —
+   filing is the default action for an answer that draws on three or more
+   wiki pages, or that carries cross-page reasoning present on no single
+   page. Those are the answers painful to re-derive. An answer restating one
+   or two pages is a direct lookup, so it stays in chat. Pick the type by
+   entry point: `comparisons/` for X-vs-Y, `summaries/` for topic-organized
+   digests, `queries/` for question-organized answers (see `<page_types>`).
+   Two provisions keep the trigger deterministic:
+   - **File the first synthesis while validation is pending.** An answer the
+     user has not yet reacted to gets filed on the same trigger, and its
+     page carries `confidence: medium` — a field every page type takes.
+     Write `medium` for a first synthesis however many pages it draws on:
+     what stays pending is the user's validation, while the `high` that the
+     `**Confidence**` bullet in `<write_or_update_pages>` reserves for
+     multi-source support speaks to the evidence behind the claims, so the
+     two signals answer different questions. A page filed as `query`
+     states that same pending status in its "Confidence and caveats"
+     section. A later user correction is an ordinary page update on the
+     `<write_or_update_pages>` path.
+   - **State a concrete reason whenever you skip a trigger-worthy answer.**
+     Name that reason in the one-line decision report below.
 6. **Append a `query` log entry when the query changed files** — a query that
    filed a page or updated existing pages appends one entry listing exactly
    those files. A query that answered from what was already there changed
    nothing, so it appends nothing and the in-chat answer is its only trace
    (see `<appending_to_log>`).
+7. **Report the filing decision in one line** — close every query answer with
+   one line covering whichever branch happened: filed → name the created
+   page's path; skipped → give the reason in the trigger's own terms,
+   naming the page count or the absent cross-page reasoning. This line
+   stands in place of asking permission before filing: decide on the
+   trigger, report the call, and let the user correct it in the next turn
+   — the same surface-the-auto-choice shape
+   `<adopt_when_user_named_the_path>` uses.
 </query>
 
 <archive>

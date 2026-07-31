@@ -63,7 +63,7 @@ Related tasks:
   co-edits the same `template_log.md` preamble region (rotation rule) and
   the SKILL.md log-handling prose; coordinate the preamble wording if both
   land near each other.
-- [wiki_query-page-filing-decision](../wiki_query-page-filing-decision.md) —
+- [wiki_query-page-filing-decision](wiki_query-page-filing-decision.md) —
   co-edits the same `<query>` numbered workflow; its mandatory one-line
   in-chat report becomes the only trace of an unfiled query once this task
   removes the log trace. Implement that task after or together with this
