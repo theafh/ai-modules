@@ -160,6 +160,7 @@ Common workflows are wrapped in the [Makefile](Makefile):
 make help        # list targets
 make deploy      # deploy artefacts to global config dirs (aliases: global, install)
 make uninstall   # remove previously deployed artefacts
+make clean       # remove managed deployment backups
 make lint        # report lint issues across md / json / sh
 make fix         # auto-fix lint issues where possible (markdown only)
 ```

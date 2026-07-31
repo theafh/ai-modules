@@ -3,6 +3,7 @@
 # Targets:
 #   make deploy / global / install   deploy artefacts to global config dirs
 #   make uninstall                   remove previously deployed artefacts
+#   make clean                       remove managed deployment backups
 #   make lint                        report lint issues across md/json/sh
 #   make fix                         auto-fix lint issues where possible
 #   make help                        list targets
@@ -20,7 +21,7 @@ JSON_FILES  := $(shell find . $(EXCLUDE) -type f -name '*.json' -print)
 SH_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.sh' -print)
 
 .PHONY: help \
-        deploy global install uninstall \
+        deploy global install uninstall clean \
         lint lint-md lint-json lint-sh \
         fix fix-md
 
@@ -35,6 +36,9 @@ install: deploy  ## Alias for `make deploy`.
 
 uninstall: ## Remove previously deployed artefacts (--uninstall).
 	./deployment/deployment.sh --uninstall
+
+clean: ## Remove managed deployment backups (--clear-backups).
+	./deployment/deployment.sh --clear-backups
 
 lint: ## Run all linters and report issues across md/json/sh.
 	@rc=0; \
