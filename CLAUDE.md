@@ -39,7 +39,8 @@ Makefile                          # task entry point
 - **Ship a new skill, agent, or plugin at 1.0.0.** In the commit that first introduces it, leave the version at 1.0.0 — no bump.
 - **Bump once per commit, with the change — and only at commit time.** When a commit edits an existing skill, agent, or plugin, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
 - **Use patch increments for minor maintenance changes.** For a small follow-up, wording fix, or environment-specific hint, advance only the patch component.
-- **Plugin meta stays lockstep.** When a skill or agent `version:` rises, raise the matching plugin's `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and both marketplace registrations (`.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) to the same new plugin version in the same commit. Adding a skill to an existing plugin counts as a plugin edit; the new skill itself ships at 1.0.0.
+- **Advance the plugin minor when adding a skill or agent.** Adding a skill or agent to an existing plugin advances the plugin's minor component (`x.Y.0`); the new skill or agent itself still ships at 1.0.0. Patch stays for maintenance-only edits of already-shipped surfaces.
+- **Plugin meta stays lockstep.** When a skill or agent `version:` rises, or a skill or agent is added to an existing plugin, raise the matching plugin's `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and both marketplace registrations (`.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) to the same new plugin version in the same commit.
 
 ## Common tasks
 
