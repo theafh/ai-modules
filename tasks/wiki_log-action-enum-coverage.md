@@ -2,8 +2,8 @@
 description: Extend the log template's verbatim-enforced action enum to cover the shipped writers — audit, import, session-wrapup — so the plugin's own components stop writing off-enum log entries.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-07-30T11:23:55
-status: open
+updated: 2026-08-04T19:53:13
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -27,7 +27,7 @@ Editing the template makes every existing wiki's preamble drift (one warn) until
 
 ## Approach
 
-Rewrite the "Actions:" line in `template_log.md` in place so the enum lists the current writer set: the existing seven actions plus `audit`, `import`, and `session-wrapup`. No enforcement change — the preamble stays a verbatim slot, which is exactly what propagates the corrected line outward.
+Rewrite the "Actions:" line in `template_log.md` in place so the enum lists the current writer set: the existing seven actions plus `audit`, `import`, and `session-wrapup`. Align that same `Actions:` line in every durable harness copy at `tests/wiki/layer2/*/HOME/**/wiki/log.md` (exclude `workspace/`) to the new enum — edit those lines in place, or restage with `setup_scenarios.sh`, which rematerializes them through `init_wiki.sh`. Layer1 scratch trees rematerialize from the template under `run_all.sh` and need no separate Actions edit. No enforcement change — the preamble stays a verbatim slot, which is exactly what propagates the corrected line outward.
 
 **Out of scope:**
 
@@ -38,6 +38,6 @@ Rewrite the "Actions:" line in `template_log.md` in place so the enum lists the 
 ## Acceptance
 
 1. The "Actions:" line in `template_log.md` lists `audit`, `import`, and `session-wrapup` alongside the pre-existing actions, as one canonical line (no second Actions line or appended addendum).
-2. A fixture wiki materialized from the updated template, carrying one `audit |`, one `import |`, and one `session-wrapup |` entry, passes the linter's boilerplate check with no preamble finding — the declared enum and the shipped writers agree.
+2. A fixture wiki materialized from the updated template passes the linter's boilerplate check with no preamble finding — the materialized `log.md` preamble equals the template preamble above the first `##` heading.
 3. The shipped wording from [wiki_log-entries-only-on-changes.md](archive/wiki_log-entries-only-on-changes.md) survives this task's edit: the preamble still carries the change-scoped rule and its `Entries:` sentence, and `rg "all wiki actions"` on the template still returns no match.
-4. The wiki test harness's boilerplate fixture is updated to the new canonical preamble and `tests/wiki/run_all.sh` passes.
+4. Every non-workspace `tests/wiki/layer2/*/HOME/**/wiki/log.md` carries the new canonical `Actions:` line matching `template_log.md`, and `tests/wiki/run_all.sh` passes.

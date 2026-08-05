@@ -66,6 +66,7 @@ ai-modules/
 │           ├── task_finish/
 │           ├── task_fix/
 │           ├── guardrail/
+│           ├── guardrail_audit/
 │           ├── ai_instruction_writing/
 │           ├── ai_instruction_formatting/
 │           ├── harness_portability/
@@ -122,6 +123,7 @@ Standing apart from that flow:
 - **task_explain**: explains one task at a high level without editing it. It resolves one live or archived task, names its status and scope, and gives a compact what/why/how readout so a reader can orient before choosing a lifecycle action.
 - **task_fix**: audits and repairs the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs `lint.py`, auto-fixes the mechanical findings, and surfaces the judgement calls (splits, cross-task contradictions) for human review by default, then reports how many it resolved and how many it flagged. On explicit opt-in or confirmed scale, it escalates those calls to `auto_shaper_task`, the single serialized writer for verified splits, body-framing reframes, scope relocations, and link repairs. It works on the whole backlog, independent of any single task's lifecycle.
 - **guardrail**: the hub for the repo-root guardrail docs — `CHARTER.md`, `ARCHITECTURE.md`, `TESTING.md`, `SECURITY.md` — that keep AI agents anchored to human intent. It explains the doc set, hierarchy, format, and the presence-gated way skills consult the docs (the task family already reads them this way), suggests which guardrails fit a given repository based on its nature and substance, and drafts one only on explicit request. Per-type references carry the general template and rules for each doc, so sibling skills wire the hub in instead of duplicating them.
+- **guardrail_audit**: the read-only audit sibling. It surfaces doc-vs-doc contradictions and doc-vs-code divergences among existing guardrail docs, ranked by the hub's hierarchy, plus grounded missing-doc proposals where repo substance warrants an absent type. Findings carry evidence and reconcile recommendations; the run edits nothing and asks how to proceed — the retrofit and health-check entry point for guardrails already in place.
 - **ai_instruction_writing**: writes any artefact an AI reads (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of "don't" rules the model has to invert.
 - **ai_instruction_formatting**: organises content an AI reads into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in its own tag, so the model can find the right section by structure instead of re-reading the prose.
 - **harness_portability**: applies portability rules (across agent harnesses and operating systems) to scripts, hooks, MCP helpers, command wrappers, setup flows, and the execution and configuration wording bundled inside skills and plugins. It covers OpenAI Codex and Anthropic Claude compatibility, checks against official provider docs, and macOS/Linux behaviour.

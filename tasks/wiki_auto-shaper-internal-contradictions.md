@@ -2,8 +2,8 @@
 description: Reconcile two auto_shaper_wiki self-contradictions: the lint-clean exit criterion its own contested-page protocol makes unreachable, and stale body-Sources anatomy references the linter deprecates.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-07-29T21:54:35
-status: checked
+updated: 2026-08-04T19:13:55
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -25,8 +25,10 @@ Co-edit coordination: [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-pag
 
 ## Approach
 
-1. **Exit-criterion carve-out.** Rewrite `<lint_clean>` and `<relint_until_clean>` in place so the clean bar reads: lint exits 0 with no blocking findings and no warn findings other than the `quality` warns on pages this audit marked or confirmed `contested:` — those persist by design for human review per `<leave_contested_pages>` and are surfaced in the final report. Keep the info-level intentional-finding carve-out as is. Phrase the criterion once and have the second occurrence reference the first, so the two spots cannot drift apart again.
+1. **Exit-criterion carve-out.** Rewrite `<lint_clean>` and `<relint_until_clean>` in place so the clean bar reads: lint exits 0 with no blocking findings and no warn findings other than every `quality` warn whose message is the contested dispute signal (`contested: true — reconcile or document the dispute`) on any page that remains `contested: true` at end of audit — whether marked this run or already contested before it — those persist by design for human review per `<leave_contested_pages>` and stay in the final report. Keep the info-level intentional-finding carve-out as is. Phrase the criterion once and have the second occurrence reference the first, so the two spots cannot drift apart again.
 2. **Anatomy repairs.** Rewrite the `<section_order_or_gaps>` entity example to one the anatomy table supports (for example, an `entity` page with no Relationships section), and rewrite the summary anatomy inside `<fix_procedure_vs_concept_misclassification>` to end at "Open threads", matching the SKILL.md table.
+
+**Harness baseline.** Add Layer 2 scenario `AS-5` and record its failure against the current agent text before rewriting the exit criterion; that failure is the pre-change baseline Acceptance item 4 measures against.
 
 **Out of scope:**
 
@@ -35,8 +37,10 @@ Co-edit coordination: [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-pag
 
 ## Acceptance
 
-1. `rg "no blocking or warn findings" ../plugins/knowledge_management/agents/auto_shaper_wiki.md` shows the bare phrase superseded in both `<lint_clean>` and `<relint_until_clean>` by the contested-warn carve-out, stated once and referenced from the second site.
-2. `rg "page with no Sources" ../plugins/knowledge_management/agents/auto_shaper_wiki.md` returns no match, and the replacement example names a section the "Page anatomy" table actually requires for `entity`.
+1. Against `../plugins/knowledge_management/agents/auto_shaper_wiki.md`, tag-scoped multiline checks prove the exit-criterion rewrite:
+   - `rg -U --multiline-dotall '<lint_clean>[\s\S]*?blocking or warn[\s\S]*?findings[\s\S]*?</lint_clean>'` matches today (current no-warn bar) and returns no match after the rewrite; the same pattern scoped to `<relint_until_clean>` likewise matches today and returns none after.
+   - After the rewrite, the contested-warn carve-out from Approach step 1 appears as the full clean-bar statement only inside `<lint_clean>`, and `<relint_until_clean>` references that `<lint_clean>` criterion without restating the carve-out.
+   - The rewritten `<lint_clean>` carries Approach step 1's carve-out substance (the contested `quality` warn signal on every page that remains `contested: true` at end of audit, whether marked this run or already contested) and keeps the intentional info-level finding carve-out Approach step 1 preserves; [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md) owns dropping "on the page's body or" from the same `<relint_until_clean>` block.
+2. Against `../plugins/knowledge_management/agents/auto_shaper_wiki.md`, `rg -U 'entity` page with no\s+Sources'` returns no match (it matches today across the line break in `<section_order_or_gaps>`), and the replacement example in`<section_order_or_gaps>` names a section the "Page anatomy" table requires for `entity` (Relationships).
 3. `rg "Open threads · Sources" ../plugins/knowledge_management/agents/auto_shaper_wiki.md` returns no match, and the summary anatomy in `<fix_procedure_vs_concept_misclassification>` matches the SKILL.md table verbatim.
-4. A behavior scenario in the wiki test harness stages a fixture wiki with one genuine cross-page contradiction and runs the audit flow: both pages end `contested: true`, neither body is merged or hedged, the run terminates with the final line reporting at least one contested page, and the scenario fails against the current agent text (which cannot satisfy its own exit bar) while passing with the rewrite.
-5. `tests/wiki/run_all.sh` passes.
+4. Layer 2 scenario `AS-5` is registered in `tests/wiki/layer2/evals.json` and staged by `tests/wiki/layer2/setup_scenarios.sh` following the sibling `AS-*` pattern (`skill_name: wiki_fix`, out-of-band grading, top-level `passes` denominator). The fixture wiki has one genuine cross-page contradiction; assertions prove both pages end `contested: true`, neither body is merged or hedged, and the run's `<final_line>` reports `K >= 1` contested pages. Against the current agent text the scenario fails (unreachable clean bar); with the rewrite it reaches the all-passes-clean result across that `passes` denominator. When it misses the bar, the report carries the measured rate and diverging assertions and hands disposition to the user rather than re-running for a better draw.

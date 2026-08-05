@@ -37,6 +37,7 @@ Three tools sit beside the spine rather than on it:
 ### Guardrail documents
 
 - **guardrail**: the hub and source of truth for the repo-root guardrail docs — `CHARTER.md`, `ARCHITECTURE.md`, `TESTING.md`, `SECURITY.md` — that keep AI agents anchored to human intent across sessions. It explains the doc set, the authority hierarchy (charter → domain guardrails → harness rule files), the shared format contract, and the presence-gated consumption convention the task family already follows; it assesses a repository's nature and suggests which guardrails fit it, grounded in how the repo actually works; and it drafts a doc only on explicit user request, marking open decisions and surfacing creation-time divergences instead of guessing. Bundled references carry the general template and rules for each doc type, so sibling skills wire the hub in rather than duplicating them.
+- **guardrail_audit**: the read-only audit sibling. It surfaces doc-vs-doc contradictions and doc-vs-code divergences among the docs that already exist, ranked by the hub's hierarchy, plus grounded missing-doc proposals where repo substance warrants an absent type. Every finding carries evidence and a reconcile recommendation; the run edits nothing and ends by asking how to proceed. Use it when retrofitting a guardrail into a mature repo or health-checking whether existing docs still match the code.
 
 ### AI instructions
 
