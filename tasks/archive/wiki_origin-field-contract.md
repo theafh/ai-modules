@@ -2,7 +2,7 @@
 description: Enforce the raw-sidecar origin contract: validate forms, agent auto-reconciles and surfaces conflicts, safe-fix absolute in-repo paths across source_path and sources, align SCHEMA and prose.
 scope: plugins/knowledge_management
 created: 2026-07-21T12:32:02
-updated: 2026-07-22T09:55:40
+updated: 2026-08-06T11:01:19
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -36,7 +36,7 @@ The two-field contract itself shipped and is deliberate — the settled Option A
 
 Full edit surface: `lint.py` and `references/lint_checks.md` (gaps 1 and 6); `references/template_schema.md` for the canonical reconciliation contract (gaps 2, 5, and 6), with `skills/wiki/SKILL.md` and `skills/wiki_import/SKILL.md` citing it; `auto_shaper_wiki.md` (gaps 3, 4, 5, and 6); `references/raw_taxonomy.md` (gap 4). Within `auto_shaper_wiki.md`, gap 5 rewrites the assess-phase **Raw-source frontmatter drift.** detection and the fix-phase `<fix_raw_source_frontmatter_missing>` block, both adjacent to the **Frontmatter field drift.** and `<fix_raw_frontmatter_subsection_missing>` blocks gap 4 rewrites, and adds the governing remediation-contract statement at the agent's `<role>`/`<objective>` altitude. Gap 6's linter changes span `check_source_path_portable` and `check_source_paths_exist`; its agent normalization rides `<fix_raw_source_frontmatter_missing>` (for `source_path:`) and `<fix_external_source_pointer>` (for `sources:`).
 
-Co-edit coordination: [wiki_auto-shaper-internal-contradictions.md](../wiki_auto-shaper-internal-contradictions.md) rewrites other blocks of the same `auto_shaper_wiki.md` (its exit criterion and the stale body-Sources anatomy); coordinate so this task's raw-frontmatter-drift, hunk-classification, reconciliation-behavior, and per-file-report edits land coherently alongside it. [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rubric-and-out-of-repo-paths.md) introduced `source_path:` and the `raw_taxonomy.md` rubric that gap 4 realigns.
+Co-edit coordination: [wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md) rewrites other blocks of the same `auto_shaper_wiki.md` (its exit criterion and the stale body-Sources anatomy); coordinate so this task's raw-frontmatter-drift, hunk-classification, reconciliation-behavior, and per-file-report edits land coherently alongside it. [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rubric-and-out-of-repo-paths.md) introduced `source_path:` and the `raw_taxonomy.md` rubric that gap 4 realigns.
 
 ## Approach
 

@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.24
+version: 1.3.25
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -56,7 +56,7 @@ Resolve the project root from the base `<discover>` step. The project's standing
 
 Family-consulted guardrail docs are the additive layer over that baseline. Gate each optional family guardrail doc read with POSIX `test -f "$root/<DOC>.md"`. On a hit, the consuming skill or agent reads the doc for the purpose named at its touchpoint; on a miss, it continues unchanged and raises no missing-doc error.
 
-`CHARTER.md` is the highest-order guardrail: any skill or agent about to write or change task content validates the proposed content against the charter's boundaries and invariants and stops on a violation. The harness baseline governs wherever the family guardrail docs are silent. When a harness rule conflicts with a softer guardrail doc (`ARCHITECTURE.md` / `FEATURES.md` / `TESTING.md`), surface the conflict for human review instead of auto-resolving it. The softer docs inform work without blocking it: `FEATURES.md` and `ARCHITECTURE.md` provide prior-art and design context for task creation, `TESTING.md` provides project-specific testing details for implementation and audit, and `ARCHITECTURE.md` is refreshed during finish when completed work extends the design.
+`CHARTER.md` is the highest-order guardrail: any skill or agent about to write or change task content validates the proposed content against the charter's boundaries and invariants and stops on a violation. The harness baseline governs wherever the family guardrail docs are silent. When a harness rule conflicts with a softer guardrail doc (`ARCHITECTURE.md` / `FEATURES.md` / `TESTING.md`), surface the conflict for human review instead of auto-resolving it. The softer docs inform work without blocking it: `FEATURES.md` and `ARCHITECTURE.md` provide prior-art and design context for task creation, `TESTING.md` provides project-specific testing details for implementation and audit, and `ARCHITECTURE.md` is refreshed during finish when completed work extends the design and the recorded `design-extended` signal is `true`.
 </standing_doc_consumption>
 
 <file_format>
@@ -102,6 +102,7 @@ Fields:
   - `deferred` — parked or dropped and archived.
 - `reported-by` — the user who created the task, written by the create path and resolved via `<user_name_chain>`. See `<bump_updated>` for legacy backfill.
 - `implemented-by` — the user who built the work, written by `task_implement` when it stamps `implemented`, required on `implemented`, `audited`, and `finished`, and resolved via `<user_name_chain>`. Deferred tasks omit it because they were never implemented. See `<bump_updated>` for legacy backfill.
+- `design-extended` — boolean design signal, written by `task_implement` in the same stamp pass as `status: implemented` and `implemented-by`, then verified by `task_audit` and consumed by `task_finish`. Implement records the verdict explicitly on every stamp — `design-extended: true` when the delivered work passes the `<archive>` trigger test, `design-extended: false` when it does not — so a newly implemented task always states its assessment. The field is nonetheless **optional, and absence reads as `false`**: a task predating the field stays clean without it and needs no backfill, since the verdict is a code-level judgement no later stage can derive from git history or the task text. The linter enforces exactly that split — a present value must be `true` or `false`, and an absent one draws no finding.
 
 Status matches location: `open`, `checked`, `ready`, `implemented`, and `audited` live in `tasks/`; `finished` and `deferred` live in `tasks/archive/`.
 
@@ -119,7 +120,7 @@ Both `created` (set once, on a fresh task) and `updated` (bumped on every edit, 
 </frontmatter>
 
 <lifecycle_responsibility>
-Each stage records the furthest lifecycle point it establishes: `task_create` writes `open`; `task_check` writes `ready` on a clean verdict and `checked` when blocking findings remain; `task_auto_check` edits the task body and reuses `task_check` for those `ready` / `checked` stamps; the apply-findings update flow writes `ready` only when the user declares readiness before implementation; `task_implement` writes `implemented`; `task_audit` writes `audited` only for a clean, complete verdict over a current `implemented`; `task_finish` writes `finished` for done work or `deferred` for parked work.
+Each stage records the furthest lifecycle point it establishes: `task_create` writes `open`; `task_check` writes `ready` on a clean verdict and `checked` when blocking findings remain; `task_auto_check` edits the task body and reuses `task_check` for those `ready` / `checked` stamps; the apply-findings update flow writes `ready` only when the user declares readiness before implementation; `task_implement` writes `implemented` and records the `design-extended` verdict; `task_audit` writes `audited` only for a clean, complete verdict over a current `implemented` and verifies the `design-extended` signal — recorded or absent — against the built change; `task_finish` writes `finished` for done work or `deferred` for parked work.
 </lifecycle_responsibility>
 
 <backward_move_guard>
@@ -338,7 +339,7 @@ When a task is finished or being dropped, run all six steps:
 2. Bump `updated` to the current datetime.
 3. Move the file from `<tasks>/` to `<tasks>/archive/` with `git mv` (or plain `mv` if the project is not a git repo). The filename does not change.
 4. Update cross-references. Re-point every relative link inside the moved task so it still resolves from the file's new home under `archive/`, covering all three outbound classes: a live sibling still at `<tasks>/` (`foo.md` becomes `../foo.md`), an already-archived sibling (`archive/foo.md` becomes `foo.md`), and a target outside the tasks tree, now one `../` deeper (`../plugins/…` becomes `../../plugins/…`). Then scan the whole tasks tree — `tasks/` and `tasks/archive/` alike (e.g. `rg` the moving filename across both) — for inbound links to the moving file, and rewrite every hit to either point at the archived location or convert to plain text plus `(archived)` when the link is no longer load-bearing.
-5. When closing as `finished`, `ARCHITECTURE.md` exists at the project root, and the completed work extended the system's design, update `ARCHITECTURE.md` in the same archive pass. When the doc is absent or the task did not change the design, continue unchanged.
+5. When closing as `finished`, use this trigger test for whether the completed work extended the system's design: refresh `ARCHITECTURE.md` when the finished work changes goals, stack, or design decisions that the doc narrates; decline when the change is operational or procedural, belongs in the `FEATURES.md` behaviour ledger, or is status-board / stage-index / build-order material. `task_implement` detects this and records the verdict as `design-extended: true|false`, `task_audit` verifies that signal when it runs, and `task_finish` consumes it at close-out. When `ARCHITECTURE.md` exists at the project root and `design-extended` is `true`, update `ARCHITECTURE.md` in the same archive pass. When the doc is absent, or the signal is `false` or carried by absence, continue unchanged — and report which of those held, so a decline stays distinguishable from an assessment nobody made.
 6. Run `python3 scripts/lint.py --include-archive --quiet` so the just-moved file is checked in its new location, and resolve every blocking finding for that file before declaring the archive complete; findings in other archived files are pre-existing context for `task_fix` rather than blockers of this close-out.
 </archive>
 

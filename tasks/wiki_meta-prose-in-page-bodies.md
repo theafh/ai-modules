@@ -2,7 +2,7 @@
 description: Stop the auto_shaper_wiki agent (and wiki authoring contract) from inserting page-convention prose and lint-sanction prose into wiki page bodies.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:26
-updated: 2026-08-05T19:00:38
+updated: 2026-08-06T11:01:19
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -43,7 +43,7 @@ Cross-references:
 Related tasks:
 
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) — this task owns dropping the body-routing wording; that task's matching step is verify-only.
-- [wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md) — rewrites the clean-bar sentence in the same `<relint_until_clean>` block step 1 edits; coordinate so both edits land coherently whichever ships first.
+- [wiki_auto-shaper-internal-contradictions.md](archive/wiki_auto-shaper-internal-contradictions.md) — rewrites the clean-bar sentence in the same `<relint_until_clean>` block step 1 edits; coordinate so both edits land coherently whichever ships first.
 - [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md) — once its per-finding acceptance bullet ships, that bullet becomes the structured home for the rationale this task routes to `SCHEMA.md`'s `## Lint` section; the never-the-page-body rule is unchanged by it.
 
 ## Approach

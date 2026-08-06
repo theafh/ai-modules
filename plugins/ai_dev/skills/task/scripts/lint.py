@@ -332,6 +332,18 @@ def check_frontmatter(tasks: Path, page: Path) -> tuple[list[Issue], dict | None
             "backfill does not bump `updated` when this is the only change)",
         ))
 
+    # design-extended is optional and only its type is checked. Newly stamped
+    # tasks record it explicitly as true or false; absence reads as false, so
+    # every task closed before the field existed stays clean and needs no
+    # backfill of a code-level verdict no stage could now derive.
+    if "design-extended" in fm and not isinstance(fm["design-extended"], bool):
+        issues.append(Issue(
+            SEV_BLOCKING, "frontmatter", page,
+            "invalid field: design-extended must be boolean "
+            "(`true` or `false`) when present; omit it when the work left "
+            "the design unchanged",
+        ))
+
     for date_field in ("created", "updated"):
         v = fm.get(date_field)
         if isinstance(v, str) and v and not DATETIME_RE.match(v):

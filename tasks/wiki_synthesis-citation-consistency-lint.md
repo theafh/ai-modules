@@ -2,7 +2,7 @@
 description: Add a lint.py check that surfaces citation-consistency issues on synthesis pages — sources: entries never cited inline, and inline raw citations missing from sources:.
 scope: plugins/knowledge_management
 created: 2026-06-18T00:36:41
-updated: 2026-08-05T19:37:26
+updated: 2026-08-06T11:01:19
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -35,7 +35,7 @@ Why only synthesis types: `query`/`summary`/`comparison` are the pages that synt
 
 Remediation is not built here. Because the `auto_shaper_wiki` agent runs `lint.py` inside its assess→fix→verify loop, the new finding flows to the agent automatically; an implementer adds no remediation logic to the linter. Info-level finding **suppression** is likewise out of scope — that mechanism is owned by [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md); this task adds no per-finding acknowledge handling.
 
-The clean-exit bar this severity choice rests on is rewritten by [wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md), which adds a carve-out for the contested-page warn alone. Read it before revisiting the severity: because that carve-out is deliberately not general, `info` stays the only non-driving level for these three findings whichever task lands first.
+The clean-exit bar this severity choice rests on is rewritten by [wiki_auto-shaper-internal-contradictions.md](archive/wiki_auto-shaper-internal-contradictions.md), which adds a carve-out for the contested-page warn alone. Read it before revisiting the severity: because that carve-out is deliberately not general, `info` stays the only non-driving level for these three findings whichever task lands first.
 
 Related work: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) defines the `raw/` + `sources:` provenance convention whose consistency this check enforces; read it for the semantics of what counts as a source.
 

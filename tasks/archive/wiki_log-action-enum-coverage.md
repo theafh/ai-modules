@@ -2,10 +2,11 @@
 description: Extend the log template's verbatim-enforced action enum to cover the shipped writers — audit, import, session-wrapup — so the plugin's own components stop writing off-enum log entries.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-08-05T19:47:00
-status: implemented
+updated: 2026-08-06T17:31:31
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Cover every shipped log writer in the log template's action enum
@@ -16,15 +17,15 @@ The action enum declared in the log template's preamble names every entry action
 
 ## Context
 
-[references/template_log.md](../plugins/knowledge_management/skills/wiki/references/template_log.md) declares: "Actions: ingest, update, query, lint, create, archive, delete". Three components permanently write entries outside that set:
+[references/template_log.md](../../plugins/knowledge_management/skills/wiki/references/template_log.md) declares: "Actions: ingest, update, query, lint, create, archive, delete". Three components permanently write entries outside that set:
 
-- the `auto_shaper_wiki` agent's `<append_audit_log_entry>` writes an `audit |` entry on every completed audit, including clean ones ([agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md));
-- `wiki_import` appends an `import |` entry ([skills/wiki_import/SKILL.md](../plugins/knowledge_management/skills/wiki_import/SKILL.md));
-- `wiki_wrapup` appends a `session-wrapup |` entry ([skills/wiki_wrapup/SKILL.md](../plugins/knowledge_management/skills/wiki_wrapup/SKILL.md)).
+- the `auto_shaper_wiki` agent's `<append_audit_log_entry>` writes an `audit |` entry on every completed audit, including clean ones ([agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md));
+- `wiki_import` appends an `import |` entry ([skills/wiki_import/SKILL.md](../../plugins/knowledge_management/skills/wiki_import/SKILL.md));
+- `wiki_wrapup` appends a `session-wrapup |` entry ([skills/wiki_wrapup/SKILL.md](../../plugins/knowledge_management/skills/wiki_wrapup/SKILL.md)).
 
 The gap cannot be fixed wiki-side: the linter's `boilerplate` check enforces the `log.md` preamble verbatim against the template, and the agent's `<fix_log_preamble_drift>` move instructs "Restore the canonical preamble lines (entry format, action enum, …)" — so an owner who adds `audit` to their own preamble gets a warn and then has the edit reverted at the next audit. The template line is the only legitimate edit point.
 
-Editing the template makes every existing wiki's preamble drift (one warn) until its next audit aligns it — the designed propagation path, as [wiki_log-entries-only-on-changes.md](archive/wiki_log-entries-only-on-changes.md) documents in its Ripple note. That sibling has shipped its rewrite of this exact preamble region (change-scoped header wording, an added `Entries:` sentence, `query` kept in the enum), so word the Actions line once against that current preamble text.
+Editing the template makes every existing wiki's preamble drift (one warn) until its next audit aligns it — the designed propagation path, as [wiki_log-entries-only-on-changes.md](wiki_log-entries-only-on-changes.md) documents in its Ripple note. That sibling has shipped its rewrite of this exact preamble region (change-scoped header wording, an added `Entries:` sentence, `query` kept in the enum), so word the Actions line once against that current preamble text.
 
 ## Approach
 
@@ -40,5 +41,5 @@ Rewrite the "Actions:" line in `template_log.md` in place so the enum lists the 
 
 1. The "Actions:" line in `template_log.md` lists `audit`, `import`, and `session-wrapup` alongside the pre-existing actions, as one canonical line (no second Actions line or appended addendum).
 2. A fixture wiki materialized from the updated template passes the linter's boilerplate check with no preamble finding — the materialized `log.md` preamble equals the template preamble above the first `##` heading.
-3. The shipped wording from [wiki_log-entries-only-on-changes.md](archive/wiki_log-entries-only-on-changes.md) survives this task's edit: the preamble still carries the change-scoped rule and its `Entries:` sentence, and `rg "all wiki actions"` on the template still returns no match.
+3. The shipped wording from [wiki_log-entries-only-on-changes.md](wiki_log-entries-only-on-changes.md) survives this task's edit: the preamble still carries the change-scoped rule and its `Entries:` sentence, and `rg "all wiki actions"` on the template still returns no match.
 4. Every non-workspace `tests/wiki/layer2/*/HOME/**/wiki/log.md` carries the new canonical `Actions:` line matching `template_log.md`, and `tests/wiki/run_all.sh` passes.

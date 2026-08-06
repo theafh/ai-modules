@@ -2,7 +2,7 @@
 description: Enforce log.md rotation (so it never reaches tens of thousands of tokens) and switch the prescribed log-read idiom from tail -n N to entry-aware bounded retrieval.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-08-05T19:22:15
+updated: 2026-08-06T11:01:19
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -24,7 +24,7 @@ Once the log is that large, the prescribed read idiom breaks:
 
 Rotation also interacts with the auto-shaper's incremental audits: the agent scopes its page walk from the newest prior `audit` entry in `log.md` that records a usable git baseline (the `Audit baseline:` line written by `<append_audit_log_entry>`). Rotating moves every prior audit entry into `log-YYYY.md`, so the first audit after a rotation finds no baseline in the fresh log and falls back to the full cold walk.
 
-**Severity is coupled to the agent's clean-exit bar.** The `auto_shaper_wiki` agent's `<lint_clean>` objective and `<relint_until_clean>` verify step both finish only when lint "exits 0 with no blocking or warn findings", and the agent ships no fix move that rotates a log — `<fix_log_preamble_drift>` restores preamble lines and leaves the entries below untouched. Escalating `check_log_rotation` to `warn` without also giving the agent a rotation move therefore hands it a finding it cannot clear while `<run_until_done>` tells it not to stop early. That is the same unreachable-bar hazard [wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md) resolves for the contested-page warn, and its carve-out is deliberately contested-only, so a rotation warn gets no relief from it. That task also rewrites the clean-bar statement this task's new finding must stay clearable under — read it before wording the severity change.
+**Severity is coupled to the agent's clean-exit bar.** The `auto_shaper_wiki` agent's `<lint_clean>` objective and `<relint_until_clean>` verify step both finish only when lint "exits 0 with no blocking or warn findings", and the agent ships no fix move that rotates a log — `<fix_log_preamble_drift>` restores preamble lines and leaves the entries below untouched. Escalating `check_log_rotation` to `warn` without also giving the agent a rotation move therefore hands it a finding it cannot clear while `<run_until_done>` tells it not to stop early. That is the same unreachable-bar hazard [wiki_auto-shaper-internal-contradictions.md](archive/wiki_auto-shaper-internal-contradictions.md) resolves for the contested-page warn, and its carve-out is deliberately contested-only, so a rotation warn gets no relief from it. That task also rewrites the clean-bar statement this task's new finding must stay clearable under — read it before wording the severity change.
 
 Agents have independently rediscovered an entry-aware idiom (`grep -n '^## \[' log.md` to get entry anchors, then read a bounded slice). That idiom should be baked into the prescribed steps, and rotation should be enforced so the log never reaches the failure size in the first place.
 

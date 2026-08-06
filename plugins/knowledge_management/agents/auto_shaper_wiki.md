@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.8.1
+version: 1.8.2
 model: inherit
 background: false
 effort: high
@@ -47,8 +47,14 @@ exists so the SCHEMA read is never skipped or deferred.
 <objective>
   <lint_clean>
     `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"` exits 0 with no
-    blocking or warn findings, and only acceptable info-level findings
-    remain.
+    blocking findings and no warn findings other than every `quality`
+    warn whose message is the contested dispute signal (`contested:
+    true — reconcile or document the dispute`) on any page that
+    remains `contested: true` at end of audit — whether marked this
+    run or already contested before it. Those contested-page warns
+    persist by design for human review per `<leave_contested_pages>`
+    and stay in the final report. Only acceptable info-level findings
+    remain beyond that.
   </lint_clean>
   <anatomy_compliance>
     Every page matches its declared type's anatomy (sections in the
@@ -359,7 +365,7 @@ the fix move.
     The page's headings deviate from the order in the "Page anatomy"
     table for its type, or are missing a required section (e.g., a
     `comparison` page with no Verdict, an `entity` page with no
-    Sources, a `procedure` page with no When/Trigger).
+    Relationships, a `procedure` page with no When/Trigger).
   </section_order_or_gaps>
 
   <procedure_instance_leakage>
@@ -790,7 +796,7 @@ affect the same file so each file is opened, read, and rewritten once.
       ("X works by …"), reshape the sections to match the
       destination type's anatomy (concept: Definition · Current
       state · Open questions · Related concepts; summary: Topic and
-      scope · Key findings by sub-topic · Open threads · Sources),
+      scope · Key findings by sub-topic · Open threads),
       `git mv` the file to the matching directory, repair inbound
       links across the wiki, update the entry in `index.md`, and
       bump `updated`. When the page contains both a genuine operator
@@ -1108,8 +1114,7 @@ affect the same file so each file is opened, read, and rewritten once.
 
   <relint_until_clean>
     Re-run `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"`. Iterate
-    the fix loop until the script exits 0 with no blocking or warn
-    findings, and only acceptable info-level findings remain. If a
+    the fix loop until the `<lint_clean>` criterion holds. If a
     specific info-level finding is intentional (e.g., a deliberately
     oversized synthesis page), note the rationale on the page's body or
     in `SCHEMA.md` so the next audit knows it is sanctioned.
