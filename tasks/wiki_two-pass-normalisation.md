@@ -2,7 +2,7 @@
 description: Make the auto_shaper_wiki agent route displaced semantics to their proper channel before normalising structure, and surface both halves in the audit report.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:24
-updated: 2026-07-04T14:43:36
+updated: 2026-08-05T19:37:26
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -23,6 +23,8 @@ The correct path: route the date+session metadata to `sources:` (creating a `raw
 
 The agent already practises the pattern inside single-purpose fix moves — `<fix_external_source_pointer>` migrates an external pointer to `## Derived from` and surfaces "external attribution migrated" in the per-file change report — so this task names the general rule those moves instantiate and applies it to every normalisation.
 
+**Where the rule sits relative to the shipped remediation contract.** The agent now carries one governing remediation rule in `<remediation_contract>`: apply every fix that is safe and deterministic, surface only genuine judgment calls, where safe and deterministic means the fix "loses no meaning, invents no value, and resolves no genuine ambiguity". Two-pass remediation refines that contract rather than competing with it, and it closes a gap the contract leaves open: jamming a displaced date into a heading loses no meaning by the contract's own test — the date is still on the page — so the contract permits the fix while the reader is left with a broken structural element. Two-pass supplies the missing clause, that a fix having to relocate meaning routes it to its channel first and changes the structure second. State the rule as a refinement of the contract and cite the contract from it, per the repo convention of pairing an enforcement rule with the canonical statement it refines.
+
 Skipping the routing step also produces:
 
 - **Overcompressed labels** — vocabulary terms forced to carry extra semantics they were never meant to (the "What the canon says (2026-01-15 ...)" case above).
@@ -36,12 +38,12 @@ Files involved:
 
 Related tasks:
 
-- [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md) — the heading-specific surface of the same failure.
+- [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md) — the heading-specific surface of the same failure. It cites this task's named rule instead of carrying its own copy, so this task ships first or the two land together; both also edit the agent's `<remediate>` section.
 - [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) — the routing destination when displaced semantics name a source.
 
 ## Approach
 
-1. **`plugins/knowledge_management/agents/auto_shaper_wiki.md` `<remediate>` section** — add an explicit three-step rule named "two-pass remediation":
+1. **`plugins/knowledge_management/agents/auto_shaper_wiki.md` `<remediate>` section** — add an explicit three-step rule named "two-pass remediation", opening with one line that cites `<remediation_contract>` as the governing statement it refines and names the gap it closes (relocating meaning passes the contract's loses-no-meaning test, so the contract alone permits the broken structure — see Context). The three steps:
    1. **Identify displaced semantics.** Before changing the structure, name what semantic content the existing structure carries that won't fit the target. Examples: date/source in a heading, qualifier in a frontmatter key, scope tag in a section title, mandate level in a page name.
    2. **Route displaced semantics first.** Move the content to its proper structured channel — frontmatter, `sources:`, `raw/`, an inline link, `## Derived from`, `log.md` — before applying the structural fix.
    3. **Then normalise.** Apply the structural fix with no leftover semantic baggage.
@@ -50,7 +52,7 @@ Related tasks:
 
 ## Acceptance
 
-- The `<remediate>` section carries the named three-step rule.
+- The `<remediate>` section carries the named three-step rule, and its opening line cites `<remediation_contract>` as the statement it refines.
 - The audit-report contract requires naming both halves of every normalisation.
 - Fixture with non-vocabulary labels and embedded attribution suffixes → after `wiki_fix`:
   - Labels match SCHEMA vocabulary, no parenthetical attribution remains.

@@ -2,7 +2,7 @@
 description: Reconcile two auto_shaper_wiki self-contradictions: the lint-clean exit criterion its own contested-page protocol makes unreachable, and stale body-Sources anatomy references the linter deprecates.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-08-04T19:13:55
+updated: 2026-08-05T19:00:38
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -34,6 +34,7 @@ Co-edit coordination: [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-pag
 
 - Changing the linter's warn severity for `contested: true` — that warn is the designed human-review surface; the agent's criterion adapts to it, not the reverse.
 - Any change to the contested-page protocol itself (marking both sides, never picking a winner).
+- Carve-outs for any other surface-for-human warn. The same hazard class has at least one more member — the linter's `raw-origin` warn on an irreducible origin-field conflict, which the agent's `<fix_raw_source_frontmatter_missing>` move surfaces for the user rather than fixes — but it is rarer and carries its own signal wording, so the carve-out here stays contested-only and that case gets its own task when it bites in practice.
 
 ## Acceptance
 

@@ -2,9 +2,10 @@
 description: Extend the log template's verbatim-enforced action enum to cover the shipped writers — audit, import, session-wrapup — so the plugin's own components stop writing off-enum log entries.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-08-04T19:53:13
-status: ready
+updated: 2026-08-05T19:47:00
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
 ---
 
 # Cover every shipped log writer in the log template's action enum

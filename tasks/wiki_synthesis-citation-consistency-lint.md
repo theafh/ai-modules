@@ -2,7 +2,7 @@
 description: Add a lint.py check that surfaces citation-consistency issues on synthesis pages — sources: entries never cited inline, and inline raw citations missing from sources:.
 scope: plugins/knowledge_management
 created: 2026-06-18T00:36:41
-updated: 2026-06-18T00:36:41
+updated: 2026-08-05T19:37:26
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -17,7 +17,7 @@ Give the wiki linter a deterministic check that surfaces when a synthesis page's
 - an inline `raw/` citation absent from `sources:` — pinned-but-undeclared;
 - as a coarse backstop, a synthesis page that carries zero inline links of any kind — synthesis grounded in nothing visible.
 
-All three surface at `info`/`warn` and never block, honoring the wiki's "lint surfaces, doesn't enforce" stance. The check verifies citation **presence and channel consistency only** — it deliberately does not verify **grounding** (whether a cited source actually supports a paraphrased claim), which stays a human/agent-review concern (see Approach non-goals).
+All three surface at `info` and never block, honoring the wiki's "lint surfaces, doesn't enforce" stance. Info across the board — including the zero-links backstop — is deliberate: the `auto_shaper_wiki` agent's clean-exit bar tolerates no warn findings, this task ships no agent fix move for these findings (see Approach non-goals), and inserting a citation is a judgment call the agent's remediation contract surfaces rather than auto-applies — a warn would strand every audit between an unreachable bar and citation-stuffing. The check verifies citation **presence and channel consistency only** — it deliberately does not verify **grounding** (whether a cited source actually supports a paraphrased claim), which stays a human/agent-review concern (see Approach non-goals).
 
 ## Context
 
@@ -35,6 +35,8 @@ Why only synthesis types: `query`/`summary`/`comparison` are the pages that synt
 
 Remediation is not built here. Because the `auto_shaper_wiki` agent runs `lint.py` inside its assess→fix→verify loop, the new finding flows to the agent automatically; an implementer adds no remediation logic to the linter. Info-level finding **suppression** is likewise out of scope — that mechanism is owned by [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md); this task adds no per-finding acknowledge handling.
 
+The clean-exit bar this severity choice rests on is rewritten by [wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md), which adds a carve-out for the contested-page warn alone. Read it before revisiting the severity: because that carve-out is deliberately not general, `info` stays the only non-driving level for these three findings whichever task lands first.
+
 Related work: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) defines the `raw/` + `sources:` provenance convention whose consistency this check enforces; read it for the semantics of what counts as a source.
 
 ## Approach
@@ -42,17 +44,17 @@ Related work: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-a
 1. Add a check function to `plugins/knowledge_management/skills/wiki/scripts/lint.py` (e.g. `check_synthesis_citation`) and register it in the linter's check registry so a bare `python3 scripts/lint.py` runs it. For each page from `iter_wiki_pages` whose `type` is in the synthesis set:
    - read `sources:` into a set of wiki-root-relative strings;
    - run `extract_md_links` on the body, reduce each resolved target to its wiki-root-relative path, and collect those beginning with `raw/` into an inline-citation set; track separately whether the body has **any** inline link;
-   - emit `warn` (finding key e.g. `citation`) when the body has zero inline links of any kind;
+   - emit `info` (finding key e.g. `citation`) when the body has zero inline links of any kind — the coarse backstop;
    - emit `info` for each `sources:` entry absent from the inline-citation set (declared, never pinned);
    - emit `info` for each inline `raw/` citation absent from `sources:` (pinned, never declared).
-2. Slot the new finding key into the linter's severity buckets so the three findings report at `info`/`warn` and leave the exit code untouched (a wiki tripping only these still exits 0).
+2. Slot the new finding key into the linter's severity buckets so all three findings report at `info` and leave the exit code untouched (a wiki tripping only these still exits 0).
 3. Document the check: add a row to `plugins/knowledge_management/skills/wiki/references/lint_checks.md`, and name the check in the lint severity-bucket lists in `SKILL.md` under `<narrow_inline_checks>`. State plainly in both that the check verifies citation *presence and consistency*, not *grounding*, and word any author-facing guidance as "cite where the claim is grounded" rather than "add a citation to clear the check," so the rule pushes toward grounding instead of citation-stuffing.
 4. **Open decision:** whether `concept` joins the synthesis set. Default: exclude it — `concept` pages describe a mechanism and may legitimately carry `confidence` instead of per-claim raw citation — and start with `{summary, query, comparison}`. An implementer may add `concept` if a fixture shows under-cited concept pages slipping through.
 
 Non-goals / follow-ups (kept out to keep this task atomic):
 
 - **Grounding verification** (does the source support the claim). The wiki paraphrases and links whole files, so surface matching false-alarms on good paraphrase and entailment needs an LLM — which, pushed into skill rules, invites fabrication. Grounding stays human/agent review.
-- **A named `auto_shaper_wiki` remediation move** for the new finding (add the missing inline link, prune a decorative `sources:` entry, or flag for human) — a worthwhile follow-up analogous to the agent's existing orphan-page fix move, filed separately rather than folded in.
+- **A named `auto_shaper_wiki` remediation move** for the new finding (add the missing inline link, prune a decorative `sources:` entry, or flag for human) — a worthwhile follow-up analogous to the agent's existing orphan-page fix move, filed separately rather than folded in. That follow-up also owns any severity promotion: the zero-links finding may rise to `warn` only in the same change that gives the agent a move to act on it.
 
 ## Acceptance
 
@@ -60,9 +62,9 @@ Non-goals / follow-ups (kept out to keep this task atomic):
 - Staged fixture pages prove each branch:
   - a synthesis page with a `sources:` entry no inline link references → emits the `info` "declared but never cited inline" finding naming that source;
   - a synthesis page with an inline `raw/…` link absent from `sources:` → emits the `info` "cited inline but missing from `sources:`" finding;
-  - a synthesis page with zero inline links → emits the `warn` finding;
+  - a synthesis page with zero inline links → emits the zero-links `info` finding;
   - a synthesis page whose `sources:` entries each have a matching inline raw link and whose inline raw links are all declared → emits none of the new findings (true negative);
   - a `query` page with empty `sources:` that cites only other wiki pages → emits none of the new findings (guards the page-citing false positive).
-- A wiki that trips only these new findings still exits 0 (they are `info`/`warn`, never blocking).
+- A wiki that trips only these new findings still exits 0 (all `info` — never warn or blocking).
 - `plugins/knowledge_management/skills/wiki/references/lint_checks.md` carries a row for the new check, and the `SKILL.md` `<narrow_inline_checks>` severity-bucket lists name it; both state the presence-not-grounding limitation.
 - The wiki script-test harness under `tests/wiki/` passes with the five fixtures above added.

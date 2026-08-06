@@ -2,7 +2,7 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T15:26:15
-updated: 2026-06-13T01:47:36
+updated: 2026-08-05T19:37:26
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -45,11 +45,13 @@ It says lowercase/hyphens/no-spaces but **never says "ASCII only"**, and every e
 - [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md) — the `## Conventions` "File names:" bullet. Extend to "pure ASCII; transliterate non-ASCII" with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here.
 - [scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py) — add the new check. Findings are `Issue(severity, bucket, page, message)`; severity constants `SEV_BLOCKING / SEV_WARN / SEV_INFO`; existing path-shape logic lives in `check_type_location`. Add a sibling `check_filename_ascii` (bucket `filename`) and register it in the run pipeline.
 - [references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md) — document the new check row in the matrix and add it to the **warn** bucket list.
-- [auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — the `<remediate>` phase (the rename machinery where a fix-group "renames a page via `git mv`"). Add an ASCII-fold-rename remediation for the new warning.
+- [auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — the `<remediate>` phase, beside the existing `<fix_wrong_directory_for_declared_type>` move and under the `<use_git_mv>` constraint. Add an ASCII-fold-rename remediation for the new warning.
 
 ### Related task
 
-- [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) — co-edits the same `auto_shaper_wiki.md` `<remediate>` phase. Coordinate so the new ASCII-fold rename slots in as a fix-group alongside the displaced-semantics routing rule rather than conflicting with it; reuse its `git mv` + re-point-references machinery rather than inventing a parallel one.
+- [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) — co-edits the same `auto_shaper_wiki.md` `<remediate>` phase. Coordinate so the new ASCII-fold rename slots in as a fix-group alongside the displaced-semantics routing rule rather than conflicting with it.
+
+The rename machinery to reuse already ships in the agent rather than arriving with that task: `<fix_wrong_directory_for_declared_type>` carries the `git mv`-then-repair-inbound-links-and-index pattern, and the `<use_git_mv>` fix constraint states the history-preserving rule every rename follows. Model the ASCII-fold remediation on those two rather than inventing a parallel mechanism.
 
 ## Approach
 
@@ -84,7 +86,7 @@ When the `filename` warning fires, the autofix mirrors the manual session fix:
 ### Non-goals
 
 - Do **not** rely on setting `git config core.precomposeUnicode` as the fix — it is machine-specific and brittle. ASCII-folding is robust regardless of git config; mention the footgun only as root-cause context.
-- Do not retro-rename anyone's existing wiki; the linter surfaces, the operator (or auto_shaper on request) acts.
+- A ship-time migration sweep: implementing this task renames nothing in any existing wiki. Renames happen per wiki through the normal channel — the linter surfaces the `warn`, and that wiki's next `wiki_fix`/audit run applies the ASCII fold as an ordinary deterministic remediation under the agent's remediation contract (`git mv` plus re-pointed references; the readable title keeps its native characters). This differs deliberately from the log posture in [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md): log entries are append-only records, so their repair is info-level and on demand; page filenames are living structure, so the fold is warn-level and auto-applied.
 
 ## Acceptance
 

@@ -2,7 +2,7 @@
 description: Make the append-only wiki log tolerate breakage from a logged entry: heading uniqueness, a repair-not-rewrite carve-out, and a duplicate-heading lint check, rolled out to existing wikis.
 scope: plugins/knowledge_management
 created: 2026-06-18T19:33:04
-updated: 2026-07-30T11:23:55
+updated: 2026-08-05T19:37:26
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -30,9 +30,9 @@ This task is the wiki-skill-source counterpart of a fix that was applied by hand
 
 The append-only-log idea is stated in several places; a coherent change touches all of them:
 
-- `references/template_log.md` — the canonical `log.md` preamble copied into every wiki. The block beginning `> Chronological record of all wiki actions. Append-only.` is the strongest statement, and the next line gives the heading format: `` > Format: `## [YYYY-MM-DD] action | subject` ``.
-- `references/template_schema.md` — the conventions list, with the bullet `` - Every action must be appended to `log.md` `` (the rule in the schema master).
-- `skills/wiki/SKILL.md` — the architecture-diagram annotation `# Chronological action log (append-only, rotated yearly)`; the `<appending_to_log>` section, which defines "Append-only" as newest-at-bottom and how to anchor a new entry; two heading-format instantiations introduced by `` - Append to `log.md`: `` (one for `ingest | Source Title`, one for `lint | N blocking, N warn, N info`); and the `<rotate_log_at_500>` pitfall.
+- `references/template_log.md` — the canonical `log.md` preamble copied into every wiki. The block beginning `> Chronological record of wiki changes. Append-only.` is the strongest statement, and the next line gives the heading format: `` > Format: `## [YYYY-MM-DD] action | subject` ``.
+- `references/template_schema.md` — the conventions list, with the bullet beginning `` Every operation that creates or updates wiki files must be appended to `log.md` `` (the rule in the schema master).
+- `skills/wiki/SKILL.md` — the architecture-diagram annotation `# Chronological action log (append-only, rotated yearly)`; the `<appending_to_log>` section, which defines "Append-only" as newest-at-bottom and how to anchor a new entry; two heading-format instantiations (`ingest | Source Title` in `<update_navigation>`, `lint | N blocking, N warn, N info` in `<inline_iteration_loop>`); and the `<rotate_log_at_500>` pitfall.
 
 Two observations from that inventory:
 
@@ -47,7 +47,7 @@ Two observations from that inventory:
 
 ### The propagation reality (this answers "should it go in the schema master?")
 
-Editing the **schema master alone does not reach existing wikis.** `init_wiki.sh` copies `template_schema.md` into the wiki as a standalone `SCHEMA.md` once at init (the `cp "$REFS/template_schema.md" "$WIKI/SCHEMA.md"` step) and then refuses to ever overwrite an established wiki (the `# Don't clobber an established wiki.` guard that exits with `refusing to overwrite existing wiki`). There is no `--update`/`--force`, no reconcile, and no checksum re-sync. After init every wiki owns its local `SCHEMA.md`, and the agent and linter read that local file, never the skill template. Any edit to the `SCHEMA.md` **body** (including the `Every action must be appended to log.md` convention) is invisible to existing wikis.
+Editing the **schema master alone does not reach existing wikis.** `init_wiki.sh` copies `template_schema.md` into the wiki as a standalone `SCHEMA.md` once at init (the `cp "$REFS/template_schema.md" "$WIKI/SCHEMA.md"` step) and then refuses to ever overwrite an established wiki (the `# Don't clobber an established wiki.` guard that exits with `refusing to overwrite existing wiki`). There is no `--update`/`--force`, no reconcile, and no checksum re-sync. After init every wiki owns its local `SCHEMA.md`, and the agent and linter read that local file, never the skill template. Any edit to the `SCHEMA.md` **body** (including the `Every operation that creates or updates wiki files must be appended` convention) is invisible to existing wikis.
 
 What **does** reach existing wikis on the next `wiki_fix` run:
 
@@ -60,6 +60,8 @@ Consequence for placement: the carve-out and the uniqueness convention belong in
 
 No existing task covers append-only-log repair, heading uniqueness, duplicate-heading handling, or MD024. Distinct neighbors: [wiki_log-entries-only-on-changes.md](archive/wiki_log-entries-only-on-changes.md) (whether to write an entry at all, now shipped), [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md) (rotation and entry-aware reads), [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md) (heading vocabulary). [task-family_decided-general-positive-body.md](archive/task-family_decided-general-positive-body.md) already frames "append-only by design" surfaces as a carve-out from the rewrite-in-place rule, which supports the framing here.
 
+Co-edit coordination: [wiki_log-action-enum-coverage.md](wiki_log-action-enum-coverage.md) rewrites the `Actions:` line inside the same verbatim-enforced `template_log.md` preamble this task adds the heading format and the repair carve-out to. Every edit inside that slot makes each existing wiki's `log.md` preamble drift and costs it one boilerplate warn until its next audit realigns it — the designed propagation channel, so landing both preamble edits in one change spends it once instead of twice. Word this task's lines against whichever preamble text is current when it builds.
+
 ## Approach
 
 Two coordinated halves: **prevent** (heading uniqueness) and **permit, detect, fix** (repair carve-out, lint check, agent fix move). Then place each half on the channel that reaches existing wikis.
@@ -68,12 +70,12 @@ Two coordinated halves: **prevent** (heading uniqueness) and **permit, detect, f
 
    Primary home for the convention is the `template_log.md` preamble (the `` > Format: `` line), which propagates to new wikis at init and to existing wikis via the boilerplate path (half 5). Then sweep every site that writes or documents a heading and add `HH:MM`. Enumerate them with `grep -rn '## \[' plugins/knowledge_management`; today they are:
    - `skills/wiki/references/template_log.md` — the `` > Format: `` line (and the `{{TODAY}}` seed entry below it; see caveat).
-   - `skills/wiki/SKILL.md` — the `<appending_to_log>` section and the two `` Append to `log.md`: `` instantiations (`ingest | Source Title` and `lint | N blocking, N warn, N info`).
+   - `skills/wiki/SKILL.md` — the `<appending_to_log>` section and the two instantiations (`ingest | Source Title` in `<update_navigation>`, `lint | N blocking, N warn, N info` in `<inline_iteration_loop>`).
    - `skills/wiki_wrapup/SKILL.md` — the `session-wrapup | N new, N extended, N contested` instantiation (the action behind the motivating collision).
    - `skills/wiki_import/SKILL.md` — the `import | Source Title — …` instantiation.
    - `agents/auto_shaper_wiki.md` — the `<append_audit_log_entry>` `audit | …` instantiation, plus the `## [YYYY-MM-DD]` references in its scaffold-diff comments.
    - `skills/wiki/references/lint_checks.md` — the `lint | …` example.
-   - `skills/wiki/references/template_schema.md` — the `Every action must be appended to log.md` bullet (no format string, but align any wording).
+   - `skills/wiki/references/template_schema.md` — the `Every operation that creates or updates wiki files must be appended` bullet (no format string, but align any wording).
 
    Implementation caveats:
    - `lint.py` detects entries by `line.startswith("## [")`, which is unaffected by adding time inside the brackets, so keep date and time in one `[YYYY-MM-DD HH:MM]` bracket.
@@ -83,7 +85,7 @@ Two coordinated halves: **prevent** (heading uniqueness) and **permit, detect, f
 
 2. **Repair carve-out (permission).** Home: the `template_log.md` preamble plus the `<appending_to_log>` section and the architecture-diagram annotation of `SKILL.md`. Add a precise rule: the log is append-only in substance, so never reword, reorder, or delete a past entry's recorded content; but an entry may be edited to repair a structural or lint break it introduced (for example disambiguating a colliding heading or fixing malformed markdown), as long as the repair does not change what the entry records or where it sits. Make the "repair the breakage" (allowed) versus "rewrite the substance" (forbidden) line explicit. Cross-reference the append-only-by-design framing in [task-family_decided-general-positive-body.md](archive/task-family_decided-general-positive-body.md).
 
-3. **Linter: add a duplicate-heading check on `log.md` (surface only, non-driving).** In `lint.py` add a check (e.g. `check_log_heading_uniqueness`) that scans `log.md` for repeated `## [` headings and emits a finding (finding key `log`) naming the collision; register it in the same run registry as `check_log_rotation`. Emit it at **`SEV_INFO`**, not `WARN`/blocking: INFO surfaces the collision in the report and the agent's audit log without failing the exit code or driving the `<relint_until_clean>` loop to auto-rewrite history. This is the decided behaviour — the check reports duplicates (including pre-existing legacy ones) so they are visible, but it does not trigger an automatic mass-repair on a routine pass. A `WARN`/blocking severity would force the agent loop to rewrite the backlog and is explicitly rejected.
+3. **Linter: add a duplicate-heading check on `log.md` (surface only, non-driving).** In `lint.py` add a check (e.g. `check_log_heading_uniqueness`) that scans `log.md` for repeated `## [` headings and emits a finding (finding key `log`) naming the collision; register it in the same run registry as `check_log_rotation`. Emit it at **`SEV_INFO`**, not `WARN`/blocking: INFO surfaces the collision in the report and the agent's audit log without failing the exit code or driving the `<relint_until_clean>` loop to auto-rewrite history. That loop's clean bar is rewritten by [wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md), whose carve-out covers the contested-page warn only — so INFO stays the only non-driving level for this check whichever task lands first, and the choice needs no revisiting. This is the decided behaviour — the check reports duplicates (including pre-existing legacy ones) so they are visible, but it does not trigger an automatic mass-repair on a routine pass. A `WARN`/blocking severity would force the agent loop to rewrite the backlog and is explicitly rejected.
 
    Keep the check to **duplicate detection only**: compare full heading text and fire solely when two headings are byte-identical. It must NOT validate heading *format* — no rule that an entry must carry the `HH:MM` component — so a unique legacy heading stays clean regardless of whether it is date-only or timestamped, and an entry is never flagged for the format change alone. (The linter checks neither log-heading format nor uniqueness today; this task adds uniqueness surfacing only.) Generalizing to other malformed-markdown-in-entries detection is optional and can be deferred to stay atomic. Document the check in `references/lint_checks.md` and name it in the `SKILL.md` lint severity-bucket lists.
 
@@ -93,7 +95,7 @@ Two coordinated halves: **prevent** (heading uniqueness) and **permit, detect, f
    - The format/prevention and the surfacing check ship as plugin code (the agent prompt and `lint.py`) and apply to every wiki on its next `wiki_fix` run with no per-wiki migration: new entries are timestamped everywhere, and any duplicate is surfaced at INFO.
    - The repair move (half 4) also ships, but is **on demand by design**: surfacing a duplicate does not auto-repair it, so an established wiki's historical duplicates are reported, not rewritten, until someone asks or a duplicate blocks work.
    - Halves 1 and 2, written into the `template_log.md` **preamble** (above the first `## [`), propagate to new wikis at init and to existing wikis through the boilerplate-drift to `<fix_log_preamble_drift>` path. Keep the new lines above the first `## [` so they stay inside `lint.py`'s boilerplate-checked region; otherwise the propagation channel is lost.
-   - The edit to the `Every action must be appended to log.md` bullet in `template_schema.md` is for new-wiki coherence only.
+   - The edit to the `Every operation that creates or updates wiki files must be appended` bullet in `template_schema.md` is for new-wiki coherence only.
    - Do **not** edit `.markdownlint.jsonc` to silence MD024 or exclude `log.md`; that discards the check instead of reconciling the breakage.
 
 **Non-goals / follow-ups (kept out to keep this atomic):**
@@ -107,7 +109,7 @@ Two coordinated halves: **prevent** (heading uniqueness) and **permit, detect, f
 ## Acceptance
 
 - The `template_log.md` preamble states both (a) the timestamped heading format `## [YYYY-MM-DD HH:MM] action | subject` and (b) the repair-not-rewrite carve-out, and both sit above the first `## [` so they remain inside `lint.py`'s boilerplate-checked region.
-- Every site that writes or documents a log heading carries the timestamp: the `<appending_to_log>` section and both `` Append to `log.md`: `` instantiations of `SKILL.md`, the `session-wrapup` example in `wiki_wrapup`, the `import` example in `wiki_import`, the `audit` example in `auto_shaper_wiki.md`, and the example in `lint_checks.md`. A `grep -rn '## \[' plugins/knowledge_management` shows the timestamped form at each. The `Every action must be appended to log.md` bullet of `template_schema.md` is aligned.
+- Every site that writes or documents a log heading carries the timestamp: the `<appending_to_log>` section and both instantiations of `SKILL.md` (`<update_navigation>` ingest, `<inline_iteration_loop>` lint), the `session-wrapup` example in `wiki_wrapup`, the `import` example in `wiki_import`, the `audit` example in `auto_shaper_wiki.md`, and the example in `lint_checks.md`. A `grep -rn '## \[' plugins/knowledge_management` shows the timestamped form at each. The `Every operation that creates or updates wiki files must be appended` bullet of `template_schema.md` is aligned.
 - The `{{TODAY}}` seed-entry decision (date-only vs date+time) is made and applied in `init_wiki.sh`.
 - `lint.py` has a registered check that emits a finding when `log.md` contains two identical `## [` headings, at **`SEV_INFO`** (non-blocking, non-driving); a bare `python3 scripts/lint.py` surfaces it and the exit code is unchanged.
 - A legacy `log.md` of unique **date-only** entries lints clean: no format or missing-timestamp finding is raised. The new check fires only on an actual duplicate, never on the absence of `HH:MM`.

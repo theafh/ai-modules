@@ -2,7 +2,7 @@
 
 > Chronological record of wiki changes. Append-only.
 > Format: `## [YYYY-MM-DD] action | subject`
-> Actions: ingest, update, query, lint, create, archive, delete
+> Actions: ingest, update, query, lint, create, archive, delete, audit, import, session-wrapup
 > Entries: an operation that creates or updates wiki files appends one entry; an
 > operation that changes no file appends none. Lint and audit runs are the
 > exception — each records its outcome, including a zero-change one, as a
