@@ -58,6 +58,8 @@ Makefile                          # task entry point
 
 This repo manages upcoming work and todos with the `task` skill (`/task`). Live items (`open`, `checked`, `ready`, `implemented`, `audited`) live in `tasks/`; terminal items (`finished`, `deferred`) move to `tasks/archive/`. Task files record `reported-by`, and implemented work records `implemented-by`.
 
+This repo keeps its durable knowledge in `wiki/`, managed through the `wiki` skill family. It holds two things the shipped artefacts are the wrong container for: how this repository works and why, and the dated, sourced research on how each target harness discovers artefacts, parses frontmatter, names tools, runs hooks, and carries standing instructions. Read `wiki/index.md` before starting harness work, and write a newly verified fact back there with its date and source. A rule that changes what an agent does at authoring time stays in the skill; anything an agent needs in another repository stays in the skill or its `references/`, because the wiki travels nowhere else.
+
 Task files stay agent-harness agnostic. When a task needs standing repo instructions, cite them as the **repo rules** or **standing repo rules** rather than naming `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or another harness-specific file. Name a harness file in a task only when that file itself is the implementation target.
 
 ## Committing

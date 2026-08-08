@@ -17,7 +17,7 @@ OpenCode receives the repository's output style through its own configuration tr
 
 This builds on [the Claude groundwork task](deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
 
-The `harness_portability` skill records both routes in the `<opencode_counterparts>` and `<opencode_delivery_modes>` blocks of its `<claude_output_styles>` section, read off the source rather than the documentation, which states none of it.
+The wiki records both routes on its [SST OpenCode](../wiki/entities/sst-opencode.md) page and in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md), read off the source rather than the documentation, which states none of it.
 
 The additive route is the instructions list in OpenCode's global configuration file. Its resolution rules are what make it deployable: a leading home-directory marker expands, an absolute path is globbed by its basename within its own directory, every match resolves into a set so a repeated deploy is idempotent, and each file is injected labelled with its own path. Reach is wider than a Claude style because the appended tail governs every agent including subagents. This route adds to the user's existing rules rather than replacing them, which the global rules file would not: that file resolves by first match, so writing one would stop the user's own global rules file loading altogether.
 

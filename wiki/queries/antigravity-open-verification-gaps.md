@@ -1,0 +1,85 @@
+---
+title: What remains unverified about Google Antigravity?
+created: 2026-08-08
+updated: 2026-08-08
+type: query
+tags: [antigravity, verification-gap, frontmatter, agent, discovery]
+sources: []
+confidence: medium
+---
+
+# What remains unverified about Google Antigravity?
+
+## The question
+
+Which claims about [Google Antigravity](../entities/google-antigravity.md) rest
+on absence of evidence, contradiction between official pages, or an inference
+that nobody has tested, rather than on a documented statement?
+
+## Synthesized answer
+
+Four gaps survived the July and August 2026 verification passes. Each is
+recorded here as a gap because the documentation is genuinely silent or
+self-contradictory, not because nobody looked.
+
+### Frontmatter tolerance
+
+Whether the loader rejects an unrecognised frontmatter key is unconfirmed, and
+the available evidence leans tolerant. The subagents and skills pages say nothing
+about unknown keys either way. The one documented validation gotcha is a bad
+tool name causing a runtime hang rather than a load rejection. The
+fixed-allowlist "unexpected fields" behaviour that circulates in secondary
+sources traces to a `SKILL.md` editor linter in VS Code, which can raise a
+cosmetic editor warning without being a runtime rejection, and which never names
+Antigravity.
+
+This is the gap that most changes design work, because
+[agent definition portability](../concepts/agent-definition-portability.md)
+classifies every target as ignore-unknown, strict-schema, or pass-through, and
+that classification decides how aggressively a generated variant filters keys.
+Until someone confirms it against the loader or empirically, the Google target
+stays classified as pending verification rather than as strict.
+
+### Whether plugin-bundled agents register
+
+Official pages contradict each other. The subagents page names
+`plugins/<plugin_name>/agents/` as a subagent location, while both the 2.0 and
+the IDE plugins pages omit agents from the bundle component list entirely.
+Confirm on the target product before shipping a plugin-bundled agent and
+expecting it to register.
+
+### Which of `GEMINI.md` and `AGENTS.md` wins
+
+Both a project's `GEMINI.md` and its `AGENTS.md` are parsed for rule
+constraints, and no page reviewed states which takes precedence when the two
+disagree. Treat that precedence as unresolved, and avoid splitting one rule set
+across the pair.
+
+### Whether it reads another harness's directories
+
+No page reviewed in July 2026, across settings, CLI settings, permissions, the
+CLI reference, skills, subagents, or plugins, mentions discovering artefacts from
+`.claude`, `.cursor`, or `.codex`, and none documents an environment variable or
+configuration key that would scope such discovery.
+
+The working assumption is own-roots-only loading, with the missing isolation
+switch read as unnecessary rather than absent. That assumption rests on the
+weakest evidence type in use here, which is silence, so it deserves a check on an
+installed build. See
+[foreign directory adoption](../concepts/foreign-directory-adoption.md) for what
+every other harness in the set does.
+
+## Confidence and caveats
+
+Medium. Each gap is an accurate report of what the documentation says and does
+not say as of 7 August 2026, and none of the four has been tested on an installed
+build. The tolerance question is the one worth spending a session on first,
+because it gates a design decision that is already being made.
+
+## Derived from
+
+- `antigravity.google/docs`, the pages named on the entity page.
+- `microsoft/vscode` issue 294520, for the editor-linter origin of the
+  circulating unexpected-fields behaviour.
+- The `harness_portability` skill in this repository, before its August 2026
+  split.

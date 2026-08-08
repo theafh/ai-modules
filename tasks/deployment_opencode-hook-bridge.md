@@ -39,7 +39,7 @@ Add the bridge source `plugins/ai_dev/hooks/opencode-charter-guardrail.ts` that 
 
 Extend the `hook)` case extension gate in `install_for_app()` to admit `ts` alongside `sh|json`, and add an `opencode` arm that copies a `.ts` hook source into `${app_dir}/plugins/` and a `.sh` hook source into `${app_dir}/hooks/`, with the deployed bridge pointing at the deployed script's path (global vs project). Leave the other targets' arms to skip a `.ts` source.
 
-Document the OpenCode hook mechanism in `deployment/README.md` as its own row distinct from the JSON-merge targets — a bridge plugin plus the shared script — including the subagent-bypass limitation, and record the same caveats in the `harness_portability` skill's hook-portability guidance so future hook work accounts for them.
+Document the OpenCode hook mechanism in `deployment/README.md` as its own row distinct from the JSON-merge targets — a bridge plugin plus the shared script — including the subagent-bypass limitation, and record the same caveats on the wiki's [SST OpenCode](../wiki/entities/sst-opencode.md) and [hook surface portability](../wiki/concepts/hook-surface-portability.md) pages so future hook work accounts for them.
 
 **Out of scope:**
 
@@ -55,4 +55,4 @@ Document the OpenCode hook mechanism in `deployment/README.md` as its own row di
 - A deploy into a throwaway `--project-dir` scratch directory with `--target opencode` places the bridge at `<scratch>/.opencode/plugins/opencode-charter-guardrail.ts` and the script at `<scratch>/.opencode/hooks/charter_guardrail.sh`, both real files, and the deployed bridge references the deployed script's `.opencode/hooks/` path.
 - The same scratch deploy with `--target claude,codex,cursor` does **not** place `opencode-charter-guardrail.ts` anywhere under `.claude`, `.codex`, or `.cursor` — a grep for the bridge filename in those trees finds nothing — confirming non-OpenCode targets skip the `.ts` source.
 - `--uninstall --target opencode` scoped to the scratch deployment removes both the deployed bridge and the deployed script recorded in the log.
-- `deployment/README.md` documents the OpenCode hook path as a bridge plugin plus the shared script, distinct from the JSON-merge rows, and states the subagent-bypass limitation; the `harness_portability` skill's hook-portability guidance records the OpenCode hook model and the same caveats.
+- `deployment/README.md` documents the OpenCode hook path as a bridge plugin plus the shared script, distinct from the JSON-merge rows, and states the subagent-bypass limitation; the wiki's [SST OpenCode](../wiki/entities/sst-opencode.md) and [hook surface portability](../wiki/concepts/hook-surface-portability.md) pages record the OpenCode hook model and the same caveats.

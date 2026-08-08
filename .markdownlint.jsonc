@@ -12,5 +12,11 @@
   "MD013": false,
 
   // First-line H1 is not always present (template fragments, partials).
-  "MD041": false
+  "MD041": false,
+
+  // Wiki pages carry a frontmatter `title:` and an H1 with the same text, by
+  // design: the frontmatter is the machine-readable record and the H1 is the
+  // page heading. Clear MD025's front-matter title pattern so the pair is not
+  // read as two top-level headings.
+  "MD025": { "front_matter_title": "" }
 }
