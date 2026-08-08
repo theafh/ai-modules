@@ -1,8 +1,8 @@
 ---
-description: Deploy the output style to Antigravity as an always-on rule, writing a marked block into the single global rules file and sizing the content for the per-file character cap.
+description: Deploy the output style to Antigravity as an always-on rule, at global scope as a marked block in the single rules file and at project scope as an ordinary workspace rule file.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-07T23:39:03
+updated: 2026-08-08T01:34:52
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -11,7 +11,7 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-Antigravity receives the repository's output style as an always-on rule, deployed by the same `style` artefact type the groundwork task adds. Because Antigravity's global rules live in one user-owned file rather than a directory, the deploy writes a delimited block into that file and removes exactly that block on uninstall, leaving the user's own rule content intact.
+Antigravity receives the repository's output style as an always-on rule, deployed by the same `style` artefact type the groundwork task adds, at whichever scope the run selects. The two scopes take different shapes because Antigravity stores them differently. Workspace rules live in a directory, so under `--project-dir` the deploy writes one ordinary rule file into that project's own rules directory. Global rules live in a single user-owned file, so under `--global` the deploy writes a delimited block into that file and removes exactly that block on uninstall, leaving the user's own rule content intact.
 
 ## Context
 
@@ -21,11 +21,15 @@ The `harness_portability` skill records the mechanism in the `<antigravity_count
 
 The character cap is the constraint that shapes this task. The style body is well inside it today, but the cap binds whatever ships, so the deploy checks the generated content against it rather than assuming it fits, and fails with a clear message when it does not.
 
-Antigravity is also the one non-Claude harness whose plugin bundle can carry rules, so a plugin-integrated route exists here. This task takes the global route only, matching the machine-wide mode the groundwork task establishes.
+Antigravity is also the one non-Claude harness whose plugin bundle can carry rules, so a plugin-integrated route exists here beside the two config-tree scopes. This task takes the config-tree routes at both scopes and leaves the plugin bundle alone, since bundling ties the rule's reach to an installed plugin rather than to the tree the deploy writes.
 
 ## Approach
 
-Generate an Antigravity variant of the style and write it as a delimited block into the single global rules file, using begin and end markers that carry the artefact name so the block is found again on redeploy and on uninstall. Replace the block in place when it is already present, so repeated deploys do not accumulate copies. Leave every line outside the markers untouched, since the file belongs to the user.
+Generate the Antigravity variant once and write it by whichever shape the scope requires, resolving the destination from the script's existing Antigravity directory variables rather than hardcoded paths.
+
+Under `--project-dir`, write it as one ordinary Markdown rule file in that project's own rules directory, set to the Always On activation mode. This is the simpler of the two paths, since the file belongs to the deploy and uninstall removes it outright.
+
+Under `--global`, write it as a delimited block into the single global rules file, using begin and end markers that carry the artefact name so the block is found again on redeploy and on uninstall. Replace the block in place when it is already present, so repeated deploys do not accumulate copies. Leave every line outside the markers untouched, since that file belongs to the user.
 
 Check the generated block against the 12,000-character per-file cap before writing, and fail with a message naming the actual size and the limit when it does not fit, rather than truncating or writing a file the harness will reject.
 
@@ -34,11 +38,13 @@ Generate rather than copy. Strip the Claude frontmatter, which this target does 
 **Out of scope:**
 
 - The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](deployment_output-style-claude-groundwork.md).
-- The workspace-scoped rules directory and the plugin bundle's rules component, both of which reach narrower scopes than the machine-wide mode this task delivers.
+- The plugin bundle's rules component, which reaches only the sessions where that plugin is installed rather than every session in the tree the deploy writes.
 
 ## Acceptance
 
-- A dry run restricted to the style type and the Antigravity target reports one block write into the global rules file and no other file changes.
+- A dry run under `--global` restricted to the style type and the Antigravity target reports one block write into the global rules file and no other file changes.
+- A dry run under `--project-dir` reports one ordinary rule-file write into that project's own rules directory, no block write, and no change under the home directory.
+- A real deploy under `--project-dir` produces a Markdown rule file in that project's rules directory set to the Always On activation mode, and uninstalling removes that file outright.
 - A real deploy against a scratch rules file that already contains unrelated user content leaves that content byte-identical and adds the style between its begin and end markers.
 - Deploying twice in a row leaves exactly one marked block, verified by counting the begin marker in the target file.
 - Uninstalling removes the marked block and leaves the surrounding user content byte-identical to its state before the first deploy.

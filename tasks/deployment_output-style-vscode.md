@@ -1,8 +1,8 @@
 ---
-description: Deploy the output style to GitHub Copilot in VS Code as a user-profile instructions file in its own configuration root, with no activation key required.
+description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-07T23:39:03
+updated: 2026-08-08T01:34:52
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -11,7 +11,7 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-GitHub Copilot in VS Code receives the repository's output style as a generated instructions file in its own user-profile configuration root, applying across every workspace with no activation key to set. This is the cheapest of the non-Claude targets, since deployment and activation are the same act.
+GitHub Copilot in VS Code receives the repository's output style as a generated instructions file, deployed at whichever scope the run selects and needing no activation key at either. Under `--global` it lands in Copilot's own user-profile instructions root and applies across every workspace. Under `--project-dir` it lands in that project's own instructions directory and applies to work in that repository. This is the cheapest of the non-Claude targets, since deployment and activation are the same act in both scopes.
 
 ## Context
 
@@ -23,7 +23,9 @@ One trap belongs in the implementation. Copilot also reads a rules folder and a 
 
 ## Approach
 
-Generate a VS Code variant of the style and write it into Copilot's user-profile instructions root as a single Markdown file. Confirm during implementation whether that root expects a plain `.md` extension or the `.instructions.md` form the workspace-scoped files use, and follow whichever the installed VS Code accepts; record the answer in the harness skill's `<vscode_counterparts>` block so the next reader does not repeat the check.
+Generate a VS Code variant of the style and write it as a single Markdown file, resolving the destination from the script's existing Copilot directory variable rather than a hardcoded path so the same code serves both scopes. Under `--global` that is Copilot's user-profile instructions root; under `--project-dir` it is that project's own instructions directory.
+
+Confirm during implementation what each scope expects of the filename, since the workspace-scoped files use the `.instructions.md` form while the user-profile root may accept a plain `.md`. Follow whichever the installed VS Code accepts at each scope, and record both answers in the harness skill's `<vscode_counterparts>` block so the next reader does not repeat the check. Where the project-scoped file supports an `applyTo` glob, write the value that scopes it to every file rather than leaving the field out, so the rule is unambiguously always-on.
 
 Generate rather than copy. Strip the Claude frontmatter, which this target does not implement, and rewrite the one clause in the style body naming Claude's `keep-coding-instructions` mechanism, using the per-tool substitution facility in `deployment/deployment.conf` that the groundwork task's Claude path already leaves in place.
 
@@ -35,8 +37,10 @@ Generate rather than copy. Strip the Claude frontmatter, which this target does 
 
 ## Acceptance
 
-- A dry run restricted to the style type and the VS Code target reports exactly one file write, into Copilot's own user-profile instructions root and nowhere in the Claude configuration tree.
-- A real deploy into a scratch target produces a Markdown file whose extension matches what the installed VS Code accepts, with the answer and the version tested recorded in the harness skill's `<vscode_counterparts>` block.
+- A dry run under `--global` restricted to the style type and the VS Code target reports exactly one file write, into Copilot's own user-profile instructions root and nowhere in the Claude configuration tree.
+- A dry run under `--project-dir` reports exactly one file write, into that project's own instructions directory, and touches nothing under the home directory.
+- A real deploy at each scope produces a Markdown file whose extension matches what the installed VS Code accepts there, with both answers and the version tested recorded in the harness skill's `<vscode_counterparts>` block.
+- The project-scoped file carries an `applyTo` value scoping it to every file, so it is always-on rather than pattern-limited.
 - The deployed file contains no Claude output-style frontmatter keys, verified by searching it for `keep-coding-instructions` and `force-for-plugin` and finding neither.
 - The deployed body contains no reference to Claude's keep-coding-instructions mechanism, and the clause that named it reads correctly for a harness that only appends.
 - Uninstalling removes the deployed file and leaves any other instructions files in the same root untouched.

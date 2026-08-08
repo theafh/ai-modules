@@ -2,7 +2,7 @@
 description: Deploy the output style to Codex by re-deriving its per-model base instructions at deploy time, swapping the personality and formatting sections, and pointing the instructions-file key at the result.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-07T23:39:03
+updated: 2026-08-08T01:12:44
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -36,6 +36,7 @@ Record in the generated file's own header which model and which Codex version it
 **Out of scope:**
 
 - The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](deployment_output-style-claude-groundwork.md).
+- Project-scoped deployment under `--project-dir`, which this task rejects outright rather than defers. A project `.codex/config.toml` can set the instructions-file key, so the rejection is a judgement rather than a limitation: a committed whole-slot replacement changes the operating instructions for everyone who works in that repository, not only the person who deployed it, and the generated text is pinned to one model and one Codex version so it is wrong for every contributor on a different one. Codex also loads project layers only for a trusted project, so the placement would silently do nothing until trust is granted. Skip the Codex style actions with a warning under `--project-dir`, matching how [the Claude groundwork task](deployment_output-style-claude-groundwork.md) skips its own.
 - The additive alternative of writing a marked block into the Codex global rules file, which reaches a weaker outcome and is not what this task delivers.
 - The personality setting and the profile layer, neither of which can carry repository prose: the first is a closed vendor enum and the second needs a launch flag rather than a persisted key.
 
