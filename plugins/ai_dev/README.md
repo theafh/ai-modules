@@ -52,7 +52,7 @@ Three tools sit beside the spine rather than on it:
 
 - **format_markdown**: apply markdown linting rules and best practices when creating or editing `.md` / `.mdc` files: blank lines around block elements, consistent bullet style, fenced code blocks with language tags, table alignment, header progression, list indentation, and link conventions.
 - **format_python**: apply formatting standards, code-quality rules, structure conventions, and lint-prevention practices when writing or editing Python, aligned with flake8, ruff, and pylint.
-- **format_rust**: apply clippy-aligned Rust practices when writing or editing `.rs` files: procedural flow, clippy-driven clarity improvements, minimal imports, Result/Option idioms, fallible builders with project error types, string prefix/suffix handling, clearer borrowing, iteration style, string building, and grouped function signatures.
+- **format_rust**: apply clippy-aligned Rust practices when writing or editing `.rs` files: procedural flow, clippy-driven clarity improvements, minimal imports, Result/Option idioms, the error-versus-invariant model with panic discipline and clippy unwrap_used enforcement, fallible builders following the error idiom by consumer, string prefix/suffix handling, clearer borrowing, iteration style, string building, and grouped function signatures.
 
 ## Agents
 
