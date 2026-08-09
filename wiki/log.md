@@ -227,3 +227,103 @@ in place, dropping narration of rejected alternatives and stale measurements.
 - log.md (entries compacted)
 - raw/*/.gitkeep (five markers so the source tree survives a clone)
 - index.md
+
+## [2026-08-09] ingest | Copilot hook contract researched, which reclassified the deploy's foreign-file deposit
+
+Read against `code.visualstudio.com/docs/agent-customization/hooks` and GitHub's
+`/copilot/reference/hooks-reference` and `/copilot/concepts/agents/hooks`, plus a
+type-scoped dry run of the deploy script. Three findings changed earlier pages
+rather than only adding to them: Copilot has a worked hook contract, so it is no
+longer unfinished coverage and Cursor is the last unworked target; `~/.copilot/`
+is one root shared by the editor and the CLI, so a deploy named for the editor
+reaches both; and Copilot reads `.claude/settings.json` and
+`~/.claude/settings.json` for hooks, which makes every Claude hook deploy a
+two-harness deploy.
+
+- entities/github-copilot-vs-code.md (two-products-one-root section, full hook
+  contract with roots, schema, eight events, stdin and stdout envelopes, exit
+  codes and `permissionDecision`, the CLI superset and its loading rules, and the
+  Claude-tree adoption extended to hooks; confidence raised to high)
+- concepts/hook-surface-portability.md (four schemas and four signalling
+  contracts, the matcher-group divergence named as near-miss compatibility, the
+  Copilot deposit reclassified from clutter to two live parsers with the two
+  failures that keep it inert, and the `~/.claude/settings.json` two-harness
+  consequence added to open questions)
+- concepts/foreign-directory-adoption.md (Copilot's adoption extended from prose
+  to executable policy, with the line that distinction crosses)
+- index.md
+
+## [2026-08-09] update | Adoption is switched off, not just avoided, and VS Code turns out to have the switches
+
+The user settled the delivery route: deploy natively into each harness's own root
+and disable the foreign-read paths where the harness documents a switch, because a
+harness reading another's artefacts implements them partially and silently, which
+degrades the integration in the target rather than saving work. Checking whether
+that position is implementable turned up two VS Code settings keys nothing here
+had recorded, which also closed the open Copilot delivery question.
+
+- concepts/foreign-directory-adoption.md (standing position extended from avoid to
+  avoid-and-disable with the delivery-quality reasoning; the switch inventory
+  rewritten, since "no other target documents an equivalent switch" was false —
+  `chat.hookFilesLocations` and `chat.instructionsFilesLocations` disable a path
+  at a time including documented defaults, which is finer-grained than OpenCode's
+  broad environment variable)
+- entities/github-copilot-vs-code.md (the two settings keys recorded beside the
+  adoption paths they scope, with `github.copilot.chat.claudeAgent.enabled`
+  distinguished as a different mechanism)
+- concepts/hook-surface-portability.md (the two-harness consequence moved from
+  forced-but-open to decided, and the Claude configuration-file question dropped
+  from open questions since the decision settles it)
+
+## [2026-08-09] update | Antigravity entity page split along its two self-contained mechanisms
+
+An earlier pass compacted this page instead of splitting it, on the reading that
+every section was per-harness reference the entity page should carry. Two sections
+do not fit that reading: the global-root divergence and the tool vocabulary each
+answer a question of their own, each is consumed by a cross-cutting page rather
+than by a reader of the entity, and each carries its own open question. Both moved
+out under a summary and a link, leaving the sections that keep the entity pages
+parallel — workspace tree, skills, subagents, hooks, bundles, rules — in place.
+
+- concepts/antigravity-global-roots.md (new: the two diverging artefact classes,
+  what one global deploy does and does not reach, the `brain/` output tree that is
+  not a configuration root, and the untested duplicate-registration question)
+- concepts/antigravity-tool-vocabulary.md (new: both published name lists, the
+  absent canonical registry, the runtime hang, the one-namespace assumption, and
+  the undefined meaning of an empty array)
+- entities/google-antigravity.md (both sections reduced to a summary paragraph
+  and a link, bringing the page back under the split threshold)
+- concepts/agent-definition-portability.md (the unmapped-name consequence now
+  points at the vocabulary page for the lists behind it)
+- concepts/deployment-model.md (the Antigravity generator and the per-class
+  fan-out now link the two new pages)
+- queries/antigravity-open-verification-gaps.md (the four-gap claim scoped to the
+  ones that gate a decision, with a pointer to the two narrower questions the
+  split promoted onto the vocabulary page)
+- index.md (both pages listed, total 21 to 23, Antigravity entity summary
+  rewritten around what it still carries)
+
+## [2026-08-09] ingest | Per-harness isolation procedures recovered from two solved sessions
+
+Two earlier sessions had solved the foreign-config problem empirically and the
+answers lived only in transcripts. Recovered and filed as procedure pages, one per
+adopting harness, because the published advice for each is wrong in a specific way
+that cost real time. Both fixes were re-verified as still live on the machine
+before filing: the OpenCode login agent sets its variable today, and Cursor's
+internal flag reads false.
+
+- procedures/isolating-opencode-from-foreign-config.md (new: narrow versus broad
+  variable, the three escalating placements, the GUI-versus-shell environment trap
+  that makes shell-profile advice fail on a desktop install, and the healthy
+  `state = not running` a one-shot login agent reports, observed while confirming
+  the live agent rather than taken from the source session)
+- procedures/isolating-cursor-from-foreign-config.md (new: the single settings
+  toggle, confirming it in the state database under the key name observed today
+  rather than the one secondary sources still print, and what it removes along
+  with the skills)
+- procedures/isolating-vs-code-from-foreign-config.md (new: the two per-path
+  location maps, the third-party agent switch, and the separate session-list
+  lever, kept apart because operators conflate the first and second)
+- concepts/foreign-directory-adoption.md (related-concepts list now routes to the
+  three procedures, so the position links to its execution)
+- index.md (three procedures listed, total 23 to 26)

@@ -19,9 +19,19 @@ flags, and conventions the reading harness does not implement.
 
 The standing position here is that adoption is contamination to detect, not a
 delivery channel. Every supported artefact is delivered as a per-harness variant
-written into that harness's own native root. Relying on adoption is defensible
-only as a deliberate, stated fallback for a harness with no native root for that
-artefact class.
+written into that harness's own native root, and where the reading harness
+documents a switch, the deploy turns the adoption off rather than leaving it to
+compete. Relying on adoption is defensible only as a deliberate, stated fallback
+for a harness with no native root for that artefact class.
+
+The reason is delivery quality rather than tidiness. A harness that reads
+another's artefacts never implements them fully: it takes the file, ignores the
+frontmatter keys it has no concept for, maps what it recognises onto its own
+model, and silently drops the rest. What the user gets is a partial version of a
+feature that works properly in the harness it was written for, with no error to
+say so. Writing the native variant instead keeps the delivery under the deploy's
+control and lets each harness receive the artefact in the shape it actually
+implements.
 
 ## Current state of knowledge
 
@@ -46,10 +56,20 @@ global OpenCode rules file suppresses the user's `~/.claude/CLAUDE.md` instead o
 sitting beside it. Agents and commands it takes only from its own tree.
 
 [GitHub Copilot in VS Code](../entities/github-copilot-vs-code.md) reaches
-further into the Claude tree than OpenCode does. With Agent Host enabled it reads
+further into the Claude tree than any other harness here, and it is the only one
+that adopts executable policy rather than prose. With Agent Host enabled it reads
 `~/.claude/rules`, finds `CLAUDE.md` at a workspace root, in a `.claude` folder,
 or at `~/.claude/CLAUDE.md`, and loads custom agents from a workspace
-`.claude/agents`.
+`.claude/agents`. For hooks it reads `.claude/settings.json` and
+`.claude/settings.local.json` at workspace scope and `~/.claude/settings.json` at
+user scope, which is the same file a Claude hook deploy merges into.
+
+That crosses the line the rest of this page is about. Adopting a rules file means
+a second harness reads prose written for the first. Adopting a hook configuration
+means a second harness **runs a command** that was wired for the first, under its
+own event names, its own envelope, and its own blocking contract. Any Claude hook
+deploy is therefore a two-harness deploy, and the shared policy script has to
+expect a caller nobody deployed it to.
 
 [Cursor](../entities/cursor.md) reads agents from `.claude/agents/` and
 `.codex/agents/` beside its own, and reads a project `CLAUDE.md` exactly as it
@@ -68,14 +88,28 @@ duplicate skill id resolves by whichever tool scans last.
 
 ### Isolation switches
 
-OpenCode's switches are environment variables rather than configuration keys, and
-they are listed with their version boundaries on its own page. The broad one
-disables Claude Code compatibility and also stops `.agents/skills` discovery,
-which is a materially different trade for an operator who also runs Antigravity,
-because it scopes away that harness's native workspace skills in the same stroke.
+Two targets document a switch, and they take opposite shapes.
 
-No other target documents an equivalent switch. Where none exists, plan for the
-foreign file arriving and keep the native variant authoritative.
+OpenCode's are environment variables rather than configuration keys, and they are
+listed with their version boundaries on its own page. The broad one disables
+Claude Code compatibility and also stops `.agents/skills` discovery, which is a
+materially different trade for an operator who also runs Antigravity, because it
+scopes away that harness's native workspace skills in the same stroke.
+
+VS Code's are settings keys, and they are the finest-grained control in the set.
+`chat.hookFilesLocations` and `chat.instructionsFilesLocations` each map a path to
+a boolean, and a path set to `false` is disabled **including a documented
+default**, so the Claude sources come off one at a time rather than as a block:
+`.claude/settings.json` and `~/.claude/settings.json` for hooks,
+`~/.claude/rules` for instructions. Because the granularity is per path, turning
+off Claude adoption there costs nothing else, unlike OpenCode's broad switch. A
+third key, `github.copilot.chat.claudeAgent.enabled`, is a different mechanism
+worth not confusing with these: it governs running Claude as a harness inside VS
+Code rather than reading Claude's files.
+
+Cursor documents no equivalent switch, and Antigravity documents neither a switch
+nor the adoption it would scope. Where none exists, plan for the foreign file
+arriving and keep the native variant authoritative.
 
 ### The worked case: output styles
 
@@ -104,6 +138,10 @@ load-bearing claim.
   native-root-per-target rule.
 - [Agent definition portability](agent-definition-portability.md), where the same
   reasoning produces generated variants rather than one shared file.
+- The per-harness switch-off steps, one page each:
+  [OpenCode](../procedures/isolating-opencode-from-foreign-config.md),
+  [VS Code](../procedures/isolating-vs-code-from-foreign-config.md), and
+  [Cursor](../procedures/isolating-cursor-from-foreign-config.md).
 
 ## Derived from
 

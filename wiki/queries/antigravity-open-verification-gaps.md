@@ -18,9 +18,10 @@ that nobody has tested, rather than on a documented statement?
 
 ## Synthesized answer
 
-Four gaps survived the July and August 2026 verification passes. Each is
-recorded here as a gap because the documentation is genuinely silent or
-self-contradictory, not because nobody looked.
+Four gaps survived the July and August 2026 verification passes and gate design
+decisions here. Each is recorded as a gap because the documentation is genuinely
+silent or self-contradictory, not because nobody looked. Two narrower unknowns sit
+below them and are kept with their own mechanism, named at the end of this page.
 
 ### Frontmatter tolerance
 
@@ -68,6 +69,17 @@ weakest evidence type in use here, which is silence, so it deserves a check on a
 installed build. See
 [foreign directory adoption](../concepts/foreign-directory-adoption.md) for what
 every other harness in the set does.
+
+### Two narrower questions kept elsewhere
+
+Two further unknowns sit below the four above, and they live with the mechanism
+they belong to rather than here: whether the subagents page and the hooks page
+publish one tool namespace or two, and what an empty `tools` array actually
+grants. Both are on
+[Antigravity tool vocabulary](../concepts/antigravity-tool-vocabulary.md). They
+are listed there rather than promoted here because neither gates a design
+decision on its own; they shape what a generated variant may emit once the
+frontmatter-tolerance question above is answered.
 
 ## Confidence and caveats
 

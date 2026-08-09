@@ -46,26 +46,14 @@ resolves by whichever tool scans last, worked through in
 
 ### Global roots split by artefact class
 
-Exactly two artefact classes diverge by product and the rest converge, so the
-question resolves per class rather than per product.
-
-Skills split three ways: `~/.gemini/config/skills/<skill-folder>/` on
-`/docs/skills`, `~/.gemini/antigravity/skills/<skill-folder>/` on
-`/docs/ide/skills`, and `~/.gemini/antigravity-cli/skills/` on `/docs/cli/plugins`.
-Plugins split two ways: `~/.gemini/config/plugins/` for 2.0 and the IDE against
-`~/.gemini/antigravity-cli/plugins/<plugin_name>/` for the CLI. Everything else
-is single-rooted under `~/.gemini/config/`: `agents/`, `hooks.json`,
-`mcp_config.json`, and `sidecars/`. Global rules are the single file
-`~/.gemini/GEMINI.md`, one level above `config/`, and the CLI's own preferences
-sit at `~/.gemini/antigravity-cli/settings.json`. So a claim that one global
-deploy reaches the IDE, the CLI, and 2.0 holds for agents, hooks, MCP, and
-sidecars, and fails for skills and plugins.
-
-Configuration roots are not output paths. Hook payload examples show transcripts
-and artifacts landing under a `brain/<conversationId>/` subtree,
-`~/.gemini/antigravity/brain/…` on the 2.0 page and
-`~/.gemini/antigravity-ide/brain/…` on the IDE page, which is the only place a
-fourth `antigravity-ide` tree appears.
+Antigravity ships as three products, and its global configuration diverges by
+artefact class rather than by product: skills and plugins split across the
+products while everything else converges under `~/.gemini/config/`. So one global
+deploy reaches all three products for agents, hooks, MCP, and sidecars, and fails
+to for skills and plugins. Global rules are the single file `~/.gemini/GEMINI.md`,
+one level above `config/`. The per-class paths, what they mean for a deploy, and
+the output tree that is not a configuration root are on
+[Antigravity global configuration roots](../concepts/antigravity-global-roots.md).
 
 ### Skills
 
@@ -103,20 +91,13 @@ depth control the subagents page sources.
 
 ### Tool vocabulary and its failure mode
 
-`tools` is a YAML array of lowercase snake_case names, and the failure mode is
-the one to plan around: an unmapped or misspelled name may cause the subagent
-process to hang during execution rather than fail validation at load. Two
-documented surfaces publish names, and nothing says they are different
-namespaces. The subagents page names `view_file`, `grep_search`, and
-`run_command`. The hooks page's matcher list adds `write_to_file`,
-`replace_file_content`, `multi_replace_file_content`, `list_dir`, `find_by_name`,
-`search_web`, `read_url_content`, `manage_task`, `schedule`, `list_permissions`,
-`ask_permission`, `invoke_subagent`, `define_subagent`, `send_message`,
-`manage_subagents`, `ask_question`, and `generate_image`.
-
-No canonical tool list is published anywhere in the documentation, which is
-exactly why the hang matters: there is no registry to validate a name against.
-The widely circulating `read_file` and `edit_file` names appear on neither page.
+`tools` is a YAML array of lowercase snake_case names, drawn from a vocabulary
+that two documentation pages publish incompletely and none publishes in full. The
+failure mode is the one to plan around: an unmapped or misspelled name may cause
+the subagent process to hang during execution rather than fail validation at load,
+and with no canonical list there is nothing to check a name against first. Both
+name lists, the one-namespace question, and what follows for a generator are on
+[Antigravity tool vocabulary](../concepts/antigravity-tool-vocabulary.md).
 
 ### Hooks
 

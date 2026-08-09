@@ -65,7 +65,9 @@ that boundary falls on.
 The failure modes differ in severity, which is why a generator drops rather than
 guesses. An unmapped name on Antigravity may hang the subagent process at
 runtime rather than failing at load, and no canonical tool list is published to
-validate against.
+validate against; the published name lists and the namespace question behind that
+gap are on
+[Antigravity tool vocabulary](antigravity-tool-vocabulary.md).
 
 ### Dropping happens at field granularity
 

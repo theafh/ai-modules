@@ -62,8 +62,10 @@ break the loader that has to read it.
 
 Three targets receive generated files rather than copies. Codex agents are
 generated as TOML, Antigravity agents are generated with its own frontmatter and
-a mapped tool vocabulary, and OpenCode agents are generated with its permission
-object. Hook configuration is merged as a JSON key into an existing settings file
+a mapped [tool vocabulary](antigravity-tool-vocabulary.md), and OpenCode agents
+are generated with its permission object. Antigravity also takes a per-class
+fan-out rather than one write, because its
+[global roots](antigravity-global-roots.md) diverge by artefact class. Hook configuration is merged as a JSON key into an existing settings file
 rather than replacing it, which is what the script's key-merge function exists
 for; Codex and Antigravity are the two targets a shipped hook file actually
 reaches that way today, and

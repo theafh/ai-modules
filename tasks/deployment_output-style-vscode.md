@@ -2,7 +2,7 @@
 description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-09T13:49:35
+updated: 2026-08-09T20:31:12
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -29,6 +29,8 @@ Confirm during implementation what each scope expects of the filename, since the
 
 Generate rather than copy. Strip the Claude frontmatter, which this target does not implement, and rewrite the one clause in the style body naming Claude's `keep-coding-instructions` mechanism, using the per-tool substitution facility in `deployment/deployment.conf` that the groundwork task's Claude path already leaves in place.
 
+Close the instructions adoption path in the same pass, so the deployed file is the only route this style reaches VS Code by. VS Code reads user-level instructions from `~/.claude/rules` as well as its own root, and `chat.instructionsFilesLocations` maps a path to a boolean where a `false` disables it even when it is a documented default. Merge `{"~/.claude/rules": false}` into the user's VS Code settings through the script's existing key-merge function, which captures the prior value on first write and restores it on uninstall, and narrow the merge to that one path so every other entry the user set survives. The hook counterpart of this switch, covering `.claude/settings.json` and `~/.claude/settings.json`, belongs to [deployment_vscode-hook-routing.md](deployment_vscode-hook-routing.md); the two tasks merge sibling keys into the same settings file, so whichever lands second reuses the first's merge helper rather than adding a second one.
+
 **Out of scope:**
 
 - The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
@@ -44,4 +46,5 @@ Generate rather than copy. Strip the Claude frontmatter, which this target does 
 - The deployed file contains no Claude output-style frontmatter keys, verified by searching it for `keep-coding-instructions` and `force-for-plugin` and finding neither.
 - The deployed body contains no reference to Claude's keep-coding-instructions mechanism, and the clause that named it reads correctly for a harness that only appends.
 - Uninstalling removes the deployed file and leaves any other instructions files in the same root untouched.
+- A global dry run reports a `chat.instructionsFilesLocations` merge setting `~/.claude/rules` to `false` and capturing the key's prior value, and an unrelated entry placed in that key beforehand survives the deploy.
 - `deployment/README.md` gains a VS Code row for the style type naming the instructions root, stating that no activation key is needed, and stating that this target appends rather than replaces, so adherence is weaker than on Claude.
