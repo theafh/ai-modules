@@ -1,6 +1,6 @@
 # AI-Modules
 
-A set of professional AI skills and agents for AI-assisted development, packaged as plugins. The deployment toolchain can also install commands and hooks.
+A set of professional AI skills and agents for AI-assisted development, packaged as plugins. The deployment toolchain installs them into six agent harnesses, along with hooks, output styles, and commands.
 
 ## Why You Should Install This
 
@@ -16,7 +16,7 @@ Task does this for the work. Running a task through the skill-to-skill lifecycle
 
 The mechanical parts of both (discovery, scaffolding, linting, source hashing) ship as bundled scripts the agent runs, so it does not improvise the bookkeeping each session. This saves back-and-forth turns with your agent, saves tokens, and makes the output more consistent across runs. The same files deploy into Claude Code, Codex, Cursor, Copilot, Antigravity, and OpenCode, so the backlog and the knowledge base follow you whichever agent you drive. That also makes it easy to share one codebase across different setups and agents.
 
-Alongside task and wiki, the same two plugins ship smaller day-to-day skills: clean git commits, repository refreshes, and changelogs, writing and formatting the instructions an AI reads, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
+Alongside task and wiki, the same two plugins ship smaller day-to-day skills: clean git commits, repository refreshes, and changelogs, repo-root guardrail documents that hold an agent inside the boundary you set, writing and formatting the instructions an AI reads, portability review for anything bundled inside a skill, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
 
 ## Layout
 
@@ -75,11 +75,23 @@ ai-modules/
 │           └── format_rust/
 ├── styles/                  # tracked output styles (Claude format; deployed, not a plugin component)
 │   └── natural-language.md
-└── deployment/              # deployment script for installing artefacts globally or per-project
-    ├── deployment.sh
-    ├── deployment.conf
-    └── README.md
+├── deployment/              # deployment script for installing artefacts globally or per-project
+│   ├── deployment.sh
+│   ├── deployment.conf
+│   └── README.md
+├── tasks/                   # this repo's own backlog, kept with the shipped task skill
+│   └── archive/             # finished and deferred tasks
+├── wiki/                    # this repo's own knowledge base, kept with the shipped wiki skill
+├── CHARTER.md               # this repo's own guardrail doc, enforced by the charter_guardrail hook
+├── AGENTS.md                # standing repo instructions for coding agents
+├── CLAUDE.md                # the same instructions for Claude Code
+├── CHANGELOG.md             # day-grouped history, written by the shipped update_changelog skill
+└── Makefile                 # deploy, uninstall, lint, and fix entry points
 ```
+
+The repo runs on the components it ships. Its backlog, knowledge base, charter, and
+changelog are all produced by the skills in `plugins/`, so those four directories double
+as worked examples of what the plugins do.
 
 ## Plugins
 
@@ -91,7 +103,7 @@ Skills and agents for building, maintaining, and distilling a knowledge base tha
 
 The wiki itself, plus paired front ends that wrap two of its workflows so the model has one named entry point per use case:
 
-- **wiki**: the foundation. It builds and maintains an interlinked Markdown wiki. It can ingest URLs, articles, papers, PDFs, transcripts, meeting notes, internal notes, and pastes, then query, lint, audit, archive, and reorganise. The page types (`entity`, `concept`, `comparison`, `summary`, `query`, `procedure`) are read from `SCHEMA.md`, so a wiki can add a type without changing the linter. Each claim links to its source with an inline standard-Markdown link; the `sources:` frontmatter is the full inventory; and a body-only `sha256` hash detects when a raw source has drifted. Discovery, init, lint, and the sha256 helper all ship as bundled scripts, so the agent runs fixed programs for the mechanical parts instead of inventing them each session.
+- **wiki**: the foundation. It builds and maintains an interlinked Markdown wiki. It can ingest URLs, articles, papers, PDFs, transcripts, meeting notes, internal notes, and pastes, then query, lint, audit, archive, and reorganise. The page types (`entity`, `concept`, `comparison`, `summary`, `query`, `procedure`) are read from `SCHEMA.md`, so a wiki can add a type without changing the linter. Each claim links to its source with an inline standard-Markdown link; the `sources:` frontmatter is the full inventory; an optional `## Derived from` section records external material the wiki does not own; and a body-only `sha256` hash detects when a raw source has drifted. Discovery, init, lint, and the sha256 helper all ship as bundled scripts, so the agent runs fixed programs for the mechanical parts instead of inventing them each session.
 - **wiki_import** and **wiki_wrapup**: a triage-first ingest pair. `wiki_import` takes one named resource (URL, file, paper, PDF, transcript, meeting note, internal note, or paste); `wiki_wrapup` takes the current chat session. Both capture the source, compare each candidate against the existing wiki, and produce a triage report (new pages, extensions, and contradictions, each with excerpts and concrete options to reconcile them) before any page is written. Approved writes go back through the `wiki` skill. Use them when you want to review changes before they land: after a research chat, or before importing a paper you don't fully trust.
 - **wiki_fix** and **auto_shaper_wiki** *(agent)*: a paired audit-and-repair. `wiki_fix` is the one-shot skill wrapper; `auto_shaper_wiki` is the agent it hands off to. The agent runs a two-phase loop: assess (lint plus a semantic audit), fix, then re-lint until clean. It repairs frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages, procedure pages that leak instance content, and content that drifts from its page type. Cross-page contradictions it does not auto-resolve; it surfaces them for human review through the contested-page protocol.
 
@@ -128,7 +140,7 @@ Standing apart from that flow:
 - **guardrail_audit**: the read-only audit sibling. It surfaces doc-vs-doc contradictions and doc-vs-code divergences among existing guardrail docs, ranked by the hub's hierarchy, plus grounded missing-doc proposals where repo substance warrants an absent type. Findings carry evidence and reconcile recommendations; the run edits nothing and asks how to proceed — the retrofit and health-check entry point for guardrails already in place.
 - **ai_instruction_writing**: writes any artefact an AI reads (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of "don't" rules the model has to invert.
 - **ai_instruction_formatting**: organises content an AI reads into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in its own tag, so the model can find the right section by structure instead of re-reading the prose.
-- **harness_portability**: applies portability rules (across agent harnesses and operating systems) to scripts, hooks, MCP helpers, command wrappers, setup flows, and the execution and configuration wording bundled inside skills and plugins. It covers OpenAI Codex and Anthropic Claude compatibility, checks against official provider docs, and macOS/Linux behaviour.
+- **harness_portability**: applies portability rules (across agent harnesses and operating systems) to scripts, hooks, agent definitions, MCP helpers, command wrappers, setup flows, output styles, and the execution and configuration wording bundled inside skills and plugins. It treats OpenAI Codex and Anthropic Claude as the primary targets, with Cursor, Google Antigravity, SST OpenCode, and GitHub Copilot in VS Code as further ones, and it covers macOS/Linux behaviour. Every concrete harness fact is treated as perishable: the skill re-checks each one against official provider docs, the loader source, or the installed build, and states the gap plainly where a claim stays unconfirmed.
 - **format_markdown / format_python / format_rust**: style guides aligned with the linters (`markdownlint`; `flake8`, `ruff`, and `pylint`; `clippy`), read as you write. The point is to produce code that already passes the linter, instead of spending a follow-up turn fixing what it reports.
 
 The `ai_dev` hook surface ships a shared `charter_guardrail` script and

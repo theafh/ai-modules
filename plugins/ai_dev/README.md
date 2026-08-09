@@ -46,7 +46,7 @@ Three tools sit beside the spine rather than on it:
 
 ### Harness portability
 
-- **harness_portability**: apply portability rules (across agent harnesses and operating systems) when creating or editing scripts, hooks, MCP helpers, command wrappers, setup flows, or execution and configuration wording bundled inside skills and plugins. It covers OpenAI Codex and Anthropic Claude compatibility, checks against official provider docs, and macOS/Linux behaviour.
+- **harness_portability**: apply portability rules (across agent harnesses and operating systems) when creating or editing scripts, hooks, agent definitions, MCP helpers, command wrappers, setup flows, output styles, or execution and configuration wording bundled inside skills and plugins. It treats OpenAI Codex and Anthropic Claude as the primary targets, with Cursor, Google Antigravity, SST OpenCode, and GitHub Copilot in VS Code as further ones, and it covers macOS/Linux behaviour. Every concrete harness fact is treated as perishable: the skill re-checks each one against official provider docs, the loader source, or the installed build, and states the gap plainly where a claim stays unconfirmed.
 
 ### Code and document formatting
 
