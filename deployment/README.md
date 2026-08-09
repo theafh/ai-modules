@@ -24,7 +24,7 @@ Run with no arguments to see help. Pass `--global` to deploy globally, or `--pro
 | --- | --- |
 | `--global` | Deploy into global config dirs (`~/.cursor`, `~/.claude`, …). Mutually exclusive with `--project-dir`. |
 | `--project-dir DIR` | Deploy into a project directory's local config (`<DIR>/.cursor/`, `<DIR>/.claude/`, …). Backups are disabled in this mode. |
-| `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`. Requires `--global` or `--project-dir` unless used with `--uninstall`. |
+| `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`, `style`. Requires `--global` or `--project-dir` unless used with `--uninstall`. |
 | `--target TARGETS` | Comma-separated target filter: `vscode`, `cursor`, `claude`, `codex`, `antigravity`, `opencode`. |
 | `--uninstall` | Remove previously deployed artifacts that match the active filters. Can run without `--global` or `--project-dir`; backups still run first unless combined with no-scope `--clear-backups`. |
 | `--clear-backups` | Remove old managed backups for the selected targets before creating a fresh backup. Without `--global` or `--project-dir`, this clears matching global backups and exits before deploy. No effect in `--project-dir` mode. |
@@ -35,7 +35,11 @@ Deploy operations require an explicit scope: pass `--global` or `--project-dir D
 
 ## Artifact Discovery
 
-Discovery is plugin- and folder-based. Artifacts live under `plugins/<plugin>/<asset-folder>/`, where the asset-folder name defines the artifact type:
+Discovery uses two roots.
+
+### Plugin asset folders
+
+Artifacts live under `plugins/<plugin>/<asset-folder>/`, where the asset-folder name defines the artifact type:
 
 | Asset folder | Type | What counts as an artifact |
 | --- | --- | --- |
@@ -46,7 +50,13 @@ Discovery is plugin- and folder-based. Artifacts live under `plugins/<plugin>/<a
 
 Hidden files and `README*` files are skipped. The deployed name is the file basename without extension, or the skill directory's basename.
 
-The script walks up from its own location until it finds a directory containing a `plugins/` folder, so it works regardless of where it lives in the tree. Repo-relative paths (e.g. for `deployment.conf` rules and the deploy log) take the form `plugins/<plugin>/<asset-folder>/<artifact>`.
+Repo-relative paths for plugin artifacts (e.g. for `deployment.conf` rules and the deploy log) take the form `plugins/<plugin>/<asset-folder>/<artifact>`.
+
+### Repo-root styles
+
+The `style` type is discovered from repo-root `styles/`: each top-level `*.md` file is one style artifact, with repo-relative path `styles/<file>.md`. Styles are not plugin components and are not registered under any plugin's `output-styles/` folder.
+
+The script walks up from its own location until it finds a directory containing a `plugins/` folder, so it works regardless of where it lives in the tree.
 
 ## Per-Tool Configuration (`deployment.conf`)
 
@@ -56,22 +66,23 @@ The script walks up from its own location until it finds a directory containing 
 #tool                     Section heading: vscode, cursor, claude, codex, antigravity, opencode
 disallow:path             Skip a path (relative to repo root) for this tool. Trailing slash matches a subtree. Glob patterns supported (* and **).
 replace:path VAR=value    Substitute $VAR$ in matching deployed copies.
+style:<name>              Active output-style name for this tool. Claude merges it as settings `outputStyle`.
 ```
 
-The current config disallows any path matching `*legacy*` for every target, so any plugin or artifact tagged as legacy is kept in the repo but never deployed.
+The current config disallows any path matching `*legacy*` for every target, so any plugin or artifact tagged as legacy is kept in the repo but never deployed. Claude also sets `style:natural-language` so a style deploy activates that tracked style.
 
 ## Target Layout
 
 The table below shows global-mode paths. Project-dir mode replaces `~` with `<project>/` and uses each IDE's native project-level path.
 
-| Target | Commands | Skills | Agents | Hooks |
-| --- | --- | --- | --- | --- |
-| VS Code Copilot | `~/Library/Application Support/Code/User/prompts/<name>.prompt.md` (macOS) or `~/.config/Code/User/prompts/<name>.prompt.md` (Linux), copied | `~/.copilot/skills/<name>` copied | `~/.copilot/agents/<name>.agent.md`, frontmatter rewritten | `~/.copilot/hooks/<file>` copied |
-| Cursor | `~/.cursor/commands/<name>.md` copied | `~/.cursor/skills/<name>` copied | `~/.cursor/agents/<name>.md`, frontmatter rewritten | `~/.cursor/hooks.json` (copy from `cursor-hooks*.json`) and `~/.cursor/hooks/<file>` for shell scripts |
-| Claude Code | `~/.claude/commands/<name>.md` copied | `~/.claude/skills/<name>` copied | `~/.claude/agents/<name>.md`, frontmatter rewritten | `.hooks` key merged into `~/.claude/settings.json` (from `claude-code-hooks*.json`); shell scripts copied to `~/.claude/hooks/<file>` |
-| OpenAI Codex | `~/.codex/prompts/<name>.md` copied | `~/.codex/skills/<name>` copied (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | `hooks` key merged into `~/.codex/hooks.json` (from `codex-custom-deploy-hooks.json`); shell scripts copied to `~/.codex/hooks/<file>` |
-| Antigravity | not deployed — the repo ships no commands | fan-out copied to `~/.gemini/config/skills/<name>`, `~/.gemini/antigravity/skills/<name>`, and `~/.gemini/antigravity-cli/skills/<name>` | `~/.gemini/config/agents/<name>.md` generated with Antigravity frontmatter and tool-name mapping | `charter_guardrail` key merged into `~/.gemini/config/hooks.json`; shell scripts copied to `~/.gemini/config/hooks/<file>` |
-| OpenCode | `~/.config/opencode/commands/<name>.md` copied | `~/.config/opencode/skills/<name>` copied | `~/.config/opencode/agents/<name>.md` generated with OpenCode frontmatter and permission mapping | not implemented |
+| Target | Commands | Skills | Agents | Hooks | Styles |
+| --- | --- | --- | --- | --- | --- |
+| VS Code Copilot | `~/Library/Application Support/Code/User/prompts/<name>.prompt.md` (macOS) or `~/.config/Code/User/prompts/<name>.prompt.md` (Linux), copied | `~/.copilot/skills/<name>` copied | `~/.copilot/agents/<name>.agent.md`, frontmatter rewritten | `~/.copilot/hooks/<file>` copied | not yet |
+| Cursor | `~/.cursor/commands/<name>.md` copied | `~/.cursor/skills/<name>` copied | `~/.cursor/agents/<name>.md`, frontmatter rewritten | `~/.cursor/hooks.json` (copy from `cursor-hooks*.json`) and `~/.cursor/hooks/<file>` for shell scripts | not yet |
+| Claude Code | `~/.claude/commands/<name>.md` copied | `~/.claude/skills/<name>` copied | `~/.claude/agents/<name>.md`, frontmatter rewritten | `.hooks` key merged into `~/.claude/settings.json` (from `claude-code-hooks*.json`); shell scripts copied to `~/.claude/hooks/<file>` | file copied to `~/.claude/output-styles/<name>.md`; `outputStyle` merged from `style:<name>` in `deployment.conf` |
+| OpenAI Codex | `~/.codex/prompts/<name>.md` copied | `~/.codex/skills/<name>` copied (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | `hooks` key merged into `~/.codex/hooks.json` (from `codex-custom-deploy-hooks.json`); shell scripts copied to `~/.codex/hooks/<file>` | not yet |
+| Antigravity | not deployed — the repo ships no commands | fan-out copied to `~/.gemini/config/skills/<name>`, `~/.gemini/antigravity/skills/<name>`, and `~/.gemini/antigravity-cli/skills/<name>` | `~/.gemini/config/agents/<name>.md` generated with Antigravity frontmatter and tool-name mapping | `charter_guardrail` key merged into `~/.gemini/config/hooks.json`; shell scripts copied to `~/.gemini/config/hooks/<file>` | not yet |
+| OpenCode | `~/.config/opencode/commands/<name>.md` copied | `~/.config/opencode/skills/<name>` copied | `~/.config/opencode/agents/<name>.md` generated with OpenCode frontmatter and permission mapping | not implemented | not yet |
 
 Project-dir mode uses each tool's project path, including `<project>/.agents/` for Antigravity and `<project>/.opencode/` for OpenCode.
 
@@ -92,6 +103,7 @@ Several targets do not consume the repo source files directly:
 | hook (`hooks/codex-custom-deploy-hooks.json`) | OpenAI Codex | `hooks` key merged into `~/.codex/hooks.json`; relative `./hooks/` command paths are rewritten to absolute (global) or `.codex/hooks/` (project-dir) so the config stays portable |
 | hook (`hooks/antigravity-hooks.json`) | Antigravity | `charter_guardrail` key merged into `~/.gemini/config/hooks.json` or `<project>/.agents/hooks.json`; relative `./hooks/` command paths are rewritten to absolute (global) or `.agents/hooks/` (project-dir) so the config stays portable |
 | hook (`hooks/cursor-hooks*.json`) | Cursor | copied to `~/.cursor/hooks.json` |
+| style (`styles/*.md`) | Claude Code | copied to `~/.claude/output-styles/<name>.md`; `outputStyle` set from `style:<name>` in `deployment.conf` |
 
 `replace:path VAR=value` rules in `deployment.conf` substitute `$VAR$` in matching deployed copies.
 
@@ -120,10 +132,13 @@ Every real deploy appends one line per deployed artifact to `deployment/deployed
 2. target id
 3. artifact type
 4. source path
+5. optional prior value for JSON-merge entries (compact JSON, or `@absent` when the key was missing on first write)
 
-The log is deduplicated on script exit. Dry runs do not modify it.
+The log is deduplicated on script exit. Dry runs do not modify it. Four-field lines from older deploys keep parsing.
 
-`--uninstall` removes only log entries that match the active filters. Unmatched entries stay in the log. If a logged path is already gone, uninstall treats it as cleaned up and removes the log entry anyway. JSON-merge entries are removed by stripping the corresponding key from the target file (e.g. removing `.hooks` from `~/.claude/settings.json`) instead of deleting the file.
+On the first write of a JSON key through `merge_json_key`, the previous value is recorded in that fifth field. A later redeploy of the same key reuses the first-recorded prior and does not re-sample the live settings value, so `sort -u` still collapses identical lines.
+
+`--uninstall` removes only log entries that match the active filters. Unmatched entries stay in the log. If a logged path is already gone, uninstall treats it as cleaned up and removes the log entry anyway. JSON-merge entries with a recorded prior restore that value (or delete the key when `@absent` was recorded). Legacy four-field `path[key]` lines still uninstall by stripping the key.
 
 ## Write Behavior
 

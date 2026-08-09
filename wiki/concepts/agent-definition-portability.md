@@ -1,11 +1,11 @@
 ---
 title: Agent definition portability
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: concept
-tags: [agent, frontmatter, portability, claude, codex, opencode, antigravity]
+tags: [agent, frontmatter, portability, claude, codex, opencode, antigravity, verification-gap]
 sources: []
-confidence: high
+confidence: medium
 ---
 
 # Agent definition portability
@@ -58,8 +58,9 @@ carries at most one harness's tools field and reaches the others through their
 own.
 
 Codex offers no per-agent allowlist at all. Cursor exposes no tools field, though
-it has its own identifiers. OpenCode replaced its boolean tools map, deprecated
-as of v1.1.1, with a `permission` object keyed by capability.
+it has its own identifiers. OpenCode replaced its boolean tools map with a
+`permission` object keyed by capability, and its own page carries the version
+that boundary falls on.
 
 The failure modes differ in severity, which is why a generator drops rather than
 guesses. An unmapped name on Antigravity may hang the subagent process at
@@ -141,7 +142,10 @@ multi-harness file, which covers both the strict and the pass-through categories
 
 Antigravity's frontmatter tolerance is the open item that most changes the
 design, because a tolerant loader would let the Google target read a shared file
-while a strict one would not.
+while a strict one would not. It is also what sets this page's confidence: the
+Claude, Cursor, Codex, and OpenCode classifications rest on documentation and
+source, while the three-category model is only as sound as the one category
+still assigned by inference.
 
 ## Related concepts
 

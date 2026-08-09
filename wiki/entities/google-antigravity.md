@@ -1,7 +1,7 @@
 ---
 title: Google Antigravity
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: entity
 tags: [antigravity, skill, agent, hook, plugin, discovery, verification-gap]
 sources: []
@@ -13,9 +13,9 @@ confidence: medium
 ## Overview
 
 Antigravity is Google's agent harness and the replacement target for the retired
-Gemini CLI, which Google shut down on 18 June 2026. It is a full target here
-across skills, agents, rules and workflows, hooks, plugin bundles, and
-supervised background sidecars.
+Gemini CLI, which Google shut down on 18 June 2026. This repository deploys
+skills, agents, and hooks to it, and the open style work targets the global rules
+file. Workflows, plugin bundles, and sidecars are surfaces nothing here writes.
 
 It diverges from the others in four ways: a native `.agents/` workspace tree that
 two other harnesses also read, global roots that differ by artefact class rather
@@ -37,13 +37,12 @@ at the workspace root, plus `.agents/hooks.json` and `.agents/mcp_config.json`.
 `.agent/` is named as backwards compatibility by the skills and rules pages, and
 `_agents/` by the plugins pages.
 
-Two workspace paths collide with other harnesses. `.agents/skills/` is where
-Codex project-level skill deployment and OpenCode discovery converge on
-Antigravity's native root, so one directory serves three harnesses and a
-duplicate skill id resolves by whichever tool scans last. `.agents/plugins/`
-holds Antigravity's `plugin.json` bundles while a Codex marketplace registration
-also lands at `.agents/plugins/marketplace.json`, so one directory carries two
-harnesses' differently schemad manifests.
+Two workspace paths collide with other harnesses. `.agents/skills/` is also read
+by Codex project deployment and OpenCode discovery, so a duplicate skill id
+resolves by whichever tool scans last, worked through in
+[foreign directory adoption](../concepts/foreign-directory-adoption.md).
+`.agents/plugins/` holds Antigravity's `plugin.json` bundles beside a Codex
+`marketplace.json`, two schemas in one directory.
 
 ### Global roots split by artefact class
 
@@ -165,24 +164,24 @@ workspace and `~/.gemini/config/plugins/` globally, alongside the CLI's own root
 Documented components are skills under `skills/`, rules under `rules/`, MCP
 servers through `mcp_config.json`, and hooks through `hooks.json`.
 
-A bundle can also carry sidecars: long-running background processes the harness
-supervises and restarts, each its own directory holding a `sidecar.json` naming
-the command, restart behaviour, and environment. They are discovered at
-`~/.gemini/config/plugins/<pluginName>/sidecars/` for a plugin and
-`~/.gemini/config/sidecars/` standalone, addressed as
-`<pluginName>/<sidecarName>`. A sidecar is the one component that keeps running
-between turns, so it is a process-lifecycle surface rather than a configuration
-file.
+A bundle can also carry sidecars, long-running background processes the harness
+supervises between turns. They are a process-lifecycle surface rather than a
+configuration one, and nothing here deploys them, so the detail stays with
+Google's `/docs/sidecars`.
 
 ### Rules and workflows
 
-Workspace rules are Markdown under `.agents/rules/`, capped at 12,000 characters
-each, with four activation modes: Manual, Always On, Model Decision, and Glob.
-Global rules are the single `~/.gemini/GEMINI.md`. Workflows are Markdown files
-in either scope, capped at the same 12,000 characters, and invoked as
-`/workflow-name` slash commands. The rules documentation describes no tone,
-persona, output-format, or system-prompt-replacement feature at all, presenting
-rules purely as constraints the agent follows.
+Workspace rules are Markdown under `.agents/rules/`, global rules are the single
+`~/.gemini/GEMINI.md` applied across all workspaces, and workflows are Markdown
+in either scope invoked as `/workflow-name` slash commands. The 12,000-character
+cap is stated for rules files and workflow files generally, without exempting the
+global one, so read it as binding on `~/.gemini/GEMINI.md` too. The four
+activation modes, Manual, Always On, Model Decision, and Glob, are documented for
+workspace rules only, and the global file names no mode because it is always
+applied. The rules documentation describes no tone, persona, output-format, or
+system-prompt-replacement feature at all, presenting rules purely as constraints
+the agent follows. This section was re-checked against `/docs/rules-workflows` on
+9 August 2026.
 
 ## Verification gaps
 

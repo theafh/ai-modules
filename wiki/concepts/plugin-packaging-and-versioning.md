@@ -1,7 +1,7 @@
 ---
 title: Plugin packaging and versioning
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: concept
 tags: [plugin, versioning, repo-structure, claude, codex]
 sources: []
@@ -79,10 +79,12 @@ key written rather than a file copied. That asymmetry is the subject of
 
 ## Open questions
 
-The repository currently registers its plugins in two marketplaces while the
-maintainer's own machine installs them by direct deployment instead. Whether the
-marketplace registrations stay the primary distribution channel, or become a
-published convenience alongside a deploy-first workflow, is unsettled.
+Two distribution options exist side by side, and which one a given machine uses
+is that machine's choice rather than a property of the repository. A marketplace
+install reads the manifests and delivers the components each harness's plugin
+schema declares. A deploy run copies artefacts into the configuration trees
+directly and reaches settings keys no manifest can write. Whether the two stay
+equal channels, or one becomes the documented default, is unsettled.
 
 ## Related concepts
 

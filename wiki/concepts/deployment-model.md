@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -27,35 +27,48 @@ is the path that does.
 
 ## Current state of knowledge
 
-### Discovery is plugin and folder based
+### Discovery has two roots
 
-Artefacts live under `plugins/<plugin>/<asset-folder>/`, and the folder name
+Most artefacts live under `plugins/<plugin>/<asset-folder>/`, and the folder name
 selects the type: `agents/` and `commands/` take each top-level Markdown file,
 `skills/` takes each immediate subdirectory containing a `SKILL.md`, and
 `hooks/` takes each top-level shell or JSON file. Hidden files and README files
 are skipped. The script walks up from its own location until it finds a
 directory containing `plugins/`, so it does not care where in the tree it sits.
 
-That single-rooted discovery is the reason a first asset source outside the
-plugin tree, such as a repository-level styles directory, is a structural change
-rather than a configuration one.
+The second root is repo-root `styles/`, added on 8 August 2026, where each
+top-level Markdown file is one artefact of the `style` type. It is the first
+asset source outside the plugin tree, which made it a structural change rather
+than a configuration one, and it is why the type name and the discovery root
+were settled before the first deploy wrote either of them into the log. Why the
+source sits outside `plugins/` at all is on
+[output style delivery design](output-style-delivery-design.md).
 
 ### Per-tool configuration
 
 `deployment/deployment.conf` is parsed in robots.txt style: a `#tool` section
-heading, then `disallow:` lines that skip a repo-relative path for that tool, and
-`replace:` lines that substitute a variable inside deployed copies. Today every
-target disallows any path matching `*legacy*`, which keeps a legacy artefact in
-the repository while ensuring it reaches nobody.
+heading, then `disallow:` lines that skip a repo-relative path for that tool,
+`replace:` lines that substitute a variable inside deployed copies, and a
+`style:<name>` line naming which style that tool activates. Today every target
+disallows any path matching `*legacy*`, which keeps a legacy artefact in the
+repository while ensuring it reaches nobody, and Claude carries
+`style:natural-language`.
+
+The style directive lives here rather than in the style file because Claude's
+output-style frontmatter rejects a fifth key outright, so an in-file marker would
+break the loader that has to read it.
 
 ### Copying is not the only transform
 
 Three targets receive generated files rather than copies. Codex agents are
 generated as TOML, Antigravity agents are generated with its own frontmatter and
 a mapped tool vocabulary, and OpenCode agents are generated with its permission
-object. Claude, Codex, and Antigravity hook configuration is merged as a JSON key
-into an existing settings file rather than replacing it, which is what the
-script's key-merge function exists for.
+object. Hook configuration is merged as a JSON key into an existing settings file
+rather than replacing it, which is what the script's key-merge function exists
+for; Codex and Antigravity are the two targets a shipped hook file actually
+reaches that way today, and
+[hook surface portability](hook-surface-portability.md) has the per-target
+routing.
 
 The reasons behind each transform are per-harness facts and live on the harness
 pages, starting with
@@ -70,22 +83,36 @@ project configuration over the user configuration. A global deploy therefore
 establishes the machine default and can be overridden per project, which is
 usually the desired behaviour but is worth stating rather than assuming.
 
-### Uninstall and the missing prior value
+### Uninstall restores the value it replaced
 
-The deployed artefacts log carries four tab-separated fields: destination,
-target, type, and source, with a merged key written as `<target-file>[<key>]`.
-It has no field for the value that was there before. Removing a copied file is
-therefore complete, while removing a merged settings key cannot restore what it
-overwrote. Capturing the prior value is the piece of groundwork that the output
-style work depends on, because a style is delivered as a file plus a settings
-key rather than as a file alone. See
+The deployed artefacts log is tab separated: destination, target, type, source,
+and, since 8 August 2026, an optional fifth field holding what the destination
+held before, with a merged key written as `<target-file>[<key>]`. Removing a
+copied file is complete because the file was the whole change. Removing a merged
+settings key needs that prior, so the shared key-merge function records it on the
+first write of a key, as compact JSON or the literal `@absent` when the key was
+missing, and a later redeploy reuses the first recorded value rather than
+re-sampling the live one. Uninstall then writes the recorded prior back, or
+deletes the key when `@absent` was recorded. Restoring a harness default instead
+would be wrong, because the default is whatever the user had rather than a vendor
+constant.
+
+Two provisions keep this compatible with what the log already held. A four-field
+line written before the capture existed still uninstalls by stripping the key,
+which is the honest reading when no prior was recorded. And the post-removal
+success check accepts a key still present with its restored prior, treating
+absence as success only for `@absent` and for those legacy lines.
+
+The capture sits on the shared merge function rather than on a style-specific
+caller, so the hook-configuration merges on Claude, Codex, and Antigravity gain
+the same restore. It shipped with the first style deploy because a style is
+delivered as a file plus a settings key rather than as a file alone. See
 [Claude output styles](claude-output-styles.md).
 
 ### What the script has become, and the line that keeps it a helper
 
-The script is the largest single executable file in the repository: 1,911 lines,
-40 functions, and seven flags as of 8 August 2026, against roughly 5,200 lines of
-executable code across all bundled skill scripts combined. It carries its own
+The script is the largest single executable file in the repository, and it
+outweighs every bundled skill script put together. It carries its own
 configuration format, its own log format, backup retention, an uninstall path,
 a dry run, two-dimensional filtering, and three code generators. It is also the
 only substantial program here that ships to nobody, while every machine depends
@@ -124,9 +151,10 @@ path.
 ## Open questions
 
 Whether every harness should receive every artefact class is unsettled. OpenCode
-hooks are not implemented today, and Antigravity receives no commands because
-the repository ships none, so the target matrix has holes that are decisions in
-some cells and gaps in others.
+hooks are not implemented today, Antigravity receives no commands because the
+repository ships none, and the `style` type reaches Claude alone while the five
+sibling harness tasks stay open. So the target matrix has holes that are
+decisions in some cells, sequenced work in others, and gaps in the rest.
 
 ## Related concepts
 

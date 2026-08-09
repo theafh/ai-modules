@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-08-08 | Total pages: 20
+> Last updated: 2026-08-09 | Total pages: 21
 
 ## Entities
 
@@ -20,11 +20,12 @@
 - [Agent definition portability](concepts/agent-definition-portability.md) — three tolerance categories, disjoint tool vocabularies, read-only levers, and when a generated variant is required.
 - [Claude output styles](concepts/claude-output-styles.md) — the two-layer system prompt, the two delivery modes, activation, plugin bundling, and the strict four-key frontmatter.
 - [Foreign directory adoption](concepts/foreign-directory-adoption.md) — which harnesses read another's config tree, why that is contamination rather than delivery, and the isolation switches.
-- [Hook surface portability](concepts/hook-surface-portability.md) — three configuration schemas plus one that is code, three signalling contracts, additive layers, and per-harness guarantees.
+- [Guardrail documents as normative rules](concepts/guardrail-documents-as-rules.md) — presence-gated lookup, optional adoption, the description misreading, the three paths to true, and the guarding/describing split.
+- [Hook surface portability](concepts/hook-surface-portability.md) — three configuration schemas plus one that is code, three signalling contracts, additive layers, and what this repository ships and routes today.
 - [Output style delivery design](concepts/output-style-delivery-design.md) — the decision record behind the `styles/` source, the per-target delivery matrix, the marked-block write, and the scope rejections.
-- [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md) — why two manifests, the lockstep version contract, and where a missed bump surfaces.
+- [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md) — why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md) — naming by invocation mode, rules living once in the base skill, bundled scripts, and the cost of a large skill body.
-- [The deployment model](concepts/deployment-model.md) — discovery, per-tool configuration, generated variants, scope precedence, and the missing prior value on uninstall.
+- [The deployment model](concepts/deployment-model.md) — two discovery roots, per-tool configuration, generated variants, scope precedence, and the prior-value restore on uninstall.
 
 ## Comparisons
 

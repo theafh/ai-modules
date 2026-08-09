@@ -73,6 +73,8 @@ ai-modules/
 │           ├── format_markdown/
 │           ├── format_python/
 │           └── format_rust/
+├── styles/                  # tracked output styles (Claude format; deployed, not a plugin component)
+│   └── natural-language.md
 └── deployment/              # deployment script for installing artefacts globally or per-project
     ├── deployment.sh
     ├── deployment.conf
@@ -145,7 +147,12 @@ the bundled Claude Code marketplace; copy it into vendor config dirs globally
 with `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Google
 Antigravity, OpenCode); copy it into a single repo's local config with
 `--project-dir`; or use it in place from a checkout. The deployment script finds
-artefacts by their plugin layout and installs them where each tool expects them.
+artefacts under two roots: the plugin layout (`plugins/<plugin>/<asset-folder>/`)
+and repo-root `styles/` for the `style` type. A per-tool `style:<name>` line in
+`deployment/deployment.conf` names the active style; Claude deploy copies that
+file into `output-styles/` and merges `outputStyle` into settings. Uninstall of
+a merged settings key restores the first-recorded prior value (or deletes the
+key when it was absent before the first deploy).
 
 For OpenAI Codex, prefer the deployment script when you need the helper agents.
 The Codex marketplace registration remains available, but plugin-only installs

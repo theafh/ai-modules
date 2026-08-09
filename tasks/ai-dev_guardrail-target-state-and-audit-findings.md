@@ -1,0 +1,83 @@
+---
+description: Frame guardrail docs as normative rules holding regardless of the code, correct the auto-load claim, add the touch-it-fix-it ratchet, and teach the audit to read a rule normatively.
+scope: plugins/ai_dev/skills
+created: 2026-08-09T14:17:31
+updated: 2026-08-09T14:51:46
+status: open
+reported-by: Andreas Hoffmann
+---
+
+# Make Guardrail Docs Normative, and Teach the Audit to Read Them That Way
+
+## Goal
+
+The `guardrail` hub's preamble states the thing an AI coding agent reliably gets wrong: a guardrail doc carries rules the project holds itself to whether or not the code satisfies them yet, so code short of a rule is unmet work rather than a doc to soften. The preamble names how such a rule becomes true — work that closes the gap deliberately, new code written to the rule from the start, and existing code brought to the rule whenever ordinary work touches or rewrites it — and the format contract keeps every guarding statement free of the task links, code positions, and current-state clauses that go stale the moment the code moves. Around that spine the family gains its rule-placement, one-statement-per-rule, enforcement-naming, and change-checklist rules, and `guardrail_audit` learns to read a rule normatively along with three new finding classes.
+
+## Context
+
+- The family lives at `plugins/ai_dev/skills/guardrail/SKILL.md` with its four bundled `references/`, and `plugins/ai_dev/skills/guardrail_audit/SKILL.md`. Per the standing repo rule on authoring a family rule once in the base skill, the shared rules land in the hub or its references and the audit sibling cites them through its `<authority>` block.
+- The hub's `<role>` is the preamble this work extends. Its closest existing statement, "A guardrail bounds work; it never freezes it", is about the docs evolving with the project. Nothing states the other direction, that the code is pulled toward the docs, which is what leaves an agent free to read an unmet rule as a doc defect.
+- The hub's `<create>` step "Surface creation-time divergence" presents softening the statement to match reality and keeping it aspirational as two symmetric options, and ends at the user's choice. That symmetry is the create-time form of the same misreading.
+- The hub's `<doc_set>` describes the harness rule files as "the project's standing-instruction baseline: the harness loads them automatically". That claim does not hold across harnesses — a rules file can be gated on an activation mode, a glob match, or a manual mention, so it loads conditionally or not at all — and stating it inside the doc set invites the reader to assume the guardrail docs arrive the same way. They do not: a consuming skill looks each one up at the stage that needs it, per `<consumption>`.
+- The hub's `<hierarchy>` bullet "Descriptive context" warns that a doc "presents intention as fact" misleads every future agent. Read without a guarding-versus-describing line drawn, it reads as forbidding a rule the code has not met, so the two halves need telling apart where that warning lives.
+- The hub's `<format_contract>` bullet "Falsifiable where it guards, truthful where it describes" already splits the two halves and defines neither's obligations. Its bullet "Outcome-level and compact" keeps mechanics out of the docs, and "Root `UPPERCASE.md`, one domain per doc" governs filing across docs while saying nothing about one rule appearing twice inside a doc.
+- The hub's `<consumption>` carries three guard behaviours, of which "Never widen a guardrail to legitimize an edit" is the nearest kin to the ratchet this work adds: it blocks loosening a rule for an edit, and nothing yet obliges an agent to bring the code it touches up to the rule. `<consumption>` also carries the touchpoint rule, which governs which doc a workflow *reads*; no rule governs which doc a newly discovered rule is *written into*, so a rule found while working on one surface tends to be recorded in that surface's doc and stays invisible to every other surface it should govern.
+- `references/architecture.md` carries the rules "Present and direction, told apart" and "Refreshed as the project evolves", plus an optional `## Direction` template section. Those govern the descriptive half and survive this work unchanged in intent; what needs stating is that they bind description rather than rules.
+- `references/security.md` carries the rule "Structural beats advisory" and an optional `## Change Checklist` template section. Neither asks a constraint to name the mechanism meant to enforce it, and nothing routes a newly added constraint into the checklist.
+- `guardrail_audit`'s `<workflow>` step "Doc-vs-code" instructs the audit to present each divergence "with both reconcile directions (bring the doc back to the code, or evolve the code toward the doc)", and `<finding_shape>` repeats that pairing. Applied to a guarding statement, the first direction is the doc-softening move this work rules out. Its `<audit_bound>` — obvious, high-confidence findings over exhaustive coverage — stays in force, and the three new classes are targeted additions inside it.
+- The archived [guardrail_audit build task](archive/ai-dev_guardrail-audit-skill.md) is the prior art that created the audit skill and set its read-only contract, its `<authority>` wiring, and that bound.
+
+## Approach
+
+Land the preamble extension and the shared rules in the hub and its references, and the normative reading plus three finding classes in `guardrail_audit`. Rewrite each affected passage in place so one statement of each rule remains. Three items are genuine additions with no existing counterpart: the placement rule, which is the write-side counterpart to the read-side touchpoint rule and names its direction so the two cannot be confused; the within-doc duplication rule, which stands beside the across-doc filing rule because they cover distinct situations; and the fourth guard behaviour.
+
+The hub's preamble states:
+
+- **A guardrail doc carries rules, and a rule holds whether or not the code satisfies it yet.** The doc states what must be true of this project, written as a general rule rather than a report on the current tree. Code that falls short of a rule is unmet work, never evidence that the rule is wrong, and softening a rule to match the code is the move the doc exists to prevent. This is the misreading to name explicitly, because an agent that treats a doc as a description of the present will quietly relax a rule the moment the code disagrees with it.
+- **A rule becomes true along three paths.** Work filed and done to close the gap deliberately; new code written to the rule from the start; and existing code brought to the rule whenever ordinary work touches or rewrites it. The third path is the one that carries most of the distance, and it is why a rule needs no migration plan attached to be worth stating.
+
+The hub's `<format_contract>` states:
+
+- **A guarding statement stays free of anything that goes stale.** No link or reference to a task, backlog item, or planned change; no line number, code position, or other locator that rots as the file moves; no clause narrating what is unfinished today or marking the rule as not yet met. Each of those becomes wrong the second the code changes, and the rule itself does not. Where a rule needs to point at something in the repository, it names it by a stable, greppable name.
+- **Guarding and describing carry different obligations.** A guarding statement is normative: it is falsifiable in that a reviewer can check a concrete change against it, not in that the whole tree satisfies it today. A describing statement is factual and stays true to the repository, and it is there that intention presented as fact misleads — so an account of the system's shape may still label an intended component or a migration underway as direction, while a rule is stated plainly and never carries a not-yet-met qualifier.
+- **One canonical statement per rule within a doc.** Where a doc already owns the domain, new material rewrites the passage that owns it rather than landing beside it, because two statements of one rule drift apart and a reader cannot tell which governs.
+- **A guarding statement may name the mechanism meant to enforce it** — the check that must exist, the lint that must be denied, the gate that must run — stated as part of the rule, since "Structural beats advisory" already prefers a constraint that holds by construction. What stays out is narration of whether that mechanism is wired today, which is exactly the clause that goes stale.
+
+The hub's `<doc_set>` drops the claim that the harness loads the rule files automatically. In its place it states that whether a rule file loads is the harness's own behaviour and varies by product, so the guardrail system rests on none of it: every guardrail doc reaches a workflow because a consuming skill looked it up at the stage that needed it. The same passage states that this family supplies the mechanism and never the content — each doc carries the direction its own repository chose, and a repository is free to adopt none of them and guard its work another way.
+
+The hub's `<consumption>` gains a fourth guard behaviour, **bring touched code to the rule**: an agent that reads a doc at a touchpoint and finds the code it is about to change short of a rule brings that code up to the rule as part of the work, within the change's own scope, and surfaces anything larger rather than silently widening the edit. This is the third path made operational, and it is the counterpart of "Never widen a guardrail to legitimize an edit": that behaviour blocks moving the rule down to the code, this one moves the code up to the rule.
+
+The hub also gains the rule-placement rule: **a rule is stated once, in the doc that owns its general form, and a narrower doc carries what the rule means for its own surface.** A rule discovered while working on one surface tends to get written into that surface's doc, which leaves every other surface it governs unguided. The narrower doc references rather than restates, and a rule that is not project identity stays out of the charter per the `<hierarchy>` authority rule. Where a doc carries a change checklist or an equivalent per-change list, a newly added constraint gets an entry there too: the prose statement is read once at adoption, while the checklist is read per change and is where a change actually gets caught.
+
+`guardrail_audit` reads a guarding statement normatively. Code short of a rule is reported as unmet work with the code named as the side to move, and the audit proposes no softening of the rule; the neutral both-directions presentation stays for descriptive statements, where bringing the doc back to the repository is a legitimate fix. On top of that it gains three finding classes:
+
+- **A guarding statement carrying stale-prone content.** A task or backlog link, a line number or code position, or a clause marking the rule as not yet met. The fix rewrites the statement as a plain rule, since the qualifier goes stale while the rule does not.
+- **A descriptive statement naming a technology, component, or convention the code does not use.** This is a finding on the describing half only, and a rule the code has not reached is explicitly not one. It outranks cosmetic staleness because it misleads twice: it describes a stack the repository does not have, and an agent reading it will build to the named convention believing it matches existing practice. The evidence pairs the naming passage with the absence of any use in the code.
+- **An empty or harness-locked tier-3 layer.** Where a repository carries no harness rule file, or its only operating rules sit in a harness-specific rules file that a single product loads, every other agent starts with nothing. The consequence is placement distortion: general operating rules get pushed up into tier-2 docs for want of anywhere else to live. Rank the finding below tier-2 findings per the hub's `<hierarchy>`.
+
+**Out of scope:**
+
+- Editing the guardrail docs of any repository, and any migration sweep over docs already written. The family states the rules, and each repository's own adoption carries the change.
+- A new guardrail doc type, or any change to the four recognized types and their peers.
+- Giving `guardrail_audit` a write path or an auto-repair mode; it stays read-only and ends by asking how to proceed.
+- Widening the audit's `<audit_bound>` beyond obvious, high-confidence findings.
+
+## Acceptance
+
+- The hub's `<role>` states that a guardrail doc carries rules holding whether or not the code satisfies them, that code short of a rule is unmet work rather than grounds to soften the rule, and the three paths by which a rule becomes true, with the touch-it-and-fix-it path named among them.
+- The hub's `<format_contract>` states that a guarding statement carries no task or backlog link, no line number or code position, and no not-yet-met qualifier, and names the stable greppable reference as the form to use instead.
+- The hub's `<format_contract>` bullet "Falsifiable where it guards, truthful where it describes" states the differing obligations of the two halves, superseding the current wording that names the split without defining either side, and the `<hierarchy>` bullet "Descriptive context" scopes its intention-presented-as-fact warning to descriptive statements.
+- The hub's `<create>` step "Surface creation-time divergence" no longer presents softening the statement and keeping it aspirational as symmetric options, and states that a rule the code has not reached is written plainly rather than marked.
+- `rg 'the harness loads them automatically' plugins/ai_dev/skills/guardrail/SKILL.md` returns nothing, and `<doc_set>` states in its place that rule-file loading is harness behaviour that varies by product while every guardrail doc reaches a workflow through a consuming skill's lookup.
+- The hub's `<doc_set>` states that the family supplies the mechanism rather than the content, and that a repository may adopt none of the docs and guard its work another way.
+- The hub's `<consumption>` carries a fourth guard behaviour obliging an agent to bring code it touches up to a rule within the change's own scope, and states its relationship to "Never widen a guardrail to legitimize an edit".
+- The hub carries the placement rule for writing a newly discovered rule into the right doc, and both it and `<consumption>`'s touchpoint rule name their direction — write-side and read-side — so a reader can tell the two apart.
+- The hub's `<format_contract>` states that one canonical statement per rule survives within a doc, standing beside the existing "Root `UPPERCASE.md`, one domain per doc" filing rule rather than replacing it.
+- The hub or `references/security.md` states that a guarding statement may name the mechanism meant to enforce it while leaving out whether that mechanism is wired today; the existing "Structural beats advisory" rule remains as the preference it states, with no second copy introduced.
+- Each type reference whose base template carries a per-change checklist states that a newly added constraint also gets a checklist entry.
+- `references/architecture.md`'s rules "Present and direction, told apart" and "Refreshed as the project evolves" state that they bind descriptive content, leaving the `## Direction` section legitimate for intended structure while no rule carries a not-yet-met marker.
+- `guardrail_audit` states that a guarding statement is read normatively: code short of a rule is reported as unmet work with the code named as the side to move, and no finding proposes softening a rule. The both-directions presentation in `<workflow>`'s "Doc-vs-code" step and in `<finding_shape>` is scoped to descriptive statements rather than dropped.
+- `guardrail_audit` names the stale-prone-guarding-statement finding class with the three content kinds it covers and the rewrite as its fix.
+- `guardrail_audit` names the descriptive-statement-names-an-unused-technology finding class, states its two-way harm, and states explicitly that a rule the code has not reached draws no such finding.
+- `guardrail_audit` names the empty-or-harness-locked tier-3 finding class and ranks it below tier-2 findings per the hub's `<hierarchy>`.
+- Every passage added to `guardrail_audit` cites the hub for the hierarchy, format contract, and consumption convention instead of restating them, keeping the `<authority>` contract the skill already declares.

@@ -1,7 +1,7 @@
 ---
 title: Deciding where knowledge belongs
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: procedure
 tags: [authoring, skill, repo-structure]
 sources: []
@@ -45,7 +45,10 @@ and the source it came from.
 A derivation is the evidence, the alternatives that were rejected, and the
 reasoning that produced a rule. It belongs in the wiki always. A rule that
 carries its own derivation charges every invocation for reasoning that only
-matters once.
+matters once. File it under the declarative type that fits what it explains,
+`concept` for the reasoning behind one mechanism and `comparison` for a choice
+made between targets. There is no decision-record type, and adding one would
+fragment the schema for pages the describe-versus-prescribe test already places.
 
 Two consequences follow, and they are the ones people get wrong.
 
@@ -63,7 +66,10 @@ the rule stand without the evidence, or it will not survive the move.
 
 Duplicating a rule into both homes creates two versions that drift, and the drift
 is discovered by whoever read only one. Where both places genuinely need it, one
-of them states it and the other points at that one.
+of them states it and the other points at that one. The same holds between two
+wiki pages. The page that owns the subject carries the perishable detail, and a
+cross-cutting page carries the consequence and links, because a restatement is a
+second edit owed on the day the vendor changes anything.
 
 Process records are not knowledge. A page that exists to note that something ran,
 or that a routine step completed, is noise the next reader has to filter.

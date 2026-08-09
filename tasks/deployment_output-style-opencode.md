@@ -2,7 +2,7 @@
 description: Deploy the output style to OpenCode, choosing between the additive instructions list and a synthesized base-prompt swap on its default primary agent.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-08T01:34:52
+updated: 2026-08-09T13:49:35
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ OpenCode receives the repository's output style through its own configuration tr
 
 ## Context
 
-This builds on [the Claude groundwork task](deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
+This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
 
 The wiki records both routes on its [SST OpenCode](../wiki/entities/sst-opencode.md) page and in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md), read off the source rather than the documentation, which states none of it.
 
@@ -37,7 +37,7 @@ Generate rather than copy either way. Strip the Claude frontmatter, which this t
 
 **Out of scope:**
 
-- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](deployment_output-style-claude-groundwork.md).
+- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
 - Project-scoped deployment of the replacing route under `--project-dir`, which this task rejects outright rather than defers. A project `.opencode/agents/` definition can carry a prompt, so the rejection is a judgement rather than a limitation: overriding the default primary agent inside a repository replaces the base prompt for everyone who works there, not only the person who deployed it, and the derived text is pinned to one model and one OpenCode version so it is wrong for every contributor on a different one. Report that the replacing route has no project scope under `--project-dir` and write nothing there. The additive route carries no such objection and the **Approach** covers it at both scopes, so this rejection binds the replacing route alone.
 - The plugin route through OpenCode's system-transform hook, which carries `experimental` in its own name and is a code artefact rather than reviewable prose.
 - Writing the global rules file in OpenCode's configuration tree, which the **Context** rejects because first-match resolution would suppress the user's own global rules.

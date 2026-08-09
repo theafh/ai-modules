@@ -1,7 +1,7 @@
 ---
 title: Claude output styles
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: concept
 tags: [claude, output-style, system-prompt, frontmatter, deployment]
 sources: []
@@ -24,8 +24,8 @@ system prompt as two layers.
 
 Facts below were verified on 7 August 2026 against
 `code.claude.com/docs/en/output-styles` and `/docs/en/plugins-reference`, plus
-the installed Claude Code 2.1.215 build and the desktop application bundle of the
-same date. Re-verify before relying on them.
+the Claude Code build installed on that date and the desktop application bundle.
+Re-verify before relying on them.
 
 ## Current state of knowledge
 
@@ -58,7 +58,7 @@ prompt, and only a fork inherits the parent's, so an agent definition's policy
 has to stand on its own.
 
 A custom style, user-level or plugin-supplied, is disabled under safe mode in the
-2.1.215 build, which annotates the saved value as `<name> (disabled in safe
+build checked, which annotates the saved value as `<name> (disabled in safe
 mode)`. A rule that must hold in every session belongs somewhere other than a
 style.
 
@@ -128,9 +128,6 @@ plugin is not enabled, both are off under safe mode, and an edit needs
 `/reload-plugins` or a restart. That is why forcing is not a route to the global
 mode.
 
-The 2.1.215 loader skips a plugin style that is not a regular file or exceeds
-1,048,576 bytes.
-
 ### Frontmatter
 
 The schema accepts exactly four keys: `name`, `description`,
@@ -148,8 +145,11 @@ user-level file it is ignored and logged as a warning on every load.
 ## Open questions
 
 Whether a repository-tracked style should be deployed at global scope, project
-scope, or both is a live design question rather than a settled one, and it is the
-subject of open backlog work.
+scope, or both is settled on Claude and open elsewhere. The Claude arm resolves
+both placements against the same configuration-directory variable, so one code
+path serves the user tree and a project tree, and it shipped that way on
+8 August 2026. Which scope is primary on Cursor, Antigravity, and VS Code, where
+the project tree is the native home, is still open backlog work.
 
 ## Related concepts
 
@@ -157,12 +157,13 @@ subject of open backlog work.
   for what carries the same intent on the other five targets.
 - [Output style delivery design](output-style-delivery-design.md) for what this
   repository actually decided to write, where, and why.
-- [The deployment model](deployment-model.md) for why the settings-key half needs
-  prior-value capture before uninstall can restore anything.
+- [The deployment model](deployment-model.md) for how the settings-key half is
+  written, and for the prior-value capture that lets uninstall restore what the
+  `outputStyle` merge replaced.
 
 ## Derived from
 
 - `code.claude.com/docs/en/output-styles` and `/docs/en/plugins-reference`.
-- The installed Claude Code 2.1.215 build and desktop bundle, 7 August 2026.
+- The Claude Code build and desktop bundle installed on 7 August 2026.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

@@ -1,7 +1,7 @@
 ---
 title: OpenAI Codex
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: entity
 tags: [codex, skill, agent, hook, plugin, system-prompt, frontmatter]
 sources: []
@@ -76,31 +76,26 @@ template, or `Custom`, explicitly configured and documented as surviving model
 changes unchanged. Nothing composes the two.
 
 Pointing `model_instructions_file` at a file therefore fills the whole slot and
-freezes it across model switches. The built-in templates ship in `codex-rs/core`
-as `gpt_5_1_prompt.md`, `gpt_5_2_prompt.md`, `gpt_5_codex_prompt.md`,
-`prompt_with_apply_patch_instructions.md`, and siblings, ranging from roughly
-6 KB to 24 KB. Tool schemas travel separately as a tools JSON, so a replacement
-loses operating prose rather than tool definitions.
+freezes it across model switches. The built-in templates ship as one Markdown
+prompt file per model family under `codex-rs/core`, so the shipped set turns
+over with the model lineup. Tool schemas travel separately as a tools JSON, so a
+replacement loses operating prose rather than tool definitions.
 
+The resolved text is readable, which is what makes a substitution possible.
 `codex debug models` renders the model catalog as JSON with a resolved
-`base_instructions` string and an `instructions_template` per model. The on-disk
-`~/.codex/models_cache.json` carries no base instructions, so the binary
-invocation is required, and the binary may sit off `PATH` inside an application
-bundle.
+`base_instructions` string and an `instructions_template` per model, and that
+output is the only route: the on-disk `~/.codex/models_cache.json` carries no
+base instructions. Any step invoking the binary needs feature detection rather
+than a bare command name, because the executable can sit off `PATH` inside an
+application bundle.
 
-Resolved text is ordinary Markdown with named sections. On `gpt-5.6-sol` under
-codex-cli 0.147.0-alpha.6.5 they are `# Personality` with `## Writing style` and
-`## Technical communication`, `# Working with the user` with
-`## Intermediate commentary` and `## Final answer` including
-`### Formatting rules`, then `# Rules for getting work done` with
-`## File editing constraints` and `## Autonomy and persistence`, then
-`# Destructive Actions`, and `# Using skills`. Length varies by model: 17,730
-characters for `gpt-5.6-sol`, 19,737 for `gpt-5.5`, and 11,097 for
-`gpt-5.4-mini`.
-
-The binary was off the executable path on the machine checked on 8 August 2026,
-sitting inside an application bundle instead, so any step invoking it needs
-feature detection rather than assuming a plain command name resolves.
+Resolved text is ordinary Markdown organised under named headings covering
+personality and writing style, how to talk to the user, how to format a final
+answer, editing and autonomy rules, destructive actions, and skill use. Both the
+heading set and the overall length vary by model, and neither is documented
+anywhere, so they are internal structure rather than a contract. A generator
+that assembles a prompt by locating those headings re-derives them per model on
+every run and fails loudly when an expected one is gone.
 
 ### Personality, verbosity, and profiles
 

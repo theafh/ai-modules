@@ -1,7 +1,7 @@
 ---
 title: Skill family architecture
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: concept
 tags: [skill, agent, authoring, repo-structure]
 sources: []
@@ -76,17 +76,18 @@ The cost side is easy to miss. Descriptions are standing context in every
 session that lists skills, and a skill body is loaded in full the moment its
 trigger fires. A long description over-triggers, and a large body charges every
 trigger for content the current task does not need. The portability skill was
-the extreme case: at roughly 94 KB it charged about 32,000 tokens to answer a
-question about quoting a shell variable. Splitting facts out to this wiki and to
-a `references/` directory is the standing remedy, since a `references/` file
-ships with the plugin and loads only when the skill sends the agent to it.
+the extreme case before its split: a body of accumulated per-harness facts was
+loaded whole to answer a question about quoting a shell variable. Splitting
+facts out to this wiki and to a `references/` directory is the standing remedy,
+since a `references/` file ships with the plugin and loads only when the skill
+sends the agent to it.
 
 ## Open questions
 
-There is no measured threshold for when a skill body is too large. The 94 KB
-case was obvious, but the boundary between a skill that carries its rules and
-one that has quietly become a reference manual has so far been judged by
-reading rather than by any rule.
+There is no measured threshold for when a skill body is too large. The
+portability case was obvious on sight, but the boundary between a skill that
+carries its rules and one that has quietly become a reference manual has so far
+been judged by reading rather than by any rule.
 
 ## Related concepts
 

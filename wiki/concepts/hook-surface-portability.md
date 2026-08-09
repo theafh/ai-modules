@@ -1,7 +1,7 @@
 ---
 title: Hook surface portability
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: concept
 tags: [hook, portability, claude, codex, opencode, antigravity, plugin]
 sources: []
@@ -16,10 +16,9 @@ A hook is a policy that runs at a point in the agent's lifecycle, usually before
 or after a tool call. Among the four harnesses whose hook contracts the research
 here has worked out, Claude, Codex, Antigravity, and OpenCode, no two agree on
 the configuration format, the event payload, or the way a handler says no.
-Cursor and Copilot in VS Code expose hook surfaces of their own, and the deploy
-script already copies hook files into both configuration trees, but their
-contracts are not worked out here, so read them as unfinished coverage rather
-than absence.
+Cursor and Copilot in VS Code expose hook surfaces of their own whose contracts
+are not worked out here, which is unfinished coverage rather than a support
+decision.
 
 The portable design that follows from that is one shared executable policy script
 called from per-harness configuration, with the script itself written to detect
@@ -107,11 +106,40 @@ skipped until the user reviews and trusts the current definition, and an edit
 requires review again. On Claude a plugin component change needs a reload or
 restart.
 
+### What this repository ships and deploys today
+
+One shared policy script and three harnesses' worth of configuration. The script
+is a single shell file. The configurations are Claude's plugin-native
+`hooks.json`, a Codex pair splitting the plugin-manifest file from the
+config-layer file, and one Antigravity file.
+
+The deploy script routes them unevenly, and the unevenness is worth knowing
+before reading a deployed tree. It copies the shell script into the hook
+directory of Claude, Cursor, Codex, Antigravity, and Copilot, and marks it
+executable. It merges the Codex config-layer file into that harness's own hook
+configuration under the `hooks` key, and the Antigravity file under its own
+named-hook key. Claude and Cursor each have a merge branch that matches on a
+harness-named configuration file the repository does not ship, so Claude's hook
+configuration reaches a machine through plugin install rather than through the
+deploy, and Cursor receives the script with nothing wired to call it. OpenCode
+has no branch at all.
+
+Copilot is the one route with no name filter, so every hook configuration in the
+tree lands in its hook directory, including the files written for other
+harnesses. That is the same foreign-file deposit
+[foreign directory adoption](foreign-directory-adoption.md) argues against, made
+here by this repository's own installer rather than by a harness reading someone
+else's tree, and it should be filtered to the files Copilot can act on.
+
 ## Open questions
 
-The repository ships hook configurations for Claude, Codex, and Antigravity, and
-no OpenCode bridge yet. Whether the bridge is worth its experimental dependency
-is open backlog work.
+Three coverage decisions are unsettled. Whether an OpenCode bridge is worth its
+experimental dependency is open work. Whether Claude and Cursor should receive
+the harness-named configuration files their deploy branches already match on has
+never been argued either way, so the branches sit ready for a source that may
+never be written. And whether Cursor's and Copilot's contracts get worked out to
+the depth of the other four decides whether the shared script can claim a uniform
+guarantee across every target it lands on.
 
 ## Related concepts
 

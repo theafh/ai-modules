@@ -2,7 +2,7 @@
 description: Deploy the output style to Antigravity as an always-on rule, at global scope as a marked block in the single rules file and at project scope as an ordinary workspace rule file.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-08T01:34:52
+updated: 2026-08-09T13:49:35
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ Antigravity receives the repository's output style as an always-on rule, deploye
 
 ## Context
 
-This builds on [the Claude groundwork task](deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery beyond the marked-block write described below.
+This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery beyond the marked-block write described below.
 
 The wiki records the mechanism in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md), with the paths on its [Google Antigravity](../wiki/entities/google-antigravity.md) page. The essentials: Antigravity documents no tone, persona, output-format, or system-prompt-replacement feature at all, so the whole mapping runs through rules; workspace rules are Markdown files under the workspace agents directory while global rules are a single file one level above the global configuration directory; each rule file is capped at 12,000 characters; and Always On is the activation mode corresponding to a standing voice. Antigravity is append-only, so the deployed prose competes with default guidance rather than displacing it.
 
@@ -37,7 +37,7 @@ Generate rather than copy. Strip the Claude frontmatter, which this target does 
 
 **Out of scope:**
 
-- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](deployment_output-style-claude-groundwork.md).
+- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
 - The plugin bundle's rules component, which reaches only the sessions where that plugin is installed rather than every session in the tree the deploy writes.
 
 ## Acceptance

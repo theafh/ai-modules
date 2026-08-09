@@ -16,6 +16,7 @@ plugins/<plugin>/
   .claude-plugin/plugin.json      # Claude plugin metadata
   README.md                       # plugin overview + skill list
   skills/<skill>/SKILL.md         # skill definition with YAML frontmatter
+styles/                           # tracked output styles (repo-root; not a plugin component)
 deployment/                       # deploy script + per-tool config
 tests/                            # local-only regression harnesses (gitignored)
 Makefile                          # task entry point

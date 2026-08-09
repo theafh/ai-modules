@@ -2,9 +2,11 @@
 description: Track the natural-language output style in repo-root styles/, deploy to Claude as file plus outputStyle, and lay prior-value capture/restore groundwork for uninstall of a deployed configuration key.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-08T19:41:19
-status: ready
+updated: 2026-08-09T13:49:35
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Track output styles in the repo, deploy them to Claude, and capture priors for uninstall restore
@@ -17,7 +19,7 @@ This task also lays the groundwork every later harness reuses: the source direct
 
 ## Context
 
-An output style is a Claude-only component. The wiki documents the mechanism on its [Claude output styles](../wiki/concepts/claude-output-styles.md) page, and the two facts this task depends on are its delivery-modes and locations-and-activation material: a machine-wide style is two placements rather than one, a Markdown file in the user configuration tree plus an `outputStyle` key in the user settings file, and nothing in the plugin system writes either of them. A deploy step is therefore the only route to that mode, which is why this work belongs to the deployment script rather than to a plugin.
+An output style is a Claude-only component. The wiki documents the mechanism on its [Claude output styles](../../wiki/concepts/claude-output-styles.md) page, and the two facts this task depends on are its delivery-modes and locations-and-activation material: a machine-wide style is two placements rather than one, a Markdown file in the user configuration tree plus an `outputStyle` key in the user settings file, and nothing in the plugin system writes either of them. A deploy step is therefore the only route to that mode, which is why this work belongs to the deployment script rather than to a plugin.
 
 Seed the tracked style once from the reporting user's existing Claude `output-styles/` file when that file is present; when it is absent, author the tracked Markdown so it includes `keep-coding-instructions: true` and the frontmatter Claude's loader accepts. After that seed (or authoring) step, the tracked file under repo-root `styles/` is the sole content source for deploy and for Acceptance — later work does not re-read a machine-local Claude tree for content.
 
@@ -30,7 +32,7 @@ Deployment mechanics that this task extends, all in `deployment/`:
 - `deployment/deployment.sh` sets `CLAUDE_DIR` to `${HOME}/.claude` under `--global` and to `${PROJECT_DIR}/.claude` under `--project-dir`. Claude reads both trees: an `output-styles/` directory and an `outputStyle` settings key exist at user level and at project level, and the project values outrank the user ones. A style arm written against `CLAUDE_DIR` rather than against a hardcoded home path therefore serves both scopes through one code path, and adding a project-mode skip would be extra code suppressing behaviour that path already provides.
 - Project styles load from every `.claude/output-styles/` between the working directory and the repository root, and since v2.1.178 the directory nearest the working directory wins when two of them define the same style name. A project deploy therefore needs no collision handling of its own beyond writing one file into the target project's own tree.
 
-Sibling tasks, each adding one target on top of this groundwork and each waiting for it to ship: [Cursor](deployment_output-style-cursor.md), [Codex](deployment_output-style-codex.md), [OpenCode](deployment_output-style-opencode.md), [Antigravity](deployment_output-style-antigravity.md), and [VS Code Copilot](deployment_output-style-vscode.md).
+Sibling tasks, each adding one target on top of this groundwork and each waiting for it to ship: [Cursor](../deployment_output-style-cursor.md), [Codex](../deployment_output-style-codex.md), [OpenCode](../deployment_output-style-opencode.md), [Antigravity](../deployment_output-style-antigravity.md), and [VS Code Copilot](../deployment_output-style-vscode.md).
 
 ## Approach
 

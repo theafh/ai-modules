@@ -1,7 +1,7 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery]
 sources: []
@@ -23,9 +23,9 @@ is why [Claude output styles](../concepts/claude-output-styles.md) is a page of
 its own rather than a section here.
 
 Facts below were verified on 7 August 2026 against `code.claude.com/docs/en/`
-and against the installed Claude Code 2.1.215 build plus the desktop application
-bundle of the same date, unless stated otherwise. Re-verify before relying on
-any of them.
+and against the Claude Code build installed on that date plus the desktop
+application bundle, unless stated otherwise. Re-verify before relying on any of
+them.
 
 ## Key facts and dates
 
@@ -36,10 +36,9 @@ The user tree is `~/.claude/`, holding `skills/`, `agents/`, `commands/`,
 with the same shape, plus `settings.local.json` for local-scope settings. A
 managed-settings directory exists as a third layer.
 
-Project settings outrank user settings. For output styles specifically, project
-styles load from every `.claude/output-styles/` between the working directory
-and the repository root, and since v2.1.178 the directory nearest the working
-directory wins a name collision.
+Project settings outrank user settings. Output styles layer their own discovery
+and collision rules on top of that, recorded on
+[Claude output styles](../concepts/claude-output-styles.md).
 
 ### Agent definitions
 
@@ -72,10 +71,11 @@ restart before a running session sees it.
 
 ### Safe mode
 
-A custom output style is disabled under safe mode, whether it came from the user
-configuration or from a plugin. The 2.1.215 build annotates the saved value as
-`<name> (disabled in safe mode)`. Any rule that must hold in every session
-therefore belongs somewhere other than a style.
+Safe mode disables a custom output style whichever way it arrived, so any rule
+that must hold in every session belongs somewhere other than a style. The
+annotation it writes on the saved value is on
+[Claude output styles](../concepts/claude-output-styles.md) with the rest of the
+style behaviour.
 
 ### Retired surfaces
 
@@ -103,6 +103,6 @@ settings file was the only route.
 ## Derived from
 
 - `code.claude.com/docs/en/output-styles` and `/docs/en/plugins-reference`.
-- The installed Claude Code 2.1.215 build and desktop bundle, 7 August 2026.
+- The Claude Code build and desktop bundle installed on 7 August 2026.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

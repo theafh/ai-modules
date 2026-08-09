@@ -1,11 +1,11 @@
 ---
 title: Foreign directory adoption
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: concept
-tags: [discovery, portability, claude, opencode, copilot, cursor, antigravity]
+tags: [discovery, portability, claude, opencode, copilot, cursor, antigravity, verification-gap]
 sources: []
-confidence: high
+confidence: medium
 ---
 
 # Foreign directory adoption
@@ -69,10 +69,10 @@ duplicate skill id resolves by whichever tool scans last.
 ### Isolation switches
 
 OpenCode's switches are environment variables rather than configuration keys, and
-they are listed on its own page. The broad one disables Claude Code compatibility
-and, since v1.1.50, also stops `.agents/skills` discovery, which is a materially
-different trade for an operator who also runs Antigravity, because it scopes away
-that harness's native workspace skills in the same stroke.
+they are listed with their version boundaries on its own page. The broad one
+disables Claude Code compatibility and also stops `.agents/skills` discovery,
+which is a materially different trade for an operator who also runs Antigravity,
+because it scopes away that harness's native workspace skills in the same stroke.
 
 No other target documents an equivalent switch. Where none exists, plan for the
 foreign file arriving and keep the native variant authoritative.
@@ -92,7 +92,11 @@ the adoption paths so the Claude originals stop competing with it.
 
 Whether Antigravity's apparent isolation is real or merely undocumented is
 untested on an installed build. Until someone checks, the claim rests on the
-absence of documentation, which is the weakest evidence type in use here.
+absence of documentation, which is the weakest evidence type in use here. That
+single claim sets this page's confidence: the OpenCode, Copilot, and Cursor
+sections rest on source reads and corroborating documentation, while the deploy
+design leans on the Antigravity one, so the page is only as good as its weakest
+load-bearing claim.
 
 ## Related concepts
 

@@ -2,7 +2,7 @@
 description: Deploy the output style to Cursor as an always-applied rule at project scope, and test whether a home-directory rules folder is loaded before shipping the global write.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-08T01:34:52
+updated: 2026-08-09T13:49:35
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ Cursor receives the repository's output style as a generated rule file, deployed
 
 ## Context
 
-This builds on [the Claude groundwork task](deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
+This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
 
 The wiki records what is known, on its [Cursor](../wiki/entities/cursor.md) page and in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md). The essentials: rules are Markdown with frontmatter selecting one of four activation modes, an applied rule is included at the start of the model context rather than replacing anything, and `alwaysApply: true` is the mode corresponding to a standing voice. Cursor is therefore an append-only target, so the deployed prose competes with Cursor's own default guidance instead of displacing it as a Claude style does. Say so in the docs rather than presenting the variant as equivalent.
 
@@ -25,7 +25,7 @@ The open question is whether a rules file in a home-directory `rules` folder und
 
 Begin with the empirical check. Place a Markdown rule file carrying `alwaysApply: true` and a distinctive, easily observed instruction in the home-directory rules folder under Cursor's user configuration tree, start a fresh Cursor chat in a project that has no rules of its own, and observe whether the instruction takes effect. Record the result in the task's implementation notes and on the wiki's [Cursor](../wiki/entities/cursor.md) page, replacing the unverified wording in its verification-gaps section with the finding and the date, so the next reader inherits evidence rather than the same question.
 
-Build the project-scoped write regardless of that result, since it rests on documented behaviour: under `--project-dir`, generate a Cursor variant of the style as an `.mdc` file with frontmatter setting `alwaysApply: true` and write it into that project's own rules directory. Resolve the destination from the script's existing Cursor directory variable rather than a hardcoded path, so the same code serves both scopes, matching how [the Claude groundwork task](deployment_output-style-claude-groundwork.md) resolves its two placements against one configuration root.
+Build the project-scoped write regardless of that result, since it rests on documented behaviour: under `--project-dir`, generate a Cursor variant of the style as an `.mdc` file with frontmatter setting `alwaysApply: true` and write it into that project's own rules directory. Resolve the destination from the script's existing Cursor directory variable rather than a hardcoded path, so the same code serves both scopes, matching how [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md) resolves its two placements against one configuration root.
 
 Then let the check decide the global half. When it confirms the home-directory folder is loaded, the `--global` run writes the same generated file there and needs no activation key. When it shows the folder is ignored, the `--global` run reports that Cursor has no deployable machine-wide path and names the manual alternative, a paste into Cursor's settings that no deploy step can write.
 
@@ -33,7 +33,7 @@ Either way the variant is generated rather than copied. Strip the Claude frontma
 
 **Out of scope:**
 
-- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](deployment_output-style-claude-groundwork.md).
+- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
 - Cursor's team rules and its settings-stored user rules, neither of which a deploy step can write.
 
 ## Acceptance

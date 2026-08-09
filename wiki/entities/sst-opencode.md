@@ -1,11 +1,11 @@
 ---
 title: SST OpenCode
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: entity
 tags: [opencode, skill, agent, hook, system-prompt, frontmatter, discovery]
 sources: []
-confidence: medium
+confidence: high
 ---
 
 # SST OpenCode
@@ -20,16 +20,19 @@ hooks are code rather than configuration, and it passes unrecognised agent
 frontmatter through to the model provider instead of ignoring or rejecting it.
 
 Much of what is known about it was read off its source rather than its
-documentation, which states none of the prompt-assembly behaviour. Expect the
-internals to move faster than a documented contract would, and treat the
-confidence on this page as medium for that reason.
+documentation, which states none of the prompt-assembly behaviour. That makes
+the claims here well-grounded and short-lived at the same time: they rest on the
+loader source cross-checked against an installed build, which is the strongest
+evidence in use anywhere in this wiki, and they describe internals that move
+faster than a documented contract would. Re-verify by the date below rather than
+by discounting the claims.
 
 Facts below were verified in July 2026 against `opencode.ai/docs` and the issue
 tracker, and on 7 August 2026 against
 `packages/opencode/src/session/instruction.ts`, `.../llm/request.ts`,
 `.../prompt.ts`, and `.../system.ts` on the `dev` branch of
-`github.com/sst/opencode`, cross-checked against the installed OpenCode desktop
-1.17.9 bundle. Re-verify before relying on any of them.
+`github.com/sst/opencode`, cross-checked against the OpenCode desktop bundle
+installed on that date. Re-verify before relying on any of them.
 
 ## Key facts and dates
 
@@ -104,21 +107,20 @@ rather than joining it. The environment block, the `AGENTS.md` and `instructions
 content, the MCP instructions, and the skills catalogue are appended afterwards
 unconditionally and survive the swap, as does a user-supplied system string.
 
-The vendor prompts are sectioned Markdown. `anthropic.txt` runs 8,212 characters
-across `# Tone and style`, `# Professional objectivity`, `# Task Management`,
-`# Doing tasks`, `# Tool usage policy`, and `# Code References`. `gpt.txt` runs
-9,284 characters across `## Editing Approach`, `## Autonomy and persistence`,
-`## Editing constraints`, `## Special user requests`, `## Frontend tasks`,
-`# Working with the user`, `## General`, `## Formatting rules`, and a
-`## Response channels` block splitting into `### commentary` and `### final`.
+The vendor prompts are sectioned Markdown, each organised under its own headings
+covering tone, autonomy, editing constraints, tool policy, and response
+formatting. Neither the heading set nor the length is documented, both differ per
+vendor file, and both turn over with the build, so treat them as internal
+structure to re-derive rather than as a contract to code against.
 
-There is no supported way to read the resolved text. OpenCode ships no
-equivalent of `codex debug models`, and the machine checked on 8 August 2026 had
-only the desktop application and no CLI, so a generator either reads the public
-repository and risks a version mismatch against the installed build, or extracts
-the string from the `app.asar` bundle inside the application package. The extraction works; the exact
-`# Tone and style` opening matched inside the 1.17.9 bundle. It remains string
-extraction from a package rather than a supported interface.
+There is no supported way to read the resolved text, since OpenCode ships no
+equivalent of `codex debug models`. Two routes reach it, and each has a cost. A
+generator can read the prompt files from the public repository, at the risk of a
+version mismatch against whatever build is installed locally. Or it can extract
+the string from the `app.asar` bundle inside the application package, which was
+confirmed to work against an installed build and which pins the text to that
+exact build. Both are reads of an unsupported surface, so whichever is used, the
+build the text came from gets recorded alongside it.
 
 ### The instructions array
 
@@ -174,6 +176,6 @@ so any dependency on it should be pinned to a tested version.
 
 - `opencode.ai/docs/plugins`, `/docs/permissions`, `/docs/agents`, `/docs/rules`.
 - `github.com/sst/opencode` on `dev`, the session source files named above.
-- The installed OpenCode desktop 1.17.9 bundle.
+- The OpenCode desktop bundle installed on 7 August 2026.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

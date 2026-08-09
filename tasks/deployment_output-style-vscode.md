@@ -2,7 +2,7 @@
 description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-08T01:34:52
+updated: 2026-08-09T13:49:35
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ GitHub Copilot in VS Code receives the repository's output style as a generated 
 
 ## Context
 
-This builds on [the Claude groundwork task](deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
+This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
 
 The wiki records the mechanism on its [GitHub Copilot in VS Code](../wiki/entities/github-copilot-vs-code.md) page and in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md). The essentials: instructions files combine rather than compete, the user-profile instructions root applies across every workspace and sits above repository and organization instructions in the documented precedence, and nothing has to be switched on for a file placed there to take effect. VS Code is append-only, so the deployed prose competes with default guidance rather than displacing it, which the docs should say plainly.
 
@@ -31,7 +31,7 @@ Generate rather than copy. Strip the Claude frontmatter, which this target does 
 
 **Out of scope:**
 
-- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](deployment_output-style-claude-groundwork.md).
+- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
 - Delivering the style through a Copilot agent plugin, which has no instructions component, so its only routes are a selectable agent or an on-demand skill and neither is standing.
 - Writing anything into the Claude configuration tree to reach this target, which the **Context** rejects as adoption rather than delivery.
 

@@ -1,7 +1,7 @@
 ---
 title: System prompt substitution across harnesses
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: comparison
 tags: [system-prompt, portability, output-style, claude, codex, opencode, antigravity, cursor, copilot]
 sources: []
@@ -47,7 +47,7 @@ slot whose current contents can be re-derived, edited, and written back.
 | OpenAI Codex | instructions file under `~/.codex/` | `model_instructions_file` in `config.toml` |
 | SST OpenCode | agent file, or a path in the `instructions` array | none for `instructions`; agent selection for the replacing route |
 | Cursor | none that is documented | user rules live in the application settings |
-| Google Antigravity | `~/.gemini/GEMINI.md` (the workspace `.agents/rules/` tree is project scope) | Always On activation mode |
+| Google Antigravity | `~/.gemini/GEMINI.md` (the workspace `.agents/rules/` tree is project scope) | none; the global file needs no activation mode |
 | Copilot in VS Code | `~/.copilot/instructions` | none |
 
 Copilot is the cheapest target to reach, with one file and no settings key.
@@ -78,8 +78,10 @@ turn.
 A Claude style reaches the main conversation only, since a subagent runs its own
 system prompt. OpenCode's `instructions` tail is appended to every request
 whatever agent is running, so it governs subagents too, which is wider reach than
-the native tier offers. Antigravity caps each rule file at 12,000 characters, so
-a long style splits across several files rather than travelling as one.
+the native tier offers. Antigravity caps a rules file by character count and
+states that limit for rules files generally, so its global deposit has to fit
+inside one file rather than splitting the way a project tree of rule files can.
+The cap itself is on [Google Antigravity](../entities/google-antigravity.md).
 
 ## Verdict
 

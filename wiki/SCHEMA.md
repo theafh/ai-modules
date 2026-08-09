@@ -8,20 +8,37 @@ This wiki is the project memory of **ai-modules**, the repository that defines a
 ships reusable AI assistant components: skills, agents, hooks, output styles, and
 the deployment machinery that installs them into agent harnesses.
 
-It covers two bodies of knowledge that the shipped artefacts themselves are the
-wrong container for.
+**What it is for.** It is memory for the LLM coding agents that work in this
+repository, and it ships inside the repository so every clone carries it. It holds
+what an agent has learned about the repo and its elements, what those elements are
+and how they work, the decisions that were argued and settled, what came out of
+working sessions with the maintainer, and the extensions that are intended but not
+yet task-scope. It is meant to grow into the source of truth the other systems read
+from, so that a task gets created out of what is written here and a guardrail rule
+gets stated from the reasoning kept here.
 
-The first is **how the repository works and why**: its product, its layout, its
-packaging and versioning contract, its deployment model, and the reasoning behind
-the conventions that the repo-root instruction files state as bare rules.
+**What that obliges.** Memory that is not maintained becomes a second, wrong
+account of the project, which is worse than no account at all. A page is therefore
+kept true rather than merely kept: updated when the thing it describes changes,
+reconciled when two pages disagree, cleared when its content is superseded,
+refreshed when a claim ages past the date it was verified, and kept aligned with
+both what exists today and what is planned next.
 
-The second is the **harness research**: verified, dated facts about how Anthropic
-Claude Code, OpenAI Codex, SST OpenCode, Google Antigravity, Cursor, and GitHub
-Copilot in VS Code discover artefacts, parse frontmatter, name tools, run hooks,
-and carry standing instructions. That material decays on a schedule nobody here
-controls, so every claim about a harness carries the date it was verified and the
-source it came from. A page that says nothing about when it was checked is a page
-to re-check.
+**The division against the other document sets.** The wiki holds the meta
+knowledge and the specific-purpose containers hold the specifics. A rule that must
+constrain an agent while it executes belongs in a guardrail document or a shipped
+skill. A unit of work belongs in the task backlog. What belongs here is the
+knowledge behind both: why a rule exists, what evidence supports it, which
+alternatives were rejected, and how the pieces fit together. Overlap between the
+sets is expected and fine; the same rule stated twice and left to drift is not.
+
+**Its second body of knowledge.** Beside the repository's own workings sits the
+**harness research**: verified, dated facts about how Anthropic Claude Code, OpenAI
+Codex, SST OpenCode, Google Antigravity, Cursor, and GitHub Copilot in VS Code
+discover artefacts, parse frontmatter, name tools, run hooks, and carry standing
+instructions. That material decays on a schedule nobody here controls, so every
+claim about a harness carries the date it was verified and the source it came from.
+A page that says nothing about when it was checked is a page to re-check.
 
 **Who reads this.** The consumer is an LLM coding agent, this wiki's own operator
 included. That is a different audience from the repo-root guardrail documents,
@@ -30,11 +47,17 @@ which fire on a trigger and spend context every time they do. The wiki is read o
 purpose, by an agent that went looking. It holds the evidence, the derivation, and
 the rejected alternatives that a rule in a skill compresses away.
 
-**What stays out.** Rules that change what an agent does at the moment of
-authoring belong in a shipped skill, not here. Anything an agent needs while
-working in a repository other than this one belongs in the skill or its
-`references/` directory, because this wiki is checked into ai-modules and travels
-nowhere else. The dividing test is whether the knowledge has to travel.
+**What stays out.** Three things. Anything an agent needs while working in a
+repository other than this one, because this wiki travels nowhere else; that
+belongs in the shipped skill or its `references/` directory, and whether the
+knowledge has to travel is the dividing test. Machine-private detail, because this
+repository is public: which install path one workstation uses, what a local path
+looks like, or what any individual person does is not wiki content, and a page
+discussing a choice states what options exist rather than which one is in use.
+And measurements that move with every commit, such as line counts, file sizes, and
+token estimates, because they are stale on arrival and carry no meaning a property
+cannot carry; state the property instead. A version number stays only where it
+marks a real feature boundary, and then only on the page that owns the subject.
 
 ## Conventions
 
@@ -106,6 +129,15 @@ contradictions: [other-page-slug]      # pages this one conflicts with
 `confidence` and `contested` are optional but recommended for opinion-heavy or fast-moving
 topics. Lint surfaces `contested: true` and `confidence: low` pages for review so weak claims
 don't silently harden into accepted wiki fact.
+
+`confidence` rates the **evidence**, not how stable the subject is. Write `high` when the
+claims rest on observed reality (a build inspected, source read, code measured), on something
+the user stated as fact, or on two or more independent sources that agree. Write `medium` for
+a single documented source, or for a first synthesis the user has not yet validated. Write
+`low` for inference, and for reasoning from an absence of evidence. Rate a page by its
+weakest load-bearing claim: one unverified claim that a design decision leans on caps the
+page however well sourced the rest of it is, and the page says which claim did the capping.
+A fast-moving subject is handled by the verification date, never by discounting confidence.
 
 **Custom domain-specific fields.** Add a field beyond the canonical set only when existing
 fields can't express what you need (e.g., `status: draft | reviewed | published`). Declare

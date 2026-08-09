@@ -1,7 +1,7 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
 sources: []
@@ -68,8 +68,13 @@ style arm becomes the deploy script's first non-plugin asset source, so
 | Copilot in VS Code | `~/.copilot/instructions/<name>.md`, body only | none, always on | file only |
 | OpenCode | a file under the global config tree, body only | add its path to the `instructions` array | file plus key; route decision open |
 | Codex | a generated instructions file under the Codex configuration tree, synthesized per the whole-prompt mechanism | merge `model_instructions_file` into the user configuration | file plus key, replacing |
-| Antigravity | a marked block in `~/.gemini/GEMINI.md` | none | block in a user-owned file, 12,000-character cap |
+| Antigravity | a marked block in `~/.gemini/GEMINI.md` | none | block in a user-owned file, under its rules-file character cap |
 | Cursor | `.cursor/rules/<name>.mdc` with `alwaysApply: true` | none | project scope, global path unverified |
+
+The Claude row is the only one built. It shipped on 8 August 2026 with the
+`style` artefact type, the repo-root source directory, and the prior-value
+restore, at both global and project scope. The other five rows stay per-target
+backlog work, and each is a delivery decision rather than new machinery.
 
 Two rows carry a caveat. The Codex row records the decided route: the
 synthesized replacement won over a marked block in its global rules file, and
@@ -147,6 +152,12 @@ with a two-part deploy. A file plus a settings key forces the key merge, the
 prior-value capture, and the restore on uninstall to exist in the first task
 rather than being retrofitted. Starting with a file-only target such as VS Code
 would have built half the machinery and discovered the other half later.
+
+That bet paid out as intended. The capture and restore landed on the shared
+key-merge function rather than on a style-only wrapper, so the hook merges that
+predate this work inherited the restore too, and the five remaining targets each
+add a delivery route onto machinery that already exists. See
+[the deployment model](deployment-model.md).
 
 The per-harness split follows from the research rather than from a preference for
 small tasks. Each harness carries its own unresolved decision: Cursor's

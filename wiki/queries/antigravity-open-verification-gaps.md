@@ -1,11 +1,11 @@
 ---
 title: What remains unverified about Google Antigravity?
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: query
 tags: [antigravity, verification-gap, frontmatter, agent, discovery]
 sources: []
-confidence: medium
+confidence: high
 ---
 
 # What remains unverified about Google Antigravity?
@@ -71,10 +71,14 @@ every other harness in the set does.
 
 ## Confidence and caveats
 
-Medium. Each gap is an accurate report of what the documentation says and does
-not say as of 7 August 2026, and none of the four has been tested on an installed
-build. The tolerance question is the one worth spending a session on first,
-because it gates a design decision that is already being made.
+High on the report, and nil on the answers. Each gap is an accurate account of
+what the documentation says and does not say as of 7 August 2026, checked across
+every page listed on the entity page rather than inferred from one, which is why
+this page carries high confidence: what it asserts is the state of the
+documentation, and that was verified. What none of the four has is an answer, and
+none has been tested on an installed build. The tolerance question is the one
+worth spending a session on first, because it gates a design decision that is
+already being made.
 
 ## Derived from
 

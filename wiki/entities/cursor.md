@@ -1,11 +1,11 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: entity
 tags: [cursor, agent, frontmatter, discovery, verification-gap]
 sources: []
-confidence: medium
+confidence: high
 ---
 
 # Cursor

@@ -6,20 +6,22 @@ set -euo pipefail
 #                 for VS Code GitHub Copilot, Cursor, Claude Code,
 #                 OpenAI Codex, Google Antigravity, and OpenCode
 #
-# Discovery is plugin- and folder-based: artifacts live under
-# plugins/<plugin>/<asset-folder>/ where the asset-folder name determines
-# the artifact type (agents/, commands/, skills/, hooks/).
-# Hidden files and README files are always excluded from discovery.
+# Discovery uses two roots: plugins/<plugin>/<asset-folder>/ where the
+# asset-folder name determines the artifact type (agents/, commands/,
+# skills/, hooks/), and repo-root styles/ for the style type (each
+# top-level *.md file). Hidden files and README files are always
+# excluded from discovery.
 #
 # Per-tool deployment configuration is loaded from deployment.conf
 # (robots.txt-style). Current directives:
 #   #tool                     Section heading
 #   disallow:path             Relative path to exclude for that tool
 #   replace:path VAR=value    Replace $VAR$ in matching deployed copies
+#   style:<name>              Active output-style name for that tool
 #
 # Features:
 #   --global         Deploy into global config dirs (explicit mode)
-#   --type TYPES     Filter by artifact type (command,skill,agent,hook)
+#   --type TYPES     Filter by artifact type (command,skill,agent,hook,style)
 #   --target TARGETS Filter by deploy target (vscode,claude,cursor,codex,antigravity,opencode)
 #   --project-dir D  Deploy into a project directory instead of global config dirs
 #   --dry-run        Preview changes without applying them
@@ -71,7 +73,7 @@ pass --global explicitly.
 Options:
   --global          Deploy into global config dirs. This is the previous default
                     behavior of running the script with no arguments.
-  --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook.
+  --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook,style.
                     Requires --global or --project-dir unless used with --uninstall.
   --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,antigravity,opencode
   --project-dir DIR Deploy into a project directory instead of global config dirs.
@@ -182,6 +184,7 @@ if [[ "$REPO_ROOT" == "/" ]]; then
 fi
 
 PLUGINS_ROOT="${REPO_ROOT}/plugins"
+STYLES_ROOT="${REPO_ROOT}/styles"
 
 # ---------------------------------------------------------------------------
 # Project-dir mode — validate and resolve
@@ -294,9 +297,31 @@ append_deployed_artifact_log() {
   local target_id="${2:-}"
   local artifact_type="${3:-}"
   local source_path="${4:-}"
+  local prior_value="${5:-}"
   $DRY_RUN && return 0
   [[ -n "$deployed_path" && -n "$target_id" && -n "$artifact_type" && -n "$source_path" ]] || return 0
-  printf '%s\t%s\t%s\t%s\n' "$deployed_path" "$target_id" "$artifact_type" "$source_path" >> "$DEPLOYED_ARTIFACTS_LOG"
+  if [[ -n "$prior_value" ]]; then
+    printf '%s\t%s\t%s\t%s\t%s\n' "$deployed_path" "$target_id" "$artifact_type" "$source_path" "$prior_value" >> "$DEPLOYED_ARTIFACTS_LOG"
+  else
+    printf '%s\t%s\t%s\t%s\n' "$deployed_path" "$target_id" "$artifact_type" "$source_path" >> "$DEPLOYED_ARTIFACTS_LOG"
+  fi
+}
+
+# Look up a previously recorded prior for a path[key] log destination.
+# Prints the prior (compact JSON or @absent) and returns 0 when found.
+lookup_logged_prior() {
+  local log_path="$1"
+  [[ -f "$DEPLOYED_ARTIFACTS_LOG" ]] || return 1
+
+  local logged_path="" logged_target_id="" logged_type="" logged_source="" logged_prior=""
+  while IFS=$'\t' read -r logged_path logged_target_id logged_type logged_source logged_prior || [[ -n "$logged_path" ]]; do
+    [[ -n "$logged_path" ]] || continue
+    if [[ "$logged_path" == "$log_path" && -n "$logged_prior" ]]; then
+      printf '%s' "$logged_prior"
+      return 0
+    fi
+  done < "$DEPLOYED_ARTIFACTS_LOG"
+  return 1
 }
 
 dedupe_deployed_artifact_log() {
@@ -351,8 +376,10 @@ matches_filter() {
 # Parses per-tool deployment configuration and populates:
 #   DISALLOW_MAP["tool|rel_path"] = 1
 #   REPLACE_RULES+=("tool<TAB>pattern<TAB>var<TAB>value")
+#   STYLE_MAP["tool"] = name
 # ---------------------------------------------------------------------------
 declare -A DISALLOW_MAP=()
+declare -A STYLE_MAP=()
 declare -a REPLACE_RULES=()
 
 path_matches_pattern() {
@@ -417,6 +444,16 @@ parse_deployment_conf() {
       if [[ -n "$replace_path" && -n "$replace_var" ]]; then
         REPLACE_RULES+=("${current_tool}"$'\t'"${replace_path}"$'\t'"${replace_var}"$'\t'"${replace_value}")
       fi
+      continue
+    fi
+
+    # Style directive — active output-style name for this tool
+    if [[ -n "$current_tool" && "$line" =~ ^style:(.+)$ ]]; then
+      local style_name="${BASH_REMATCH[1]}"
+      style_name="${style_name#"${style_name%%[![:space:]]*}"}"
+      style_name="${style_name%"${style_name##*[![:space:]]}"}"
+      [[ -n "$style_name" ]] && STYLE_MAP["$current_tool"]="$style_name"
+      continue
     fi
   done < "$DEPLOYMENT_CONF"
 }
@@ -467,7 +504,7 @@ get_matching_replacements() {
 # ---------------------------------------------------------------------------
 # Validate flags
 # ---------------------------------------------------------------------------
-VALID_TYPES="command,skill,agent,hook"
+VALID_TYPES="command,skill,agent,hook,style"
 VALID_TARGETS="vscode,claude,cursor,codex,antigravity,opencode"
 
 if [[ -n "$TYPE_FILTER" ]]; then
@@ -579,59 +616,75 @@ target_is_active() {
 }
 
 # ---------------------------------------------------------------------------
-# Plugin- and folder-based autodiscovery
+# Autodiscovery from two roots
 #
-# Scans plugins/<plugin>/<asset-folder>/ where the asset-folder name
-# (agents/, commands/, skills/, hooks/) determines the artifact type.
-# For skills: each subdirectory containing SKILL.md is one skill artifact.
-# For others: each file in the folder is one artifact.
+# 1. plugins/<plugin>/<asset-folder>/ where the asset-folder name
+#    (agents/, commands/, skills/, hooks/) determines the artifact type.
+#    For skills: each subdirectory containing SKILL.md is one skill artifact.
+#    For others: each file in the folder is one artifact.
+# 2. repo-root styles/ — each top-level *.md file is one style artifact.
 # ---------------------------------------------------------------------------
 discover_artifacts() {
   local discovered=()
 
-  [[ -d "$PLUGINS_ROOT" ]] || return 0
+  if [[ -d "$PLUGINS_ROOT" ]]; then
+    for plugin_dir in "$PLUGINS_ROOT"/*/; do
+      [[ -d "$plugin_dir" ]] || continue
+      local plugin_name
+      plugin_name="$(basename "$plugin_dir")"
 
-  for plugin_dir in "$PLUGINS_ROOT"/*/; do
-    [[ -d "$plugin_dir" ]] || continue
-    local plugin_name
-    plugin_name="$(basename "$plugin_dir")"
+      for folder in "${!ASSET_FOLDERS[@]}"; do
+        local art_type="${ASSET_FOLDERS[$folder]}"
+        local folder_path="${plugin_dir}${folder}"
 
-    for folder in "${!ASSET_FOLDERS[@]}"; do
-      local art_type="${ASSET_FOLDERS[$folder]}"
-      local folder_path="${plugin_dir}${folder}"
+        # Skip if folder doesn't exist
+        [[ -d "$folder_path" ]] || continue
 
-      # Skip if folder doesn't exist
-      [[ -d "$folder_path" ]] || continue
+        # Skip if type doesn't match filter
+        matches_filter "$art_type" "$TYPE_FILTER" || continue
 
-      # Skip if type doesn't match filter
-      matches_filter "$art_type" "$TYPE_FILTER" || continue
-
-      if [[ "$art_type" == "skill" ]]; then
-        # Skills: each subdirectory with SKILL.md is an artifact
-        for skill_dir in "$folder_path"/*/; do
-          [[ -d "$skill_dir" ]] || continue
-          [[ -f "${skill_dir}SKILL.md" ]] || continue
-          local skill_name
-          skill_name="$(basename "$skill_dir")"
-          local rel_path="plugins/${plugin_name}/${folder}/${skill_name}"
-          discovered+=("${skill_name}|${art_type}|${rel_path}")
-        done
-      else
-        # Agents, commands, hooks: each file is an artifact
-        for f in "$folder_path"/*; do
-          [[ -f "$f" ]] || continue
-          local bname
-          bname="$(basename "$f")"
-          # Skip hidden files and README files
-          [[ "$bname" == .* ]] && continue
-          [[ "${bname^^}" == README* ]] && continue
-          local name_no_ext="${bname%.*}"
-          local rel_path="plugins/${plugin_name}/${folder}/${bname}"
-          discovered+=("${name_no_ext}|${art_type}|${rel_path}")
-        done
-      fi
+        if [[ "$art_type" == "skill" ]]; then
+          # Skills: each subdirectory with SKILL.md is an artifact
+          for skill_dir in "$folder_path"/*/; do
+            [[ -d "$skill_dir" ]] || continue
+            [[ -f "${skill_dir}SKILL.md" ]] || continue
+            local skill_name
+            skill_name="$(basename "$skill_dir")"
+            local rel_path="plugins/${plugin_name}/${folder}/${skill_name}"
+            discovered+=("${skill_name}|${art_type}|${rel_path}")
+          done
+        else
+          # Agents, commands, hooks: each file is an artifact
+          for f in "$folder_path"/*; do
+            [[ -f "$f" ]] || continue
+            local bname
+            bname="$(basename "$f")"
+            # Skip hidden files and README files
+            [[ "$bname" == .* ]] && continue
+            [[ "${bname^^}" == README* ]] && continue
+            local name_no_ext="${bname%.*}"
+            local rel_path="plugins/${plugin_name}/${folder}/${bname}"
+            discovered+=("${name_no_ext}|${art_type}|${rel_path}")
+          done
+        fi
+      done
     done
-  done
+  fi
+
+  # Repo-root styles/ — second discovery root for the style type
+  if matches_filter "style" "$TYPE_FILTER" && [[ -d "$STYLES_ROOT" ]]; then
+    local style_file
+    for style_file in "$STYLES_ROOT"/*.md; do
+      [[ -f "$style_file" ]] || continue
+      local bname
+      bname="$(basename "$style_file")"
+      [[ "$bname" == .* ]] && continue
+      [[ "${bname^^}" == README* ]] && continue
+      local name_no_ext="${bname%.*}"
+      local rel_path="styles/${bname}"
+      discovered+=("${name_no_ext}|style|${rel_path}")
+    done
+  fi
 
   if [[ ${#discovered[@]} -gt 0 ]]; then
     printf '%s\n' "${discovered[@]}"
@@ -760,10 +813,19 @@ copy_path_with_replacements() {
 }
 
 # ---------------------------------------------------------------------------
-# Merge a top-level JSON key from a source file into a target JSON file.
+# Merge a top-level JSON key into a target JSON file.
 # Creates the target if it doesn't exist. Logs with path[key] notation.
-# An optional hooks_dir rewrites relative ./hooks/ command paths to absolute
-# paths so the config works from any working directory.
+#
+# Value source (exactly one):
+#   - When scalar_value (7th arg) is provided, that string is JSON-encoded
+#     as the new key value (conf-sourced scalar path). source is used only
+#     for the deploy-log source column.
+#   - Otherwise the value is sliced from source as .${key}. An optional
+#     hooks_dir rewrites relative ./hooks/ command paths.
+#
+# On the first write of a key, records the previous value (compact JSON) or
+# @absent when the key was missing. A later redeploy of the same key reuses
+# that first-recorded prior so sort -u keeps a single line.
 # ---------------------------------------------------------------------------
 merge_json_key() {
   local source="$1"
@@ -772,17 +834,30 @@ merge_json_key() {
   local target_id="$4"
   local artifact_type="$5"
   local hooks_dir="${6:-}"
+  local scalar_value="${7-}"
+  local use_scalar=false
+  if [[ $# -ge 7 ]]; then
+    use_scalar=true
+  fi
 
-  if [[ ! -f "$source" ]]; then
+  if ! $use_scalar && [[ ! -f "$source" ]]; then
     err "missing" "source not found: $source"
     return 1
   fi
 
   local log_path="${target}[${key}]"
+  local log_source="$source"
+  if $use_scalar && [[ -z "$log_source" ]]; then
+    log_source="$DEPLOYMENT_CONF"
+  fi
 
   if $DRY_RUN; then
     SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-    info "would-merge" "${target} <- .${key} from ${source}"
+    if $use_scalar; then
+      info "would-merge" "${target} <- .${key} = $(jq -cn --arg v "$scalar_value" '$v')"
+    else
+      info "would-merge" "${target} <- .${key} from ${source}"
+    fi
     if [[ -n "$hooks_dir" ]]; then
       info "would-rewrite" "./hooks/ command paths -> ${hooks_dir}/"
     fi
@@ -794,15 +869,31 @@ merge_json_key() {
     existing="$(cat "$target")"
   fi
 
-  local patch
-  patch="$(jq ".${key}" "$source")"
+  # First-write prior: reuse a logged prior when present; otherwise sample.
+  local prior_value=""
+  if prior_value="$(lookup_logged_prior "$log_path")"; then
+    :
+  else
+    if printf '%s' "$existing" | jq -e --arg k "$key" 'has($k)' >/dev/null 2>&1; then
+      prior_value="$(printf '%s' "$existing" | jq -c --arg k "$key" '.[$k]')"
+    else
+      prior_value="@absent"
+    fi
+  fi
 
-  # Rewrite relative ./hooks/ command paths to absolute paths
-  if [[ -n "$hooks_dir" ]]; then
-    patch="$(printf '%s' "$patch" | jq --arg dir "$hooks_dir" '
-      walk(if type == "object" and .command and (.command | startswith("./hooks/"))
-           then .command = ($dir + "/" + (.command | ltrimstr("./hooks/")))
-           else . end)')"
+  local patch
+  if $use_scalar; then
+    patch="$(jq -cn --arg v "$scalar_value" '$v')"
+  else
+    patch="$(jq ".${key}" "$source")"
+
+    # Rewrite relative ./hooks/ command paths to absolute paths
+    if [[ -n "$hooks_dir" ]]; then
+      patch="$(printf '%s' "$patch" | jq --arg dir "$hooks_dir" '
+        walk(if type == "object" and .command and (.command | startswith("./hooks/"))
+             then .command = ($dir + "/" + (.command | ltrimstr("./hooks/")))
+             else . end)')"
+    fi
   fi
 
   local merged
@@ -811,7 +902,46 @@ merge_json_key() {
   printf '%s\n' "$merged" > "$target"
   ok "merged" "${target} <- .${key}"
   SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
-  append_deployed_artifact_log "$log_path" "$target_id" "$artifact_type" "$source"
+  append_deployed_artifact_log "$log_path" "$target_id" "$artifact_type" "$log_source" "$prior_value"
+}
+
+# ---------------------------------------------------------------------------
+# Restore a top-level JSON key to a recorded prior value, or delete it when
+# the prior is the @absent marker. Used during uninstall for newly logged
+# path[key] entries that carry a fifth-field prior.
+# ---------------------------------------------------------------------------
+restore_json_key() {
+  local target="$1"
+  local key="$2"
+  local prior_value="$3"
+
+  if [[ "$prior_value" == "@absent" ]]; then
+    strip_json_key "$target" "$key"
+    return $?
+  fi
+
+  if [[ ! -f "$target" ]]; then
+    if $DRY_RUN; then
+      SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
+      info "would-restore" "${target} .${key}"
+      return 0
+    fi
+    printf '%s\n' "{}" > "$target"
+  fi
+
+  if $DRY_RUN; then
+    SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
+    info "would-restore" "${target} .${key}"
+    return 0
+  fi
+
+  local existing
+  existing="$(cat "$target")"
+  local restored
+  restored="$(printf '%s' "$existing" | jq --argjson patch "$prior_value" ".${key} = \$patch")"
+  printf '%s\n' "$restored" > "$target"
+  ok "restored" "${target} .${key}"
+  SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
 }
 
 # ---------------------------------------------------------------------------
@@ -1516,6 +1646,34 @@ install_for_app() {
           ;;
       esac
       ;;
+    style)
+      case "$app_id" in
+        claude)
+          local dest_dir="${app_dir}/output-styles"
+          ensure_dir "$dest_dir"
+          local dest_path="${dest_dir}/${name}.md"
+          if [[ ${#replacement_specs[@]} -gt 0 ]]; then
+            copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" "${replacement_specs[@]}"
+          else
+            copy_file "$source_abs" "$dest_path" "$app_id" "$type"
+          fi
+
+          local active_style="${STYLE_MAP[$app_id]:-}"
+          if [[ -z "$active_style" ]]; then
+            warn "skip" "[$name] no style:<name> in deployment.conf for $app_id; file copied, outputStyle not set"
+          elif [[ "$active_style" != "$name" ]]; then
+            info "skip" "[$name] active style for $app_id is '${active_style}'; file copied only"
+          else
+            # Conf-sourced scalar: empty hooks_dir, scalar as 7th arg.
+            # source for the log column is deployment.conf (no JSON file read).
+            merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle" "$app_id" "$type" "" "$active_style"
+          fi
+          ;;
+        *)
+          info "skip" "[$name] style deployment not implemented for $app_id"
+          ;;
+      esac
+      ;;
     *)
       err "unknown" "artifact type: $type"
       return 1
@@ -1653,11 +1811,16 @@ logged_type_matches_filter() {
 
 remove_logged_path() {
   local path="$1"
+  local prior_value="${2:-}"
 
-  # Handle path[key] notation — strip a JSON key instead of deleting the file
+  # Handle path[key] notation — restore recorded prior or strip the key
   if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
     local json_file="${BASH_REMATCH[1]}"
     local json_key="${BASH_REMATCH[2]}"
+    if [[ -n "$prior_value" ]]; then
+      restore_json_key "$json_file" "$json_key" "$prior_value"
+      return $?
+    fi
     strip_json_key "$json_file" "$json_key"
     return $?
   fi
@@ -1679,6 +1842,35 @@ remove_logged_path() {
   fi
 }
 
+# Success check after uninstalling a logged path.
+# For path[key] with a recorded prior value, the key may still be present
+# after restore; absence is success only for @absent or legacy four-field strips.
+json_key_uninstall_succeeded() {
+  local path="$1"
+  local prior_value="${2:-}"
+
+  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
+    local json_file="${BASH_REMATCH[1]}"
+    local json_key="${BASH_REMATCH[2]}"
+
+    if [[ -n "$prior_value" && "$prior_value" != "@absent" ]]; then
+      [[ -f "$json_file" ]] || return 1
+      local current
+      current="$(jq -c --arg k "$json_key" '.[$k]' "$json_file" 2>/dev/null)" || return 1
+      [[ "$current" == "$prior_value" ]]
+      return $?
+    fi
+
+    # @absent or legacy four-field: key must be gone
+    if [[ -f "$json_file" ]] && jq -e --arg k "$json_key" 'has($k)' "$json_file" >/dev/null 2>&1; then
+      return 1
+    fi
+    return 0
+  fi
+
+  ! path_exists "$path"
+}
+
 uninstall_logged_artifacts() {
   echo "Uninstalling logged artifacts..."
   echo ""
@@ -1695,8 +1887,8 @@ uninstall_logged_artifacts() {
   while IFS= read -r logged_entry || [[ -n "$logged_entry" ]]; do
     [[ -n "$logged_entry" ]] || continue
 
-    local logged_path="" logged_target_id="" logged_type="" logged_source=""
-    IFS=$'\t' read -r logged_path logged_target_id logged_type logged_source <<< "$logged_entry"
+    local logged_path="" logged_target_id="" logged_type="" logged_source="" logged_prior=""
+    IFS=$'\t' read -r logged_path logged_target_id logged_type logged_source logged_prior <<< "$logged_entry"
 
     if [[ -z "$logged_path" || -z "$logged_target_id" || -z "$logged_type" || -z "$logged_source" ]]; then
       warn "skip" "Malformed log entry: $logged_entry"
@@ -1720,25 +1912,40 @@ uninstall_logged_artifacts() {
 
     if $DRY_RUN; then
       SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
-      info "would-rm" "$logged_path"
+      if [[ "$logged_path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
+        if [[ -n "$logged_prior" && "$logged_prior" != "@absent" ]]; then
+          info "would-restore" "$logged_path"
+        else
+          info "would-strip" "$logged_path"
+        fi
+      else
+        info "would-rm" "$logged_path"
+      fi
       remaining_entries+=("$logged_entry")
       continue
     fi
 
-    if ! path_exists "$logged_path"; then
+    # path[key] with a restore prior: key absence is not "already cleaned"
+    # when we still need to write the prior back.
+    local skip_absent_shortcircuit=false
+    if [[ "$logged_path" =~ \[.*\]$ && -n "$logged_prior" && "$logged_prior" != "@absent" ]]; then
+      skip_absent_shortcircuit=true
+    fi
+
+    if ! $skip_absent_shortcircuit && ! path_exists "$logged_path"; then
       ok "cleaned" "$logged_path already absent"
       SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
       removed_count=$((removed_count + 1))
       continue
     fi
 
-    if ! remove_logged_path "$logged_path"; then
+    if ! remove_logged_path "$logged_path" "$logged_prior"; then
       err "failed" "Could not remove $logged_path"
       remaining_entries+=("$logged_entry")
       continue
     fi
 
-    if path_exists "$logged_path"; then
+    if ! json_key_uninstall_succeeded "$logged_path" "$logged_prior"; then
       err "failed" "$logged_path still exists after removal"
       remaining_entries+=("$logged_entry")
       continue
@@ -1765,6 +1972,14 @@ uninstall_logged_artifacts() {
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+# Tests may source this file as a library after setting argv, then stop here.
+if [[ "${DEPLOYMENT_SH_SKIP_MAIN:-}" == "1" ]]; then
+  if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+  fi
+  exit 0
+fi
+
 echo ""
 echo "Repo root:     $REPO_ROOT"
 if [[ -n "$PROJECT_DIR" ]]; then

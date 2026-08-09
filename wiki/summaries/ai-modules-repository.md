@@ -1,7 +1,7 @@
 ---
 title: The ai-modules repository
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 type: summary
 tags: [repo-structure, plugin, skill, agent, deployment]
 sources: []
@@ -46,8 +46,12 @@ agent, plus `executive_summary` and `spr`.
 
 Around the plugins sit the marketplace registrations, one for Claude under
 `.claude-plugin/` and one for Codex under `.agents/plugins/`, the `deployment/`
-directory, the `tasks/` backlog, a local-only test tree, and the repo-root
-instruction and guardrail files.
+directory, the `tasks/` backlog, the `styles/` directory holding the tracked
+output styles, a local-only test tree, and the repo-root instruction and
+guardrail files. `styles/` is the one artefact source that sits outside
+`plugins/`, deliberately, so that
+[the deployment model](../concepts/deployment-model.md) reaches it without
+Claude's plugin discovery also picking it up.
 
 ### The two knowledge systems it ships, and now uses
 
@@ -71,10 +75,10 @@ standard Unix shell plus Markdown, with `jq` and `git` required by the deploy
 script and Python 3 shipped by helper scripts in the wiki, task, and formatting
 skills, all four accepted as standing dependencies. The repo-root instruction
 files compress that to Make, shell, and Markdown, which reads as a rule about
-what to add rather than a complete inventory of what is in use. Inside the
-plugins tree Python carries roughly twice the executable lines that shell does,
-and repo-wide the shell total edges ahead only because the deploy script is
-shell.
+what to add rather than a complete inventory of what is in use. Python is not a
+footnote to that list: inside the plugins tree it carries more executable code
+than shell does, and shell only leads repo-wide because the deploy script is
+written in it.
 
 `make lint` runs `markdownlint`, a `jq` syntax check, and `shellcheck`; `make
 fix` auto-fixes Markdown only; `make deploy` installs; `make uninstall` reverses
@@ -98,11 +102,14 @@ whose directory layout the author cannot see.
 ### The wiki's place beside the other document sets
 
 The repo-root guardrail documents and instruction files exist to keep a coding
-agent anchored while it executes a task without a human watching. They are read
-because the harness loads them, and their job is to constrain. This wiki is read
-because an agent went looking, and its job is to inform. Both audiences are the
-same LLM coding agents, which is why the two sets look similar on the page and do
-different work.
+agent anchored while it executes a task without a human watching. A skill that
+reaches a stage where one of the guardrail docs applies goes looking for the file
+and applies what it finds, and their job is to constrain the work in progress.
+This wiki is read by an agent that stepped out of the work to research, and its
+job is to inform. Both audiences are the same LLM coding agents, which is why the
+two sets look similar on the page and do different work. What a guardrail
+document is, and why its statements are rules rather than descriptions, is
+[guardrail documents as normative rules](../concepts/guardrail-documents-as-rules.md).
 
 Overlap between them is expected and fine. What must not happen is a rule living
 in two places and drifting, so a rule that governs execution stays in the
