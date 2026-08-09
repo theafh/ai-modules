@@ -2,9 +2,11 @@
 description: Normative guardrail docs: placement, one-statement, enforcement-naming, change-checklist, touch-it-fix-it; drop auto-load claim; audit reads rules normatively with three findings.
 scope: plugins/ai_dev/skills
 created: 2026-08-09T14:17:31
-updated: 2026-08-09T20:21:34
-status: ready
+updated: 2026-08-09T22:54:12
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Make Guardrail Docs Normative, and Teach the Audit to Read Them That Way
@@ -27,7 +29,7 @@ The `guardrail` hub's preamble states the thing an AI coding agent reliably gets
 - `guardrail_audit`'s `<workflow>` step "Doc-vs-code" instructs the audit to present each divergence "with both reconcile directions (bring the doc back to the code, or evolve the code toward the doc)", and `<finding_shape>` repeats that pairing. Applied to a guarding statement, the first direction is the doc-softening move this work rules out. Its `<audit_bound>` — obvious, high-confidence findings over exhaustive coverage — stays in force, and the three new classes are targeted additions inside it.
 - The local `tests/guardrail_audit` harness still grades the `doc_vs_code` scenario — the charter DOES NOT versus hosted-analytics fixture — for both reconcile directions. Three surfaces carry that expectation: `evals/evals.json` `expected_output` and expectations for `doc_vs_code`, `evals/grade.sh`'s `doc_vs_code` branch, and the fixture comment in `evals/fixtures/doc_vs_code/setup.sh`. That contradicts the normative reading this work teaches for a guarding statement.
 - The local `tests/guardrail_audit` `script_tests/run.sh` pins `guardrail_audit` frontmatter `version` and the `ai_dev` plugin / marketplace versions to fixed strings; editing those skills ships new versions, so those pins must move with the bump.
-- The archived [guardrail_audit build task](archive/ai-dev_guardrail-audit-skill.md) is the prior art that created the audit skill and set its read-only contract, its `<authority>` wiring, and that bound.
+- The archived [guardrail_audit build task](ai-dev_guardrail-audit-skill.md) is the prior art that created the audit skill and set its read-only contract, its `<authority>` wiring, and that bound.
 
 ## Approach
 

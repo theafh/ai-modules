@@ -35,7 +35,9 @@ it. Name real surfaces, with their mitigations as must-hold statements.>
 ## Change Checklist
 
 <Optional: the short list a change touching any named surface is checked
-against before it lands.>
+against before it lands. Read the prose constraints once at adoption;
+check this list per change. When a newly added constraint joins the
+doc, add a checklist entry here too.>
 ```
 
 ## General rules
