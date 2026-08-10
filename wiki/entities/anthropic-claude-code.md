@@ -1,9 +1,9 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-08-10
 type: entity
-tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery]
+tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
 sources: []
 confidence: high
 ---
@@ -24,8 +24,11 @@ its own rather than a section here.
 
 Facts below were verified on 7 August 2026 against `code.claude.com/docs/en/`
 and against the Claude Code build installed on that date plus the desktop
-application bundle, unless stated otherwise. Re-verify before relying on any of
-them.
+application bundle, unless a passage names its own later date. The settings
+precedence order and the `claude config` closure were re-verified on 10 August
+2026 against build 2.1.226 and carry that stamp where they appear; the passages
+still resting on the earlier pass say so rather than inheriting the newer date.
+Re-verify before relying on any of them.
 
 ## Key facts and dates
 
@@ -36,8 +39,13 @@ The user tree is `~/.claude/`, holding `skills/`, `agents/`, `commands/`,
 with the same shape, plus `settings.local.json` for local-scope settings. A
 managed-settings directory exists as a third layer.
 
-Project settings outrank user settings. Output styles layer their own discovery
-and collision rules on top of that, recorded on
+Settings resolve in a three-file order, strongest first: local project settings
+in `.claude/settings.local.json`, then checked-in project settings in
+`.claude/settings.json`, then the user-level `settings.json`. That order was
+re-verified on 10 August 2026 against build 2.1.226, from the scope ordering the
+build itself applies and from observed behaviour where a project-local value beat
+a user-level one for the same key. Output styles layer their own discovery and
+collision rules on top of it, recorded on
 [Claude output styles](../concepts/claude-output-styles.md).
 
 ### Agent definitions
@@ -81,12 +89,26 @@ style behaviour.
 
 Two documented activation routes are gone, and instructions naming either will
 fail for whoever follows them. The standalone `/output-style` command was
-deprecated in v2.1.73 and removed in v2.1.91. `claude config` is no longer a CLI
-subcommand at all.
+deprecated in v2.1.73 and removed in v2.1.91; those two version boundaries rest
+on the 7 August 2026 pass and were not re-checked, while build 2.1.226 was
+confirmed on 10 August 2026 to carry no such command, holding
+`.claude/output-styles/` only as a path string. `claude config` is no longer a CLI
+subcommand at all, re-verified on 10 August 2026 against that build by reading its
+own subcommand list, which contains no `config` entry.
+
+Both closures land on one consequence worth stating outright: no interactive and
+no CLI surface writes the user-level `outputStyle`, so editing the user-level
+settings file is the only route to a machine-wide style. The `/config` picker is
+not that route, because it writes project-local scope — recorded on
+[Claude output styles](../concepts/claude-output-styles.md).
 
 `/config` is an interactive terminal dialog, so a desktop-application session
 cannot reach the picker. On the desktop build inspected on 7 August 2026 the
-settings file was the only route.
+settings file was the only route. This is the page's weakest claim and the reason
+it carries the `verification-gap` tag: it was not re-checked on 10 August 2026,
+and the only support added since is an operator report that the style cannot be
+changed from the desktop application, which observes the symptom rather than the
+mechanism. Treat the desktop route as owed verification rather than settled.
 
 ## Relationships to other entities
 

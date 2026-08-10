@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-08-10
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -79,11 +79,29 @@ pages, starting with
 ### Global scope is a default, not a guarantee
 
 On several harnesses a project-level or profile-level setting outranks the
-user-level one the global deploy writes. Claude's project and local settings
-outrank the user `outputStyle` key, and Codex applies a profile file and a
-project configuration over the user configuration. A global deploy therefore
-establishes the machine default and can be overridden per project, which is
-usually the desired behaviour but is worth stating rather than assuming.
+user-level one the global deploy writes. Claude resolves `outputStyle` from three
+files, where local project settings outrank checked-in project settings, which in
+turn outrank the user-level key — the order and its verification date are on
+[Anthropic Claude Code](../entities/anthropic-claude-code.md) — and Codex applies
+a profile file and a project configuration over the user configuration. A global
+deploy therefore establishes the machine default, which a project can override.
+
+That override is a silent-failure surface as much as it is a feature. The deploy
+merges its key, logs the merge, and reports the run as successful, and nothing in
+that report separates a style that took effect from one a project-local key
+already shadows — the operator reads a clean summary and then meets a session that
+ignores the style. On Claude the confusion compounds, because the only interactive
+route writes the file that wins, recorded on
+[Claude output styles](claude-output-styles.md), so a style picked by hand sticks
+while the deployed one looks broken.
+
+What the deploy can honestly say about this is bounded by what it can read. It
+resolves its own repository root by walking up from the script's own location to
+the directory holding `plugins/`, never from the working directory, so a run can
+inspect its own checkout and the project tree it was pointed at, and no other
+repository on the machine. The absence of a warning is therefore never a coverage
+claim across repositories, and only an unconditional statement of the override rule
+holds for the repositories a run cannot open.
 
 ### Uninstall restores the value it replaced
 

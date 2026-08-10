@@ -327,3 +327,39 @@ internal flag reads false.
 - concepts/foreign-directory-adoption.md (related-concepts list now routes to the
   three procedures, so the position links to its execution)
 - index.md (three procedures listed, total 23 to 26)
+
+## [2026-08-10] update | Output-style selection re-verified per fact against build 2.1.226
+
+A session that lost a deployed output style to a project-local override re-checked
+the settings mechanics on the current build. Three facts were re-verified and now
+carry a 10 August stamp; two were not, and were held at their 7 August stamp
+rather than allowed to inherit the newer date, which is the whole point of writing
+the refresh per fact instead of bumping the page-wide paragraph.
+
+Re-verified: the three-file settings precedence order, the `/config` picker's
+write target and its lack of any scope choice, and the absence of a `config` CLI
+subcommand. Held at 7 August: the `/output-style` deprecation and removal version
+numbers, where only the command's absence from the current build was confirmed,
+and the desktop-application route, which gained an operator report of the symptom
+but no check of the mechanism.
+
+- entities/anthropic-claude-code.md (precedence order stated as the three-file
+  chain, `claude config` closure re-stamped, the no-interactive-route consequence
+  recorded, the desktop claim marked as the page's weakest and owed a check, and
+  `verification-gap` added to the tags)
+- concepts/claude-output-styles.md (selection paragraph carrying the picker's
+  write target, the missing scope choice against the permission-rules editor that
+  has one, and the deployment consequence that only the user-level settings file
+  reaches a machine-wide style)
+
+## [2026-08-10] session-wrapup | 0 new, 1 extended, 0 contested
+
+The page already held the override mechanism and framed it as usually desirable.
+What the session established is that the same override is a silent-failure surface,
+and that what a deploy may claim about it is bounded by the one repository root it
+can resolve, so the scope section was rewritten around both.
+
+- concepts/deployment-model.md (three-file order in place of the two-file
+  statement, the shadowed-but-successful run named as a failure mode with the
+  interactive-route asymmetry that makes it confusing, and the reachability bound
+  that keeps a missing warning from reading as coverage)

@@ -1,7 +1,7 @@
 ---
 title: Claude output styles
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-08-10
 type: concept
 tags: [claude, output-style, system-prompt, frontmatter, deployment]
 sources: []
@@ -24,8 +24,10 @@ system prompt as two layers.
 
 Facts below were verified on 7 August 2026 against
 `code.claude.com/docs/en/output-styles` and `/docs/en/plugins-reference`, plus
-the Claude Code build installed on that date and the desktop application bundle.
-Re-verify before relying on them.
+the Claude Code build installed on that date and the desktop application bundle,
+unless a passage names its own later date. The selection facts under
+`### Locations and activation` were re-verified on 10 August 2026 against build
+2.1.226. Re-verify before relying on them.
 
 ## Current state of knowledge
 
@@ -95,10 +97,23 @@ the repository root, and since v2.1.178 the directory nearest the working
 directory wins a collision.
 
 Selection is the `outputStyle` settings key, and project and local settings
-outrank the user-level key that the global mode sets. Running `/config` and
-choosing Output style writes the pick to `.claude/settings.local.json` at local
-project scope, so an operator who selects a style that way has bound one project
-rather than the machine.
+outrank the user-level key that the global mode sets, on the three-file order
+recorded under `### Configuration roots` on
+[Anthropic Claude Code](../entities/anthropic-claude-code.md). Running `/config`
+and choosing Output style writes the pick to `.claude/settings.local.json` at
+local project scope, so an operator who selects a style that way has bound one
+project rather than the machine. The picker offers no scope choice at all, which
+sets it apart from the permission-rules editor in the same dialog, where a rule
+can be filed at user, project, or local scope. Both facts were re-verified on
+10 August 2026 against build 2.1.226, from the picker's own write target and from
+observed behaviour where a project-local value beat a user-level one.
+
+The consequence for deployment is that a machine-wide style has no interactive
+route. Since neither the picker nor any CLI subcommand writes the user-level key —
+the retired surfaces are on
+[Anthropic Claude Code](../entities/anthropic-claude-code.md) — writing the
+user-level settings file is the only way to set it, and a project holding its own
+local `outputStyle` keeps overriding that value until the key is removed there.
 
 The style is read into the system prompt once at session start, so an edit to
 either half takes effect after `/clear` or in a new session.
