@@ -36,8 +36,16 @@ selects the type: `agents/` and `commands/` take each top-level Markdown file,
 are skipped. The script walks up from its own location until it finds a
 directory containing `plugins/`, so it does not care where in the tree it sits.
 
-The second root is repo-root `styles/`, added on 8 August 2026, where each
-top-level Markdown file is one artefact of the `style` type. It is the first
+One of those types is retained rather than used. The charter treats a standalone
+command as a legacy, deprecated mechanism, so new work exposes a user-invocable
+entry point as a thin skill instead, even where that skill only wraps an agent or
+a workflow. No plugin ships a `commands/` folder, so the type is live code over an
+empty source. The instruction files pin the word down, since "command" otherwise
+reads as a shell command or any slash-invocable skill, which makes the deprecation
+sound broader than it is.
+
+The second root is repo-root `styles/`, where each top-level Markdown file is one
+artefact of the `style` type. It is the first
 asset source outside the plugin tree, which made it a structural change rather
 than a configuration one, and it is why the type name and the discovery root
 were settled before the first deploy wrote either of them into the log. Why the
@@ -106,8 +114,8 @@ holds for the repositories a run cannot open.
 ### Uninstall restores the value it replaced
 
 The deployed artefacts log is tab separated: destination, target, type, source,
-and, since 8 August 2026, an optional fifth field holding what the destination
-held before, with a merged key written as `<target-file>[<key>]`. Removing a
+and an optional fifth field holding what the destination held before, with a
+merged key written as `<target-file>[<key>]`. Removing a
 copied file is complete because the file was the whole change. Removing a merged
 settings key needs that prior, so the shared key-merge function records it on the
 first write of a key, as compact JSON or the literal `@absent` when the key was
@@ -171,10 +179,10 @@ path.
 ## Open questions
 
 Whether every harness should receive every artefact class is unsettled. OpenCode
-hooks are not implemented today, Antigravity receives no commands because the
-repository ships none, and the `style` type reaches Claude alone while the five
-sibling harness tasks stay open. So the target matrix has holes that are
-decisions in some cells, sequenced work in others, and gaps in the rest.
+hooks are not implemented, and the `style` type reaches Claude alone while its
+sibling harnesses stay unbuilt. So the target matrix has holes that are decisions
+in some cells, sequenced work in others, and gaps in the rest. The command row is
+the settled kind, empty in every target's cell because the source is.
 
 ## Related concepts
 
@@ -187,3 +195,5 @@ decisions in some cells, sequenced work in others, and gaps in the rest.
 
 - `deployment/README.md`, `deployment/deployment.conf`, and
   `deployment/deployment.sh`.
+- `CHARTER.md` at this repository root for the command deprecation, and the
+  repo-root instruction files for the definition of the term.

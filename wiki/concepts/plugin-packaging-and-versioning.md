@@ -1,7 +1,7 @@
 ---
 title: Plugin packaging and versioning
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-08-10
 type: concept
 tags: [plugin, versioning, repo-structure, claude, codex]
 sources: []
@@ -58,6 +58,13 @@ itself still ships at 1.0.0.
 Plugin metadata moves in lockstep. When any skill or agent version rises, or a
 new one is added, both `plugin.json` files and both marketplace registrations
 rise to the same new plugin version in the same commit. Four files, one number.
+
+The rule is machine-checkable, and `skill_doctor` reads it as a version check
+across those four files. Encoding it settled an ambiguity the prose had left open.
+The four have to agree with each other, while a skill's own `version:` is free to
+differ from the plugin version that carries it, because the two numbers count
+different things: a skill's edit history against its plugin's. A mismatch between
+those two is therefore the normal state rather than a finding.
 
 ### Where the cost of getting it wrong lands
 

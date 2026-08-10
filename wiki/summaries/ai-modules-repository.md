@@ -1,7 +1,7 @@
 ---
 title: The ai-modules repository
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-08-10
 type: summary
 tags: [repo-structure, plugin, skill, agent, deployment]
 sources: []
@@ -37,18 +37,22 @@ installation in [the deployment model](../concepts/deployment-model.md).
 
 ### What the repository contains
 
-Two plugins hold everything. `ai_dev` carries the day-to-day development
-surface: the git skills, the changelog skill, the whole `task_*` family and its
-five `auto_*_task` agents, the guardrail pair, the two AI-instruction authoring
-skills, the three language formatting skills, and the portability skill.
-`knowledge_management` carries the `wiki` family and its `auto_shaper_wiki`
-agent, plus `executive_summary` and `spr`.
+The plugin tree holds everything. `ai_dev` carries the day-to-day development
+surface: the git skills, the changelog skill, the `task_*` family with its spawned
+`auto_*_task` agents, the guardrail skills, the AI-instruction authoring skills,
+the per-language formatting skills, the portability skill, and `skill_doctor`,
+which checks skill artefacts against the repository's own authoring and
+registration rules without editing them. `knowledge_management` carries the
+`wiki` family and its `auto_shaper_wiki` agent, plus `executive_summary` and
+`spr`. Read `plugins/` for the current membership of each, which moves as
+components land.
 
 Around the plugins sit the marketplace registrations, one for Claude under
 `.claude-plugin/` and one for Codex under `.agents/plugins/`, the `deployment/`
 directory, the `tasks/` backlog, the `styles/` directory holding the tracked
-output styles, a local-only test tree, and the repo-root instruction and
-guardrail files. `styles/` is the one artefact source that sits outside
+output styles, the local-only test tree described in
+[verification surfaces for a shipped skill](../concepts/verification-surfaces.md),
+and the repo-root instruction and guardrail files. `styles/` is the one artefact source that sits outside
 `plugins/`, deliberately, so that
 [the deployment model](../concepts/deployment-model.md) reaches it without
 Claude's plugin discovery also picking it up.
@@ -70,15 +74,15 @@ well: the harness research had grown past what a shipped skill should carry.
 
 ### Toolchain
 
-The toolchain is deliberately small. The charter states it exactly: Make plus
-standard Unix shell plus Markdown, with `jq` and `git` required by the deploy
-script and Python 3 shipped by helper scripts in the wiki, task, and formatting
-skills, all four accepted as standing dependencies. The repo-root instruction
-files compress that to Make, shell, and Markdown, which reads as a rule about
-what to add rather than a complete inventory of what is in use. Python is not a
-footnote to that list: inside the plugins tree it carries more executable code
-than shell does, and shell only leads repo-wide because the deploy script is
-written in it.
+The toolchain is deliberately small, and the charter and the instruction files
+state it the same way: Make plus standard Unix shell plus Markdown, with `jq` and
+`git` required by the deploy script and Python 3 shipped by helper scripts in the
+wiki, task, and formatting skills, all three accepted as standing dependencies.
+Naming the dependencies in both places is deliberate, because an instruction file
+that lists only the languages reads as a complete inventory and sends an agent
+looking for permission it already has. Python is not a footnote to the list:
+inside the plugins tree it carries more executable code than shell does, and shell
+only leads repo-wide because the deploy script is written in it.
 
 `make lint` runs `markdownlint`, a `jq` syntax check, and `shellcheck`; `make
 fix` auto-fixes Markdown only; `make deploy` installs; `make uninstall` reverses
@@ -93,7 +97,10 @@ and in positive action-oriented language. Those two rules are themselves shipped
 skills, `ai_instruction_formatting` and `ai_instruction_writing`, so the
 repository's house style and its product are the same thing. A skill
 description serves two audiences at once: a human browsing a list, and an LLM
-router deciding whether to load the body.
+router deciding whether to load the body. Those conventions also have a checker,
+`skill_doctor`, which reads them rather than restating them; what that costs and
+what it deliberately declines to judge is on
+[skill family architecture](../concepts/skill-family-architecture.md).
 
 Cross-references between artefacts are written by name rather than by plugin,
 marketplace, or installed path, because a published skill lands on machines

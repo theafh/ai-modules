@@ -363,3 +363,71 @@ can resolve, so the scope section was rewritten around both.
   statement, the shadowed-but-successful run named as a failure mode with the
   interactive-route asymmetry that makes it confusing, and the reachability bound
   that keeps a missing warning from reading as coverage)
+
+## [2026-08-10] update | Wiki reconciled against the repo after skill_doctor shipped
+
+Compared every repo-facing page against the current tree. Four commits had landed
+since the last wiki write, and the largest was a new skill that mechanizes rules
+this wiki already described, so most of the work was reconciling ownership rather
+than adding facts. Two claims were stale in the ordinary way: a toolchain
+divergence the instruction files had since closed, and a task-file pointer that
+went stale when one of the six moved to the archive. One cell framed as an
+accidental gap turned out to be a decision the charter had recorded since June.
+The verification model had no page at all, which was the one real coverage hole.
+
+- concepts/verification-surfaces.md (new: the two surfaces and why neither
+  substitutes for the other, harnesses that exist without shipping and what that
+  costs a claim of correctness, the two harness patterns, the pinned model under
+  test against the inherited meta level, trigger coverage as a separate question,
+  the ships-with-the-change scope rule, and the auditor checking presence rather
+  than passage; confidence capped at medium by the model policy, which is
+  recorded only in the uncommitted tree)
+- concepts/skill-family-architecture.md (the checker section: what it covers, why
+  it cites the authoring skills instead of copying them, and the block-versus-warn
+  line with the reasoning that no heuristic separates absent trigger coverage from
+  differently-phrased triggers; the authoring-and-checking coupling that shaped
+  the YAML-scalar rule; the size open question corrected, since what the checker
+  measures is description length among siblings and not body size)
+- concepts/plugin-packaging-and-versioning.md (lockstep now machine-checked, and
+  the ambiguity that encoding it settled: a skill version may differ from its
+  plugin version, because the two count different edit histories)
+- concepts/deployment-model.md (the command type recorded as retained-not-used
+  under the charter's deprecation, with the term pinned down because two
+  misreadings made it sound broader; the open question no longer counts the empty
+  command row as a hole)
+- concepts/output-style-delivery-design.md (the task-file pointer softened to name
+  neither a count nor a status)
+- summaries/ai-modules-repository.md (skill_doctor added to the ai_dev inventory,
+  the toolchain stated as one agreed list, the authoring conventions pointed at
+  their checker, and the test tree linked to its new page)
+- index.md (new concept listed, total pages 26 to 27, skill-family summary
+  extended)
+
+## [2026-08-10] update | Repo state the repo already holds, swept off the pages and ruled out in the schema
+
+The maintainer's correction on reading the pass above: a wiki page has no business
+mirroring a task count, a lifecycle status, an own-artefact version, or the date a
+change landed here, because git and the backlog answer all four on demand and the
+copy is wrong by the next commit. Swept every instance, including several this
+session had just written, and anchored the rule so the next pass does not
+reintroduce them. Verification stamps against vendor products and against the
+uncommitted test tree stay, since no clone can re-read either subject.
+
+- SCHEMA.md (the third exclusion class widened from moving measurements to any
+  state the repository already holds authoritatively, naming task counts and
+  statuses, own-artefact versions, and in-repo change dates, with the two
+  carve-outs that keep it from eating the verification stamp and the decision date)
+- concepts/output-style-delivery-design.md (task-file count and archive location
+  dropped from the derivation, the built row stated without a ship date, remaining
+  targets no longer counted, and two task-ownership asides rewritten as the open
+  decisions they stand for)
+- concepts/deployment-model.md (three in-repo change dates dropped, and the open
+  question's sibling-task count replaced by the unbuilt harnesses it meant)
+- concepts/claude-output-styles.md (ship date dropped, open-elsewhere scope
+  question no longer routed through backlog status)
+- concepts/skill-family-architecture.md (checker introduced without a landing date)
+- concepts/plugin-packaging-and-versioning.md (same, and the lockstep clarification
+  rewritten to carry the reasoning rather than the commit that added it)
+- summaries/ai-modules-repository.md (plugin and skill counts replaced by named
+  families with a pointer at `plugins/` for current membership, and the toolchain
+  archaeology cut in favour of why both documents name the dependencies)

@@ -54,10 +54,23 @@ knowledge has to travel is the dividing test. Machine-private detail, because th
 repository is public: which install path one workstation uses, what a local path
 looks like, or what any individual person does is not wiki content, and a page
 discussing a choice states what options exist rather than which one is in use.
-And measurements that move with every commit, such as line counts, file sizes, and
-token estimates, because they are stale on arrival and carry no meaning a property
-cannot carry; state the property instead. A version number stays only where it
-marks a real feature boundary, and then only on the page that owns the subject.
+And any state the repository already holds authoritatively, because git, the
+backlog, and the manifests answer those questions on demand while a copy written
+here is wrong by the next commit. That covers measurements that move, such as line
+counts, file sizes, and token estimates; the number, names, or lifecycle status of
+task files; the version of an artefact this repository ships; and the date on which
+a change landed here. Write the property, the decision, or the reasoning instead.
+Where the backlog owns follow-up work, point at it as work the backlog carries,
+without counting the files or reporting their status.
+
+Two carve-outs keep that last class from eating what it exists to protect. A
+version number stays where it marks a real feature boundary in an external
+subject, on the page that owns that subject, so a vendor's release boundary earns
+one and this repository's own plugin version does not. A date stays where it
+records when a claim was checked against a subject this wiki cannot re-read from
+the repository, whether a vendor's product or a tree that is never committed, which
+is the verification stamp the harness research runs on. It also stays where it
+fixes a decision in time rather than reporting a state.
 
 ## Conventions
 

@@ -162,9 +162,9 @@ user-level file it is ignored and logged as a warning on every load.
 Whether a repository-tracked style should be deployed at global scope, project
 scope, or both is settled on Claude and open elsewhere. The Claude arm resolves
 both placements against the same configuration-directory variable, so one code
-path serves the user tree and a project tree, and it shipped that way on
-8 August 2026. Which scope is primary on Cursor, Antigravity, and VS Code, where
-the project tree is the native home, is still open backlog work.
+path serves the user tree and a project tree, and it shipped that way. Which scope
+is primary on Cursor, Antigravity, and VS Code, where the project tree is the
+native home, stays open.
 
 ## Related concepts
 

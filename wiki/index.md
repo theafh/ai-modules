@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-08-09 | Total pages: 26
+> Last updated: 2026-08-10 | Total pages: 27
 
 ## Entities
 
@@ -26,8 +26,9 @@
 - [Hook surface portability](concepts/hook-surface-portability.md) — four configuration schemas plus one that is code, four signalling contracts, additive layers, and what this repository ships and routes today.
 - [Output style delivery design](concepts/output-style-delivery-design.md) — the decision record behind the `styles/` source, the per-target delivery matrix, the marked-block write, and the scope rejections.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md) — why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
-- [Skill family architecture](concepts/skill-family-architecture.md) — naming by invocation mode, rules living once in the base skill, bundled scripts, and the cost of a large skill body.
+- [Skill family architecture](concepts/skill-family-architecture.md) — naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them.
 - [The deployment model](concepts/deployment-model.md) — two discovery roots, per-tool configuration, generated variants, scope precedence, and the prior-value restore on uninstall.
+- [Verification surfaces for a shipped skill](concepts/verification-surfaces.md) — script tests against behavioral evals, harnesses that never ship, the pinned model under test, and trigger coverage as its own question.
 
 ## Comparisons
 

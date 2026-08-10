@@ -1,7 +1,7 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-08-10
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
 sources: []
@@ -14,8 +14,8 @@ confidence: high
 
 This page records the design decisions behind delivering one authored style to
 six harnesses from this repository, and the reasoning that produced each. It is
-the decision record that sits under the six `deployment_output-style-*` backlog
-tasks, so a later reader can tell which parts were argued and which were assumed.
+the decision record sitting under the per-harness delivery work, so a later reader
+can tell which parts were argued and which were assumed.
 
 The mechanism each harness offers is on
 [system prompt substitution across harnesses](../comparisons/system-prompt-substitution-across-harnesses.md).
@@ -71,17 +71,17 @@ style arm becomes the deploy script's first non-plugin asset source, so
 | Antigravity | a marked block in `~/.gemini/GEMINI.md` | none | block in a user-owned file, under its rules-file character cap |
 | Cursor | `.cursor/rules/<name>.mdc` with `alwaysApply: true` | none | project scope, global path unverified |
 
-The Claude row is the only one built. It shipped on 8 August 2026 with the
-`style` artefact type, the repo-root source directory, and the prior-value
-restore, at both global and project scope. The other five rows stay per-target
-backlog work, and each is a delivery decision rather than new machinery.
+Claude is the built row. It shipped with the `style` artefact type, the repo-root
+source directory, and the prior-value restore, at both global and project scope.
+Every other row stays per-target delivery work, and each is a delivery decision
+rather than new machinery.
 
-Two rows carry a caveat. The Codex row records the decided route: the
-synthesized replacement won over a marked block in its global rules file, and
-the Codex task lists that additive alternative as out of scope. The OpenCode row
-records the initial lean rather than a decision, because its task still owns the
-choice between this additive entry and the replacing agent-prompt route; the
-project-scope rejection below applies to the replacing route either way.
+Two rows carry a caveat. The Codex row records a decided route, since the
+synthesized replacement won over a marked block in its global rules file and that
+additive alternative is out of scope. The OpenCode row records the initial lean
+rather than a decision, because the choice between this additive entry and the
+replacing agent-prompt route is still open; the project-scope rejection below
+applies to the replacing route either way.
 
 ### The marked block is the one new mechanism
 
@@ -155,8 +155,8 @@ would have built half the machinery and discovered the other half later.
 
 That bet paid out as intended. The capture and restore landed on the shared
 key-merge function rather than on a style-only wrapper, so the hook merges that
-predate this work inherited the restore too, and the five remaining targets each
-add a delivery route onto machinery that already exists. See
+predate this work inherited the restore too, and every remaining target adds a
+delivery route onto machinery that already exists. See
 [the deployment model](deployment-model.md).
 
 The per-harness split follows from the research rather than from a preference for
@@ -188,5 +188,6 @@ how much an append-only target loses.
 - Session discussion in this repository, 7 and 8 August 2026, in which the source
   directory, per-target delivery, marked-block mechanism, activation marker, and
   scope decisions were argued and settled.
-- The six `deployment_output-style-*` task files in `tasks/`, which carry these
-  decisions as work items.
+- The `deployment_output-style-*` task files, which carry these decisions as work
+  items. Their number and status track the delivery work rather than this record,
+  so read the backlog for that state.
