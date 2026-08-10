@@ -1,6 +1,6 @@
 # ai_dev
 
-A plugin of skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying per-language style conventions.
+A plugin of skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, checking skill artifacts with skill_doctor, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying per-language style conventions.
 
 ## Skills
 
@@ -43,6 +43,7 @@ Three tools sit beside the spine rather than on it:
 
 - **ai_instruction_writing**: write content an AI reads (SKILL.md, .mdc rule files, CLAUDE.md / AGENTS.md / GEMINI.md, prompt templates, system prompts, commands, agent and sub-agent definitions, instruction sets, persona definitions) using positive, action-oriented language as the primary carrier of every instruction.
 - **ai_instruction_formatting**: organize content an AI reads into pseudo-XML, wrapping each semantic concern (role, policy, inputs, output contract) in its own tag.
+- **skill_doctor**: check-only doctor for skill artifacts. Audits `SKILL.md` frontmatter and dual-audience descriptions, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo — reports findings with evidence and never edits targets. Cross-harness portability review stays with `harness_portability`.
 
 ### Harness portability
 

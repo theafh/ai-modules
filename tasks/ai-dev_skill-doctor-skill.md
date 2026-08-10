@@ -2,9 +2,11 @@
 description: Add skill_doctor to audit skill definitions, metadata, descriptions, tests, trigger readiness, and registration for one skill, a skill family, or all repo skills.
 scope: plugins/ai_dev/skills
 created: 2026-06-14T16:53:22
-updated: 2026-08-06T10:11:02
+updated: 2026-08-10T20:47:33
 reported-by: Andreas Hoffmann
-status: ready
+implemented-by: Andreas Hoffmann
+status: audited
+design-extended: false
 ---
 
 # Add a skill_doctor skill

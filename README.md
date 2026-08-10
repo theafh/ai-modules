@@ -69,6 +69,7 @@ ai-modules/
 │           ├── guardrail_audit/
 │           ├── ai_instruction_writing/
 │           ├── ai_instruction_formatting/
+│           ├── skill_doctor/
 │           ├── harness_portability/
 │           ├── format_markdown/
 │           ├── format_python/
@@ -116,7 +117,7 @@ An LLM wiki sits between a full RAG pipeline and a loose pile of notes. It is st
 
 ### ai_dev
 
-Skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
+Skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, checking skill artifacts with skill_doctor, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
 
 - **git_commit**: a step-by-step commit workflow with a hardened prepare script that handles special-character paths and detects binary files one by one. It stages changes, works out a sensible commit grouping, and writes a message that matches the project's existing style. A sibling reference covers the manual path when the script can't run.
 - **git_refresh**: a safe repo-refresh workflow that detects the remote default branch, fetches and prunes, switches to that branch, fast-forwards only, deletes cleanly merged local branches, and offers upstream-gone or force-delete cleanup only behind explicit opt-in.
@@ -140,6 +141,7 @@ Standing apart from that flow:
 - **guardrail_audit**: the read-only audit sibling. It surfaces doc-vs-doc contradictions and doc-vs-code divergences among existing guardrail docs, ranked by the hub's hierarchy, plus grounded missing-doc proposals where repo substance warrants an absent type. Findings carry evidence and reconcile recommendations; the run edits nothing and asks how to proceed — the retrofit and health-check entry point for guardrails already in place.
 - **ai_instruction_writing**: writes any artefact an AI reads (SKILL.md, `.mdc` rule files, `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`, prompt templates, system prompts, commands, agent definitions) using positive, action-oriented language as the primary carrier of every instruction, instead of "don't" rules the model has to invert.
 - **ai_instruction_formatting**: organises content an AI reads into pseudo-XML, wrapping each semantic concern (`<role>`, `<policy>`, `<input>`, `<output_contract>`) in its own tag, so the model can find the right section by structure instead of re-reading the prose.
+- **skill_doctor**: check-only doctor for skill artifacts. Audits `SKILL.md` frontmatter and dual-audience descriptions, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo — reports findings with evidence and never edits targets. Cross-harness portability review stays with `harness_portability`.
 - **harness_portability**: applies portability rules (across agent harnesses and operating systems) to scripts, hooks, agent definitions, MCP helpers, command wrappers, setup flows, output styles, and the execution and configuration wording bundled inside skills and plugins. It treats OpenAI Codex and Anthropic Claude as the primary targets, with Cursor, Google Antigravity, SST OpenCode, and GitHub Copilot in VS Code as further ones, and it covers macOS/Linux behaviour. Every concrete harness fact is treated as perishable: the skill re-checks each one against official provider docs, the loader source, or the installed build, and states the gap plainly where a claim stays unconfirmed.
 - **format_markdown / format_python / format_rust**: style guides aligned with the linters (`markdownlint`; `flake8`, `ruff`, and `pylint`; `clippy`), read as you write. The point is to produce code that already passes the linter, instead of spending a follow-up turn fixing what it reports.
 

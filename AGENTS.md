@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**ai-modules is a meta-repository.** It defines AI components — skills, agents, commands, hooks — and packages them as plugins. Treat every `SKILL.md`, `plugin.json`, and `marketplace.json` as a published artefact.
+**ai-modules is a meta-repository.** It defines AI components — skills, agents, commands, hooks — and packages them as plugins. Here **command** means the legacy standalone command artefact the deployer can still install (for example a Claude slash-command file under `commands/`), not a shell command and not a skill that is merely slash-invocable. Treat every `SKILL.md`, `plugin.json`, and `marketplace.json` as a published artefact.
 
 ## What this repo is not
 
@@ -28,10 +28,12 @@ Makefile                          # task entry point
 - **Use pseudo-XML inside skill prompts** (`<role>`, `<objective>`, `<policy>`, `<output_contract>`). Reference: `plugins/ai_dev/skills/ai_instruction_formatting/SKILL.md`.
 - **Use positive, action-oriented language** in skill prose and instructions. Reference: `plugins/ai_dev/skills/ai_instruction_writing/SKILL.md`.
 - **Write skill descriptions for both audiences.** The `description:` frontmatter is read before the body is loaded by an LLM router and by users browsing skills. Serve both needs deliberately: give the user a precise compact summary of what the skill is about and how it differs from neighbors, then give the router keyword-rich `Use when` trigger contexts, prompt phrases, artefacts, file types, and invocation boundaries. Keep implementation workflow details in the body.
-- **Keep the toolchain to Make + shell + markdown.** Add new languages, package managers, or build steps only when the user explicitly asks for them.
+- **Keep the toolchain to Make + shell + Markdown**, with jq, git, and Python 3 as accepted standing dependencies. Add further languages, package managers, or build steps only when the user explicitly asks for them.
 - **Match snake_case naming** for skill and plugin directories.
 - **Name skills and agents by invocation mode and collision risk.** A skill that is the only entry point for its capability keeps the ordinary family-first name, even when it delegates to agents (`wiki_fix`). Use `<family>_auto_<rest>` for an agent-delegating automation skill when it needs to sit beside a classical/manual skill with the same capability or subset (`task_auto_implement` beside `task_implement`). A spawned agent leads with `auto_` and ends with the family token (`auto_<role>_<family>`, e.g. `auto_implementer_task` or `auto_shaper_wiki`) and is not intended to be invoked by the user.
 - **Write deployment-agnostic cross-references.** Reference sibling artefacts by name (`auto_shaper_wiki`, `format_markdown`) rather than by plugin name, marketplace, or installed path.
+- **Bundle a skill's helper scripts inside the skill.** A script that supports a skill lives at `plugins/<plugin>/skills/<skill>/scripts/<name>` and is referenced from its `SKILL.md` by the skill-relative path `scripts/<name>`. The plugin is the unit of distribution, so a script placed at the repo root or wired into the root `Makefile` is invisible to every deployment path except an in-place checkout. Add a repo-root `scripts/` directory only for repo-wide tooling that belongs to no single skill, and only when explicitly asked.
+- **Author a skill-family rule once in the family's base skill.** When a rule should govern a whole skill family (for example the `task_*` family), write it once in the base/hub skill so the front-end siblings inherit it through their `<authority>` reference instead of each carrying a copy. Pair enforcement with the canonical rule rather than restating it: a maintenance sibling such as `task_fix` carries a surface-and-propose advisory that points back at the base rule.
 
 ## Versioning
 
@@ -39,14 +41,14 @@ Makefile                          # task entry point
 - **Bump once per commit, with the change — and only at commit time.** When a commit edits an existing skill, agent, or plugin, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
 - **Use patch increments for minor maintenance changes.** For a small follow-up, wording fix, or environment-specific hint, advance only the patch component.
 - **Advance the plugin minor when adding a skill or agent.** Adding a skill or agent to an existing plugin advances the plugin's minor component (`x.Y.0`); the new skill or agent itself still ships at 1.0.0. Patch stays for maintenance-only edits of already-shipped surfaces.
-- **Plugin meta stays lockstep.** When a skill or agent `version:` rises, or a skill or agent is added to an existing plugin, raise the matching plugin's `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and marketplace entries to the same new plugin version in the same commit.
-- **Local marketplaces stay current for `ai_dev` and `knowledge_management`.** When a commit publishes a new version of either plugin, update the local marketplace registrations in `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` in the same commit as the plugin manifests. When opening this repo for plugin maintenance or after updating either marketplace registration, compare the installed cached skill versions against the repo source and tell the user to restart Codex or open a new thread so the refreshed plugin cache is loaded.
+- **Plugin meta stays lockstep.** When a skill or agent `version:` rises, or a skill or agent is added to an existing plugin, raise the matching plugin's `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and both marketplace registrations (`.agents/plugins/marketplace.json`, `.claude-plugin/marketplace.json`) to the same new plugin version in the same commit.
+- **Local marketplaces stay current for `ai_dev` and `knowledge_management`.** When a commit publishes a new version of either plugin, update the local marketplace registrations in the same commit as the plugin manifests. When opening this repo for plugin maintenance or after updating either marketplace registration, compare the installed cached skill versions against the repo source and tell the user to restart Codex or open a new thread so the refreshed plugin cache is loaded.
 
 ## Common tasks
 
 - `make help` — list every target.
 - `make lint` / `make fix` — runs `markdownlint`, `jq` syntax check, `shellcheck`. `fix` auto-fixes markdown only.
-- `make deploy` — symlink components into vendor config dirs. Aliases: `global`, `install`. **Run only when the user asks for it.**
+- `make deploy` — copy components into vendor config dirs. Aliases: `global`, `install`. **Run only when the user asks for it.**
 - `make uninstall` — remove deployed artefacts via the deployment log.
 
 ## Protected file edits
@@ -75,7 +77,7 @@ Task files stay agent-harness agnostic. When a task needs standing repo instruct
 
 ## Adding a plugin
 
-1. Create `plugins/<new_plugin>/` with `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, `README.md`, and a `skills/` directory.
+1. Create `plugins/<new_plugin>/` with `.codex-plugin/plugin.json` (set `"skills": "./skills/"`), `.claude-plugin/plugin.json`, `README.md`, and a `skills/` directory.
 2. Register the plugin in the marketplace files under `plugins[]`.
 3. Update the root `README.md` layout tree and **Plugins** bullet list.
 
@@ -83,6 +85,6 @@ Task files stay agent-harness agnostic. When a task needs standing repo instruct
 
 - **When the user says "tests" (or similar), run both skill surfaces unless the user narrows scope.** Run bundled-script tests under `tests/<skill>/script_tests/run.sh` and skill-behavior evals under `tests/<skill>/evals/evals.json`. Report both surfaces before claiming a skill is in good shape.
 - **One harness per skill under `tests/<skill_name>/`.** The whole `tests/` tree is in `.gitignore` and excluded from `make lint`; nothing in it gets committed. See `tests/README.md` for the full layout.
-- **Prefer the skill-creator-aligned pattern for new harnesses.** Keep evals in `evals/evals.json`, fixtures in `evals/fixtures/`, run output in `workspace/iteration-N/`, and script unit tests in `script_tests/`.
+- **Prefer the skill-creator-aligned pattern for new harnesses.** Keep evals in `evals/evals.json` (schema: `skill-creator/references/schemas.md`), fixtures in `evals/fixtures/`, run output in `workspace/iteration-N/`, and script unit tests in `script_tests/`. Run evals out-of-band via skill-creator's `scripts.run_eval`; `run_all.sh` drives only the script tests. Reference implementation: `tests/git_commit/`.
 - **`tests/wiki/` uses the legacy two-layer pattern.** Keep it as-is until its next significant iteration; create new harnesses with the skill-creator-aligned pattern.
-- **Test every skill change in the same session.** Add the tight scenarios and targeted harness coverage needed to validate the change, then run the relevant existing suite. Put only broader, exploratory harness expansion that exceeds the change's regression needs in its own session.
+- **Ship the tests a change needs; separate only *unbounded* harness growth.** A skill change lands together with the tight scenario(s) and fixtures that prove *its own* new behavior — the evals a task's acceptance names are part of that change, not something to defer — and with the existing suite re-run to confirm no regression. What belongs in its own session is *unbounded* harness expansion beyond the change: backfilling coverage of pre-existing untested behavior, adding scenarios well past what the change needs, or restructuring the harness. The boundary is scope, not timing — prove this change now and run it, and keep an unrelated coverage sweep from ballooning the same session.
