@@ -1,7 +1,7 @@
 ---
 name: skill_doctor
-description: Check-only doctor for skill artifacts — audits SKILL.md frontmatter and dual-audience descriptions, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo, without editing targets or running harness-portability review. Use when checking a skill, auditing SKILL.md metadata or descriptions, reviewing skill-family readiness, verifying plugin or marketplace registration, or asking whether skill tests and trigger coverage exist before deeper instruction review.
-version: 1.0.1
+description: Check-only doctor for skill artifacts. It audits SKILL.md frontmatter, descriptions that must serve both a browsing user and an LLM router, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo, editing no targets and running no harness-portability review. Use when checking a skill, auditing SKILL.md metadata or descriptions, reviewing skill-family readiness, verifying plugin or marketplace registration, or asking whether skill tests and trigger coverage exist before deeper instruction review.
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 <skill_doctor_skill>
 
 <role>
-skill_doctor is a general skill-quality doctor for AI component artifacts. It checks selected `SKILL.md` files and their surrounding registration, tests, metadata, and documentation for correctness and readiness. It reports concrete findings with paths and evidence. It never implements the target skill's work and never edits selected skill artifacts.
+skill_doctor is a skill-quality doctor for the AI component artifacts of a plugin-shaped repository. It checks selected `SKILL.md` files and their surrounding registration, tests, metadata, and documentation for correctness and readiness. It reports concrete findings with paths and evidence. It never implements the target skill's work and never edits selected skill artifacts.
 </role>
 
 <when_to_activate>
@@ -35,11 +35,15 @@ Report findings only. Leave every selected skill artifact — and every other sk
 <scope_resolution>
 Resolve scope before any check, and name the final target set out loud before continuing.
 
+Every check targets the repository source tree that holds `plugins/*/skills/`, so pass that repo root as `--root` and resolve every selector inside it. A copy of a skill deployed under a vendor configuration directory is a build output rather than a target, so when the user points at one, check the repo source it came from and name that substitution in the orientation lead. When a repository exposes no `plugins/*/skills/` tree, report that the layout this walk expects is absent and ask which tree to read, rather than checking a substitute tree.
+
 - **Single skill.** A request that names one skill or one `SKILL.md` / skill-directory path stays on that skill. Run `scripts/resolve_scope.py --root <repo-root> --skill <name-or-path>`.
 - **Family.** A request that names a family token expands to the matching sibling set. A family hub is the skill whose frontmatter `name:` equals the family token. Skills share that family-name when their frontmatter `name:` equals the token or equals the token followed by `_` and a non-empty suffix (`token_*`). Resolve a family as the set of `plugins/*/skills/` directories whose skill names share that family-name, unioned with any skills named in the hub `SKILL.md` `<family>` block when that hub and block exist; when no hub or no `<family>` block is present, use that family-name set alone. Run `scripts/resolve_scope.py --root <repo-root> --family <token>`.
 - **Whole repo.** A whole-repo request walks every skill directory the repository exposes under `plugins/*/skills/`. Run `scripts/resolve_scope.py --root <repo-root> --all`.
 
 Exclude agents unless the user names them. Agents live under `plugins/*/agents/` and are outside the default skill walk.
+
+When `scripts/resolve_scope.py` exits nonzero, stop and report its message rather than substituting a target set of your own. Each of its three failures needs the user to settle it: an unknown skill or family name, a selector path that escapes the repo root, and a request that names no clear scope mode. Name the nearest candidates the walk did find, then ask which one the user means.
 </scope_resolution>
 
 <discovery_safety>
@@ -66,8 +70,8 @@ Run in order. Edit no skill artifacts.
 1. **Orient.** Read the repo instructions. Identify the selected scope (single skill, family, or all skills). Resolve directories with `scripts/resolve_scope.py` per `<scope_resolution>`, then name the final target set before checking.
 2. **Discovery safety first.** Run `scripts/discovery_safety.py` on the resolved set per `<discovery_safety>`. Record blocking issues and warnings with paths and evidence.
 3. **Registration.** For each selected skill, confirm directory name equals frontmatter `name:`, and H1 is a casing-or-spacing variant of `name:`, per the `ai_instruction_formatting` mechanical rules and the standing **Keep the directory name, the frontmatter `name:`, and the H1 heading aligned.** rule. Confirm registration follows this repo's shape: `.codex-plugin/plugin.json` keeps `"skills": "./skills/"`; `.claude-plugin/plugin.json` stays in version/description/README lockstep without that pointer; marketplace files register plugins (not per-skill arrays); when the repo convention lists skills in the plugin README or root README, confirm each selected skill is named where that convention requires. Apply the standing **Plugin meta stays lockstep.** rule as a version check: plugin `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and marketplace entries share one plugin version; a skill's `version:` that differs from that plugin version is not treated as inconsistency by itself.
-4. **Tests and verification.** Before the instruction-quality pass, identify or run the applicable verification surfaces for each selected skill: script tests under `tests/<skill>/script_tests/`, behavioral or trigger evals under `tests/<skill>/evals/` (or the repo's trigger-eval surface), `markdownlint` on applicable selected paths, `python3 plugins/ai_dev/skills/ai_instruction_formatting/scripts/lint_pseudo_xml.py` on selected skill hosts, `jq empty` on applicable manifest JSON, and `./deployment/deployment.sh --global --dry-run` as preview-only (it applies no deploy writes, so this skill may run it during a check without a fresh user ask; the standing repo rule that gates `make deploy` on an explicit user ask still applies to any non-dry-run deploy). When a selected skill has bundled scripts, require a script-test surface. When it has behavior-only prose, require eval coverage or an explicit documented reason that coverage is missing. Record the exact commands run and name every check that could not run.
-5. **Instruction quality.** Apply `ai_instruction_formatting` and `ai_instruction_writing` by citation only — read those skills and check selected bodies against their contracts for pseudo-XML organization, positive action-oriented wording, and clear role, inputs, workflow, and output contract. Keep those rule bodies in their source skills; do not copy them into this skill. When a family is in scope, also check sibling boundaries so each skill's activation surface stays distinct.
+4. **Tests and verification.** Before the instruction-quality pass, identify or run the applicable verification surfaces for each selected skill: script tests under `tests/<skill>/script_tests/`, behavioral or trigger evals under `tests/<skill>/evals/` (or the repo's trigger-eval surface), `markdownlint` on applicable selected paths, `python3 $AI_INSTRUCTION_FORMATTING_SKILL/scripts/lint_pseudo_xml.py` on selected skill hosts, `jq empty` on applicable manifest JSON, and the repository's own deploy preview where it exposes one (`./deployment/deployment.sh --global --dry-run` in this repo) as preview-only (it applies no deploy writes, so this skill may run it during a check without a fresh user ask; the standing repo rule that gates `make deploy` on an explicit user ask still applies to any non-dry-run deploy). When a selected skill has bundled scripts, require a script-test surface. When it has behavior-only prose, require eval coverage or an explicit documented reason that coverage is missing. Record the exact commands run and name every check that could not run.
+5. **Instruction quality.** Apply `ai_instruction_formatting` and `ai_instruction_writing` by citation only: read those skills and check selected bodies against their contracts for pseudo-XML organization, positive action-oriented wording, and clear role, inputs, workflow, and output contract. Keep those rule bodies in their source skills; do not copy them into this skill. When a family is in scope, also check sibling boundaries so each skill's activation surface stays distinct.
 6. **Report.** Emit the report per `<output_contract>`.
 </workflow>
 
@@ -89,7 +93,7 @@ When clean, write exactly `No blocking issues.` under the blocking section and k
 </examples>
 
 <boundary>
-skill_doctor checks and reports. It does not apply fixes or rewrites during a check run. It does not run or embed a `harness_portability` cross-harness/OS portability review — that review stays with `harness_portability`.
+skill_doctor checks and reports. It does not apply fixes or rewrites during a check run. It does not run or embed a `harness_portability` cross-harness/OS portability review. That review stays with `harness_portability`.
 </boundary>
 
 </skill_doctor_skill>
