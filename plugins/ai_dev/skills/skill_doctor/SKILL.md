@@ -1,7 +1,7 @@
 ---
 name: skill_doctor
 description: Check-only doctor for skill artifacts — audits SKILL.md frontmatter and dual-audience descriptions, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo, without editing targets or running harness-portability review. Use when checking a skill, auditing SKILL.md metadata or descriptions, reviewing skill-family readiness, verifying plugin or marketplace registration, or asking whether skill tests and trigger coverage exist before deeper instruction review.
-version: 1.0.0
+version: 1.0.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -52,6 +52,8 @@ The script — and the manual follow-through when a path needs judgment — cove
 - Audit each `description:` against the standing repo rule **Write skill descriptions for both audiences.** Treat user readability and LLM trigger matching as separate requirements and judge their balance: a user-readable purpose summary first, then trigger-rich `Use when` language — neither a keyword dump nor a prose-only summary.
 - Flag descriptions that leak internal workflow into `description:` and keep those implementation details in the skill body.
 - Compare sibling descriptions inside the same selected set for formatting outliers, risky punctuation, non-ASCII characters, routing overlap, and user-readable high-level distinctness.
+
+Typographic non-ASCII in a description is an encoding finding, not a prose one. An em dash, a curly quote, and an ellipsis all stay valid in UTF-8 frontmatter, so the finding asks the reader to confirm every consuming manifest and router reads UTF-8, and the character itself stays as written. Where an em dash instead holds together a clause break the sentence never earned, cite the rewrite rule `ai_instruction_writing` carries and recommend splitting the description into two sentences. Splitting suits a `description:` value in particular, because an unquoted colon in that scalar trips this run's own YAML-safety check. A hyphen, a double hyphen, or an en dash substituted into that slot keeps the original break and counts as no fix.
 
 Severity follows what a finding can prove. A finding blocks when it states a mechanical fact about the file: absent or unparseable frontmatter, a missing `name` / `description` / `version`, a name that disagrees with its directory, a parser-hostile or invisible character, or a sibling purpose summary that is byte-identical to another. Every judgement about description *quality* — dual-audience balance, workflow leakage, routing overlap, risky punctuation, typographic non-ASCII, length outliers — is reported as a warning, because no heuristic separates "carries no trigger coverage" from "phrases its triggers differently", and a false block on a healthy shipped skill costs the reader more than a warning they dismiss. Report every dimension either way; severity changes what the run gates on, never what it inspects.
 

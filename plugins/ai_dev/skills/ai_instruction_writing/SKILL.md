@@ -1,7 +1,7 @@
 ---
 name: ai_instruction_writing
 description: Write AI-consumed content using positive, action-oriented language as the primary carrier of every instruction. Use when creating or editing any artifact an AI reads at inference time — SKILL.md files, .mdc rule files, CLAUDE.md/AGENTS.md/GEMINI.md configuration, prompt templates, system prompts, commands, agent and sub-agent definitions, instruction sets, and persona definitions.
-version: 3.0.1
+version: 3.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -10,7 +10,7 @@ license: MIT
 
 <ai_instruction_writing>
   <objective>
-    Write AI-consumed content so every instruction's primary carrier is a positive, action-oriented statement that tells the LLM what to do, what something is, or how it should be. Allow negative or contrastive supplements when they add information the positive carrier cannot imply: a broad catch-all class, specific banned forms, or an exact set a downstream mechanism checks.
+    Write AI-consumed content so every instruction's primary carrier is a positive, action-oriented statement that tells the LLM what to do, what something is, or how it should be. Allow negative or contrastive supplements when they add information the positive carrier cannot imply: a broad catch-all class, specific banned forms, or an exact set a downstream mechanism checks. Build each of those statements as an ordinary sentence, so no em dash carries a clause break the sentence has not earned.
   </objective>
 
   <core_rule>
@@ -37,6 +37,15 @@ license: MIT
     <preserve_technical_precision>Keep specific details, error codes, and identifiers when transforming.</preserve_technical_precision>
     <enhance_rather_than_replace>Add specificity, rationale, and context on top of existing positive rules.</enhance_rather_than_replace>
   </authoring_guidelines>
+
+  <sentence_construction>
+    <plain_sentence_carrier>Carry each instruction on an ordinary sentence whose clauses are joined by ordinary punctuation, so the reader takes the relation between two clauses from the joint that holds them together.</plain_sentence_carrier>
+    <ordinary_joins>Join clauses with a comma, a colon, a full stop, or a conjunction such as because, so, while, or although.</ordinary_joins>
+    <rewrite_an_unearned_em_dash>Where an em dash is the only thing holding two clauses together, rebuild the sentence: introduce the elaboration with a colon, or split it into two sentences. Substituting a hyphen, a double hyphen, or an en dash preserves the same unearned break, so it resolves nothing and counts as no fix.</rewrite_an_unearned_em_dash>
+    <split_inside_a_yaml_scalar>Inside an unquoted YAML scalar such as a frontmatter `description:`, split the sentence in two rather than reaching for the colon, because a mid-value colon is a parser footgun that downstream discovery checks flag.</split_inside_a_yaml_scalar>
+    <keep_a_working_em_dash>An em dash that sets off a genuine aside or introduces a list is doing its job, so leave it in place. Reserve the rewrite for the dash that substitutes for a joint the sentence should have made explicit.</keep_a_working_em_dash>
+    <encoding_stays_a_separate_question>An em dash, a curly quote, and an ellipsis are all valid UTF-8, so a tool that flags them raises a question about what the consuming parser reads. Answer it by confirming the consumer reads UTF-8, and keep the character as written.</encoding_stays_a_separate_question>
+  </sentence_construction>
 
   <positive_only_examples>
     <when_to_apply>These enumerate their full positive set, so no catch-all negative is needed — see catch_all_negative for the cases where the long tail forces one.</when_to_apply>

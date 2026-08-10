@@ -365,8 +365,14 @@ def analyze_skill(path: Path) -> dict:
                     "code": "description_non_ascii",
                     "message": (
                         "description contains typographic non-ASCII "
-                        "characters; confirm every consuming manifest and "
-                        "router reads UTF-8"
+                        "characters, which stay valid in UTF-8 frontmatter; "
+                        "confirm every consuming manifest and router reads "
+                        "UTF-8 and keep the character as written. Where an "
+                        "em dash instead holds together a clause break the "
+                        "sentence never earned, split the description into "
+                        "two sentences; a hyphen, a double hyphen, or an en "
+                        "dash substituted into that slot keeps the same "
+                        "break and fixes nothing"
                     ),
                     "evidence": description[:120],
                 }
@@ -488,7 +494,8 @@ def sibling_findings(reports: list[dict]) -> list[dict]:
                     "path": report["path"],
                     "message": (
                         "description carries non-ASCII characters while its "
-                        "siblings stay ASCII-only"
+                        "siblings stay ASCII-only; align it by rewriting the "
+                        "sentence rather than transliterating the character"
                     ),
                     "evidence": desc[:120],
                 }
