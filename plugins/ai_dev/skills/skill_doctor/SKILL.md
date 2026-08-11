@@ -1,7 +1,7 @@
 ---
 name: skill_doctor
 description: Check-only doctor for skill artifacts. It audits SKILL.md frontmatter, descriptions that must serve both a browsing user and an LLM router, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo, editing no targets and running no harness-portability review. Use when checking a skill, auditing SKILL.md metadata or descriptions, reviewing skill-family readiness, verifying plugin or marketplace registration, or asking whether skill tests and trigger coverage exist before deeper instruction review.
-version: 1.0.2
+version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -35,7 +35,7 @@ Report findings only. Leave every selected skill artifact — and every other sk
 <scope_resolution>
 Resolve scope before any check, and name the final target set out loud before continuing.
 
-Every check targets the repository source tree that holds `plugins/*/skills/`, so pass that repo root as `--root` and resolve every selector inside it. A copy of a skill deployed under a vendor configuration directory is a build output rather than a target, so when the user points at one, check the repo source it came from and name that substitution in the orientation lead. When a repository exposes no `plugins/*/skills/` tree, report that the layout this walk expects is absent and ask which tree to read, rather than checking a substitute tree.
+Every check targets the repository source tree that holds `plugins/*/skills/`, so pass that repo root as `--root` and resolve every selector inside it. A copy of a skill deployed under a vendor configuration directory is a build output rather than a target, so when the user points at one, check the repo source it came from and name that substitution in the orientation lead. A repository that exposes no `plugins/*/skills/` tree holds nothing this walk can read, so the resolver reports the absent layout in every scope mode rather than checking a substitute tree.
 
 - **Single skill.** A request that names one skill or one `SKILL.md` / skill-directory path stays on that skill. Run `scripts/resolve_scope.py --root <repo-root> --skill <name-or-path>`.
 - **Family.** A request that names a family token expands to the matching sibling set. A family hub is the skill whose frontmatter `name:` equals the family token. Skills share that family-name when their frontmatter `name:` equals the token or equals the token followed by `_` and a non-empty suffix (`token_*`). Resolve a family as the set of `plugins/*/skills/` directories whose skill names share that family-name, unioned with any skills named in the hub `SKILL.md` `<family>` block when that hub and block exist; when no hub or no `<family>` block is present, use that family-name set alone. Run `scripts/resolve_scope.py --root <repo-root> --family <token>`.
@@ -43,7 +43,12 @@ Every check targets the repository source tree that holds `plugins/*/skills/`, s
 
 Exclude agents unless the user names them. Agents live under `plugins/*/agents/` and are outside the default skill walk.
 
-When `scripts/resolve_scope.py` exits nonzero, stop and report its message rather than substituting a target set of your own. Each of its three failures needs the user to settle it: an unknown skill or family name, a selector path that escapes the repo root, and a request that names no clear scope mode. Name the nearest candidates the walk did find, then ask which one the user means.
+When `scripts/resolve_scope.py` exits nonzero, stop and report its message rather than substituting a target set of your own. Each failure class carries its own remedy:
+
+- **An absent expected layout** — `no skills found under plugins/*/skills/`, which `--skill`, `--family`, and `--all` all emit alike. Report that the layout this walk expects is absent and ask which tree to read.
+- **An unknown name** — `skill not found:` or `no skills found for family token:`, raised when the tree exists and the selector misses inside it. List the nearest candidates the walk did find, then ask which one the user means.
+- **A selector path fault** — `skill path not found:` or `skill path escapes repo root:`. Report the path the resolver rejected and ask for a corrected one.
+- **An environment or usage fault** — an unreadable `SKILL.md` (`cannot read`), a `--root` that is not a directory (`root is not a directory:`), or a request that names no scope mode (rejected by argument parsing). Report the fault itself, so the reader fixes the environment or the invocation instead of disambiguating a name.
 </scope_resolution>
 
 <discovery_safety>

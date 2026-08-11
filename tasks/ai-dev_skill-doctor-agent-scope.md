@@ -47,7 +47,7 @@ directory-equals-`name:` check keys on the filename stem instead; and agent
 frontmatter carries harness fields such as `model` and `effort` that no skill
 check knows about.
 
-Related: [ai-dev_skill-doctor-scope-failure-reporting.md](ai-dev_skill-doctor-scope-failure-reporting.md)
+Related: [ai-dev_skill-doctor-scope-failure-reporting.md](archive/ai-dev_skill-doctor-scope-failure-reporting.md)
 rewrites the same `<scope_resolution>` block and the same resolver, so the two
 coordinate on one file and one script.
 

@@ -70,7 +70,7 @@ including length outliers, and is where the diagnosis guidance belongs.
 Co-edit: [ai-dev_skill-doctor-sibling-nonascii-message.md](ai-dev_skill-doctor-sibling-nonascii-message.md)
 and [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md) also
 edit this script, and both of those plus
-[ai-dev_skill-doctor-scope-failure-reporting.md](ai-dev_skill-doctor-scope-failure-reporting.md)
+[ai-dev_skill-doctor-scope-failure-reporting.md](archive/ai-dev_skill-doctor-scope-failure-reporting.md)
 add scenarios to the same script-test runner, so coordinate those surfaces.
 
 ## Approach

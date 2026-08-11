@@ -79,7 +79,7 @@ mise tasks, and a pre-commit config, none of which the step knows to look for. T
 sibling-skill lint also presumes that sibling is installed, which a foreign
 checkout need not have.
 
-Reconcile with [ai-dev_skill-doctor-scope-failure-reporting.md](ai-dev_skill-doctor-scope-failure-reporting.md):
+Reconcile with [ai-dev_skill-doctor-scope-failure-reporting.md](archive/ai-dev_skill-doctor-scope-failure-reporting.md):
 it makes an absent `plugins/*/skills/` tree a first-class resolver failure emitted
 identically in all three scope modes, which this task must not undo. The absent
 layout stays a failure with that task's message and its three-mode consistency; it
@@ -169,7 +169,7 @@ conditional on that sibling resolving, and name it as skipped when it does not.
    single root-level `SKILL.md`, and each resolves.
 2. Run against a staged repo holding no `SKILL.md` anywhere, all three scope modes
    still emit the single absent-layout message that
-   [ai-dev_skill-doctor-scope-failure-reporting.md](ai-dev_skill-doctor-scope-failure-reporting.md)
+   [ai-dev_skill-doctor-scope-failure-reporting.md](archive/ai-dev_skill-doctor-scope-failure-reporting.md)
    defines, and exit nonzero.
 3. A skill whose frontmatter carries `name` and `description` but no `version`
    produces an `info` finding, produces no blocking finding, and the run's

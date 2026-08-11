@@ -6,6 +6,10 @@ Modes:
   --family TOKEN      family-name set union optional hub <family> names
   --all               every plugins/*/skills/*/SKILL.md under the repo root
 
+Every mode requires a plugins/*/skills/ tree holding at least one SKILL.md.
+An absent tree is its own failure, reported identically in all three modes,
+so a selector never reads as a miss inside a tree that is not there.
+
 Prints JSON on stdout. Edits nothing.
 """
 
@@ -96,8 +100,11 @@ def parse_family_block_names(skill_md: Path) -> list[str]:
     return names
 
 
-def resolve_skill(root: Path, selector: str) -> list[dict[str, str]]:
-    all_skills = discover_skills(root)
+def resolve_skill(
+    root: Path,
+    selector: str,
+    all_skills: list[dict[str, str]],
+) -> list[dict[str, str]]:
     by_name = {s["name"]: s for s in all_skills}
     selector_path = Path(selector)
 
@@ -126,8 +133,11 @@ def resolve_skill(root: Path, selector: str) -> list[dict[str, str]]:
     die(f"skill not found: {selector}")
 
 
-def resolve_family(root: Path, token: str) -> list[dict[str, str]]:
-    all_skills = discover_skills(root)
+def resolve_family(
+    root: Path,
+    token: str,
+    all_skills: list[dict[str, str]],
+) -> list[dict[str, str]]:
     by_name = {s["name"]: s for s in all_skills}
     selected: dict[str, dict[str, str]] = {}
 
@@ -145,10 +155,6 @@ def resolve_family(root: Path, token: str) -> list[dict[str, str]]:
                 selected[name] = by_name[name]
 
     return [selected[k] for k in sorted(selected)]
-
-
-def resolve_all(root: Path) -> list[dict[str, str]]:
-    return discover_skills(root)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -177,22 +183,28 @@ def main(argv: list[str] | None = None) -> int:
     if not root.is_dir():
         die(f"root is not a directory: {root}")
 
+    # Walk once, before mode dispatch. An empty walk means the layout every
+    # mode expects is absent, which is its own failure with its own remedy:
+    # a selector cannot miss inside a tree that does not exist, so reporting
+    # it as an unknown name would send the reader after a typo instead.
+    all_skills = discover_skills(root)
+    if not all_skills:
+        die("no skills found under plugins/*/skills/", code=1)
+
     if args.skill:
         mode = "skill"
-        skills = resolve_skill(root, args.skill)
+        skills = resolve_skill(root, args.skill, all_skills)
         selector = args.skill
     elif args.family:
         mode = "family"
-        skills = resolve_family(root, args.family)
+        skills = resolve_family(root, args.family, all_skills)
         selector = args.family
         if not skills:
             die(f"no skills found for family token: {args.family}", code=1)
     else:
         mode = "all"
-        skills = resolve_all(root)
+        skills = all_skills
         selector = "*"
-        if not skills:
-            die("no skills found under plugins/*/skills/", code=1)
 
     payload = {
         "mode": mode,
