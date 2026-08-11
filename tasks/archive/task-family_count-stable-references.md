@@ -2,9 +2,11 @@
 description: Extend the durable-reference discipline from position claims to volatile counts: task bodies reference mutable sets by defining property, flagged at readiness and surfaced by task_fix.
 scope: plugins/ai_dev
 created: 2026-08-05T19:26:42
-updated: 2026-08-10T00:11:32
-status: ready
+updated: 2026-08-11T18:54:06
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Count-stable references: extend the durable-reference discipline from positions to volatile counts
@@ -16,10 +18,10 @@ A task body refers to any set whose membership can change while the backlog ship
 ## Context
 
 - The base `task` skill's `<markdown_policy>` rule led by "Locate referenced content by a verbatim label — the soft-pointer rule" already applies this principle to positions: line-number and ordinal references locate by a position that "rots silently as the target evolves". Quantities sit outside it — no rule governs referring to a mutable set by its current count.
-- Counts are today deliberately left alone by the machinery that exists: the base `<lint>` soft-pointer triage instructs readers to "leave a false positive such as a size, version, count, or quoted claim-shape untouched", and `task_fix`'s `<remediate>` step repeats that instruction for its auto-fix pass. The carve-out protects the position-claim check's precision; it leaves count-shaped references ungoverned rather than endorsed. [The lint-hardening task](archive/task-family_soft-pointer-lint-hardening.md) defined that triage contract, and its recall-versus-precision reasoning — "The linter cannot enumerate every non-position number" — is the rubric that keeps mechanical detection out of scope here.
+- Counts are today deliberately left alone by the machinery that exists: the base `<lint>` soft-pointer triage instructs readers to "leave a false positive such as a size, version, count, or quoted claim-shape untouched", and `task_fix`'s `<remediate>` step repeats that instruction for its auto-fix pass. The carve-out protects the position-claim check's precision; it leaves count-shaped references ungoverned rather than endorsed. [The lint-hardening task](task-family_soft-pointer-lint-hardening.md) defined that triage contract, and its recall-versus-precision reasoning — "The linter cannot enumerate every non-position number" — is the rubric that keeps mechanical detection out of scope here.
 - The readiness checklist's **Premise check** meets a stale count only after the fact, classifying it a drifted detail during a later check. Authoring time has no rule against the shape, so a fresh "update all N live `task-family_*` tasks" passes today's check while its number still matches and rots when the first sibling ships.
-- [The soft-pointer discipline task](archive/task-family_label-only-soft-pointers.md) shipped the position-claim rule this task extends; the new rule sits beside it so `<markdown_policy>` keeps one reference discipline with two classes — positions locate by label, quantities select by property.
-- Edit surfaces: [the base task skill](../plugins/ai_dev/skills/task/SKILL.md) (`<markdown_policy>` and the `<readiness_checklist>` ambiguity clause) and [task_fix](../plugins/ai_dev/skills/task_fix/SKILL.md) (**Assess** advisory walk and `<surface_for_review>`). The charter invariant "Skill-family rules live in the family base skill" governs the shape: front ends inherit the rule through the base skill rather than carrying copies.
+- [The soft-pointer discipline task](task-family_label-only-soft-pointers.md) shipped the position-claim rule this task extends; the new rule sits beside it so `<markdown_policy>` keeps one reference discipline with two classes — positions locate by label, quantities select by property.
+- Edit surfaces: [the base task skill](../../plugins/ai_dev/skills/task/SKILL.md) (`<markdown_policy>` and the `<readiness_checklist>` ambiguity clause) and [task_fix](../../plugins/ai_dev/skills/task_fix/SKILL.md) (**Assess** advisory walk and `<surface_for_review>`). The charter invariant "Skill-family rules live in the family base skill" governs the shape: front ends inherit the rule through the base skill rather than carrying copies.
 
 ## Approach
 

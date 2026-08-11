@@ -1,0 +1,107 @@
+---
+description: Realign the wiki family's activation surface: the hub stops claiming import and audit ground, and each description leads with purpose before trigger language.
+scope: plugins/knowledge_management
+created: 2026-08-11T18:59:52
+updated: 2026-08-11T18:59:52
+status: open
+reported-by: Andreas Hoffmann
+---
+
+# Realign the wiki family's activation surface and descriptions
+
+## Goal
+
+The four wiki-family skills advertise one non-overlapping activation surface. The
+hub `wiki` keeps the wiki-building, page-writing, and querying ground it owns and
+hands single-source import to `wiki_import`, session capture to `wiki_wrapup`, and
+audit-and-repair to `wiki_fix`. A router reading only the frontmatter descriptions
+plus the hub's `<when_to_activate>` list sends each of those four request kinds to
+one skill. Each description leads with the user-facing purpose summary and follows
+with its trigger language, per the standing repo rule on writing skill
+descriptions for both audiences.
+
+## Context
+
+The hub's body and its description disagree about what the hub covers. Its
+`<when_to_activate>` list still carries the entry
+`Asks to ingest, add, or process a source into their wiki.`, which is
+`wiki_import`'s surface, and an entry beginning
+`Asks to lint, audit, fix, health-check, clean up, or auto-repair their wiki`,
+which is `wiki_fix`'s. Three commits on 2026-05-25 (`2583ceb`, `2190a01`,
+`497c141`) narrowed the frontmatter `description:` out of exactly that ground; the
+body never followed.
+
+That audit entry also routes the work straight to the `auto_shaper_wiki` agent,
+while `wiki_fix` exists as the named front end for that handoff. The two are
+separable: activation belongs to `wiki_fix`, and the hub's own
+`<lint_and_audit>` operation legitimately spawns the agent for a session already
+working inside a wiki. The entry to change is the activation one.
+
+The hub description opens with a router directive,
+`Activate this skill whenever the user mentions their wiki, knowledge base, or
+research notes in any way`, and reaches its purpose sentence second. It closes
+with `even as a passing reference`. Those two catch-alls claim requests the
+repo's own routing fixtures assign elsewhere: in `tests/trigger_evals/wiki.json`
+the query about a wiki page for a new attribution model built from a pasted
+transcript carries `expected_skill` of `wiki_import`, and the wiki fixture's
+negative set holds a `fix my wiki` phrasing.
+
+The em dash in the hub description, and both in `wiki_fix`'s, hold clause breaks
+the sentences never earned. The `ai_instruction_writing` skill's
+`<sentence_construction>` rules own that rewrite: split into two sentences and
+keep UTF-8, rather than substituting a hyphen or an en dash, which keeps the same
+break.
+
+Two related items bound the work. [archive/task-family_sibling-trigger-routing.md](archive/task-family_sibling-trigger-routing.md)
+records that description-sharpening regressed routing for the `task_*` family
+while naming helped, so treat wording changes here as measured rather than
+assumed. The measurement surface is currently unusable, and
+[tests_trigger-eval-harness-repair.md](tests_trigger-eval-harness-repair.md) owns
+repairing it, so the measured re-run happens once that lands.
+
+## Approach
+
+1. Rewrite the two `<when_to_activate>` entries in place so the source-ingest
+   entry and the audit entry name the owning sibling instead of claiming the
+   work, leaving the hub's remaining entries as they are.
+2. Rewrite the hub description so the purpose sentence leads, the `Use when`
+   trigger language follows, and the two catch-all clauses narrow to the ground
+   the hub keeps after step 1.
+3. Split the unearned clause breaks in the hub and `wiki_fix` descriptions into
+   separate sentences, keeping every trigger phrase both descriptions carry
+   today.
+4. Bring the trigger fixtures into agreement with the boundary this task sets,
+   changing a fixture expectation only where it contradicts that boundary and
+   listing each change in the commit.
+
+**Out of scope:**
+
+- The hub's `<lint_and_audit>` operation, which keeps spawning the agent for a
+  session already inside a wiki.
+- Family declaration and authority blocks, owned by
+  [wiki_family-inheritance-blocks.md](wiki_family-inheritance-blocks.md).
+- Repairing the trigger-eval runner, owned by
+  [tests_trigger-eval-harness-repair.md](tests_trigger-eval-harness-repair.md).
+
+## Acceptance
+
+1. Searching the hub `SKILL.md` for `Asks to ingest, add, or process a source`
+   returns no match, and the entry that replaces it names `wiki_import` as the
+   owner of that request kind.
+2. Searching the hub for `or auto-repair their wiki` returns only an entry naming
+   `wiki_fix`, and no `<when_to_activate>` entry claims audit activation for the
+   hub.
+3. Reading the hub's `<lint_and_audit>` block shows it unchanged, so the agent
+   handoff for an in-session audit still exists.
+4. The hub description's first sentence states the skill's purpose with no router
+   directive, and searching both `in any way` and `even as a passing reference`
+   in that description returns no match.
+5. Searching the hub and `wiki_fix` descriptions for the em dash character
+   returns no match, both files remain valid UTF-8, and each former dash break
+   reads as two sentences.
+6. Running `scripts/discovery_safety.py` from the `skill_doctor` skill over the
+   four family skills reports neither `description_non_ascii` nor
+   `sibling_non_ascii_outlier` for `wiki` or `wiki_fix`.
+7. Every expectation in `tests/trigger_evals/wiki*.json` agrees with the boundary
+   this task sets, verified by reading each positive and negative entry against
+   the four descriptions.

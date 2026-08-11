@@ -2,7 +2,7 @@
 description: Give task_fix a default backlog-coherence assessment over live tasks and their shared target artifacts, with reconcile still gated on accept or escalate.
 scope: plugins/ai_dev
 created: 2026-08-05T18:22:13
-updated: 2026-08-10T08:55:52
+updated: 2026-08-11T18:54:06
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,7 +21,7 @@ The motivating session, generalized: a 17-task live set sharing one scope was as
 
 Placement follows the shipped precedent in [task-family_autonomous-tree-shaper.md](archive/task-family_autonomous-tree-shaper.md): whole-tree capability grows inside `task_fix` rather than as a second skill, heavy judgement routes through the existing `auto_shaper_task` escalation with `auto_verifier_task` gating, and a family rule is authored once in the base `task` skill (the `<readiness_checklist>` precedent) and cited by its consumers.
 
-This task composes with, and does not replace, [task-family_count-stable-references.md](task-family_count-stable-references.md): both edit the base `task` skill and `task_fix`, so when that sibling has landed, preserve its count-stable `<markdown_policy>` rule, Ambiguity flag, **Assess** advisory, and `<surface_for_review>` entry while this task adds `<backlog_coherence>` and rewrites only the "Contradictions between tasks" bullet.
+This task composes with, and does not replace, [task-family_count-stable-references.md](archive/task-family_count-stable-references.md): both edit the base `task` skill and `task_fix`, so when that sibling has landed, preserve its count-stable `<markdown_policy>` rule, Ambiguity flag, **Assess** advisory, and `<surface_for_review>` entry while this task adds `<backlog_coherence>` and rewrites only the "Contradictions between tasks" bullet.
 
 Files involved:
 

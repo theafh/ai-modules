@@ -1,7 +1,7 @@
 ---
 name: task_explain
-description: "Explain one project task in compact what/why/how prose without editing it. Use when the user asks to explain, summarize, walk through, or orient on a task file by path, partial name, or conversation context. If the task reference is missing or ambiguous, activate and ask which task to explain. Not for readiness, next-work selection, implementation, audit, finish, or repair."
-version: 1.0.1
+description: Explain one project task in compact what/why/how prose without editing it. Use when the user asks to explain, summarize, walk through, or orient on a task file by path, partial name, or conversation context. If the task reference is missing or ambiguous, activate and ask which task to explain. Not for readiness, next-work selection, implementation, audit, finish, or repair.
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
