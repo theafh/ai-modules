@@ -1,7 +1,7 @@
 ---
 name: task_audit
-description: Audit one implemented or finished task against the actual codebase. Use after implementation or for drift checks before close out. Inspect code and tests, run verification, stamp audited only on clean implemented work, and report gaps otherwise.
-version: 1.0.12
+description: Audit one implemented or finished task against the actual codebase. Use when verifying a believed-done task, checking claimed completion against the code, or running a drift check before close-out. Inspect code and tests, run verification, stamp audited only on clean implemented work, and report gaps otherwise.
+version: 1.0.13
 author: Andreas F. Hoffmann
 license: MIT
 ---

@@ -1,7 +1,7 @@
 ---
 name: task_select
-description: Select and rank eligible live tasks from the project backlog. Use when the user asks what task to work on next, asks Codex to pick or prioritize backlog work, rank open tasks, choose from tasks/, or recommend the next task/action without editing task files.
-version: 1.0.5
+description: Select and rank eligible live tasks from the project backlog. Use when the user asks what task to work on next, asks the agent to pick or prioritize backlog work, rank open tasks, choose from tasks/, or recommend the next task/action without editing task files.
+version: 1.0.6
 author: Andreas F. Hoffmann
 license: MIT
 ---

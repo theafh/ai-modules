@@ -2,9 +2,11 @@
 description: Repair task_audit and task_select descriptions for dual-audience Use when coverage and harness-agnostic wording; no regression vs the Context-defined pre-edit Findings-era baseline.
 scope: "task_* family: task_audit + task_select descriptions"
 created: 2026-08-11T18:58:50
-updated: 2026-08-11T20:25:38
-status: ready
+updated: 2026-08-11T21:17:14
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Repair the task_audit and task_select descriptions and re-measure family trigger routing
@@ -34,7 +36,7 @@ pick or prioritize backlog work". The deploy dry-run confirms this skill also la
 in the Claude, Cursor, Antigravity, Copilot, and OpenCode configuration
 directories, where naming a single vendor reads wrong.
 
-[The sibling trigger-routing task](archive/task-family_sibling-trigger-routing.md)
+[The sibling trigger-routing task](task-family_sibling-trigger-routing.md)
 bounds how these edits may be written. It measured a description-sharpening attempt
 across the base `task`, `task_audit`, and `task_fix` descriptions that ceded verbs
 and bound siblings tighter, recorded a regression from precise 14/25 to 12/25 and
@@ -64,7 +66,7 @@ rows are every other `expected_skill` in the same run (`task_explain`,
 `task_select`, and any later companion-owned skill including `task_auto_check`);
 report their pass rate separately so a changed denominator never inflates the
 headline. Soft companion: [the test-harness consolidation
-task](task-family_test-harness-consolidation.md) shares this eval set and owns
+task](../task-family_test-harness-consolidation.md) shares this eval set and owns
 adding further cases (including `task_auto_check`) under that
 separate-denominator reporting rule.
 
@@ -92,10 +94,10 @@ pre-edit baseline as the deliverable.
 
 **Out of scope:** editing the base `task` skill's description, and adding any
 verb-ceding or hedging clause to either description. Both are the reverted lever
-[the sibling trigger-routing task](archive/task-family_sibling-trigger-routing.md)
+[the sibling trigger-routing task](task-family_sibling-trigger-routing.md)
 holds rejected. Defer growing or re-annotating the family trigger-eval set
 (including adding `task_auto_check` cases) to [the test-harness consolidation
-task](task-family_test-harness-consolidation.md).
+task](../task-family_test-harness-consolidation.md).
 
 ## Acceptance
 
@@ -134,3 +136,47 @@ task](task-family_test-harness-consolidation.md).
   reverts both description edits and records the measured drop in the same
   Findings note, leaving the descriptions as they stand today. The recorded
   measurement is the deliverable rather than its direction.
+
+## Findings
+
+Both runs used the Context-defined protocol: `tests/trigger_evals/task.json`
+through `tests/trigger_evals/run.py` with `--skill task --skill-path
+plugins/ai_dev/skills/task --runs-per-query 3`, a 50% per-query threshold, and
+rates counted from each run's `results.json` per-query `results` rows rather
+than its aggregate `summary`. Under that membership rule the eval set's 31 rows
+split into a 25-row Findings-era subset and 6 companion-reported rows.
+
+- Pre-edit baseline, `tests/trigger_evals/results/task/2026-08-11_204958/`, run
+  after confirming the deployed descriptions were byte-identical to the repo
+  copies: Findings-era precise **11/25**, family 18/25. Companion-reported
+  precise 4/6, family 4/6. This 11/25 is the active no-regression bar, and the
+  historical 15/25 record stays history.
+- Post-edit, `tests/trigger_evals/results/task/2026-08-11_210206/`, run after
+  the deploy put the edited descriptions live: Findings-era precise **14/25**,
+  family 22/25. Companion-reported precise **4/6**, family 4/6, unchanged.
+- Verdict: no regression. Findings-era precise rose by three and family by
+  four, and no query lost a precise pass, so the revert branch stayed unused.
+
+Three queries flipped from precise fail to precise pass and none flipped the
+other way. Two are `task_audit` rows the new `Use when` clause targets. "audit
+this task — is the work really implemented and backed by tests?" went from
+loading no skill on any of three runs to `task_audit` on all three, and "is this
+task actually done? verify it against the code" went from no skill to
+`task_audit` on two of three. The Context records that second phrasing as a
+known accepted limitation, so the clause reached a case this task did not chase.
+The third flip is a `task_check` row whose pre-edit runs included one
+`task_select` steal. Read it as within-run sampling variance rather than an
+effect of these edits, since neither edited description names readiness.
+
+The one `task_audit` row still failing is "re-check this archived task; did the
+codebase drift away from what it describes?", which loads no skill on any run.
+That matches the instrument-limited annotation already carried on that entry in
+`task.json`: the model answers inline instead of loading a skill, so no
+description wording reaches it.
+
+The runs also surfaced a routing issue outside this task's scope. Both
+`task_implement` rows "build the thing described in this task now" and "go do
+task auth_session-rotation end to end" load `task_select` on all three runs, in
+the pre-edit and post-edit runs alike. That is sibling bleed from `task_select`
+into `task_implement` territory, unchanged by the vendor-word substitution and
+untouched here because this task adds no verb-ceding or hedging clause.
