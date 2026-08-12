@@ -81,7 +81,7 @@ this task repoints it. Neither task blocks the other, since the em dash stays a
 flagged character under the old code and the new one alike.
 
 Co-edit: [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md),
-[ai-dev_skill-doctor-listing-budget-length.md](ai-dev_skill-doctor-listing-budget-length.md),
+[ai-dev_skill-doctor-listing-budget-length.md](archive/ai-dev_skill-doctor-listing-budget-length.md),
 and
 [ai-dev_skill-doctor-repo-convention-portability.md](ai-dev_skill-doctor-repo-convention-portability.md)
 each change findings in the same script and add scenarios to the same test

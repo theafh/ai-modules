@@ -2,8 +2,9 @@
 """Discovery-safety audit for selected SKILL.md frontmatter descriptions.
 
 Parses frontmatter, checks name/description/version usability, dual-audience
-description balance, workflow leakage, risky punctuation / non-ASCII, and
-sibling distinctness / routing overlap. Prints JSON findings. Edits nothing.
+description balance, workflow leakage, risky punctuation / non-ASCII,
+description length against the harness skill-listing budget, and sibling
+distinctness / routing overlap. Prints JSON findings. Edits nothing.
 
 Severity line: a finding blocks when it states a mechanical fact about the
 file — absent or unparseable frontmatter, a missing required field, a
@@ -70,6 +71,19 @@ PURPOSE_MIN_CHARS = 20
 PURPOSE_MIN_WORDS = 5
 KEYWORD_DUMP_MIN_SEGMENTS = 4
 KEYWORD_DUMP_MAX_AVG_WORDS = 3.0
+# Absolute description-length risk, measured against the harness's skill
+# listing rather than against the siblings in the selected set. The listing is
+# built under a character budget of contextWindow × 4 bytes-per-token ×
+# skillListingBudgetFraction (default 0.01), which is roughly 8000 characters
+# at a 200k-token window, and each entry costs its name plus its description
+# truncated to skillListingMaxDescChars (default 1536). When the entries
+# overrun that budget the listing keeps them greedily by a recency-weighted
+# usage score and drops the rest to a name-only entry, so a never-invoked
+# skill loses its description first. The threshold is one-eighth of that
+# default budget: past it, a description's own length puts its listing entry at
+# risk however many siblings surround it, so the check runs per skill.
+LISTING_BUDGET_CHARS = 8000
+LISTING_BUDGET_RISK_CHARS = LISTING_BUDGET_CHARS // 8
 STOPWORDS = {
     "a",
     "an",
@@ -397,6 +411,24 @@ def analyze_skill(path: Path) -> dict:
                         "keep that detail in the skill body"
                     ),
                     "evidence": description[:160],
+                }
+            )
+        if len(description) > LISTING_BUDGET_RISK_CHARS:
+            warnings.append(
+                {
+                    "code": "description_listing_budget_length",
+                    "message": (
+                        f"description is {len(description)} characters, over "
+                        f"the {LISTING_BUDGET_RISK_CHARS}-character threshold "
+                        "at which its length alone risks the harness dropping "
+                        "it from the skill listing (default listing budget "
+                        f"≈{LISTING_BUDGET_CHARS} characters); a listing that "
+                        "overruns that budget keeps descriptions by a "
+                        "recency-weighted usage ranking and lists the rest by "
+                        "name alone, so a never-invoked skill loses its "
+                        "description first"
+                    ),
+                    "evidence": description[:120],
                 }
             )
 

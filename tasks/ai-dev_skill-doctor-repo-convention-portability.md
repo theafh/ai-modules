@@ -95,7 +95,7 @@ this task owns the layout-discovery rewrite of `<scope_resolution>` and
 agent sentence untouched during this task's rewrite, and whichever task lands
 second reconciles the shared surface; neither blocks the other.
 [ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
-and [ai-dev_skill-doctor-listing-budget-length.md](ai-dev_skill-doctor-listing-budget-length.md)
+and [ai-dev_skill-doctor-listing-budget-length.md](archive/ai-dev_skill-doctor-listing-budget-length.md)
 both change findings in `scripts/discovery_safety.py`, and all four add
 scenarios to the same script-test runner.
 
