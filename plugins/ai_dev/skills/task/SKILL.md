@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.26
+version: 1.3.27
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -28,6 +28,8 @@ Activate this skill when the user:
 
 <not_in_scope>
 The wiki skill captures durable knowledge (concepts, procedures, references). The task skill captures *upcoming work* on this project. When a user message is about recording what they learned or how something works, route to `wiki` instead. When they want to track what still needs doing, this skill is right.
+
+A focused sibling serves some of that backlog work better than the hub does. When a request names one task and one lifecycle step — check this task, implement it, audit it, close it out — hand it to the sibling that owns that step, which `<family>` names alongside every other sibling's role. Broad and multi-task backlog work stays with the hub: listing and querying the tree, triaging or updating several tasks in one round, and mining one source into a set of tasks, except where `<family>` names a sibling that owns that whole-tree job. The preference routes a request to the narrower surface rather than withholding it, since the hub keeps every capability `<family>` opens by stating.
 </not_in_scope>
 
 <architecture>
@@ -400,6 +402,15 @@ Mechanical lint repair preserves task intent and file semantics. It bumps `updat
 </not_a_wiki>
 
 </pitfalls>
+
+<output_contract>
+Close every hub workflow — `<create>`, `<query>`, `<update>`, `<archive>`, `<lint>` — with one report in the same four parts, so a run's outcome reads the same whichever workflow produced it:
+
+- **The files touched, by relative path.** Name each task file created, edited, or moved by its path relative to the project root. State that no file changed when the workflow only read, as a `<query>` listing does.
+- **The status or lifecycle move made, where one applies.** Name the `status` written and the move it stands for — `open` on a fresh create, `finished` or `deferred` together with the archive move on a close-out. State that the status stayed as it was when the run made no lifecycle move.
+- **The linter outcome.** Report what the bundled linter returned and which invocation produced it, naming `--include-archive` when a close-out used that form. State that the linter did not run when the workflow never called it.
+- **The assumptions and judgement calls the user should correct.** Name every assumption made about scope, naming, body content, or disposition, every decision reconciled under **Decide or label**, and every surfaced open decision still waiting on the user. State that the run made none when it made none. This part appears on every run, the read-only ones included.
+</output_contract>
 
 <family>
 This base `task` skill is the hub of a `task_*` family and can do all of the backlog work itself. Focused front ends each cover one slice and hand off along a chain:
