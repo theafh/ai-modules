@@ -1,9 +1,9 @@
 ---
-description: Realign the wiki family's activation surface: the hub stops claiming import and audit ground, and each description leads with purpose before trigger language.
+description: Realign the wiki family's activation surface: hub stops claiming import and audit ground, purpose-first descriptions, em-dash sentence splits, and trigger fixtures aligned to the boundary.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-08-11T18:59:52
-status: open
+updated: 2026-08-12T19:28:47
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -43,8 +43,8 @@ research notes in any way`, and reaches its purpose sentence second. It closes
 with `even as a passing reference`. Those two catch-alls claim requests the
 repo's own routing fixtures assign elsewhere: in `tests/trigger_evals/wiki.json`
 the query about a wiki page for a new attribution model built from a pasted
-transcript carries `expected_skill` of `wiki_import`, and the wiki fixture's
-negative set holds a `fix my wiki` phrasing.
+transcript carries `expected_skill` of `wiki_import`, and the query beginning
+`fix my wiki` carries `expected_skill` of `wiki_fix`.
 
 The em dash in the hub description, and both in `wiki_fix`'s, hold clause breaks
 the sentences never earned. The `ai_instruction_writing` skill's
@@ -59,6 +59,15 @@ assumed. The measurement surface is currently unusable, and
 [tests_trigger-eval-harness-repair.md](tests_trigger-eval-harness-repair.md) owns
 repairing it, so the measured re-run happens once that lands.
 
+Co-edit:
+[ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
+renames the `discovery_safety.py` finding codes and narrows both findings from
+the ASCII boundary to a typographic punctuation set. The Acceptance check that
+runs `scripts/discovery_safety.py` already keys off the code names that script
+currently declares, so that rename does not require editing this task. Neither
+task blocks the other, and the em dash stays a flagged character under both the
+old and the new code, so this task's verification holds either way.
+
 ## Approach
 
 1. Rewrite the two `<when_to_activate>` entries in place so the source-ingest
@@ -66,16 +75,21 @@ repairing it, so the measured re-run happens once that lands.
    work, leaving the hub's remaining entries as they are.
 2. Rewrite the hub description so the purpose sentence leads, the `Use when`
    trigger language follows, and the two catch-all clauses narrow to the ground
-   the hub keeps after step 1.
+   the hub keeps after the `<when_to_activate>` sibling-owner rewrite.
 3. Split the unearned clause breaks in the hub and `wiki_fix` descriptions into
-   separate sentences, keeping every trigger phrase both descriptions carry
-   today.
+   separate sentences, keeping every hub trigger phrase that remains after the
+   hub description drops the catch-alls. The `<when_to_activate>` sibling-owner
+   rewrite edits only the hub body list; the hub description rewrite and the
+   em-dash sentence splits edit only the hub and `wiki_fix` frontmatter
+   descriptions; leave `wiki_import` and `wiki_wrapup` descriptions unchanged
+   when they already lead with purpose before `Use when`.
 4. Bring the trigger fixtures into agreement with the boundary this task sets,
-   changing a fixture expectation only where it contradicts that boundary and
-   listing each change in the commit.
+   changing a fixture expectation only where it contradicts that boundary.
 
 **Out of scope:**
 
+- Rewriting `wiki_import` or `wiki_wrapup` descriptions that already lead with
+  purpose before trigger language.
 - The hub's `<lint_and_audit>` operation, which keeps spawning the agent for a
   session already inside a wiki.
 - Family declaration and authority blocks, owned by
@@ -88,20 +102,36 @@ repairing it, so the measured re-run happens once that lands.
 1. Searching the hub `SKILL.md` for `Asks to ingest, add, or process a source`
    returns no match, and the entry that replaces it names `wiki_import` as the
    owner of that request kind.
-2. Searching the hub for `or auto-repair their wiki` returns only an entry naming
-   `wiki_fix`, and no `<when_to_activate>` entry claims audit activation for the
-   hub.
-3. Reading the hub's `<lint_and_audit>` block shows it unchanged, so the agent
+2. Searching the hub `SKILL.md` for `Asks to lint, audit, fix, health-check, clean up, or auto-repair`
+   returns no match, and the entry that replaces it names `wiki_fix` as the
+   owner of that request kind.
+3. The hub `<when_to_activate>` list still contains each of these entries
+   verbatim: `Asks to create, build, or start a wiki or knowledge base.`; `Asks
+   a question that an existing wiki at the discovered location could answer.`;
+   `References their wiki, knowledge base, or "notes" in a research context.`;
+   and `Asks to capture procedural knowledge — workflows, conventions, runbooks
+   — alongside the wiki's subject pages.`
+4. Reading the hub's `<lint_and_audit>` block shows it unchanged, so the agent
    handoff for an in-session audit still exists.
-4. The hub description's first sentence states the skill's purpose with no router
-   directive, and searching both `in any way` and `even as a passing reference`
-   in that description returns no match.
-5. Searching the hub and `wiki_fix` descriptions for the em dash character
+5. The hub description's first sentence states the skill's purpose with no router
+   directive, its `Use when` clause retains trigger language for create, build,
+   start, or initialize a wiki or knowledge base; add, create, or write wiki
+   pages; query, compare, contrast, reference, or analyze an existing wiki to
+   answer a research or domain question; and archive or reorganize wiki pages,
+   and searching both `in any way` and `even as a passing reference` in that
+   description returns no match.
+6. Searching the hub and `wiki_fix` descriptions for the em dash character
    returns no match, both files remain valid UTF-8, and each former dash break
    reads as two sentences.
-6. Running `scripts/discovery_safety.py` from the `skill_doctor` skill over the
-   four family skills reports neither `description_non_ascii` nor
-   `sibling_non_ascii_outlier` for `wiki` or `wiki_fix`.
-7. Every expectation in `tests/trigger_evals/wiki*.json` agrees with the boundary
+7. Running `scripts/discovery_safety.py` from the `skill_doctor` skill over the
+   four family skills reports neither the per-skill nor the sibling-outlier
+   typographic-punctuation finding (each under the code name that script
+   currently declares) for `wiki` or `wiki_fix`.
+8. Every expectation in `tests/trigger_evals/wiki*.json` agrees with the boundary
    this task sets, verified by reading each positive and negative entry against
    the four descriptions.
+9. Reading the `wiki_import`, `wiki_wrapup`, and `wiki_fix` frontmatter
+   descriptions shows each opens with its purpose sentence before `Use when`,
+   with no router directive in the opening sentence.
+10. Reading the `wiki_import` and `wiki_wrapup` frontmatter descriptions shows
+    each unchanged.

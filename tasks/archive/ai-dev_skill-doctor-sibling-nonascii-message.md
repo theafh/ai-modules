@@ -2,8 +2,8 @@
 description: Make skill_doctor's sibling non-ASCII finding report the measured split across the selected set, since its message asserts an ASCII-only sibling set even when several siblings carry non-ASCII.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-11T18:59:52
-updated: 2026-08-11T18:59:52
-status: open
+updated: 2026-08-12T19:12:31
+status: deferred
 reported-by: Andreas Hoffmann
 ---
 
@@ -15,6 +15,17 @@ A reader of the `sibling_non_ascii_outlier` finding learns how the selected set
 actually splits on non-ASCII characters: how many siblings carry them and which
 ones. The finding keeps its code, its warning severity, and its rewrite guidance,
 and its message stays true whether one sibling or several carry non-ASCII.
+
+## Deferred
+
+Deferred as too narrowly scoped. This task repairs one false clause in the
+sibling message while keeping the ASCII boundary as the trait the check fires
+on, and that boundary is itself the defect: it flags every character above
+codepoint 127 while the remedy the message carries addresses only typographic
+punctuation. The successor
+[ai-dev_skill-doctor-typographic-punctuation-finding.md](../ai-dev_skill-doctor-typographic-punctuation-finding.md)
+absorbs this repair as one of its acceptance items and rescopes both findings
+onto the character class the remedy actually fits.
 
 ## Context
 
@@ -34,9 +45,9 @@ The skill's `<discovery_safety>` section describes the sibling comparison as
 covering `non-ASCII characters`, which stays accurate, so the change lands in the
 script's message text rather than in the skill prose.
 
-Co-edit: [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md)
+Co-edit: [ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md)
 also edits this script, and both it and
-[ai-dev_skill-doctor-scope-failure-reporting.md](archive/ai-dev_skill-doctor-scope-failure-reporting.md)
+[ai-dev_skill-doctor-scope-failure-reporting.md](ai-dev_skill-doctor-scope-failure-reporting.md)
 add scenarios to the same script-test runner, so coordinate those two surfaces.
 
 ## Approach

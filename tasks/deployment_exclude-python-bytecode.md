@@ -2,8 +2,8 @@
 description: Exclude __pycache__ directories and stray .pyc files from every deployed artifact so a working tree that ran bundled skill scripts stops pushing Python bytecode into vendor config dirs.
 scope: deployment
 created: 2026-08-10T23:01:29
-updated: 2026-08-10T23:01:29
-status: open
+updated: 2026-08-12T21:43:57
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -45,7 +45,7 @@ State the new behaviour in `deployment/README.md` near the **Plugin asset folder
 
 ## Acceptance
 
-1. A source skill directory staged with both a `scripts/__pycache__/` directory holding a `.pyc` file and a stray `scripts/*.pyc` file outside it deploys to a destination that contains the skill's real files, no `__pycache__` directory, and no `.pyc` file. Stage the source and target under a scratch directory and deploy with `--project-dir` so the check touches no global config directory.
+1. A source skill directory staged with both a `scripts/__pycache__/` directory holding a `.pyc` file and a stray `scripts/*.pyc` file outside it deploys to a destination that contains the skill's real files, no `__pycache__` directory, and no `.pyc` file. Stage the source and target under a scratch directory and deploy with `--project-dir` so the check touches no global config directory. Compare that destination's full recursive listing and per-file checksums against the same skill deployed from a source tree with no bytecode residue; the two destinations are byte-identical.
 2. Re-running that same deploy over a destination that already holds a `__pycache__` directory leaves no `__pycache__` directory and no `.pyc` file behind, which proves the already-shipped bytecode self-heals rather than needing a separate migration.
 3. A deployed skill directory whose source carries no bytecode is byte-identical before and after the change, so the prune removes nothing else. Compare a full recursive listing and per-file checksums of one such destination across the two script versions.
 4. `./deployment/deployment.sh --global --dry-run` exits 0 and reports the same count of copy actions as before the change, confirming the preview path is untouched.

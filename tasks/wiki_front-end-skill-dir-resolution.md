@@ -2,7 +2,7 @@
 description: Define $WIKI_SKILL resolution once in the base wiki skill, route wiki_import/wiki_wrapup through it, and add a one-line canonical-mirror note on the agent's <resolve_runtime_paths>.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-08-04T18:24:58
+updated: 2026-08-12T21:42:50
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -24,6 +24,8 @@ This works only when the executing model improvises the sibling bundle's install
 
 Co-edit note: [wiki_reingest-drift-check-protocol.md](wiki_reingest-drift-check-protocol.md) rewrites the re-ingest sentence inside the same `<capture_raw>` block of `wiki_import` this task retargets to `$WIKI_SKILL` paths — coordinate wording so the block is edited coherently whichever lands first.
 
+Shared hub `<tools>` surface with [wiki_base-skill-bundle-paths.md](wiki_base-skill-bundle-paths.md); see `**Out of scope:**` for the hub bare-call boundary.
+
 ## Approach
 
 1. **Author the rule once in the base skill.** Add a compact, greppably tagged block to the `<tools>` section of [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) (for example `<resolve_wiki_skill_bundle>`) defining how a sibling artefact resolves `$WIKI_SKILL`: the active artefact's own directory when the harness exposes it, then the sibling `wiki` skill inside the same plugin bundle or checkout, then deployed user-skill locations, then a bounded search of agent configuration roots — accepting a candidate only when the required assets exist (`SKILL.md`, `scripts/discover_wiki.sh`, `scripts/lint.py`, `references/template_schema.md`), and stopping with a clear message otherwise. Condense from the agent's proven `<resolve_runtime_paths>` order.
@@ -34,11 +36,12 @@ Co-edit note: [wiki_reingest-drift-check-protocol.md](wiki_reingest-drift-check-
 
 - Copying scripts into the front-end bundles — duplicated artefacts diverge; the family shares one script set in the base skill.
 - Restructuring the agent's resolution block beyond the one-line mirror note — its self-contained form is load-bearing for its isolated execution context.
+- Rewriting the hub skill’s own bare bundled-script invocations (including still-bare `scripts/discover_wiki.sh` / `python3 scripts/lint.py` in `<tools>`) — owned by [wiki_base-skill-bundle-paths.md](wiki_base-skill-bundle-paths.md), which consumes the resolution block this task authors.
 
 ## Acceptance
 
-1. The base `wiki` `SKILL.md` carries the new resolution block under a greppable tag, and that tag is the target both front ends cite; `rg` for the tag name returns the definition plus the two citations. Reading that tagged block confirms the accept-candidate required-asset set (`SKILL.md`, `scripts/discover_wiki.sh`, `scripts/lint.py`, `references/template_schema.md`), the ordered candidate sequence (active artefact directory → sibling `wiki` in the same plugin bundle or checkout → deployed user-skill locations → bounded search of agent configuration roots), and a halt-with-clear-message path when no candidate validates.
+1. The base `wiki` `SKILL.md` carries the new resolution block under a greppable tag, and that tag is the target both front ends cite; `rg '<tag>' ../plugins/knowledge_management/skills/wiki/SKILL.md ../plugins/knowledge_management/skills/wiki_import/SKILL.md ../plugins/knowledge_management/skills/wiki_wrapup/SKILL.md ../plugins/knowledge_management/agents/auto_shaper_wiki.md` returns matches that include the definition, both front-end citations, and the agent's one-line mirror naming that tagged block; hits outside those four paths are ignored. Reading that tagged block confirms the accept-candidate required-asset set (`SKILL.md`, `scripts/discover_wiki.sh`, `scripts/lint.py`, `references/template_schema.md`), the ordered candidate sequence (active artefact directory → sibling `wiki` in the same plugin bundle or checkout → deployed user-skill locations → bounded search of agent configuration roots), and a halt-with-clear-message path when no candidate validates.
 2. `rg '\$WIKI_SKILL' ../plugins/knowledge_management/skills/wiki_import/SKILL.md ../plugins/knowledge_management/skills/wiki_wrapup/SKILL.md` shows every use covered by a preceding resolution reference in the same file, and `rg 'python3 scripts/lint.py' ../plugins/knowledge_management/skills/wiki_import/SKILL.md ../plugins/knowledge_management/skills/wiki_wrapup/SKILL.md` returns no match — both superseded by the `"$WIKI_SKILL/scripts/…"` form. `rg 'references/template_schema\.md' ../plugins/knowledge_management/skills/wiki_import/SKILL.md` shows only `$WIKI_SKILL/references/template_schema.md` — no bare path remains.
 3. `rg 'discover_wiki\.sh' ../plugins/knowledge_management/skills/wiki_import/SKILL.md ../plugins/knowledge_management/skills/wiki_wrapup/SKILL.md` shows only `"$WIKI_SKILL/scripts/discover_wiki.sh"` forms — no bare script name remains in either front end.
 4. The agent's `<resolve_runtime_paths>` block names the base-skill block as its canonical source in one line, with its resolution order otherwise unchanged.
-5. A harness-portability read-through (per the repo's portability review skill) of both front-end skills finds no remaining bare sibling-bundle path; recorded as a checklist item in the change.
+5. A harness-portability read-through (per `harness_portability`) of both front-end skills finds no remaining bare sibling-bundle path; recorded as a checklist item in the change.

@@ -2,8 +2,8 @@
 description: Stop the auto_shaper_wiki agent (and wiki authoring contract) from inserting page-convention prose and lint-sanction prose into wiki page bodies.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:26
-updated: 2026-08-06T11:01:19
-status: open
+updated: 2026-08-12T22:10:24
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -22,7 +22,7 @@ During that remediation the `auto_shaper_wiki` agent inserted two unwanted parag
 - A page-summary paragraph defining "canon" ("Canon for an entry is…", "Each entry records…").
 - A "Page size note" sanction paragraph explaining that the backlog naturally grows past the 200-line lint threshold.
 
-The behaviour is licensed at five sites across the family — enumerate them with `rg "rationale on the page|rationale at the top" plugins/knowledge_management` and locate each by phrase:
+The behaviour is licensed at five sites across the family — enumerate them with `rg -U --multiline 'rationale on\s+the page|rationale at the top' plugins/knowledge_management` and locate each by phrase:
 
 - `<relint_until_clean>` in [auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) — "note the rationale on the page's body **or** in `SCHEMA.md`".
 - `<fix_oversized_page>` in the same file — "add a one-line rationale at the top" of the page.
@@ -43,7 +43,7 @@ Cross-references:
 Related tasks:
 
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) — this task owns dropping the body-routing wording; that task's matching step is verify-only.
-- [wiki_auto-shaper-internal-contradictions.md](archive/wiki_auto-shaper-internal-contradictions.md) — rewrites the clean-bar sentence in the same `<relint_until_clean>` block step 1 edits; coordinate so both edits land coherently whichever ships first.
+- [wiki_auto-shaper-internal-contradictions.md](archive/wiki_auto-shaper-internal-contradictions.md) — finished; its exit-criterion rewrite in `<relint_until_clean>` is already live. Step 1 here drops only the remaining body-routing phrase in that block — do not re-derive the contested-warn carve-out.
 - [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md) — once its per-finding acceptance bullet ships, that bullet becomes the structured home for the rationale this task routes to `SCHEMA.md`'s `## Lint` section; the never-the-page-body rule is unchanged by it.
 
 ## Approach
@@ -59,7 +59,7 @@ Related tasks:
 
 ## Acceptance
 
-- The prose files above — the agent, `SKILL.md`, `template_schema.md`, and `lint_checks.md` — carry the new prohibition, and `rg "rationale on the page|rationale at the top" plugins/knowledge_management` returns no body-routing license; in particular `<fix_oversized_page>` no longer instructs adding a rationale line to the page.
-- `lint.py` reports the new info-level findings on a fixture page containing any of the listed phrases.
-- Fixture wiki containing an oversized todo page → after `wiki_fix`, no new meta-prose paragraph in the page body; sanction rationale only in `SCHEMA.md`'s `## Lint` section or the audit log, never the page body.
+- The prose files above — the agent, `SKILL.md`, `template_schema.md`, and `lint_checks.md` — carry the new prohibition, and `rg -U --multiline 'rationale on\s+the page|rationale at the top' plugins/knowledge_management` returns no body-routing license (including `<inline_iteration_loop>` in `SKILL.md`, where the phrase wraps across lines); in particular `<fix_oversized_page>` no longer instructs adding a rationale line to the page.
+- `lint.py` reports the new info-level findings on both heuristics from Approach step 6: a fixture page containing any of the listed phrases, and a non-synthesis fixture page whose lead paragraph exceeds two sentences.
+- Layer 2 scenario `MP-1` is registered in `tests/wiki/layer2/evals.json` and staged by `tests/wiki/layer2/setup_scenarios.sh` following the sibling `AS-*` pattern (`skill_name: wiki_fix`, out-of-band grading, top-level `passes` denominator). The fixture wiki contains an oversized `todo` page that trips the page-size info finding; after `wiki_fix`, assertions prove the page body gains no meta-prose or sanction paragraph and any accepted-finding rationale appears only in `SCHEMA.md`'s `## Lint` section or the audit log, never the page body. `MP-1` runs against the rewritten agent text as the harness resolves it and reaches the all-passes-clean result across that `passes` denominator, with the graded run recorded under `tests/wiki/layer2/workspace/`.
 - `tests/wiki/run_all.sh --layer2` passes with no regression.

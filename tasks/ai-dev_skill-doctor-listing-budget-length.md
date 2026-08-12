@@ -1,9 +1,9 @@
 ---
-description: Calibrate skill_doctor's description-length finding to the harness skill-listing character budget, and name budget truncation as the cause when a listed skill shows no description.
+description: Calibrate skill_doctor's listing-budget length finding; diagnose bare listing entries as budget truncation or name-only override, not a YAML parse bug.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-11T17:26:49
-updated: 2026-08-11T18:24:43
-status: open
+updated: 2026-08-12T19:24:18
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -67,7 +67,7 @@ all. A single-skill run gets no length signal whatever.
 The skill's `<discovery_safety>` block lists the dimensions the script audits,
 including length outliers, and is where the diagnosis guidance belongs.
 
-Co-edit: [ai-dev_skill-doctor-sibling-nonascii-message.md](ai-dev_skill-doctor-sibling-nonascii-message.md)
+Co-edit: [ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
 and [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md) also
 edit this script, and both of those plus
 [ai-dev_skill-doctor-scope-failure-reporting.md](archive/ai-dev_skill-doctor-scope-failure-reporting.md)
@@ -80,14 +80,15 @@ that runs per skill, independent of how many siblings are in the selected set, a
 keep the existing sibling-relative outlier finding beside it: the two answer
 different questions, one about budget risk and one about family consistency.
 
-Derive the threshold from the documented arithmetic rather than a bare magic
-number: express it as the share of a default-budget listing one entry may claim,
-so the constant carries its derivation in a comment naming the fraction, the
-bytes-per-token factor, and the per-description cap. Report the finding at
+Pin the threshold at one-eighth of the default listing budget: 1000 characters
+against the roughly 8000-character default (contextWindow × 4 ×
+skillListingBudgetFraction at 0.01). Carry the derivation in a comment on the
+constant naming skillListingBudgetFraction, the bytes-per-token factor, and
+skillListingMaxDescChars. Report the finding at
 `warning` severity, consistent with every other description-quality judgement the
-skill makes, and have the message state the measured length, the threshold, and
-the reason a long description is the first thing dropped from a listing that
-overruns.
+skill makes, and have the message state the measured length, the threshold, the listing
+budget, and that a listing overrun drops descriptions by recency-weighted usage
+ranking with never-invoked skills first.
 
 Then rewrite the `<discovery_safety>` passage that describes the length dimension
 so it states the budget, the ranking by recency-weighted usage, and the
@@ -106,12 +107,16 @@ only as a sibling comparison.
 ## Acceptance
 
 1. A single selected skill whose description exceeds the new threshold produces
-   the length finding, proving the check no longer depends on having siblings.
-2. A selected set of two or more skills, all with similar long descriptions,
-   produces the finding for each of them, where the sibling-relative outlier check
-   alone produces none.
+   the length finding at warning severity in the JSON warnings array and not in
+   blocking, proving the check no longer depends on having siblings.
+2. A selected set of two or more skills, each staged with a description
+   exceeding the new threshold and with lengths close enough that
+   `sibling_length_outlier` fires for none, produces the length finding for
+   each of them.
 3. The finding's message states the measured character count and the threshold,
-   and searching the output for the word `budget` returns a match.
+   explains that a listing overrun drops descriptions by recency-weighted usage
+   ranking with never-invoked skills first, and searching the output for the word
+   `budget` returns a match.
 4. A short description well under the threshold produces no length finding, and
    the existing `sibling_length_outlier` finding still fires on a set staged to
    trigger it, unchanged in code and severity.
@@ -119,9 +124,11 @@ only as a sibling comparison.
    set produces the new finding for the 1047-character entry, which today's
    sibling-relative check misses.
 6. `tests/skill_doctor/script_tests/run.sh` gains the scenarios from items 1, 2,
-   and 5 and passes alongside its existing scenarios.
+   4, and 5 and passes alongside its existing scenarios.
 7. The skill's `<discovery_safety>` block states the budget arithmetic, the
    recency-weighted usage ranking, and that a listing entry showing no description
    means either budget truncation or a per-skill `name-only` listing override
    rather than unparseable frontmatter, with no remaining passage that frames
    length as a sibling comparison only.
+8. The threshold constant's comment names skillListingBudgetFraction (0.01), the
+   bytes-per-token factor (4), and skillListingMaxDescChars (1536).

@@ -2,8 +2,8 @@
 description: Give wiki discovery a deterministic exit-2 choice handoff: distinct usage-error exit code, positional path support, agent wording aligned to the script interface, and shell/Python hidden-dir parity.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-07-19T18:51:20
-status: open
+updated: 2026-08-12T21:15:32
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -25,10 +25,11 @@ Prior decisions to honor: [archive/wiki_discovery-from-inside-wiki-dir.md](archi
 
 ## Approach
 
-1. **Distinct usage-error exit code.** Give unrecognized flags their own exit code (documented in the header comment and `--help`), keeping 0 = resolved, 1 = `--check` miss, 2 = ambiguous-with-candidates.
-2. **Positional path handoff.** Accept an optional positional path in `discover_wiki.sh`: validate it (directory exists, or exists-check deferred to `--check` semantics), print it, and exit accordingly — the same contract the two Python tools already offer. This gives every caller, including the agent, a scripted way to say "the user chose this".
-3. **Align the agent's wording.** Rewrite the `<discover_wiki>` step in `auto_shaper_wiki.md` so that after the user picks a candidate the agent adopts that path directly (mirroring the skill's `<proceed_with_operation>`), passing it positionally when it re-invokes any bundled tool; keep the `.no_wiki` marker offer, and drop the unconditional "re-run discovery against that choice" instruction that loops when markers are declined.
+1. **Distinct usage-error exit code (exit 3).** Give unrecognized flags and unsupported argv shapes exit **3** (documented in the header comment and `--help`), keeping **0** = resolved path on stdout, **1** = existence miss under `--check`, **2** = ambiguous-with-candidates on stdout — the **0/1/2** scheme from [archive/wiki_discovery-from-inside-wiki-dir.md](archive/wiki_discovery-from-inside-wiki-dir.md). Follow the repo convention of reserving **3** for a distinct caller signal (`git_commit` uses **3** for drift refusal).
+2. **Positional path handoff.** Extend `discover_wiki.sh` to mirror `lint.py`'s optional positional `wiki_path`: supported forms are `discover_wiki.sh`, `discover_wiki.sh --check`, `discover_wiki.sh WIKI_PATH`, and `discover_wiki.sh WIKI_PATH --check`. With `WIKI_PATH`, mirror `lint.py`'s positional `wiki_path`: when the path exists on disk, print its canonical path and exit **0**; when it does not exist, exit **1** with an error on stderr — without requiring the wiki predicate, so an `AVAILABLE:` choice works. `WIKI_PATH --check` follows the same existence rule. Any other argv shape or unknown flag exits **3** on stderr with no candidate list — never **2**. Callers (including the agent) pass the user's chosen path positionally instead of re-running bare discovery.
+3. **Align the agent's wording.** Rewrite the `<discover_wiki>` step in `auto_shaper_wiki.md` so that after the user picks a candidate the agent sets `$WIKI` from that pick directly (mirroring the skill's `<proceed_with_operation>`), passing it positionally when re-invoking bundled tools; keep the `.no_wiki` marker offer, and remove the instruction to re-run bare `discover_wiki.sh` against the choice.
 4. **Hidden-dir parity.** Make `lint.py`'s discovery skip dot-directories in its child scan, matching the shell (hidden directories are already excluded from the page walk elsewhere, so skipping is the consistent behavior), and state in both implementations' doc comments that they mirror each other.
+5. **Keep the SKILL `<tools>` contract valid.** Update the wiki skill's `<tools>` bash snippet comments (and any exit-code prose beside it) so the existing `case $rc in 2) … ;; *) exit "$rc" ;; esac` branch still matches the documented **0/1/2/3** set — exit **3** stays a hard failure, not an ambiguity prompt.
 
 **Out of scope:**
 
@@ -36,8 +37,9 @@ Prior decisions to honor: [archive/wiki_discovery-from-inside-wiki-dir.md](archi
 
 ## Acceptance
 
-1. `discover_wiki.sh <existing-wiki-path>` prints the path and exits 0; with `--check` and a missing path it exits 1; an unrecognized flag exits with the new usage code, not 2, and prints no candidate list.
-2. `rg "re-run discovery against that choice" ../plugins/knowledge_management/agents/auto_shaper_wiki.md` returns no match; the rewritten step adopts the user's pick directly and still offers the `.no_wiki` markers, and a declined-markers walkthrough of the step text reaches a resolved `$WIKI` without repeating the candidate prompt.
+1. `discover_wiki.sh <existing-wiki-path>` prints the path and exits **0**; `discover_wiki.sh <existing-non-wiki-path>` (an `AVAILABLE:` choice) prints its canonical path and exits **0**; `discover_wiki.sh <missing-path>` exits **1**; `discover_wiki.sh <missing-path> --check` exits **1**; an unrecognized flag (e.g. `--bogus`) exits **3**, not **2**, with a usage message on stderr and no candidate list on stdout.
+2. `rg "discovery against that choice using" ../plugins/knowledge_management/agents/auto_shaper_wiki.md` returns no match; the rewritten `<discover_wiki>` step sets `$WIKI` from the user's pick directly, still offers `.no_wiki` markers for unchosen `AVAILABLE` candidates, and a declined-markers walkthrough reaches a resolved `$WIKI` without repeating the candidate prompt.
 3. On a fixture tree containing a dot-named directory that satisfies the wiki predicate, `discover_wiki.sh` and `python3 lint.py` (no positional argument) resolve to the same wiki.
-4. The script's header comment and `--help` document the full exit-code set including the usage code, and the SKILL `<tools>` snippet's exit-code case handling still parses cleanly against the new codes.
-5. Script unit tests under `tests/wiki/` cover the positional path, the usage exit code, and the dot-directory parity case; `tests/wiki/run_all.sh` passes.
+4. Discovery doc comments in `discover_wiki.sh` and `lint.py` each state they mirror the sibling implementation.
+5. The script's header comment and `--help` document exit codes **0**, **1**, **2**, and **3**; the wiki skill's `<tools>` snippet still parses cleanly and treats exit **3** as a non-ambiguous failure (`*) exit "$rc"`), not as exit **2**'s candidate prompt.
+6. Script unit tests under `tests/wiki/` cover the positional forms (`WIKI_PATH`, `WIKI_PATH --check`), including a non-wiki existing path for both forms, exit **3** on usage error, and the dot-directory parity case; `tests/wiki/run_all.sh` passes.
