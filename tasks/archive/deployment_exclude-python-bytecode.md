@@ -2,9 +2,11 @@
 description: Exclude __pycache__ directories and stray .pyc files from every deployed artifact so a working tree that ran bundled skill scripts stops pushing Python bytecode into vendor config dirs.
 scope: deployment
 created: 2026-08-10T23:01:29
-updated: 2026-08-12T21:43:57
-status: ready
+updated: 2026-08-12T22:44:15
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Exclude Python bytecode from deployed artifacts
@@ -19,7 +21,7 @@ The user-visible outcome is that a deployed skill directory holds only the artif
 
 ## Context
 
-The single leak site is the directory branch of `copy_path_with_replacements()` in `deployment/deployment.sh`, which copies a directory source with `cp -R "$source" "$target"` and a file source with `cp "$source" "$target"`. `cp -R` copies the tree wholesale and BSD `cp` offers no exclusion flag, so every gitignored artifact inside the source directory travels with it. That function is the copy path for skill directories, established when the deploy dropped symlinks in favour of copies: see [deployment_copy-not-symlink.md](archive/deployment_copy-not-symlink.md) for the four call sites it consolidated and why copy became the sole mode.
+The single leak site is the directory branch of `copy_path_with_replacements()` in `deployment/deployment.sh`, which copies a directory source with `cp -R "$source" "$target"` and a file source with `cp "$source" "$target"`. `cp -R` copies the tree wholesale and BSD `cp` offers no exclusion flag, so every gitignored artifact inside the source directory travels with it. That function is the copy path for skill directories, established when the deploy dropped symlinks in favour of copies: see [deployment_copy-not-symlink.md](deployment_copy-not-symlink.md) for the four call sites it consolidated and why copy became the sole mode.
 
 Two facts bound the work, both read from the current script:
 

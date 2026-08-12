@@ -774,6 +774,25 @@ maybe_apply_replacements() {
   ok "replaced" "$target"
 }
 
+# ---------------------------------------------------------------------------
+# Strip Python bytecode from a freshly copied destination directory.
+#
+# A directory source is copied wholesale with `cp -R`, and BSD cp offers no
+# exclude flag, so gitignored bytecode left behind by running a skill's
+# bundled Python scripts travels into every deployment target. Prune it off
+# the destination instead of filtering the copy: __pycache__ trees first,
+# then any stray .pyc sitting outside one. `find` plus `rm` keeps this
+# dependency-free rather than pulling in a copy tool with an exclude flag.
+# ---------------------------------------------------------------------------
+prune_python_bytecode() {
+  local target="$1"
+
+  [[ -d "$target" ]] || return 0
+
+  find "$target" -type d -name '__pycache__' -prune -exec rm -rf {} +
+  find "$target" -type f -name '*.pyc' -exec rm -f {} +
+}
+
 copy_path_with_replacements() {
   local source="$1"
   local target="$2"
@@ -802,6 +821,7 @@ copy_path_with_replacements() {
 
   if [[ -d "$source" ]]; then
     cp -R "$source" "$target"
+    prune_python_bytecode "$target"
   else
     cp "$source" "$target"
   fi

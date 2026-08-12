@@ -50,6 +50,8 @@ Artifacts live under `plugins/<plugin>/<asset-folder>/`, where the asset-folder 
 
 Hidden files and `README*` files are skipped. The deployed name is the file basename without extension, or the skill directory's basename.
 
+Those rules select *which* artifacts get deployed. A separate rule governs what travels *inside* one: a directory artifact is copied wholesale, and the deploy then strips Python bytecode from the destination, so a deployed skill carries the artifact's own files with no `__pycache__` directory and no `.pyc` file whatever bytecode the working tree holds at deploy time. A deploy from a tree that has run bundled skill scripts therefore produces the same destination as one from a clean checkout.
+
 Repo-relative paths for plugin artifacts (e.g. for `deployment.conf` rules and the deploy log) take the form `plugins/<plugin>/<asset-folder>/<artifact>`.
 
 ### Repo-root styles
