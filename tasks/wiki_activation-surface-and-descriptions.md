@@ -2,7 +2,7 @@
 description: Realign the wiki family's activation surface: hub stops claiming import and audit ground, purpose-first descriptions, em-dash sentence splits, and trigger fixtures aligned to the boundary.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-08-12T19:28:47
+updated: 2026-08-13T19:10:25
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -61,12 +61,13 @@ repairing it, so the measured re-run happens once that lands.
 
 Co-edit:
 [ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
-renames the `discovery_safety.py` finding codes and narrows both findings from
+renamed the `discovery_safety.py` finding codes and narrowed both findings from
 the ASCII boundary to a typographic punctuation set. The Acceptance check that
-runs `scripts/discovery_safety.py` already keys off the code names that script
-currently declares, so that rename does not require editing this task. Neither
-task blocks the other, and the em dash stays a flagged character under both the
-old and the new code, so this task's verification holds either way.
+runs `scripts/discovery_safety.py` names the two shipped codes,
+`description_typographic_punctuation` and
+`sibling_typographic_punctuation_outlier`. Neither task blocks the other, and
+the em dash stays a flagged character under both the old and the new code, so
+this task's verification holds either way.
 
 ## Approach
 
@@ -124,9 +125,8 @@ old and the new code, so this task's verification holds either way.
    returns no match, both files remain valid UTF-8, and each former dash break
    reads as two sentences.
 7. Running `scripts/discovery_safety.py` from the `skill_doctor` skill over the
-   four family skills reports neither the per-skill nor the sibling-outlier
-   typographic-punctuation finding (each under the code name that script
-   currently declares) for `wiki` or `wiki_fix`.
+   four family skills reports neither `description_typographic_punctuation` nor
+   `sibling_typographic_punctuation_outlier` for `wiki` or `wiki_fix`.
 8. Every expectation in `tests/trigger_evals/wiki*.json` agrees with the boundary
    this task sets, verified by reading each positive and negative entry against
    the four descriptions.

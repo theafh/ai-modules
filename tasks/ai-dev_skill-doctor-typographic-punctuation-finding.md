@@ -2,9 +2,11 @@
 description: Rescope skill_doctor's two non-ASCII findings onto the typographic punctuation set, rename both codes after that class, drop the UTF-8 half, and report the measured sibling split.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-12T19:09:05
-updated: 2026-08-12T19:16:29
-status: ready
+updated: 2026-08-13T20:35:36
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Rescope skill_doctor's non-ASCII findings onto typographic punctuation and report the measured sibling split
@@ -83,7 +85,7 @@ flagged character under the old code and the new one alike.
 Co-edit: [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md),
 [ai-dev_skill-doctor-listing-budget-length.md](archive/ai-dev_skill-doctor-listing-budget-length.md),
 and
-[ai-dev_skill-doctor-repo-convention-portability.md](ai-dev_skill-doctor-repo-convention-portability.md)
+[ai-dev_skill-doctor-repo-convention-portability.md](archive/ai-dev_skill-doctor-repo-convention-portability.md)
 each change findings in the same script and add scenarios to the same test
 runner, so coordinate those two surfaces across all four.
 

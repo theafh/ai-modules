@@ -431,3 +431,50 @@ uncommitted test tree stay, since no clone can re-read either subject.
 - summaries/ai-modules-repository.md (plugin and skill counts replaced by named
   families with a pointer at `plugins/` for current membership, and the toolchain
   archaeology cut in favour of why both documents name the dependencies)
+
+## [2026-08-13] update | The Claude Code skill load path, read out of the build
+
+Making `skill_doctor` portable across repository conventions needed one question
+answered from the harness rather than from house style: which faults actually stop
+a skill loading or routing. Reading the installed build's own skill load path
+settled five mechanics and overturned two assumptions the wiki had recorded — that
+a missing `version:` and a `name:` disagreeing with its directory are harness
+faults. Neither is. The auditor's severity lines now follow the load path, and the
+page that described the old lines was carrying a statement the code had left
+behind.
+
+- entities/anthropic-claude-code.md (new **Skill loading** section: the
+  case-insensitive filename match and the multiple-files log line, the
+  regular-file-and-byte-limit guard with its stat-follows-symlink behaviour and
+  the skip warning it emits, the registered-name resolution that prefers
+  frontmatter `name:` and falls back to the directory basename, and `version:`
+  being optional in every schema that accepts it — each stamped to the build it
+  was read from, with that read added to the derivation list)
+- concepts/skill-family-architecture.md (severity passage rewritten in place from
+  two tiers to three and re-anchored on the harness load path rather than on the
+  house style, the mismatch and version findings moved to the tiers the harness
+  supports, the portability shift stated, the auditor's scope widened past the
+  plugin layout, and the description-length open question corrected to the two
+  axes it now measures)
+- index.md (both summaries widened to name what the pages gained)
+
+## [2026-08-13] update | The Codex CLI found and read, closing its no-local-build gap
+
+A maintainer correction overturned a wrong negative from the pass above: the
+Codex CLI is installed after all, shipped inside the ChatGPT desktop application
+bundle rather than on PATH — the trap the entity page's own instructions-slot
+section already warned about. Reading the binary settled which harness owns the
+skill load-path messages the portability task quoted (they are Claude's, absent
+from Codex) and yielded Codex's own skill mechanics, previously resting on
+documentation only.
+
+- entities/openai-codex.md (verification preamble rewritten in place now that a
+  local build exists; new **Skill loading** section: the bundle location that
+  hides the binary from PATH lookups, the tooling's closed frontmatter allowlist
+  rejecting `version` while the runtime loader tolerates it on copied-in skills,
+  frontmatter-sourced skill names with no directory-equality rule, the
+  listing-layer metadata budget and traversal cap, the recorded negative that
+  Claude's `Skipping plugin skill` message family appears nowhere in this
+  binary, and the unverified filename-case question; derivation list extended
+  with the binary read)
+- index.md (Codex summary widened to name the skill-loading split)

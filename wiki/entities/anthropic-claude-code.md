@@ -1,7 +1,7 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-08-10
+updated: 2026-08-13
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
 sources: []
@@ -47,6 +47,44 @@ build itself applies and from observed behaviour where a project-local value bea
 a user-level one for the same key. Output styles layer their own discovery and
 collision rules on top of it, recorded on
 [Claude output styles](../concepts/claude-output-styles.md).
+
+### Skill loading
+
+Five mechanics govern whether a skill file is found, loaded, and routable. All
+five were read on 13 August 2026 out of the installed Claude Code build 2.1.226
+and its desktop counterpart 2.1.227, which agree, and they are the load path's
+own code rather than documentation about it.
+
+The skill filename is matched **case-insensitively** against the pattern
+`skill.md` over the file's basename, so `SKILL.md`, `skill.md`, and `Skill.md`
+all load. When one directory holds more than one file matching that pattern, the
+loader takes the first and logs `Multiple skill files found in <dir>, using
+<name>`, which makes the file it loads a matter of directory order rather than
+of authorial intent.
+
+A plugin skill is read through a guard that stats the path and requires a
+**regular file no larger than 1048576 bytes**, one mebibyte. Failing either
+condition the loader skips the skill entirely and warns `Skipping plugin skill
+<path>: not a regular file or exceeds <N> byte limit`, interpolating the limit
+from its own constant. The stat follows symbolic links, so a symlink resolving to
+a regular file loads normally and only a broken link, a link to a directory, or a
+non-regular file trips the guard. A frontmatter the parser cannot destructure
+fails separately with `Failed to load skill from <path>: <error>`.
+
+The name a skill is **registered and routed under** is its frontmatter `name:`
+when that field is a non-empty string, falling back to the containing
+directory's basename only otherwise. The result is sanitised by replacing every
+character outside `[a-zA-Z0-9_-]` with a hyphen, then namespaced as
+`<plugin>:<skill>`. A `name:` disagreeing with its directory therefore loads,
+lists, and routes without complaint — the alignment this repository requires is
+its own convention rather than a harness constraint, which is why
+[skill family architecture](../concepts/skill-family-architecture.md) records the
+auditor reporting the mismatch below its blocking tier.
+
+A skill's `version:` is read by no field that gates loading or routing. The
+frontmatter key is recognised, and every schema that accepts it marks it
+optional, so a skill with no `version:` loads and activates normally. Any
+requirement for the field is a repository convention.
 
 ### Agent definitions
 
@@ -126,5 +164,7 @@ mechanism. Treat the desktop route as owed verification rather than settled.
 
 - `code.claude.com/docs/en/output-styles` and `/docs/en/plugins-reference`.
 - The Claude Code build and desktop bundle installed on 7 August 2026.
+- The skill load path read out of installed builds 2.1.226 and 2.1.227 on
+  13 August 2026, for the skill-loading facts above.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

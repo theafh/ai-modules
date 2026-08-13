@@ -2,9 +2,11 @@
 description: Make skill_doctor usable in any skill-shipping repo: discover the layout, gate only on what the harness rejects, report a missing version as info, and run the checks the repo defines.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-11T18:24:43
-updated: 2026-08-12T19:19:18
-status: ready
+updated: 2026-08-13T19:31:20
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Make skill_doctor portable across repo conventions
@@ -79,7 +81,7 @@ mise tasks, and a pre-commit config, none of which the step knows to look for. T
 sibling-skill lint also presumes that sibling is installed, which a foreign
 checkout need not have.
 
-Reconcile with [ai-dev_skill-doctor-scope-failure-reporting.md](archive/ai-dev_skill-doctor-scope-failure-reporting.md):
+Reconcile with [ai-dev_skill-doctor-scope-failure-reporting.md](ai-dev_skill-doctor-scope-failure-reporting.md):
 keep its three-mode consistency for an empty walk, which this task must not undo,
 and rewrite the absent-layout exit message in place so it names a root-wide
 `SKILL.md` miss rather than a missing `plugins/*/skills/` tree. The terminal
@@ -88,14 +90,14 @@ that keeps skills in a recognized layout still resolves, and unknown-name failur
 inside a populated walk stay separate.
 
 **Co-edit coordination.** Companion, not a prerequisite, with
-[ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md):
+[ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md):
 this task owns the layout-discovery rewrite of `<scope_resolution>` and
 `resolve_scope.py`; that sibling owns the agent-handling passage and any
 `--agent` resolver mode its **Open decision:** settles. Leave the existing
 agent sentence untouched during this task's rewrite, and whichever task lands
 second reconciles the shared surface; neither blocks the other.
-[ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
-and [ai-dev_skill-doctor-listing-budget-length.md](archive/ai-dev_skill-doctor-listing-budget-length.md)
+[ai-dev_skill-doctor-typographic-punctuation-finding.md](../ai-dev_skill-doctor-typographic-punctuation-finding.md)
+and [ai-dev_skill-doctor-listing-budget-length.md](ai-dev_skill-doctor-listing-budget-length.md)
 both change findings in `scripts/discovery_safety.py`, and all four add
 scenarios to the same script-test runner.
 
@@ -115,12 +117,14 @@ the harness fails to load the skill or cannot route it: frontmatter absent or
 unparseable, `name` absent, `description` absent, a parser-hostile or invisible
 character in the description, and a file the harness skips, whether over the byte
 limit, not a regular file, or one of several skill files in a directory. Read that
-byte limit out of the installed Codex CLI at check time by loading an oversized
-staged plugin skill and parsing `<N>` from the `Skipping plugin skill` stderr
-line rather than writing a constant into the script, so it tracks the harness
-whose load path `<Context>` documents. When the Codex CLI is not installed or
-that stderr line cannot be obtained, skip the byte-limit check and name it as
-skipped with its reason in the verification summary.
+byte limit out of the installed harness CLI at check time, from the `Skipping
+plugin skill` message the CLI itself carries. The probed value is authoritative
+only for the host it was read from — the checked skill deploys to machines
+running their own harness builds, so any limit is a hint about other systems.
+When no installed CLI yields the message, run the check against a recorded
+fallback carried in the script with its provenance date, name that source in
+the verification summary, and report drift when a probe disagrees with the
+recording (amended 2026-08-13 with items 6 and 11).
 Keep every description-quality heuristic at `warning`. Retain every existing
 mechanical block `scripts/discovery_safety.py` already emits except
 `version_missing`, which moves to `info` — including `sibling_purpose_not_distinct`
@@ -196,7 +200,7 @@ conditional on that sibling resolving, and name it as skipped when it does not.
   which the `harness_portability` skill owns and this skill's `<boundary>` already
   routes to it.
 - A scope mode for agents, which
-  [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md) owns.
+  [ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md) owns.
 - The check-only contract. This task changes which findings the run gates on, and
   the run still edits no target.
 
@@ -238,10 +242,11 @@ conditional on that sibling resolving, and name it as skipped when it does not.
    byte-identical still produce a blocking `sibling_purpose_not_distinct`
    finding. A symlink or other non-regular file at a selected `SKILL.md` path
    produces a blocking finding, since the harness skips it.
-6. A `SKILL.md` larger than the installed Codex CLI's plugin-skill byte limit
-   produces a blocking finding naming the limit, and the limit in that message
-   matches the `<N>` parsed from the Codex CLI `Skipping plugin skill` stderr
-   line when loading that oversized skill, not a constant in the script.
+6. A `SKILL.md` larger than the installed harness CLI's plugin-skill byte limit
+   produces a blocking finding naming the limit, matching the `<N>` carried by
+   the installed CLI's `Skipping plugin skill` message; the probed value
+   outranks the recorded fallback, and a disagreeing probe reports the drift
+   (amended 2026-08-13 per the Approach, superseding no-constant-in-the-script).
 7. A skill directory holding both `SKILL.md` and `skill.md` produces a blocking
    finding, since the harness picks one and logs the ambiguity.
 8. The name-versus-directory severity is recorded with the Codex CLI behaviour that
@@ -273,8 +278,10 @@ conditional on that sibling resolving, and name it as skipped when it does not.
     coverage is missing.
 11. Run in an environment where the pseudo-XML lint's sibling skill does not
     resolve, the run completes and names that check as skipped with its reason.
-    Run in an environment where the Codex CLI is not installed, the byte-limit
-    check is skipped and named in the verification summary with its reason.
+    Run in an environment where no harness CLI yields the byte-limit message,
+    the check runs against the recorded fallback, and the verification summary
+    names that source with its provenance and the failed-probe reason (amended
+    2026-08-13 with item 6: the fallback replaces the original skip).
 12. `tests/skill_doctor/script_tests/run.sh` gains scenarios for the three
     alternative layouts, the info-tier version finding, the byte-limit block, and
     the ambiguous-skill-file block; supersedes `mech_blocks_version_missing` with

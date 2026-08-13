@@ -1,9 +1,9 @@
 ---
 title: Skill family architecture
 created: 2026-08-08
-updated: 2026-08-10
+updated: 2026-08-13
 type: concept
-tags: [skill, agent, authoring, repo-structure]
+tags: [skill, agent, authoring, repo-structure, portability, discovery]
 sources: []
 confidence: high
 ---
@@ -85,7 +85,8 @@ sends the agent to it.
 ### The rules acquired a checker, and it reads them rather than restating them
 
 The conventions above have a mechanical auditor, `skill_doctor`, which checks a
-single skill, a family, or every skill in the tree and edits nothing. It covers the surfaces this page describes: directory name
+single skill, a family, or every skill the repository exposes, in whatever layout
+it keeps them, and edits nothing. It covers the surfaces this page describes: directory name
 against frontmatter `name:` against the H1 heading, the dual-audience
 `description`, sibling activation boundaries inside a selected family, and the
 registration and version lockstep from
@@ -102,16 +103,34 @@ rules-live-once principle applied across skills rather than within a family, and
 it is what keeps the auditor from becoming a second, drifting statement of the
 house style.
 
-The second is where it draws the line between blocking and warning. A finding
-blocks only when it states a mechanical fact about the file: frontmatter that is
-absent or unparseable, a missing `name`, `description`, or `version`, a name that
-disagrees with its directory, a parser-hostile character, or a purpose summary
-byte-identical to a sibling's. Every judgement about description *quality* warns
-instead, because no heuristic separates a description that carries no trigger
-coverage from one that phrases its triggers differently, and a false block on a
-healthy shipped skill costs the reader more than a warning they dismiss. Severity
-governs what a run gates on, never what it inspects, so every dimension is still
-reported.
+The second is where it draws its severity lines, and the answer is that the
+harness draws them rather than the house style. A finding **blocks** only where
+the harness fails to load the skill or cannot route it, each case read out of the
+harness's own load path recorded on
+[Anthropic Claude Code](../entities/anthropic-claude-code.md): frontmatter that is
+absent or unparseable, an absent `name` or `description`, a parser-hostile
+character, a skill file the loader skips as non-regular or over its byte limit,
+more than one skill file in one directory, and a purpose summary byte-identical to
+a sibling's. Every judgement about description *quality* **warns** instead,
+because no heuristic separates a description that carries no trigger coverage from
+one that phrases its triggers differently, and a false block on a healthy shipped
+skill costs the reader more than a warning they dismiss. A `name:` disagreeing
+with its directory warns for a sharper reason: the loader registers a skill under
+its frontmatter `name:` and falls back to the directory only when that field is
+absent, so the mismatch never stops the skill loading, and the script carries that
+observation beside the finding so the record and the severity move together. A
+third **info** tier holds a fact that is true of the file while a repository
+convention owns the requirement — an absent `version:` sits there, since no
+harness field reads it, and the finding cites the checked repository's own version
+rule or says its rule files state none.
+
+That split is what makes the auditor usable outside this repository. It
+discovers the skill layout rather than requiring the plugin shape, derives each
+registration check from the manifests and conventions the checked repository
+actually exposes, and builds its verification step from that repository's own
+entry points, so a foreign repo's healthy skill stops drawing findings that
+describe conventions it never adopted. Severity governs what a run gates on,
+never what it inspects, so every dimension is still reported in every tier.
 
 ### Authoring and checking constrain each other
 
@@ -131,10 +150,14 @@ There is no measured threshold for when a skill body is too large. The
 portability case was obvious on sight, but the boundary between a skill that
 carries its rules and one that has quietly become a reference manual has so far
 been judged by reading rather than by any rule. The auditor did not close this.
-What it measures is description length, and only relative to the siblings in the
-selected set, so it catches a description that is unlike its neighbours and says
-nothing about a body that has outgrown its purpose. The size question is
-therefore still answered by reading.
+What it measures is description length, on two axes that both stop short of the
+body: one absolute, against the harness listing budget that decides whether a
+description survives into the skill listing at all, and one relative to the
+siblings in the selected set. It also knows the one hard body limit the harness
+imposes, the byte ceiling above which a skill file is skipped outright, which sits
+orders of magnitude above any body written by hand. The size question that
+matters — whether a body has outgrown its purpose — is therefore still answered by
+reading.
 
 ## Related concepts
 

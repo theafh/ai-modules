@@ -2,17 +2,17 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-08-10 | Total pages: 27
+> Last updated: 2026-08-13 | Total pages: 27
 
 ## Entities
 
 <!-- Alphabetical within section -->
 
-- [Anthropic Claude Code](entities/anthropic-claude-code.md) — configuration roots, agent frontmatter tolerance, hooks, safe mode, and the retired activation routes.
+- [Anthropic Claude Code](entities/anthropic-claude-code.md) — configuration roots, the skill load path and what it does and does not enforce, agent frontmatter tolerance, hooks, safe mode, and the retired activation routes.
 - [Cursor](entities/cursor.md) — rules as the whole instruction mechanism, agent fields, and the undocumented home-directory rules folder.
 - [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md) — one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents, and preview plugins.
 - [Google Antigravity](entities/google-antigravity.md) — the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and four open verification gaps.
-- [OpenAI Codex](entities/openai-codex.md) — configuration layers, TOML agent roles, the single instructions slot, personalities, profiles, and hook trust.
+- [OpenAI Codex](entities/openai-codex.md) — configuration layers, the skill tooling's closed allowlist beside a tolerant runtime loader, TOML agent roles, the single instructions slot, personalities, profiles, and hook trust.
 - [SST OpenCode](entities/sst-opencode.md) — its own config tree, foreign-directory discovery, pass-through frontmatter, prompt assembly, and code-only hooks.
 
 ## Concepts
@@ -26,7 +26,7 @@
 - [Hook surface portability](concepts/hook-surface-portability.md) — four configuration schemas plus one that is code, four signalling contracts, additive layers, and what this repository ships and routes today.
 - [Output style delivery design](concepts/output-style-delivery-design.md) — the decision record behind the `styles/` source, the per-target delivery matrix, the marked-block write, and the scope rejections.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md) — why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
-- [Skill family architecture](concepts/skill-family-architecture.md) — naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them.
+- [Skill family architecture](concepts/skill-family-architecture.md) — naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [The deployment model](concepts/deployment-model.md) — two discovery roots, per-tool configuration, generated variants, scope precedence, and the prior-value restore on uninstall.
 - [Verification surfaces for a shipped skill](concepts/verification-surfaces.md) — script tests against behavioral evals, harnesses that never ship, the pinned model under test, and trigger coverage as its own question.
 
