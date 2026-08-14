@@ -1,7 +1,7 @@
 ---
 name: skill_doctor
 description: Check-only doctor for skill artifacts. It audits SKILL.md frontmatter, descriptions that must serve both a browsing user and an LLM router, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo, editing no targets and running no harness-portability review. Use when checking a skill, auditing SKILL.md metadata or descriptions, reviewing skill-family readiness, verifying plugin or marketplace registration, or asking whether skill tests and trigger coverage exist before deeper instruction review.
-version: 1.0.4
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -41,6 +41,10 @@ The resolver discovers the layout instead of requiring one. It walks the whole t
 
 - **Single skill.** A request that names one skill or one skill-file / skill-directory path stays on that skill. Run `scripts/resolve_scope.py --root <repo-root> --skill <name-or-path>`.
 - **Family.** A request that names a family token expands to the matching sibling set. A family hub is the skill whose frontmatter `name:` equals the family token. Skills share that family-name when their frontmatter `name:` equals the token or equals the token followed by `_` and a non-empty suffix (`token_*`). Resolve a family as the set of skill directories the walk found whose skill names share that family-name, unioned with any skills named in the hub `SKILL.md` `<family>` block when that hub and block exist; when no hub or no `<family>` block is present, use that family-name set alone. Run `scripts/resolve_scope.py --root <repo-root> --family <token>`.
+
+  The resolver identifies that `<family>` block structurally rather than by first occurrence: the opening tag has to own its line, outside every fenced code block and inline code span, and a closing tag has to follow it. An author may therefore document the tag freely — naming `<family>` in prose, quoting it in backticks, or showing a whole example block inside a fence — and contribute no members. A body carrying an opening tag with no closing tag declares no block at all and resolves by name prefix alone. Members come from the leading backticked token of each block list item, so a trailing mention such as ``- `task_finish` — bump `updated` `` declares one name rather than two.
+
+  A family run reports what its resolution cannot vouch for. The payload groups the resolved set under `by_plugin`, keyed on each member's owning plugin, so a cross-plugin split reads at a glance; a skill with no plugin manifest above it stays in the flat set and is grouped separately. The `warnings` collection carries three findings, each naming the skills and paths involved: a name-prefix set spanning more than one plugin, a prefix sibling the hub's parsed block omits, and a block entry naming no discovered skill. A same-prefix skill in another plugin stays in the resolved set — a genuine cross-plugin family is what the block's union serves — so the run states the split instead of assuming either reading. All three stay warnings, since the harness loads every one of these skills and a hub may deliberately omit a deprecated sibling.
 - **Whole repo.** A whole-repo request covers every skill the walk finds under the repo root. Run `scripts/resolve_scope.py --root <repo-root> --all`.
 
 Exclude agents unless the user names them. Agents live under `plugins/*/agents/` and are outside the default skill walk.
@@ -54,7 +58,7 @@ When `scripts/resolve_scope.py` exits nonzero, stop and report its message rathe
 </scope_resolution>
 
 <discovery_safety>
-Discovery safety is the first required check on every run. After naming the resolved target set, run `scripts/discovery_safety.py` on every selected `SKILL.md` (for a family request, pass every sibling so outliers are visible).
+Discovery safety is the first required check on every run. After naming the resolved target set, run `scripts/discovery_safety.py` under the same `--root` on every selected `SKILL.md` (for a family request, pass every sibling so outliers are visible).
 
 The script — and the manual follow-through when a path needs judgment — covers:
 
@@ -64,9 +68,11 @@ The script — and the manual follow-through when a path needs judgment — cove
 - Audit each `description:` against the standing repo rule **Write skill descriptions for both audiences.** Treat user readability and LLM trigger matching as separate requirements and judge their balance: a user-readable purpose summary first, then trigger-rich `Use when` language — neither a keyword dump nor a prose-only summary.
 - Flag descriptions that leak internal workflow into `description:` and keep those implementation details in the skill body.
 - Measure each `description:` on its own against the harness skill-listing character budget, so a description long enough to risk losing its listing entry draws a finding whether or not the run selected any siblings.
-- Compare sibling descriptions inside the same selected set for formatting outliers, risky punctuation, typographic punctuation, routing overlap, and user-readable high-level distinctness.
+- Compare sibling descriptions within one comparison group for formatting outliers, risky punctuation, typographic punctuation, routing overlap, and user-readable high-level distinctness.
 
-Description length carries two findings that answer different questions, and both stay. The per-skill finding reads one file against the harness listing budget: Claude Code builds its skill listing under a character budget of `contextWindow × 4` bytes-per-token `× skillListingBudgetFraction` (default `0.01`), roughly 8,000 characters at a 200k-token window, and each entry costs its name plus its description truncated to `skillListingMaxDescChars` (default `1536`). When the entries overrun that budget, the listing keeps them greedily by a recency-weighted usage score, `usageCount × max(0.5 ^ (daysSinceUse / 7), 0.1)`, and lists everything else by name alone. A never-invoked skill scores zero on that ranking, so a long description on a new skill is first to lose it, exactly when the description is the only thing that could get the skill invoked. Both are real `settings.json` keys, so a reader whose own numbers come out differently can check for a raised value. The sibling finding reads the selected set instead and asks whether one description's length is out of step with its family, which is a question about house style rather than about budget risk.
+A sibling finding measures one description against the skills a deliberate declaration binds it to, so the script derives that comparison group itself from the walk under `--root` and takes no grouping argument from the run. It reads the family-name token each selected skill's own name implies — the name's leading segment, which is the broadest token a family request accepts and the one that keeps a hubless prefix family whole — resolves that token the way a family run resolves it, as the name-prefix set unioned with any members the hub's `<family>` block declares, and then splits a same-prefix member another plugin hosts into its own group unless that block names it. Splitting needs a second plugin to split into, so a family hosted wholly inside one plugin stays one group. A skill that no declaration binds to another is a group of one and draws no sibling finding, and every finding names its group under `comparison_groups` and inside its own message. A repo-wide house-style comparison across unaffiliated skills is a separate question that no finding here claims to answer.
+
+Description length carries two findings that answer different questions, and both stay. The per-skill finding reads one file against the harness listing budget: Claude Code builds its skill listing under a character budget of `contextWindow × 4` bytes-per-token `× skillListingBudgetFraction` (default `0.01`), roughly 8,000 characters at a 200k-token window, and each entry costs its name plus its description truncated to `skillListingMaxDescChars` (default `1536`). When the entries overrun that budget, the listing keeps them greedily by a recency-weighted usage score, `usageCount × max(0.5 ^ (daysSinceUse / 7), 0.1)`, and lists everything else by name alone. A never-invoked skill scores zero on that ranking, so a long description on a new skill is first to lose it, exactly when the description is the only thing that could get the skill invoked. Both are real `settings.json` keys, so a reader whose own numbers come out differently can check for a raised value. The sibling finding reads one comparison group instead and asks whether one description's length is out of step with its family, which is a question about house style rather than about budget risk.
 
 A skill that shows up in a session listing as a bare name with no description at all comes from one of two mechanisms, not from frontmatter the harness failed to parse: the budget truncation above, or a per-skill listing override whose `name-only` value lists the skill without its description. Read the length against the budget and check for that override first, and treat the frontmatter as a parse suspect only once both come back clean.
 
@@ -99,9 +105,9 @@ Run in order. Edit no skill artifacts.
 <output_contract>
 Structure the report as:
 
-- A short orientation lead that names the resolved scope mode, the layout the walk resolved, any vendor-to-source substitution it applied, and the exact target skill set.
+- A short orientation lead that names the resolved scope mode, the layout the walk resolved, any vendor-to-source substitution it applied, and the exact target skill set grouped under the plugin that owns each member, with members carrying no plugin manifest grouped separately.
 - **Blocking issues** first — each with file path and greppable evidence.
-- **Warnings** next — same evidence shape.
+- **Warnings** next — same evidence shape, carrying the resolver's family warnings alongside the discovery-safety ones: a name-prefix family spanning more than one plugin, a prefix sibling the hub's `<family>` block omits, and a block entry naming no discovered skill.
 - **Info** next — same evidence shape, for each fact a repository convention owns rather than the harness, naming the rule the finding cites or stating that the rule files carry none.
 - A short **verification summary** that lists the exact commands run and calls out every check that could not run, each with its reason.
 

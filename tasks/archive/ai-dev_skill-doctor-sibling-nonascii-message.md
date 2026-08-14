@@ -2,7 +2,7 @@
 description: Make skill_doctor's sibling non-ASCII finding report the measured split across the selected set, since its message asserts an ASCII-only sibling set even when several siblings carry non-ASCII.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-11T18:59:52
-updated: 2026-08-12T19:12:31
+updated: 2026-08-13T22:32:17
 status: deferred
 reported-by: Andreas Hoffmann
 ---
@@ -23,7 +23,7 @@ sibling message while keeping the ASCII boundary as the trait the check fires
 on, and that boundary is itself the defect: it flags every character above
 codepoint 127 while the remedy the message carries addresses only typographic
 punctuation. The successor
-[ai-dev_skill-doctor-typographic-punctuation-finding.md](../ai-dev_skill-doctor-typographic-punctuation-finding.md)
+[ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
 absorbs this repair as one of its acceptance items and rescopes both findings
 onto the character class the remedy actually fits.
 

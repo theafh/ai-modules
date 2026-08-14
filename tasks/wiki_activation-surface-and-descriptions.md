@@ -2,7 +2,7 @@
 description: Realign the wiki family's activation surface: hub stops claiming import and audit ground, purpose-first descriptions, em-dash sentence splits, and trigger fixtures aligned to the boundary.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-08-13T19:10:25
+updated: 2026-08-13T22:32:17
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -60,7 +60,7 @@ assumed. The measurement surface is currently unusable, and
 repairing it, so the measured re-run happens once that lands.
 
 Co-edit:
-[ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
+[ai-dev_skill-doctor-typographic-punctuation-finding.md](archive/ai-dev_skill-doctor-typographic-punctuation-finding.md)
 renamed the `discovery_safety.py` finding codes and narrowed both findings from
 the ASCII boundary to a typographic punctuation set. The Acceptance check that
 runs `scripts/discovery_safety.py` names the two shipped codes,

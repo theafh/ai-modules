@@ -2,7 +2,7 @@
 description: Calibrate skill_doctor's listing-budget length finding; diagnose bare listing entries as budget truncation or name-only override, not a YAML parse bug.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-11T17:26:49
-updated: 2026-08-12T23:40:18
+updated: 2026-08-13T22:32:17
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -69,7 +69,7 @@ all. A single-skill run gets no length signal whatever.
 The skill's `<discovery_safety>` block lists the dimensions the script audits,
 including length outliers, and is where the diagnosis guidance belongs.
 
-Co-edit: [ai-dev_skill-doctor-typographic-punctuation-finding.md](../ai-dev_skill-doctor-typographic-punctuation-finding.md)
+Co-edit: [ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
 and [ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md) also
 edit this script, and both of those plus
 [ai-dev_skill-doctor-scope-failure-reporting.md](ai-dev_skill-doctor-scope-failure-reporting.md)

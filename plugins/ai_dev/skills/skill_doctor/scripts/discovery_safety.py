@@ -7,6 +7,12 @@ leakage, risky and typographic punctuation, description length against the
 harness skill-listing budget, and sibling distinctness / routing overlap.
 Prints JSON findings. Edits nothing.
 
+Every sibling check compares within one comparison group, which
+`skill_discovery.comparison_groups` derives from the walk under `--root`, so
+a finding that calls a description out of step with its *siblings* measures
+it against the skills a deliberate declaration binds it to. The grouping
+needs no argument from the caller.
+
 Severity line: three tiers, each carrying what it can prove.
 
 - **blocking** — the harness fails to load the skill or cannot route it:
@@ -38,11 +44,24 @@ import stat
 import sys
 from pathlib import Path
 
+# Load the shared discovery module by sibling name. A script run by absolute
+# path already has its own directory first on the import path, while the
+# `importlib.util.spec_from_file_location` form the script tests use adds no
+# such entry, so inserting it here satisfies both load paths.
+_SCRIPT_DIR = str(Path(__file__).resolve().parent)
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+
+from skill_discovery import (  # noqa: E402
+    SKILL_FILE_RE,
+    comparison_groups,
+    die,
+    family_token,
+    group_label,
+    split_frontmatter,
+)
+
 FRONTMATTER_LINE_RE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
-# The harness matches the skill file case-insensitively over its basename, so
-# a directory holding both spellings hands it an ambiguous choice it resolves
-# by picking one and logging which.
-SKILL_FILE_RE = re.compile(r"^skill\.md$", re.IGNORECASE)
 # Standing harness rule files. A repository states its own conventions here,
 # and the info tier cites them rather than assuming the convention exists.
 RULE_FILES = ("AGENTS.md", "CLAUDE.md", "GEMINI.md")
@@ -155,16 +174,17 @@ PURPOSE_MIN_WORDS = 5
 KEYWORD_DUMP_MIN_SEGMENTS = 4
 KEYWORD_DUMP_MAX_AVG_WORDS = 3.0
 # Absolute description-length risk, measured against the harness's skill
-# listing rather than against the siblings in the selected set. The listing is
-# built under a character budget of contextWindow × 4 bytes-per-token ×
-# skillListingBudgetFraction (default 0.01), which is roughly 8000 characters
-# at a 200k-token window, and each entry costs its name plus its description
-# truncated to skillListingMaxDescChars (default 1536). When the entries
-# overrun that budget the listing keeps them greedily by a recency-weighted
-# usage score and drops the rest to a name-only entry, so a never-invoked
-# skill loses its description first. The threshold is one-eighth of that
-# default budget: past it, a description's own length puts its listing entry at
-# risk however many siblings surround it, so the check runs per skill.
+# listing rather than against the siblings in its comparison group. The
+# listing is built under a character budget of contextWindow × 4
+# bytes-per-token × skillListingBudgetFraction (default 0.01), which is
+# roughly 8000 characters at a 200k-token window, and each entry costs its
+# name plus its description truncated to skillListingMaxDescChars (default
+# 1536). When the entries overrun that budget the listing keeps them greedily
+# by a recency-weighted usage score and drops the rest to a name-only entry,
+# so a never-invoked skill loses its description first. The threshold is
+# one-eighth of that default budget: past it, a description's own length puts
+# its listing entry at risk however many siblings surround it, so the check
+# runs per skill.
 LISTING_BUDGET_CHARS = 8000
 LISTING_BUDGET_RISK_CHARS = LISTING_BUDGET_CHARS // 8
 STOPWORDS = {
@@ -196,11 +216,6 @@ STOPWORDS = {
     "are",
     "be",
 }
-
-
-def die(message: str, code: int = 2) -> None:
-    print(f"discovery_safety: {message}", file=sys.stderr)
-    raise SystemExit(code)
 
 
 def harness_cli_paths() -> list[Path]:
@@ -461,29 +476,6 @@ def skill_file_findings(
             }
         )
     return findings
-
-
-def split_frontmatter(text: str) -> tuple[str | None, str]:
-    if not text.startswith("---\n") and not text.startswith("---\r\n"):
-        return None, text
-    # Normalize to \n for scanning; keep original offsets via find on text.
-    if text.startswith("---\r\n"):
-        search_from = 5
-        marker = "\r\n---\r\n"
-        alt = "\n---\n"
-    else:
-        search_from = 4
-        marker = "\n---\n"
-        alt = "\r\n---\r\n"
-    end = text.find(marker, search_from)
-    if end == -1:
-        end = text.find(alt, search_from)
-        if end == -1:
-            return None, text
-        closer_len = len(alt)
-    else:
-        closer_len = len(marker)
-    return text[search_from:end], text[end + closer_len :]
 
 
 def parse_frontmatter_fields(fm: str) -> tuple[dict[str, str], list[str]]:
@@ -840,10 +832,37 @@ def analyze_skill(
     }
 
 
-def sibling_findings(reports: list[dict]) -> list[dict]:
-    """Compare sibling descriptions for overlap and formatting outliers."""
+def sibling_findings(reports: list[dict], groups: dict[str, str]) -> list[dict]:
+    """Compare each description against its own comparison group.
+
+    Every sibling finding claims a description is out of step with its
+    *siblings*, so the comparison runs inside one declared family at a time
+    rather than across whatever set a run selected: `groups` maps each
+    report's path to the group `skill_discovery.comparison_groups` derived
+    from the walk. A skill bound to no family is a group of one, which the
+    fewer-than-two short-circuit leaves silent, so every finding here means
+    what its message says.
+    """
     findings: list[dict] = []
-    with_desc = [r for r in reports if r.get("description")]
+    by_group: dict[str, list[dict]] = {}
+    for report in reports:
+        if not report.get("description"):
+            continue
+        # Falling back to the label the report's own name implies keeps a
+        # message readable rather than naming an empty group, in the one case
+        # a caller hands over a grouping that misses a path it passed.
+        label = groups.get(report["path"]) or group_label(
+            family_token(report["name"]), None
+        )
+        by_group.setdefault(label, []).append(report)
+    for label, group in sorted(by_group.items()):
+        findings.extend(group_sibling_findings(label, group))
+    return findings
+
+
+def group_sibling_findings(label: str, with_desc: list[dict]) -> list[dict]:
+    """Overlap and formatting outliers inside one comparison group."""
+    findings: list[dict] = []
     if len(with_desc) < 2:
         return findings
 
@@ -869,7 +888,7 @@ def sibling_findings(reports: list[dict]) -> list[dict]:
     typographic_carriers = ", ".join(sorted(typographic_outliers))
     typographic_message = (
         f"{len(typographic_outliers)} of {len(with_desc)} descriptions in the "
-        f"selected set carry typographic punctuation ({typographic_carriers}). "
+        f"{label} carry typographic punctuation ({typographic_carriers}). "
         "Where a dash holds together a clause break the sentence never "
         "earned, split the description into two sentences; a hyphen, a double "
         "hyphen, or an en dash substituted into that slot keeps the same "
@@ -885,9 +904,11 @@ def sibling_findings(reports: list[dict]) -> list[dict]:
                     "code": "sibling_length_outlier",
                     "skill": report["name"],
                     "path": report["path"],
+                    "group": label,
                     "message": (
-                        "description length is an outlier versus siblings "
-                        f"(len={len(desc)}, sibling mean≈{mean_len:.0f})"
+                        "description length is an outlier versus its siblings "
+                        f"in the {label} (len={len(desc)}, "
+                        f"sibling mean≈{mean_len:.0f})"
                     ),
                     "evidence": desc[:120],
                 }
@@ -899,6 +920,7 @@ def sibling_findings(reports: list[dict]) -> list[dict]:
                     "code": "sibling_typographic_punctuation_outlier",
                     "skill": report["name"],
                     "path": report["path"],
+                    "group": label,
                     "message": typographic_message,
                     "evidence": desc[:120],
                 }
@@ -910,9 +932,10 @@ def sibling_findings(reports: list[dict]) -> list[dict]:
                     "code": "sibling_risky_punctuation_outlier",
                     "skill": report["name"],
                     "path": report["path"],
+                    "group": label,
                     "message": (
                         "description carries risky punctuation while its "
-                        "siblings stay clear of it"
+                        f"siblings in the {label} stay clear of it"
                     ),
                     "evidence": desc[:120],
                 }
@@ -935,6 +958,7 @@ def sibling_findings(reports: list[dict]) -> list[dict]:
                         "code": "sibling_routing_overlap",
                         "skill": f"{left['name']} vs {right['name']}",
                         "path": f"{left['path']}; {right['path']}",
+                        "group": label,
                         "message": (
                             "sibling descriptions overlap heavily at the "
                             f"token level (jaccard={jaccard:.2f}); keep "
@@ -958,6 +982,7 @@ def sibling_findings(reports: list[dict]) -> list[dict]:
                         "code": "sibling_purpose_not_distinct",
                         "skill": f"{left['name']} vs {right['name']}",
                         "path": f"{left['path']}; {right['path']}",
+                        "group": label,
                         "message": (
                             "sibling purpose summaries are identical at a "
                             "user-readable high level"
@@ -1022,7 +1047,13 @@ def main(argv: list[str] | None = None) -> int:
     reports = [
         analyze_skill(p, byte_limit, repo_root, byte_limit_source) for p in paths
     ]
-    extra = sibling_findings(reports)
+    # The grouping is derived here from the same `--root` the info tier cites,
+    # so a correct family run needs no grouping argument from its caller.
+    groups = comparison_groups(
+        repo_root,
+        [{"name": r["name"], "path": r["path"]} for r in reports],
+    )
+    extra = sibling_findings(reports, groups)
 
     blocking: list[dict] = []
     warnings: list[dict] = []
@@ -1052,8 +1083,15 @@ def main(argv: list[str] | None = None) -> int:
     for bucket in (blocking, warnings, info):
         bucket.sort(key=lambda x: (x.get("path", ""), x.get("code", "")))
 
+    grouped_names: dict[str, list[str]] = {}
+    for report in reports:
+        grouped_names.setdefault(groups[report["path"]], []).append(report["name"])
+
     payload = {
         "skills_checked": [r["name"] for r in reports],
+        "comparison_groups": {
+            label: sorted(names) for label, names in sorted(grouped_names.items())
+        },
         "blocking_count": len(blocking),
         "warning_count": len(warnings),
         "info_count": len(info),

@@ -2,7 +2,7 @@
 description: Make skill_doctor usable in any skill-shipping repo: discover the layout, gate only on what the harness rejects, report a missing version as info, and run the checks the repo defines.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-11T18:24:43
-updated: 2026-08-13T19:31:20
+updated: 2026-08-13T22:32:17
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -96,7 +96,7 @@ this task owns the layout-discovery rewrite of `<scope_resolution>` and
 `--agent` resolver mode its **Open decision:** settles. Leave the existing
 agent sentence untouched during this task's rewrite, and whichever task lands
 second reconciles the shared surface; neither blocks the other.
-[ai-dev_skill-doctor-typographic-punctuation-finding.md](../ai-dev_skill-doctor-typographic-punctuation-finding.md)
+[ai-dev_skill-doctor-typographic-punctuation-finding.md](ai-dev_skill-doctor-typographic-punctuation-finding.md)
 and [ai-dev_skill-doctor-listing-budget-length.md](ai-dev_skill-doctor-listing-budget-length.md)
 both change findings in `scripts/discovery_safety.py`, and all four add
 scenarios to the same script-test runner.
