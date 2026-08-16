@@ -478,3 +478,29 @@ documentation only.
   binary, and the unverified filename-case question; derivation list extended
   with the binary read)
 - index.md (Codex summary widened to name the skill-loading split)
+
+## [2026-08-15] update | Instruction-defect classes and grader-design lessons from the backlog-coherence session
+
+Captured the generalizing knowledge from building the base `task` skill's
+backlog-coherence assessment: a taxonomy of three defect classes in
+AI-consumed instructions that pass human review and fail at runtime (reach,
+disposition, intra-file contradiction), and the eval-grader lessons that a
+grader testing surface form reports working behaviour as broken and a long
+conjunction hides which behaviour broke. The through-line, that measurement
+surfaces what review misses, connects both. The instruction-defect taxonomy is
+new knowledge with no prior home; the grader lessons extend the existing
+verification page because they advance its open question about what an eval
+result means. Confidence medium: the underlying defects are observed, but the
+taxonomy's reach beyond the one block is unvalidated, since the cross-artefact
+pass never ran.
+
+- concepts/instruction-defect-classes.md (new concept page: the three classes,
+  why each evades review, the coordination-link versus reverse-duplicate-pointer
+  contradiction as worked example, and open questions on distillation into a
+  shipped rule, mechanization, and completeness)
+- concepts/verification-surfaces.md (two new state-of-knowledge subsections on
+  grader authoring: surface-form graders misreport, and a conjunction hides
+  which behaviour broke; open question on eval weight sharpened with the
+  distribution framing; cross-link to the new page added)
+- index.md (new concept entry; verification-surfaces summary widened for the
+  grader-honesty lessons)

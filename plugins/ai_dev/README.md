@@ -32,7 +32,7 @@ Three tools sit beside the spine rather than on it:
 
 - **task_select**: recommend what to work on next from the live backlog — the task that most advances the project — without editing anything. It filters eligible tasks at any status, weighs dependencies and ordering, ranks by impact, implementation complexity, friction, and viable bug-fix priority, then names one task and its natural next action, which may be a check pass before implementation. Skippable for a single-task run and leaned on for a larger backlog.
 - **task_explain**: explain one task at a high level without editing it. It resolves one live or archived task, names its status and scope, and gives a compact what/why/how readout so a reader can orient before choosing a lifecycle action.
-- **task_fix**: audit and repair the whole `tasks/` tree in one pass (orient → assess → remediate → verify). It runs the linter, auto-fixes mechanical findings (naming, frontmatter, status/location, links, datetimes), and surfaces judgement calls (splits, cross-task contradictions) for review by default. On explicit opt-in or confirmed scale, it escalates those calls to `auto_shaper_task`, the single serialized writer for that run. It works on the whole backlog, independent of any single task's lifecycle.
+- **task_fix**: audit and repair the whole `tasks/` tree in one pass (orient → assess → remediate → verify), with a default backlog-coherence assessment in the same pass — the selected live tasks are read together with the artifacts they target and judged against each other and the current code, yielding a per-task verdict and a ship order. It runs the linter, auto-fixes mechanical findings (naming, frontmatter, status/location, links, datetimes), and surfaces judgement calls (splits, cross-task contradictions) for review by default. Coherence reconcile stays gated on acceptance or an escalate opt-in; on explicit opt-in or confirmed scale, it escalates those calls to `auto_shaper_task`, the single serialized writer for that run. It works on the whole backlog, independent of any single task's lifecycle.
 
 ### Guardrail documents
 
@@ -61,7 +61,7 @@ Three tools sit beside the spine rather than on it:
 - **auto_gate_task**: wraps `task_check` for `task_auto_check` and returns `task_check`'s full report followed by a structured verdict derived from it: final status, prior status, ready boolean, per-item checklist record, issue list, and evidence labels.
 - **auto_reviewer_task**: proposes minimum task-body repairs from one assigned stance, citing the base `task` skill's `<body>` repair rules and preserving the frozen task intent.
 - **auto_verifier_task**: verifies reviewer proposals with a refute-by-default stance, keeping only real, minimum, issue-resolving, frozen-intent-preserving edits for the orchestrator to apply.
-- **auto_shaper_task**: resolves `task_fix`'s escalated whole-tree judgement calls as the lone writer, applying verified splits, body-framing reframes, scope relocations, and link repairs while preserving frozen task goals and optional `CHARTER.md` boundaries.
+- **auto_shaper_task**: resolves `task_fix`'s escalated whole-tree judgement calls as the lone writer, applying verified splits, body-framing reframes, scope relocations, link repairs, and the accepted backlog-coherence repairs task_fix's default assessment surfaced, while preserving frozen task goals and optional `CHARTER.md` boundaries.
 
 ## Hooks
 

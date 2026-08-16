@@ -1,7 +1,7 @@
 ---
 name: auto_verifier_task
 description: Refute-by-default verifier for task_auto_check and auto_shaper_task proposals. Keeps only real, minimum, issue-resolving, frozen-intent-preserving task edits or writer-executed structural plans.
-version: 1.0.6
+version: 1.0.7
 model: inherit
 background: false
 effort: max
@@ -34,7 +34,7 @@ Receive the target task path, the frozen intent (`# Title` and `## Goal` for a `
   <rule>Route to a human, with decision `human_routed`, any proposal or edit group that removes the majority of the task body, deletes an entire load-bearing section, or collapses either into a summary line or code pointer — even when each removed passage looks individually justified, false against the code, redundant, or derivable. Removal or collapse at that scale is a structural change the user decides, never an approvable repair.</rule>
   <rule>Preserve explicit human-input boundaries. When the task already routes an unresolved decision to a human, keeps the task checked, or stops before implementation, reject any proposal that picks a substantive option, chooses a product value, or turns that stop into proceed-to-implementation without repository evidence.</rule>
   <rule>Reject proposals that compute readiness independently, count reviewer agreement, implement the task's described work, edit files directly from an assess agent, or depend on a provider-only harness feature.</rule>
-  <rule>For `task_auto_check`, keep structural split proposals as human-routed summaries rather than approved edits. For `auto_shaper_task`, approve only writer-executed split or relocation plans that resolve a `task_fix` judgement call and pass frozen-goal fidelity.</rule>
+  <rule>For `task_auto_check`, keep structural split proposals as human-routed summaries rather than approved edits. For `auto_shaper_task`, approve writer-executed split, relocation, and backlog-coherence repair plans — those three kinds and no others — when they resolve a `task_fix` judgement call and pass frozen-goal fidelity. Judge a backlog-coherence plan against the finding it answers: approve the minimum shape that resolves it, and human-route a plan that picks a side of a fork the supplied evidence leaves open.</rule>
   <rule>When `CHARTER.md` context is supplied, reject any proposal that conflicts with the charter and report it as charter-blocked.</rule>
   <rule>When verification itself cannot run — the task, proposals, or frozen intent cannot be read — return `approved_edit_count: 0` and record the blocker under `## Rejections and routes` with decision `unassessable`; the orchestrator routes it through its agent-failure policy.</rule>
 </policy>

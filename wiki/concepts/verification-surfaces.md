@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-08-10
+updated: 2026-08-15
 type: concept
 tags: [skill, repo-structure, authoring, verification-gap]
 sources: []
@@ -98,6 +98,39 @@ harness. The boundary is scope rather than timing, which is what keeps an
 unrelated coverage sweep from consuming the session that was meant to prove one
 edit.
 
+### A grader that tests surface form reports working behaviour as broken
+
+A behavioral eval is only as honest as its grader, and a grader written against
+the surface form of a correct answer rather than its substance reports working
+behaviour as a regression. This showed up as the dominant failure mode while
+building one skill's evals, where grader defects outnumbered defects in the skill
+under test. The recurring shape was a check that fixed on one phrasing, one
+placement, or one shape of a correct answer and rejected every other valid one: a
+verdict demanded on a named side of a two-sided repair, a full enumeration
+required where the repo's own conventions prefer a selector, a match anchored to a
+name that also appears inside a neighbouring record's prose, a multi-word phrase
+matched line by line against hard-wrapped text so a wrap mid-phrase hid it. Every
+one of these passed the thing under test and failed the check, which reads as a
+regression in the skill and is not.
+
+The rule that follows is to assert the property that must hold and accept every
+phrasing and placement that satisfies it. Where a rubric permits two repair
+shapes, the check accepts both; where a report field is structured, the check
+anchors to the record whose subject is the item under test; where the text is
+prose, the check reads it with wraps collapsed. A grader that hard-codes one
+surface form is testing its author's guess about the answer, not the behaviour.
+
+### A long conjunction hides which behaviour broke
+
+An eval that asserts many independent behaviours behind one pass or fail obscures
+which behaviour broke and turns model-sampling noise into a near-certain failure.
+When each of many checks passes on most runs but not all, the conjunction of them
+fails most runs, and a different check fails each time, which reads as instability
+in the skill when it is arithmetic. The signature is a run that fails on a
+different single item each time it is run. The fix is to report a result per
+asserted behaviour rather than one verdict over the whole set, so a slip
+localizes to the behaviour that slipped and the rest stay legible as holding.
+
 ### The auditor checks that verification exists, not that it passes
 
 A skill check reads for the presence of the applicable surface: a script test
@@ -118,7 +151,11 @@ contributor wants to re-run a verification.
 
 The weight a behavioral eval should carry is also open. A result drawn from a
 model is a distribution rather than a value, and nothing here records how many
-passes make a verdict, or what a partial pass rate should block.
+passes make a verdict, or what a partial pass rate should block. The
+per-behaviour reporting rule above sharpens the framing without settling it:
+reading a distribution behind a single conjoined bit is the wrong measurement, so
+a verdict has to be read per behaviour across runs, but how many passing runs
+make one behaviour's verdict stays unrecorded.
 
 ## Related concepts
 
@@ -128,6 +165,9 @@ passes make a verdict, or what a partial pass rate should block.
   the test tree sits among the other document sets.
 - [The deployment model](deployment-model.md), for the other substantial program
   here that every machine depends on and no machine receives.
+- [Instruction-defect classes](instruction-defect-classes.md), for the defect
+  taxonomy that grader measurement surfaced, and for why review and execution
+  test different things.
 
 ## Derived from
 

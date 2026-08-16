@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-08-13 | Total pages: 27
+> Last updated: 2026-08-15 | Total pages: 28
 
 ## Entities
 
@@ -24,11 +24,12 @@
 - [Foreign directory adoption](concepts/foreign-directory-adoption.md) — which harnesses read another's config tree, why that is contamination rather than delivery, and the isolation switches.
 - [Guardrail documents as normative rules](concepts/guardrail-documents-as-rules.md) — presence-gated lookup, optional adoption, the description misreading, the three paths to true, and the guarding/describing split.
 - [Hook surface portability](concepts/hook-surface-portability.md) — four configuration schemas plus one that is code, four signalling contracts, additive layers, and what this repository ships and routes today.
+- [Instruction-defect classes](concepts/instruction-defect-classes.md) — three ways an AI-consumed instruction passes review and fails at runtime (reach, disposition, intra-file contradiction), why review misses each, and why measurement found them.
 - [Output style delivery design](concepts/output-style-delivery-design.md) — the decision record behind the `styles/` source, the per-target delivery matrix, the marked-block write, and the scope rejections.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md) — why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md) — naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [The deployment model](concepts/deployment-model.md) — two discovery roots, per-tool configuration, generated variants, scope precedence, and the prior-value restore on uninstall.
-- [Verification surfaces for a shipped skill](concepts/verification-surfaces.md) — script tests against behavioral evals, harnesses that never ship, the pinned model under test, and trigger coverage as its own question.
+- [Verification surfaces for a shipped skill](concepts/verification-surfaces.md) — script tests against behavioral evals, harnesses that never ship, the pinned model under test, trigger coverage as its own question, and why a grader that tests surface form or hides a conjunction misreports the behaviour.
 
 ## Comparisons
 
