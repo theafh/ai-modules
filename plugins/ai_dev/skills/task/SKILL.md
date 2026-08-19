@@ -425,9 +425,9 @@ Mechanical lint repair preserves task intent and file semantics. It bumps `updat
 **Write for a single-shot implementer.** The task file carries everything the work needs that the project itself does not already hold; everything available at implementation time — codebase, the standing-instruction baseline named in the standing-doc consumption section, the user — stays in play. A body that leans on its birth conversation fails this bar: that conversation is the one context certain to be gone.
 </single_shot_ready>
 
-<not_a_wiki>
-**Tasks are not wiki pages.** Upcoming work goes here; durable subject knowledge goes in the `wiki` skill. If a task taught a lasting lesson, capture that lesson separately in the wiki when archiving.
-</not_a_wiki>
+<capture_lessons_in_wiki>
+**Capture a lasting lesson in the wiki when archiving.** Where the finished work taught something durable about the project, record that lesson through the `wiki` skill as the task file moves to `archive/`, so the lesson survives the task that produced it.
+</capture_lessons_in_wiki>
 
 </pitfalls>
 

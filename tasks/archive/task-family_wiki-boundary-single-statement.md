@@ -2,9 +2,11 @@
 description: Trim the hub's wiki pitfall to the archive-time lesson instruction it alone carries, leaving not_in_scope the single statement of the wiki boundary.
 scope: plugins/ai_dev/skills/task
 created: 2026-08-12T19:09:35
-updated: 2026-08-12T21:37:51
-status: ready
+updated: 2026-08-19T20:24:32
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # State the hub's wiki boundary once
@@ -31,7 +33,7 @@ Only that third sentence is unique. The archive-time instruction to move a lasti
 lesson into the wiki appears nowhere else in the file, and the `<archive>` workflow
 does not carry it either, so the entry earns its place once the restatement goes.
 
-[The hub contract-surfaces task](archive/task-family_hub-contract-surfaces.md) rewrote
+[The hub contract-surfaces task](task-family_hub-contract-surfaces.md) rewrote
 `<not_in_scope>` in place and set the expectation that its wiki sentence is the
 single canonical statement of that boundary. It left this duplication standing
 because trimming a `<pitfalls>` entry sat outside its declared scope, which is the

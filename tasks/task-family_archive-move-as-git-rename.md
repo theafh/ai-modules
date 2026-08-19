@@ -2,8 +2,8 @@
 description: Harden the base task skill's archive move into a real git rename: a per-file tracked test, git mv as default, named plain-mv fallback, and the copy-then-delete pattern it replaces.
 scope: plugins/ai_dev
 created: 2026-08-18T14:35:37
-updated: 2026-08-18T14:35:37
-status: open
+updated: 2026-08-19T20:12:57
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -39,11 +39,10 @@ and with smaller models, close-out recreated the task file under `tasks/archive/
 with an internal file-writing tool and then deleted the original. Git records that as
 a delete plus an unrelated add, so rename detection and history continuity are lost.
 
-Two things depend on the move being a real rename. The `auto_drift_task` agent
-reconstructs a task's committed intent by following renames through history, which
-its `<objective>` describes as following the file across its committed origin; a
-delete-plus-add breaks that walk. And the archived-file birth-time reasoning the
-task-family already settled rests on `git mv` keeping the same inode.
+The move must be a real rename because the `auto_drift_task` agent reconstructs a
+task's committed intent by following renames through history, which its
+`<objective>` describes as following the file across its committed origin; a
+delete-plus-add breaks that walk.
 
 The propagation surfaces, and how each one gets the fix:
 
@@ -57,7 +56,7 @@ The propagation surfaces, and how each one gets the fix:
   "set `status`, bump `updated` from `date`, `git mv`, re-point cross-references,
   re-lint". That is a pointer, not a competing statement of the rule, so it stays as
   written unless the base rewrite changes the words it names.
-- **`auto_shaper_task`** is the one sibling that genuinely hedges. Its `<apply>`
+- **`auto_shaper_task`** is the one sibling that genuinely hedges. Its `<remediate>`
   section says a scope relocation moves "with `git mv` when available", which reads
   as a soft preference an agent may drop. It needs realigning onto the base rule.
 
@@ -90,7 +89,7 @@ negative carries content the positive framing cannot: it identifies the specific
 failing behaviour rather than restating the correct one. Keep the existing sentence
 that the filename does not change.
 
-Realign `auto_shaper_task`'s `<apply>` relocation sentence onto that rule. Replace
+Realign `auto_shaper_task`'s `<remediate>` relocation sentence onto that rule. Replace
 the "when available" hedge with a citation of the base `<archive>` move instruction,
 in the same style the agent already uses when it cites the base skill's
 `<backlog_coherence>` block, so the agent inherits the hardened rule rather than
@@ -109,6 +108,8 @@ unedited unless the base rewrite changes a phrase that parenthetical quotes.
   separate capability with its own design questions.
 - Repairing the git history of task files already archived by a copy-then-delete
   move. Those histories are committed and rewriting them is not worth the cost.
+- A skill-behavior eval measuring whether a model follows the hardened archive
+  instruction.
 
 ## Acceptance
 
@@ -121,9 +122,11 @@ unedited unless the base rewrite changes a phrase that parenthetical quotes.
   moves.
 - The base instruction names the copy-then-delete pattern it replaces, in terms of
   recreating the file with a file-writing tool and deleting the original.
-- `auto_shaper_task`'s `<apply>` relocation sentence no longer hedges: `rg -n 'git mv
+- `auto_shaper_task`'s `<remediate>` relocation sentence no longer hedges: `rg -n 'git mv
   when available' plugins/ai_dev/agents/auto_shaper_task.md` returns nothing, and the
   relocation sentence cites the base `<archive>` move instruction.
+- The filename constraint survives the rewrite: `rg -n 'The filename does not change'
+  plugins/ai_dev/skills/task/SKILL.md` returns the `<archive>` move instruction.
 - A tracked close-out produces a rename. In a throwaway git repository holding a
   committed task file, execute the rewritten instruction exactly as worded; `git
   status --porcelain` reports the move as `R` from the live path to the archive path,
@@ -132,13 +135,3 @@ unedited unless the base rewrite changes a phrase that parenthetical quotes.
   repository, a task file that was created but never committed archives through the
   fallback branch, the file lands at the archive path, and the run reports which
   branch it took.
-
-Open decision: whether this change ships with a skill-behavior eval that measures
-whether a model actually follows the hardened instruction, which means standing up an
-`evals/` directory beside the existing `tests/task/script_tests/` where none exists
-today. Shipping one gives the wording a measured pass rate; skipping it leaves the
-acceptance checks above, which verify the instruction and the procedure but not model
-compliance. An implementer with no further input ships without the eval, because the
-reported failure spans several harnesses and smaller models while an eval in this
-repository measures one harness and one model tier, so a green result would not
-answer the question that motivated the task.
