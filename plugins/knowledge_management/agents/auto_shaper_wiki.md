@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.8.2
+version: 1.9.0
 model: inherit
 background: false
 effort: high
@@ -53,8 +53,11 @@ exists so the SCHEMA read is never skipped or deferred.
     remains `contested: true` at end of audit — whether marked this
     run or already contested before it. Those contested-page warns
     persist by design for human review per `<leave_contested_pages>`
-    and stay in the final report. Only acceptable info-level findings
-    remain beyond that.
+    and stay in the final report. Every info-level finding that is
+    intentional is recorded once as an `- Accepted finding: …` bullet
+    in `$WIKI/SCHEMA.md`'s `## Lint` section, which drops it from the
+    live report and the live counts, so the live info bucket at exit
+    holds only findings no one has reviewed yet.
   </lint_clean>
   <anatomy_compliance>
     Every page matches its declared type's anatomy (sections in the
@@ -62,7 +65,9 @@ exists so the SCHEMA read is never skipped or deferred.
   </anatomy_compliance>
   <topic_separation>
     No page mixes topics that belong on separate pages, and no page
-    exceeds 200 lines without a documented rationale.
+    exceeds 200 lines unless its `size` finding is recorded as an
+    `- Accepted finding: …` bullet in `$WIKI/SCHEMA.md`'s `## Lint`
+    section.
   </topic_separation>
   <procedure_evergreen>
     Procedure pages read as evergreen rules — no proper nouns, dates,
@@ -538,14 +543,22 @@ the fix move.
     </diff_procedure>
 
     <lint_already_covers_prelude>
-      The assess phase's `run_linter` already enforces verbatim equality of
-      the `SCHEMA.md` prelude (everything above the first `##`
-      heading) and the `log.md` preamble against the canonical
-      templates via the `boilerplate` check; any mismatch there is
-      named in the lint output already. The diff procedure here
-      exists to cover everything *below* those slots — `##`
+      The assess phase's `run_linter` enforces verbatim equality of one
+      region against its canonical template via the `boilerplate` check:
+      the `log.md` preamble, everything above the first `##` heading,
+      whose exact wording is the format documentation the log is written
+      against. Any mismatch there is named in the lint output already, so
+      the diff procedure covers everything *below* that slot — `##`
       sections, page-type enum, frontmatter declarations, directory
       layout — which the linter does not enforce verbatim.
+
+      The `SCHEMA.md` attribution paragraph above the first `##` heading
+      is deliberately outside that slot. Every wiki the skill scaffolds
+      ships it, and an owner who removes it has customized their wiki:
+      treat its absence as preserved customization and leave it out,
+      rather than reading the `SCHEMA.md` diff hunk as drift and
+      restoring the paragraph. Every other `SCHEMA.md` prelude
+      difference stays classifiable drift.
     </lint_already_covers_prelude>
 
     <hunk_classification>
@@ -577,10 +590,10 @@ the fix move.
       drift on the surrounding scaffold:
 
       - `template_schema.md`: the body of `## Domain`, the body of
-        `## Tag Taxonomy`, the `Page-check exclusions` bullet in the
-        `## Lint` section, declared custom frontmatter fields beyond
-        the canonical set, and user-added page types beyond the
-        canonical enum.
+        `## Tag Taxonomy`, the `Page-check exclusions` bullet and
+        every `Accepted finding` bullet in the `## Lint` section,
+        declared custom frontmatter fields beyond the canonical set,
+        and user-added page types beyond the canonical enum.
       - `template_index.md`: the header values (`Total pages: N`,
         `Last updated: <date>`) and the page entries inside each
         section.
@@ -707,11 +720,18 @@ affect the same file so each file is opened, read, and rewritten once.
 
     <fix_frontmatter_missing_or_malformed>
       Rewrite the frontmatter block in the canonical order (`title`,
-      `created`, `updated`, `type`, `tags`, `sources`, then optional
-      `confidence`, `contested`, `contradictions`, then any custom
-      field declared in `SCHEMA.md`). Fill missing fields from page
-      content where unambiguous; use today's date for `updated` when
-      bumping after a fix.
+      `created`, `updated`, `type`, `tags`, then `sources`, then
+      optional `confidence`, `contested`, `contradictions`, `checked`,
+      then any custom field declared in `SCHEMA.md`). Fill missing
+      fields from page content where unambiguous; use today's date for
+      `updated` when bumping after a fix.
+
+      Write `sources` only when the page cites raw material the wiki
+      captured under `raw/`: list those paths, and on a page citing none
+      leave the key out of the rewritten block entirely rather than
+      writing an empty list. Carry every optional field the page already
+      has, `checked` included, through the rewrite unchanged, and add
+      none of them the page does not already carry.
     </fix_frontmatter_missing_or_malformed>
 
     <fix_off_taxonomy_tag>
@@ -812,9 +832,12 @@ affect the same file so each file is opened, read, and rewritten once.
     <fix_oversized_page>
       Split into sub-topics with cross-links per the "Page
       thresholds" section of `wiki/SKILL.md`. When the page is a
-      deliberate synthesis page that earns its size, add a one-line
-      rationale at the top and accept the info-level finding instead
-      of splitting.
+      deliberate synthesis page that earns its size, accept its
+      `size` finding instead of splitting: add
+      `- Accepted finding: size — <wiki-root-relative-path>` to
+      `$WIKI/SCHEMA.md`'s `## Lint` section, unfenced. Record it
+      there and nowhere else — no rationale line at the top of the
+      page, and no fresh log paragraph on the next run.
     </fix_oversized_page>
 
     <fix_cross_link_starvation>
@@ -1114,10 +1137,13 @@ affect the same file so each file is opened, read, and rewritten once.
 
   <relint_until_clean>
     Re-run `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"`. Iterate
-    the fix loop until the `<lint_clean>` criterion holds. If a
+    the fix loop until the `<lint_clean>` criterion holds. When a
     specific info-level finding is intentional (e.g., a deliberately
-    oversized synthesis page), note the rationale on the page's body or
-    in `SCHEMA.md` so the next audit knows it is sanctioned.
+    oversized synthesis page), record it once as an
+    `- Accepted finding: …` bullet in `$WIKI/SCHEMA.md`'s `## Lint`
+    section, whose grammar that section documents. The next run drops
+    it from the live report, so the decision is made once instead of
+    being re-justified in prose and re-logged on every audit.
   </relint_until_clean>
 
   <append_audit_log_entry>
@@ -1189,10 +1215,11 @@ affect the same file so each file is opened, read, and rewritten once.
 <policy>
 
   <linter_is_truth_for_structure>
-    Trust the lint script as the structural source of truth. If a
-    check is wrong for the situation, accept the info-level finding
-    and record the rationale on the page or in `SCHEMA.md`. Do not
-    edit the script.
+    Trust the lint script as the structural source of truth. When a
+    check is wrong for the situation, record that finding once as an
+    `- Accepted finding: …` bullet in `$WIKI/SCHEMA.md`'s `## Lint`
+    section rather than as rationale prose on the page. Do not edit
+    the script.
   </linter_is_truth_for_structure>
 
   <wiki_skill_is_truth_for_authoring>

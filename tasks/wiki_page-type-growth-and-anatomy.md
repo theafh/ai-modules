@@ -2,7 +2,7 @@
 description: Make the size lint and the prose split thresholds growth-pattern aware (per-type defaults + SCHEMA `## Lint` growth bullet), and make custom-type anatomies name their session-derived-source label.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:37
-updated: 2026-08-05T19:22:15
+updated: 2026-08-20T19:18:05
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -37,7 +37,7 @@ Related tasks:
 
 - [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md) — owns dropping the "on the page's body or" wording from the auto-shaper and the wider no-meta-in-body prohibition; the matching step here is verify-only.
 - [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md) — the parenthetical-attribution failure this task partly causes by leaving the anatomy ambiguous.
-- [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md) — owns the instance-level accept mechanism; the decided boundary: a declared growth pattern defers size findings type-wide, while the accept mechanism covers an individual reviewed finding. Both tasks add a bullet to the same SCHEMA `## Lint` section and register it in the same agent `<configurable_zones>` list, so coordinate those two edits whichever lands first.
+- [wiki_lint-accepted-info-suppression.md](archive/wiki_lint-accepted-info-suppression.md) — owns the instance-level accept mechanism; the decided boundary: a declared growth pattern defers size findings type-wide, while the accept mechanism covers an individual reviewed finding. Both tasks add a bullet to the same SCHEMA `## Lint` section and register it in the same agent `<configurable_zones>` list, so coordinate those two edits whichever lands first.
 
 ## Approach
 

@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.19.1
+version: 1.20.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -173,15 +173,17 @@ take", that is a procedure.
 | **query** | Question (verbatim, as the page title) · Synthesized answer with cross-links · Confidence and caveats |
 | **procedure** | One-paragraph rule summary · When this applies (the trigger) · The rule · Pitfalls / edge cases (optional, rule-shaped only) · See Also |
 
-Cross-links go in every section that references another wiki page. Source
-attribution lives in the `sources:` frontmatter — a list of
-`raw/<kind>/<slug>.md` paths the lint validates against disk. The frontmatter
-is the single source of truth; pages do not carry a separate body "Sources"
-section, and per-claim attribution uses inline standard-markdown links rather
-than footnote markers (see `<write_or_update_pages>`). External material the
-page was distilled from but that stays outside `raw/` — e.g. doctrine in
-another repo — goes into an optional `## Derived from` body section at the
-page bottom; the renamed heading does not match the linter's deprecated
+Cross-links go in every section that references another wiki page. The object
+being attributed picks the channel. A source the wiki captured under `raw/` is
+cited inline next to the claim it supports, as a standard-markdown link rather
+than a footnote marker, and is listed in the page's `sources:` frontmatter —
+`raw/<kind>/<slug>.md` paths the lint validates against disk (see
+`<write_or_update_pages>`). That field is present on a page citing a captured
+raw source and absent from a page citing none, so a wiki that captures nothing
+carries no `sources:` key rather than an empty list everywhere. External
+material the page was distilled from but that stays outside `raw/` — e.g.
+doctrine in another repo — goes into an optional `## Derived from` body section
+at the page bottom; the renamed heading does not match the linter's deprecated
 `## Sources` regex, so it does not collide with the structured `sources:`
 channel.
 </page_anatomy>
@@ -492,9 +494,11 @@ difference between a growing wiki and a pile of duplicates.
 - **Updating existing pages**: always bump the `updated` date.
 - **Cross-reference**: every new/updated page links to ≥2 others.
 - **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page.
-- **Provenance**: this is an LLM-first wiki, so attribution stays *next to* the claim it attributes — content that belongs together stays together. Claim-level attribution uses inline standard-markdown links: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. **No footnote markers** (`[^name]` / `[^name]: …`) and **no bottom-of-page "Sources" collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes. The page-level `sources:` frontmatter is the canonical inventory; inline links pin specific claims to specific sources within that inventory, and the lint validates both against disk.
-- **External derivation**: when a page is distilled from material that is **not** itself the subject of classification — doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes — that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns". A page may have either, both, or neither.
+- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. It is also listed in the page-level `sources:` frontmatter, the canonical inventory of captured sources the page draws on — present on a page citing a captured raw source, absent from a page citing none, and validated path by path against disk. Uncaptured external lineage takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
+- **External derivation**: when a page is distilled from material that is **not** itself the subject of classification — doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes — that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns", and leave the field off entirely when the page cites no captured raw source. A page may have either, both, or neither.
+- **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
+- **Freshness**: a page drawing on a moving external subject carries `checked: YYYY-MM-DD`, the date its claims were last checked against that subject. Stamp it when you verify the claims, leave it untouched otherwise, and read a page without it as a page to re-check.
 </write_or_update_pages>
 
 <update_navigation>
@@ -702,8 +706,8 @@ Findings come in three buckets:
   Exits 1; must fix.
 - **warn** — orphans, contested pages, source drift, off-taxonomy tags,
   invalid enum/date values, pages missing from the index, verbatim-boilerplate
-  mismatches (e.g., the SCHEMA.md prelude or log.md preamble drifting from
-  the canonical templates in `references/`).
+  mismatches (the log.md preamble drifting from the canonical template in
+  `references/`).
 - **info** — markdown style nits, oversized pages, low-confidence
   single-source pages, unused taxonomy tags, log over 500 entries.
 
@@ -713,17 +717,22 @@ Full check matrix: `references/lint_checks.md`.
 <inline_iteration_loop>
 **Inline iteration loop.** When the lint scope is narrow (one ingest, one
 archive), run, fix the highest-severity findings, re-run. Repeat until the
-script exits 0 or only acceptable info-level findings remain. Append the
-outcome to `log.md`:
+script exits 0. A `contested: true` page keeps its warn by design — that
+dispute signal is for a human to resolve, so it stays in the report. Append
+the outcome to `log.md`:
 
 ```text
 ## [YYYY-MM-DD] lint | N blocking, N warn, N info
 ```
 
 If a check is wrong for the situation (e.g., a deliberately oversized
-synthesis page), don't silence by editing the script — note the rationale on
-the page or in `SCHEMA.md` and accept the info-level finding. The script
-surfaces, doesn't enforce.
+synthesis page), record it once as an `- Accepted finding: …` bullet in
+`SCHEMA.md`'s `## Lint` section, whose grammar that section documents. The
+next run drops the finding from the live report and the live counts and lists
+it under `ACKNOWLEDGED` instead, so the live info bucket holds only findings
+nobody has reviewed yet. Write the decision there and nowhere else — never as
+rationale prose in the page body, and never as a fresh log paragraph each run.
+Leave the script alone: it surfaces, it doesn't enforce.
 </inline_iteration_loop>
 
 </lint_and_audit>

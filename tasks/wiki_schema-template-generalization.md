@@ -2,9 +2,11 @@
 description: Make the shipped wiki SCHEMA template domain-neutral and instruction-shaped: fix provenance, redundancy, and script paths; add freshness, fact-ownership, and decision/planned-work routing.
 scope: plugins/knowledge_management/skills/wiki/references
 created: 2026-08-09T14:02:01
-updated: 2026-08-20T17:47:52
-status: ready
+updated: 2026-08-20T20:04:40
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Generalize the shipped wiki SCHEMA template for any domain and for existing-wiki migration
@@ -59,7 +61,7 @@ Four live tasks own passages in this same file, and this task leaves each alone:
 
 - [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) owns the capture rule and the channel boundary inside the **Provenance** block (which material lands in `raw/` versus `## Derived from`). This task owns only the placement contradiction in defect 1. Both edit the same two bullets, so whichever lands second rewrites over the first rather than appending a second statement.
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) owns the `**Split a page**` threshold bullet and the custom-type anatomy guidance.
-- [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md) owns the accepted-finding mechanism.
+- [wiki_lint-accepted-info-suppression.md](archive/wiki_lint-accepted-info-suppression.md) owns the accepted-finding mechanism.
 - [wiki_non-english-languages-ascii-slugs.md](wiki_non-english-languages-ascii-slugs.md) rewrites the `File names:` bullet for ASCII slugs and already names its English-only example as part of its gap, so both the `no spaces` trim in defect 10 and that bullet's example belong to it. Defect 6 covers only the folder-layout, cross-link, and provenance-fence examples.
 
 Two soft companions share coordination surface but do not own template passages:
@@ -91,7 +93,7 @@ Rewrite each affected passage in place to its target form. The template stays on
 **Out of scope:**
 
 - The `**Split a page**` threshold and custom-type anatomy guidance, owned by [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md).
-- The per-finding accepted-lint mechanism, owned by [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md).
+- The per-finding accepted-lint mechanism, owned by [wiki_lint-accepted-info-suppression.md](archive/wiki_lint-accepted-info-suppression.md).
 - The raw-capture trigger and the `raw/` versus `## Derived from` channel boundary, owned by [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md).
 - The `File names:` bullet, owned by [wiki_non-english-languages-ascii-slugs.md](wiki_non-english-languages-ascii-slugs.md).
 - Rewriting the bare `python3 scripts/compute_sha256.py` prescriptions in `lint.py`, the `lint_checks.md` `drift` row, and `SKILL.md` `<capture_raw_source>` — this task proves the template rewrite only.

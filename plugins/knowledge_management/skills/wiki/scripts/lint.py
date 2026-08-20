@@ -6,6 +6,11 @@ the format_markdown skill), tag taxonomy compliance, stale content,
 oversized pages, source drift, and log rotation. Findings are grouped
 by severity so the caller knows what to fix first.
 
+An info finding the wiki owner has reviewed and accepted is declared on an
+``- Accepted finding: …`` bullet in SCHEMA.md's ``## Lint`` section. It leaves
+the live counts and the report body for a trailing context-only section, so an
+accepted finding stops re-surfacing as work.
+
 Usage:
     python3 lint.py [WIKI_PATH] [--quiet]
 
@@ -150,10 +155,15 @@ def discover_wiki(arg: str | None) -> Path:
 SPECIAL_FILES = ("SCHEMA.md", "index.md", "log.md")
 
 VALID_CONFIDENCE = {"high", "medium", "low"}
-REQUIRED_FRONTMATTER = ("title", "created", "updated", "type", "tags", "sources")
+REQUIRED_FRONTMATTER = ("title", "created", "updated", "type", "tags")
 
-# Built-in keys handled by other checks; custom-field validation skips these.
-CANONICAL_FRONTMATTER = set(REQUIRED_FRONTMATTER) | {"confidence", "contested", "contradictions"}
+# Canonical keys beyond the required set: `sources` is present only on a page
+# citing a source captured under `raw/`, and the quality signals are optional
+# throughout. Built-in keys handled by other checks; custom-field validation
+# skips all of these.
+CANONICAL_FRONTMATTER = set(REQUIRED_FRONTMATTER) | {
+    "sources", "confidence", "contested", "contradictions", "checked",
+}
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TYPE_ENUM_RE = re.compile(r"^\s*type\s*:\s*([^\n]+)$", re.MULTILINE)
@@ -195,6 +205,17 @@ SEV_INFO = 2
 SEVERITY_LABEL = {SEV_BLOCKING: "blocking", SEV_WARN: "warn", SEV_INFO: "info"}
 
 
+def rel_to_wiki(path: Path, wiki: Path) -> str:
+    """Spell `path` the way findings and acceptance bullets both name a file:
+    relative to the wiki root, POSIX-separated. A path outside the wiki keeps
+    its own spelling, which is what the reporter already showed.
+    """
+    try:
+        return path.relative_to(wiki).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 @dataclass
 class Issue:
     severity: int
@@ -204,13 +225,19 @@ class Issue:
     line: int | None = None
 
     def render(self, wiki: Path) -> str:
-        try:
-            rel = self.path.relative_to(wiki)
-        except ValueError:
-            rel = self.path
         loc = f":{self.line}" if self.line else ""
         label = SEVERITY_LABEL[self.severity]
-        return f"  [{label:8}] {self.category:14} {rel}{loc}  {self.message}"
+        return f"  [{label:8}] {self.category:14} {rel_to_wiki(self.path, wiki)}{loc}  {self.message}"
+
+    def render_acknowledged(self, wiki: Path) -> str:
+        """Render an accepted finding for the acknowledged section.
+
+        Deliberately drops the `[severity]` bracket the live buckets use, so an
+        accepted finding never reads — to an agent or a grep — as a finding that
+        still wants action.
+        """
+        loc = f":{self.line}" if self.line else ""
+        return f"  (accepted) {self.category:14} {rel_to_wiki(self.path, wiki)}{loc}  {self.message}"
 
 
 # ---------------------------------------------------------------------------
@@ -343,6 +370,56 @@ LINT_EXCLUDE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A wiki owner marks one reviewed-and-accepted info finding with a second kind
+# of ``## Lint`` bullet: ``- Accepted finding: <category> — <path>`` and its
+# longer discriminating forms (see ``parse_acceptance``). The label is matched
+# case-insensitively and ``-``/``*``/``+`` all serve as the marker, matching
+# the exclusions bullet.
+LINT_ACCEPT_RE = re.compile(
+    r"^\s*[-*+]\s+accepted finding\s*:\s*(.+)$",
+    re.IGNORECASE,
+)
+
+# The field separator inside an ``Accepted finding:`` bullet: an em dash with a
+# space on each side, so a path or a message may carry a bare hyphen.
+ACCEPT_SEP = " — "
+
+# Categories whose acceptance takes the short two-field (path-only) form. Each
+# emits at most one line-less Issue per path, and each message embeds a counter
+# or a date that moves between runs, so the path alone identifies the finding
+# and no acceptance ever keys on the volatile substring.
+TWO_FIELD_CATEGORIES = frozenset({"size", "log", "stale"})
+
+
+def iter_lint_section_lines(wiki: Path) -> Iterator[str]:
+    """Yield the unfenced lines of SCHEMA.md's ``## Lint`` section.
+
+    Every machine-read setting in that section — the ``Page-check exclusions:``
+    walk exclusions and the ``Accepted finding:`` acceptance store — reads its
+    bullets through here, so one fence-safe scan serves them all. Fenced blocks
+    are skipped, mirroring ``load_taxonomy`` and the body scanners, so a bullet
+    shown inside a fenced example (in the canonical template, or where a vault
+    documents its own settings) is never read as live config. A missing
+    SCHEMA.md or a missing section yields nothing and leaves every caller on
+    its defaults.
+    """
+    schema = wiki / "SCHEMA.md"
+    if not schema.is_file():
+        return
+    section = re.search(
+        r"##\s+Lint(.+?)(?=\n##\s|\Z)", schema.read_text(encoding="utf-8"), re.DOTALL
+    )
+    if not section:
+        return
+    in_fence = False
+    for line in section.group(1).splitlines():
+        if FENCE_RE.match(line.strip()):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        yield line
+
 
 def load_excluded_roots(wiki: Path) -> set[str]:
     """Top-level directory names to skip during the page walk.
@@ -352,35 +429,144 @@ def load_excluded_roots(wiki: Path) -> set[str]:
     section in SCHEMA.md — directory names directly under the wiki root,
     comma-separated, additive to the two defaults. A vault that mixes
     curated pages with operational or imported subtrees keeps the page rules
-    off those trees this way.
+    off those trees this way. This is the directory-level suppression: it drops
+    a whole tree from the walk, where an ``Accepted finding:`` bullet accepts
+    one individual finding.
 
-    The scan is scoped to the ``## Lint`` section and skips fenced code
-    blocks within it, mirroring ``load_taxonomy`` and the body scanners — so
-    the bullet shown inside a fenced example (in the canonical template, or
-    where a vault documents its own list) is never read as live config.
-    Absent section or bullet leaves the default ``{raw, _archive}``
-    unchanged, so existing vaults are unaffected.
+    Reads through ``iter_lint_section_lines``, so an absent section or bullet
+    leaves the default ``{raw, _archive}`` unchanged and a fenced example stays
+    documentation rather than live config.
     """
     roots = {"raw", "_archive"}
-    schema = wiki / "SCHEMA.md"
-    if not schema.is_file():
-        return roots
-    section = re.search(
-        r"##\s+Lint(.+?)(?=\n##\s|\Z)", schema.read_text(encoding="utf-8"), re.DOTALL
-    )
-    if not section:
-        return roots
-    in_fence = False
-    for line in section.group(1).splitlines():
-        if FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
+    for line in iter_lint_section_lines(wiki):
         m = LINT_EXCLUDE_RE.match(line)
         if m:
             roots |= {p.strip().strip("`*_'\"") for p in m.group(1).split(",") if p.strip()}
     return roots
+
+
+@dataclass(frozen=True)
+class Acceptance:
+    """One reviewed-and-accepted finding, declared as a ``## Lint`` bullet.
+
+    An acceptance identifies exactly one finding. ``line`` and ``message``
+    carry the discriminators the shorter forms leave out; ``parse_acceptance``
+    holds the grammar and ``matches`` holds the predicate.
+    """
+
+    category: str
+    path: str
+    line: int | None = None
+    message: str | None = None
+
+    def matches(self, issue: Issue, rel: str) -> bool:
+        """True when `issue`, spelled wiki-relative as `rel`, is this
+        acceptance's finding.
+
+        Acceptance reaches info findings alone: a bullet whose text also
+        describes a blocking or warn finding leaves that finding live, because
+        a wiki owner accepts style and soft-cap nits, never structural
+        breakage.
+        """
+        if issue.severity != SEV_INFO:
+            return False
+        if issue.category != self.category or rel != self.path:
+            return False
+        if self.line is not None:
+            # Four-field form: line and message together pin one finding out of
+            # several sharing a path. A line with no discriminator is an
+            # incomplete bullet and matches nothing.
+            return (
+                self.message is not None
+                and issue.line == self.line
+                and issue.message == self.message
+            )
+        if self.message is None:
+            # Two-field form: only the whitelisted volatile-message categories
+            # are identified by path alone. Anywhere else the bullet is too
+            # coarse to name one finding, so it matches nothing and the finding
+            # stays live until the owner writes a discriminating form.
+            return self.category in TWO_FIELD_CATEGORIES and issue.line is None
+        # Three-field form: exact message, and only for a line-less finding.
+        return issue.line is None and issue.message == self.message
+
+
+def parse_acceptance(payload: str) -> Acceptance | None:
+    """Parse the payload of one ``Accepted finding:`` bullet.
+
+    Three grammar forms, parsed left-anchored on ``ACCEPT_SEP`` so a message
+    carrying its own em dash survives intact as the trailing field:
+
+    - ``<category> — <path>`` — two-field, for ``TWO_FIELD_CATEGORIES``.
+    - ``<category> — <path> — <message>`` — three-field, for a line-less
+      finding of any other category.
+    - ``<category> — <path> — <line> — <message>`` — four-field, for a
+      line-bearing finding.
+
+    Category and path are identifiers, so surrounding whitespace and decorative
+    backticks come off them. The discriminator stays byte-exact after the
+    separator, since matching it against ``Issue.message`` is the whole point.
+    Returns None for a payload that names no path.
+    """
+    if ACCEPT_SEP not in payload:
+        return None
+    category, rest = payload.split(ACCEPT_SEP, 1)
+    category = category.strip().strip("`")
+    if not category:
+        return None
+    if ACCEPT_SEP not in rest:
+        path = rest.strip().strip("`")
+        return Acceptance(category, path) if path else None
+    raw_path, remainder = rest.split(ACCEPT_SEP, 1)
+    path = raw_path.strip().strip("`")
+    if not path:
+        return None
+    head, _, tail = remainder.partition(ACCEPT_SEP)
+    if head.strip().isdigit():
+        # A digits-only field after the path is Issue.line; the remainder is the
+        # discriminator and may carry further em dashes of its own.
+        return Acceptance(category, path, int(head.strip()), tail or None)
+    return Acceptance(category, path, None, remainder)
+
+
+def load_accepted_findings(wiki: Path) -> tuple[Acceptance, ...]:
+    """Every acceptance declared in SCHEMA.md's ``## Lint`` section.
+
+    Keeps the wiki owner's reviewed decisions in one reviewable place and out of
+    the page bodies, read through the same fence-safe scan as the walk
+    exclusions.
+    """
+    accepted: list[Acceptance] = []
+    for line in iter_lint_section_lines(wiki):
+        m = LINT_ACCEPT_RE.match(line)
+        if not m:
+            continue
+        acceptance = parse_acceptance(m.group(1).rstrip())
+        if acceptance is not None:
+            accepted.append(acceptance)
+    return tuple(accepted)
+
+
+def partition_accepted(
+    wiki: Path, issues: list[Issue], acceptances: tuple[Acceptance, ...]
+) -> tuple[list[Issue], list[Issue]]:
+    """Split `issues` into (live, acknowledged).
+
+    An acknowledged finding leaves the live counts and the default report body
+    entirely, so a reviewed-and-accepted info finding stops inflating the info
+    count and stops prompting a fresh justification on every run.
+    """
+    if not acceptances:
+        return issues, []
+    live: list[Issue] = []
+    acknowledged: list[Issue] = []
+    for issue in issues:
+        rel = rel_to_wiki(issue.path, wiki)
+        if any(a.matches(issue, rel) for a in acceptances):
+            acknowledged.append(issue)
+        else:
+            live.append(issue)
+    return live, acknowledged
 
 
 def iter_wiki_pages(wiki: Path) -> Iterator[Path]:
@@ -648,12 +834,17 @@ def check_taxonomy_style(wiki: Path) -> list[Issue]:
 # ---------------------------------------------------------------------------
 # Verbatim boilerplate (deterministic prelude/preamble enforcement)
 #
-# Some regions of a wiki must match the canonical template byte for byte
-# (e.g., the SCHEMA.md prelude carrying the "managed by the wiki skill"
-# attribution paragraph, or the log.md preamble with its append-only
-# conventions). The agent's diff-driven scaffold audit catches drift in
+# A slot covers a region whose exact wording is load-bearing format
+# documentation the rest of the wiki is written against: the log.md
+# preamble carrying the append-only conventions blockquote is the one
+# such region. The agent's diff-driven scaffold audit catches drift in
 # theory but depends on diligence; this check enforces verbatim equality
 # deterministically, so the lint output is the structural source of truth.
+#
+# The SCHEMA.md attribution paragraph is deliberately not a slot. Every
+# wiki the skill scaffolds ships it, and an owner who would rather not
+# keep it may delete it without drawing a finding — it is credit offered,
+# not format compelled.
 #
 # Add another VerbatimSlot to extend coverage. Each slot pairs a wiki
 # file with its canonical template and an extractor that returns the
@@ -671,8 +862,9 @@ def extract_h1_prelude(text: str) -> str:
     equal preludes compare equal regardless of trailing whitespace.
 
     The prelude is the canonical home for "must-stay-verbatim" content like
-    the attribution paragraph in SCHEMA.md or the conventions blockquote in
-    log.md — everything above where configurable section bodies begin.
+    the conventions blockquote in log.md — everything above where
+    configurable section bodies begin. What lands in a slot is decided by
+    VERBATIM_SLOTS, not by this extractor.
     """
     out: list[str] = []
     for line in text.splitlines(keepends=True):
@@ -692,11 +884,6 @@ class VerbatimSlot:
 
 
 VERBATIM_SLOTS: tuple[VerbatimSlot, ...] = (
-    VerbatimSlot(
-        wiki_file="SCHEMA.md",
-        template_file="template_schema.md",
-        label="SCHEMA.md prelude (H1 plus paragraphs above first `##`)",
-    ),
     VerbatimSlot(
         wiki_file="log.md",
         template_file="template_log.md",
@@ -767,7 +954,7 @@ def check_frontmatter(
             f"invalid type {fm['type']!r} (expected one of {sorted(valid_types)})",
         ))
 
-    for date_field in ("created", "updated"):
+    for date_field in ("created", "updated", "checked"):
         v = fm.get(date_field)
         if isinstance(v, str) and v and not DATE_RE.match(v):
             issues.append(Issue(SEV_WARN, "frontmatter", page, f"{date_field} not in YYYY-MM-DD format: {v!r}"))
@@ -1685,12 +1872,38 @@ def check_wikilink_syntax(wiki: Path) -> list[Issue]:
 # Reporter
 # ---------------------------------------------------------------------------
 
-def render_report(wiki: Path, issues: list[Issue], quiet: bool) -> str:
+def render_report(
+    wiki: Path,
+    issues: list[Issue],
+    quiet: bool,
+    acknowledged: list[Issue] | None = None,
+) -> str:
+    """Render the audit report over the live findings.
+
+    `acknowledged` holds the info findings an ``Accepted finding:`` bullet has
+    already settled. They stay out of every live bucket, out of the total, and
+    out of the counts, and appear only in a trailing context section that names
+    itself as needing no action — so a reviewed decision is still visible
+    without asking to be re-justified. ``--quiet`` drops them with the rest of
+    the info level.
+    """
+    ack = list(acknowledged or [])
     if quiet:
         issues = [i for i in issues if i.severity != SEV_INFO]
+        ack = []
+
+    ack_block: list[str] = []
+    if ack:
+        ack.sort(key=lambda i: (i.category, str(i.path), i.line or 0))
+        ack_block.append("")
+        ack_block.append(
+            f"ACKNOWLEDGED ({len(ack)}) — accepted in SCHEMA.md `## Lint`; "
+            "context only, already decided, no action and no rationale needed"
+        )
+        ack_block.extend(issue.render_acknowledged(wiki) for issue in ack)
 
     if not issues:
-        return f"clean — no issues in {wiki}"
+        return "\n".join([f"clean — no issues in {wiki}", *ack_block])
 
     issues.sort(key=lambda i: (i.severity, i.category, str(i.path), i.line or 0))
     by_sev: dict[int, list[Issue]] = defaultdict(list)
@@ -1713,6 +1926,7 @@ def render_report(wiki: Path, issues: list[Issue], quiet: bool) -> str:
         for s in (SEV_BLOCKING, SEV_WARN, SEV_INFO)
     )
     out.append(f"total: {len(issues)}  ({summary})")
+    out.extend(ack_block)
     return "\n".join(out)
 
 
@@ -1787,7 +2001,11 @@ def main() -> int:
     issues.extend(check_raw_origin_form(wiki))
     issues.extend(check_raw_frontmatter(wiki))
 
-    print(render_report(wiki, issues, args.quiet))
+    issues, acknowledged = partition_accepted(
+        wiki, issues, load_accepted_findings(wiki)
+    )
+
+    print(render_report(wiki, issues, args.quiet, acknowledged))
     return 1 if any(i.severity == SEV_BLOCKING for i in issues) else 0
 
 

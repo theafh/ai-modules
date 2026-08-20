@@ -2,9 +2,11 @@
 description: Add a declared-direction register to the guardrail family — a `## Direction` target the code drives toward, not a shipped/unshipped ledger — and teach guardrail_audit not to flag or soften an unreached target.
 scope: plugins/ai_dev/skills
 created: 2026-08-15T12:31:08
-updated: 2026-08-19T20:11:53
-status: ready
+updated: 2026-08-20T18:43:52
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Declared direction is a target the code drives toward, not a build ledger
@@ -13,7 +15,7 @@ reported-by: Andreas Hoffmann
 
 The guardrail family gains a third enforcement register beside guarding and describing: **declared direction**. A `## Direction` statement in `ARCHITECTURE.md` names a target shape the project is deliberately steered toward, and it holds as a standing commitment whether or not the code has reached it — code short of the target is unmet work the next task drives toward, exactly as a guarding rule's shortfall is unmet work, not a doc to soften. The user-visible outcome is twofold. First, `references/architecture.md` stops permitting a `## Direction` section to read as a progress ledger ("the write side shipped", "two thirds of the read side has now shipped", "what remains is…"): the section states the target, and built-versus-intended is told apart at the section boundary rather than by per-item shipped markers. Second, `guardrail_audit` stops treating an unreached direction target as a describing falsehood: it neither flags a `## Direction` component the code has not built yet as a "names a technology the code does not use" finding, nor offers to soften or delete the target to match today's code, and instead reads it as drive-toward work.
 
-This closes the gap the predecessor [guardrail-target-state task](archive/ai-dev_guardrail-target-state-and-audit-findings.md) left open. That work made *rules* normative and, in the same pass, scoped `references/architecture.md`'s direction rules as binding *descriptive* content — leaving `## Direction` sitting inside the describing register with no drive-toward pull of its own. A real `ARCHITECTURE.md` `## Direction` section that labeled each item as shipped or remaining satisfied "built and intended told apart" yet degenerated into exactly the ledger this family should forbid, and an audit run over it would offer to bring the doc "back to the code" by deleting the not-yet-built target. Direction needs its own register.
+This closes the gap the predecessor [guardrail-target-state task](ai-dev_guardrail-target-state-and-audit-findings.md) left open. That work made *rules* normative and, in the same pass, scoped `references/architecture.md`'s direction rules as binding *descriptive* content — leaving `## Direction` sitting inside the describing register with no drive-toward pull of its own. A real `ARCHITECTURE.md` `## Direction` section that labeled each item as shipped or remaining satisfied "built and intended told apart" yet degenerated into exactly the ledger this family should forbid, and an audit run over it would offer to bring the doc "back to the code" by deleting the not-yet-built target. Direction needs its own register.
 
 ## Context
 
@@ -58,7 +60,7 @@ Add the declared-direction register to the hub and its architecture reference, t
 **Out of scope:**
 
 - Editing the guardrail docs of any repository, including the `ARCHITECTURE.md` this task's motivating episode already fixed in the aurora repo. The family states the register; each repository's own adoption carries the change.
-- Reworking the rules-are-normative spine, the three finding classes, or the guard/describe treatment the [guardrail-target-state task](archive/ai-dev_guardrail-target-state-and-audit-findings.md) shipped; this task adds the direction register beside them and leaves that work intact.
+- Reworking the rules-are-normative spine, the three finding classes, or the guard/describe treatment the [guardrail-target-state task](ai-dev_guardrail-target-state-and-audit-findings.md) shipped; this task adds the direction register beside them and leaves that work intact.
 - A new guardrail doc type, or any change to the four recognized types and their peers.
 - Giving `guardrail_audit` a write path or an auto-repair mode; it stays read-only and ends by asking how to proceed.
 - Widening the audit's `<audit_bound>` beyond obvious, high-confidence findings.

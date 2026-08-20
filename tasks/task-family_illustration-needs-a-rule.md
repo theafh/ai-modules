@@ -2,8 +2,8 @@
 description: Close the gap in the base task skill's Illustrate rule so an incident narrative with no rule attached is explicitly out, not merely under-covered.
 scope: plugins/ai_dev/skills/task
 created: 2026-08-17T19:32:58
-updated: 2026-08-17T19:32:58
-status: open
+updated: 2026-08-20T18:37:42
+status: ready
 reported-by: theafh
 ---
 
@@ -11,10 +11,8 @@ reported-by: theafh
 
 ## Goal
 
-The base `task` skill's `<body>` **Illustrate** bullet states that a body carries
-only what implementation needs and what it excludes: a specific case or incident
-history stays in only as a *brief illustration supporting* a stated rule or
-requirement. Today the bullet bars an illustration from carrying a rule's whole
+The base `task` skill's `<body>` **Illustrate** bullet today is the two-sentence
+rule Context quotes. Today the bullet bars an illustration from carrying a rule's whole
 meaning, but it never says what happens when an illustration supports no rule at
 all — narrative that is accurate and well-written but changes nothing about what
 gets built. Closing that gap in the bullet's existing wording, in place, lets
@@ -82,11 +80,17 @@ and a human author to apply, not a check to script.
 
 ## Acceptance
 
-- `rg 'An illustration earns its place only by supporting' plugins/ai_dev/skills/task/SKILL.md`
+- `rg 'An illustration earns its place only by supporting a rule or requirement the body already states; incident narrative with nothing to illustrate — how a fact was established, why an earlier attempt failed, what changed since a prior version — carries nothing an implementer needs and stays out, however accurate.' plugins/ai_dev/skills/task/SKILL.md`
   returns exactly one hit, where it returns none today.
+- `rg 'The general statement carries each rule or requirement; specific cases, incident histories, and dated references stay brief illustrations supporting it' plugins/ai_dev/skills/task/SKILL.md`
+  still returns exactly one hit, proving the existing first sentence survives
+  unchanged rather than being replaced.
 - `rg 'A body whose meaning lives only in an example has its altitude inverted' plugins/ai_dev/skills/task/SKILL.md`
   still returns exactly one hit, proving the existing closing sentence survives
   unchanged rather than being replaced.
+- `rg -U 'The general statement carries each rule or requirement; specific cases, incident histories, and dated references stay brief illustrations supporting it\.[[:space:]]+An illustration earns its place only by supporting a rule or requirement the body already states; incident narrative with nothing to illustrate — how a fact was established, why an earlier attempt failed, what changed since a prior version — carries nothing an implementer needs and stays out, however accurate\.[[:space:]]+A body whose meaning lives only in an example has its altitude inverted' plugins/ai_dev/skills/task/SKILL.md`
+  returns exactly one hit, proving the new sentence sits between the two existing
+  sentences rather than before, after, or outside them.
 - `rg -c '\*\*Illustrate\.\*\*' plugins/ai_dev/skills/task/SKILL.md` returns `1`,
   proving the new sentence landed inside the existing bullet rather than as a
   second Illustrate entry.
@@ -94,4 +98,4 @@ and a human author to apply, not a check to script.
   `plugins/ai_dev/skills/task/SKILL.md`, proving no sibling skill carries a copy
   of the Illustrate rule that would also need this edit.
 - `python3 plugins/ai_dev/skills/ai_instruction_formatting/scripts/lint_pseudo_xml.py plugins/ai_dev/skills/task/SKILL.md`
-  reports PASS, with every tag still closed and no tag added or removed.
+  reports PASS, with every tag still closed.
