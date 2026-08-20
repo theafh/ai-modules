@@ -1,0 +1,52 @@
+---
+description: Scope the wiki log's append-only rule to settled entries; a session consolidates its own in-progress entry across commits and delete-restore churn rather than appending one per edit.
+scope: plugins/knowledge_management
+created: 2026-08-20T17:09:44
+updated: 2026-08-20T17:09:44
+status: open
+reported-by: Andreas Hoffmann
+---
+
+# Scope append-only to settled entries, and consolidate a session's own log entry
+
+## Goal
+
+Every wiki generated from or maintained by this skill states that `log.md` is append-only with respect to *settled* entries — those from earlier sessions — and that a session writing about its own ongoing work keeps **one** entry recording the net effect of that work, rewriting it as the work churns rather than appending a new entry per commit or per refinement. The canonical `template_log.md` preamble and the base skill's append-a-log-entry guidance carry the rule, and it is worded as one coherent qualification of append-only alongside the repair carve-out. The outcome an owner sees: a page refined across several commits in one session, or edited and then reverted, leaves a single entry describing what actually shipped, not a running commentary of intermediate states nobody can see in the committed wiki — and no rule tells the agent that touching the entry it just wrote is forbidden.
+
+This task owns the **content** of one default rule: what counts as append-only and how a session records its own multi-step work. It is a sibling of the subject-scope rule in [wiki_log-scope-wiki-changes-only.md](wiki_log-scope-wiki-changes-only.md) and shares the append-only region with the repair carve-out in [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md); all three co-edit the same preamble and are independently shippable in any order.
+
+## Context
+
+The append-only contract as written treats every dated entry as immutable and says nothing about the boundary between a settled entry and the one a session is still forming. Two sites carry it. The `template_log.md` preamble opens `Chronological record of wiki changes. Append-only.` and the [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md) work adds to that same region the substance rule `the log is append-only in substance, so never reword, reorder, or delete a past entry's recorded content`. The base skill states the same idea in its append-a-log-entry section (the `<appending_to_log>` block of `skills/wiki/SKILL.md`), defined there as newest-at-bottom with no permission to touch an entry once written. Read literally, both forbid the consolidation this task wants: an agent that wrote an entry earlier in a session and then refined the same page across two more commits is told to append two more entries rather than fold the work into the one it already wrote.
+
+That literal reading is the failure mode, and it is not hypothetical. In a downstream wiki a session refined one page across several commits and, in a later turn, deleted a block and restored it; each step drew its own log entry, including entries describing a delete-then-restore that no committed state reflects. The owner's correction: the log should record what the commit ships, not the transitions between commits that nobody will ever see, and making every edit its own entry is noise. The distinction the rule must draw is between a **settled** entry — one from a prior session, part of the history other readers depend on — which append-only protects absolutely, and the **current session's own** entry for work still in progress, which the session may rewrite because it is not yet settled history.
+
+The subject-scope sibling [wiki_log-scope-wiki-changes-only.md](wiki_log-scope-wiki-changes-only.md) settles *what an entry is about*; this task settles *how many entries a session's work produces and whether it may revise its own*. The heading-repair sibling [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md) already carves one exception into append-only — an entry may be edited to repair a structural or lint break it introduced, provided the repair preserves what the entry records. This task adds a second, adjacent qualification: the current session may consolidate its own entry, which *does* change what the entry records. The two must read as one coherent paragraph rather than two rules that appear to fight, so the wording is a genuine co-edit of the same preamble region and the same `<appending_to_log>` block; land it against whichever text of theirs is current when this builds.
+
+Consolidation is an authoring judgement an agent makes while writing, not a property a linter can compute from the committed file — a log with one entry per commit is byte-valid and indistinguishable by rule from one an agent chose to write that way. So this task ships as canonical prose plus agent guidance, and does not add a lint check.
+
+Propagation rides the channel the sibling log tasks already use: the rule lives in the `template_log.md` preamble above the first `## [` heading, so it reaches new wikis at init and existing wikis through the boilerplate-drift path that the `auto_shaper_wiki` agent's preamble-restore move (`<fix_log_preamble_drift>` in `agents/auto_shaper_wiki.md`) already runs. Keep the new lines inside that boilerplate-checked region or the propagation is lost.
+
+## Approach
+
+1. **Scope append-only in the canonical preamble, and state consolidation beside it.** In the `template_log.md` preamble, reword the append-only statement so it binds *settled* entries — entries from earlier sessions — rather than every dated entry unconditionally, and add the granularity rule as its own group beside the existing `Entries:` and `Body:` groups: one entry records the net effect of a session's work on the wiki; while a session is still revising that same work — refining a page across commits, or deleting and restoring content — it rewrites its own current entry rather than appending another; work that no committed state reflects, such as a delete later restored, leaves no entry. Name the failure the rule prevents in one clause, so the agent applies a rule it understands: an entry per commit, or an entry narrating churn no committed state shows, turns the log into a transition record instead of a record of what shipped. Word the append-only scoping so it and the repair carve-out from [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md) read as one coherent qualification, not two competing ones.
+
+2. **Mirror it in the base skill's append-a-log-entry guidance.** The `<appending_to_log>` section of `skills/wiki/SKILL.md` defines appending as newest-at-bottom and is silent on revising the session's own entry. State there that append-only protects entries from prior sessions, and that within the session that wrote it the current entry is consolidated as the work evolves rather than duplicated per commit; cross-reference the preamble as the point-of-use copy rather than restating the whole rule.
+
+3. **Mirror the convention in the schema template.** Extend the log convention bullet in `template_schema.md` (the `Every operation that creates or updates wiki files must be appended` bullet, as it reads after the sibling tasks land) to carry the granularity rule alongside the trigger and subject scope, pointing at the preamble rather than restating it.
+
+4. **Reconcile the agent's append-only language.** Where `agents/auto_shaper_wiki.md` calls dated entries append-only and out of scope for its scaffold diff, confirm that language still reads correctly once "append-only" means "settled entries." The agent audits rather than authors session work, so it needs no consolidation move; the edit here is only ensuring its append-only wording does not re-assert the absolute form this task scopes down.
+
+**Out of scope:** A linter check for consolidation, rejected because one-entry-per-commit is byte-valid and an agent's authoring judgement is not mechanically recoverable from the committed file. Rewriting historical entries in any existing wiki, which stays the owner's editorial call as [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md) already establishes for append-only history. A behavioural eval proving an agent consolidates rather than appends, which belongs to the wiki front-end behaviour suite in [tests_wiki-front-end-behavior-evals.md](tests_wiki-front-end-behavior-evals.md).
+
+## Acceptance
+
+- The `template_log.md` preamble states append-only as binding settled entries from earlier sessions, superseding any absolute "past entries are never reworded" phrasing that would forbid same-session consolidation; a grep of the preamble shows the scoped wording and no surviving absolute form.
+- The same preamble carries the granularity group described in **Scope append-only in the canonical preamble**, including the one-entry-per-session-net-effect rule, the rewrite-your-own-entry-across-commits rule, the delete-then-restore-leaves-no-entry case, and the named failure mode; the lines sit above the first `## [` heading so they stay in the boilerplate-checked region.
+- A freshly scaffolded wiki carries the new preamble verbatim.
+- The append-only scoping and the [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md) repair carve-out read as one coherent qualification in the shipped preamble: a reader cannot find a sentence forbidding what the other permits.
+- The `<appending_to_log>` section of `skills/wiki/SKILL.md` states within-session consolidation and scopes append-only to prior-session entries, pointing at the preamble; its prior newest-at-bottom-only wording is superseded rather than left beside the new text.
+- The `template_schema.md` log convention bullet states the granularity rule alongside the trigger and subject scope and points at the preamble.
+- `agents/auto_shaper_wiki.md`'s append-only wording is consistent with the scoped definition: it no longer asserts an absolute past-entry immutability that contradicts the preamble.
+- On a fixture wiki whose `log.md` preamble predates this rule and declares no deviation for that slot, an `auto_shaper_wiki` run ends with the new granularity group present in the wiki's `log.md`, confirming the boilerplate-drift propagation path carries it.
+- `tests/wiki/run_all.sh` exercises the scaffold-carries-the-rule and preamble-convergence scenarios above and passes with them harness-wired.

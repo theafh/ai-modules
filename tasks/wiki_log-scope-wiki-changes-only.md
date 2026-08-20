@@ -1,0 +1,54 @@
+---
+description: Make "a log entry records changes to the wiki" canonical in the shipped log and schema templates, and give the linter a check that catches an entry written as a repo changelog.
+scope: plugins/knowledge_management
+created: 2026-08-20T17:17:42
+updated: 2026-08-20T17:21:02
+status: open
+reported-by: Andreas Hoffmann
+---
+
+# Scope a log entry to wiki changes, canonically and with a lint check
+
+## Goal
+
+Every wiki generated from or maintained by this skill states that a `log.md` entry records changes to the wiki, and only those. The shipped log preamble and schema template carry the rule, the linter flags an entry whose subject is a file outside the wiki, and an existing wiki converges through the scaffold restore path already in place rather than through a migration sweep. The outcome an owner sees: their log stays an index into the wiki's own history instead of turning into a second changelog that drifts from git, and the drift is caught by a check rather than by the owner noticing it twice.
+
+This task owns the **content** of one default rule: what belongs in a log entry, for every wiki. How a wiki's local divergence from a template is treated at all is the mechanism question owned by [wiki_sanctioned-template-deviations.md](wiki_sanctioned-template-deviations.md), and the two are independently shippable in either order.
+
+## Context
+
+The canonical preamble in [references/template_log.md](../plugins/knowledge_management/skills/wiki/references/template_log.md) governs when an entry exists and never says what an entry may be about. Its `Entries:` group settles the trigger, `an operation that creates or updates wiki files appends one entry`, and its `Body:` group settles selection, `list only files actually created or updated`. Both are silent on subject scope, and that silence is the hole: a change to the surrounding repository is also a file that was created or updated, so an agent writing the whole session into the log complies with the letter of both rules. The finished [wiki_log-entries-only-on-changes.md](archive/wiki_log-entries-only-on-changes.md) closed the trigger half of this contract and deliberately left the subject half alone; this task is that half, and the same reasoning applies — fix the general behaviour definition in the skill and templates rather than point-patching one wiki.
+
+The failure mode is not hypothetical and not confined to one wiki. In two separate wikis managed by this skill, the owner had to correct the same drift by hand. Entries had grown into commit messages: the subject of a bullet was a file in the repository's source tree, its tooling, or its test suite, with version bumps, release notes, and measured test results attached, and a single wiki-file bullet somewhere inside. Entries had also become a parking lot for findings no page carried, so knowledge that belonged on a page was filed where nobody reads it back. The cost is twofold and both halves compound: a log that duplicates git drifts from it, and the wiki's actual change history becomes unreadable underneath the noise. In the more recent case the correction removed roughly a quarter of the file's lines.
+
+Two live sibling tasks bound the work, and one interacts closely:
+
+- [wiki_sanctioned-template-deviations.md](wiki_sanctioned-template-deviations.md) builds the general mechanism for a wiki to declare an intentional divergence from a verbatim-locked slot, so an audit stops reverting it. Its motivating incident was an owner adding exactly this scope rule to their own preamble and an audit deleting it. That task and this one are complements, not alternatives: this rule belongs in canon because it is general, and the declaration mechanism stays for the refinements that are genuinely local. Once this task lands, a wiki carrying the rule as a declared local deviation retires that declaration, because its text matches canon again.
+- [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md) owns the per-finding acceptance store and scopes matching to `SEV_INFO`. The check added here emits at warn, so it sits outside that store by design; do not widen either side to reach the other.
+
+## Approach
+
+1. **State the scope rule in the canonical preamble.** Extend the blockquote in `template_log.md` with a `Scope:` group beside the existing `Entries:` and `Body:` groups: an entry names files under the wiki and what changed on each; a change elsewhere in the repository that holds the wiki belongs to that change's own commit message; knowledge worth keeping goes onto the wiki page that owns it, after which the entry names that page instead of restating it. Name the failure the rule prevents in one clause, since an agent applies a rule it understands the purpose of more reliably than a bare prohibition: an entry that reads as a commit message with a wiki bullet attached, or that parks findings no page carries. Keep the group generic — the wiki's own tree is the only thing the template can name portably, so state the boundary as inside-the-wiki versus outside rather than by listing directory names any one repository happens to have.
+
+2. **Mirror it in the schema template.** The log convention bullet in [references/template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md), which currently opens `Every operation that creates or updates wiki files must be appended to`, states the trigger and stops. Rewrite it in place to carry the subject scope too, pointing at the preamble as the point-of-use copy rather than restating the whole rule twice.
+
+3. **Add the check.** For each entry body bullet, take the subject — the text before the bullet's first separator — and emit a finding when that subject is a path-shaped token that does not resolve under the wiki root. The subject position is the whole discriminator and the boundary that keeps the check honest: a non-wiki path cited inside a bullet as the source a claim was drawn from is legitimate provenance and must not fire, while the same path standing as what the bullet is about must. Emit at warn, aggregated into one finding per run that names the count and a few offenders rather than one finding per bullet, so a wiki with historical violations gets a signal instead of a swamped report. Parse fence-safe, consistent with the section readers already in [skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py).
+
+4. **Report, never silently rewrite.** The log is append-only by design, so the agent in [agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md) reports a violating entry and leaves the text alone; trimming historical entries is an editorial decision the owner makes. Where the agent writes a new entry, the rule binds it directly.
+
+5. **Let convergence ride the existing path.** A wiki whose preamble predates this change differs from the canonical region, so the verbatim boilerplate comparison flags it and the agent's existing scaffold restore adds the new group. That is the same mechanism whose one-way behaviour motivated the deviations task, running in the direction it is right for: canon flowing into a wiki that has no competing local rule. Confirm this in the fixture rather than assuming it, and state in the agent's instruction that restoring a canonical region is correct when the wiki declares no deviation for that slot.
+
+**Out of scope:** rewriting historical entries in any existing wiki, which stays with the owner per **Report, never silently rewrite.** Widening the info-level acceptance store to warn findings, which stays with [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md). Building the declaration and promotion mechanism itself, which stays with [wiki_sanctioned-template-deviations.md](wiki_sanctioned-template-deviations.md).
+
+## Acceptance
+
+- `template_log.md`'s preamble carries the `Scope:` group described in **State the scope rule in the canonical preamble.**, including the named failure mode, and a freshly scaffolded wiki carries it verbatim.
+- The `template_schema.md` log convention bullet states subject scope alongside the trigger and points at the preamble; the prior trigger-only wording is superseded rather than left beside the new text.
+- A fixture log entry whose bullet subject is a path outside the wiki draws the warn.
+- A fixture entry whose bullet subject is a wiki file and which cites a path outside the wiki mid-bullet as the source of the claim draws no finding, proving the subject-position boundary in **Add the check.**
+- A fixture log with violations in several entries draws one aggregated finding naming the count, not one finding per bullet.
+- A fixture whose only violating text sits inside a fenced block draws no finding.
+- A fixture entry with a non-path subject, such as a lint outcome line, draws no finding.
+- An `auto_shaper_wiki` run over a fixture log containing a violating historical entry leaves that entry's text byte-identical and names it in the report.
+- An `auto_shaper_wiki` run over a fixture wiki whose preamble predates the rule and declares no deviation for that slot ends with the canonical `Scope:` group present in the wiki's `log.md`.
+- `tests/wiki/run_all.sh` exercises every fixture scenario named above and passes with them harness-wired.
