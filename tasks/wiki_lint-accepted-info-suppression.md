@@ -2,7 +2,7 @@
 description: Give lint.py a per-finding acknowledge mechanism so accepted info-level findings stop re-surfacing every run and being re-justified in prose and the log.
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-08-12T22:01:00
+updated: 2026-08-20T17:47:52
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -20,6 +20,8 @@ A wiki owner can mark a specific info-level lint finding as reviewed-and-accepte
 This is the *general* per-finding accept mechanism. A narrower, type-based mechanism for the specific case of expected page growth is being designed separately in [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) (growth-pattern declarations that make the linter defer size findings for backlog/synthesis pages). The boundary, decided: a declared growth pattern defers size findings for a whole page type, while the per-finding accept here covers an individual reviewed finding of any category, including a size finding on a `fixed`-growth page. A third mechanism sits beside both — the SCHEMA `## Lint` section's `Page-check exclusions:` bullet removes whole directories from the page walk rather than suppressing individual findings. Document all three boundaries together. Both live tasks also add a bullet to that same `## Lint` section and register it in the same agent `<configurable_zones>` list, and both rewrite the agent's `<topic_separation>` objective (this task for the Accepted finding route; [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) for per-pattern size thresholds), so coordinate those shared edits whichever lands first: compose growth thresholds and the Accepted finding route into one `<topic_separation>` statement rather than last-writer-wins. [wiki_schema-template-generalization.md](wiki_schema-template-generalization.md) rewrites the `template_schema.md` `## Lint` opener from bare `` `scripts/lint.py` walks `` to `$WIKI_SKILL/scripts/…` and leaves machine-read `## Lint` bullets to this task; this task's **Document** compose must keep that path form rather than last-writer-wins.
 
 Storage has an established home: `lint.py` already scans the SCHEMA `## Lint` section fence-safe for labeled bullets (the `Page-check exclusions:` parse, `LINT_EXCLUDE_RE`), and SCHEMA.md carries no YAML frontmatter of its own — so a frontmatter-based acceptance store has nowhere to live, and the acceptance store follows the `## Lint` bullet pattern instead.
+
+Coordination with [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md): the two-field acceptance form in **Store acceptances in the SCHEMA `## Lint` section.** whitelists `log` on the premise that a `log` finding emits at most one Issue per path. That task keeps the premise true by filing its new duplicate-heading finding under a distinct `log-heading` category rather than `log`, so `log` stays single-emit, and `log-heading` (several per path) takes the three- or four-field discriminator forms like any other category.
 
 Files involved:
 
