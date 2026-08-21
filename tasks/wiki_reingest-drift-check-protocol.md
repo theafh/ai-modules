@@ -2,7 +2,7 @@
 description: Rewrite the re-ingest drift instruction to compare fresh content against the recorded sha256 via the hash helper's report-only mode before any sidecar write, so drift is detected rather than erased.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-08-04T19:02:34
+updated: 2026-08-21T08:01:08
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -19,7 +19,7 @@ The instruction appears twice with the same wording: the `<capture_raw_source>` 
 
 That procedure cannot work in either reading. If the sidecar body has not been overwritten with the fresh fetch, the command hashes the old disk content and always reports `ok`, so the skip decision says nothing about whether the source changed. If the body was overwritten first, the raw layer was mutated before the drift decision, and the same invocation immediately rewrites the recorded hash — erasing the mismatch that the linter's `drift` check would otherwise catch, leaving "flag drift" to one console line in the moment. The script already ships the mode built for this: `--check` ("exit 1 if any file would change; write nothing") and `--print`, per the usage block in [skills/wiki/scripts/compute_sha256.py](../plugins/knowledge_management/skills/wiki/scripts/compute_sha256.py) — and no skill or agent instruction references either mode today. A Layer 2 skill-behavior scenario that follows the current re-ingest sentence fails today under that always-`ok` reading; the rewrite is what makes the unchanged-source and changed-source scenarios pass.
 
-Co-edit note: [wiki_front-end-skill-dir-resolution.md](wiki_front-end-skill-dir-resolution.md) rewrites the script-invocation form inside the same `<capture_raw>` block of `wiki_import` — coordinate wording so the block is edited coherently whichever lands first.
+Co-edit note: [wiki_front-end-skill-dir-resolution.md](archive/wiki_front-end-skill-dir-resolution.md) rewrites the script-invocation form inside the same `<capture_raw>` block of `wiki_import` — coordinate wording so the block is edited coherently whichever lands first.
 
 ## Approach
 

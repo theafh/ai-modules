@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.20.0
+version: 1.20.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -212,6 +212,52 @@ fi
 [[ -d "$WIKI" ]] || scripts/init_wiki.sh "$WIKI"    # scaffold if missing
 python3 scripts/lint.py                              # health-check
 ```
+
+<resolve_wiki_skill_bundle>
+Canonical statement of how any artefact in this family locates `$WIKI_SKILL`,
+the installed wiki skill bundle holding `SKILL.md`, `scripts/`, and
+`references/`. Siblings cite this block by tag instead of restating the order,
+and that covers the front-end skills and the `auto_shaper_wiki` agent alike.
+Resolve `$WIKI_SKILL` as run-local orientation state before the first bundled
+tool call, and resolve it before `$WIKI`, because discovery itself runs from
+this bundle.
+
+Take the first candidate that validates, in this order:
+
+1. **The active artefact's own directory**, when the harness exposes the agent
+   or skill path it loaded. Every agentic IDE that surfaces a skill exposes
+   that path. From `skills/wiki_import/` or `skills/wiki_wrapup/` the sibling
+   hub is `../wiki`, and from `agents/auto_shaper_wiki.md` it is
+   `../skills/wiki`.
+2. **A sibling `wiki` skill directory** in the same installed plugin bundle or
+   local plugin checkout as the active artefact.
+3. **A deployed user-skill location**, such as `~/.claude/skills/wiki` or
+   `~/.codex/skills/wiki`, following symlinks when present.
+4. **A bounded search** under the agent configuration roots this plugin
+   deploys into (`~/.claude/skills`, `~/.codex/skills`, and the plugin cache
+   roots beneath them such as `~/.codex/plugins/cache/`) and the current
+   repository checkout. Never run an unbounded `find /`.
+
+Accept a candidate only when every required asset exists inside it:
+
+- `SKILL.md`
+- `scripts/discover_wiki.sh`
+- `scripts/lint.py`
+- `references/template_schema.md`
+
+When no candidate validates, stop and report that the wiki skill bundle could
+not be resolved, naming the roots already tried. This order exists to prevent
+one specific failure. The working directory is the user's project, so guessing
+a `scripts/` directory from there finds that project's own scripts or nothing.
+
+Keep the resolved value run-local, as a shell variable inside the block that
+uses it or in the session's orientation notes. A new session, repository,
+worktree, plugin cache, or harness can legitimately change it, so user-level
+environment variables, startup hooks, plugin configuration, and cross-session
+caches all go stale. Quote every expansion, as in
+`"$WIKI_SKILL/scripts/lint.py"`, so a bundle path containing spaces still
+resolves.
+</resolve_wiki_skill_bundle>
 
 <discover_wiki>
 `discover_wiki.sh` recognises a directory as a wiki when its basename contains

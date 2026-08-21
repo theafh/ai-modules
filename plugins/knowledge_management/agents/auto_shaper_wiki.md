@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.9.0
+version: 1.9.1
 model: inherit
 background: false
 effort: high
@@ -149,6 +149,11 @@ have audited before — the schema, taxonomy, or domain may have changed.
 <orient>
 
   <resolve_runtime_paths>
+    This block mirrors the `wiki` skill's `<resolve_wiki_skill_bundle>`
+    block, which is the canonical statement of the `$WIKI_SKILL`
+    resolution order. The copy stays here because this agent resolves
+    paths before it can read any skill file.
+
     Resolve the two runtime paths as run-local orientation state before
     any bundled tool call:
 

@@ -1,7 +1,7 @@
 ---
 name: wiki_wrapup
 description: Wrap up the current chat session by mining it for durable knowledge, comparing the findings against the existing wiki, and surfacing both candidate additions and contradictions with concrete reconciliation suggestions. Use when the user asks to wrap up, close, or end a session; to capture, harvest, or persist what we discussed into the wiki; to ingest the session into the wiki; to reconcile the conversation with existing notes; or whenever a research or exploration chat is concluding and produced reusable knowledge worth keeping.
-version: 1.1.0
+version: 1.1.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -13,6 +13,7 @@ license: MIT
   <orient_first_top>**Read `$WIKI/SCHEMA.md` once at the start of any session that activates this skill.** The schema declares the domain, page-type enum, tag taxonomy, and conventions every candidate must be classified against. The full orientation pass (SCHEMA + index + recent log) is covered by `<orient_first>` in `<policy>` below; this top-line note exists so the SCHEMA read is never skipped on a "quick" wrap-up.</orient_first_top>
   <objective>Identify what the session produced that does not yet live in the wiki, surface conflicts between session content and wiki content, and propose reconciliations the user can accept page by page. Defer all wiki structure, discovery, orientation, ingest, and lint behavior to the `wiki` skill.</objective>
   <policy>
+    <resolve_skill_bundle>Resolve `$WIKI_SKILL` before the first bundled tool call and before `$WIKI`. It is the installed `wiki` skill bundle holding the scripts this skill invokes. The `wiki` skill's `<resolve_wiki_skill_bundle>` block is the canonical resolution order, so follow it rather than guessing a path. From this skill's own directory the sibling hub is `../wiki`. Every `$WIKI_SKILL/...` path below resolves through that block.</resolve_skill_bundle>
     <resolve_first>Resolve `$WIKI` through the `wiki` skill's discovery flow before reading the session. Honor exit-2 ambiguity by presenting candidates and asking the user.</resolve_first>
     <orient_first>Read `SCHEMA.md`, `index.md`, and the last 20–30 entries of `log.md` before diffing, so the diff runs against an understood corpus.</orient_first>
     <mine_session>Extract durable claims, decisions, definitions, conventions, comparisons, workflows, and named entities. Skip abandoned hypotheses, transient back-and-forth, and user-private ephemera.</mine_session>
@@ -23,12 +24,12 @@ license: MIT
     <session_only>Source material is the visible session only. Skip claims the session did not establish.</session_only>
   </policy>
   <steps>
-    <step>Run `discover_wiki.sh` and resolve `$WIKI`. On exit 2, present candidates in walk order and stop until the user picks.</step>
+    <step>Run `"$WIKI_SKILL/scripts/discover_wiki.sh"` and resolve `$WIKI`. On exit 2, present candidates in walk order and stop until the user picks.</step>
     <step>Read `SCHEMA.md`, `index.md`, and roughly the last 350 lines of `log.md`.</step>
     <step>Walk the session top to bottom. Build a list of durable items, each with title, suggested page type, target slug, and source-message reference.</step>
     <step>Search `$WIKI` for each item. Tag NEW, EXTEND, CONFIRM, or CONFLICT. For CONFLICT items, capture both excerpts.</step>
     <step>Emit one report under three H2 headings: `## New pages`, `## Extensions to existing pages`, `## Contradictions to reconcile`.</step>
-    <step>On approval, route each item through the `wiki` skill's matching flow, run `python3 scripts/lint.py`, and append a single `## [YYYY-MM-DD] session-wrapup | N new, N extended, N contested` entry to `log.md` listing only files actually changed.</step>
+    <step>On approval, route each item through the `wiki` skill's matching flow, run `python3 "$WIKI_SKILL/scripts/lint.py"`, and append a single `## [YYYY-MM-DD] session-wrapup | N new, N extended, N contested` entry to `log.md` listing only files actually changed.</step>
   </steps>
   <output_contract>
     <proposal_format>Three H2 sections. Each entry: title, suggested type, target path, source-message reference. Contradictions also carry wiki excerpt, session excerpt, disagreement dimension, and ≥2 reconciliation options.</proposal_format>

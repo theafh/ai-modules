@@ -2,7 +2,7 @@
 description: Give the wiki family one source of truth: a hub family block, an authority block per front end, cited rather than restated base rules, and one orientation log-read quantity.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:49:52
-updated: 2026-08-12T22:08:06
+updated: 2026-08-21T08:01:08
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -95,7 +95,7 @@ this task settles and that idiom must land coherently whichever ships first.
 **Out of scope:**
 
 - Defining how a front end resolves the hub's bundle path, owned by
-  [wiki_front-end-skill-dir-resolution.md](wiki_front-end-skill-dir-resolution.md).
+  [wiki_front-end-skill-dir-resolution.md](archive/wiki_front-end-skill-dir-resolution.md).
 - The hub's output contract, owned by
   [wiki_base-skill-output-contract.md](wiki_base-skill-output-contract.md).
 
