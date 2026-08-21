@@ -1,6 +1,6 @@
 {
   "name": "knowledge_management",
-  "version": "1.14.1",
+  "version": "1.14.2",
   "description": "Skills and agents for building, maintaining, and distilling a persistent, interlinked knowledge base. Ships the wiki, wiki_wrapup, wiki_import, wiki_fix, executive_summary, and spr skills, and the auto_shaper_wiki agent.",
   "author": { "name": "Andreas F. Hoffmann" },
   "license": "MIT",

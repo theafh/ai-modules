@@ -45,7 +45,7 @@ The skill's `<discovery_safety>` section describes the sibling comparison as
 covering `non-ASCII characters`, which stays accurate, so the change lands in the
 script's message text rather than in the skill prose.
 
-Co-edit: [ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md)
+Co-edit: [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md)
 also edits this script, and both it and
 [ai-dev_skill-doctor-scope-failure-reporting.md](ai-dev_skill-doctor-scope-failure-reporting.md)
 add scenarios to the same script-test runner, so coordinate those two surfaces.

@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.20.1
+version: 1.20.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -198,13 +198,17 @@ for walk-up semantics, and bypassing it is what causes silent upstream
 adoptions.
 
 ```bash
+# Exit codes: 0 = resolved path on stdout, 1 = that path is missing on
+# disk, 2 = ambiguous with candidates on stdout, 3 = usage error. Only 2
+# starts the ask-the-user protocol; 1 and 3 are hard failures the `*)`
+# branch passes straight out.
 if output=$(scripts/discover_wiki.sh); then
     WIKI="$output"                                    # auto-resolved
 else
     rc=$?
     case $rc in
         2) candidates="$output" ;;                    # ambiguous → ASK USER
-        *) exit "$rc" ;;
+        *) exit "$rc" ;;                              # 1 = missing, 3 = usage
     esac
     # On exit 2, follow <resolving_the_wiki_location> below before
     # touching any wiki file. Do not pick a candidate yourself.
@@ -299,6 +303,21 @@ EXISTING:/Users/foo/wiki        # only as the last entry, if found
 When CWD is not at or under `$HOME`, walk-up is disabled and the script
 falls back to the pre-walk-up behavior (a recognised wiki child of CWD,
 `./.no_wiki`, or ask).
+
+Two more exit codes complete the set. **Exit 1** says the resolved path does
+not exist on disk — `--check` reports it for an auto-resolved path, and a
+given `WIKI_PATH` reports it for itself. **Exit 3** is a usage error, an
+unknown flag or an unsupported argument shape, with the message on stderr and
+nothing on stdout; it carries no candidate list, so it stays a hard failure
+rather than an ambiguity prompt.
+
+Passing a `WIKI_PATH` positionally skips discovery and answers for that path
+alone: an existing directory prints its canonical path and exits 0, a missing
+one exits 1, and the wiki predicate stays out of it. That is how a caller
+hands back the candidate the user chose under `<resolving_the_wiki_location>`,
+an `AVAILABLE:` level included — re-running bare discovery against a choice
+would only reproduce the same exit-2 list. `lint.py` takes the same path as
+its optional positional argument.
 
 `.no_wiki` is the explicit opt-out and overrides the predicate: drop an empty
 file by that name in any directory you do not want a local wiki for, and the

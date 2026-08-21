@@ -43,7 +43,7 @@ candidates the walk found, and an absent tree yields no candidates to name.
 `discover_skills` already returns an empty list when `plugins` is not a
 directory, so the absent-tree condition is available to every mode.
 
-Related: [ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md)
+Related: [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md)
 rewrites the same `<scope_resolution>` block and may add its own resolver
 mode, so the two coordinate on one file and one script.
 
@@ -74,7 +74,7 @@ the selector misses inside it.
 **Out of scope:**
 
 - Adding a scope mode for agents, which
-  [ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md)
+  [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md)
   owns.
 
 ## Acceptance

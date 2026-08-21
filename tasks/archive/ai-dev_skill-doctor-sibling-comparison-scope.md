@@ -76,7 +76,7 @@ token, the hub's parsed `<family>` block, and the `by_plugin` grouping that
 `--root`. Nothing carries provenance across that seam today.
 
 **Co-edit coordination.** `scripts/resolve_scope.py` is also the edit surface of
-[ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md), which
+[ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md), which
 owns the agent-handling passage and any `--agent` resolver mode its
 **Open decision:** settles. Neither blocks the other; whichever lands second
 reconciles the shared file.

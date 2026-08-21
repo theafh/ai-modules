@@ -90,7 +90,7 @@ that keeps skills in a recognized layout still resolves, and unknown-name failur
 inside a populated walk stay separate.
 
 **Co-edit coordination.** Companion, not a prerequisite, with
-[ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md):
+[ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md):
 this task owns the layout-discovery rewrite of `<scope_resolution>` and
 `resolve_scope.py`; that sibling owns the agent-handling passage and any
 `--agent` resolver mode its **Open decision:** settles. Leave the existing
@@ -200,7 +200,7 @@ conditional on that sibling resolving, and name it as skipped when it does not.
   which the `harness_portability` skill owns and this skill's `<boundary>` already
   routes to it.
 - A scope mode for agents, which
-  [ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md) owns.
+  [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md) owns.
 - The check-only contract. This task changes which findings the run gates on, and
   the run still edits no target.
 

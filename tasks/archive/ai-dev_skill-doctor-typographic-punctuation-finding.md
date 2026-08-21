@@ -82,7 +82,7 @@ one coupling. That task's Acceptance names both `description_non_ascii` and
 this task repoints it. Neither task blocks the other, since the em dash stays a
 flagged character under the old code and the new one alike.
 
-Co-edit: [ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md),
+Co-edit: [ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md),
 [ai-dev_skill-doctor-listing-budget-length.md](ai-dev_skill-doctor-listing-budget-length.md),
 and
 [ai-dev_skill-doctor-repo-convention-portability.md](ai-dev_skill-doctor-repo-convention-portability.md)

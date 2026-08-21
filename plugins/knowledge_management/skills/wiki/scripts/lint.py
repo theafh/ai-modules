@@ -70,15 +70,27 @@ def is_wiki(d: Path) -> bool:
 def discover_wiki(arg: str | None) -> Path:
     """Resolve the wiki, mirroring ``scripts/discover_wiki.sh``.
 
+    The two implementations mirror each other — same predicate, same
+    walk-up, same lexical child order, both skipping dot-directories when
+    scanning a level's children, and the same optional positional wiki
+    path. Change one and change the sibling with it.
+
     A directory is a wiki per ``is_wiki`` (name contains "wiki" + >=2
     markers, no ``.no_wiki``). If CWD is itself a wiki, resolve to it
     directly. Otherwise walk up from CWD to ``$HOME``: ``.no_wiki`` skips a
-    level, the first child (lexical order) recognised as a wiki terminates
-    the walk, every other level becomes a creation candidate. Auto-resolves
-    when the closest non-opted-out level holds a recognised wiki, or when
-    every level up through ``$HOME`` is opted out (use ``$HOME/wiki``).
-    Exits 2 with a candidate list and a positional-argument hint when the
-    climb leaves only creation candidates — lint runs non-interactively.
+    level, the first visible child (lexical order) recognised as a wiki
+    terminates the walk, every other level becomes a creation candidate.
+    Auto-resolves when the closest non-opted-out level holds a recognised
+    wiki, or when every level up through ``$HOME`` is opted out (use
+    ``$HOME/wiki``). Exits 2 with a candidate list and a
+    positional-argument hint when the climb leaves only creation
+    candidates — lint runs non-interactively.
+
+    An explicit ``arg`` skips the walk and answers for that path alone: an
+    existing directory resolves to its canonical path, a missing one exits
+    1, and the wiki predicate stays out of it, so a caller can hand back a
+    path the user chose. ``discover_wiki.sh WIKI_PATH`` answers the same
+    way.
     """
     if arg:
         path = Path(arg).expanduser().resolve()
@@ -116,7 +128,12 @@ def discover_wiki(arg: str | None) -> Path:
         if (level / ".no_wiki").is_file():
             continue
         try:
-            children = sorted(level.iterdir())
+            # Dot-directories stay out of the scan: discover_wiki.sh's `*/`
+            # glob never sees them, and the page walk excludes them too, so
+            # a dot-named wiki resolves the same way in both tools.
+            children = sorted(
+                c for c in level.iterdir() if not c.name.startswith(".")
+            )
         except OSError:
             children = []
         existing = next((c for c in children if c.is_dir() and is_wiki(c)), None)

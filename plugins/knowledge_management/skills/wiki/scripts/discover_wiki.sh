@@ -5,6 +5,11 @@
 # (case-insensitive) AND at least two of SCHEMA.md / index.md / log.md
 # exist directly inside it AND it carries no .no_wiki opt-out.
 #
+# This discovery mirrors lint.py's discover_wiki(): same predicate, same
+# walk-up, same lexical child order, both skipping dot-directories when
+# scanning a level's children, and the same optional positional wiki path.
+# Change one implementation and change the sibling with it.
+#
 # CWD short-circuit (exit 0): when CWD is itself a wiki by that test, print
 # CWD and stop — before any walk-up.
 #
@@ -50,24 +55,50 @@
 # exist on disk (only meaningful in the auto-resolve case; ignored when
 # exiting 2 for the ask-the-user case).
 #
+# Chosen-path handoff (WIKI_PATH argument):
+#   A WIKI_PATH argument skips discovery and answers for that path alone,
+#   mirroring lint.py's optional positional wiki_path: an existing
+#   directory prints its canonical path and exits 0, a missing one exits 1
+#   with a message on stderr. The wiki predicate is deliberately not
+#   applied, so a caller can hand back the candidate the user picked from
+#   an exit-2 list — an AVAILABLE: level included — instead of re-running
+#   discovery, which would only reproduce the same ambiguous list.
+#
+# Exit codes:
+#   0  a single resolved path on stdout
+#   1  --check found the auto-resolved path missing, or the given
+#      WIKI_PATH does not exist on disk
+#   2  ambiguous: candidate list on stdout, and the caller asks the user
+#   3  usage error: unknown flag or unsupported argument shape, message on
+#      stderr and nothing on stdout, so a caller never reads a usage
+#      mistake as an empty candidate list
+#
+# Argument shapes: no arguments, --check, WIKI_PATH, WIKI_PATH --check,
+# and -h / --help. Every other shape exits 3.
+#
 # Usage:
 #   if WIKI=$(scripts/discover_wiki.sh); then
 #       : # auto-resolved; $WIKI is the wiki path
 #   else
-#       case $? in
+#       rc=$?
+#       case $rc in
 #           2) candidates="$WIKI"; ask_the_user_with "$candidates" ;;
-#           *) exit 1 ;;
+#           *) exit "$rc" ;;   # 1 = path missing, 3 = usage error
 #       esac
 #   fi
 #
 #   path=$(scripts/discover_wiki.sh --check) || scripts/init_wiki.sh "$path"
+#
+#   # Once the user picks a candidate, adopt that path directly:
+#   WIKI=$(scripts/discover_wiki.sh "$chosen")
 
 set -euo pipefail
 
 CHECK=false
-case "${1:-}" in
-  -h|--help)
-    cat <<'USAGE'
+WIKI_ARG=""
+
+print_help() {
+  cat <<'USAGE'
 discover_wiki.sh — print the wiki path on stdout, walking up from CWD.
 
 A directory is a wiki when its basename contains "wiki" (case-insensitive)
@@ -99,20 +130,66 @@ Outside-$HOME fallback (CWD not at or under $HOME):
   - <CWD>/.no_wiki → print "$HOME/wiki", exit 0.
   - neither         → exit 2 with two AVAILABLE candidates ($CWD, $HOME).
 
+Chosen-path handoff (WIKI_PATH):
+  A WIKI_PATH argument skips discovery and answers for that path alone,
+  mirroring lint.py's optional positional wiki_path: an existing directory
+  prints its canonical path and exits 0, a missing one exits 1. The wiki
+  predicate is not applied, so the caller can hand back the candidate the
+  user picked from an exit-2 list instead of re-running discovery.
+
+Usage:
+  discover_wiki.sh [WIKI_PATH] [--check]
+
+  Supported shapes: no arguments, --check, WIKI_PATH, WIKI_PATH --check,
+  and -h / --help. Every other shape exits 3.
+
 Options:
-  --check     Exit 1 if the auto-resolved path does not exist on disk.
+  --check     Exit 1 if the resolved path does not exist on disk.
   -h, --help  Show this help.
+
+Exit codes:
+  0  a single resolved path on stdout
+  1  the resolved path or the given WIKI_PATH does not exist on disk
+  2  ambiguous: candidate list on stdout, ask the user
+  3  usage error: message on stderr, nothing on stdout
 USAGE
-    exit 0
+}
+
+usage_error() {
+  # Exit 3, kept distinct from the exit-2 ambiguity signal: a caller that
+  # reads exit 2 as "candidates on stdout" would otherwise take a usage
+  # mistake for an empty candidate list. Nothing goes to stdout here.
+  printf 'discover_wiki.sh: %s\n' "$1" >&2
+  printf 'usage: discover_wiki.sh [WIKI_PATH] [--check]   (--help for detail)\n' >&2
+  exit 3
+}
+
+# Supported argument shapes: no arguments, --check, WIKI_PATH,
+# WIKI_PATH --check, and -h / --help on its own. An empty WIKI_PATH counts
+# as no path, matching lint.py's falsy `if arg:` gate on its positional.
+case $# in
+  0)
     ;;
-  --check)
-    CHECK=true
+  1)
+    case "$1" in
+      -h|--help) print_help; exit 0 ;;
+      --check)   CHECK=true ;;
+      -*)        usage_error "unknown argument: $1" ;;
+      *)         WIKI_ARG=$1 ;;
+    esac
     ;;
-  '')
+  2)
+    case "$2" in
+      --check) ;;
+      *) usage_error "unsupported argument shape: $1 $2" ;;
+    esac
+    case "$1" in
+      -*) usage_error "unknown argument: $1" ;;
+      *)  WIKI_ARG=$1; CHECK=true ;;
+    esac
     ;;
   *)
-    echo "unknown argument: $1" >&2
-    exit 2
+    usage_error "too many arguments ($#); expected at most WIKI_PATH --check"
     ;;
 esac
 
@@ -145,6 +222,33 @@ is_wiki() {
   done
   [[ $count -ge 2 ]]
 }
+
+# A given WIKI_PATH answers for itself: discovery is what the caller
+# already ran to get this path, so re-running it here would only reproduce
+# the same ambiguous list. Mirrors lint.py's positional wiki_path — the
+# wiki predicate stays out, so an AVAILABLE: level the user chose resolves
+# just as an EXISTING: wiki does.
+if [[ -n "$WIKI_ARG" ]]; then
+  # Expand a leading ~ the way lint.py's Path.expanduser() does, for a path
+  # handed over as a literal string rather than through shell expansion. The
+  # tilde lives in a variable so these stay patterns matching a literal ~
+  # rather than quoted tildes shellcheck reads as failed expansions (SC2088).
+  tilde='~'
+  case "$WIKI_ARG" in
+    "$tilde")   WIKI_ARG=$HOME ;;
+    "$tilde"/*) WIKI_ARG="$HOME/${WIKI_ARG#"$tilde"/}" ;;
+  esac
+  if [[ -d "$WIKI_ARG" ]]; then
+    printf '%s\n' "$(abs "$WIKI_ARG")"
+    exit 0
+  fi
+  case "$WIKI_ARG" in
+    /*) missing=$WIKI_ARG ;;
+    *)  missing="$(pwd -P)/$WIKI_ARG" ;;
+  esac
+  echo "wiki path does not exist: $missing" >&2
+  exit 1
+fi
 
 cwd=$(abs "$PWD")
 home=$(abs "$HOME")
@@ -182,9 +286,12 @@ else
 fi
 
 # Walk the ladder, building candidates. EXISTING terminates the walk.
-# At each level the existing wiki is the first child directory (lexical
-# order, to match lint.py) that is_wiki recognises; break-on-first means a
-# second matching sibling at the same level is deliberately not surfaced.
+# At each level the existing wiki is the first child directory that is_wiki
+# recognises, in lexical order over the level's visible children: the `*/`
+# glob passes over dot-directories, and lint.py's mirror of this loop skips
+# them too, so a dot-named wiki resolves the same way in both. break-on-
+# first means a second matching sibling at the same level is deliberately
+# not surfaced.
 candidates=()
 for level in "${ladder[@]}"; do
   if [[ -f "$level/.no_wiki" ]]; then

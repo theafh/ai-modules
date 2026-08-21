@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.9.1
+version: 1.9.2
 model: inherit
 background: false
 effort: high
@@ -202,19 +202,29 @@ have audited before — the schema, taxonomy, or domain may have changed.
   </resolve_runtime_paths>
 
   <discover_wiki>
-    Run `WIKI=$("$WIKI_SKILL/scripts/discover_wiki.sh" --check)`. If it
-    exits 1, the wiki path is chosen but unscaffolded — stop and tell
-    the user; do not initialize a wiki as part of an audit. If it exits
-    2, `$WIKI` holds the walk-up candidate list (one `AVAILABLE:` /
-    `EXISTING:` entry per line in walk order). **Mandatory:** present
-    those candidates to the user and ask which path to use — never
-    silently adopt an upstream `EXISTING:` candidate when CWD is an
-    unresolved `AVAILABLE:` level. After the user picks, also offer
-    `.no_wiki` markers for the unchosen `AVAILABLE` candidates between
-    CWD (inclusive) and the chosen path (exclusive), then re-run
-    discovery against that choice using
-    `"$WIKI_SKILL/scripts/discover_wiki.sh"`. See the wiki skill's
-    "Resolving the Wiki Location" section for the full protocol.
+    Run `WIKI=$("$WIKI_SKILL/scripts/discover_wiki.sh" --check)` and read
+    its exit code. On exit 0, `$WIKI` is the resolved wiki. On exit 1, the
+    wiki path is chosen but unscaffolded — stop and tell the user; do not
+    initialize a wiki as part of an audit. On exit 3 the invocation itself
+    was malformed — fix the command and rerun rather than treating the
+    empty output as a candidate list. On exit 2, `$WIKI` holds the walk-up
+    candidate list (one `AVAILABLE:` / `EXISTING:` entry per line in walk
+    order). **Mandatory:** present those candidates to the user and ask
+    which path to use — never silently adopt an upstream `EXISTING:`
+    candidate when CWD is an unresolved `AVAILABLE:` level. After the user
+    picks, also offer `.no_wiki` markers for the unchosen `AVAILABLE`
+    candidates between CWD (inclusive) and the chosen path (exclusive),
+    and then set `$WIKI` to the chosen path itself — the pick settles the
+    location, mirroring the wiki skill's `<proceed_with_operation>`, and
+    it holds whether or not the user accepted those markers. An
+    `EXISTING:` pick is the wiki to audit; an `AVAILABLE:` pick carries no
+    wiki yet, so stop and tell the user, as on exit 1. Pass that adopted
+    path positionally to every bundled tool from here on
+    (`"$WIKI_SKILL/scripts/discover_wiki.sh" "$WIKI" --check` to confirm
+    it exists, `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"` to lint
+    it), which answers for that path alone instead of rediscovering. See
+    the wiki skill's "Resolving the Wiki Location" section for the full
+    protocol.
   </discover_wiki>
 
   <read_schema>
@@ -719,6 +729,49 @@ affect the same file so each file is opened, read, and rewritten once.
     `git mv` before applying the link Edits.
   </fix_workflow>
 
+  <two_pass_remediation>
+
+    This rule refines `<remediation_contract>` and closes the one gap
+    that contract leaves open. A fix that relocates meaning passes the
+    contract's loses-no-meaning test — the displaced content is still
+    somewhere on the page — so the contract on its own permits
+    normalising a structural element while the displaced semantics stay
+    jammed inside it, and the reader is left holding a broken heading,
+    label, key, or title. Two-pass remediation supplies the missing
+    clause: a fix that has to relocate meaning routes that meaning to
+    its channel first and changes the structure second.
+
+    Apply all three steps, in order, whenever a fix normalises a
+    structural element — heading vocabulary, page anatomy, a
+    frontmatter field, a bold-prefix or section label, a page name —
+    and the existing content carries semantics the target structure
+    has no room for:
+
+    1. **Identify displaced semantics.** Before changing the structure,
+       name the semantic content the existing structure carries that
+       the target has no room for: a date or source in a heading, a
+       qualifier in a frontmatter key, a scope tag in a section title,
+       a mandate level in a page name.
+    2. **Route displaced semantics first.** Move that content into the
+       structured channel that fits it and that this agent may write —
+       a frontmatter field, a `sources:` entry naming an existing
+       `raw/<kind>/<slug>.md` sidecar, an inline link,
+       `## Derived from`, `log.md` — and land it there before applying
+       the structural fix. When the fitting channel is a **new** `raw/`
+       sidecar, surface the need for `wiki_import` and leave `raw/`
+       content untouched (`<raw_directory_read_only>`,
+       `<fix_external_source_pointer>`).
+    3. **Then normalise.** Apply the structural fix to the vacated
+       structure, so the corrected element carries no leftover
+       semantic baggage.
+
+    Both halves of the fix — the structural normalisation and the
+    routing that preceded it — are named in the live remediation
+    summary and in the per-file change report, which carry that
+    requirement (`<remediate_output>`, `<report_changes>`,
+    `<verify_output>`).
+  </two_pass_remediation>
+
   <fix_moves>
 
     Apply the move whose name matches the issue category.
@@ -737,6 +790,11 @@ affect the same file so each file is opened, read, and rewritten once.
       writing an empty list. Carry every optional field the page already
       has, `checked` included, through the rewrite unchanged, and add
       none of them the page does not already carry.
+
+      When a field's existing value embeds prose the canonical shape
+      has no room for, apply "two-pass remediation" before rewriting
+      the block: route the embedded meaning to the channel that fits
+      it, then write the clean value into the canonical order.
     </fix_frontmatter_missing_or_malformed>
 
     <fix_off_taxonomy_tag>
@@ -744,12 +802,33 @@ affect the same file so each file is opened, read, and rewritten once.
       content, or, if the tag genuinely belongs in the taxonomy, add
       it to `SCHEMA.md`'s `## Tag Taxonomy` section first and then
       leave it on the page.
+
+      A replacement that would drop a distinction the off-taxonomy tag
+      carried is a "two-pass remediation" case: route that distinction
+      to the channel that fits it first, then replace the tag.
     </fix_off_taxonomy_tag>
 
     <fix_undeclared_custom_field>
-      Either remove the field from the page or add a declaration to
-      `SCHEMA.md`'s `## Frontmatter` yaml block (with its allowed
-      values when enum-shaped) before keeping the field.
+      Two branches, keyed on whether `SCHEMA.md` already declares the
+      field.
+
+      1. **Undeclared key.** Either remove the field from the page or
+         add a declaration to `SCHEMA.md`'s `## Frontmatter` yaml
+         block (with its allowed values when enum-shaped) before
+         keeping the field.
+      2. **Invalid value on a declared field.** When the field is
+         already declared and its value sits outside the declared set
+         because it embeds a displaceable qualifier —
+         `scope: alpha (Q3 only)` against a declared
+         `scope: alpha | beta` — apply "two-pass remediation": route
+         the qualifier to an agent-writable channel first, preferring
+         the declared field that answers it (`window: Q3`) and
+         otherwise a channel the rule's **Route displaced semantics
+         first** step names, then set the field to the matching clean
+         declared enum member (`scope: alpha`). The field stays
+         on the page; this branch reaches for neither removal nor a
+         new declaration, because the declaration is already right
+         and only the value carried baggage.
     </fix_undeclared_custom_field>
 
     <fix_broken_md_link>
@@ -786,7 +865,9 @@ affect the same file so each file is opened, read, and rewritten once.
       Either rewrite the page body to match the declared type's
       anatomy, or change the `type` field and move the file to the
       matching directory via `git mv`. Pick the move that requires
-      the smaller change to the page's reason for existing.
+      the smaller change to the page's reason for existing. Where
+      the body being reshaped carries semantics the target anatomy has
+      no section for, apply "two-pass remediation" first.
     </fix_type_anatomy_mismatch>
 
     <fix_section_order_or_gaps>
@@ -794,7 +875,9 @@ affect the same file so each file is opened, read, and rewritten once.
       page's type, and add any missing required section with content
       drawn from existing prose where possible. Leave a single-line
       placeholder only when the section truly has no content and
-      mark `confidence: low` to surface the gap.
+      mark `confidence: low` to surface the gap. Where a section
+      heading carries metadata the anatomy's label has no room for,
+      apply "two-pass remediation" before renaming it.
     </fix_section_order_or_gaps>
 
     <fix_wrong_directory_for_declared_type>
@@ -830,8 +913,10 @@ affect the same file so each file is opened, read, and rewritten once.
       remainder to `concepts/` or `summaries/`; cross-link both. Do
       not retain the page as a procedure by tightening imperative
       wording: descriptive substance under imperative framing fails
-      the same checks the next audit will run. Surface the
-      relocation in the per-file change report.
+      the same checks the next audit will run. Reshaping the
+      sections is a "two-pass remediation" case whenever the old
+      sections carry semantics the destination anatomy has no section
+      for. Surface the relocation in the per-file change report.
     </fix_procedure_vs_concept_misclassification>
 
     <fix_oversized_page>
@@ -1186,7 +1271,13 @@ affect the same file so each file is opened, read, and rewritten once.
   <report_changes>
     Report the full set of changes back to the user, organized by
     file: what was created, what was moved, what was rewritten, and
-    which contested pages still need human review.
+    which contested pages still need human review. Name both halves of
+    every normalisation the `<two_pass_remediation>` rule governs on
+    that file's entry — the structural fix and the displaced-semantics
+    routing that preceded it — in the form "label normalised +
+    date/source routed to `sources:`". Report a normalisation whose
+    displaced semantics went unrouted as exactly that, so it reaches
+    the user rather than reading as a completed fix.
   </report_changes>
 
 </verify>
@@ -1203,13 +1294,21 @@ affect the same file so each file is opened, read, and rewritten once.
   </assess_output>
   <remediate_output>
     One fix summary per issue or issue group as the work proceeds, in
-    the form `<file path> — <move applied>`.
+    the form `<file path> — <move applied>`. For a normalisation the
+    `<two_pass_remediation>` rule governs, `<move applied>` names both
+    halves — the structural fix and the routing that preceded it, as in
+    "label normalised + date/source routed to `sources:`" — and names
+    an unrouted displacement as unrouted instead of reporting the
+    structural fix alone.
   </remediate_output>
   <verify_output>
     The final lint outcome line, the log entry written, and a
     per-file change report grouped as: created, moved, split,
     rewritten, metadata-only updates, contested (left for human
-    review).
+    review). Every normalisation the `<two_pass_remediation>` rule
+    governs carries both halves on its file's entry — the structural
+    fix and the displaced-semantics routing — and an unrouted
+    displacement appears there as unrouted.
   </verify_output>
   <final_line>
     Final report ends with one line: `audit complete — N issues

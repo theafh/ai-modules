@@ -1,7 +1,7 @@
 ---
 name: skill_doctor
 description: Check-only doctor for skill artifacts. It audits SKILL.md frontmatter, descriptions that must serve both a browsing user and an LLM router, registration, tests, and instruction quality for one skill, a skill family, or every skill in the repo, editing no targets and running no harness-portability review. Use when checking a skill, auditing SKILL.md metadata or descriptions, reviewing skill-family readiness, verifying plugin or marketplace registration, or asking whether skill tests and trigger coverage exist before deeper instruction review.
-version: 1.0.5
+version: 1.0.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -47,7 +47,7 @@ The resolver discovers the layout instead of requiring one. It walks the whole t
   A family run reports what its resolution cannot vouch for. The payload groups the resolved set under `by_plugin`, keyed on each member's owning plugin, so a cross-plugin split reads at a glance; a skill with no plugin manifest above it stays in the flat set and is grouped separately. The `warnings` collection carries three findings, each naming the skills and paths involved: a name-prefix set spanning more than one plugin, a prefix sibling the hub's parsed block omits, and a block entry naming no discovered skill. A same-prefix skill in another plugin stays in the resolved set — a genuine cross-plugin family is what the block's union serves — so the run states the split instead of assuming either reading. All three stay warnings, since the harness loads every one of these skills and a hub may deliberately omit a deprecated sibling.
 - **Whole repo.** A whole-repo request covers every skill the walk finds under the repo root. Run `scripts/resolve_scope.py --root <repo-root> --all`.
 
-Exclude agents unless the user names them. Agents live under `plugins/*/agents/` and are outside the default skill walk.
+This skill checks skills only. Agent definitions stay outside every scope mode, `--all` included, and in a plugin-shaped repository they live under `plugins/*/agents/`. When a name or path selector identifies such a definition, report that boundary before invoking `scripts/resolve_scope.py`, route the request to `harness_portability` for an agent definition's portable runtime surface and frontmatter, add `ai_instruction_writing` / `ai_instruction_formatting` when the ask is prose authoring, and stop. That pre-resolver stop keeps a named agent off the failure classes below, since the agent never reaches the resolver to read as an unknown skill name or a rejected selector path.
 
 When `scripts/resolve_scope.py` exits nonzero, stop and report its message rather than substituting a target set of your own. Each failure class carries its own remedy:
 

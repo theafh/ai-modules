@@ -80,7 +80,7 @@ which the `skill_doctor` hub itself is, and which must resolve to no names rathe
 than to everything from the mention to end of file.
 
 **Co-edit coordination.** `scripts/resolve_scope.py` is also the edit surface of
-[ai-dev_skill-doctor-agent-scope.md](../ai-dev_skill-doctor-agent-scope.md), which
+[ai-dev_skill-doctor-agent-scope.md](ai-dev_skill-doctor-agent-scope.md), which
 owns the agent-handling passage and any `--agent` resolver mode its
 **Open decision:** settles, and of
 [ai-dev_skill-doctor-repo-convention-portability.md](ai-dev_skill-doctor-repo-convention-portability.md),
