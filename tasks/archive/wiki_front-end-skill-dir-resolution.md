@@ -24,7 +24,7 @@ Both front-end skills invoke another skill's bundled assets without any resoluti
 
 This works only when the executing model improvises the sibling bundle's install path. The standing repo rules and `CHARTER.md` both name the governing conventions: helper scripts are bundled beside the skill that executes them and "resolve paths from documented roots", and "Skill-family rules live in the family base skill" with front ends inheriting rather than carrying divergent copies. The shipped precedent is [wiki_auto-shaper-skill-dir-resolution.md](wiki_auto-shaper-skill-dir-resolution.md) (finished), which built the agent's run-local `$WIKI_SKILL`/`$WIKI` resolution; this task extends the same capability to the two front ends, with the rule's canonical home moving to the base skill.
 
-Co-edit note: [wiki_reingest-drift-check-protocol.md](../wiki_reingest-drift-check-protocol.md) rewrites the re-ingest sentence inside the same `<capture_raw>` block of `wiki_import` this task retargets to `$WIKI_SKILL` paths — coordinate wording so the block is edited coherently whichever lands first.
+Co-edit note: [wiki_reingest-drift-check-protocol.md](wiki_reingest-drift-check-protocol.md) rewrites the re-ingest sentence inside the same `<capture_raw>` block of `wiki_import` this task retargets to `$WIKI_SKILL` paths — coordinate wording so the block is edited coherently whichever lands first.
 
 Shared hub `<tools>` surface with [wiki_base-skill-bundle-paths.md](../wiki_base-skill-bundle-paths.md); see `**Out of scope:**` for the hub bare-call boundary.
 

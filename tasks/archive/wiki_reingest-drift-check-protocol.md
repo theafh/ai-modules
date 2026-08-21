@@ -2,9 +2,11 @@
 description: Rewrite the re-ingest drift instruction to compare fresh content against the recorded sha256 via the hash helper's report-only mode before any sidecar write, so drift is detected rather than erased.
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-08-21T08:01:08
-status: ready
+updated: 2026-08-21T18:18:43
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make re-ingest drift detection compare before it writes
@@ -15,11 +17,11 @@ Re-ingesting a source actually detects drift: the skip-or-drift decision is made
 
 ## Context
 
-The instruction appears twice with the same wording: the `<capture_raw_source>` bullet in [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) and the `<capture_raw>` policy in [skills/wiki_import/SKILL.md](../plugins/knowledge_management/skills/wiki_import/SKILL.md) both say "On re-ingest of the same source: run the same command, skip if it reports `ok`, flag drift if it reports `update`" — where "the same command" is `compute_sha256.py` in its default **write** mode.
+The instruction appears twice with the same wording: the `<capture_raw_source>` bullet in [skills/wiki/SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md) and the `<capture_raw>` policy in [skills/wiki_import/SKILL.md](../../plugins/knowledge_management/skills/wiki_import/SKILL.md) both say "On re-ingest of the same source: run the same command, skip if it reports `ok`, flag drift if it reports `update`" — where "the same command" is `compute_sha256.py` in its default **write** mode.
 
-That procedure cannot work in either reading. If the sidecar body has not been overwritten with the fresh fetch, the command hashes the old disk content and always reports `ok`, so the skip decision says nothing about whether the source changed. If the body was overwritten first, the raw layer was mutated before the drift decision, and the same invocation immediately rewrites the recorded hash — erasing the mismatch that the linter's `drift` check would otherwise catch, leaving "flag drift" to one console line in the moment. The script already ships the mode built for this: `--check` ("exit 1 if any file would change; write nothing") and `--print`, per the usage block in [skills/wiki/scripts/compute_sha256.py](../plugins/knowledge_management/skills/wiki/scripts/compute_sha256.py) — and no skill or agent instruction references either mode today. A Layer 2 skill-behavior scenario that follows the current re-ingest sentence fails today under that always-`ok` reading; the rewrite is what makes the unchanged-source and changed-source scenarios pass.
+That procedure cannot work in either reading. If the sidecar body has not been overwritten with the fresh fetch, the command hashes the old disk content and always reports `ok`, so the skip decision says nothing about whether the source changed. If the body was overwritten first, the raw layer was mutated before the drift decision, and the same invocation immediately rewrites the recorded hash — erasing the mismatch that the linter's `drift` check would otherwise catch, leaving "flag drift" to one console line in the moment. The script already ships the mode built for this: `--check` ("exit 1 if any file would change; write nothing") and `--print`, per the usage block in [skills/wiki/scripts/compute_sha256.py](../../plugins/knowledge_management/skills/wiki/scripts/compute_sha256.py) — and no skill or agent instruction references either mode today. A Layer 2 skill-behavior scenario that follows the current re-ingest sentence fails today under that always-`ok` reading; the rewrite is what makes the unchanged-source and changed-source scenarios pass.
 
-Co-edit note: [wiki_front-end-skill-dir-resolution.md](archive/wiki_front-end-skill-dir-resolution.md) rewrites the script-invocation form inside the same `<capture_raw>` block of `wiki_import` — coordinate wording so the block is edited coherently whichever lands first.
+Co-edit note: [wiki_front-end-skill-dir-resolution.md](wiki_front-end-skill-dir-resolution.md) rewrites the script-invocation form inside the same `<capture_raw>` block of `wiki_import` — coordinate wording so the block is edited coherently whichever lands first.
 
 ## Approach
 
@@ -39,7 +41,7 @@ Keep the first-ingest instruction ("compute and write the hash with `compute_sha
 
 ## Acceptance
 
-1. `rg "skip if it reports" ../plugins/knowledge_management/skills/wiki/SKILL.md ../plugins/knowledge_management/skills/wiki_import/SKILL.md` shows the old sentence superseded in both files by the compare-before-write protocol, and the rewritten instructions name `compute_sha256.py --check` as the report-only compare mode.
+1. `rg "skip if it reports" ../../plugins/knowledge_management/skills/wiki/SKILL.md ../../plugins/knowledge_management/skills/wiki_import/SKILL.md` shows the old sentence superseded in both files by the compare-before-write protocol, and the rewritten instructions name `compute_sha256.py --check` as the report-only compare mode.
 2. The rewritten protocol in both files orders the steps as: obtain fresh content into the temporary file shaped as the existing sidecar's frontmatter (including the recorded `sha256`) with the fresh body substituted beneath it → run `compute_sha256.py --check` on that temporary file while the on-disk sidecar remains untouched → on match skip with no sidecar write and no log entry / on mismatch rewrite body, refresh hash, and surface drift to the user and the ingest log entry.
 3. Two Pattern-B Layer 2 skill-behavior scenarios registered in `tests/wiki/layer2/evals.json` (with staged fixtures) prove the rewritten instructions: one re-ingests an unchanged source and asserts the sidecar is byte-identical afterward with no new ingest log entry for that source; one re-ingests a changed source and asserts drift is surfaced, the body is rewritten, the recorded hash changes only together with that body rewrite, and the ingest log entry records the update. Each scenario runs over the fixed pass denominator declared by that file's top-level `passes` field; the recorded all-passes-clean result (every assertion holding on every pass) is the deliverable. When a scenario misses the bar, the report carries the measured rate and the diverging assertions and hands disposition to the user rather than re-running for a better draw. Layer 1 already covers `--check` script semantics (`s5`/`s6`); this task does not add Layer 1 scenarios for the instruction rewrite.
 4. Both files still carry the first-ingest instruction to compute and write the hash with `compute_sha256.py` (default write mode); only the re-ingest branch is superseded.

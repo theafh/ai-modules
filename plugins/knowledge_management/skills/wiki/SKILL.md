@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.20.2
+version: 1.21.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -522,8 +522,23 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   sidecar reconciles onto them — follow it rather than restating it here.
   Compute and write the hash with
   `python3 scripts/compute_sha256.py raw/<kind>/<slug>.md` — never invent
-  the value by hand. On re-ingest of the same source: run the same command,
-  skip if it reports `ok`, flag drift if it reports `update`.
+  the value by hand.
+- **Re-ingest compares before it writes.** The recorded `sha256` is the only
+  record of what the source said last time, so establish drift while that
+  record still stands. Write the freshly fetched or converted body to a
+  session-local temporary file outside the wiki tree, under a verbatim copy of
+  the existing sidecar's frontmatter through its closing `---` with the
+  recorded `sha256` carried over untouched, reproducing the blank line the
+  sidecar keeps beneath that closing `---` because the hash covers everything
+  after it. Run `python3 scripts/compute_sha256.py --check <temp-sidecar>` on
+  that temporary file — report-only mode, it writes nothing — while the
+  sidecar on disk stays as it is. `ok` and exit 0 mean the source is
+  unchanged: skip, leaving the sidecar untouched, with no body rewrite, no
+  hash refresh, and no `log.md` entry. `update` and exit 1 mean drift: rewrite
+  the sidecar body to what the source now says, refresh the recorded hash with
+  the write-mode command above, and report the drift both to the user and in
+  the ingest's `log.md` entry. Running the write mode over the sidecar itself
+  first erases the mismatch that decides this branch.
 - **Keep cross-references out of the raw body.** A relative `.md`
   link from one raw file to another is ingester synthesis, not source
   content (originals cite by URL, not by ingester-picked slugs).
