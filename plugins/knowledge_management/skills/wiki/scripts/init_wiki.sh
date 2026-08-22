@@ -73,10 +73,15 @@ mkdir -p \
   "$WIKI/procedures"
 
 today="$(date +%Y-%m-%d)"
+# The log seed heading carries a timestamp so every entry heading is unique
+# by construction; index.md's `Last updated:` stays date-only. Local
+# wall-clock time in the same locality as $today, on purpose.
+now="$(date "+%Y-%m-%d %H:%M")"
 
 # Templates are the single source of truth for the wiki shape, kept in
 # ../references/ alongside this script. SCHEMA.md is copied verbatim;
-# index.md and log.md substitute {{TODAY}} for the create date.
+# index.md substitutes {{TODAY}} for the date-only create date, and log.md
+# substitutes {{NOW}} for the date+time its seed entry heading carries.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REFS="$SCRIPT_DIR/../references"
 
@@ -89,7 +94,8 @@ done
 
 cp "$REFS/template_schema.md" "$WIKI/SCHEMA.md"
 sed "s/{{TODAY}}/$today/g" "$REFS/template_index.md" > "$WIKI/index.md"
-sed "s/{{TODAY}}/$today/g" "$REFS/template_log.md"   > "$WIKI/log.md"
+sed -e "s/{{NOW}}/$now/g" -e "s/{{TODAY}}/$today/g" \
+  "$REFS/template_log.md" > "$WIKI/log.md"
 
 echo "initialized wiki at $WIKI"
 echo "next: customize SCHEMA.md (domain + tag taxonomy) with the user"

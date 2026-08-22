@@ -86,7 +86,7 @@ When the `filename` warning fires, the autofix mirrors the manual session fix:
 ### Non-goals
 
 - Do **not** rely on setting `git config core.precomposeUnicode` as the fix — it is machine-specific and brittle. ASCII-folding is robust regardless of git config; mention the footgun only as root-cause context.
-- A ship-time migration sweep: implementing this task renames nothing in any existing wiki. Renames happen per wiki through the normal channel — the linter surfaces the `warn`, and that wiki's next `wiki_fix`/audit run applies the ASCII fold as an ordinary deterministic remediation under the agent's remediation contract (`git mv` plus re-pointed references; the readable title keeps its native characters). This differs deliberately from the log posture in [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md): log entries are append-only records, so their repair is info-level and on demand; page filenames are living structure, so the fold is warn-level and auto-applied.
+- A ship-time migration sweep: implementing this task renames nothing in any existing wiki. Renames happen per wiki through the normal channel — the linter surfaces the `warn`, and that wiki's next `wiki_fix`/audit run applies the ASCII fold as an ordinary deterministic remediation under the agent's remediation contract (`git mv` plus re-pointed references; the readable title keeps its native characters). This differs deliberately from the log posture in [wiki_log-heading-uniqueness-and-repair.md](archive/wiki_log-heading-uniqueness-and-repair.md): log entries are append-only records, so their repair is info-level and on demand; page filenames are living structure, so the fold is warn-level and auto-applied.
 
 ## Acceptance
 

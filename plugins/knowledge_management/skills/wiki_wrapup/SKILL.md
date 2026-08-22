@@ -1,7 +1,7 @@
 ---
 name: wiki_wrapup
 description: Wrap up the current chat session by mining it for durable knowledge, comparing the findings against the existing wiki, and surfacing both candidate additions and contradictions with concrete reconciliation suggestions. Use when the user asks to wrap up, close, or end a session; to capture, harvest, or persist what we discussed into the wiki; to ingest the session into the wiki; to reconcile the conversation with existing notes; or whenever a research or exploration chat is concluding and produced reusable knowledge worth keeping.
-version: 1.1.1
+version: 1.1.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -29,7 +29,7 @@ license: MIT
     <step>Walk the session top to bottom. Build a list of durable items, each with title, suggested page type, target slug, and source-message reference.</step>
     <step>Search `$WIKI` for each item. Tag NEW, EXTEND, CONFIRM, or CONFLICT. For CONFLICT items, capture both excerpts.</step>
     <step>Emit one report under three H2 headings: `## New pages`, `## Extensions to existing pages`, `## Contradictions to reconcile`.</step>
-    <step>On approval, route each item through the `wiki` skill's matching flow, run `python3 "$WIKI_SKILL/scripts/lint.py"`, and append a single `## [YYYY-MM-DD] session-wrapup | N new, N extended, N contested` entry to `log.md` listing only files actually changed.</step>
+    <step>On approval, route each item through the `wiki` skill's matching flow, run `python3 "$WIKI_SKILL/scripts/lint.py"`, and append a single `## [YYYY-MM-DD HH:MM] session-wrapup | N new, N extended, N contested` entry to `log.md` listing only files actually changed.</step>
   </steps>
   <output_contract>
     <proposal_format>Three H2 sections. Each entry: title, suggested type, target path, source-message reference. Contradictions also carry wiki excerpt, session excerpt, disagreement dimension, and ≥2 reconciliation options.</proposal_format>

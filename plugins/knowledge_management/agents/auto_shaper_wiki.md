@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.9.2
+version: 1.10.0
 model: inherit
 background: false
 effort: high
@@ -548,7 +548,7 @@ the fix move.
       diff -u "$WIKI/SCHEMA.md" "$WIKI_SKILL/references/template_schema.md"
       diff -u "$WIKI/index.md"  "$WIKI_SKILL/references/template_index.md"
       # log.md: scope the diff to the preamble (everything above the first
-      # `## [YYYY-MM-DD]` entry). The entries below are append-only content
+      # `## [YYYY-MM-DD HH:MM]` entry). Entries below are append-only content
       # that grows unbounded; a whole-file diff would drown the preamble
       # scaffold signal in hundreds of accumulated entries.
       diff -u \
@@ -612,10 +612,15 @@ the fix move.
       - `template_index.md`: the header values (`Total pages: N`,
         `Last updated: <date>`) and the page entries inside each
         section.
-      - `template_log.md`: every `## [YYYY-MM-DD] …` entry and its
-        body (out of scope for the scaffold diff entirely — the diff
-        runs on the preamble alone, since entries are append-only
-        content).
+      - `template_log.md`: every `## [YYYY-MM-DD HH:MM] …` entry and
+        its body, out of scope for the scaffold diff entirely, since
+        the diff runs on the preamble alone and entries are
+        append-only content. One narrow exception lives on the
+        remediate side: an operator who explicitly asks to clean
+        duplicate headings routes that repair through
+        `<fix_log_heading_duplicate>`, which touches nothing but a
+        colliding heading. Wholesale entry editing and any automatic
+        sweep of historical entries stay out of scope.
     </configurable_zones>
 
     <common_hunk_kinds>
@@ -774,7 +779,12 @@ affect the same file so each file is opened, read, and rewritten once.
 
   <fix_moves>
 
-    Apply the move whose name matches the issue category.
+    Apply the move whose name matches the issue category, with one
+    carve-out: a `log-heading` finding never matches its move
+    automatically. `<fix_log_heading_duplicate>` runs only when the
+    operator explicitly asked to clean duplicate log headings, so a
+    routine pass leaves those findings reported and the entries
+    untouched.
 
     <fix_frontmatter_missing_or_malformed>
       Rewrite the frontmatter block in the canonical order (`title`,
@@ -1133,10 +1143,42 @@ affect the same file so each file is opened, read, and rewritten once.
     </fix_index_scaffold_drift>
 
     <fix_log_preamble_drift>
-      Restore the canonical preamble lines (entry format, action
-      enum, body convention, rotation rule). Existing log entries
+      Restore the canonical preamble verbatim from
+      `$WIKI_SKILL/references/template_log.md`. That region is
+      everything above the first `##` heading, and it carries the
+      timestamped `## [YYYY-MM-DD HH:MM] action | subject` entry
+      format, the action enum, the repair-not-rewrite carve-out, the
+      body convention, and the rotation rule. Existing log entries
       below the preamble stay as-is.
     </fix_log_preamble_drift>
+
+    <fix_log_heading_duplicate>
+      **On demand only.** Run this move when the operator explicitly
+      asked to clean duplicate log headings, and never from the issue
+      list alone. A commit that markdownlint MD024
+      (`no-duplicate-heading`) failed is a reason an operator asks. It
+      is not a trigger this agent observes for itself, because the
+      `log-heading` info finding says nothing about MD024.
+
+      On a routine assess, remediate, and relint pass, leave every
+      `log-heading` finding in the issue list and in the final report,
+      and edit no log entry for it. Historical duplicates are
+      surfaced, not swept.
+
+      When the operator did ask, repeat until clean. While any group
+      of byte-identical `## [` headings remains in `log.md`, suffix
+      the later colliding heading (document order: the lower,
+      bottom-most occurrence in the file) with the next free non-time
+      suffix `(k)`. The first free suffix is `(2)`, then `(3)`, and so
+      on; a suffix already carried by any `## [` heading in the file
+      is not free. Leave the earliest heading of the group untouched.
+      Repeat until no duplicate group remains. A two-heading collision
+      is the one-pass instance of this rule.
+
+      Change nothing else. The entry body, the recorded substance, and
+      the entry order all stay as they are, and no timestamp is
+      fabricated for a past entry whose real time is unknown.
+    </fix_log_heading_duplicate>
 
     <fix_directory_layout_drift>
       Create the missing `<type>s/` directory for every page type
@@ -1242,7 +1284,7 @@ affect the same file so each file is opened, read, and rewritten once.
     line so it lands at the end of the file:
 
     ```text
-    ## [YYYY-MM-DD] audit | N blocking, N warn, N info; M pages updated, K pages split
+    ## [YYYY-MM-DD HH:MM] audit | N blocking, N warn, N info; M pages updated, K pages split
     ```
 
     List the files actually created, updated, or moved — do not

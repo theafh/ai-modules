@@ -28,7 +28,7 @@ Rotation also interacts with the auto-shaper's incremental audits: the agent sco
 
 Agents have independently rediscovered an entry-aware idiom (`grep -n '^## \[' log.md` to get entry anchors, then read a bounded slice). That idiom should be baked into the prescribed steps, and rotation should be enforced so the log never reaches the failure size in the first place.
 
-Co-edit coordination: [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md) edits the same `template_log.md` preamble (adding the timestamped heading format and the repair carve-out) and adds its own on-demand fix move to the agent's `<remediate>` phase beside this task's rotation move. Both preamble edits drift every existing wiki's `log.md` boilerplate once until its next audit realigns it, so landing them together spends that drift a single time; word this task's rotation-rule preamble line against whichever heading-format text is current when it builds, and keep the two `<remediate>` moves distinct siblings.
+Co-edit coordination: [wiki_log-heading-uniqueness-and-repair.md](archive/wiki_log-heading-uniqueness-and-repair.md) edits the same `template_log.md` preamble (adding the timestamped heading format and the repair carve-out) and adds its own on-demand fix move to the agent's `<remediate>` phase beside this task's rotation move. Both preamble edits drift every existing wiki's `log.md` boilerplate once until its next audit realigns it, so landing them together spends that drift a single time; word this task's rotation-rule preamble line against whichever heading-format text is current when it builds, and keep the two `<remediate>` moves distinct siblings.
 
 Files involved:
 

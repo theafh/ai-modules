@@ -1179,6 +1179,46 @@ def check_log_rotation(wiki: Path) -> list[Issue]:
     return []
 
 
+def check_log_heading_uniqueness(wiki: Path) -> list[Issue]:
+    """Surface `log.md` entry headings that repeat byte-identically.
+
+    Duplicate detection only. The check compares whole heading lines and fires
+    solely on a byte-identical repeat, so a unique legacy date-only heading
+    stays clean and no entry is ever flagged for lacking the `HH:MM` component
+    the current format carries. One finding per duplicate group, in
+    first-occurrence order, so a three-way collision reads as one collision
+    rather than two.
+
+    The category is deliberately its own — `log-heading`, not
+    ``check_log_rotation``'s ``log`` — because this check emits several findings
+    per `log.md` while the two-field (path-only) acceptance form in
+    TWO_FIELD_CATEGORIES rests on one finding per path, so sharing the key would
+    let one bullet swallow unrelated collisions. The finding stays line-less and
+    its message names the colliding heading verbatim, which keeps the
+    three-field acceptance form able to pin one collision as the log grows
+    underneath it.
+
+    Severity is info: a collision is surfaced for review and never blocks the
+    exit code, because repairing an entry already written is an
+    operator-requested move rather than something a routine audit sweeps.
+    """
+    log = wiki / "log.md"
+    if not log.is_file():
+        return []
+    counts: dict[str, int] = {}
+    for line in log.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## ["):
+            counts[line] = counts.get(line, 0) + 1
+    return [
+        Issue(
+            SEV_INFO, "log-heading", log,
+            f"duplicate entry heading {heading!r}; disambiguate the later occurrence",
+        )
+        for heading, count in counts.items()
+        if count > 1
+    ]
+
+
 def check_stale_content(wiki: Path) -> list[Issue]:
     """A page is stale when its `updated` date trails the most recent
     `ingested` date among its cited raw sources by more than 90 days.
@@ -2013,6 +2053,7 @@ def main() -> int:
     issues.extend(check_verbatim_boilerplate(wiki))
     issues.extend(check_taxonomy_style(wiki))
     issues.extend(check_log_rotation(wiki))
+    issues.extend(check_log_heading_uniqueness(wiki))
     issues.extend(check_source_drift(wiki))
     issues.extend(check_source_path_portable(wiki))
     issues.extend(check_raw_origin_form(wiki))

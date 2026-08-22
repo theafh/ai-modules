@@ -1,7 +1,7 @@
 ---
 name: wiki_import
 description: Import a single external resource (URL, file, paper, PDF, transcript, meeting note, internal note, paste) into the wiki with a user-reviewable triage step before any wiki page is written. Use when the user points at such a resource and asks to ingest, import, integrate, digest, absorb, review-before-adding, or propose-then-add it into their wiki; when they want a triage step on a single source rather than a straight ingest; or whenever a named source should be brought in with a propose-then-act front end.
-version: 1.3.0
+version: 1.3.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -35,7 +35,7 @@ license: MIT
     <step>Read the captured raw end to end. Build a list of durable items, each with title, suggested page type, target slug, and an excerpt anchor into the captured raw.</step>
     <step>Search `$WIKI` for each item (index plus recursive grep for 100+-page wikis). Tag NEW, EXTEND, CONFIRM, or CONFLICT. For CONFLICT items, capture both excerpts verbatim.</step>
     <step>Emit one report under three H2 headings: `## New pages`, `## Extensions to existing pages`, `## Contradictions to reconcile`. Skip CONFIRM entries unless the user asked for a full inventory.</step>
-    <step>On approval, route each item through the `wiki` skill's matching flow, run `python3 "$WIKI_SKILL/scripts/lint.py"`, and append a single `## [YYYY-MM-DD] import | Source Title — N new, N extended, N contested` entry to `log.md` listing only files actually created or updated.</step>
+    <step>On approval, route each item through the `wiki` skill's matching flow, run `python3 "$WIKI_SKILL/scripts/lint.py"`, and append a single `## [YYYY-MM-DD HH:MM] import | Source Title — N new, N extended, N contested` entry to `log.md` listing only files actually created or updated.</step>
   </steps>
   <output_contract>
     <proposal_format>Three H2 sections. Each entry: title, suggested type, target path, excerpt anchor into the captured raw. Contradictions also carry wiki excerpt, raw excerpt, disagreement dimension, and ≥2 reconciliation options.</proposal_format>

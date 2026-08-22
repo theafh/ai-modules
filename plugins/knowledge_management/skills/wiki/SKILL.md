@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.22.0
+version: 1.23.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -50,7 +50,7 @@ Three layers carry the wiki:
 wiki/
 ├── SCHEMA.md           # Conventions, structure rules, domain config
 ├── index.md            # Sectioned content catalog with one-line summaries
-├── log.md              # Chronological action log (append-only, rotated yearly)
+├── log.md              # Chronological action log (append-only in substance, rotated yearly)
 ├── raw/                # Layer 1: Immutable source material
 │   ├── articles/       # Externally-published articles, web clippings
 │   ├── papers/         # PDFs, arxiv papers
@@ -64,6 +64,12 @@ wiki/
 ├── summaries/          # Layer 2: Standalone overview / digest pages
 └── procedures/         # Layer 2: Procedure / workflow / how-to pages
 ```
+
+**The log is append-only in substance.** Never reword, reorder, or delete what
+a past entry records. An entry may still be edited to repair a structural or
+lint break it introduced, keeping what it records and where it sits. See
+`<appending_to_log>` for the rule, and `<lint_and_audit>` for the duplicate
+heading the linter surfaces.
 
 **Layer 1 — Raw Sources.** Immutable. The agent reads but never modifies these.
 **Layer 2 — The Wiki.** Agent-owned markdown files. Created, updated, and
@@ -590,7 +596,7 @@ difference between a growing wiki and a pile of duplicates.
 
 - Add new pages to `index.md` under the correct section, alphabetically.
   Update "Total pages" + "Last updated".
-- Append to `log.md`: `## [YYYY-MM-DD] ingest | Source Title`. List only
+- Append to `log.md`: `## [YYYY-MM-DD HH:MM] ingest | Source Title`. List only
   files actually created or updated in this ingest. Skip files that were
   inspected, considered, or deliberately left unchanged, and do not
   narrate decisions about what *not* to do. Aim for roughly 20 lines per
@@ -793,7 +799,10 @@ Findings come in three buckets:
   mismatches (the log.md preamble drifting from the canonical template in
   `references/`).
 - **info** — markdown style nits, oversized pages, low-confidence
-  single-source pages, unused taxonomy tags, log over 500 entries.
+  single-source pages, unused taxonomy tags, log over 500 entries, duplicate
+  `log.md` entry headings (`log-heading`), surfaced for review because
+  repairing an entry already written is an operator-requested move rather than
+  a routine sweep.
 
 Full check matrix: `references/lint_checks.md`.
 </narrow_inline_checks>
@@ -806,7 +815,7 @@ dispute signal is for a human to resolve, so it stays in the report. Append
 the outcome to `log.md`:
 
 ```text
-## [YYYY-MM-DD] lint | N blocking, N warn, N info
+## [YYYY-MM-DD HH:MM] lint | N blocking, N warn, N info
 ```
 
 If a check is wrong for the situation (e.g., a deliberately oversized
@@ -843,12 +852,26 @@ each records its outcome as a process record even when it changed nothing
 (`<inline_iteration_loop>` below and the `auto_shaper_wiki` audit entry), so
 the next run has a baseline to read.
 
-"Append-only" means newest at the *bottom* of the file. The Edit tool's
-`old_string` matching makes it easy to anchor on a header and insert
-*before* it, producing inverted order. Avoid that:
+**Every new heading carries a timestamp.** Write
+`## [YYYY-MM-DD HH:MM] action | subject` in local 24-hour time. The time
+component is what keeps two same-day entries with the same action and subject
+from colliding, which markdownlint MD024 reports as a duplicate heading. A
+legacy date-only heading stays valid exactly as written and is never
+rewritten to add a time it never recorded.
+
+**"Append-only" means newest at the *bottom* of the file, and it binds the
+substance.** Never reword, reorder, or delete what a past entry records. An
+entry may still be edited to repair a structural or lint break it introduced,
+such as a heading that collides with an earlier one or malformed markdown,
+provided the repair keeps what the entry records and where it sits. Repair the
+breakage; leave the substance alone. This is the one permission to touch an
+entry already written.
+
+The Edit tool's `old_string` matching makes it easy to anchor on a header and
+insert *before* it, producing inverted order. Avoid that:
 
 - **Anchor on the previous entry's last body line**, never on a
-  `## [YYYY-MM-DD]` header. New content (blank line + new header + body)
+  `## [YYYY-MM-DD HH:MM]` header. New content (blank line + new header + body)
   goes *after* the anchor.
 - **Cluster ordering matches file ordering.** When one workflow produces
   several entries (ingest → sidecar update → cite), write them earliest-first

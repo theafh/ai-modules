@@ -23,7 +23,7 @@ This is the *general* per-finding accept mechanism. A narrower, type-based mecha
 
 Storage has an established home: `lint.py` already scans the SCHEMA `## Lint` section fence-safe for labeled bullets (the `Page-check exclusions:` parse, `LINT_EXCLUDE_RE`), and SCHEMA.md carries no YAML frontmatter of its own — so a frontmatter-based acceptance store has nowhere to live, and the acceptance store follows the `## Lint` bullet pattern instead.
 
-Coordination with [wiki_log-heading-uniqueness-and-repair.md](../wiki_log-heading-uniqueness-and-repair.md): the two-field acceptance form in **Store acceptances in the SCHEMA `## Lint` section.** whitelists `log` on the premise that a `log` finding emits at most one Issue per path. That task keeps the premise true by filing its new duplicate-heading finding under a distinct `log-heading` category rather than `log`, so `log` stays single-emit, and `log-heading` (several per path) takes the three- or four-field discriminator forms like any other category.
+Coordination with [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md): the two-field acceptance form in **Store acceptances in the SCHEMA `## Lint` section.** whitelists `log` on the premise that a `log` finding emits at most one Issue per path. That task keeps the premise true by filing its new duplicate-heading finding under a distinct `log-heading` category rather than `log`, so `log` stays single-emit, and `log-heading` (several per path) takes the three- or four-field discriminator forms like any other category.
 
 Files involved:
 
