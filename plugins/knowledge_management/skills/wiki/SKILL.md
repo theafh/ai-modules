@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.21.0
+version: 1.22.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -191,10 +191,12 @@ channel.
 </page_types>
 
 <tools>
-Three bundled scripts handle discovery, init, and lint. **Always run
-`discover_wiki.sh` first** — never resolve the wiki path with your own
-inline Python or shell logic; the script is the single source of truth
-for walk-up semantics, and bypassing it is what causes silent upstream
+Three bundled scripts handle discovery, init, and lint. Every one of them
+runs from `$WIKI_SKILL`, resolved through `<resolve_wiki_skill_bundle>` below
+before the first of these calls. **Always run
+`"$WIKI_SKILL/scripts/discover_wiki.sh"` first** — never resolve the wiki path
+with your own inline Python or shell logic; the script is the single source of
+truth for walk-up semantics, and bypassing it is what causes silent upstream
 adoptions.
 
 ```bash
@@ -202,7 +204,7 @@ adoptions.
 # disk, 2 = ambiguous with candidates on stdout, 3 = usage error. Only 2
 # starts the ask-the-user protocol; 1 and 3 are hard failures the `*)`
 # branch passes straight out.
-if output=$(scripts/discover_wiki.sh); then
+if output=$("$WIKI_SKILL/scripts/discover_wiki.sh"); then
     WIKI="$output"                                    # auto-resolved
 else
     rc=$?
@@ -213,8 +215,8 @@ else
     # On exit 2, follow <resolving_the_wiki_location> below before
     # touching any wiki file. Do not pick a candidate yourself.
 fi
-[[ -d "$WIKI" ]] || scripts/init_wiki.sh "$WIKI"    # scaffold if missing
-python3 scripts/lint.py                              # health-check
+[[ -d "$WIKI" ]] || "$WIKI_SKILL/scripts/init_wiki.sh" "$WIKI"  # scaffold if missing
+python3 "$WIKI_SKILL/scripts/lint.py"                           # health-check
 ```
 
 <resolve_wiki_skill_bundle>
@@ -400,11 +402,11 @@ keep this safe:
 <the_flow>
 
 <run_discovery>
-**Run `scripts/discover_wiki.sh`.**
+**Run `"$WIKI_SKILL/scripts/discover_wiki.sh"`.**
 
 - **Exit 0** → the script printed a single resolved path on stdout.
   Adopt it as `$WIKI`. If the path does not yet exist on disk, init it
-  with `scripts/init_wiki.sh "$WIKI"` before proceeding.
+  with `"$WIKI_SKILL/scripts/init_wiki.sh" "$WIKI"` before proceeding.
 - **Exit 2** → stdout is the candidate list (one `AVAILABLE:<path>` or
   `EXISTING:<path>` per line, in walk order from CWD upward). Continue
   with `<present_candidates>`. Do not pick a candidate yourself.
@@ -438,8 +440,9 @@ the walk-up will short-circuit at the chosen wiki anyway.
 </offer_no_wiki_markers>
 
 <proceed_with_operation>
-**Only now** scaffold (if the chosen path needs it via
-`init_wiki.sh`) and proceed with the operation against `$WIKI`.
+**Only now** scaffold (if the chosen path needs it, with
+`"$WIKI_SKILL/scripts/init_wiki.sh"`) and proceed with the operation against
+`$WIKI`.
 </proceed_with_operation>
 
 </the_flow>
@@ -485,8 +488,8 @@ already covers steps 1–3 (run discovery, present candidates, offer
 `.no_wiki` markers in unchosen levels). The init-specific steps follow once
 `$WIKI` is chosen:
 
-1. **Run `init_wiki.sh "$WIKI"`** against the chosen path to scaffold
-   `SCHEMA.md`, `index.md`, `log.md`, and the directory tree.
+1. **Run `"$WIKI_SKILL/scripts/init_wiki.sh" "$WIKI"`** against the chosen path
+   to scaffold `SCHEMA.md`, `index.md`, `log.md`, and the directory tree.
 2. **Customize the schema.** Ask the user what domain the wiki covers —
    be specific. The freshly initialized `SCHEMA.md` has placeholder text
    in the **Domain** and **Tag Taxonomy** sections. Read
@@ -521,8 +524,8 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   canonical statement of these field meanings and of how a mislabeled or legacy
   sidecar reconciles onto them — follow it rather than restating it here.
   Compute and write the hash with
-  `python3 scripts/compute_sha256.py raw/<kind>/<slug>.md` — never invent
-  the value by hand.
+  `python3 "$WIKI_SKILL/scripts/compute_sha256.py" raw/<kind>/<slug>.md` —
+  never invent the value by hand.
 - **Re-ingest compares before it writes.** The recorded `sha256` is the only
   record of what the source said last time, so establish drift while that
   record still stands. Write the freshly fetched or converted body to a
@@ -530,7 +533,8 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   the existing sidecar's frontmatter through its closing `---` with the
   recorded `sha256` carried over untouched, reproducing the blank line the
   sidecar keeps beneath that closing `---` because the hash covers everything
-  after it. Run `python3 scripts/compute_sha256.py --check <temp-sidecar>` on
+  after it. Run
+  `python3 "$WIKI_SKILL/scripts/compute_sha256.py" --check <temp-sidecar>` on
   that temporary file — report-only mode, it writes nothing — while the
   sidecar on disk stays as it is. `ok` and exit 0 mean the source is
   unchanged: skip, leaving the sidecar untouched, with no body rewrite, no
@@ -595,8 +599,8 @@ difference between a growing wiki and a pile of duplicates.
 </update_navigation>
 
 <run_linter_and_iterate>
-**Run the linter and iterate** — `python3 scripts/lint.py`. Fix every
-blocking finding before declaring complete. This is the narrow
+**Run the linter and iterate** — `python3 "$WIKI_SKILL/scripts/lint.py"`.
+Fix every blocking finding before declaring complete. This is the narrow
 post-ingest check; for broad audits across the whole wiki, spawn the
 `auto_shaper_wiki` agent instead. See `<lint_and_audit>` below.
 </run_linter_and_iterate>
@@ -742,11 +746,11 @@ When content is fully superseded or the domain scope changes:
 2. Remove from `index.md`.
 3. Update inbound links — replace with plain text + "(archived)".
 4. Log the archive action.
-5. Run `python3 scripts/lint.py`: a page link left pointing at the moved file
-   surfaces as a blocking `broken-link`, and an `index.md` entry you left
-   behind surfaces as an `index` warn (the linter parses index link targets and
-   flags dangling ones), so both the inbound-link and index-removal steps are
-   backstopped.
+5. Run `python3 "$WIKI_SKILL/scripts/lint.py"`: a page link left pointing at
+   the moved file surfaces as a blocking `broken-link`, and an `index.md`
+   entry you left behind surfaces as an `index` warn (the linter parses index
+   link targets and flags dangling ones), so both the inbound-link and
+   index-removal steps are backstopped.
 </archive>
 
 <lint_and_audit>
@@ -769,14 +773,14 @@ displaces conversation context.
 </broad_audits>
 
 <narrow_inline_checks>
-**Narrow inline checks — run `lint.py` directly.** After a single ingest,
-a single archive, a schema edit, or a small batch update, run the linter
-in-flow and fix what it surfaces:
+**Narrow inline checks — run `"$WIKI_SKILL/scripts/lint.py"` directly.**
+After a single ingest, a single archive, a schema edit, or a small batch
+update, run the linter in-flow and fix what it surfaces:
 
 ```bash
-python3 scripts/lint.py              # auto-discover ./wiki (or ~/wiki when ./.no_wiki present)
-python3 scripts/lint.py /custom/path # explicit override
-python3 scripts/lint.py --quiet      # blocking + warn only
+python3 "$WIKI_SKILL/scripts/lint.py"              # auto-discover ./wiki (or ~/wiki when ./.no_wiki present)
+python3 "$WIKI_SKILL/scripts/lint.py" /custom/path # explicit override
+python3 "$WIKI_SKILL/scripts/lint.py" --quiet      # blocking + warn only
 ```
 
 Findings come in three buckets:

@@ -43,7 +43,7 @@ checklist line `clean` and no issue raised, taking a fraction of the elapsed
 time and the fewest helper calls of the batch, while the remaining runs surfaced
 real issues across several rounds. Re-gating two of those three fast approvals on 2026-08-12 raised three and five
 readiness issues respectively on
-[wiki_base-skill-bundle-paths.md](wiki_base-skill-bundle-paths.md) and
+[wiki_base-skill-bundle-paths.md](archive/wiki_base-skill-bundle-paths.md) and
 [wiki_base-skill-output-contract.md](wiki_base-skill-output-contract.md) and
 returned both tasks to `checked`; both tasks are now `ready` again after repair.
 The batch runs that surfaced those counts are the historical source for

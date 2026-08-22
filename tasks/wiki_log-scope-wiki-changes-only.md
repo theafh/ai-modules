@@ -2,8 +2,8 @@
 description: Canonical wiki-only log scope in templates and SKILL.md; lint out-of-wiki subjects; rewrite `<fix_log_preamble_drift>` to ensure/refresh missing or drifted units, preserving wiki-only lines.
 scope: plugins/knowledge_management
 created: 2026-08-20T17:17:42
-updated: 2026-08-21T18:41:15
-status: checked
+updated: 2026-08-21T20:10:57
+status: ready
 reported-by: Andreas Hoffmann
 ---
 

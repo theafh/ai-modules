@@ -2,7 +2,7 @@
 description: Align locked-slot boilerplate handling with preserve-extensions so wiki refinements survive audits, including declare-and-honour paths and supporting docs/harness.
 scope: plugins/knowledge_management
 created: 2026-08-20T17:21:49
-updated: 2026-08-21T20:05:16
+updated: 2026-08-21T20:09:29
 status: checked
 reported-by: Andreas Hoffmann
 ---

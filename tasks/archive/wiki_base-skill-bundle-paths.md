@@ -2,9 +2,11 @@
 description: Route the wiki hub's own bundled-script invocations through the resolved bundle path, since its bare relative calls resolve only when the working directory is the skill bundle.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-08-21T08:01:08
-status: ready
+updated: 2026-08-22T10:25:12
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Route the wiki hub's own script calls through the resolved bundle path
@@ -30,7 +32,7 @@ skill's own model puts the working directory in the user's project and discovers
 or nothing.
 
 The sibling task
-[wiki_front-end-skill-dir-resolution.md](archive/wiki_front-end-skill-dir-resolution.md)
+[wiki_front-end-skill-dir-resolution.md](wiki_front-end-skill-dir-resolution.md)
 authors the bundle-resolution block inside this same hub file and rewrites the
 bare calls in `wiki_import` and `wiki_wrapup`. Its goal and acceptance cover those
 two front ends only, so the hub's own calls stay unaddressed there. This task
@@ -60,7 +62,7 @@ reader can paste it once `$WIKI_SKILL` is resolved.
 **Out of scope:**
 
 - Authoring the resolution rule itself, owned by
-  [wiki_front-end-skill-dir-resolution.md](archive/wiki_front-end-skill-dir-resolution.md).
+  [wiki_front-end-skill-dir-resolution.md](wiki_front-end-skill-dir-resolution.md).
 - `<fallback_without_scripts>`, which describes inline discovery for the case
   where the scripts are unreachable and prescribes no script path.
 - A whole-hub portability pass or retargeting of non-script bare bundle paths
@@ -96,3 +98,11 @@ reader can paste it once `$WIKI_SKILL` is resolved.
    path, recorded as a checklist item in the change.
 6. `<fallback_without_scripts>` is unchanged, so the no-scripts path keeps its
    inline discovery rule.
+
+## Verification
+
+- Harness-portability read-through (per `harness_portability`) of the
+  Approach-enumerated invocation sites in the hub, 2026-08-21: every site runs
+  as `"$WIKI_SKILL/scripts/..."`, no bare bundled-script path remains, and the
+  quoting was exercised from a project directory with a space-bearing
+  `$WIKI_SKILL` so all four scripts resolved.

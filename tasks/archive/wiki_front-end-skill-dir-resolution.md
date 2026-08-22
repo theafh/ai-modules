@@ -26,7 +26,7 @@ This works only when the executing model improvises the sibling bundle's install
 
 Co-edit note: [wiki_reingest-drift-check-protocol.md](wiki_reingest-drift-check-protocol.md) rewrites the re-ingest sentence inside the same `<capture_raw>` block of `wiki_import` this task retargets to `$WIKI_SKILL` paths — coordinate wording so the block is edited coherently whichever lands first.
 
-Shared hub `<tools>` surface with [wiki_base-skill-bundle-paths.md](../wiki_base-skill-bundle-paths.md); see `**Out of scope:**` for the hub bare-call boundary.
+Shared hub `<tools>` surface with [wiki_base-skill-bundle-paths.md](wiki_base-skill-bundle-paths.md); see `**Out of scope:**` for the hub bare-call boundary.
 
 ## Approach
 
@@ -38,7 +38,7 @@ Shared hub `<tools>` surface with [wiki_base-skill-bundle-paths.md](../wiki_base
 
 - Copying scripts into the front-end bundles — duplicated artefacts diverge; the family shares one script set in the base skill.
 - Restructuring the agent's resolution block beyond the one-line mirror note — its self-contained form is load-bearing for its isolated execution context.
-- Rewriting the hub skill’s own bare bundled-script invocations (including still-bare `scripts/discover_wiki.sh` / `python3 scripts/lint.py` in `<tools>`) — owned by [wiki_base-skill-bundle-paths.md](../wiki_base-skill-bundle-paths.md), which consumes the resolution block this task authors.
+- Rewriting the hub skill’s own bare bundled-script invocations (including still-bare `scripts/discover_wiki.sh` / `python3 scripts/lint.py` in `<tools>`) — owned by [wiki_base-skill-bundle-paths.md](wiki_base-skill-bundle-paths.md), which consumes the resolution block this task authors.
 
 ## Acceptance
 
