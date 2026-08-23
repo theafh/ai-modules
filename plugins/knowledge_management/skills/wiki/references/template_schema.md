@@ -28,7 +28,12 @@ rules below read in the vocabulary of the wiki they govern.
 - **Add every new page to `index.md`** under the correct section.
 - **Append every operation that creates or updates wiki files to `log.md`**;
   write no entry for an operation that changes no file (lint and audit runs
-  excepted — each records its outcome as a process record).
+  excepted — each records its outcome as a process record). **An entry records
+  changes to this wiki, and only those**: its subject is a file under the wiki,
+  a change elsewhere in the repository that holds the wiki goes in that change's
+  own commit message, and a finding worth keeping goes onto the page that owns
+  it so the entry names that page. The `Scope:` group in `log.md`'s own preamble
+  carries this rule at the point of use.
 - **Keep one owner per fact.** The page that owns the subject carries the
   perishable detail; a cross-cutting page carries the consequence and links to
   the owner rather than restating. Settle ownership by asking which page a
@@ -374,14 +379,14 @@ finding, in whichever of the three forms fits it:
 - Accepted finding: md-style — procedures/deploy.md — 42 — fenced code block missing language identifier
 ```
 
-The short two-field form covers `size`, `log`, and `stale`, whose messages carry
-a counter or a date that moves between runs; the path alone identifies the
-finding there. Every other category takes the finding's exact message as a third
-field, and slots its line number in ahead of that message as a fourth-field form
-when the report shows one (`path.md:42`). Copy the message from the report
-verbatim — the match is exact. Fields are separated by ` — `, and the message
-runs to the end of the line, so a message carrying its own em dash is quoted in
-full. Acceptance covers info findings alone — a blocking or warn
-finding stays in the report whatever a bullet says. The example above sits in a
-fenced block, so it is documentation; a live acceptance goes on an unfenced
-bullet.
+The short two-field form covers `size`, `log`, `stale`, and `log-scope`, whose
+messages carry a counter or a date that moves between runs. The path alone
+identifies the finding there. Every other category takes the finding's exact
+message as a third field, and slots its line number in ahead of that message as
+a fourth-field form when the report shows one (`path.md:42`). Copy the message
+from the report verbatim — the match is exact. Fields are separated by ` — `,
+and the message runs to the end of the line, so a message carrying its own em
+dash is quoted in full. Acceptance covers info findings alone — a blocking or
+warn finding stays in the report whatever a bullet says. The example above sits
+in a fenced block, so it is documentation; a live acceptance goes on an
+unfenced bullet.

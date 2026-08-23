@@ -15,6 +15,14 @@
 > entry records and where it sits. Legacy date-only headings stay valid as
 > written; a colliding one is disambiguated by suffixing the later heading,
 > never by inventing a time the entry never recorded.
+> Scope: an entry records changes to this wiki, and only those. Name the files
+> under the wiki and what changed on each. A change elsewhere in the repository
+> that holds the wiki belongs to that change's own commit message, and
+> knowledge worth keeping goes onto the wiki page that owns it, after which the
+> entry names that page instead of restating it. This keeps the log an index
+> into the wiki's own history rather than an entry that reads as a commit
+> message with one wiki bullet attached, or a parking lot for findings no page
+> carries.
 > Body: list only files actually created or updated. Skip files that were
 > inspected, considered, or deliberately left unchanged, and do not narrate
 > decisions about what not to do. Aim for roughly 20 lines per entry.

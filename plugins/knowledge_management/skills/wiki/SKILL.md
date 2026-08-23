@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.23.0
+version: 1.24.0
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -800,9 +800,10 @@ Findings come in three buckets:
   `references/`).
 - **info** — markdown style nits, oversized pages, low-confidence
   single-source pages, unused taxonomy tags, log over 500 entries, duplicate
-  `log.md` entry headings (`log-heading`), surfaced for review because
-  repairing an entry already written is an operator-requested move rather than
-  a routine sweep.
+  `log.md` entry headings (`log-heading`), and `log.md` entry bullets whose
+  subject is a path outside the wiki (`log-scope`). The two log-entry checks
+  are surfaced for review because repairing an entry already written is an
+  operator-requested move rather than a routine sweep.
 
 Full check matrix: `references/lint_checks.md`.
 </narrow_inline_checks>
@@ -851,6 +852,19 @@ fix, a proposal the user declined. Lint and audit runs are the one exception:
 each records its outcome as a process record even when it changed nothing
 (`<inline_iteration_loop>` below and the `auto_shaper_wiki` audit entry), so
 the next run has a baseline to read.
+
+**An entry is about the wiki, and only the wiki.** The subject of every bullet
+is a file under the wiki and what changed on it. A change elsewhere in the
+repository that holds the wiki — its source tree, tooling, tests, or version
+metadata — belongs to that change's own commit message, and a finding worth
+keeping goes onto the wiki page that owns it, after which the bullet names that
+page instead of restating what it says. Citing an outside path *mid-bullet* as
+the source a claim came from stays legitimate provenance; what stays out is
+that path standing as what the bullet is about. Two failures this prevents: an
+entry that reads as a commit message with one wiki bullet attached, and an
+entry used as a parking lot for findings no page carries. `log.md`'s own
+preamble carries this rule at the point of use as its `Scope:` group, and the
+linter surfaces a violation as an info `log-scope` finding.
 
 **Every new heading carries a timestamp.** Write
 `## [YYYY-MM-DD HH:MM] action | subject` in local 24-hour time. The time
@@ -966,7 +980,7 @@ Quick-scan reminders. See the named section for full guidance.
 </update_navigation_reminder>
 
 <log_only_what_changed>
-**Log only what changed** — an operation that created or updated no wiki file writes no entry at all, and an entry that is written lists the files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. Lint and audit outcome entries are the sanctioned exception. *(see `<appending_to_log>` for when an entry is written, `<update_navigation>` in `<ingest>` for what it lists)*
+**Log only what changed** — an operation that created or updated no wiki file writes no entry at all, and an entry that is written lists the wiki files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. Every bullet's subject is a file under the wiki: a change elsewhere in the repository goes in that change's own commit message, and a finding worth keeping goes onto the page that owns it so the bullet names that page. Lint and audit outcome entries are the sanctioned exception. *(see the `Scope:` group in `log.md`'s preamble for the point-of-use copy of the subject rule, `<appending_to_log>` for when an entry is written, `<update_navigation>` in `<ingest>` for what it lists)*
 </log_only_what_changed>
 
 <page_thresholds>

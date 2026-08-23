@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.10.0
+version: 1.11.0
 model: inherit
 background: false
 effort: high
@@ -53,7 +53,11 @@ exists so the SCHEMA read is never skipped or deferred.
     remains `contested: true` at end of audit — whether marked this
     run or already contested before it. Those contested-page warns
     persist by design for human review per `<leave_contested_pages>`
-    and stay in the final report. Every info-level finding that is
+    and stay in the final report. A `boilerplate` warn on `log.md`
+    that survives because the preamble still carries a line the owner
+    added persists the same way, per `<fix_log_preamble_drift>`, and
+    reaching a clean exit by deleting that line is the one fix this
+    bar never asks for. Every info-level finding that is
     intentional is recorded once as an `- Accepted finding: …` bullet
     in `$WIKI/SCHEMA.md`'s `## Lint` section, which drops it from the
     live report and the live counts, so the live info bucket at exit
@@ -558,14 +562,25 @@ the fix move.
     </diff_procedure>
 
     <lint_already_covers_prelude>
-      The assess phase's `run_linter` enforces verbatim equality of one
-      region against its canonical template via the `boilerplate` check:
-      the `log.md` preamble, everything above the first `##` heading,
-      whose exact wording is the format documentation the log is written
+      The assess phase's `run_linter` compares one region against its
+      canonical template via the `boilerplate` check: the `log.md`
+      preamble, everything above the first `##` heading, whose exact
+      wording is the format documentation the log is written
       against. Any mismatch there is named in the lint output already, so
       the diff procedure covers everything *below* that slot — `##`
       sections, page-type enum, frontmatter declarations, directory
       layout — which the linter does not enforce verbatim.
+
+      Reporting a mismatch is all that check does, and it never
+      licenses a wholesale restore of the region. Remediate a
+      `boilerplate` warn on `log.md` only through
+      `<fix_log_preamble_drift>`, which ensures each canonical unit at
+      current template text and leaves a line the owner added
+      byte-identical where it sits. A preamble that still carries an
+      owner extension after that move keeps its warn as a reported
+      finding, because deleting the owner's line to clear the warn
+      loses meaning and so fails the `<remediation_contract>` test for
+      a safe fix.
 
       The `SCHEMA.md` attribution paragraph above the first `##` heading
       is deliberately outside that slot. Every wiki the skill scaffolds
@@ -779,12 +794,21 @@ affect the same file so each file is opened, read, and rewritten once.
 
   <fix_moves>
 
-    Apply the move whose name matches the issue category, with one
-    carve-out: a `log-heading` finding never matches its move
-    automatically. `<fix_log_heading_duplicate>` runs only when the
-    operator explicitly asked to clean duplicate log headings, so a
-    routine pass leaves those findings reported and the entries
-    untouched.
+    Apply the move whose name matches the issue category, with two
+    carve-outs for `log.md` entries already written. A `log-heading`
+    finding never matches its move automatically:
+    `<fix_log_heading_duplicate>` runs only when the operator
+    explicitly asked to clean duplicate log headings, so a routine pass
+    leaves those findings reported and the entries untouched. A
+    `log-scope` finding has **no** fix move at all — report the
+    violating entry, name it in the final report, and leave its text
+    byte-identical. The log is append-only in substance
+    (`<configurable_zones>`), and trimming a historical entry whose
+    subject was a file outside the wiki is an editorial decision the
+    owner makes, not a sweep this agent performs. Where this agent
+    *writes* a new entry (`<append_audit_log_entry>`), the `Scope:`
+    group in `references/template_log.md` binds it directly: the
+    subject of every bullet is a file under the wiki.
 
     <fix_frontmatter_missing_or_malformed>
       Rewrite the frontmatter block in the canonical order (`title`,
@@ -1143,13 +1167,49 @@ affect the same file so each file is opened, read, and rewritten once.
     </fix_index_scaffold_drift>
 
     <fix_log_preamble_drift>
-      Restore the canonical preamble verbatim from
-      `$WIKI_SKILL/references/template_log.md`. That region is
-      everything above the first `##` heading, and it carries the
-      timestamped `## [YYYY-MM-DD HH:MM] action | subject` entry
-      format, the action enum, the repair-not-rewrite carve-out, the
-      body convention, and the rotation rule. Existing log entries
+      Ensure every canonical preamble unit from
+      `$WIKI_SKILL/references/template_log.md` is present at current
+      template text, and change nothing else in that region. The
+      region is everything above the first `##` heading. Read the
+      template and take its units from it rather than from this list:
+      the labeled blockquote groups (`Format:` with the timestamped
+      `## [YYYY-MM-DD HH:MM] action | subject` entry format,
+      `Actions:`, `Entries:`, `Repair:` with the repair-not-rewrite
+      carve-out, `Scope:` with the wiki-only subject rule, and `Body:`)
+      plus the unlabeled lines (the `Chronological record` opener and
+      the `When this file exceeds 500 entries` rotation rule).
+
+      Work unit by unit, additively:
+
+      - **Insert an absent unit.** A canonical unit with no
+        counterpart in the live preamble is added verbatim from the
+        template, at its canonical position relative to the units
+        already there.
+      - **Refresh a drifted unit.** A unit whose counterpart is
+        present but not byte-identical to the template is rewritten to
+        the current template text. Match a labeled group by its label
+        (`Entries:`, `Scope:`, …) and an unlabeled line by its
+        greppable stem (`Chronological record`,
+        `When this file exceeds`), so a reword of a shared unit
+        propagates here on the next pass.
+      - **Leave every wiki-only line alone.** A line in the preamble
+        region matching no canonical unit is the owner's; it stays
+        byte-identical where it sits.
+
+      **Never wholesale-delete or wholesale-replace the region.** A
+      full-region restore takes an owner's added line with it, which
+      loses meaning and so fails the `<remediation_contract>` test for
+      a safe fix — the reason this move is unit-scoped rather than a
+      verbatim overwrite. Confirm both the insert and the refresh
+      landed by re-reading the preamble after the edit rather than
+      assuming one write covered every unit. Existing log entries
       below the preamble stay as-is.
+
+      A `boilerplate` warn that survives this move because the
+      preamble still carries an owner line the template lacks is
+      reported as a remaining finding, not chased: the wholesale
+      restore that would clear it is exactly the unsafe fix the
+      previous paragraph rules out.
     </fix_log_preamble_drift>
 
     <fix_log_heading_duplicate>
@@ -1399,8 +1459,16 @@ affect the same file so each file is opened, read, and rewritten once.
     match the current `$WIKI_SKILL/SKILL.md` and
     `$WIKI_SKILL/references/template_*.md`, preserving the wiki's
     domain, tag taxonomy, declared custom fields, user-added page
-    types, and page-check exclusions on top. The references are
-    read-as-canonical, never edited.
+    types, and page-check exclusions on top. Preserve a line the owner
+    added to a scaffold file on the same footing, byte-identical where
+    it sits, including inside the `log.md` preamble. Bringing the
+    scaffold forward means every canonical unit reaches its current
+    text, never that the file ends up holding only canonical units. A
+    line merely absent from the template is the owner's, and judging it
+    unused is no reason to drop it: content the owner wrote goes only
+    when it contradicts canonical semantics, and then by surfacing it
+    for the user per `<hunk_classification>` rather than by deleting
+    it. The references are read-as-canonical, never edited.
   </scaffold_alignment_is_in_scope>
 
   <drive_scaffold_check_from_diff>

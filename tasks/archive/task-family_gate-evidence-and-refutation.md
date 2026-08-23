@@ -2,9 +2,11 @@
 description: Make a task_auto_check ready verdict refutable: every clean content-lens checklist line carries the citation it rests on, and a first-round zero-issue approval passes a refute-by-default check.
 scope: plugins/ai_dev
 created: 2026-08-12T19:26:25
-updated: 2026-08-12T20:10:35
-status: ready
+updated: 2026-08-23T20:29:08
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Make the task_auto_check ready verdict refutable
@@ -43,8 +45,8 @@ checklist line `clean` and no issue raised, taking a fraction of the elapsed
 time and the fewest helper calls of the batch, while the remaining runs surfaced
 real issues across several rounds. Re-gating two of those three fast approvals on 2026-08-12 raised three and five
 readiness issues respectively on
-[wiki_base-skill-bundle-paths.md](archive/wiki_base-skill-bundle-paths.md) and
-[wiki_base-skill-output-contract.md](wiki_base-skill-output-contract.md) and
+[wiki_base-skill-bundle-paths.md](wiki_base-skill-bundle-paths.md) and
+[wiki_base-skill-output-contract.md](../wiki_base-skill-output-contract.md) and
 returned both tasks to `checked`; both tasks are now `ready` again after repair.
 The batch runs that surfaced those counts are the historical source for
 the overturn eval whose fixture is a snapshot of the false first-call approval
@@ -260,7 +262,7 @@ route.
     under `evals/fixtures/immediate_ready_citations_overturn/`, a matching
     `stage.sh` case arm, and a matching `grade.sh` case arm for that id, stages
     a fixture that is a snapshot of
-    [wiki_base-skill-output-contract.md](wiki_base-skill-output-contract.md) at
+    [wiki_base-skill-output-contract.md](../wiki_base-skill-output-contract.md) at
     `status: open`, planted with the five readiness gaps the 2026-08-12 re-gate
     of that task surfaced (the false first-call approval body before repair).
     The fixture body carries these verbatim greppable defects:

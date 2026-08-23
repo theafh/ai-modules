@@ -405,7 +405,7 @@ ACCEPT_SEP = " — "
 # emits at most one line-less Issue per path, and each message embeds a counter
 # or a date that moves between runs, so the path alone identifies the finding
 # and no acceptance ever keys on the volatile substring.
-TWO_FIELD_CATEGORIES = frozenset({"size", "log", "stale"})
+TWO_FIELD_CATEGORIES = frozenset({"size", "log", "stale", "log-scope"})
 
 
 def iter_lint_section_lines(wiki: Path) -> Iterator[str]:
@@ -1217,6 +1217,167 @@ def check_log_heading_uniqueness(wiki: Path) -> list[Issue]:
         for heading, count in counts.items()
         if count > 1
     ]
+
+
+# The separators an entry bullet may put between its subject and what changed on
+# it. The subject is whatever precedes the earliest of these in the bullet; a
+# bullet carrying none of them has its whole remainder as the subject.
+LOG_SUBJECT_SEPARATORS = (":", " — ", " – ", " | ")
+
+LOG_BULLET_RE = re.compile(r"^\s*[-*+]\s+(.*\S)\s*$")
+
+# A subject is path-shaped only when the *entire* subject is one path token: a
+# single whitespace-free string that either carries a `/` or is a bare filename
+# with a dotted extension. Prose that merely embeds path substrings — the
+# scaffold's "Structure created with SCHEMA.md, index.md, raw/, …" seed bullet,
+# or "Lint clean across the vault" — is not path-shaped and never fires.
+LOG_PATH_TOKEN_RE = re.compile(r"^(?:\S*/\S*|[^/\s]+\.[A-Za-z0-9]+)$")
+
+# A symmetric wrapper of backticks, asterisks, or underscores around a whole
+# subject is decoration, not part of the path — `` `concepts/foo.md` `` and
+# `**plugins/x/y.md**` name the same subjects their bare forms do. Requiring the
+# run to close the way it opened keeps a real filename that merely starts with
+# one of these characters (`_config.yml`) intact.
+LOG_SUBJECT_DECOR_RE = re.compile(r"^(?P<open>[*_`]+)(?P<body>.+?)(?P=open)$")
+
+# How many distinct offending subjects the aggregated finding names.
+LOG_SCOPE_SAMPLE_LIMIT = 3
+
+
+def _is_under(path: Path, root: Path) -> bool:
+    """True when `path` sits at or inside `root`. Both are already resolved."""
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def _log_bullet_subject(bullet_text: str) -> str:
+    """The subject of one entry bullet: the text before its first separator.
+
+    A symmetric markdown wrapper comes off the way ``parse_acceptance`` strips
+    decorative backticks from an identifier, so a bullet written as
+    `` `concepts/foo.md`: added `` or `**concepts/foo.md**: added` reads as the
+    same subject as its bare form.
+    """
+    cut = len(bullet_text)
+    for sep in LOG_SUBJECT_SEPARATORS:
+        found = bullet_text.find(sep)
+        if found != -1:
+            cut = min(cut, found)
+    subject = bullet_text[:cut].strip()
+    decorated = LOG_SUBJECT_DECOR_RE.match(subject)
+    return decorated.group("body") if decorated else subject
+
+
+def iter_log_entry_bullet_subjects(log_text: str) -> Iterator[str]:
+    """Yield the subject of every bullet inside a `log.md` entry body.
+
+    Fence-safe, matching the section readers: a bullet shown inside a fenced
+    example is documentation. Scanning starts at the first `## ` heading, so the
+    preamble blockquote and anything an owner adds above the entries stays out.
+    """
+    in_entries = False
+    for line in strip_fenced_blocks(log_text).splitlines():
+        if line.startswith("## "):
+            in_entries = True
+            continue
+        if not in_entries:
+            continue
+        bullet = LOG_BULLET_RE.match(line)
+        if bullet:
+            yield _log_bullet_subject(bullet.group(1))
+
+
+def _log_subject_is_outside_wiki(
+    subject: str, wiki_root: Path, repo_root: Path | None
+) -> bool:
+    """Resolve a path-shaped bullet subject and answer whether it names a file
+    outside the wiki, on a dual-base order:
+
+    1. **absolute** — an absolute or `~`-expanded path resolving outside the
+       wiki root.
+    2. **wiki `..` escape** — the wiki-root join lands outside the wiki root.
+    3. **existing repo-root** — the repo-root join is an existing file outside
+       the wiki root, following the join-if-exists pattern
+       ``check_raw_origin_form`` already uses for a repo-root-relative value.
+    4. **otherwise wiki-relative** — no finding, even when the named file is
+       absent on disk. The check draws a path boundary, not a missing-file one,
+       so an entry naming a page later archived or renamed stays clean.
+
+    Existence on disk therefore discriminates branch 3 alone. A bare
+    `name.ext` normally lands in branch 4, and reaches branch 3 only where the
+    repo root itself holds a file by that name outside the wiki — which the
+    info severity keeps cheap to wave off with an acceptance bullet.
+    """
+    candidate = Path(subject)
+    if candidate.is_absolute() or subject.startswith("~"):
+        return not _is_under(candidate.expanduser().resolve(), wiki_root)
+    if not _is_under((wiki_root / candidate).resolve(), wiki_root):
+        return True
+    if repo_root is not None:
+        from_repo = (repo_root / candidate).resolve()
+        if from_repo.is_file() and not _is_under(from_repo, wiki_root):
+            return True
+    return False
+
+
+def check_log_scope(wiki: Path) -> list[Issue]:
+    """Surface `log.md` entry bullets whose *subject* is a file outside the wiki.
+
+    A log entry records changes to the wiki and only those, so a bullet standing
+    for a change to the surrounding repository — its source tree, tooling, tests,
+    or version metadata — turns the log into a second changelog that drifts from
+    git and buries the wiki's own history. The `Scope:` group in
+    `references/template_log.md` is the canonical statement of the rule.
+
+    **The subject position is the whole discriminator.** A non-wiki path cited
+    *inside* a bullet as the source a claim was drawn from is legitimate
+    provenance and never fires; the same path standing as what the bullet is
+    about does.
+
+    One aggregated finding per run, naming the count and a few offenders, so a
+    wiki with historical violations gets a signal instead of a swamped report.
+    The category is its own — `log-scope`, not ``check_log_rotation``'s `log` —
+    so the two stay independently acceptable; it joins TWO_FIELD_CATEGORIES for
+    the same reasons `log` is there, one line-less finding per path and a message
+    embedding a volatile count, which keeps an acceptance off that count.
+
+    Severity is info by design. The log is append-only and no fix move clears a
+    historical violation, so a warn would strand the `auto_shaper_wiki` agent on
+    a bar it cannot reach; new entries stay correct because the rule binds the
+    authoring surface directly.
+    """
+    log = wiki / "log.md"
+    if not log.is_file():
+        return []
+    wiki_root = wiki.resolve()
+    repo_root = _git_repo_root(wiki)
+    offenders = [
+        subject
+        for subject in iter_log_entry_bullet_subjects(log.read_text(encoding="utf-8"))
+        if LOG_PATH_TOKEN_RE.match(subject)
+        and _log_subject_is_outside_wiki(subject, wiki_root, repo_root)
+    ]
+    if not offenders:
+        return []
+    distinct = list(dict.fromkeys(offenders))
+    shown = ", ".join(distinct[:LOG_SCOPE_SAMPLE_LIMIT])
+    if len(distinct) > LOG_SCOPE_SAMPLE_LIMIT:
+        shown += ", …"
+    lead = (
+        "1 entry bullet names a file outside the wiki as its subject"
+        if len(offenders) == 1
+        else f"{len(offenders)} entry bullets name files outside the wiki as their subject"
+    )
+    return [Issue(
+        SEV_INFO, "log-scope", log,
+        f"{lead} ({shown}) — an entry records changes to this wiki, so a change "
+        f"elsewhere in the repository belongs to that change's own commit message "
+        f"and a finding worth keeping goes onto the page that owns it (see the "
+        f"`Scope:` group in the log preamble)",
+    )]
 
 
 def check_stale_content(wiki: Path) -> list[Issue]:
@@ -2054,6 +2215,7 @@ def main() -> int:
     issues.extend(check_taxonomy_style(wiki))
     issues.extend(check_log_rotation(wiki))
     issues.extend(check_log_heading_uniqueness(wiki))
+    issues.extend(check_log_scope(wiki))
     issues.extend(check_source_drift(wiki))
     issues.extend(check_source_path_portable(wiki))
     issues.extend(check_raw_origin_form(wiki))
