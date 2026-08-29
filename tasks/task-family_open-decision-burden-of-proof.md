@@ -2,8 +2,8 @@
 description: Tighten Decide-or-label: reconcile every fork the evidence settles; a genuinely open decision is written into the task and surfaced to the user, guardrail conflicts always qualifying.
 scope: plugins/ai_dev/skills
 created: 2026-08-22T22:08:25
-updated: 2026-08-22T22:20:47
-status: open
+updated: 2026-08-29T22:38:18
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -94,11 +94,12 @@ Propagation needs no sibling edits beyond `task_create`: `task_check`,
 under the `CHARTER.md` family-rule invariant, so the strengthened rule reaches
 every stage through the citation.
 
-Co-edit coordination: the live
+Co-edit coordination: the finished
 [gate-evidence task](archive/task-family_gate-evidence-and-refutation.md) and
-[illustration task](archive/task-family_illustration-needs-a-rule.md) also edit
-`task/SKILL.md`, in other passages. Whichever task lands second re-reads the
-file and anchors its edits to the target passages by their verbatim labels.
+[illustration task](archive/task-family_illustration-needs-a-rule.md) edited
+`task/SKILL.md` in other passages and are closed. This task alone owns the
+**Decide or label** edits; at implement time re-read the file and anchor
+those edits to the target passages by their verbatim labels.
 
 ## Approach
 
@@ -107,15 +108,17 @@ authoring-time sentence in place, keeping the bold lead-in verbatim as the
 greppable anchor and keeping the options-plus-default shape of the label. The
 additions below land inside the rewritten rule:
 
-- The extended evidence base. The rewrite names, beside the existing tiers,
-  the working session's own context at stages that run inside one, the
-  standing repo rules, and the project's in-repo wiki where present. The
-  standing repo rules tier comprises the harness-loaded rule files and the
-  existing guardrail docs where present, CHARTER.md as the hard boundary with
-  ARCHITECTURE.md, TESTING.md, and SECURITY.md subordinate, consulted through
-  the existing `<standing_doc_consumption>` mechanism; it absorbs the rule's
-  current guardrail-doc tier so one canonical rules tier remains. A fork any
-  tier settles is reconciled silently rather than surfaced.
+- The extended evidence base. The rewrite states the ordered evidence base as:
+  (a) the task's own stated intent across its Goal, Approach, Acceptance, and
+  description; (b) the standing repo rules, comprising the harness-loaded rule
+  files and the guardrail docs where present — CHARTER.md as the hard boundary
+  with ARCHITECTURE.md, FEATURES.md, and TESTING.md subordinate — consulted
+  through the existing `<standing_doc_consumption>` mechanism, absorbing the
+  rule's current guardrail-doc tier so one canonical rules tier remains; (c)
+  the working session's own context at stages that run inside one; (d) related
+  and older tasks, both linked live siblings and archived precedent; (e) the
+  project's in-repo wiki where present; (f) the already-implemented codebase.
+  A fork any tier settles is reconciled silently rather than surfaced.
 - The why-open clause. Surfacing requires the labeled "Open decision:" to
   state, in one clause, why the fork is genuinely open. Exactly two grounds
   qualify: the evidence is insufficient, meaning the tiers are silent or in a
@@ -128,8 +131,10 @@ additions below land inside the rewritten rule:
   applies.
 - The dual obligation. A qualifying decision is both written into the body as
   the labeled "Open decision:" and surfaced to the user: the create path's
-  reconciliation step carries the surface at authoring time, and the existing
-  stuck and hold channels carry it at the non-interactive stages. A label the
+  reconciliation step carries the surface at authoring time, and
+  `task_auto_check`'s "human-routed stuck channel" and `task_implement`'s
+  "surface the decision to the user with its options and at least one
+  suggested path and hold" carry it at the non-interactive stages. A label the
   user never saw and an ask that left no trace in the file each violate the
   rule. This supersedes the sentence that lets the written label count as the
   surfacing.
@@ -173,16 +178,24 @@ reaches the user there.
 
 1. The **Decide or label** bullet in `plugins/ai_dev/skills/task/SKILL.md`
    carries the why-open clause requirement with its two qualifying grounds
-   (insufficient evidence, guardrail-bound), the dual written-and-surfaced
-   obligation, the decisive-default test, the zero-as-norm framing, and an
-   evidence base extended with the working session's context, the standing
-   repo rules, and the wiki, where the standing repo rules tier names the
-   harness rule files and the guardrail docs (CHARTER.md, ARCHITECTURE.md,
-   TESTING.md, SECURITY.md) and absorbs the prior separate guardrail-doc tier
-   into one canonical rules tier; the bold lead-in "**Decide or label.**" is
-   unchanged; the prior Surface sentence, the prior ceiling sentence, and the
-   prior authoring-time sentence that let the written label count as the
-   surfacing are superseded in place, leaving one canonical statement of each.
+   (insufficient evidence, guardrail-bound), keeps the labeled "Open
+   decision:" options-plus-default shape (options and a suggested default)
+   that Approach retains while superseding the prior authoring-time sentence,
+   the dual written-and-surfaced obligation (create-path **Offer open-decision
+   reconciliation**; `task_auto_check`'s "human-routed stuck channel";
+   `task_implement`'s "surface the decision to the user with its options and
+   at least one suggested path and hold"), the decisive-default test, the
+   zero-as-norm framing, and an ordered evidence base of (a) the task's own
+   stated intent; (b) standing repo rules (harness-loaded rule files and
+   guardrail docs CHARTER.md, ARCHITECTURE.md, FEATURES.md, TESTING.md,
+   absorbing the prior separate guardrail-doc tier into one canonical rules
+   tier); (c) the working session's own context at stages that run inside one;
+   (d) related and older tasks; (e) the project's in-repo wiki where present;
+   (f) the already-implemented codebase; the bold lead-in "**Decide or
+   label.**" is unchanged; the prior Surface sentence, the prior ceiling
+   sentence, and the prior authoring-time sentence that let the written label
+   count as the surfacing are superseded in place, leaving one canonical
+   statement of each.
 2. `rg "permitted by the base" plugins/ai_dev/skills/task_create/SKILL.md`
    returns nothing; the **Self-check the draft** step requires the why-open
    clause on the carried-forward label; the **Offer open-decision
@@ -197,13 +210,20 @@ reaches the user there.
    confirms the Surface trigger, the why-open clause, and the decisive-default
    test are stated only in the base rule, and every other occurrence is a
    citation by the **Decide or label** label.
-5. Staged fixtures prove three authoring shapes through the create path, and
-   ship with the change per the standing repo rule on tests: an input whose
-   fork a guardrail-doc tier settles yields a task with no open decision and
-   the resolution recorded in the body; an input whose fork no tier settles
-   yields exactly one labeled open decision whose label states why the
-   evidence leaves it open, with the create path surfacing it to the user; and
-   an input whose fork is guardrail-bound yields the same labeled-and-surfaced
-   handling rather than an auto-resolution. The first fixture mirrors the
-   observed failure's shape, so the old behavior fails it and the tightened
-   rule passes.
+5. Staged fixtures under `tests/task_create/evals/` (new Pattern A harness,
+   `evals.json`, driven by `run.py` as stage → agent → grade, matching
+   `tests/git_commit/evals/` and `tests/tasks/evals/`) prove three authoring
+   shapes through the create path, and ship with the change per the standing
+   repo rule on tests:
+   `reconcile-recorded` — an input whose fork a guardrail-doc tier settles
+   yields a task with no open decision and the resolution recorded in the
+   body; `labeled-why-open` — an input whose fork no tier settles yields
+   exactly one labeled open decision whose label carries its options, a
+   suggested default, and why the evidence leaves it open, with the create
+   path surfacing it to the user; and
+   `guardrail-bound-surface` — an input whose fork is guardrail-bound yields
+   the same labeled-and-surfaced handling rather than an auto-resolution.
+   Each scenario grades the written task file and, where a surface is
+   required, the **Offer open-decision reconciliation** user-facing turn.
+   `reconcile-recorded` mirrors the observed failure's shape, so the old
+   behavior fails it and the tightened rule passes.
