@@ -25,7 +25,7 @@ Files involved:
 - [template_schema.md](../../plugins/knowledge_management/skills/wiki/references/template_schema.md) — the `### raw/ Frontmatter` subsection where the field and its semantics land.
 - [SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md) — the ingest workflow's raw-capture guidance, so authors know when to reach for `source_path:` instead of `source_url:`.
 
-Related tasks: [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) (consumes this field for mid-conversation machine-local artifacts) and [wiki_file-access-for-edits-and-sources.md](../wiki_file-access-for-edits-and-sources.md) (documents how such paths are opened). Implement this task first or together with those.
+Related tasks: [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) (consumes this field for mid-conversation machine-local artifacts) and [wiki_file-access-for-edits-and-sources.md](wiki_file-access-for-edits-and-sources.md) (documents how such paths are opened). Implement this task first or together with those.
 
 ## Approach
 

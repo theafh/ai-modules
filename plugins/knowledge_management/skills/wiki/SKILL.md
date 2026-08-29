@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Activate this skill whenever the user mentions their wiki, knowledge base, or research notes in any way — including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it. Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.24.0
+version: 1.24.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -524,7 +524,9 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   where one applies). Use `source_url:` for an externally-published source and
   a relative `source_path:` for a source the repo tracks (it may sit outside the
   wiki dir but must stay inside the repo) — never an absolute, `~`-prefixed, or
-  repo-escaping path. A local file outside the repo takes no path:
+  repo-escaping path. A raw-sidecar `source_path:` resolves from the wiki root;
+  open it with `Read` as `$WIKI/<source_path-value>`. A local file outside the
+  repo takes no path:
   excerpt it into the body and note its locality in prose. The
   `### raw/ Frontmatter` contract in `references/template_schema.md` is the
   canonical statement of these field meanings and of how a mislabeled or legacy
@@ -584,7 +586,7 @@ difference between a growing wiki and a pile of duplicates.
 - **Updating existing pages**: always bump the `updated` date.
 - **Cross-reference**: every new/updated page links to ≥2 others.
 - **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page.
-- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. It is also listed in the page-level `sources:` frontmatter, the canonical inventory of captured sources the page draws on — present on a page citing a captured raw source, absent from a page citing none, and validated path by path against disk. Uncaptured external lineage takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
+- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. It is also listed in the page-level `sources:` frontmatter, the canonical inventory of captured sources the page draws on — present on a page citing a captured raw source, absent from a page citing none, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`. Uncaptured external lineage takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
 - **External derivation**: when a page is distilled from material that is **not** itself the subject of classification — doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes — that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns", and leave the field off entirely when the page cites no captured raw source. A page may have either, both, or neither.
 - **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
@@ -902,8 +904,17 @@ insert *before* it, producing inverted order. Avoid that:
 </appending_to_log>
 
 <file_handling_discipline>
-Three rules keep tool use stable on long wiki sessions. Each addresses a
+Four rules keep tool use stable on long wiki sessions. Each addresses a
 failure mode observed in real session traces.
+
+<read_to_stage_edit>
+**When the active `Edit` tool enforces a read-before-edit precondition, use
+`Read` to locate the span you intend to change.** `Read` both shows the content
+and stages the file for `Edit`; reserve Bash `grep`/`cat`/`tail` for counting,
+log-offset or entry-anchor retrieval, the `<too_large_to_read_in_one_shot>`
+locate-then-`Read` path, and `<appending_to_log>` post-edit verification,
+because Bash output alone does not satisfy `Edit`'s precondition.
+</read_to_stage_edit>
 
 <re_read_after_mutation>
 **Re-Read each file you plan to Edit or Write after any operation that may

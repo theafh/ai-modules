@@ -28,7 +28,7 @@ Files involved:
 - [template_schema.md](../../plugins/knowledge_management/skills/wiki/references/template_schema.md) — the `### raw/ Frontmatter` subsection; its `source_path:` semantics change only if the decision rejects the out-of-repo form.
 - [SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md) and the `wiki_import` capture step — the ingest guidance, likewise decision-gated.
 
-Related tasks that consume the `source_path:` semantics this task may change: [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) and [wiki_file-access-for-edits-and-sources.md](../wiki_file-access-for-edits-and-sources.md).
+Related tasks that consume the `source_path:` semantics this task may change: [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) and [wiki_file-access-for-edits-and-sources.md](wiki_file-access-for-edits-and-sources.md).
 
 ## Approach
 

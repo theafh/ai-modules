@@ -8,7 +8,7 @@
 
 <!-- Alphabetical within section -->
 
-- [Anthropic Claude Code](entities/anthropic-claude-code.md) — configuration roots, the skill load path and what it does and does not enforce, agent frontmatter tolerance, hooks, safe mode, and the retired activation routes.
+- [Anthropic Claude Code](entities/anthropic-claude-code.md) — configuration roots, skill loading, agent frontmatter tolerance, the file-edit read state, hooks, safe mode, and retired activation routes.
 - [Cursor](entities/cursor.md) — rules as the whole instruction mechanism, agent fields, and the undocumented home-directory rules folder.
 - [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md) — one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents, and preview plugins.
 - [Google Antigravity](entities/google-antigravity.md) — the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and four open verification gaps.

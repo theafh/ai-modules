@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.0
+version: 1.11.1
 model: inherit
 background: false
 effort: high
@@ -465,8 +465,9 @@ the fix move.
       heading itself info-level via `check_sources_section`; this
       check is the semantic complement that names *why* the bullets
       are there and where they should go.
-    - A `sources:` frontmatter entry that does not resolve to a file
-      under `$WIKI/raw/`. Lint fires `broken-source` blocking; this
+    - Resolve every `sources:` frontmatter value from the wiki root and open it
+      with `Read` as `$WIKI/<sources-value>`. A value that does not resolve to a
+      file under `$WIKI/raw/` fires lint's blocking `broken-source`; this
       check distinguishes "the path is genuinely broken" from "the
       path is external by design and belongs in the body section".
     - Inline prose attribution that names an external file path or
@@ -732,6 +733,14 @@ affect the same file so each file is opened, read, and rewritten once.
     4. Re-read the file and verify the issue no longer applies and no
        other rule has been broken.
     5. Move to the next issue or group.
+
+    When the active `Edit` tool enforces a read-before-edit precondition,
+    use `Read` to locate the span the fix will change. `Read` both shows the
+    content and stages the file for `Edit`; reserve Bash `grep`/`cat`/`tail`
+    for counting, log-offset or entry-anchor retrieval, the wiki skill's
+    `<too_large_to_read_in_one_shot>` locate-then-`Read` path, and its
+    `<appending_to_log>` post-edit verification, because Bash output alone does
+    not satisfy `Edit`'s precondition.
 
     Between groups, **re-Read every file you intend to Edit or Write
     next whenever the previous group invoked any operation that may
@@ -1136,6 +1145,9 @@ affect the same file so each file is opened, read, and rewritten once.
       the script handles the body-only boundary correctly and inserts
       the field if missing. Edit `ingested` directly. Raw bodies stay
       untouched.
+
+      A raw-sidecar `source_path:` resolves from the wiki root; open it with
+      `Read` as `$WIKI/<source_path-value>`.
 
       Reconcile a mislabeled or redundant origin field under the
       `<remediation_contract>`, applying the deterministic, lossless moves the

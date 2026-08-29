@@ -1,7 +1,7 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-08-13
+updated: 2026-08-29
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
 sources: []
@@ -103,6 +103,16 @@ state and effort level, with a frontmatter `effort` key acting as a per-agent
 override. Releases before 2.1.198 spawn subagents without extended thinking
 whatever the frontmatter says.
 
+### File-edit read state
+
+Verified on 29 August 2026 against the installed Claude Code build 2.1.226.
+The `Edit` input validator checks a per-session file-read state and returns
+`File has not been read yet. Read it first before writing to it.` when the
+target has no complete `Read` record. Inspecting the target through Bash tools
+such as `grep`, `cat`, or `tail` does not populate that state, so a workflow
+that intends to call `Edit` stages the target with `Read`; Bash can still locate
+an offset or narrow an oversized file before that `Read`.
+
 ### Hooks
 
 Plugin hooks live at `hooks/hooks.json` in the plugin root or inline in the
@@ -166,5 +176,7 @@ mechanism. Treat the desktop route as owed verification rather than settled.
 - The Claude Code build and desktop bundle installed on 7 August 2026.
 - The skill load path read out of installed builds 2.1.226 and 2.1.227 on
   13 August 2026, for the skill-loading facts above.
+- The Claude Code build 2.1.226 inspected on 29 August 2026, for the file-edit
+  read-state guard and its exact error.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

@@ -570,3 +570,21 @@ judgement calls, not deterministic repairs.
   search; `authoring` and `skill` still cover it)
 - Audit baseline: 7aac9722939b82981d71f38a70fdb64b239ee293
 - Cold page reads: entities/anthropic-claude-code.md, entities/cursor.md, entities/github-copilot-vs-code.md, entities/google-antigravity.md, entities/openai-codex.md, entities/sst-opencode.md, concepts/agent-definition-portability.md, concepts/agent-delegated-automation.md, concepts/antigravity-global-roots.md, concepts/antigravity-tool-vocabulary.md, concepts/claude-output-styles.md, concepts/deployment-model.md, concepts/foreign-directory-adoption.md, concepts/guardrail-documents-as-rules.md, concepts/hook-surface-portability.md, concepts/instruction-defect-classes.md, concepts/output-style-delivery-design.md, concepts/plugin-packaging-and-versioning.md, concepts/skill-family-architecture.md, concepts/verification-surfaces.md, comparisons/system-prompt-substitution-across-harnesses.md, queries/antigravity-open-verification-gaps.md, summaries/ai-modules-repository.md, summaries/system-prompt-substitution-experiments.md, procedures/deciding-where-knowledge-belongs.md, procedures/isolating-cursor-from-foreign-config.md, procedures/isolating-opencode-from-foreign-config.md, procedures/isolating-vs-code-from-foreign-config.md, procedures/splitting-a-shipped-skill.md
+
+## [2026-08-29 20:55] update | Claude Code file-edit read state verified
+
+The installed Claude Code build confirms that `Edit` checks a session-local
+file-read record. Bash inspection does not satisfy that precondition, so the
+portable instruction scopes the `Read`-before-`Edit` rule to harnesses exposing
+that capability while preserving Bash for locating offsets and oversized-file
+narrowing.
+
+- entities/anthropic-claude-code.md (new dated file-edit read-state section and
+  installed-build derivation)
+- index.md (Anthropic Claude Code summary widened for the new mechanism)
+
+## [2026-08-29 20:58] lint | 0 blocking, 1 warn, 1 info
+
+The narrow post-update lint exited 0. The live findings are the pre-existing
+`boilerplate` warn on `log.md` and the size info on
+`entities/openai-codex.md`; this update introduced neither.
