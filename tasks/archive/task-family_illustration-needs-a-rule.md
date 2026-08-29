@@ -2,9 +2,11 @@
 description: Close the gap in the base task skill's Illustrate rule so an incident narrative with no rule attached is explicitly out, not merely under-covered.
 scope: plugins/ai_dev/skills/task
 created: 2026-08-17T19:32:58
-updated: 2026-08-20T18:37:42
-status: ready
+updated: 2026-08-29T20:42:52
+status: finished
 reported-by: theafh
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # State that an illustration needs a rule to support, in the base skill's Illustrate bullet

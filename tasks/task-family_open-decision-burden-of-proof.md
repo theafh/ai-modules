@@ -96,7 +96,7 @@ every stage through the citation.
 
 Co-edit coordination: the live
 [gate-evidence task](archive/task-family_gate-evidence-and-refutation.md) and
-[illustration task](task-family_illustration-needs-a-rule.md) also edit
+[illustration task](archive/task-family_illustration-needs-a-rule.md) also edit
 `task/SKILL.md`, in other passages. Whichever task lands second re-reads the
 file and anchors its edits to the target passages by their verbatim labels.
 
