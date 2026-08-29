@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-08-15
+updated: 2026-08-29
 type: concept
 tags: [skill, repo-structure, authoring, verification-gap]
 sources: []
@@ -168,6 +168,9 @@ make one behaviour's verdict stays unrecorded.
 - [Instruction-defect classes](instruction-defect-classes.md), for the defect
   taxonomy that grader measurement surfaced, and for why review and execution
   test different things.
+- [Agent-delegated automation](agent-delegated-automation.md), for the run-time
+  verification the autonomous families do, as a counterpart to the test-time
+  surfaces here.
 
 ## Derived from
 

@@ -1,7 +1,7 @@
 ---
 title: Skill family architecture
 created: 2026-08-08
-updated: 2026-08-13
+updated: 2026-08-29
 type: concept
 tags: [skill, agent, authoring, repo-structure, portability, discovery]
 sources: []
@@ -42,6 +42,10 @@ takes the `<family>_auto_<rest>` form, so `task_auto_check` sits beside
 An agent that only ever gets spawned leads with `auto_` and ends with the family
 token, giving `auto_shaper_wiki` and `auto_implementer_task`. The name is a
 signal to the router and to a human reader that no user invokes this directly.
+
+The runtime architecture these spawned agents implement, where read-only
+assessors fan out and one writer commits, is
+[agent-delegated automation](agent-delegated-automation.md).
 
 ### Rules live once, in the base skill
 
@@ -161,6 +165,8 @@ reading.
 
 ## Related concepts
 
+- [Agent-delegated automation](agent-delegated-automation.md), for the runtime
+  architecture the spawned agents implement.
 - [Plugin packaging and versioning](plugin-packaging-and-versioning.md).
 - [The ai-modules repository](../summaries/ai-modules-repository.md).
 

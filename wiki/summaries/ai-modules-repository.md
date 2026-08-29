@@ -1,7 +1,7 @@
 ---
 title: The ai-modules repository
 created: 2026-08-08
-updated: 2026-08-10
+updated: 2026-08-29
 type: summary
 tags: [repo-structure, plugin, skill, agent, deployment]
 sources: []
@@ -45,7 +45,9 @@ which checks skill artefacts against the repository's own authoring and
 registration rules without editing them. `knowledge_management` carries the
 `wiki` family and its `auto_shaper_wiki` agent, plus `executive_summary` and
 `spr`. Read `plugins/` for the current membership of each, which moves as
-components land.
+components land. The runtime pattern the spawned `auto_*` agents share, where a
+thin front end delegates to read-only assessors and one serialized writer, is
+[agent-delegated automation](../concepts/agent-delegated-automation.md).
 
 Around the plugins sit the marketplace registrations, one for Claude under
 `.claude-plugin/` and one for Codex under `.agents/plugins/`, the `deployment/`

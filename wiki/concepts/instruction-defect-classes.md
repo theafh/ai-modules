@@ -1,9 +1,9 @@
 ---
 title: Instruction-defect classes
 created: 2026-08-15
-updated: 2026-08-15
+updated: 2026-08-29
 type: concept
-tags: [skill, agent, authoring, verification-gap]
+tags: [skill, agent, authoring, verification-gap, experiment]
 sources: []
 confidence: medium
 ---
@@ -83,6 +83,35 @@ agent followed the second rule and a check written against the first marked the
 result wrong. The repair placed the link on the side whose work the relationship
 changes, which is what the surviving rule already directed.
 
+### The limit of repair: a sampled judgement needs a mechanism
+
+Repairing the instruction is necessary and, measurably, not always sufficient.
+The limit surfaced on the wiki agent's log-preamble drift fix, whose contract
+requires an owner-added preamble line to survive every repair run. Three genuine
+intra-file contradictions pulled toward deleting that line, and all three were
+removed. The failure rate did not move: across the local Layer 2 harness runs of
+2026-08-22, the scenario pass rate was 92% before the repairs and 90% after.
+Roughly one pass in ten still rewrote the whole region and deleted the owner's
+line, and every failing pass reasoned the same way, that the preamble should
+equal the template.
+
+The three classes above describe instructions that misdirect an agent, and
+removing such a defect fixes the behaviour it caused. This limit is a different
+thing. Once no instruction misdirects, what remains is a judgement the agent
+re-makes on every run, and instruction text cannot make a judgement
+deterministic; it only shifts the odds. The two cases separate by measurement:
+a repaired defect moves the failure rate, while a residual judgement leaves it
+where it was.
+
+The repair that holds for a must-always-hold property removes the judgement
+instead of instructing it: ship a mechanism that carries the property by
+construction and reduce the instruction to invoking it. For the preamble case
+that is a bundled merge script with no delete operation and a loud self-check,
+so preserving the owner's line stops being sampled behaviour and becomes a
+property of code; the task backlog carries that mechanism work. The
+through-line matches how the classes themselves were found: reading located
+the contradictions, and only measurement showed their removal changed nothing.
+
 ## Open questions
 
 Whether to distill the taxonomy into a shipped authoring rule, in
@@ -114,6 +143,9 @@ carries.
   rules-live-once-in-the-base-skill design the contradiction example sits inside.
 - [The ai-modules repository](../summaries/ai-modules-repository.md), for where
   the shipped instruction artefacts sit among the repository's document sets.
+- [Agent-delegated automation](agent-delegated-automation.md), for the verifier
+  and single-writer mechanisms that carry a property the instruction only
+  invokes.
 
 ## Derived from
 
@@ -122,3 +154,6 @@ carries.
 - The working session that implemented the backlog-coherence assessment, where
   each defect was surfaced by eval measurement and traced back to its rule. An
   ephemeral session with no committed artefact of its own.
+- The re-audit session of 2026-08-22 that measured contradiction removal against
+  the wiki agent's log-preamble fix in the local Layer 2 harness. An ephemeral
+  session; the harness runs live in the uncommitted local test tree.

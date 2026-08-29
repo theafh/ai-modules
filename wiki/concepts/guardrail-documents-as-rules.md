@@ -1,7 +1,7 @@
 ---
 title: Guardrail documents as normative rules
 created: 2026-08-09
-updated: 2026-08-09
+updated: 2026-08-29
 type: concept
 tags: [skill, authoring, repo-structure]
 sources: []
@@ -79,15 +79,36 @@ family: a marker naming what is unfinished today is exactly the content that
 goes stale, and the rule reads correctly without it. Where a rule needs to point
 into the repository, it names its target by a stable, greppable name.
 
-### Guarding and describing carry different obligations
+### Guarding, describing, and directing carry different obligations
 
-The two halves of a doc answer to different standards, and collapsing them
-produces the misreading above. A guarding statement is falsifiable in that a
-reviewer can check one concrete change against it, not in that the whole tree
-satisfies it. A describing statement stays true to the repository, and it is
-there that intention presented as fact does its damage, which is why an account
-of a system's shape may still label an intended component or a migration
-underway as direction while a rule never carries a not-yet-met qualifier.
+A doc carries three kinds of statement, and each answers to a different standard.
+Collapsing them produces the misreading above. A guarding statement is
+falsifiable, in that a reviewer can check one concrete change against it, and not
+in that the whole tree satisfies it. A describing statement stays true to the
+repository as it is now. A directing statement names a target the project is
+steered toward, and it holds whether or not the code has reached it. The
+misreading does its worst damage on the third kind. An unreached target reads as
+a false description unless the doc marks it as direction, and an agent that reads
+it as description will soften or delete the target to match the code. Recognising
+direction as its own register is what stops that.
+
+### Declared direction: a third register
+
+A target differs from a rule in what it asks. A rule states what must hold of
+every change. A target names where the design is headed, so it can stand ahead of
+the code without being wrong. Code short of a target is unmet work the next change
+drives toward, exactly as code short of a guarding rule is unmet work, and never a
+truthfulness defect that softening or deleting the target would repair. That is
+why direction earns a register of its own. Filed under describing, an unreached
+target reads as a false statement about the tree, and an agent brings the doc back
+to the code by cutting the target. Named as direction, the same target reads as a
+commitment the work has not yet met.
+
+The reasoning is what this page keeps. The guardrail skill family carries the
+mechanics. It defines where a direction is declared, how it is worded, and how an
+audit reads one against the code. That content belongs with the skill because it
+travels to every repository the skill is adopted in, and a second copy here would
+drift from it.
 
 ### Where a rule belongs among the docs
 
@@ -104,11 +125,15 @@ rules migrate up into the domain docs for want of anywhere else to live.
 Whether the touch-it-and-fix-it path actually closes gaps in practice is
 unmeasured. It is an obligation on the agent with nothing structural behind it,
 and the alternative reading — that agents quietly skip it and gaps persist
-until someone files the work — has not been ruled out.
+until someone files the work — has not been ruled out. The drive-toward path for
+a declared target shares that gap. Steering work toward a target is the same kind
+of obligation on the agent, with the same absence of a check behind it.
 
-Telling a guarding statement from a describing one is judgement rather than a
-mechanical test. A sentence that does both at once has no clean verdict, and
-nothing yet says how an audit should rank one.
+Telling the three kinds of statement apart is judgement rather than a mechanical
+test. Giving direction its own register removes the worst case, where an unreached
+target hid inside a description and read as a falsehood. A single sentence that
+guards and describes at once still has no clean verdict, and nothing yet says how
+an audit should rank one.
 
 ## Related concepts
 

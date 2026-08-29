@@ -504,3 +504,69 @@ pass never ran.
   distribution framing; cross-link to the new page added)
 - index.md (new concept entry; verification-surfaces summary widened for the
   grader-honesty lessons)
+
+## [2026-08-26 19:06] update | The limit of instruction repair, measured on the log-preamble fix
+
+Captured while closing the wiki-only log-scope backlog task: removing three
+genuine intra-file contradictions from the wiki agent's log-preamble drift fix
+left the owner-line deletion rate unchanged (Layer 2 pass rate 92% before, 90%
+after, runs of 2026-08-22). The lesson extends the instruction-defect taxonomy:
+once no instruction misdirects, a residual judgement stays sampled, and a
+must-always-hold property needs a mechanism the instruction merely invokes. The
+task backlog carries the mechanism follow-up.
+
+- concepts/instruction-defect-classes.md (new state-of-knowledge subsection on
+  the repair limit and the measure-after-repair test, derivation extended with
+  the measuring session, tags gain experiment)
+- index.md (summary widened for the repair-limit lesson; last-updated bumped)
+
+## [2026-08-29 19:37] update | Reconciled the wiki with the autonomous task family and the guardrail direction register
+
+Three weeks of skill and agent work had landed since the last content pass with
+no wiki reconciliation. Two meta-level gaps were filled from the shipped
+artifacts. The autonomous task and wiki families share one delegation
+architecture that had no page, and the guardrail direction register shipped
+without its reasoning captured. The declared-direction material also reconciled
+the guarding-versus-describing page, which had filed direction under describing.
+
+- concepts/agent-delegated-automation.md (new: the front-end-to-agent delegation
+  shape, read fan-out against a single serialized writer, refute-by-default
+  verification with refutable gate citations, human-routed judgement calls,
+  frozen intent, and the monolith-to-fan-out scaling)
+- concepts/guardrail-documents-as-rules.md (new declared-direction subsection kept
+  to the reasoning, with the mechanics left to the guardrail skill to avoid a
+  drifting second copy; the guarding-and-describing section widened to three
+  registers so an unreached target no longer reads as a false description; open
+  question rewritten for the three-way distinction)
+- concepts/skill-family-architecture.md (naming section points at the new runtime
+  architecture page; related concepts extended)
+- concepts/verification-surfaces.md (related concepts link to the run-time
+  verification counterpart)
+- concepts/instruction-defect-classes.md (related concepts link to the mechanism
+  that carries a property the instruction only invokes)
+- summaries/ai-modules-repository.md (inline pointer to the delegation pattern the
+  spawned agents share)
+- index.md (new concept listed, total pages 28 to 29, last-updated bumped)
+
+## [2026-08-29 19:49] audit | 0 blocking, 1 warn, 1 info; 1 page updated, 0 pages split
+
+Full end-to-end audit with a cold read of every page, since no prior audit
+recorded a git baseline to scope against. The linter is clean at exit 0. The
+session's new and extended pages hold: agent-delegated-automation and the
+guardrail direction register carry correct concept anatomy, frontmatter, and
+tags, and neither contradicts the pages they cross-link. Index membership is
+exact at 29 of 29, and the index and SCHEMA section scaffolds match the canonical
+templates. One genuine issue was fixed. The two standing lint findings were left
+in place: the log preamble deviation is owned by the open template-deviation
+tasks, and the openai-codex size is a pre-existing INFO whose split is out of
+this pass's scope. Several confidence and cross-page items on pages this pass did
+not otherwise touch are surfaced for human review rather than changed, because
+re-rating evidence and reconciling a compatible-but-unclear path claim are
+judgement calls, not deterministic repairs.
+
+- procedures/splitting-a-shipped-skill.md (dropped the off-subject `portability`
+  tag; the page's subject is intra-skill refactoring, not how one artefact
+  behaves across harnesses, so the tag was a false entry point for cross-harness
+  search; `authoring` and `skill` still cover it)
+- Audit baseline: 7aac9722939b82981d71f38a70fdb64b239ee293
+- Cold page reads: entities/anthropic-claude-code.md, entities/cursor.md, entities/github-copilot-vs-code.md, entities/google-antigravity.md, entities/openai-codex.md, entities/sst-opencode.md, concepts/agent-definition-portability.md, concepts/agent-delegated-automation.md, concepts/antigravity-global-roots.md, concepts/antigravity-tool-vocabulary.md, concepts/claude-output-styles.md, concepts/deployment-model.md, concepts/foreign-directory-adoption.md, concepts/guardrail-documents-as-rules.md, concepts/hook-surface-portability.md, concepts/instruction-defect-classes.md, concepts/output-style-delivery-design.md, concepts/plugin-packaging-and-versioning.md, concepts/skill-family-architecture.md, concepts/verification-surfaces.md, comparisons/system-prompt-substitution-across-harnesses.md, queries/antigravity-open-verification-gaps.md, summaries/ai-modules-repository.md, summaries/system-prompt-substitution-experiments.md, procedures/deciding-where-knowledge-belongs.md, procedures/isolating-cursor-from-foreign-config.md, procedures/isolating-opencode-from-foreign-config.md, procedures/isolating-vs-code-from-foreign-config.md, procedures/splitting-a-shipped-skill.md

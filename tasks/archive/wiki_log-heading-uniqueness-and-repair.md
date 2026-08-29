@@ -2,7 +2,7 @@
 description: Make the append-only wiki log tolerate breakage from a logged entry: heading uniqueness, a repair-not-rewrite carve-out, and a duplicate-heading lint check, rolled out to existing wikis.
 scope: plugins/knowledge_management
 created: 2026-06-18T19:33:04
-updated: 2026-08-22T16:10:15
+updated: 2026-08-26T19:06:46
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -64,7 +64,7 @@ No existing task covers append-only-log repair, heading uniqueness, duplicate-he
 
 Co-edit coordination: [wiki_log-action-enum-coverage.md](wiki_log-action-enum-coverage.md) rewrites the `Actions:` line inside the same verbatim-enforced `template_log.md` preamble this task adds the heading format and the repair carve-out to. Every edit inside that slot makes each existing wiki's `log.md` preamble drift and costs it one boilerplate warn until its next audit realigns it — the designed propagation channel, so landing both preamble edits in one change spends it once instead of twice. Word this task's lines against whichever preamble text is current when it builds.
 
-Co-edit coordination (settled order): two later siblings co-edit the same `template_log.md` preamble and the `<appending_to_log>` block this task's repair carve-out lives in, and **this task lands first**. [wiki_log-session-entry-consolidation.md](../wiki_log-session-entry-consolidation.md) then scopes append-only to *settled* (prior-session) entries and lets a session consolidate its own in-progress entry; it supersedes this task's absolute "never reword, reorder, or delete a past entry's recorded content" phrasing with the settled-entry-scoped form and composes it with this task's repair carve-out as one qualification. Word this task's carve-out so it stays composable once that scoping lands on top of it. [wiki_log-scope-wiki-changes-only.md](../wiki_log-scope-wiki-changes-only.md) adds a subject-scope group to the same preamble. All three preamble edits share one boilerplate-drift channel, so landing them in one batch spends that drift once.
+Co-edit coordination (settled order): two later siblings co-edit the same `template_log.md` preamble and the `<appending_to_log>` block this task's repair carve-out lives in, and **this task lands first**. [wiki_log-session-entry-consolidation.md](../wiki_log-session-entry-consolidation.md) then scopes append-only to *settled* (prior-session) entries and lets a session consolidate its own in-progress entry; it supersedes this task's absolute "never reword, reorder, or delete a past entry's recorded content" phrasing with the settled-entry-scoped form and composes it with this task's repair carve-out as one qualification. Word this task's carve-out so it stays composable once that scoping lands on top of it. [wiki_log-scope-wiki-changes-only.md](wiki_log-scope-wiki-changes-only.md) adds a subject-scope group to the same preamble. All three preamble edits share one boilerplate-drift channel, so landing them in one batch spends that drift once.
 
 ## Approach
 

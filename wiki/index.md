@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-08-15 | Total pages: 28
+> Last updated: 2026-08-29 | Total pages: 29
 
 ## Entities
 
@@ -18,13 +18,14 @@
 ## Concepts
 
 - [Agent definition portability](concepts/agent-definition-portability.md) — three tolerance categories, disjoint tool vocabularies, read-only levers, and when a generated variant is required.
+- [Agent-delegated automation](concepts/agent-delegated-automation.md) — how a thin front-end skill delegates a whole-artifact audit-and-repair job to spawned agents, with read fan-out for coverage, one serialized writer for integrity, refute-by-default verification, frozen intent, and judgement calls routed to the human.
 - [Antigravity global configuration roots](concepts/antigravity-global-roots.md) — the two artefact classes that split across its three products, what that costs a global deploy, and the output tree that is not a root.
 - [Antigravity tool vocabulary](concepts/antigravity-tool-vocabulary.md) — the two incomplete name lists, the missing canonical registry, and why a wrong name hangs instead of failing.
 - [Claude output styles](concepts/claude-output-styles.md) — the two-layer system prompt, the two delivery modes, activation, plugin bundling, and the strict four-key frontmatter.
 - [Foreign directory adoption](concepts/foreign-directory-adoption.md) — which harnesses read another's config tree, why that is contamination rather than delivery, and the isolation switches.
 - [Guardrail documents as normative rules](concepts/guardrail-documents-as-rules.md) — presence-gated lookup, optional adoption, the description misreading, the three paths to true, and the guarding/describing split.
 - [Hook surface portability](concepts/hook-surface-portability.md) — four configuration schemas plus one that is code, four signalling contracts, additive layers, and what this repository ships and routes today.
-- [Instruction-defect classes](concepts/instruction-defect-classes.md) — three ways an AI-consumed instruction passes review and fails at runtime (reach, disposition, intra-file contradiction), why review misses each, and why measurement found them.
+- [Instruction-defect classes](concepts/instruction-defect-classes.md) — three ways an AI-consumed instruction passes review and fails at runtime (reach, disposition, intra-file contradiction), why review misses each, why measurement found them, and the measured limit where instruction repair ends and a mechanism must carry the property.
 - [Output style delivery design](concepts/output-style-delivery-design.md) — the decision record behind the `styles/` source, the per-target delivery matrix, the marked-block write, and the scope rejections.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md) — why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md) — naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.

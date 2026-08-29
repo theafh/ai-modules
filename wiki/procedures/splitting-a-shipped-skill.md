@@ -1,9 +1,9 @@
 ---
 title: Splitting a shipped skill
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-29
 type: procedure
-tags: [authoring, skill, portability]
+tags: [authoring, skill]
 sources: []
 confidence: high
 ---
