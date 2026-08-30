@@ -99,6 +99,14 @@ POSITION_PROSE_RE = re.compile(
 POSITION_TILDE_RANGE_RE = re.compile(r"\(~[0-9]+(?:[-–][0-9]+)?\)")
 SIZE_SUFFIX_RE = re.compile(r"\s*(?:B|KB|MB|GB|TB|bytes)\b", re.IGNORECASE)
 
+# Repeated-link hint: warn when one local target is linked more than
+# REPEATED_LINK_FLOOR times in a single body (count > floor). Measured
+# on 2026-08-12 across live tasks/*.md: 36 target-and-file pairs at
+# exactly 2 links, 8 at 3, one at 4, and one at 7. The hint strengthens
+# with the count rather than switching on at a harder threshold; retune
+# against a fresh distribution if triage load proves too broad.
+REPEATED_LINK_FLOOR = 1
+
 SEV_BLOCKING = 0
 SEV_WARN = 1
 SEV_INFO = 2
@@ -602,6 +610,30 @@ def check_no_wikilinks(page: Path) -> list[Issue]:
     return issues
 
 
+def _resolve_local_link_target(
+    tasks: Path, page: Path, raw_target: str,
+) -> Path | None:
+    """Return a normalized local path for a markdown link target, or None
+    when the target is empty, external (`://`), or `mailto:`.
+
+    Resolves against the task file's directory first, then the project
+    root (`tasks.parent`). When either candidate exists, that resolved
+    path is the key; when neither exists, the page-relative resolution
+    is still returned so distinct written prefixes that name the same
+    missing path can still collapse.
+    """
+    target = raw_target.split("#", 1)[0].split(" ", 1)[0].strip()
+    if not target or "://" in target or target.startswith("mailto:"):
+        return None
+    from_page = (page.parent / target).resolve()
+    if from_page.exists():
+        return from_page
+    from_root = (tasks.parent.resolve() / target).resolve()
+    if from_root.exists():
+        return from_root
+    return from_page
+
+
 def check_local_links(tasks: Path, page: Path) -> list[Issue]:
     """Block on broken relative `.md` links from this task to others.
 
@@ -643,6 +675,55 @@ def check_local_links(tasks: Path, page: Path) -> list[Issue]:
             f"link target missing: {display(from_page)} "
             f"(also tried project root: {display(from_root)}) "
             f"({link_text!r})",
+        ))
+    return issues
+
+
+def check_repeated_links(tasks: Path, page: Path) -> list[Issue]:
+    """Warn when one local link target appears more than once in a body.
+
+    Counts every non-fenced markdown link whose target is local (skips
+    `://` and `mailto:` the same way ``check_local_links`` does), keyed
+    by normalized resolved path so different relative prefixes to one
+    file count once. Warn-only and candidate-not-verdict: the count is a
+    hint that material about the target may sit in several places, not
+    an instruction to drop a link. Leave out of the mechanically fixable
+    finding set.
+    """
+    text = page.read_text(encoding="utf-8")
+    _, body = parse_frontmatter(text)
+    scrubbed = "\n".join(_scrub_fences(body))
+    counts: dict[Path, int] = defaultdict(int)
+    for match in LINK_RE.finditer(scrubbed):
+        resolved = _resolve_local_link_target(tasks, page, match.group(2))
+        if resolved is None:
+            continue
+        counts[resolved] += 1
+
+    def display(candidate: Path) -> str:
+        try:
+            return str(candidate.relative_to(tasks.parent.resolve()))
+        except ValueError:
+            try:
+                return str(candidate.relative_to(tasks))
+            except ValueError:
+                return str(candidate)
+
+    issues: list[Issue] = []
+    for target, count in sorted(counts.items(), key=lambda item: str(item[0])):
+        if count <= REPEATED_LINK_FLOOR:
+            continue
+        strength = (
+            "a strong hint"
+            if count > REPEATED_LINK_FLOOR + 1
+            else "a hint"
+        )
+        issues.append(Issue(
+            SEV_WARN, "repeated-link", page,
+            f"{display(target)} is linked {count} times — {strength} that "
+            f"material about it sits in several places and the body may "
+            f"have grown organically; re-read those sections and gather "
+            f"what belongs together (the hint strengthens with the count)",
         ))
     return issues
 
@@ -727,6 +808,7 @@ def main() -> int:
         issues.extend(check_no_footnotes(page))
         issues.extend(check_no_wikilinks(page))
         issues.extend(check_local_links(tasks, page))
+        issues.extend(check_repeated_links(tasks, page))
         issues.extend(check_no_position_claims(tasks, page))
 
     print(render_report(tasks, issues, args.quiet))

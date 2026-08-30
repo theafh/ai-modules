@@ -2,7 +2,7 @@
 description: Consolidate the task skill's two local test directories into one, register every task-family harness in the tests inventory table, and add the missing task_auto_check trigger cases.
 scope: "task_* family local test harness"
 created: 2026-08-11T18:58:50
-updated: 2026-08-20T18:40:20
+updated: 2026-08-30T13:21:28
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -33,7 +33,7 @@ settled that the managed backlog directory keeps the name `tasks/` because the
 skill manages that data. The test directory names the skill rather than the data,
 so it belongs on the singular side of that split and was missed by the rename.
 
-The live sibling [task-family_cross-link-hygiene.md](task-family_cross-link-hygiene.md)
+The archived sibling [task-family_cross-link-hygiene.md](archive/task-family_cross-link-hygiene.md)
 stages its `lint.py` fixtures under `tests/tasks/script_tests/` and proves them
 through `tests/tasks/run_all.sh`. Those paths name the plural harness this task
 removes, so the consolidation rewrites that sibling's harness paths in place when
@@ -93,7 +93,7 @@ already uses. The behavioral evals keep their existing structure under
 `tests/task/evals/`. Re-point every path the move invalidates, including the
 runner and cache references that name the old directory from the tests tree's
 `CLAUDE.md` and from any harness script that resolves a sibling path, and from
-the live sibling [task-family_cross-link-hygiene.md](task-family_cross-link-hygiene.md)
+the archived sibling [task-family_cross-link-hygiene.md](archive/task-family_cross-link-hygiene.md)
 whose Approach and Acceptance still name `tests/tasks/script_tests/` and
 `tests/tasks/run_all.sh`.
 
@@ -131,7 +131,7 @@ rather than the skills under test.
 - A search of the tests tree for the old plural directory path returns no
   references from any runner, cache helper, or documentation file.
 - Every `tests/tasks/` harness path in
-  [task-family_cross-link-hygiene.md](task-family_cross-link-hygiene.md)
+  [task-family_cross-link-hygiene.md](archive/task-family_cross-link-hygiene.md)
   Approach and Acceptance is rewritten in place to the singular `tests/task/`
   equivalent, and searching that sibling for `tests/tasks/` returns no
   harness-path hits.

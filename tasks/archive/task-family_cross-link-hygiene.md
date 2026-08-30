@@ -2,9 +2,11 @@
 description: Flag a task body linking one target more than once, a maintenance tax and a hint the body grew organically. Pair a linter warn with a react protocol and a grouping rule.
 scope: plugins/ai_dev/skills/task
 created: 2026-08-12T19:46:46
-updated: 2026-08-12T22:19:20
-status: ready
+updated: 2026-08-30T13:20:59
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Warn when a task body links one target more than once: linter, grouping rule, and react protocol
@@ -75,9 +77,9 @@ rather than re-deriving the rejection against it (proved by Acceptance item 15).
 
 Two shipped siblings set the pattern of an authoring rule paired with linter
 support:
-[task-family_soft-pointer-references.md](archive/task-family_soft-pointer-references.md)
+[task-family_soft-pointer-references.md](task-family_soft-pointer-references.md)
 for position claims and
-[task-family_count-stable-references.md](archive/task-family_count-stable-references.md)
+[task-family_count-stable-references.md](task-family_count-stable-references.md)
 for volatile counts. Read either for the shape of the rule text, the warning
 wording, and the candidate-not-verdict triage framing.
 

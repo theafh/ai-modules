@@ -1,7 +1,7 @@
 ---
 name: task_fix
 description: Repair the whole tasks backlog tree in one pass and assess its backlog-coherence by default. Use when the user asks to health check, clean up, audit, or lint the backlog, to check backlog coherence or consistency, to say whether selected tasks ship together, or to autonomously resolve backlog judgement calls. Run the archive inclusive linter, fix mechanical frontmatter, status, location, link, datetime, and provenance issues inline, and gate coherence repairs on acceptance or escalate.
-version: 1.3.12
+version: 1.3.13
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -66,6 +66,7 @@ Surface these for human review in the inline path. When the user opted into auto
 - **Restated standing rules** — surface every passage that instructs the implementer with a copied standing rule, quoting the matched rule from the standing instruction document and proposing the fix: replace the copy with a citation, or drop it when the surrounding text carries nothing else. The user's explicit go-ahead decides — drift between copy and source is exactly the risk. In `## Acceptance`, the base contract's task-specific-gates clause draws the boundary: a generic project-gate item is such a restatement, while a task-specific executable check draws no finding. A body that merely narrates a rule's history (changelog-style context) draws no finding either; the check targets passages that instruct.
 - **Contradictions between tasks** — name both sides and the dimension they disagree on, drawn from the `<backlog_coherence>` emergent-contradiction and posture-consistency lenses. The disposition is dual: user-accepted backlog-coherence findings reconcile under **Decide or label**, while findings outside the selected live set stay human-owned and surfaced.
 - **Count-stable references** — surface a body that refers to a mutable set by a frozen count or by an enumeration snapshot of the set's current members, cite the base `task` skill's `<markdown_policy>` count-stable rule, and propose the selector rewrite as the fix: "all N live `task-family_*` tasks" becomes "every live `task-family_*` task". This entry remains human-owned on the escalated path as well, so it stays with the user rather than routing to `auto_shaper_task`: the rewrite widens a scope the frozen number had pinned, and confirming that the widened set is the one the task means is the user's call. A quantity the base rule keeps legal — a measurement protocol's run count or fixed denominator, a size extent, a number that is itself the artifact under edit — draws no finding.
+- **Repeated-link findings** — surface each `repeated-link` warn for the user to decide, citing the base `task` skill's `<markdown_policy>` grouping rule rather than restating the grouping test. Apply the base `<lint>` repeated-link react protocol's read-only path: report the finding with the sections that link the named target and leave the regroup to the writer. This entry remains human-owned on the escalated path as well, because deciding whether to gather or keep a repeat is a prose judgement.
 </surface_for_review>
 
 <output_contract>
