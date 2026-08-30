@@ -2,9 +2,11 @@
 description: Tighten Decide-or-label: reconcile every fork the evidence settles; a genuinely open decision is written into the task and surfaced to the user, guardrail conflicts always qualifying.
 scope: plugins/ai_dev/skills
 created: 2026-08-22T22:08:25
-updated: 2026-08-29T22:38:18
-status: ready
+updated: 2026-08-30T13:03:07
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Put the burden of proof on surfacing an open decision
@@ -68,12 +70,12 @@ concrete reconciliation suggestion", and today draws no conclusion when that
 suggestion turns out to rest on evidence that settles the fork.
 
 Design lineage, each linked because reading it changes the edit:
-[the reconcile-or-surface task](archive/task-family_reconcile-or-surface-open-decisions.md)
+[the reconcile-or-surface task](task-family_reconcile-or-surface-open-decisions.md)
 authored the stage-agnostic rule, the ordered evidence base, and the
 cite-don't-copy wiring the edits must preserve;
-[the create-reconcile task](archive/task-family_create-reconcile-open-questions.md)
+[the create-reconcile task](task-family_create-reconcile-open-questions.md)
 built the two `task_create` steps being reworded;
-[the single-statement task](archive/task-family_single-statement-open-decision.md)
+[the single-statement task](task-family_single-statement-open-decision.md)
 introduced the ceiling being reframed, and shows its intent was an anti-fork
 bound, never an expected slot.
 
@@ -95,8 +97,8 @@ under the `CHARTER.md` family-rule invariant, so the strengthened rule reaches
 every stage through the citation.
 
 Co-edit coordination: the finished
-[gate-evidence task](archive/task-family_gate-evidence-and-refutation.md) and
-[illustration task](archive/task-family_illustration-needs-a-rule.md) edited
+[gate-evidence task](task-family_gate-evidence-and-refutation.md) and
+[illustration task](task-family_illustration-needs-a-rule.md) edited
 `task/SKILL.md` in other passages and are closed. This task alone owns the
 **Decide or label** edits; at implement time re-read the file and anchor
 those edits to the target passages by their verbatim labels.
