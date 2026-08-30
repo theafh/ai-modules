@@ -1,0 +1,10 @@
+[
+  {"query": "explain the task tasks/api_rate-limit.md at a high level", "should_trigger": true},
+  {"query": "summarize the task tasks/api_rate-limit.md — what is it about, why is it done, and how is it supposed to be achieved?", "should_trigger": true},
+  {"query": "walk me through the task file tasks/task-skill_select-sibling-skill.md so I can orient on it", "should_trigger": true},
+
+  {"query": "is this task ready to build before I hand it to an implementer?", "should_trigger": false},
+  {"query": "what task should I work on next from my backlog?", "should_trigger": false},
+  {"query": "audit this task — is the work really implemented and backed by tests?", "should_trigger": false},
+  {"query": "implement the task tasks/calc_add-function.md", "should_trigger": false}
+]

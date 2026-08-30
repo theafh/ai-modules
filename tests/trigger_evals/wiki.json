@@ -1,0 +1,23 @@
+[
+  {"query": "I want to set up a knowledge base for the chess-engine project I just cloned at /Users/me/Code/chess-engine. Help me get started.", "expected_skill": "wiki"},
+  {"query": "add a page to my wiki about the rust pin api", "expected_skill": "wiki"},
+  {"query": "what does my wiki say about LLM inference batching tradeoffs", "expected_skill": "wiki"},
+  {"query": "init wiki here", "expected_skill": "wiki"},
+  {"query": "I keep losing track of decisions about our migration architecture. can we start a wiki for the repo", "expected_skill": "wiki"},
+  {"query": "the wiki at ~/work/sales-ops doesn't have a page yet for the new MMM attribution model — can you add one based on the meeting transcript I'll paste in", "expected_skill": "wiki_import"},
+  {"query": "look up 'embedding compression' in my notes", "expected_skill": "wiki"},
+  {"query": "create a procedure page in the wiki for 'how I review PRs' — i find myself doing the same checks each time", "expected_skill": "wiki"},
+  {"query": "i think i wrote about this elsewhere. search my wiki for retry-with-backoff and tell me which pages cover it", "expected_skill": "wiki"},
+  {"query": "what concepts and comparisons does my wiki cover so far for distributed systems? trying to figure out where to add new material", "expected_skill": "wiki"},
+
+  {"query": "ingest this URL into my wiki: https://blog.acolyer.org/2020/02/26/the-decision-tree-method/", "expected_skill": "wiki_import"},
+  {"query": "wrap up this chat into my notes — there was good stuff in here", "expected_skill": "wiki_wrapup"},
+  {"query": "audit my wiki for broken links and missing index entries", "expected_skill": "wiki_fix"},
+  {"query": "i wrote some thoughts during our chat earlier, can we save them to my wiki", "expected_skill": "wiki_wrapup"},
+  {"query": "import this PDF I just downloaded (~/Downloads/scalable-llm-inference.pdf) into my knowledge base", "expected_skill": "wiki_import"},
+  {"query": "i want a relational database for tracking these decisions, not a wiki", "expected_skill": null},
+  {"query": "format the python file in src/ingestion/loader.py — it's a mess", "expected_skill": null},
+  {"query": "summarize the attached paper into 2 paragraphs, executive-summary style", "expected_skill": null},
+  {"query": "lint my code and fix style issues", "expected_skill": null},
+  {"query": "fix my wiki — it's been a while and i'm sure something is broken", "expected_skill": "wiki_fix"}
+]

@@ -1,0 +1,106 @@
+{
+  "skill_name": "git_commit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Commit my changes.",
+      "expected_output": "One commit lands in the sandbox repo whose message is a single line in the format 'file -> change' naming the one modified file. The bundled prepare_commit_context.sh and commit_with_message.sh scripts are both invoked.",
+      "files": ["evals/fixtures/single_file/setup.sh"],
+      "expectations": [
+        "Exactly one new commit is created in the sandbox repo.",
+        "The HEAD commit subject is one line and matches the pattern '<path> -> <description>'.",
+        "The commit includes the modified file (visible via git show --name-only).",
+        "The skill invoked prepare_commit_context.sh as its first script step (not raw git commands).",
+        "The skill invoked commit_with_message.sh to land the commit (not raw git commit).",
+        "The skill did NOT use the Write tool (or a Bash heredoc like 'cat > /tmp/...') to create an intermediate commit-message file — the v3.4.0 stdin contract has the message piped directly into commit_with_message.sh via a single-quoted heredoc.",
+        "After the commit succeeds, the context file whose path prepare_commit_context.sh printed on its first stdout line no longer exists on disk (the skill passed that path as commit_with_message.sh's positional argument so the script cleans it up)."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Commit.",
+      "expected_output": "One commit lands whose message has a concise summary sentence on line 1, then one 'file -> change' line per modified file. All three modified files are referenced.",
+      "files": ["evals/fixtures/multi_file/setup.sh"],
+      "expectations": [
+        "Exactly one new commit is created in the sandbox repo.",
+        "The HEAD commit subject is one concise summary sentence covering all three changes.",
+        "The commit body contains exactly three lines in the format '<path> -> <description>' — one per modified file.",
+        "Every modified file (src/a.py, src/b.py, docs/notes.md) is referenced by exactly one 'file -> change' line.",
+        "The skill invoked prepare_commit_context.sh and commit_with_message.sh.",
+        "The skill did NOT use the Write tool (or a Bash heredoc like 'cat > /tmp/...') to create an intermediate commit-message file — the v3.4.0 stdin contract has the message piped directly into commit_with_message.sh via a single-quoted heredoc.",
+        "After the commit succeeds, the context file whose path prepare_commit_context.sh printed on its first stdout line no longer exists on disk (the skill passed that path as commit_with_message.sh's positional argument so the script cleans it up)."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Commit.",
+      "expected_output": "One commit lands that captures the full repo state: the pre-existing staged change, the unstaged modification, AND the untracked new file. The skill does not pause to ask the user about scope.",
+      "files": ["evals/fixtures/mixed_state/setup.sh"],
+      "expectations": [
+        "Exactly one new commit is created in the sandbox repo.",
+        "The commit references all three affected files (seed.txt, old_staged.txt, new.txt).",
+        "The new.txt untracked file landed in the commit (the skill staged every untracked file by default).",
+        "The skill did NOT prompt the user for confirmation about the dirty working tree or pre-existing staged changes.",
+        "The skill invoked prepare_commit_context.sh and commit_with_message.sh.",
+        "The skill did NOT use the Write tool (or a Bash heredoc like 'cat > /tmp/...') to create an intermediate commit-message file — the v3.4.0 stdin contract has the message piped directly into commit_with_message.sh via a single-quoted heredoc.",
+        "After the commit succeeds, the context file whose path prepare_commit_context.sh printed on its first stdout line no longer exists on disk (the skill passed that path as commit_with_message.sh's positional argument so the script cleans it up)."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Commit.",
+      "expected_output": "One commit lands covering all 60 changed files. The skill still uses the bundled scripts and does NOT fall back to the manual workflow just because the changeset is large.",
+      "files": ["evals/fixtures/large_changeset/setup.sh"],
+      "expectations": [
+        "Exactly one new commit is created in the sandbox repo.",
+        "The commit references all 60 modified files (f01.txt through f60.txt).",
+        "The skill invoked prepare_commit_context.sh — it did NOT switch to raw git commands citing the changeset size.",
+        "The skill invoked commit_with_message.sh — it did NOT invoke `git add -A && git commit` directly.",
+        "The commit message has one summary line followed by 'file -> change' lines.",
+        "The skill did NOT use the Write tool (or a Bash heredoc like 'cat > /tmp/...') to create an intermediate commit-message file — the v3.4.0 stdin contract has the message piped directly into commit_with_message.sh via a single-quoted heredoc, even for a 60-file message body.",
+        "After the commit succeeds, the context file whose path prepare_commit_context.sh printed on its first stdout line no longer exists on disk (the skill passed that path as commit_with_message.sh's positional argument so the script cleans it up)."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Commit.",
+      "expected_output": "The bundled prepare_commit_context.sh has been replaced with a stub that exits non-zero on first invocation. The skill detects the failure, consults references/manual_fallback.md, recovers the failed step manually, and still completes the commit. Fallback is triggered ONLY by the non-zero exit, not by ambiguity or size.",
+      "files": ["evals/fixtures/script_failure/setup.sh"],
+      "expectations": [
+        "Exactly one new commit is created in the sandbox repo.",
+        "The skill attempted to invoke prepare_commit_context.sh first (the primary path) before falling back.",
+        "The skill consulted references/manual_fallback.md after the non-zero exit (visible in its narration or in a Read tool call).",
+        "The fallback's authorized trigger — the non-zero exit — is what activated the fallback (not 'large changeset' or 'ambiguity').",
+        "The skill returned to the primary workflow for the commit step rather than running the entire fallback recipe end-to-end.",
+        "The commit step still used the v3.4.0 stdin contract: the message was piped into commit_with_message.sh via a single-quoted heredoc, NOT written to an intermediate file with the Write tool and NOT issued as a raw `git commit -F -` (which would mean the skill never returned to the primary path after the prepare fallback)."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Commit.",
+      "expected_output": "A concurrent session drops a new file (concurrent_reorg.txt) into the working tree after prepare_commit_context.sh captured the reviewed-set baseline. The skill's drift guard catches the outside-baseline path at its commit-time re-check, surfaces it, and PAUSES to ask whether it belongs rather than sweeping it into a commit silently. No new commit lands. (Timing-based fixture — see fixtures/concurrent_drift/setup.sh.)",
+      "files": ["evals/fixtures/concurrent_drift/setup.sh"],
+      "expectations": [
+        "The skill invoked prepare_commit_context.sh and read its <status_after_staging_new_files> snapshot as the reviewed-set baseline.",
+        "Before invoking commit_with_message.sh, the skill re-ran `git status --short --untracked-files=all` and compared it against that baseline (the model-side drift check).",
+        "The skill detected concurrent_reorg.txt as a path outside the reviewed-set baseline that appeared after context preparation.",
+        "The skill PAUSED and asked the user whether concurrent_reorg.txt belongs in the commit, listing it, instead of committing it silently.",
+        "No new commit landed (HEAD unchanged) — the whole commit was held at the drift seam.",
+        "concurrent_reorg.txt is present on disk but was NOT committed (held for the user's call)."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Commit.",
+      "expected_output": "seed.txt is dirty before the run (already in the reviewed-set baseline); a concurrent session re-edits that same seed.txt after the baseline is captured, appending a marker. No path outside the baseline appears, so the drift check is ambiguous. The skill commits all with no pause, and the commit includes seed.txt carrying the concurrent further-edit content — no file is silently dropped. (Timing-based fixture — see fixtures/ambiguous_drift/setup.sh.)",
+      "files": ["evals/fixtures/ambiguous_drift/setup.sh"],
+      "expectations": [
+        "The skill ran the model-side drift check and found no path outside the reviewed-set baseline (only seed.txt, which was already in the baseline).",
+        "The skill did NOT pause — same-path drift is ambiguous, so the commit-all tiebreaker applied.",
+        "Exactly one new commit landed in the sandbox repo.",
+        "The commit includes seed.txt.",
+        "The committed seed.txt carries the concurrent further-edit marker (CONCURRENT_APPEND_MARKER), proving the mid-run edit was swept in rather than dropped."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+[
+  {"query": "audit my wiki for broken stuff", "expected_skill": "wiki_fix"},
+  {"query": "fix the wiki", "expected_skill": "wiki_fix"},
+  {"query": "the wiki has gotten messy after I bulk-moved a bunch of files manually, can you clean it up", "expected_skill": "wiki_fix"},
+  {"query": "lint my wiki and resolve what comes up", "expected_skill": "wiki_fix"},
+  {"query": "health check on my knowledge base — flag anything off", "expected_skill": "wiki_fix"},
+  {"query": "repair the wiki structure. i think i moved some files manually and broke index entries.", "expected_skill": "wiki_fix"},
+  {"query": "the wiki is full of orphans now after I archived a hub page. can you do something about that?", "expected_skill": "wiki_fix"},
+  {"query": "auto-shape my wiki — schema, anatomy, contradictions, all of it", "expected_skill": "wiki_fix"},
+  {"query": "go through every page in the wiki and fix anatomy issues against the canonical templates", "expected_skill": "wiki_fix"},
+  {"query": "my SCHEMA.md has drifted from the canonical template. fix the scaffold.", "expected_skill": "wiki_fix"},
+
+  {"query": "format the python file at src/loader.py — lint failures", "expected_skill": null},
+  {"query": "lint my code for style issues", "expected_skill": null},
+  {"query": "import this URL into my wiki: https://example.com/article", "expected_skill": "wiki_import"},
+  {"query": "add a page to my wiki about transformers", "expected_skill": "wiki"},
+  {"query": "wrap up this session — save what we discussed", "expected_skill": "wiki_wrapup"},
+  {"query": "what's broken about my build pipeline right now", "expected_skill": null},
+  {"query": "audit our deployment manifest for security issues", "expected_skill": null},
+  {"query": "review this PR — focus on the migration", "expected_skill": null},
+  {"query": "summarize the issues in this design doc, exec-summary style", "expected_skill": null},
+  {"query": "set up a wiki here — none exists yet", "expected_skill": "wiki"}
+]

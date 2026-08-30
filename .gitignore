@@ -1,7 +1,6 @@
 deployment/deployed_artefacts.log
 deployment/.deploy-backup-*/
 .DS_Store
-tests/
 /*[Tt][Oo][Dd][Oo]*.md
 .claude/scheduled_tasks.lock
 .claude/settings.local.json

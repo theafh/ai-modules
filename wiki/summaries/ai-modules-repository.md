@@ -1,7 +1,7 @@
 ---
 title: The ai-modules repository
 created: 2026-08-08
-updated: 2026-08-29
+updated: 2026-08-30
 type: summary
 tags: [repo-structure, plugin, skill, agent, deployment]
 sources: []
@@ -52,7 +52,7 @@ thin front end delegates to read-only assessors and one serialized writer, is
 Around the plugins sit the marketplace registrations, one for Claude under
 `.claude-plugin/` and one for Codex under `.agents/plugins/`, the `deployment/`
 directory, the `tasks/` backlog, the `styles/` directory holding the tracked
-output styles, the local-only test tree described in
+output styles, the committed test tree described in
 [verification surfaces for a shipped skill](../concepts/verification-surfaces.md),
 and the repo-root instruction and guardrail files. `styles/` is the one artefact source that sits outside
 `plugins/`, deliberately, so that

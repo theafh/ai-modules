@@ -1,0 +1,57 @@
+{
+  "skill_name": "git_refresh",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Refresh this repo and clean up merged branches.",
+      "expected_output": "The agent invokes the bundled refresh_repo.sh helper, detects master from origin/HEAD, fast-forwards it, deletes a cleanly merged local branch with git branch -d, and reports every action.",
+      "files": ["evals/fixtures/default_branch_master/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/refresh_repo.sh instead of hand-running the default git sequence.",
+        "The repository ends on the default branch named master.",
+        "The default branch contains the upstream commit that was fetched by fast-forward.",
+        "The cleanly merged local branch is deleted.",
+        "The response reports fetch/prune, detected default branch, switch, fast-forward, and deleted branch details."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Get me back to a clean current main.",
+      "expected_output": "The default run deletes only cleanly merged local branches and leaves an upstream-gone branch with a unique unpushed commit untouched while offering gated cleanup.",
+      "files": ["evals/fixtures/safe_default_run/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/refresh_repo.sh with no arguments for the default run.",
+        "The merged branch is gone after the run.",
+        "The upstream-gone branch with a unique commit still exists after the run.",
+        "The response asks a follow-up question before any upstream-gone pruning.",
+        "The response lists the unique commit before offering force-delete cleanup."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Refresh the repo, then prune the gone branch if it is safe.",
+      "expected_output": "After the user opts in, the gated upstream-gone pruning path deletes a gone branch with no unique commits via git branch -d and leaves force-delete candidates untouched.",
+      "files": ["evals/fixtures/gated_prune_gone/setup.sh"],
+      "expectations": [
+        "The default run happens before the gated pruning action.",
+        "The agent invokes scripts/refresh_repo.sh --prune-gone only after the opt-in portion of the prompt.",
+        "The upstream-gone branch with no commits absent from main is deleted.",
+        "The upstream-gone branch with a unique commit is reported and still exists.",
+        "No force-delete occurs during the prune-gone action."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Refresh this repo.",
+      "expected_output": "A dirty worktree that blocks switching is reported, and the agent leaves the current branch and uncommitted changes untouched.",
+      "files": ["evals/fixtures/dirty_worktree/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/refresh_repo.sh.",
+        "The current branch remains unchanged.",
+        "The uncommitted file content remains unchanged.",
+        "The response reports the dirty worktree and skipped switch or fast-forward steps.",
+        "The agent does not stash, reset, checkout-discard, or otherwise hide the uncommitted change."
+      ]
+    }
+  ]
+}

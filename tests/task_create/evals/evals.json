@@ -1,0 +1,57 @@
+{
+  "skill_name": "task_create (open-decision burden of proof; base rule: task's **Decide or label**)",
+  "evals": [
+    {
+      "id": "reconcile-recorded",
+      "skill": "task_create",
+      "prompt": "Make a task for adding unit tests to the pure helpers in src/report/render.py — format_severity and truncate_cell. That module imports the chartkit backend at module scope, so the tests need some way to get at those helpers.",
+      "expected_output": "Every tier of the **Decide or label** evidence base points one way: TESTING.md prescribes stubbing the heavy import in sys.modules and an offline standing gate, the archived precedent task took that path, and the module-scope import in render.py forces it. The fork is therefore a reconciliation, not an open decision. task_create writes one task carrying NO labeled \"Open decision:\", records the settled stubbing path in the body, cites the standing testing rule rather than copying it, and reports in one line that the draft carried no open-decision residue. This mirrors the observed failure the tightened rule closes, so the old permissive behaviour — labeling the fork with a default the evidence had already picked — fails this eval.",
+      "files": [
+        "evals/fixtures/reconcile-recorded/setup.sh"
+      ],
+      "expectations": [
+        "Exactly one new task file exists under tasks/, it lints clean, and status is open.",
+        "The task body carries no labeled \"Open decision:\" at all — the fork was reconciled silently, not surfaced.",
+        "The body records the resolution the evidence settles: the tests reach the pure helpers by registering a stub for the heavy backend in sys.modules before importing the module, leaving the production import in place.",
+        "The resolution is grounded in the evidence rather than asserted: the body cites the standing testing rule (or the guardrail doc by name) instead of copying its text.",
+        "The agent's response reports that the draft carried no open-decision residue, in one line, and finishes without prompting the user to resolve anything.",
+        "Neither TESTING.md nor src/report/render.py was modified — task_create writes the task file only."
+      ]
+    },
+    {
+      "id": "labeled-why-open",
+      "skill": "task_create",
+      "prompt": "Make a task for adding retry with exponential backoff to the outbound webhook sender in src/hooks/sender.py. Whether an endpoint that keeps failing gets auto-disabled after a run of consecutive failures, or just keeps getting retried forever, is a call I want to make myself.",
+      "expected_output": "No tier of the evidence base reaches this fork: the project carries the harness rule file alone, the backlog is empty, and the code has no failure bookkeeping or enabled flag to argue from. The call rests on the user's own risk appetite, so the why-open test's insufficient-evidence ground qualifies. task_create writes one task carrying exactly one labeled \"Open decision:\" that names both options, names a suggested default, and states in one clause why the evidence leaves it open — and then surfaces that decision to the user in its **Offer open-decision reconciliation** step with a resolve-now-or-defer ask. Both halves are mandatory: a label the user never saw fails this eval as surely as a silently-decided fork.",
+      "files": [
+        "evals/fixtures/labeled-why-open/setup.sh"
+      ],
+      "expectations": [
+        "Exactly one new task file exists under tasks/, it lints clean, and status is open.",
+        "The body carries exactly one labeled \"Open decision:\" — not zero (the fork is genuinely open) and not several (one is the ceiling).",
+        "The label names both options (auto-disable after consecutive failures versus retry indefinitely) and names a suggested default among them.",
+        "The label states in one clause why the fork is genuinely open, and that clause is true: the decision rests on the user's own risk appetite, which no evidence tier here reaches. A clause that merely recites the rule, or that misdescribes settled evidence as absent, fails this expectation.",
+        "The named default reads as a suggestion among evidence-equal options rather than a path the evidence already picked — the decisive-default test would not have caught it as a disguised reconciliation.",
+        "The agent's response surfaces the open decision to the user with a concrete reconciliation suggestion and a resolve-now-or-defer ask, rather than leaving the decision resting in the written file alone.",
+        "No guardrail doc was created in the sandbox to manufacture evidence for a resolution."
+      ]
+    },
+    {
+      "id": "guardrail-bound-surface",
+      "skill": "task_create",
+      "prompt": "Make a task to add coloured severity markers to the report command's output in src/report/cli.py, so warnings and errors stand out from the ordinary rows.",
+      "expected_output": "Both available paths cross a guardrail boundary: pulling in rich crosses CHARTER.md's no-third-party-runtime-dependency boundary, and hand-rolling escapes crosses ARCHITECTURE.md's never-emit-raw-ANSI rule. The family's standing hierarchy never auto-resolves a guardrail-bound fork, so the why-open test's guardrail-bound ground qualifies. task_create writes one task carrying a labeled \"Open decision:\" that names the boundary conflict and both crossing paths, and surfaces it to the user — rather than quietly picking a side on the strength of CHARTER.md outranking ARCHITECTURE.md, or editing a guardrail doc to clear the way.",
+      "files": [
+        "evals/fixtures/guardrail-bound-surface/setup.sh"
+      ],
+      "expectations": [
+        "Exactly one new task file exists under tasks/, it lints clean, and status is open.",
+        "The body carries exactly one labeled \"Open decision:\" rather than a silently chosen colouring approach.",
+        "The label names the guardrail conflict as the reason the fork is open — the rich path crosses CHARTER.md's dependency boundary and the raw-ANSI path crosses ARCHITECTURE.md's presentation rule — so both crossing paths appear with the boundary each one hits.",
+        "The fork was not auto-resolved by applying the guardrail hierarchy: CHARTER.md outranking ARCHITECTURE.md is not treated as settling which implementation path the task takes.",
+        "The agent's response surfaces the decision to the user with a suggested path and a resolve-now-or-defer ask.",
+        "Neither CHARTER.md nor ARCHITECTURE.md was modified to clear the conflict."
+      ]
+    }
+  ]
+}

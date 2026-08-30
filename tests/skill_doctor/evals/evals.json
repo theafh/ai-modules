@@ -1,0 +1,131 @@
+{
+  "skill_name": "skill_doctor",
+  "notes": "Pattern A behavioral evals for orientation, discovery-safety-first ordering, and the checks that come from the checked repository rather than from this one: registration surfaces reported as not applicable where a repo never adopted them, and a verification summary built from the repo's own entry points. script_tests cover resolve_scope and discovery_safety mechanically.",
+  "evals": [
+    {
+      "id": "scope_hub_family",
+      "skill": "skill_doctor",
+      "prompt": "Check the demo family skills in this repository.",
+      "expected_output": "Orient names the family mode and the resolved set including the hub, prefix sibling, and non-prefix shared_linter from the hub <family> block before any deeper check; lone_gizmo stays out; discovery safety runs first; no skill files are edited.",
+      "files": [
+        "evals/fixtures/scope_hub_family/setup.sh"
+      ],
+      "expectations": [
+        "The response names family scope and lists demo, demo_alpha, and shared_linter before deeper checks.",
+        "The response keeps lone_gizmo out of the resolved family set, naming it only to explain the exclusion.",
+        "The response runs or cites discovery safety before registration or instruction-quality review.",
+        "Every SKILL.md under the sandbox remains byte-identical to the staged tree."
+      ]
+    },
+    {
+      "id": "scope_prefix_only",
+      "skill": "skill_doctor",
+      "prompt": "Check the wiki family skills in this repository.",
+      "expected_output": "Orient resolves the wiki family by prefix only (no <family> block), names wiki / wiki_import / wiki_wrapup, excludes spr, runs discovery safety first, and edits nothing.",
+      "files": [
+        "evals/fixtures/scope_prefix_only/setup.sh"
+      ],
+      "expectations": [
+        "The response names wiki, wiki_import, and wiki_wrapup as the resolved family set.",
+        "The response excludes spr from the wiki family set.",
+        "Every SKILL.md under the sandbox remains byte-identical to the staged tree."
+      ]
+    },
+    {
+      "id": "discovery_risky_sibling",
+      "skill": "skill_doctor",
+      "prompt": "Check the good_a, good_b, and risky skills in this repository.",
+      "expected_output": "Discovery safety flags the risky sibling description for typographic punctuation / workflow leakage / risky punctuation before later passes, reports the findings with paths and evidence, and edits nothing.",
+      "files": [
+        "evals/fixtures/discovery_risky_sibling/setup.sh"
+      ],
+      "expectations": [
+        "The response surfaces a discovery-safety finding on the risky skill description, ahead of the registration and instruction-quality passes.",
+        "The response cites typographic punctuation, workflow leakage, or risky punctuation evidence for the risky description.",
+        "The response reports those quality judgements as warnings rather than blocking issues, since no mechanical fault is present in the fixture.",
+        "The response never proposes replacing the em dash with a hyphen, a double hyphen, or an en dash; where it names that substitution at all, it names it as no fix.",
+        "Every SKILL.md under the sandbox remains byte-identical to the staged tree."
+      ]
+    },
+    {
+      "id": "scope_single_skill_clean",
+      "skill": "skill_doctor",
+      "prompt": "Check the alpha_widget skill in this repository.",
+      "expected_output": "Orient names single-skill mode and alpha_widget alone, the siblings stay out of the target set, and the clean tree reaches the output contract's clean path: the literal `No blocking issues.` under the blocking section plus a verification summary naming the commands run.",
+      "files": [
+        "evals/fixtures/scope_multi_plugin/setup.sh"
+      ],
+      "expectations": [
+        "The response names single-skill scope and alpha_widget as the whole resolved target set.",
+        "The response keeps alpha_gadget and beta_sprocket out of the target set, naming them only to explain the exclusion.",
+        "The response writes the literal `No blocking issues.` under the blocking section, since the fixture carries no mechanical fault.",
+        "The response ends with a verification summary that names the exact commands it ran.",
+        "Every staged SKILL.md and registration file under the sandbox remains byte-identical."
+      ]
+    },
+    {
+      "id": "scope_whole_repo",
+      "skill": "skill_doctor",
+      "prompt": "Check all skills in this repository.",
+      "expected_output": "Orient names whole-repo mode and reaches every skill across both plugins (alpha_widget, alpha_gadget, beta_sprocket) rather than stopping at the first plugin; discovery safety runs first; nothing is edited.",
+      "files": [
+        "evals/fixtures/scope_multi_plugin/setup.sh"
+      ],
+      "expectations": [
+        "The response names whole-repo scope and lists alpha_widget, alpha_gadget, and beta_sprocket as the resolved set.",
+        "The response reaches the second plugin rather than walking only the first.",
+        "The response runs or cites discovery safety before registration or instruction-quality review.",
+        "Every staged SKILL.md and registration file under the sandbox remains byte-identical."
+      ]
+    },
+    {
+      "id": "scope_unresolvable_selector",
+      "skill": "skill_doctor",
+      "prompt": "Check the omega_flange skill in this repository.",
+      "expected_output": "Scope resolution fails on an unknown skill name, so the run stops and reports that failure, names the nearest candidates the walk did find, and asks which skill the user means instead of substituting a target set of its own and checking it.",
+      "files": [
+        "evals/fixtures/scope_multi_plugin/setup.sh"
+      ],
+      "expectations": [
+        "The response reports that omega_flange did not resolve, rather than silently checking something else.",
+        "The response names at least one nearest candidate the walk did find.",
+        "The response asks the user which skill they meant instead of picking one itself.",
+        "The response reports no findings pass over a substituted target set.",
+        "Every staged SKILL.md and registration file under the sandbox remains byte-identical."
+      ]
+    },
+    {
+      "id": "registration_no_manifest",
+      "skill": "skill_doctor",
+      "prompt": "Check all skills in this repository.",
+      "expected_output": "Orient names the repo-root skills/ layout the walk resolved. Registration reports the plugin-manifest and marketplace surfaces as not applicable because the repo ships neither, with no finding claiming a missing file, and no name/H1 alignment or README-listing finding because AGENTS.md states no such convention. The absent version: reports under Info saying the rule files state no version rule. No skill files are edited.",
+      "files": [
+        "evals/fixtures/registration_no_manifest/setup.sh"
+      ],
+      "expectations": [
+        "The response names the repo-root skills/ layout it resolved, rather than reporting an absent plugins/*/skills/ tree.",
+        "The response reports registration as not applicable for the manifest and marketplace surfaces this repo never adopted.",
+        "The response claims no missing plugin.json, marketplace.json, or README file.",
+        "The response emits no name/H1 alignment or README-listing finding, since the rule files state no such convention.",
+        "The response reports the absent version: under Info and says the rule files state no version rule, rather than blocking on it.",
+        "Every SKILL.md under the sandbox remains byte-identical to the staged tree."
+      ]
+    },
+    {
+      "id": "verification_repo_checks",
+      "skill": "skill_doctor",
+      "prompt": "Check the gamma_flywheel skill in this repository.",
+      "expected_output": "The verification summary names the two check entry points this repo defines \u2014 the mise task `lint` and the pre-commit hooks \u2014 with the exact command each ran under, and names any check it could not run with its reason. It reaches for no entry point the repo does not expose. No skill files are edited.",
+      "files": [
+        "evals/fixtures/verification_repo_checks/setup.sh"
+      ],
+      "expectations": [
+        "The verification summary names the mise lint task with the exact command it ran.",
+        "The verification summary names the pre-commit hooks with the exact command it ran.",
+        "The response names no check entry point the staged repo does not expose, such as a Makefile target or a deploy dry-run.",
+        "The response names every check it could not run together with the reason.",
+        "Every SKILL.md under the sandbox remains byte-identical to the staged tree."
+      ]
+    }
+  ]
+}

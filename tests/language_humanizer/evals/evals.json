@@ -1,0 +1,77 @@
+{
+  "skill_name": "language_humanizer",
+  "notes": "Each eval runs over a fixed denominator of passes (default 5) via run.py; the recorded per-scenario pass rate over that denominator is the deliverable. The bar is every assertion holding on every pass. Mechanical expectations are graded by grade.py, qualitative ones by judge.py.",
+  "evals": [
+    {
+      "id": "fidelity_padded",
+      "skill": "language_humanizer",
+      "path": "rewrite",
+      "passes": 5,
+      "prompt": "The file draft.md is our Q1 checkout status update. Rewrite it so the engineering leads it goes to can act on it after a single read.",
+      "expected_output": "Rewrite mode runs on the rewrite path. The delivered text reads plainly, comes in at no more than 75% of the fixture's word count, and carries all nine load-bearing items at unchanged strength and scope. The reduction comes out of the fixture's filler and restatement, never out of a ledger item.",
+      "files": [
+        "evals/fixtures/fidelity_padded/setup.sh"
+      ],
+      "expectations": [
+        "The delivered text is at most 75% of the fixture's word count (graded mechanically against the fixture's own count).",
+        "Priya Raman is still the owner of the latency fix.",
+        "The Billing squad is still the owner of the retry migration.",
+        "The 14 March deadline survives.",
+        "The 200 ms committed p95 latency survives with its unit.",
+        "The 99.5% availability floor survives with its unit.",
+        "The must-strength obligations are still musts.",
+        "The Billing squad's retry migration is still a should, not upgraded to a must.",
+        "The enterprise-tenant exception survives, still scoped to enterprise tenants and still conditional on the contract renegotiation.",
+        "The causal link making the deadline follow from the contractual commitment survives.",
+        "The delivered text reads plainly: one idea per sentence on a real verb, active voice where the actor matters, no stacked clause chains, none of the source's filler or restatement.",
+        "The delivered text adds no fact, number, owner, date, or commitment absent from the source.",
+        "The delivered text carries no cascade of three or more sub-12-word bullets.",
+        "The source document comes out byte-identical to the staged fixture (the skill returns text, it does not edit the source in place)."
+      ]
+    },
+    {
+      "id": "compression_trap",
+      "skill": "language_humanizer",
+      "path": "rewrite",
+      "passes": 5,
+      "prompt": "Rewrite draft.md so the leadership team reading it before Monday's review understands it on the first pass.",
+      "expected_output": "Rewrite mode runs on the rewrite path. The delivered text runs no longer than the fixture, keeps the argument as connected prose whose transitions carry the reasoning rather than a bullet list of stubs, and keeps the hedge on the uncertain onboarding-step claim.",
+      "files": [
+        "evals/fixtures/compression_trap/setup.sh"
+      ],
+      "expectations": [
+        "The delivered text is no longer than the fixture's word count.",
+        "The argument stays connected prose: the signup-dip-recovers / conversion-compounds contrast, the budget-priority conclusion, and the self-serve concentration all survive with their logical joints.",
+        "At least four of the source's transition words survive.",
+        "The compounding mechanism — the argument's hinge — is still named.",
+        "The onboarding-step explanation stays marked as uncertain, and the pricing-page confound that makes it uncertain survives with it.",
+        "The delivered text carries no cascade of three or more sub-12-word bullets.",
+        "The delivered text is easier to take in than the one-paragraph source while staying prose.",
+        "The source document comes out byte-identical to the staged fixture."
+      ]
+    },
+    {
+      "id": "write_path",
+      "skill": "language_humanizer",
+      "path": "write",
+      "passes": 5,
+      "prompt": "notes.md is my raw whiteboard dump from the incident retro. Turn it into a follow-ups document the on-call team can actually act on.",
+      "expected_output": "Write mode runs on the write path. The produced document states all five load-bearing items from the notes, opens with its main point, reads as connected prose, and introduces no filler or restatement.",
+      "files": [
+        "evals/fixtures/write_path/setup.sh"
+      ],
+      "expectations": [
+        "Dana Okoro is named as the owner of the alerting rework.",
+        "Marco Weiss is named as the owner of the postmortem template refresh.",
+        "The 30 April deadline appears.",
+        "The error budget appears as at most 2 hours of downtime per quarter, with its unit and its window.",
+        "The error-budget bar is stated as a must rather than a target.",
+        "The document opens with its main point rather than background or a preamble about the retro.",
+        "The document reads as connected prose; a short parallel list is fine, a bullet dump is not.",
+        "The document introduces no filler and no restatement (checked both against a filler-phrase list and by the judge).",
+        "The document invents no owner, date, number, or decision absent from the notes.",
+        "The source notes come out byte-identical to the staged fixture."
+      ]
+    }
+  ]
+}

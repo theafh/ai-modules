@@ -1,0 +1,31 @@
+# shellcheck configuration for the committed test harnesses.
+#
+# Scoped to tests/ deliberately: the shipped plugin scripts under plugins/
+# stay on stock shellcheck defaults with no suppressions.
+
+# Fixture stagers source the shared helper through a runtime-computed path,
+# `. "$THIS_DIR/../_common.sh"`. Pointing source-path at each script's own
+# directory and its parent lets shellcheck resolve and follow the helper,
+# which is a real check rather than a suppressed SC1091.
+source-path=SCRIPTDIR
+source-path=SCRIPTDIR/..
+
+# Follow those resolved sources rather than only locating them, so a
+# standalone `shellcheck <one file>` reports the same as `make lint`,
+# which happens to pass every file at once and so has them all as input.
+external-sources=true
+
+# Every harness registers its scenarios by name and runs them through a
+# dispatcher, e.g. `scenario c7 "commit: ..." c7_context_file_cleanup`.
+# The bodies are only ever called through that indirection, which is the
+# exception SC2329's own message names. Disabled tree-wide because the
+# dispatch pattern is structural to every runner and grader here.
+disable=SC2329
+
+# Graders assert against literal skill prose, which is full of backticks and
+# pseudo-XML (`file_has "$SKILL" 'Deny `clippy::unwrap_used`'`), and they build
+# probes as `bash -c '...'` bodies whose `$var` must expand in the inner shell
+# rather than this one. Both idioms require single quotes, so SC2016 fires on
+# correct code throughout. A genuinely mis-quoted expansion still fails loudly
+# at run time, because the assertion it belongs to stops matching.
+disable=SC2016

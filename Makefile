@@ -13,9 +13,22 @@
 .DEFAULT_GOAL := help
 
 # File discovery — evaluated once at parse time. Excludes .git, deployment
-# backup directories, and the local-only `tests/` regression-harness tree
-# (also in .gitignore — committed lint should not scan transient sandboxes).
-EXCLUDE     := -path ./.git -prune -o -path './deployment/.deploy-backup-*' -prune -o -path ./tests -prune -o
+# backup directories, and every regenerated subtree under `tests/` (committed
+# lint should not scan transient sandboxes). The authored harness under
+# `tests/` is committed, so it IS linted; the prunes below mirror
+# `tests/.gitignore`, and the two lists are changed together.
+EXCLUDE     := -path ./.git -prune -o \
+               -path './deployment/.deploy-backup-*' -prune -o \
+               -name workspace -prune -o \
+               -name scratch -prune -o \
+               -name .eval_cache -prune -o \
+               -name __pycache__ -prune -o \
+               -path './tests/wiki/layer2/AS-*' -prune -o \
+               -path './tests/wiki/layer2/L2-*' -prune -o \
+               -path './tests/wiki/layer2/WI-*' -prune -o \
+               -path './tests/wiki/layer2/WU-*' -prune -o \
+               -path './tests/trigger_evals/results/*' -prune -o \
+               -path '*/results/run-*' -prune -o
 MD_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.md' -print)
 JSON_FILES  := $(shell find . $(EXCLUDE) -type f -name '*.json' -print)
 SH_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.sh' -print)

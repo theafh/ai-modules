@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-08-29 | Total pages: 29
+> Last updated: 2026-08-30 | Total pages: 29
 
 ## Entities
 
@@ -30,7 +30,7 @@
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md) — why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md) — naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [The deployment model](concepts/deployment-model.md) — two discovery roots, per-tool configuration, generated variants, scope precedence, and the prior-value restore on uninstall.
-- [Verification surfaces for a shipped skill](concepts/verification-surfaces.md) — script tests against behavioral evals, harnesses that never ship, the pinned model under test, trigger coverage as its own question, and why a grader that tests surface form or hides a conjunction misreports the behaviour.
+- [Verification surfaces for a shipped skill](concepts/verification-surfaces.md) — script tests against behavioral evals, harnesses committed but never deployed, the pinned model under test, trigger coverage as its own question, and why a grader that tests surface form or hides a conjunction misreports the behaviour.
 
 ## Comparisons
 

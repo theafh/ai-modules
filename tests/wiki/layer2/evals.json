@@ -1,0 +1,2593 @@
+{
+  "skill_name": "wiki",
+  "passes": 2,
+  "evals": [
+    {
+      "id": "L2-1",
+      "name": "existing-wiki-add-page",
+      "description": "Existing wiki at CWD; user asks to add a page. Skill should discover (exit 0), orient, add page, update index/log, lint clean.",
+      "sandbox_path": "L2-1",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Add a page to my wiki about transformers (the neural net architecture). Here's a short source paste to ingest:\n\n> A transformer is a deep learning architecture introduced in 2017 by Vaswani et al. in the paper \"Attention Is All You Need\". It uses self-attention to model relationships between tokens in a sequence, replacing recurrent layers used in earlier sequence models like LSTMs.",
+      "extra_constraints": [
+        "If discovery exits 2 (ambiguous), STOP and ask. Do not silently pick.",
+        "Do not fetch from the web; use only the source paste.",
+        "Keep the page short — this is a smoke test."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_0",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "0"
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "L2-1/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_ambiguity_ask",
+          "type": "report_field_in",
+          "field": "ambiguity_presented_to_user",
+          "expected": [
+            "no",
+            "n/a"
+          ]
+        },
+        {
+          "id": "A5_no_re_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A6_lint_no_blocking",
+          "type": "report_field_matches",
+          "field": "lint_findings",
+          "regex": "(^|[^0-9])0\\s+blocking|no\\s+blocking|^\\s*clean\\b|no\\s+issues"
+        },
+        {
+          "id": "A7_concept_page_added",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/concepts/*.md"
+        },
+        {
+          "id": "A8_index_modified",
+          "type": "file_exists_and_changed",
+          "path": "HOME/proj/wiki/index.md"
+        },
+        {
+          "id": "A9_log_modified",
+          "type": "file_exists_and_changed",
+          "path": "HOME/proj/wiki/log.md"
+        },
+        {
+          "id": "A10_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A11_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "L2-2",
+      "name": "ambiguous-discovery-must-ask",
+      "description": "Upstream wiki exists at HOME, CWD is empty (the D6 'common case worth calling out'). Skill MUST present candidates and ask — must NOT silently adopt the upstream wiki.",
+      "sandbox_path": "L2-2",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Initialize a wiki for this project.",
+      "extra_constraints": [
+        "If discovery exits 2 (ambiguous), STOP after presenting candidates. The request does NOT tell you which path to pick.",
+        "Do NOT silently pick a candidate. Do NOT silently adopt an upstream EXISTING wiki.",
+        "Do NOT run init_wiki.sh until the user has chosen."
+      ],
+      "expected_resolved_path_subpath": "n/a",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_2",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "2"
+        },
+        {
+          "id": "A3_ambiguity_asked",
+          "type": "report_field_eq",
+          "field": "ambiguity_presented_to_user",
+          "expected": "yes"
+        },
+        {
+          "id": "A4_no_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_available_candidate_presented",
+          "type": "report_field_contains",
+          "field": "candidates_presented",
+          "substr": "AVAILABLE:"
+        },
+        {
+          "id": "A6_existing_candidate_presented",
+          "type": "report_field_contains",
+          "field": "candidates_presented",
+          "substr": "EXISTING:"
+        },
+        {
+          "id": "A7_proj_wiki_not_created",
+          "type": "path_does_not_exist",
+          "path": "HOME/proj/wiki"
+        },
+        {
+          "id": "A8_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A9_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ],
+      "extra_report_fields": [
+        "candidates_presented: <one AVAILABLE:<path> or EXISTING:<path> line per candidate, copied verbatim from discovery stdout, or none>"
+      ],
+      "extra_report_field_doc": "- `candidates_presented`: when discovery exits 2, copy every candidate line from its stdout verbatim, one per line, keeping the `AVAILABLE:` / `EXISTING:` prefix — these are the candidates you put to the user. `none` only if discovery did not exit 2."
+    },
+    {
+      "id": "L2-3",
+      "name": "init-when-wiki-exists",
+      "description": "Wiki already exists at CWD; user asks to init. Skill should auto-resolve (exit 0) and recognize the existing wiki, NOT call init_wiki.sh.",
+      "sandbox_path": "L2-3",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Initialize a new wiki here.",
+      "extra_constraints": [
+        "discover_wiki.sh should auto-resolve (exit 0) to the existing wiki.",
+        "The wiki already exists. Recognize that and DO NOT attempt to re-initialize.",
+        "Do not call init_wiki.sh on a path with an existing wiki."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_0",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "0"
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "L2-3/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_no_files_modified",
+          "type": "report_field_eq",
+          "field": "files_modified",
+          "expected": "none"
+        },
+        {
+          "id": "A6_no_files_created",
+          "type": "report_field_eq",
+          "field": "files_created",
+          "expected": "none"
+        },
+        {
+          "id": "A7_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A8_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "L2-4",
+      "name": "init-fresh-with-pre-decision",
+      "description": "Fresh CWD, ambiguous discovery, but user pre-decides 'use local'. Skill should run discovery, see exit 2, apply pre-decision, run init_wiki.sh, lint clean.",
+      "sandbox_path": "L2-4",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Initialize a wiki for this project. Pre-decision from me: if discovery is ambiguous, use the LOCAL CWD candidate (the working directory) — not any upstream candidate.",
+      "extra_constraints": [
+        "discover should exit 2 with two AVAILABLE candidates (CWD and HOME).",
+        "Per the user's pre-decision, pick the CWD candidate.",
+        "Run init_wiki.sh to scaffold the wiki at <CWD>/wiki.",
+        "Verify the wiki was created. Optionally lint to confirm clean."
+      ],
+      "expected_resolved_path_subpath": "n/a",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_2",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "2"
+        },
+        {
+          "id": "A3_init_invoked",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A4_init_target_local",
+          "type": "report_field_endswith",
+          "field": "init_target",
+          "suffix": "L2-4/HOME/proj/wiki"
+        },
+        {
+          "id": "A5_schema_created",
+          "type": "file_exists",
+          "path": "HOME/proj/wiki/SCHEMA.md"
+        },
+        {
+          "id": "A6_index_created",
+          "type": "file_exists",
+          "path": "HOME/proj/wiki/index.md"
+        },
+        {
+          "id": "A7_log_created",
+          "type": "file_exists",
+          "path": "HOME/proj/wiki/log.md"
+        },
+        {
+          "id": "A8_dir_tree_created",
+          "type": "all_dirs_exist",
+          "paths": [
+            "HOME/proj/wiki/raw/articles",
+            "HOME/proj/wiki/raw/papers",
+            "HOME/proj/wiki/raw/meetings",
+            "HOME/proj/wiki/raw/notes",
+            "HOME/proj/wiki/raw/assets",
+            "HOME/proj/wiki/entities",
+            "HOME/proj/wiki/concepts",
+            "HOME/proj/wiki/comparisons",
+            "HOME/proj/wiki/queries",
+            "HOME/proj/wiki/summaries",
+            "HOME/proj/wiki/procedures"
+          ]
+        },
+        {
+          "id": "A9_lint_no_blocking",
+          "type": "report_field_matches",
+          "field": "lint_findings",
+          "regex": "(^|[^0-9])0\\s+blocking|no\\s+blocking|^\\s*clean\\b|no\\s+issues"
+        },
+        {
+          "id": "A10_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A11_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "L2-5",
+      "name": "no-wiki-marker-routes-to-home",
+      "description": ".no_wiki at CWD with wiki at HOME → discovery auto-resolves to HOME/wiki. Skill should NOT ask, should adopt HOME wiki and add page there.",
+      "sandbox_path": "L2-5",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Add a page about widgets to my wiki. Here's the source paste:\n\n> Widgets are reusable UI components. They typically encapsulate state and behavior, and can be composed into larger interfaces. Common in modern frontend frameworks.",
+      "extra_constraints": [
+        "discover should auto-resolve (exit 0) to <HOME>/wiki because CWD is opted out via .no_wiki.",
+        "DO NOT ask the user — discovery is unambiguous.",
+        "Add a short page about widgets to the resolved wiki, update index.md, append to log.md, lint."
+      ],
+      "expected_resolved_path_subpath": "HOME/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_0",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "0"
+        },
+        {
+          "id": "A3_resolved_to_home_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "L2-5/HOME/wiki"
+        },
+        {
+          "id": "A4_no_ambiguity_ask",
+          "type": "report_field_in",
+          "field": "ambiguity_presented_to_user",
+          "expected": [
+            "no",
+            "n/a"
+          ]
+        },
+        {
+          "id": "A5_no_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A6_lint_no_blocking",
+          "type": "report_field_matches",
+          "field": "lint_findings",
+          "regex": "(^|[^0-9])0\\s+blocking|no\\s+blocking|^\\s*clean\\b|no\\s+issues"
+        },
+        {
+          "id": "A7_widgets_page_in_home_wiki",
+          "type": "glob_exists",
+          "pattern": "HOME/wiki/**/widget*.md"
+        },
+        {
+          "id": "A8_proj_wiki_not_created",
+          "type": "path_does_not_exist",
+          "path": "HOME/proj/wiki"
+        },
+        {
+          "id": "A9_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A10_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "L2-6",
+      "name": "answer-only-query-writes-no-log-entry",
+      "description": "Populated wiki at CWD; user asks a question answerable from one existing page and the prompt directs the agent to work the <query> workflow step by step, carrying no filing instruction of its own. The skill's own filing rule must produce the skip: no page under queries/, summaries/, or comparisons/, no log.md entry (log.md stays byte-identical to its staged state), and a one-line filing decision whose reason names the filing rule's own trigger — the three-page count, or the cross-page reasoning/synthesis the answer lacks. That last assertion is the discriminating one, and its pattern deliberately excludes the superseded text's vocabulary: \"skip trivial lookups\" already produced a skip reported as a \"trivial single-page lookup\" in 4 of 5 baseline passes, so accepting bare single-page phrasing measured almost nothing, and \"novel reasoning\" is likewise the old step's own wording (\"multi-source synthesis, structured comparison, novel reasoning\") rather than the new rule's. Discriminates both the changes-only log rule and the deterministic filing default from their vaguer predecessors: pass rate is the measurement, so run >=5 passes per side when comparing skill revisions.",
+      "sandbox_path": "L2-6",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "What color do widgets render by default in my wiki's domain?",
+      "extra_constraints": [
+        "If discovery exits 2 (ambiguous), STOP and ask. Do not silently pick.",
+        "Work the wiki skill's <query> workflow from its first step through its last, in order, and carry out each step exactly as the skill prescribes it.",
+        "Do not fetch from the web and do not invent domain facts; answer from the wiki's existing pages."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_entry_appended: yes|no",
+        "filing_decision: <the one-line filed-or-not report, verbatim>"
+      ],
+      "extra_report_field_doc": "- `log_entry_appended`: strict `yes` or `no` — `yes` only if you appended an entry to `log.md` during this session.\n- `filing_decision`: the one-line filed-or-not report you gave the user about persisting this answer, copied verbatim on one line. Use `n/a` only if you gave no such line.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_0",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "0"
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "L2-6/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_re_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_log_byte_identical",
+          "type": "file_matches_baseline",
+          "path": "HOME/proj/wiki/log.md",
+          "baseline": "baseline/log.md.sha256"
+        },
+        {
+          "id": "A6_no_log_entry_self_reported",
+          "type": "report_field_eq",
+          "field": "log_entry_appended",
+          "expected": "no"
+        },
+        {
+          "id": "A7_no_query_page_filed",
+          "type": "glob_absent",
+          "pattern": "HOME/proj/wiki/queries/*.md"
+        },
+        {
+          "id": "A8_no_summary_page_filed",
+          "type": "glob_absent",
+          "pattern": "HOME/proj/wiki/summaries/*.md"
+        },
+        {
+          "id": "A9_no_comparison_page_filed",
+          "type": "glob_absent",
+          "pattern": "HOME/proj/wiki/comparisons/*.md"
+        },
+        {
+          "id": "A10_no_files_created",
+          "type": "report_field_eq",
+          "field": "files_created",
+          "expected": "none"
+        },
+        {
+          "id": "A11_no_files_modified",
+          "type": "report_field_eq",
+          "field": "files_modified",
+          "expected": "none"
+        },
+        {
+          "id": "A12_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A13_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A14_filing_decision_skip_names_the_filing_trigger",
+          "type": "report_field_matches",
+          "field": "filing_decision",
+          "regex": "\\A(?=[\\s\\S]*(?:\\bskip\\w*|\\bnot\\s+fil\\w+|\\bno\\s+(?:new\\s+)?(?:page|filing|query\\s+page)|\\bnothing\\s+filed|\\bdid\\s+not\\s+file|\\bnot\\s+persist\\w*|\\bfiled:\\s*no\\b))(?=[\\s\\S]*(?:\\b(?:three|3)\\b[\\s\\S]{0,40}?\\bpages?\\b|\\bpages?\\b[\\s\\S]{0,40}?\\b(?:three|3)\\b|\\bcross[\\s-]page\\b[\\s\\S]{0,25}(?:\\breasoning\\b|\\bsynthesis\\b)))"
+        }
+      ]
+    },
+    {
+      "id": "L2-7",
+      "name": "multi-page-synthesis-query-files-a-query-page",
+      "description": "Populated wiki at CWD; user asks a diagnostic question whose answer lives on no single page and only resolves by reasoning across four of them (colour default, theme layer, precedence rule, production deployment). The question shape is what makes the answer valuable, so the untouched type rule files it under queries/ and the only variable is the filing decision: the skill must file the synthesis unprompted, give the page the query anatomy (question as title, cross-linked synthesized answer, Confidence and caveats), mark the unvalidated first synthesis `confidence: medium`, and report the created path in its one-line filing decision. The `confidence: medium` check is the discriminating assertion: the superseded skill text had no first-synthesis rule and defaulted a multi-page synthesis to `high`. Pass rate is the measurement, so run >=5 passes per side when comparing skill revisions.",
+      "sandbox_path": "L2-7",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Why does the same widget render red in production but blue in staging?",
+      "extra_constraints": [
+        "If discovery exits 2 (ambiguous), STOP and ask. Do not silently pick.",
+        "Work the wiki skill's <query> workflow from its first step through its last, in order, and carry out each step exactly as the skill prescribes it.",
+        "Do not fetch from the web and do not invent domain facts; answer from the wiki's existing pages."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "filing_decision: <the one-line filed-or-not report, verbatim>"
+      ],
+      "extra_report_field_doc": "- `filing_decision`: the one-line filed-or-not report you gave the user about persisting this answer, copied verbatim on one line. Use `n/a` only if you gave no such line.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_0",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "0"
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "L2-7/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_re_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_query_page_title_is_the_question",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/queries/*.md",
+          "regex": "(?m)^#\\s+[^\\n]*red in production[^\\n]*blue in staging"
+        },
+        {
+          "id": "A6_synthesized_answer_carries_a_cross_link",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/queries/*.md",
+          "regex": "\\]\\((?:\\.\\./)?(?:concepts|procedures|entities|comparisons|summaries|queries)/[a-z0-9][a-z0-9-]*\\.md\\)"
+        },
+        {
+          "id": "A7_confidence_and_caveats_section",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/queries/*.md",
+          "regex": "(?m)^#{1,3}\\s*Confidence and caveats"
+        },
+        {
+          "id": "A8_filing_decision_names_the_query_page_path",
+          "type": "report_field_matches",
+          "field": "filing_decision",
+          "regex": "queries/[a-z0-9][a-z0-9-]*\\.md"
+        },
+        {
+          "id": "A9_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A10_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A11_first_synthesis_confidence_medium",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/queries/*.md",
+          "regex": "(?m)^confidence:[ \\t]*medium[ \\t]*$"
+        }
+      ]
+    },
+    {
+      "id": "L2-8",
+      "name": "reingest-unchanged-source-skips",
+      "description": "Re-ingest of an UNCHANGED source against a wiki that already carries the raw sidecar and its correct recorded sha256. The prompt asks for a plain re-ingest and names no comparison mode, so the hub's \"Re-ingest compares before it writes\" bullet has to supply the whole procedure: build a temp copy carrying the recorded sha256 over the fresh body, run compute_sha256.py --check on that copy while the sidecar stays untouched, read `ok`/exit 0 as unchanged, and skip. The outcome assertions are byte-identity of the sidecar and of log.md — the only way to prove \"no hash rewrite\", since the write mode would refresh the hash to the value it already holds and leave no trace. The discriminating assertions are the three procedure fields: the superseded instruction reran the default write mode over the sidecar itself, which reports `ok` here too and so produces the same filesystem outcome from the wrong comparison. Pass rate is the measurement; the fixed denominator is this file's top-level `passes`.",
+      "sandbox_path": "L2-8",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Re-ingest the widget release notes into my wiki. The source is the project file `notes/widget-release.md`, and it is already captured under `raw/notes/widget-release.md`.",
+      "extra_constraints": [
+        "If discovery exits 2 (ambiguous), STOP and ask. Do not silently pick.",
+        "Do not fetch from the web — the source is the on-disk project file `notes/widget-release.md`.",
+        "Work the wiki skill's `<capture_raw_source>` step as the skill prescribes it for a source already captured under `raw/`, and carry out each part of that step in the order the skill gives it.",
+        "The sha256 command block above shows the write-mode form; run whatever mode the wiki skill's own instructions prescribe for this situation.",
+        "Keep every file you write inside the sandbox, and keep scratch or working files outside the wiki tree so they never land in the wiki."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "drift_check_command: <exact command line you ran to decide unchanged-vs-drifted, or n/a>",
+        "drift_check_target: sidecar|temp-file|n/a",
+        "sidecar_written_before_drift_decision: yes|no",
+        "drift_detected: yes|no",
+        "drift_report_to_user: <the one-line unchanged-or-drifted report you gave the user, verbatim, or n/a>",
+        "log_entry_appended: yes|no"
+      ],
+      "extra_report_field_doc": "- `drift_check_command`: the exact command line you ran to decide whether the source changed, copied verbatim on one line. `n/a` only if you ran no such command.\n- `drift_check_target`: `sidecar` if that command read the on-disk `raw/` sidecar, `temp-file` if it read a temporary copy outside the wiki tree, `n/a` if you ran no such command.\n- `sidecar_written_before_drift_decision`: strict `yes` or `no` — `yes` if you wrote to the `raw/` sidecar at any point before you had decided unchanged-vs-drifted.\n- `drift_detected`: strict `yes` or `no` — `yes` only if you concluded the source content changed since it was captured.\n- `drift_report_to_user`: the one-line report you gave the user about the source being unchanged or drifted, copied verbatim on one line. `n/a` if you gave no such line.\n- `log_entry_appended`: strict `yes` or `no` — `yes` only if you appended an entry to `log.md` during this session.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_0",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "0"
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "L2-8/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_re_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_compare_ran_in_report_only_mode",
+          "type": "report_field_contains",
+          "field": "drift_check_command",
+          "substr": "--check"
+        },
+        {
+          "id": "A6_compare_read_a_temp_copy",
+          "type": "report_field_eq",
+          "field": "drift_check_target",
+          "expected": "temp-file"
+        },
+        {
+          "id": "A7_sidecar_untouched_until_decided",
+          "type": "report_field_eq",
+          "field": "sidecar_written_before_drift_decision",
+          "expected": "no"
+        },
+        {
+          "id": "A8_no_drift_concluded",
+          "type": "report_field_eq",
+          "field": "drift_detected",
+          "expected": "no"
+        },
+        {
+          "id": "A9_sidecar_byte_identical",
+          "type": "file_matches_baseline",
+          "path": "HOME/proj/wiki/raw/notes/widget-release.md",
+          "baseline": "baseline/widget-release.md.sha256"
+        },
+        {
+          "id": "A10_sidecar_sha256_still_matches_body",
+          "type": "raw_sha256_matches_body",
+          "path": "HOME/proj/wiki/raw/notes/widget-release.md"
+        },
+        {
+          "id": "A11_log_byte_identical",
+          "type": "file_matches_baseline",
+          "path": "HOME/proj/wiki/log.md",
+          "baseline": "baseline/log.md.sha256"
+        },
+        {
+          "id": "A12_no_log_entry_self_reported",
+          "type": "report_field_eq",
+          "field": "log_entry_appended",
+          "expected": "no"
+        },
+        {
+          "id": "A13_sidecar_not_reported_modified",
+          "type": "report_field_does_not_contain",
+          "field": "files_modified",
+          "needle": "raw/notes/widget-release.md"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "L2-9",
+      "name": "reingest-changed-source-surfaces-drift",
+      "description": "Re-ingest of a CHANGED source: the sidecar records the release-2.0 body (BLUE) with a matching sha256, and the on-disk source now ships release 3.0 (CRIMSON). Same request and constraints as L2-8, so the fixture alone drives the branch and the pair proves the rule branches rather than always taking one side. The compare must report `update`/exit 1 from the temp copy while the sidecar is still untouched, and only then may the body be rewritten and the hash refreshed. raw_sha256_matches_body plus the absent old hash is what makes \"the recorded hash changes only together with that body rewrite\" checkable without predicting the agent's exact body bytes: a hash refreshed over an unrewritten body fails the CRIMSON check, and a body rewritten with a stale hash fails the self-consistency check. Pass rate is the measurement; the fixed denominator is this file's top-level `passes`.",
+      "sandbox_path": "L2-9",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Re-ingest the widget release notes into my wiki. The source is the project file `notes/widget-release.md`, and it is already captured under `raw/notes/widget-release.md`.",
+      "extra_constraints": [
+        "If discovery exits 2 (ambiguous), STOP and ask. Do not silently pick.",
+        "Do not fetch from the web — the source is the on-disk project file `notes/widget-release.md`.",
+        "Work the wiki skill's `<capture_raw_source>` step as the skill prescribes it for a source already captured under `raw/`, and carry out each part of that step in the order the skill gives it.",
+        "The sha256 command block above shows the write-mode form; run whatever mode the wiki skill's own instructions prescribe for this situation.",
+        "Keep every file you write inside the sandbox, and keep scratch or working files outside the wiki tree so they never land in the wiki."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "drift_check_command: <exact command line you ran to decide unchanged-vs-drifted, or n/a>",
+        "drift_check_target: sidecar|temp-file|n/a",
+        "sidecar_written_before_drift_decision: yes|no",
+        "drift_detected: yes|no",
+        "drift_report_to_user: <the one-line unchanged-or-drifted report you gave the user, verbatim, or n/a>",
+        "log_entry_appended: yes|no"
+      ],
+      "extra_report_field_doc": "- `drift_check_command`: the exact command line you ran to decide whether the source changed, copied verbatim on one line. `n/a` only if you ran no such command.\n- `drift_check_target`: `sidecar` if that command read the on-disk `raw/` sidecar, `temp-file` if it read a temporary copy outside the wiki tree, `n/a` if you ran no such command.\n- `sidecar_written_before_drift_decision`: strict `yes` or `no` — `yes` if you wrote to the `raw/` sidecar at any point before you had decided unchanged-vs-drifted.\n- `drift_detected`: strict `yes` or `no` — `yes` only if you concluded the source content changed since it was captured.\n- `drift_report_to_user`: the one-line report you gave the user about the source being unchanged or drifted, copied verbatim on one line. `n/a` if you gave no such line.\n- `log_entry_appended`: strict `yes` or `no` — `yes` only if you appended an entry to `log.md` during this session.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_exit_0",
+          "type": "report_field_eq",
+          "field": "discovery_exit",
+          "expected": "0"
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "L2-9/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_re_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_compare_ran_in_report_only_mode",
+          "type": "report_field_contains",
+          "field": "drift_check_command",
+          "substr": "--check"
+        },
+        {
+          "id": "A6_compare_read_a_temp_copy",
+          "type": "report_field_eq",
+          "field": "drift_check_target",
+          "expected": "temp-file"
+        },
+        {
+          "id": "A7_sidecar_untouched_until_decided",
+          "type": "report_field_eq",
+          "field": "sidecar_written_before_drift_decision",
+          "expected": "no"
+        },
+        {
+          "id": "A8_drift_concluded",
+          "type": "report_field_eq",
+          "field": "drift_detected",
+          "expected": "yes"
+        },
+        {
+          "id": "A9_body_rewritten_to_current_source",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/notes/widget-release.md",
+          "regex": "CRIMSON"
+        },
+        {
+          "id": "A10_superseded_body_gone",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/notes/widget-release.md",
+          "regex": "\\bBLUE\\b"
+        },
+        {
+          "id": "A11_recorded_hash_moved_off_the_old_body",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/notes/widget-release.md",
+          "regex": "3cbc40b475dd9fc90483c1fe2e72f3a41afc8bb085fd200fc2d870b4e6757731"
+        },
+        {
+          "id": "A12_sidecar_sha256_matches_rewritten_body",
+          "type": "raw_sha256_matches_body",
+          "path": "HOME/proj/wiki/raw/notes/widget-release.md"
+        },
+        {
+          "id": "A13_drift_surfaced_to_user",
+          "type": "report_field_matches",
+          "field": "drift_report_to_user",
+          "regex": "(?i)\\bdrift\\w*\\b|\\bchanged\\b|\\bupdated\\b|no longer matches|out of date"
+        },
+        {
+          "id": "A14_log_entry_appended",
+          "type": "report_field_eq",
+          "field": "log_entry_appended",
+          "expected": "yes"
+        },
+        {
+          "id": "A15_log_entry_names_the_reingested_source",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "widget-release"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "WI-1",
+      "name": "wiki-import-paste-proposal-only",
+      "description": "wiki_import on a paste: capture raw, mine durable claims, emit 3-section proposal, STOP before any wiki page write. Tests workflow plumbing — does the sibling delegate to the wiki skill's scripts.",
+      "skill_name": "wiki_import",
+      "sandbox_path": "WI-1",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Import this paste into my wiki using the propose-then-act protocol. STOP after the proposal — do NOT write any wiki concept/entity/comparison/query/summary/procedure page. The raw capture is the only pre-approval write that lands.\n\n> A transformer is a deep learning architecture introduced in 2017 by Vaswani et al. in 'Attention Is All You Need'. It uses self-attention to model token relationships, replacing recurrent layers used in earlier sequence models like LSTMs.",
+      "extra_constraints": [
+        "Treat this as a paste with no source URL — use raw/notes/ as the bucket.",
+        "Compute the body-only sha256 by INVOKING compute_sha256.py, never by hand.",
+        "Emit a proposal under three H2 headings: ## New pages, ## Extensions to existing pages, ## Contradictions to reconcile.",
+        "Stop after the proposal; do NOT proceed to wiki page writes."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "compute_sha256_invoked: yes|no",
+        "wiki_page_writes_before_approval: yes|no",
+        "proposal_sections_emitted: <comma-separated H2 names emitted, or none>"
+      ],
+      "extra_report_field_doc": "- `compute_sha256_invoked`: `yes` only if you called `compute_sha256.py` for the raw file's sha256. `no` if you wrote the hash any other way.\n- `wiki_page_writes_before_approval`: `yes` if you wrote a file outside `raw/` before the user approved the proposal; `no` otherwise.\n- `proposal_sections_emitted`: list the exact H2 headings you emitted (e.g. `## New pages, ## Contradictions to reconcile`), or `none`.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_produced_usable_path",
+          "type": "report_field_in",
+          "field": "discovery_exit",
+          "expected": [
+            "0",
+            "2"
+          ]
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "WI-1/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_raw_captured",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/raw/notes/*.md"
+        },
+        {
+          "id": "A6_compute_sha256_invoked",
+          "type": "report_field_eq",
+          "field": "compute_sha256_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A7_no_premature_wiki_writes",
+          "type": "report_field_eq",
+          "field": "wiki_page_writes_before_approval",
+          "expected": "no"
+        },
+        {
+          "id": "A8_no_concept_page_written",
+          "type": "path_does_not_exist",
+          "path": "HOME/proj/wiki/concepts/transformer.md"
+        },
+        {
+          "id": "A9_proposal_emitted_new_pages_section",
+          "type": "report_field_contains",
+          "field": "proposal_sections_emitted",
+          "substr": "New pages"
+        },
+        {
+          "id": "A10_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A11_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "WI-2",
+      "name": "wiki-import-contradiction-surfacing",
+      "description": "wiki_import on a paste that contradicts an existing wiki page. The proposal must include a ## Contradictions to reconcile section with both excerpts. The existing wiki page must NOT be silently edited.",
+      "skill_name": "wiki_import",
+      "sandbox_path": "WI-2",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Import this paste using propose-then-act. Surface any contradictions with existing wiki content.\n\n> The widget framework defaults to BLUE. Every widget instance is rendered blue unless overridden. This has been the canonical default since v1.0.\n\nStop after the proposal — do not write to existing pages.",
+      "extra_constraints": [
+        "Treat this as a paste with no source URL — bucket it under raw/notes/.",
+        "There is an existing concepts/widgets.md page in the wiki. Read it before classifying.",
+        "If the paste contradicts the existing page, surface that under ## Contradictions to reconcile with both excerpts verbatim and ≥2 reconciliation options.",
+        "Do NOT edit concepts/widgets.md — that decision is the user's."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "compute_sha256_invoked: yes|no",
+        "wiki_page_writes_before_approval: yes|no",
+        "proposal_sections_emitted: <comma-separated H2 names emitted, or none>"
+      ],
+      "extra_report_field_doc": "- `compute_sha256_invoked`: `yes` only if you called `compute_sha256.py`. `no` otherwise.\n- `wiki_page_writes_before_approval`: `yes` if any file outside `raw/` was created or modified before user approval; `no` otherwise.\n- `proposal_sections_emitted`: list the H2 headings (e.g. `## Contradictions to reconcile`), or `none`.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_produced_usable_path",
+          "type": "report_field_in",
+          "field": "discovery_exit",
+          "expected": [
+            "0",
+            "2"
+          ]
+        },
+        {
+          "id": "A3_raw_captured",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/raw/notes/*.md"
+        },
+        {
+          "id": "A4_compute_sha256_invoked",
+          "type": "report_field_eq",
+          "field": "compute_sha256_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A5_existing_widget_page_untouched",
+          "type": "report_field_does_not_contain",
+          "field": "files_modified",
+          "needle": "concepts/widgets.md"
+        },
+        {
+          "id": "A6_no_premature_wiki_writes",
+          "type": "report_field_eq",
+          "field": "wiki_page_writes_before_approval",
+          "expected": "no"
+        },
+        {
+          "id": "A7_proposal_emitted_contradictions_section",
+          "type": "report_field_contains",
+          "field": "proposal_sections_emitted",
+          "substr": "Contradictions to reconcile"
+        },
+        {
+          "id": "A8_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A9_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "WI-3",
+      "name": "wiki-import-approval-flow",
+      "description": "wiki_import with explicit approval: raw lands, concept page lands, lint runs, log.md gets one dated import entry. Validates the full end-to-end plumbing chain.",
+      "skill_name": "wiki_import",
+      "sandbox_path": "WI-3",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Import this paste about transformers into my wiki. Pre-approval from me: approve ALL NEW candidates the proposal identifies, run lint at the end, and append a single dated import entry to log.md.\n\n> A transformer is a deep learning architecture introduced in 2017 by Vaswani et al. It uses self-attention to model token relationships.",
+      "extra_constraints": [
+        "Paste — bucket as raw/notes/.",
+        "Compute the body-only sha256 via compute_sha256.py.",
+        "After the proposal, proceed with the user's pre-approval and create the concept page.",
+        "Run python3 .../lint.py at the end and append one log.md entry listing only files actually created or updated."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "compute_sha256_invoked: yes|no",
+        "wiki_page_writes_before_approval: yes|no",
+        "proposal_sections_emitted: <comma-separated H2 names emitted, or none>"
+      ],
+      "extra_report_field_doc": "- `compute_sha256_invoked`: `yes` only if you called `compute_sha256.py`. `no` otherwise.\n- `wiki_page_writes_before_approval`: `yes` if you wrote outside `raw/` before encountering the user's approval line; `no` otherwise.\n- `proposal_sections_emitted`: list the H2 headings you emitted in the proposal (e.g. `## New pages`), or `none`.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_produced_usable_path",
+          "type": "report_field_in",
+          "field": "discovery_exit",
+          "expected": [
+            "0",
+            "2"
+          ]
+        },
+        {
+          "id": "A3_raw_captured",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/raw/notes/*.md"
+        },
+        {
+          "id": "A4_compute_sha256_invoked",
+          "type": "report_field_eq",
+          "field": "compute_sha256_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A5_concept_page_landed",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/concepts/*.md"
+        },
+        {
+          "id": "A6_no_premature_wiki_writes",
+          "type": "report_field_eq",
+          "field": "wiki_page_writes_before_approval",
+          "expected": "no"
+        },
+        {
+          "id": "A7_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A8_lint_no_blocking",
+          "type": "report_field_matches",
+          "field": "lint_findings",
+          "regex": "(^|[^0-9])0\\s+blocking|no\\s+blocking|^\\s*clean\\b|no\\s+issues"
+        },
+        {
+          "id": "A9_log_modified",
+          "type": "file_exists_and_changed",
+          "path": "HOME/proj/wiki/log.md"
+        },
+        {
+          "id": "A10_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A11_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "WI-4",
+      "name": "wiki-import-out-of-repo-local-no-path",
+      "description": "wiki_import on an out-of-repo local chat-session log (no public URL). Under the repo-relative-only source_path policy, the raw/meetings/ sidecar captures the content by body excerpt with a prose locality note and stores NO machine-local path. Exercises the repo-relative source_path policy end-to-end.",
+      "skill_name": "wiki_import",
+      "sandbox_path": "WI-4",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Import my local chat-session log into my wiki using the propose-then-act protocol. It is a local file on this machine with no public URL, saved under my home directory at `logs/local-chat-log.md` — resolve that against the Fake HOME shown in the Sandbox section and read it from there. STOP after the proposal — do NOT write any wiki concept/entity/comparison/query/summary/procedure page. The raw capture is the only pre-approval write that lands.",
+      "extra_constraints": [
+        "The source is a local file that lives OUTSIDE the repository, with no public URL. Per references/template_schema.md, record NO path for it — neither source_url: nor a machine-local source_path:. Capture it as a raw sidecar whose body excerpts enough of the session to stand on its own, and note its locality in prose (for example \"Local file on the author's workstation; relevant content excerpted below.\").",
+        "Classify the bucket by body shape per references/raw_taxonomy.md — the log is a chat-session transcript (speaker turns), so it lands in raw/meetings/.",
+        "Compute the body-only sha256 by INVOKING compute_sha256.py, never by hand.",
+        "Emit a proposal under three H2 headings: ## New pages, ## Extensions to existing pages, ## Contradictions to reconcile.",
+        "Stop after the proposal; do NOT proceed to wiki page writes."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "compute_sha256_invoked: yes|no",
+        "wiki_page_writes_before_approval: yes|no",
+        "proposal_sections_emitted: <comma-separated H2 names emitted, or none>"
+      ],
+      "extra_report_field_doc": "- `compute_sha256_invoked`: `yes` only if you called `compute_sha256.py` for the raw file's sha256. `no` if you wrote the hash any other way.\n- `wiki_page_writes_before_approval`: `yes` if you wrote a file outside `raw/` before the user approved the proposal; `no` otherwise.\n- `proposal_sections_emitted`: list the exact H2 headings you emitted (e.g. `## New pages, ## Contradictions to reconcile`), or `none`.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_produced_usable_path",
+          "type": "report_field_in",
+          "field": "discovery_exit",
+          "expected": [
+            "0",
+            "2"
+          ]
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "WI-4/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_raw_captured_in_meetings",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/raw/meetings/*.md"
+        },
+        {
+          "id": "A6_sidecar_notes_locality",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/meetings/*.md",
+          "regex": "(local file|machine-local|on the author|workstation)"
+        },
+        {
+          "id": "A7_no_machine_local_path",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/meetings/*.md",
+          "regex": "(?m)^source_path:\\s*[/~]"
+        },
+        {
+          "id": "A8_compute_sha256_invoked",
+          "type": "report_field_eq",
+          "field": "compute_sha256_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A9_no_premature_wiki_writes",
+          "type": "report_field_eq",
+          "field": "wiki_page_writes_before_approval",
+          "expected": "no"
+        },
+        {
+          "id": "A10_proposal_emitted_new_pages_section",
+          "type": "report_field_contains",
+          "field": "proposal_sections_emitted",
+          "substr": "New pages"
+        },
+        {
+          "id": "A11_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A12_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "WU-1",
+      "name": "wiki-wrapup-proposal-only",
+      "description": "wiki_wrapup with a synthetic session: mine the dialogue, emit 3-section proposal, STOP before any wiki page write. Workflow plumbing — discovery delegated to wiki skill, propose-then-act respected.",
+      "skill_name": "wiki_wrapup",
+      "sandbox_path": "WU-1",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Wrap up this session into my wiki. STOP after the proposal — do not write any concept/entity/comparison/query/summary/procedure page.\n\nTreat the following dialogue block as the visible session (everything below `--- SESSION ---` and above `--- END SESSION ---`):\n\n--- SESSION ---\n\n**User:** I'm trying to understand transformers. Can you explain self-attention?\n\n**Assistant:** Self-attention lets each token in a sequence weigh every other token directly. The transformer architecture stacks self-attention layers in place of the recurrent layers used by older sequence models (LSTMs, GRUs). Vaswani et al. introduced this in the 2017 paper 'Attention Is All You Need'.\n\n**User:** So transformers replaced LSTMs?\n\n**Assistant:** For most modern NLP work, yes — transformers dominate. LSTMs are still used in some streaming or low-resource settings, but the field shifted heavily toward transformers after 2017.\n\n**User:** ok thanks, save this for later.\n\n--- END SESSION ---",
+      "extra_constraints": [
+        "Emit a proposal under three H2 headings: ## New pages, ## Extensions to existing pages, ## Contradictions to reconcile.",
+        "Stop after the proposal; do NOT proceed to wiki page writes.",
+        "There is no separate raw file capture for wrapup — the visible session is the input."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "wiki_page_writes_before_approval: yes|no",
+        "proposal_sections_emitted: <comma-separated H2 names emitted, or none>"
+      ],
+      "extra_report_field_doc": "- `wiki_page_writes_before_approval`: `yes` if any wiki page outside `raw/` was created or modified before user approval; `no` otherwise.\n- `proposal_sections_emitted`: list the exact H2 headings you emitted (e.g. `## New pages, ## Contradictions to reconcile`), or `none`.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_produced_usable_path",
+          "type": "report_field_in",
+          "field": "discovery_exit",
+          "expected": [
+            "0",
+            "2"
+          ]
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "WU-1/HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_no_premature_wiki_writes",
+          "type": "report_field_eq",
+          "field": "wiki_page_writes_before_approval",
+          "expected": "no"
+        },
+        {
+          "id": "A6_proposal_emitted_new_pages_section",
+          "type": "report_field_contains",
+          "field": "proposal_sections_emitted",
+          "substr": "New pages"
+        },
+        {
+          "id": "A7_no_concept_page_written",
+          "type": "path_does_not_exist",
+          "path": "HOME/proj/wiki/concepts/transformer.md"
+        },
+        {
+          "id": "A8_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A9_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "WU-2",
+      "name": "wiki-wrapup-contradiction-surfacing",
+      "description": "wiki_wrapup on a synthetic session that contradicts an existing concept page. Proposal must include ## Contradictions to reconcile with both excerpts. The existing page must NOT be silently edited.",
+      "skill_name": "wiki_wrapup",
+      "sandbox_path": "WU-2",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Wrap up this session into my wiki, reconciling against existing pages. Stop after the proposal.\n\nTreat the following dialogue block as the visible session (everything below `--- SESSION ---` and above `--- END SESSION ---`):\n\n--- SESSION ---\n\n**User:** Quick check on widget defaults — what's the canonical default color?\n\n**Assistant:** Per the recent v2.0 docs, widgets default to BLUE. Every widget instance renders blue unless overridden. This was a deliberate change from the v1.0 default.\n\n**User:** Confirmed. Save that — it's the new canonical default.\n\n--- END SESSION ---",
+      "extra_constraints": [
+        "There is an existing concepts/widgets.md page claiming widgets default to RED. Read it before classifying.",
+        "Surface the contradiction under ## Contradictions to reconcile with both excerpts verbatim and ≥2 reconciliation options.",
+        "Do NOT edit concepts/widgets.md."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "wiki_page_writes_before_approval: yes|no",
+        "proposal_sections_emitted: <comma-separated H2 names emitted, or none>"
+      ],
+      "extra_report_field_doc": "- `wiki_page_writes_before_approval`: `yes` if any wiki page outside `raw/` was created or modified before user approval; `no` otherwise.\n- `proposal_sections_emitted`: list the H2 headings you emitted, or `none`.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_produced_usable_path",
+          "type": "report_field_in",
+          "field": "discovery_exit",
+          "expected": [
+            "0",
+            "2"
+          ]
+        },
+        {
+          "id": "A3_existing_widget_page_untouched",
+          "type": "report_field_does_not_contain",
+          "field": "files_modified",
+          "needle": "concepts/widgets.md"
+        },
+        {
+          "id": "A4_no_premature_wiki_writes",
+          "type": "report_field_eq",
+          "field": "wiki_page_writes_before_approval",
+          "expected": "no"
+        },
+        {
+          "id": "A5_proposal_emitted_contradictions_section",
+          "type": "report_field_contains",
+          "field": "proposal_sections_emitted",
+          "substr": "Contradictions to reconcile"
+        },
+        {
+          "id": "A6_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A7_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "WU-3",
+      "name": "wiki-wrapup-approval-flow",
+      "description": "wiki_wrapup with explicit approval: concept page lands, lint runs, log.md gets one dated session-wrapup entry. Validates the end-to-end plumbing chain.",
+      "skill_name": "wiki_wrapup",
+      "sandbox_path": "WU-3",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Wrap up this session into my wiki. Pre-approval from me: approve ALL NEW candidates the proposal identifies, run lint at the end, and append a single dated session-wrapup entry to log.md.\n\nTreat the following dialogue block as the visible session (everything below `--- SESSION ---` and above `--- END SESSION ---`):\n\n--- SESSION ---\n\n**User:** I'm trying to understand transformers. What's the core idea?\n\n**Assistant:** The transformer architecture, introduced by Vaswani et al. in the 2017 paper 'Attention Is All You Need', replaces recurrent layers with self-attention. Self-attention lets each token in a sequence weigh every other token directly, in parallel.\n\n**User:** Got it, save that to my wiki.\n\n--- END SESSION ---",
+      "extra_constraints": [
+        "After the proposal, proceed with the user's pre-approval and create the concept page.",
+        "Run python3 .../lint.py at the end and append one log.md entry listing only files actually created or updated."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "wiki_page_writes_before_approval: yes|no",
+        "proposal_sections_emitted: <comma-separated H2 names emitted, or none>"
+      ],
+      "extra_report_field_doc": "- `wiki_page_writes_before_approval`: `yes` if you wrote a wiki page outside `raw/` before encountering the user's pre-approval line; `no` otherwise.\n- `proposal_sections_emitted`: list the H2 headings you emitted, or `none`.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_produced_usable_path",
+          "type": "report_field_in",
+          "field": "discovery_exit",
+          "expected": [
+            "0",
+            "2"
+          ]
+        },
+        {
+          "id": "A3_concept_page_landed",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/concepts/*.md"
+        },
+        {
+          "id": "A4_no_premature_wiki_writes",
+          "type": "report_field_eq",
+          "field": "wiki_page_writes_before_approval",
+          "expected": "no"
+        },
+        {
+          "id": "A5_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A6_lint_no_blocking",
+          "type": "report_field_matches",
+          "field": "lint_findings",
+          "regex": "(^|[^0-9])0\\s+blocking|no\\s+blocking|^\\s*clean\\b|no\\s+issues"
+        },
+        {
+          "id": "A7_log_modified",
+          "type": "file_exists_and_changed",
+          "path": "HOME/proj/wiki/log.md"
+        },
+        {
+          "id": "A8_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A9_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-1",
+      "name": "auto-shaper-origin-auto-reconcile",
+      "description": "auto_shaper_wiki (via wiki_fix) auto-reconciles deterministically mislabeled/redundant origin fields: a file:// source_url naming an in-repo target becomes a repo-relative source_path, a remote URL in source_path becomes source_url, an absolute in-repo source_path normalizes to repo-relative, and two fields naming the same origin collapse to one. Raw bodies stay untouched; no value invented; each fix reported. Graded out-of-band (task item 4).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-1",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Reconcile mislabeled or redundant raw origin fields per the reconciliation contract in references/template_schema.md's ### raw/ Frontmatter.",
+        "Never edit a raw file's body; only its frontmatter.",
+        "Never invent an origin value."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "origins_reconciled: <comma-separated raw sidecar paths whose origin field you reconciled, or none>",
+        "raw_bodies_unchanged: yes|no",
+        "values_invented: yes|no"
+      ],
+      "extra_report_field_doc": "- `origins_reconciled`: list each raw sidecar whose origin field(s) you moved, normalized, or collapsed.\n- `raw_bodies_unchanged`: `yes` only if every raw file's body below the frontmatter is byte-identical to before.\n- `values_invented`: `yes` if you wrote any origin value not derivable from what was already present; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_fileurl_now_source_path",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/notes/fileurl-in-repo.md",
+          "regex": "(?m)^source_path:"
+        },
+        {
+          "id": "A3_fileurl_url_dropped",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/notes/fileurl-in-repo.md",
+          "regex": "file://"
+        },
+        {
+          "id": "A4_urlpath_now_source_url",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/articles/url-in-path.md",
+          "regex": "(?m)^source_url:\\s*https://example\\.com/published-article"
+        },
+        {
+          "id": "A5_urlpath_not_in_source_path",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/articles/url-in-path.md",
+          "regex": "(?m)^source_path:\\s*https?://"
+        },
+        {
+          "id": "A6_abspath_now_relative",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/notes/abs-path.md",
+          "regex": "(?m)^source_path:\\s*\\.\\."
+        },
+        {
+          "id": "A7_abspath_not_absolute",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/notes/abs-path.md",
+          "regex": "(?m)^source_path:\\s*[/~]"
+        },
+        {
+          "id": "A8_both_collapsed_drop_url",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/notes/both-same-origin.md",
+          "regex": "(?m)^source_url:"
+        },
+        {
+          "id": "A9_both_kept_source_path",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/notes/both-same-origin.md",
+          "regex": "(?m)^source_path:"
+        },
+        {
+          "id": "A10_body_untouched",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/notes/fileurl-in-repo.md",
+          "regex": "KEEP THIS BODY"
+        },
+        {
+          "id": "A11_raw_bodies_unchanged_reported",
+          "type": "report_field_eq",
+          "field": "raw_bodies_unchanged",
+          "expected": "yes"
+        },
+        {
+          "id": "A12_no_values_invented",
+          "type": "report_field_eq",
+          "field": "values_invented",
+          "expected": "no"
+        },
+        {
+          "id": "A13_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A14_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-2",
+      "name": "auto-shaper-surface-contradicting-schema",
+      "description": "auto_shaper_wiki (via wiki_fix) surfaces a wiki whose SCHEMA.md ### raw/ Frontmatter teaches the superseded source_url: file://… form as a contradiction for the user, rather than preserving it as a customization. Graded out-of-band (task item 5).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-2",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely fix; surface anything that contradicts the canonical conventions and needs my decision.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "A SCHEMA customization that contradicts canonical semantics is surfaced for the user, not silently preserved as a customization."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "contradicting_schema_surfaced: yes|no",
+        "schema_raw_frontmatter_preserved_silently: yes|no"
+      ],
+      "extra_report_field_doc": "- `contradicting_schema_surfaced`: `yes` if you surfaced the SCHEMA.md ### raw/ Frontmatter block that teaches source_url: file://… as contradicting the canonical two-field origin contract.\n- `schema_raw_frontmatter_preserved_silently`: `yes` if you kept that block as a customization without surfacing it; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_contradiction_surfaced_reported",
+          "type": "report_field_eq",
+          "field": "contradicting_schema_surfaced",
+          "expected": "yes"
+        },
+        {
+          "id": "A3_not_silently_preserved",
+          "type": "report_field_eq",
+          "field": "schema_raw_frontmatter_preserved_silently",
+          "expected": "no"
+        },
+        {
+          "id": "A4_surfacing_mentioned_in_response",
+          "type": "response_text_matches",
+          "regex": "(?i)(raw/\\s*frontmatter|source_url:?\\s*file://|superseded|contradict)"
+        },
+        {
+          "id": "A5_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A6_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-3",
+      "name": "auto-shaper-surface-irreducible-origins",
+      "description": "auto_shaper_wiki (via wiki_fix) surfaces irreducible origin cases for the user — two fields naming DIFFERENT plausible origins, and an out-of-repo file:// with no stand-alone excerpt — auto-resolving none and inventing no value, per the contested-page human-decides posture. Graded out-of-band (task item 9).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-3",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely fix; surface anything that needs my decision instead of guessing.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "An origin that fits no field and would strand the source, or two fields naming different plausible origins, is surfaced for the user, never guessed.",
+        "Never invent an origin value; never silently resolve an origin conflict."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "irreducible_origins_surfaced: <comma-separated raw sidecar paths you surfaced, or none>",
+        "origin_conflicts_auto_resolved: yes|no",
+        "values_invented: yes|no"
+      ],
+      "extra_report_field_doc": "- `irreducible_origins_surfaced`: list each raw sidecar whose origin you surfaced for a human decision.\n- `origin_conflicts_auto_resolved`: `yes` if you picked between two conflicting origins or dropped one on your own; `no` if you left them for the user.\n- `values_invented`: `yes` if you wrote any origin value not already present; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_different_origins_source_url_kept",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/articles/different-origins.md",
+          "regex": "(?m)^source_url:\\s*https://example\\.com/the-real-article"
+        },
+        {
+          "id": "A3_different_origins_source_path_kept",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/articles/different-origins.md",
+          "regex": "(?m)^source_path:\\s*\\.\\./nonexistent/other-thing\\.md"
+        },
+        {
+          "id": "A4_stranded_fileurl_unchanged",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/notes/stranded.md",
+          "regex": "file:///Users/someone/private/scratch\\.md"
+        },
+        {
+          "id": "A5_no_conflict_auto_resolved",
+          "type": "report_field_eq",
+          "field": "origin_conflicts_auto_resolved",
+          "expected": "no"
+        },
+        {
+          "id": "A6_no_values_invented",
+          "type": "report_field_eq",
+          "field": "values_invented",
+          "expected": "no"
+        },
+        {
+          "id": "A7_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A8_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-4",
+      "name": "auto-shaper-origin-in-repo-outside-wiki-rewrite",
+      "description": "auto_shaper_wiki (via wiki_fix) reconciles a legacy file:// source_url naming an in-repo source ONE DIRECTORY OUTSIDE the wiki (the migration shape sources/earlier-versions/foo.md, a repo-root sibling of the wiki) to source_path: ../sources/earlier-versions/foo.md — the wiki-root-relative ../… form the linter's raw-origin warn computes, taken verbatim, NOT the lint-failing repo-root reading sources/…. Re-linting is clean (0 blocking); the raw body stays untouched. Graded out-of-band (wiki_source-path-anchor-language task item 3).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-4",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Reconcile mislabeled or redundant raw origin fields per the reconciliation contract in references/template_schema.md's ### raw/ Frontmatter.",
+        "When a file:// or bare-path source_url names an in-repo target, write source_path as the wiki-root-relative path the linter's raw-origin warn already computed and carries as its -> ../… rewrite, verbatim, rather than hand-spelling it.",
+        "Never edit a raw file's body; only its frontmatter.",
+        "Never invent an origin value."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "origins_reconciled: <comma-separated raw sidecar paths whose origin field you reconciled, or none>",
+        "raw_bodies_unchanged: yes|no",
+        "values_invented: yes|no"
+      ],
+      "extra_report_field_doc": "- `origins_reconciled`: list each raw sidecar whose origin field(s) you moved, normalized, or collapsed.\n- `raw_bodies_unchanged`: `yes` only if every raw file's body below the frontmatter is byte-identical to before.\n- `values_invented`: `yes` if you wrote any origin value not derivable from what was already present; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_now_source_path_dotdot",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/notes/legacy-fileurl.md",
+          "regex": "(?m)^source_path:\\s*\\.\\./sources/earlier-versions/foo\\.md"
+        },
+        {
+          "id": "A3_not_lintfailing_reporoot_form",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/notes/legacy-fileurl.md",
+          "regex": "(?m)^source_path:\\s*sources/"
+        },
+        {
+          "id": "A4_fileurl_dropped",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/notes/legacy-fileurl.md",
+          "regex": "file://"
+        },
+        {
+          "id": "A5_source_url_dropped",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/notes/legacy-fileurl.md",
+          "regex": "(?m)^source_url:"
+        },
+        {
+          "id": "A6_body_untouched",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/notes/legacy-fileurl.md",
+          "regex": "KEEP THIS BODY"
+        },
+        {
+          "id": "A7_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A8_lint_no_blocking",
+          "type": "report_field_matches",
+          "field": "lint_findings",
+          "regex": "(^|[^0-9])0\\s+blocking|no\\s+blocking|^\\s*clean\\b|no\\s+issues"
+        },
+        {
+          "id": "A9_raw_bodies_unchanged_reported",
+          "type": "report_field_eq",
+          "field": "raw_bodies_unchanged",
+          "expected": "yes"
+        },
+        {
+          "id": "A10_no_values_invented",
+          "type": "report_field_eq",
+          "field": "values_invented",
+          "expected": "no"
+        },
+        {
+          "id": "A11_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A12_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-5",
+      "name": "auto-shaper-contested-contradiction-exit",
+      "description": "auto_shaper_wiki (via wiki_fix) surfaces one genuine cross-page factual contradiction via the contested-page protocol: both pages end contested: true, neither body is merged or hedged, and the final_line reports K >= 1 contested pages. Graded out-of-band (wiki_auto-shaper-internal-contradictions Acceptance item 4). Against the pre-carve-out unreachable clean bar the scenario fails; with the contested quality-warn carve-out it reaches all-passes-clean across the top-level passes denominator.",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-5",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "When two pages contradict on the same factual claim, mark both contested: true and leave both bodies untouched — do not merge, hedge, or pick a winner.",
+        "Complete the audit with the agent's final_line reporting contested pages flagged for human review."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "contested_pages: <comma-separated wiki page paths left contested: true, or none>",
+        "bodies_merged_or_hedged: yes|no",
+        "final_line: <the audit complete — N issues resolved, K contested pages flagged line, verbatim>"
+      ],
+      "extra_report_field_doc": "- `contested_pages`: list each wiki page whose frontmatter carries contested: true after the audit.\n- `bodies_merged_or_hedged`: `yes` if either contradicting page's body was edited to merge claims, hedge wording, or pick a winner; `no` if both KEEP CLAIM markers remain verbatim.\n- `final_line`: paste the agent's closing `audit complete — N issues resolved, K contested pages flagged` line.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_red_page_contested",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default-color.md",
+          "regex": "(?m)^contested:\\s*true"
+        },
+        {
+          "id": "A3_blue_page_contested",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/rendering-defaults.md",
+          "regex": "(?m)^contested:\\s*true"
+        },
+        {
+          "id": "A4_red_claim_untouched",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default-color.md",
+          "regex": "KEEP CLAIM RED: The widget framework defaults every widget instance to RED\\."
+        },
+        {
+          "id": "A5_blue_claim_untouched",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/rendering-defaults.md",
+          "regex": "KEEP CLAIM BLUE: The widget framework defaults every widget instance to BLUE\\."
+        },
+        {
+          "id": "A6_bodies_not_merged_or_hedged",
+          "type": "report_field_eq",
+          "field": "bodies_merged_or_hedged",
+          "expected": "no"
+        },
+        {
+          "id": "A7_final_line_k_ge_1",
+          "type": "report_field_matches",
+          "field": "final_line",
+          "regex": "audit complete\\s*[—-]\\s*\\d+\\s+issues?\\s+resolved,\\s*[1-9]\\d*\\s+contested\\s+pages?\\s+flagged"
+        },
+        {
+          "id": "A8_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A9_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A10_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-8",
+      "name": "auto-shaper-log-preamble-carries-timestamp-and-repair-carveout",
+      "description": "auto_shaper_wiki (via wiki_fix) propagates the log.md preamble change to an existing wiki through the boilerplate-drift channel. The fixture preamble predates this change (date-only `> Format:` line, no repair carve-out) and SCHEMA.md declares no deviation for that slot, so lint's boilerplate warn is real and <fix_log_preamble_drift> must restore the canonical preamble. Graded out-of-band against the top-level passes denominator (wiki_log-heading-uniqueness-and-repair, Acceptance: preamble reaches existing wikis with no per-wiki migration).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-8",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Restore any scaffold region the linter reports as drifted from its canonical template.",
+        "Leave the log entries below the preamble exactly as they are."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_preamble_restored: yes|no",
+        "log_entries_edited: yes|no"
+      ],
+      "extra_report_field_doc": "- `log_preamble_restored`: `yes` if you changed the log.md preamble (the region above the first `##` heading) so it carries the canonical template text — inserting an absent canonical unit or refreshing a drifted one both count; `no` otherwise.\n- `log_entries_edited`: `yes` if you changed any `## [` entry heading or entry body in log.md other than appending a new entry; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_preamble_carries_timestamped_format",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^>\\s*Format:\\s*`## \\[YYYY-MM-DD HH:MM\\] action \\| subject`"
+        },
+        {
+          "id": "A3_preamble_carries_repair_carveout",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^>\\s*Repair:.*never reword, reorder, or delete"
+        },
+        {
+          "id": "A4_stale_date_only_format_line_gone",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^>\\s*Format:\\s*`## \\[YYYY-MM-DD\\] action \\| subject`\\s*$"
+        },
+        {
+          "id": "A5_preamble_restored_reported",
+          "type": "report_field_eq",
+          "field": "log_preamble_restored",
+          "expected": "yes"
+        },
+        {
+          "id": "A6_existing_entries_untouched",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^## \\[2026-06-17\\] create \\| Wiki initialized$.*^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A7_entries_not_edited_reported",
+          "type": "report_field_eq",
+          "field": "log_entries_edited",
+          "expected": "no"
+        },
+        {
+          "id": "A8_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A9_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A10_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-9",
+      "name": "auto-shaper-routine-pass-surfaces-duplicate-heading-without-rewriting",
+      "description": "auto_shaper_wiki (via wiki_fix) surfaces a duplicate log.md entry heading and leaves it alone on a routine pass. The linter emits one info `log-heading` finding; the remdiate gate keeps <fix_log_heading_duplicate> from firing off the issue list, so both colliding headings stay byte-identical and no `(2)` suffix appears. Graded out-of-band against the top-level passes denominator (wiki_log-heading-uniqueness-and-repair, Acceptance: a legacy duplicate is surfaced but not auto-rewritten).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-9",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "This is a routine audit. Do not ask for or assume permission to clean up duplicate log headings."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_heading_finding_reported: yes|no",
+        "colliding_headings_edited: yes|no"
+      ],
+      "extra_report_field_doc": "- `log_heading_finding_reported`: `yes` if your issue list and final report both carry the linter's `log-heading` duplicate-heading finding; `no` otherwise.\n- `colliding_headings_edited`: `yes` if you changed either colliding `## [` heading in log.md; `no` if both are exactly as staged.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_both_colliding_headings_still_identical",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$.*^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A3_no_suffix_added",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "session-wrapup \\| 0 new, 2 extended, 0 contested \\(\\d+\\)"
+        },
+        {
+          "id": "A4_no_timestamp_fabricated",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "## \\[2026-06-18 \\d{2}:\\d{2}\\] session-wrapup"
+        },
+        {
+          "id": "A5_entry_bodies_and_order_preserved",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)KEEP FIRST: concepts/alpha\\.md extended.*KEEP SECOND: concepts/beta\\.md extended"
+        },
+        {
+          "id": "A6_finding_reported",
+          "type": "report_field_eq",
+          "field": "log_heading_finding_reported",
+          "expected": "yes"
+        },
+        {
+          "id": "A7_headings_not_edited_reported",
+          "type": "report_field_eq",
+          "field": "colliding_headings_edited",
+          "expected": "no"
+        },
+        {
+          "id": "A8_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A9_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A10_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-10",
+      "name": "auto-shaper-on-demand-repair-suffixes-later-colliding-heading",
+      "description": "auto_shaper_wiki (via wiki_fix) runs the on-demand log-heading repair when the operator explicitly asks. Against the same duplicate-heading fixture as AS-9, the later (bottom-most) colliding heading takes the minimal non-time suffix `(2)`, the earliest keeps its exact text, both entry bodies and the entry order survive, no timestamp is invented, and the following lint is clean of the `log-heading` finding. Graded out-of-band against the top-level passes denominator (wiki_log-heading-uniqueness-and-repair, Acceptance: the on-demand move disambiguates the later heading).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-10",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki, and while you are in there please clean up the duplicate headings in log.md — a commit just failed markdownlint MD024 on that file. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "The duplicate-heading cleanup is explicitly requested: run the on-demand log-heading repair move.",
+        "Preserve what each entry records and where it sits; invent no timestamp for an entry that never carried one."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_heading_repair_applied: yes|no",
+        "final_lint_log_heading: clean|present"
+      ],
+      "extra_report_field_doc": "- `log_heading_repair_applied`: `yes` if you disambiguated a colliding log.md entry heading; `no` otherwise.\n- `final_lint_log_heading`: `clean` if your final lint run reports no `log-heading` finding; `present` if one remains.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_later_heading_suffixed",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested \\(2\\)$"
+        },
+        {
+          "id": "A3_earliest_heading_unchanged",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A4_collision_resolved",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$.*^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A5_no_timestamp_fabricated",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "## \\[2026-06-18 \\d{2}:\\d{2}\\] session-wrapup"
+        },
+        {
+          "id": "A6_entry_bodies_and_order_preserved",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)KEEP FIRST: concepts/alpha\\.md extended.*KEEP SECOND: concepts/beta\\.md extended"
+        },
+        {
+          "id": "A7_repair_applied_reported",
+          "type": "report_field_eq",
+          "field": "log_heading_repair_applied",
+          "expected": "yes"
+        },
+        {
+          "id": "A8_final_lint_clean_of_log_heading",
+          "type": "report_field_eq",
+          "field": "final_lint_log_heading",
+          "expected": "clean"
+        },
+        {
+          "id": "A9_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A10_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A11_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-11",
+      "name": "auto-shaper-on-demand-repair-repeats-until-no-duplicate-group-remains",
+      "description": "auto_shaper_wiki (via wiki_fix) applies the on-demand log-heading repair repeat-until-clean. Against a log.md carrying THREE byte-identical entry headings, one pass of the suffix rule is not enough: the earliest heading stays bare and the two later ones must end up carrying `(2)` and `(3)`, with entry bodies and order intact, no fabricated timestamp, and a following lint clean of the `log-heading` finding. Graded out-of-band against the top-level passes denominator (wiki_log-heading-uniqueness-and-repair, Acceptance: repeat-until-clean).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-11",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki, and please clean up the duplicate headings in log.md — a commit just failed markdownlint MD024 on that file. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "The duplicate-heading cleanup is explicitly requested: run the on-demand log-heading repair move until no duplicate group remains.",
+        "Preserve what each entry records and where it sits; invent no timestamp for an entry that never carried one."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_heading_repair_applied: yes|no",
+        "final_lint_log_heading: clean|present"
+      ],
+      "extra_report_field_doc": "- `log_heading_repair_applied`: `yes` if you disambiguated the colliding log.md entry headings; `no` otherwise.\n- `final_lint_log_heading`: `clean` if your final lint run reports no `log-heading` finding; `present` if one remains.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_second_occurrence_suffixed",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested \\(2\\)$"
+        },
+        {
+          "id": "A3_third_occurrence_suffixed",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested \\(3\\)$"
+        },
+        {
+          "id": "A4_earliest_heading_unchanged",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A5_no_duplicate_group_remains",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$.*^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A6_no_timestamp_fabricated",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "## \\[2026-06-18 \\d{2}:\\d{2}\\] session-wrapup"
+        },
+        {
+          "id": "A7_entry_bodies_and_order_preserved",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)KEEP FIRST: concepts/alpha\\.md extended.*KEEP SECOND: concepts/beta\\.md extended.*KEEP THIRD: concepts/gamma\\.md extended"
+        },
+        {
+          "id": "A8_repair_applied_reported",
+          "type": "report_field_eq",
+          "field": "log_heading_repair_applied",
+          "expected": "yes"
+        },
+        {
+          "id": "A9_final_lint_clean_of_log_heading",
+          "type": "report_field_eq",
+          "field": "final_lint_log_heading",
+          "expected": "clean"
+        },
+        {
+          "id": "A10_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A11_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A12_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-12",
+      "name": "auto-shaper-two-pass-normalisation",
+      "description": "auto_shaper_wiki (via wiki_fix) applies the named \"two-pass remediation\" rule to a declared custom field whose value embeds a displaceable qualifier: it routes the qualifier to the declared window: field FIRST, then normalises scope to the clean declared enum member alpha, and names both halves in the live remediation summary and the final per-file change report. Graded against the expanded <fix_undeclared_custom_field> invalid-declared-value branch, not remove-or-declare. Q3 is scope metadata, so the routing target is frontmatter — not sources:/raw/, and not ## Derived from. Graded out-of-band (wiki_two-pass-normalisation Acceptance, Approach \"Harness placement\") over the top-level passes denominator; all-passes-clean is the deliverable. The run counts only once the deployed agent copy the runner loads carries the rewrite.",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-12",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "When a normalisation displaces semantics the target structure has no room for, route those semantics to their proper channel before applying the structural fix, and name both halves in your reports.",
+        "Complete the audit and report the per-file changes it made."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "per_file_both_halves: <verbatim final per-file change-report line(s) for concepts/track-alpha-rollout.md that name both the structural normalisation and the displaced-semantics routing>",
+        "remediate_both_halves: <paste or one-line summary of the live remediation-summary both-halves naming for that same file>"
+      ],
+      "extra_report_field_doc": "- `per_file_both_halves`: paste the final per-file change report you emit for `concepts/track-alpha-rollout.md` under the agent's `<report_changes>` / `<verify_output>` surfaces, verbatim. It must name both halves of the fix — the structural normalisation and the displaced-semantics routing that preceded it.\n- `remediate_both_halves`: paste (or summarise in one line) the live `<remediate_output>` fix summary you emitted for that same file while the work proceeded. This field exists because a mid-work remediation summary is not a filesystem surface, so the only way it reaches the graded surface is through this report field.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_scope_is_clean_declared_value",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/track-alpha-rollout.md",
+          "regex": "(?m)^scope:[ \\t]*alpha[ \\t]*$"
+        },
+        {
+          "id": "A3_scope_carries_no_embedded_qualifier",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/track-alpha-rollout.md",
+          "regex": "(?m)^scope:.*\\("
+        },
+        {
+          "id": "A4_window_carries_routed_qualifier",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/track-alpha-rollout.md",
+          "regex": "(?m)^window:[ \\t]*Q3[ \\t]*$"
+        },
+        {
+          "id": "A5_qualifier_not_routed_to_sources_or_derived_from",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/track-alpha-rollout.md",
+          "regex": "(?m)^(sources:|## Derived from)"
+        },
+        {
+          "id": "A6_per_file_report_names_structural_half",
+          "type": "report_field_matches",
+          "field": "per_file_both_halves",
+          "regex": "(?s)(?=.*\\bscope\\b)(?=.*\\balpha\\b)(?=.*(normalis|normaliz|clean|corrected|declared value|set to))"
+        },
+        {
+          "id": "A7_per_file_report_names_routing_half",
+          "type": "report_field_matches",
+          "field": "per_file_both_halves",
+          "regex": "(?s)(?=.*\\bwindow\\b)(?=.*\\bQ3\\b)(?=.*(rout|moved|relocat|carried|migrat))"
+        },
+        {
+          "id": "A8_remediate_summary_names_structural_half",
+          "type": "report_field_matches",
+          "field": "remediate_both_halves",
+          "regex": "(?s)(?=.*\\bscope\\b)(?=.*\\balpha\\b)(?=.*(normalis|normaliz|clean|corrected|declared value|set to))"
+        },
+        {
+          "id": "A9_remediate_summary_names_routing_half",
+          "type": "report_field_matches",
+          "field": "remediate_both_halves",
+          "regex": "(?s)(?=.*\\bwindow\\b)(?=.*\\bQ3\\b)(?=.*(rout|moved|relocat|carried|migrat))"
+        },
+        {
+          "id": "A10_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A11_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A12_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-13",
+      "name": "auto-shaper-reports-out-of-wiki-log-subject-without-rewriting",
+      "description": "auto_shaper_wiki (via wiki_fix) surfaces a log.md entry bullet whose subject is a repo file outside the wiki and leaves the entry alone. The linter emits one info `log-scope` finding; no fix move matches that category, so the violating entry stays byte-identical and the finding reaches the final report. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: a violating historical entry is left byte-identical and named in the report).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-13",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "This is a routine audit. Do not ask for or assume permission to rewrite historical log entries."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_scope_finding_reported: yes|no",
+        "log_entries_edited: yes|no"
+      ],
+      "extra_report_field_doc": "- `log_scope_finding_reported`: `yes` if your issue list and final report both carry the linter's `log-scope` finding about an entry bullet whose subject is a file outside the wiki; `no` otherwise.\n- `log_entries_edited`: `yes` if you changed any `## [` entry heading or entry body in log.md other than appending a new entry; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_violating_entry_byte_identical",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^## \\[2026-06-19 10:00\\] update \\| shipped the tenant flag\\n\\n- concepts/alpha\\.md: recorded the rollout dates\\n- plugins/widget/config\\.yaml: bumped the version to 2\\.4\\.0\\n- Ran the suite: 41 passed, 0 failed"
+        },
+        {
+          "id": "A3_out_of_wiki_bullet_not_trimmed",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^- plugins/widget/config\\.yaml: bumped the version to 2\\.4\\.0$"
+        },
+        {
+          "id": "A4_finding_reported",
+          "type": "report_field_eq",
+          "field": "log_scope_finding_reported",
+          "expected": "yes"
+        },
+        {
+          "id": "A5_entries_not_edited_reported",
+          "type": "report_field_eq",
+          "field": "log_entries_edited",
+          "expected": "no"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-14",
+      "name": "auto-shaper-inserts-missing-canonical-log-scope-group",
+      "description": "auto_shaper_wiki (via wiki_fix) converges an existing wiki on the new log-entry subject-scope rule through the boilerplate-drift channel. The fixture preamble is the canonical one with the `Scope:` group removed and SCHEMA.md declares no deviation for that slot, so lint's boilerplate warn is real and <fix_log_preamble_drift> must insert the absent canonical unit. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: a preamble predating the rule ends with the canonical `Scope:` group present).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-14",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Restore any scaffold region the linter reports as drifted from its canonical template.",
+        "Leave the log entries below the preamble exactly as they are."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_preamble_units_ensured: yes|no"
+      ],
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_scope_group_present_at_template_text",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Scope: an entry records changes to this wiki, and only those\\. Name the files$"
+        },
+        {
+          "id": "A3_scope_group_carries_named_failure_mode",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "parking lot for findings no page"
+        },
+        {
+          "id": "A4_existing_entries_untouched",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^## \\[2026-06-17 09:14\\] create \\| Wiki initialized$.*^## \\[2026-06-18 10:00\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A70_units_ensured_reported",
+          "type": "report_field_eq",
+          "field": "log_preamble_units_ensured",
+          "expected": "yes"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-15",
+      "name": "auto-shaper-inserts-canonical-unit-without-restoring-owner-region",
+      "description": "auto_shaper_wiki (via wiki_fix) inserts the absent canonical `Scope:` group into a preamble that also carries an owner-added line, proving <fix_log_preamble_drift> ensures units additively rather than restoring the region wholesale. A wholesale restore would take the owner's line with it. Only the log.md postconditions are graded: a leftover `boilerplate` warn about the owner extension is expected, because classifying an owner extension belongs to wiki_sanctioned-template-deviations, so this scenario does not require a clean lint exit. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: the `Scope:` group lands at template text and the owner's line stays byte-identical).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-15",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Restore any scaffold region the linter reports as drifted from its canonical template.",
+        "Leave the log entries below the preamble exactly as they are."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_preamble_units_ensured: yes|no",
+        "owner_preamble_line_preserved: yes|no"
+      ],
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_scope_group_present_at_template_text",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Scope: an entry records changes to this wiki, and only those\\. Name the files$"
+        },
+        {
+          "id": "A3_scope_group_carries_named_failure_mode",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "parking lot for findings no page"
+        },
+        {
+          "id": "A4_owner_line_byte_identical",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Local: this vault names the tenant alongside every rollout entry\\.$"
+        },
+        {
+          "id": "A70_units_ensured_reported",
+          "type": "report_field_eq",
+          "field": "log_preamble_units_ensured",
+          "expected": "yes"
+        },
+        {
+          "id": "A71_owner_line_preserved_reported",
+          "type": "report_field_eq",
+          "field": "owner_preamble_line_preserved",
+          "expected": "yes"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-16",
+      "name": "auto-shaper-inserts-missing-unlabeled-preamble-unit",
+      "description": "auto_shaper_wiki (via wiki_fix) inserts an absent UNLABELED canonical preamble unit — the rotation rule, which carries no `Label:` prefix and is matched by greppable stem instead. A label-only ensure pass would miss it. SCHEMA.md declares no deviation for that slot, so lint's boilerplate warn is real. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: a missing unlabeled canonical unit ends present at template text).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-16",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Restore any scaffold region the linter reports as drifted from its canonical template.",
+        "Leave the log entries below the preamble exactly as they are."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_preamble_units_ensured: yes|no"
+      ],
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_rotation_rule_present_at_template_text",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> When this file exceeds 500 entries, rotate: rename to log-YYYY\\.md, start fresh\\.$"
+        },
+        {
+          "id": "A3_existing_entries_untouched",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^## \\[2026-06-17 09:14\\] create \\| Wiki initialized$.*^## \\[2026-06-18 10:00\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A70_units_ensured_reported",
+          "type": "report_field_eq",
+          "field": "log_preamble_units_ensured",
+          "expected": "yes"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-17",
+      "name": "auto-shaper-refreshes-drifted-labeled-preamble-unit",
+      "description": "auto_shaper_wiki (via wiki_fix) refreshes a DRIFTED labeled canonical unit: the `Entries:` group is present but carries an older reword, and an owner-added line sits in the same region. The move must rewrite the labeled unit to current template text, matched by its label, while leaving the owner's line byte-identical — a refresh rather than an insert, and never a region restore. Only the log.md postconditions are graded; a leftover `boilerplate` warn about the owner extension is expected, so this scenario does not require a clean lint exit. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: refresh-by-label without wholesale region restore).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-17",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Restore any scaffold region the linter reports as drifted from its canonical template.",
+        "Leave the log entries below the preamble exactly as they are."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_preamble_units_ensured: yes|no",
+        "owner_preamble_line_preserved: yes|no"
+      ],
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_entries_group_refreshed_to_template_text",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Entries: an operation that creates or updates wiki files appends one entry; an$"
+        },
+        {
+          "id": "A3_stale_entries_wording_gone",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "Entries: every operation that creates or updates wiki files appends one entry\\."
+        },
+        {
+          "id": "A4_owner_line_byte_identical",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Local: this vault names the tenant alongside every rollout entry\\.$"
+        },
+        {
+          "id": "A70_units_ensured_reported",
+          "type": "report_field_eq",
+          "field": "log_preamble_units_ensured",
+          "expected": "yes"
+        },
+        {
+          "id": "A71_owner_line_preserved_reported",
+          "type": "report_field_eq",
+          "field": "owner_preamble_line_preserved",
+          "expected": "yes"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-18",
+      "name": "auto-shaper-refreshes-drifted-unlabeled-preamble-unit",
+      "description": "auto_shaper_wiki (via wiki_fix) refreshes a DRIFTED unlabeled canonical unit: the chronological-record opener is present but reworded, and an owner-added line sits in the same region. The move must match the unit by its greppable stem, rewrite it to current template text, and leave the owner's line byte-identical. Only the log.md postconditions are graded; a leftover `boilerplate` warn about the owner extension is expected, so this scenario does not require a clean lint exit. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: refresh-by-stem without wholesale region restore).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-18",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Restore any scaffold region the linter reports as drifted from its canonical template.",
+        "Leave the log entries below the preamble exactly as they are."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_preamble_units_ensured: yes|no",
+        "owner_preamble_line_preserved: yes|no"
+      ],
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_opener_refreshed_to_template_text",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Chronological record of wiki changes\\. Append-only\\.$"
+        },
+        {
+          "id": "A3_stale_opener_wording_gone",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "Chronological log of changes to this wiki"
+        },
+        {
+          "id": "A4_owner_line_byte_identical",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Local: this vault names the tenant alongside every rollout entry\\.$"
+        },
+        {
+          "id": "A70_units_ensured_reported",
+          "type": "report_field_eq",
+          "field": "log_preamble_units_ensured",
+          "expected": "yes"
+        },
+        {
+          "id": "A71_owner_line_preserved_reported",
+          "type": "report_field_eq",
+          "field": "owner_preamble_line_preserved",
+          "expected": "yes"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    }
+  ]
+}

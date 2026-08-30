@@ -2,7 +2,7 @@
 description: Make eval graders assert substance over surface form and split long conjunctions, with the durable rule in the versioned repo instructions and the mechanics in the tests tree.
 scope: "local test harnesses"
 created: 2026-08-15T14:08:10
-updated: 2026-08-16T21:21:55
+updated: 2026-08-30T14:39:20
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -52,11 +52,14 @@ passed nearly always while the eval as a whole rarely did, and each run failed o
 a different check. That signature reads as instability in the thing under test
 when it is arithmetic.
 
-Placement matters because of where these files live. The tests tree is
-gitignored, so a rule written only there is machine-local and reaches no other
-clone or agent. The repo's standing instructions already carry a regression-test
-harness section, and that file is versioned, which makes it the home for the
-durable rule while the tests tree keeps the runner-specific mechanics.
+Placement matters because of how each file is read. The repo's standing
+instructions load at inference time, so an agent authoring a new grader meets the
+rule there without going looking. The tests tree is committed and reaches every
+clone, but it is not auto-loaded, so a file under it is read only by someone
+already working on the harness. The durable authoring rule therefore lands in the
+versioned standing instructions, where the next grader author encounters it, while
+the tests tree keeps the runner-specific mechanics beside the runners they
+govern.
 
 [The wiki front-end eval task](tests_wiki-front-end-behavior-evals.md) is the
 first consumer: it authors three harnesses from scratch and already carries the

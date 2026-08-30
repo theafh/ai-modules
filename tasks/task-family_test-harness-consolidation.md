@@ -2,7 +2,7 @@
 description: Consolidate the task skill's two local test directories into one, register every task-family harness in the tests inventory table, and add the missing task_auto_check trigger cases.
 scope: "task_* family local test harness"
 created: 2026-08-11T18:58:50
-updated: 2026-08-30T13:21:28
+updated: 2026-08-30T14:39:20
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -79,8 +79,10 @@ post-change pre-existing precise rate lands below that baseline, the recorded
 shortfall and its disposition in the Findings note are the deliverable — do
 not chase the gap with description edits (see Out of scope).
 
-The whole tests tree is gitignored, so this task file is the only artefact of this
-work that gets committed, and every acceptance item below is verified locally.
+The authored harness is committed and linted, so this consolidation's directory
+move, new runners, and documentation edits land in git and must pass `make lint`;
+the task file is no longer the only committed artefact of the work. Each acceptance
+item is still verified by running the harness locally.
 
 ## Approach
 

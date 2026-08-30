@@ -1,0 +1,699 @@
+{
+  "skill_name": "task (family: task_create, task_check, task_explain, task_select, task_implement, task_audit, task_finish, task_fix)",
+  "evals": [
+    {
+      "id": "create",
+      "skill": "task_create",
+      "prompt": "Make a task for adding request rate limiting to the public API: requests over 100 per minute should receive an HTTP 429.",
+      "expected_output": "Exactly one well-formed, lint-clean task file appears under tasks/ with status open and reported-by populated. created and updated are stamped from the real wall clock (a single date run), not fabricated. The description fits the ~180-char budget and the acceptance list carries task-specific checks only. No second task and no broader backlog session is run.",
+      "files": [
+        "evals/fixtures/create/setup.sh"
+      ],
+      "expectations": [
+        "Exactly one new *.md task file exists under tasks/ (none under archive/).",
+        "The new file lints clean (lint.py exits 0, no blocking findings).",
+        "status is open.",
+        "reported-by is populated from the user-name chain.",
+        "created equals updated (both stamped once from one date run).",
+        "created sits within minutes of the real wall clock captured at run time — not a fabricated time-of-day (grade.sh compares it against the run-start wall clock).",
+        "The agent ran `date +%Y-%m-%dT%H:%M:%S` (or otherwise produced a wall-clock value) rather than inventing a timestamp.",
+        "The frontmatter description is composed to the ~180-character budget (mechanically: at most 200 characters, under the lint warn).",
+        "'## Acceptance' is an enumerated list of task-specific checks; no generic project gate (make lint, a deploy dry-run, the full test suite) appears as an item.",
+        "No second task was created and no list/query/update workflow was run."
+      ]
+    },
+    {
+      "id": "check",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/api_make-it-better.md ready to hand to an implementer? Check it.",
+      "expected_output": "A readiness verdict: a '# General assessment' paragraph followed by a '## Issues' list that is NOT 'No issues found.' (the fixture task is vague with empty Approach and Acceptance). The task file is changed only to stamp status checked and bump updated.",
+      "files": [
+        "evals/fixtures/check/setup.sh"
+      ],
+      "expectations": [
+        "The response leads with a '# General assessment' heading and one short readiness paragraph.",
+        "The response has a '## Issues' section.",
+        "Because the task is under-specified, the Issues section is NOT 'No issues found.' — it lists concrete problems (empty Approach/Acceptance, vague goal), ranked most-problematic-first.",
+        "Each issue follows the '**[short title]** — where it sits, what is wrong, the implementation impact, and the minimum fix' shape, locating the issue by label or unambiguous description (heading, tag, quoted phrase) per the soft-pointer rule.",
+        "Issues are grounded against the repo (the checked file was actually read); an unverifiable suspicion appears only as a question in the general assessment, never as a numbered issue.",
+        "Style-level findings, if any, sit in an unnumbered 'Style notes' tail after the list — the numbered list carries implementation-divergence risks exclusively.",
+        "The task file is changed only to stamp status: checked and bump updated."
+      ]
+    },
+    {
+      "id": "standing_rules_create",
+      "skill": "task_create",
+      "prompt": "Make a task from notes/packaging-smoke-test-draft.md.",
+      "expected_output": "In a fixture whose root holds CLAUDE.md and AGENTS.md but no CHARTER.md / ARCHITECTURE.md / FEATURES.md / TESTING.md, task_create writes one lint-clean task from a source draft that copied a repo automation rule. The task cites the standing repo rule instead of carrying the copied rule text, may name the owning standing doc as the source pointer, leaves the source note untouched, and reports that the draft self-check rejected the restatement.",
+      "files": [
+        "evals/fixtures/standing_rules_create/setup.sh"
+      ],
+      "expectations": [
+        "The fixture root has CLAUDE.md and AGENTS.md and none of CHARTER.md / ARCHITECTURE.md / FEATURES.md / TESTING.md.",
+        "Exactly one new *.md task file exists under tasks/.",
+        "The source note notes/packaging-smoke-test-draft.md is left byte-for-byte untouched.",
+        "The new task lints clean (lint.py exits 0, no blocking findings).",
+        "The new task does NOT copy the standing rule text 'Use Make plus POSIX shell for repo automation.'.",
+        "The new task cites the standing repo rule(s) / repo rule(s) as the source of the automation convention, with or without naming the owning standing doc.",
+        "The response reports that the create-time self-check converted the planted copied rule into a citation rather than passing it through."
+      ]
+    },
+    {
+      "id": "standing_rules_check",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it.",
+      "expected_output": "In a fixture whose root holds CLAUDE.md and AGENTS.md but no family guardrail docs, task_check reads an otherwise-ready task that copies a CLAUDE.md automation rule verbatim, raises a Restated standing rules finding that cites the base <body> corollary as the rule source, stamps status checked, and preserves the task body.",
+      "files": [
+        "evals/fixtures/standing_rules_check/setup.sh"
+      ],
+      "expectations": [
+        "The task file is changed only to stamp status: checked and bump updated.",
+        "The copied standing rule text remains in the body because task_check reports only; it does not repair the body.",
+        "The response has a '## Issues' section with a Restated standing rules finding.",
+        "The finding says the copied rule should be replaced with a citation to the standing repo rules, or dropped if the surrounding text carries nothing else.",
+        "The finding cites the base <body> cite-don't-restate corollary as the rule source.",
+        "The response withholds ready because the task copies the standing rule instead of citing it."
+      ]
+    },
+    {
+      "id": "standing_rules_check_control",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it.",
+      "expected_output": "In the same harness-rule-only fixture shape, task_check reads an otherwise-ready control task that cites the standing repo rules instead of copying them, raises no Restated standing rules finding, preserves the do-not-demand-restatement guard, and stamps status ready.",
+      "files": [
+        "evals/fixtures/standing_rules_check_control/setup.sh"
+      ],
+      "expectations": [
+        "The task file is changed only to stamp status: ready and bump updated.",
+        "The task cites the standing repo rules / repo rules.",
+        "The task does NOT copy the standing rule text 'Use Make plus POSIX shell for repo automation.'.",
+        "The response's Issues section is 'No issues found.' or otherwise contains no Restated standing rules finding.",
+        "The response preserves the existing do-not-demand-restatement guard: it does not ask the task to copy the rule text from the standing instructions."
+      ]
+    },
+    {
+      "id": "explain",
+      "skill": "task_explain",
+      "prompt": "Explain tasks/archive/api_retry-after-header.md at a high level: what it is about, why it was done, and how it was achieved.",
+      "expected_output": "A read-only orientation readout for the archived task: it leads with the bottom line, names the task path, status finished, and scope plugins/ai_dev, then explains What (documentation goal), Why (client-orientation motivation), and How (rewrite plus example response) without reproducing the task verbatim.",
+      "files": [
+        "evals/fixtures/explain/setup.sh"
+      ],
+      "expectations": [
+        "The sandbox git tree is unchanged after the run — task_explain is read-only.",
+        "The archived task remains under tasks/archive/ with status finished.",
+        "The response leads with a compact bottom-line explanation.",
+        "The orienting frame names tasks/archive/api_retry-after-header.md, status finished, and scope plugins/ai_dev.",
+        "The response covers What: the documentation goal for the Retry-After header behavior.",
+        "The response covers Why: clients need orientation on the HTTP 429 header contract even for closed work.",
+        "The response covers How: rewrite the rate-limit documentation passage and add one example response.",
+        "The response synthesizes and explains rather than reproducing the task's Goal / Context / Approach / Acceptance sections verbatim."
+      ]
+    },
+    {
+      "id": "select",
+      "skill": "task_select",
+      "prompt": "What api task should I work on next? Rank the candidates and recommend the next action.",
+      "expected_output": "A read-only recommendation report that filters to eligible live api tasks before ranking, excludes archive/ plus implemented/audited live tasks, reads candidates before scoring, recommends the viable api_auth-bug bug fix first with task_implement as the next action, and includes alternatives with impact/complexity/friction/bug-fix reasoning.",
+      "files": [
+        "evals/fixtures/select/setup.sh"
+      ],
+      "expectations": [
+        "The sandbox git tree is unchanged after the run — task_select is read-only.",
+        "The response starts with '# Recommendation'.",
+        "The recommended task is tasks/api_auth-bug.md.",
+        "The suggested next action for the recommended ready task is task_implement.",
+        "The eligibility method says the api scope filter was applied before ranking.",
+        "The implemented live task tasks/api_finished-docs.md is excluded from candidates.",
+        "The archived task tasks/archive/api_old-bug.md is excluded from candidates.",
+        "The out-of-scope infra task tasks/infra_metrics-refresh.md is excluded by the api filter.",
+        "The alternatives include tasks/api_schema-cleanup.md with a tradeoff explaining higher friction or lower immediacy.",
+        "The reasoning explicitly covers impact, implementation complexity, implementation friction, and viable bug-fix priority."
+      ]
+    },
+    {
+      "id": "implement",
+      "skill": "task_implement",
+      "prompt": "Implement the task tasks/calc_add-function.md.",
+      "expected_output": "mathutils.calc.add is implemented to return a+b, a test under tests/ covers it, and `python3 -m unittest discover -s tests` passes. Each Acceptance item is reported met with concrete evidence. The task is stamped implemented with implemented-by and stays in tasks/ (implement builds; it does not archive).",
+      "files": [
+        "evals/fixtures/implement/setup.sh"
+      ],
+      "expectations": [
+        "calc.py no longer raises NotImplementedError — add returns the sum.",
+        "A test_*.py covering add was written under tests/.",
+        "Running `python3 -m unittest discover -s tests -p 'test_*.py'` from the project root exits 0.",
+        "Each '## Acceptance' item is reported as met with concrete evidence (the test, the command run).",
+        "The task file is stamped status: implemented with implemented-by under tasks/ — task_implement does not close or archive it.",
+        "The agent closes by pointing at task_audit as the next step rather than declaring the task done."
+      ]
+    },
+    {
+      "id": "implement_dep_gate",
+      "skill": "task_implement",
+      "prompt": "Implement the task tasks/render_wire-palette.md.",
+      "expected_output": "task_implement's pre-flight dependency gate detects that task A (render_wire-palette, ready) forward-references a <palette> block that live task B (theme_palette-block, open) is the one to create — a hard prerequisite. The gate surfaces B in dependency order with the per-item evidence, asks whether to build A ahead of it, and stops with no code edit and no status change (a headless run has no user to green-light). The sandbox git tree stays clean and A stays ready.",
+      "files": [
+        "evals/fixtures/implement_dep_gate/setup.sh"
+      ],
+      "expectations": [
+        "The pre-flight gate ran before guardrails/codebase and surfaced theme_palette-block.md as task A's hard prerequisite, citing the forward-reference / dependency cross-link evidence.",
+        "The gate listed the prerequisite, asked whether to build render_wire-palette ahead of it, and stopped without building (no user green-light available).",
+        "No code edit and no status change: the sandbox git tree is unchanged, render_wire-palette stays status ready with no implemented-by, and src/render.py keeps its hardcoded COLORS map.",
+        "Prerequisite task B (theme_palette-block.md) remains present and status open."
+      ]
+    },
+    {
+      "id": "select_inbound_dep",
+      "skill": "task_select",
+      "prompt": "What api task should I work on next? Rank the candidates and recommend the next action.",
+      "expected_output": "Under the api scope filter, candidate A (api_rate-limit-endpoint, ready) is silent about ordering while task B (infra_shared-config-loader, ready, outside the filter) names a first-ship order over A in B's own body. The rewritten <workflow> derivation step scans the full live eligible set for the inbound note, honors it despite B being outside the filter, and reports B as A's blocking prerequisite — recommending the unblocked api_response-cache instead. Read-only.",
+      "files": [
+        "evals/fixtures/select_inbound_dep/setup.sh"
+      ],
+      "expectations": [
+        "The response names infra_shared-config-loader.md as the prerequisite blocking api_rate-limit-endpoint.md — the inbound note in B's body was honored though A is silent and B is outside the api filter.",
+        "api_rate-limit-endpoint.md is not offered as an unblocked next task; the outside-scope prerequisite is named as the required next work, and api_response-cache.md is the unblocked recommendation.",
+        "The method notes the api filter was applied to the recommendation set while the full live eligible set was retained for dependency lookup.",
+        "The sandbox git tree is unchanged — task_select is read-only."
+      ]
+    },
+    {
+      "id": "select_dep_regression",
+      "skill": "task_select",
+      "prompt": "What task should I work on next? Rank all the candidates and recommend the next action.",
+      "expected_output": "The two archived dependency-aware behaviors still hold after task_select is repointed to inherit the base taxonomy: the creator theme_palette-block ranks ahead of the consumer render_wire-palette (forward-reference hard dependency), and the two disjoint docs companions surface as a soft companion relationship with no forced order between them. Read-only.",
+      "files": [
+        "evals/fixtures/select_dep_regression/setup.sh"
+      ],
+      "expectations": [
+        "Creator theme_palette-block.md is ranked ahead of consumer render_wire-palette.md (forward-reference hard dependency, creator-before-consumer, regardless of relative impact).",
+        "docs_glossary-page.md and docs_faq-page.md surface as a soft companion relationship with no forced order between them.",
+        "The sandbox git tree is unchanged — task_select is read-only."
+      ]
+    },
+    {
+      "id": "audit_gaps",
+      "skill": "task_audit",
+      "prompt": "Audit tasks/calc_add-function.md — is the work actually complete and backed by tests?",
+      "expected_output": "The implementation exists but the acceptance-mandated test is missing. The audit emits a 'Gaps:' list with the missing test as a first-class gap, ordered by mismatch size, and leaves status implemented.",
+      "files": [
+        "evals/fixtures/audit_gaps/setup.sh"
+      ],
+      "expectations": [
+        "The response contains a 'Gaps:' section (not the full-compliance success line).",
+        "The missing test is named as a gap with requirement / expected / actual / minimum-fix detail.",
+        "The verdict is evidence-based (it inspected the code and the absent test), not prose alone.",
+        "No files are changed — gaps leave status implemented and the skill does not add the test.",
+        "On gaps, the response hands the remaining work to task_implement."
+      ]
+    },
+    {
+      "id": "audit_clean",
+      "skill": "task_audit",
+      "prompt": "Audit tasks/calc_add-function.md against the code — is it fully done?",
+      "expected_output": "Implementation and a passing test are both present. The audit confirms full compliance with the exact success line and stamps status audited plus updated.",
+      "files": [
+        "evals/fixtures/audit_clean/setup.sh"
+      ],
+      "expectations": [
+        "The response's verdict line is exactly 'Success: full task compliance confirmed.' on its own line (bare — no backticks, no other words on that line); supporting evidence before it and the task_finish pointer after it are allowed.",
+        "The verdict rests on having run the suite / inspected the test, not on the task prose.",
+        "The task file is changed only to stamp status: audited and bump updated.",
+        "On a clean verdict, the response points at task_finish as the next step."
+      ]
+    },
+    {
+      "id": "finish",
+      "skill": "task_finish",
+      "prompt": "Mark tasks/api_rate-limit.md implemented and archive it — the work is already merged and verified.",
+      "expected_output": "The task's status becomes finished, updated is bumped from date, the file is git mv'd to archive/, both inbound links are re-pointed — the open sibling's to archive/api_rate-limit.md and the already-archived task's ../ link to the sibling path — and the backlog re-lints clean.",
+      "files": [
+        "evals/fixtures/finish/setup.sh"
+      ],
+      "expectations": [
+        "api_rate-limit.md now lives under tasks/archive/ and is gone from the tasks root.",
+        "Its status is finished and updated is a fresh ISO timestamp.",
+        "The move was done with git mv (git tracks the file at its new path, not as a fresh untracked write).",
+        "The inbound link in api_throttle-config.md is re-pointed to archive/api_rate-limit.md.",
+        "The inbound link in the already-archived api_legacy-notes.md is re-pointed from ../api_rate-limit.md to the sibling path api_rate-limit.md — the scan covers tasks/archive/ too.",
+        "The backlog lints clean (no blocking findings) after the move.",
+        "The response surfaces the finished-vs-deferred decision it made."
+      ]
+    },
+    {
+      "id": "fix",
+      "skill": "task_fix",
+      "prompt": "Health-check and clean up the tasks backlog in this project — fix what is mechanical and flag the rest for review.",
+      "expected_output": "The whole tree is audited in archive-inclusive mode: the legacy implemented archive task is migrated to finished, the non-ISO datetime is normalised, the bare line-number reference is re-anchored to a stable label, blocking findings reach zero. The oversized page is left intact and flagged for review. The report also carries a backlog-coherence assessment section, default-on despite the prompt using only health-check phrasing, reporting the clean case because this fixture plants no cross-task or premise defect. The run reports an 'audit complete — N issues resolved, K flagged for review' line.",
+      "files": [
+        "evals/fixtures/fix/setup.sh"
+      ],
+      "expectations": [
+        "After the run lint.py --include-archive reports zero blocking findings.",
+        "The legacy archived task (api_misfiled.md) is migrated from implemented to finished in archive/.",
+        "The non-ISO created datetime in api_baddate.md is normalised to ISO 8601.",
+        "The bare line-number reference in api_linepointer.md is re-anchored to a stable label per the soft-pointer rule — the 'line N' phrasing is gone while the api_good reference remains.",
+        "The oversized page (api_huge.md) is NOT auto-split — it stays >300 lines and is surfaced for review.",
+        "The already-clean task (api_good.md) is left untouched.",
+        "The response ends with an 'audit complete — N issues resolved, K flagged for review' line, and the oversized page is among the items flagged.",
+        "The report carries a backlog-coherence assessment section even though the prompt used only health-check phrasing — the assessment is default-on, not gated behind coherence or consistency wording.",
+        "That section reports the clean/no-finding case plainly: the fixture plants no cross-task or premise defect, so the joint read has nothing to alter or defer.",
+        "No coherence repair is written, since the user accepted no finding and opted into no escalation — api_good.md stays byte-identical."
+      ]
+    },
+    {
+      "id": "query",
+      "skill": "task",
+      "prompt": "List my open tasks, grouped by scope.",
+      "expected_output": "A read-only listing of the three open tasks grouped by scope (api, infra), leading with open work. The archived task is not surfaced (the query asked for open tasks only). No file is created, edited, or moved.",
+      "files": [
+        "evals/fixtures/query/setup.sh"
+      ],
+      "expectations": [
+        "The response lists the open tasks grouped by scope — api (rate-limit, throttle-config) and infra (grafana-cleanup).",
+        "Open tasks lead; the archived task (api_legacy-auth.md) is NOT surfaced because the query asked for open tasks only.",
+        "Nothing is created, edited, or moved — the sandbox git tree is unchanged (query is read-only)."
+      ]
+    },
+    {
+      "id": "update",
+      "skill": "task",
+      "prompt": "Update the description on the api_rate-limit task to also mention that rejected requests get a Retry-After header.",
+      "expected_output": "The task's description (or body) is edited to mention the Retry-After header, updated is bumped from the real wall clock while created stays at its original 2020-01-01 value, status stays open, the file stays in the tasks root (not archived), and the backlog re-lints clean.",
+      "files": [
+        "evals/fixtures/update/setup.sh"
+      ],
+      "expectations": [
+        "The task's description is edited to mention the Retry-After header.",
+        "updated is bumped to the current wall-clock time (from date), not left at the seeded 2020-01-01 value.",
+        "created is preserved at 2020-01-01T00:00:00 — update bumps updated, not created.",
+        "status stays open and the file stays in tasks/ (not archived — update is an edit, not close-out).",
+        "The backlog lints clean after the edit."
+      ]
+    },
+    {
+      "id": "update_contract",
+      "skill": "task",
+      "prompt": "Update the token rotation task: we settled on a 24-hour rotation window, and a rotated token keeps authenticating for a 1-hour overlap after its replacement is issued.",
+      "expected_output": "One hub <update> run that edits tasks/auth_token-rotation.md in place (both TBD placeholders superseded by the settled 24-hour window and 1-hour overlap), leaves the sibling task untouched, keeps status open in tasks/ with created preserved and updated bumped from the wall clock, re-lints the backlog clean, and closes with a report in the hub <output_contract> shape: the file touched by relative path, the absence of any lifecycle move, the linter outcome, and the assumptions or judgement calls left for the user.",
+      "files": [
+        "evals/fixtures/update_contract/setup.sh"
+      ],
+      "expectations": [
+        "The report names tasks/auth_token-rotation.md by its project-relative path as the one file touched, and claims no other file changed (the sibling auth_session-timeout.md is genuinely untouched).",
+        "The report states the lifecycle position: status stayed open and the task stayed in tasks/, so this run made no lifecycle move.",
+        "The report names the linter outcome for this run — the bundled task linter came back clean — rather than leaving the check unreported.",
+        "The report surfaces the assumptions and judgement calls for the user to correct — where the 1-hour overlap detail landed, whether the frontmatter description was widened — or states explicitly that the run made none.",
+        "All four parts arrive together in one closing report matching the hub <output_contract>, not scattered through the narration.",
+        "The edit itself holds up: the 24-hour window and the 1-hour overlap are recorded, both TBD placeholders are gone, created stays at 2020-01-01T00:00:00, and updated is the real wall clock."
+      ]
+    },
+    {
+      "id": "triage",
+      "skill": "task",
+      "prompt": "The latest task_check report on tasks/api_rate-limit.md lists these issues: 1. **Unverifiable acceptance** — in '## Acceptance', the item 'the rate limiter works properly' cannot be verified; minimum fix: replace it with 'requests over 100 per minute receive HTTP 429'. 2. **Goal names no mechanism** — in '## Goal', 'Protect the public API from abusive clients.' names no throttle mechanism; minimum fix: reword to 'Throttle the public API with a fixed-window rate limit.'. 3. **Empty Context** — '## Context' carries no pointers; minimum fix: add a pointer to src/api/server.py where the middleware lives. My triage: apply 1 as suggested; reject 2 — the goal stays as it is; for 3, point at docs/api.md instead of src/api/server.py.",
+      "expected_output": "Exactly the accepted and modified findings are applied to the task file: the unverifiable acceptance item becomes the concrete 429 check, the Goal sentence stays byte-identical, and Context points at docs/api.md per the user's modification rather than the report's src/api/server.py. One updated bump from the wall clock and one re-lint close the round; the file stays open in tasks/.",
+      "files": [
+        "evals/fixtures/triage/setup.sh"
+      ],
+      "expectations": [
+        "Accepted finding 1 is applied with its minimum fix: 'the rate limiter works properly' is gone and the 429-per-100/min check is in.",
+        "Rejected finding 2 leaves its passage untouched: 'Protect the public API from abusive clients.' stays byte-identical.",
+        "User-modified finding 3 wins over the report's suggestion: Context points at docs/api.md and src/api/server.py appears nowhere in the task.",
+        "updated is bumped once to the real wall clock; created stays at the seeded 2020-01-01T00:00:00 value.",
+        "status stays open and the file stays in tasks/ — the apply round is an edit, not a close-out.",
+        "The backlog lints clean after the round (one re-lint at the end).",
+        "The numbers were read as indexing the report given in the conversation — the agent neither re-derived its own findings nor asked for the list."
+      ]
+    },
+    {
+      "id": "lossless_split",
+      "skill": "task",
+      "prompt": "Turn the migration plan in notes/db-migration-plan.md into backlog tasks.",
+      "expected_output": "The multi-section source — a shared staging-first / green-canary preamble plus three independent sections (connection pooling, read replicas, backup cadence) — becomes several tasks, one per section, with the source-wide preamble carried into each. Every section's meaning is represented, the agent runs and reports a unit-by-unit coverage pass before offering to drop the source, and it leaves the source file in place for the user to dispose of. The prompt does not ask for preservation; the lossless-conversion contract fires on its own.",
+      "files": [
+        "evals/fixtures/lossless_split/setup.sh"
+      ],
+      "expectations": [
+        "Several task files (>=2, ideally one per section) are created under tasks/ — connection pooling (pgbouncer), read replicas (replica lag), and backup cadence (WAL archiving / point-in-time recovery) are each represented across the tasks.",
+        "The source-wide preamble — the staging-first / green-canary deployment gate that governs every section — is carried into EVERY derived task, not left behind in the source.",
+        "Every relevant unit of the source maps to at least one task; no section is dropped.",
+        "The agent runs a unit-by-unit coverage pass and reports it before offering to drop the source, and it does so without the user asking for preservation (the prompt is a plain 'turn this into tasks').",
+        "The source file notes/db-migration-plan.md is left byte-for-byte untouched — the skill proposes a disposition and leaves the keep/drop decision to the user; it does not delete, move, overwrite, or truncate it.",
+        "The derived tasks lint clean (lint.py exits 0)."
+      ]
+    },
+    {
+      "id": "lossless_single",
+      "skill": "task_create",
+      "prompt": "Make a task from the bug report in notes/session-cache-bug.md.",
+      "expected_output": "The source is one unit of work, so it collapses into a single task — but that lone task carries every relevant detail: the race-condition repro, the SessionCache culprit, and the backward-compatibility constraint. Producing one task does not skip the lossless check. The agent reports coverage before offering to drop the source and leaves the source file in place. The prompt does not ask for preservation; the contract fires on its own.",
+      "files": [
+        "evals/fixtures/lossless_single/setup.sh"
+      ],
+      "expectations": [
+        "Exactly one task file is created under tasks/ (the content genuinely collapses to one).",
+        "The one task preserves every relevant unit from the source: the race-condition repro, the SessionCache culprit, and the backward-compatible / on-disk-format constraint.",
+        "The single-task outcome does not skip the coverage check — the agent confirms the lone task carries all relevant meaning rather than treating one task as automatically complete.",
+        "The source file notes/session-cache-bug.md is left byte-for-byte untouched — disposition is proposed and left to the user, not acted on by the skill.",
+        "The derived task lints clean (lint.py exits 0)."
+      ]
+    },
+    {
+      "id": "check_boundary_contradiction",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/cli_json-output-flag.md ready to hand to an implementer? Check it.",
+      "expected_output": "The task's `**Out of scope:**` block rejects a --yaml flag, yet a '## Acceptance' item proves `report --yaml` emits valid YAML. The extended Contradictions lens surfaces that body-versus-boundary contradiction as a numbered issue, routes its disposition through the base Decide or label rule, and task_check withholds ready (stamps checked). The file changes only for the status stamp and updated bump.",
+      "files": [
+        "evals/fixtures/check_boundary_contradiction/setup.sh"
+      ],
+      "expectations": [
+        "A numbered issue names the body-versus-boundary contradiction: the '--yaml' acceptance item proves work the **Out of scope:** block excludes.",
+        "The issue routes disposition through the base Decide or label reconcile-or-surface rule rather than a newly invented one.",
+        "The task is stamped status: checked (ready is withheld while the contradiction stands); the **Out of scope:** block and the --yaml acceptance item are preserved (task_check is stamp-only).",
+        "Issues are grounded against the task's own text (a written juxtaposition of the acceptance item against the excluded work), not a prose impression."
+      ]
+    },
+    {
+      "id": "check_boundary_clean",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/cli_exit-code-on-error.md ready to hand to an implementer? Check it.",
+      "expected_output": "The task carries no `**Out of scope:**` block at all. Because the convention is optional, its absence raises NO boundary finding — the machinery stays invisible when there is nothing to exclude. task_check reaches its verdict on the task's other merits with no boundary-contradiction issue.",
+      "files": [
+        "evals/fixtures/check_boundary_clean/setup.sh"
+      ],
+      "expectations": [
+        "No boundary finding appears — the missing **Out of scope:** block draws no issue (presence stays optional).",
+        "The Issues section, if any, carries only findings unrelated to the Out of scope convention.",
+        "The verdict is reached on the task's other merits, confirming the convention is invisible when there is nothing to exclude."
+      ]
+    },
+    {
+      "id": "implement_boundary_cross",
+      "skill": "task_implement",
+      "prompt": "Implement the task tasks/report_colored-lines.md.",
+      "expected_output": "The task's Goal and an Acceptance item require coloring output inside src/theme.py, while its own `**Out of scope:**` block rejects editing src/theme.py — delivering the Goal crosses a declared boundary. task_implement's crossing backstop surfaces the contradiction with the conflicting passages quoted, applies the reconcile-or-surface disposition, and holds before the crossing edit (a headless run has no user to resolve it). The sandbox git tree stays clean and the task stays ready.",
+      "files": [
+        "evals/fixtures/implement_boundary_cross/setup.sh"
+      ],
+      "expectations": [
+        "The response surfaces the body-versus-boundary contradiction: the Goal and the 'format_line wraps its text in ANSI color codes' acceptance require editing src/theme.py, which the **Out of scope:** block rejects.",
+        "The response quotes the conflicting passages, applies the base Decide or label reconcile-or-surface disposition, and holds rather than silently crossing the boundary or under-delivering.",
+        "No code edit and no status change: the sandbox git tree is unchanged, src/theme.py keeps `return text`, src/report.py is unchanged, and report_colored-lines stays status ready with no implemented-by."
+      ]
+    },
+    {
+      "id": "implement_boundary_agree",
+      "skill": "task_implement",
+      "prompt": "Implement the task tasks/calc_add-function.md.",
+      "expected_output": "The task builds calc.add and defers calc.sub to a live owner task through its `**Out of scope:**` block. The boundary agrees with the body, so task_implement proceeds with no boundary interruption: it implements add, writes a test, runs the suite green, stamps implemented, and correctly SKIPS the deferred subtraction (calc.sub stays a stub, the owner task stays open).",
+      "files": [
+        "evals/fixtures/implement_boundary_agree/setup.sh"
+      ],
+      "expectations": [
+        "No boundary interruption occurs — the agreeing **Out of scope:** deferral excludes nothing the Goal/Acceptance needs.",
+        "calc.add returns a+b, a test_*.py covers it under tests/, and `python3 -m unittest discover -s tests` exits 0.",
+        "The deferred calc.sub is skipped: its stub is intact and the owner task calc_subtract-function.md stays status open.",
+        "calc_add-function.md is stamped status: implemented with implemented-by, stays under tasks/, and the response points at task_audit."
+      ]
+    },
+    {
+      "id": "create_scope_trim",
+      "skill": "task_create",
+      "prompt": "Make a task to add a --json output flag to the report command. We also want --yaml and --csv output eventually, but not as part of this — those are separate, later work.",
+      "expected_output": "task_create writes exactly one task for the --json work and lands the trimmed --yaml/--csv work in that file's `**Out of scope:**` block — as a deferral naming an owner or an explicit rejection, never a silent drop — with no prompt added beyond the existing create flow. The file lints clean (no broken deferral link).",
+      "files": [
+        "evals/fixtures/create_scope_trim/setup.sh"
+      ],
+      "expectations": [
+        "Exactly one new *.md task file exists under tasks/ (none under archive/), and it lints clean.",
+        "The file carries an **Out of scope:** block, and the trimmed --yaml and --csv work is named there (not silently dropped).",
+        "The trimmed work lands as a deferral naming an owner or an explicit rejection, consistent with the base boundary-convention rule.",
+        "No prompt is added beyond the existing create flow."
+      ]
+    },
+    {
+      "id": "auto_check_boundary",
+      "skill": "task_auto_check",
+      "timeout": 3000,
+      "prompt": "Auto-check the task tasks/cli_json-output-flag.md until it is ready, without implementing it.",
+      "expected_output": "The loop gates through task_check, which raises the boundary contradiction (the --yaml acceptance proves work the **Out of scope:** block excludes). The Boundary advocate stance maps the finding to a repair: it either lands a verifier-approved minimum reconciliation (→ ready) or, when no evidence settles which side wins, surfaces the task as stuck with options through the existing human-routed channel (→ checked). The loop never crosses or drops the boundary silently.",
+      "files": [
+        "evals/fixtures/check_boundary_contradiction/setup.sh"
+      ],
+      "expectations": [
+        "The Boundary advocate stance (citing the base Declare exclusions as an Out of scope boundary rule) handles the gate's boundary finding.",
+        "The outcome is either a verifier-approved minimum repair that reaches ready, or a stuck surface with suggested options — an unreconcilable contradiction is human-routed, not silently resolved.",
+        "The target task file lints clean and its status is checked or ready, written only through task_check.",
+        "The loop machinery is otherwise unchanged (single gate, union-of-stances, verifier-gated apply)."
+      ]
+    },
+    {
+      "id": "check_exclusion_requirement",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it.",
+      "expected_output": "An otherwise-ready task files two entries in its `**Out of scope:**` block that the clarified rule keeps out: a guardrail the task itself builds (the script never passes a manifest lacking a required field) and a meta note asserting something is not excluded. The extended Contradictions lens surfaces both as contradiction-rank findings routed through Decide or label — relocate the requirement, drop the meta note — and task_check withholds ready (stamps checked) while leaving the body byte-identical.",
+      "files": [
+        "evals/fixtures/check_exclusion_requirement/setup.sh"
+      ],
+      "expectations": [
+        "A numbered issue names the guardrail entry ('never passes a manifest that lacks a required field') as an in-scope requirement miscategorized into the **Out of scope:** block, because the task does work to make that statement true.",
+        "That issue's fix relocates the requirement to '## Goal', '## Approach', or '## Acceptance' rather than rewording it in place.",
+        "A numbered issue names the 'is not an exclusion' line as a meta note that a work-not-done block does not carry, with the fix dropping it.",
+        "Both findings are contradiction-rank and route disposition through the base Decide or label reconcile-or-surface rule rather than a newly invented one.",
+        "The findings cite the base **Declare exclusions as an Out of scope boundary** rule (its requirement test) as the source.",
+        "The task is stamped status: checked and the body is preserved byte-for-byte — task_check reports, it does not repair.",
+        "Issues are grounded in a written juxtaposition of each entry against the work the task actually does, not a prose impression."
+      ]
+    },
+    {
+      "id": "check_exclusion_requirement_control",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it.",
+      "expected_output": "The paired control: the same task body and the same block position, but the `**Out of scope:**` block holds only genuine work-not-done rejections (value type validation, a CI workflow). No miscategorized-exclusion finding is raised and task_check stamps the task ready, so the Contradictions extension stays precise instead of firing on every block it meets.",
+      "files": [
+        "evals/fixtures/check_exclusion_requirement_control/setup.sh"
+      ],
+      "expectations": [
+        "No miscategorized-exclusion finding appears — both entries state work the task does not do.",
+        "No meta not-an-exclusion finding appears — the control carries no such note.",
+        "The Issues section is 'No issues found.' or otherwise carries only findings unrelated to the Out of scope convention.",
+        "The task is stamped status: ready and the body is preserved byte-for-byte.",
+        "The verdict is reached on the task's other merits, confirming the extension does not fire on the mere presence of an **Out of scope:** block."
+      ]
+    },
+    {
+      "id": "check_exclusion_waiver",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it.",
+      "expected_output": "The root CLAUDE.md states a project gate (run make lint and resolve every finding before any commit) and the task's `**Out of scope:**` block exempts its own change from that gate. The readiness checklist's Rule-waiving exclusions finding fires: an exclusion removes work from the task, never a rule from the work that remains. No CHARTER.md is present, so severity is the ordinary readiness-issue path routed through Decide or label, ready is withheld (status checked), and the body stays byte-identical.",
+      "files": [
+        "evals/fixtures/check_exclusion_waiver/setup.sh"
+      ],
+      "expectations": [
+        "A numbered Rule-waiving exclusions issue names the **Out of scope:** entry that exempts this change from the repo's make lint gate.",
+        "The finding cites the waiver test in **Declare exclusions as an Out of scope boundary**: an entry removes work from the task, never a rule from the work that remains.",
+        "Severity is the ordinary readiness-issue path routed through Decide or label; the Charter check escalation is not applied because no CHARTER.md is present.",
+        "The finding does not restate the Charter check or Decide or label disposition text — it references them.",
+        "The task is stamped status: checked (ready withheld while the waiver stands) and the body is preserved byte-for-byte.",
+        "The waived gate is treated as a standing repo rule that keeps applying to whatever the task does build, rather than as a legitimate narrowing of scope."
+      ]
+    },
+    {
+      "id": "check_exclusion_waiver_control",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it.",
+      "expected_output": "The paired control: the same project gate plus the carve-out the gate itself provides (the lint surface skips everything under fixtures/), and a single `**Out of scope:**` entry that declines to hand-format exactly those generated fixture files. That entry narrows work rather than a rule, so the waiver test's carve-out clause blesses it: no Rule-waiving exclusions finding is raised and task_check stamps the task ready.",
+      "files": [
+        "evals/fixtures/check_exclusion_waiver_control/setup.sh"
+      ],
+      "expectations": [
+        "No Rule-waiving exclusions finding appears — the entry tracks a carve-out the governing rule already provides.",
+        "The verdict distinguishes narrowing work from waiving a rule instead of flagging every standing-rule mention inside an **Out of scope:** block.",
+        "The Issues section is 'No issues found.' or otherwise carries only findings unrelated to the Out of scope convention.",
+        "The task is stamped status: ready and the body is preserved byte-for-byte."
+      ]
+    },
+    {
+      "id": "check_count_stable",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/build_manifest-smoke.md ready to hand to an implementer? Check it.",
+      "expected_output": "One body carries both quantity classes the base <markdown_policy> count-stable rule separates. The Approach freezes a mutable set as a count — 'all 3 plugin manifests under `plugins/*/plugin.json`' — which is accurate in the sandbox today and rots when a fourth plugin lands, so the readiness checklist's Ambiguity / under-specification lens flags it against the count-stable rule and proposes the selector rewrite ('every plugin manifest under `plugins/*/plugin.json`') as the minimum fix. The measurement Acceptance item — 5 runs over the fixed denominator of 6 seeded fixture manifests against a same-run `make lint` baseline, recording both wall-clock medians into the task body with a fail branch that records rather than tunes — is subject matter the rule keeps legal and draws no finding. ready is withheld (status checked) and the body stays byte-identical.",
+      "files": [
+        "evals/fixtures/check_count_stable/setup.sh"
+      ],
+      "expectations": [
+        "A numbered issue flags 'all 3 plugin manifests under `plugins/*/plugin.json`' as a mutable set referenced by a frozen count, against the base <markdown_policy> count-stable rule.",
+        "The issue's minimum fix is the selector rewrite (every plugin manifest under `plugins/*/plugin.json`), not a refreshed number.",
+        "The finding cites the base count-stable rule rather than restating it, and the report does not treat the accurate-today count as clearing the issue.",
+        "The measurement Acceptance item (5 runs over the fixed denominator of 6 seeded fixture manifests, against the `make lint` baseline) draws no count-stable finding — its run count, fixed denominator, and baseline are the subject-matter case the rule keeps legal.",
+        "Both verdicts are recorded in one report: the frozen mutable-set count flagged, the measurement-protocol quantity left unflagged.",
+        "The count-stable finding is the only blocking issue in the report — every other promise the body makes is paired with its own Acceptance item — so the withheld ready stamp is attributable to this rule alone.",
+        "The task is stamped status: checked (ready withheld) and the body is preserved byte-for-byte."
+      ]
+    },
+    {
+      "id": "finish_arch_extended",
+      "skill": "task_finish",
+      "prompt": "Close out tasks/api_pluggable-storage.md and archive it — the work is merged and verified.",
+      "expected_output": "The task closes as finished and moves to archive/. Because its design-extended is true and the project carries an ARCHITECTURE.md, the close-out refreshes that doc in the same pass — the storage design decision it still describes as direct SQLite calls — and the report names the disposition as refreshed, saying what changed.",
+      "files": [
+        "evals/fixtures/finish_arch_present/setup.sh"
+      ],
+      "expectations": [
+        "api_pluggable-storage.md now lives under tasks/archive/ with status finished and a fresh ISO updated.",
+        "ARCHITECTURE.md was edited in the same close-out pass, and the edit supersedes the stale 'Storage is SQLite, called directly' design decision rather than appending beside it.",
+        "The response reports the ARCHITECTURE.md disposition as refreshed and states what changed in the doc.",
+        "The refresh decision is attributed to the recorded design-extended: true signal, not to a fresh reading of the code.",
+        "design-extended: true is preserved in the archived file — the close-out consumes the signal without rewriting it.",
+        "The backlog lints clean after the move."
+      ]
+    },
+    {
+      "id": "finish_arch_declined",
+      "skill": "task_finish",
+      "prompt": "Close out tasks/api_retry-after-header.md and archive it — the work is merged and verified.",
+      "expected_output": "The task closes as finished and moves to archive/. Its design-extended is false, so the close-out declines the ARCHITECTURE.md refresh, leaves the doc byte-identical, and reports the declined disposition with its reason.",
+      "files": [
+        "evals/fixtures/finish_arch_present/setup.sh"
+      ],
+      "expectations": [
+        "api_retry-after-header.md now lives under tasks/archive/ with status finished and a fresh ISO updated.",
+        "ARCHITECTURE.md is byte-identical to the staged version — no refresh, no reformatting, no whitespace change.",
+        "The response reports the disposition as considered and declined, and gives the reason (a response header is behaviour-ledger material, not a change to goals, stack, or design decisions).",
+        "The decline is a stated decision rather than a silent omission — a reader can tell the step ran.",
+        "The sibling task api_pluggable-storage.md is left untouched in the tasks root.",
+        "The backlog lints clean after the move."
+      ]
+    },
+    {
+      "id": "finish_arch_absent",
+      "skill": "task_finish",
+      "prompt": "Close out tasks/api_pluggable-storage.md and archive it — the work is merged and verified.",
+      "expected_output": "The project has no ARCHITECTURE.md, so the presence gate holds even though design-extended is true: the close-out runs unchanged, creates no doc, and reports the absent state.",
+      "files": [
+        "evals/fixtures/finish_arch_absent/setup.sh"
+      ],
+      "expectations": [
+        "api_pluggable-storage.md now lives under tasks/archive/ with status finished and a fresh ISO updated.",
+        "No ARCHITECTURE.md was created at the project root — the presence gate keeps the doc optional even on a true signal.",
+        "The response reports the ARCHITECTURE.md disposition as the doc being absent, rather than silently omitting the step.",
+        "The close-out is not blocked or held by the missing doc; it completes normally.",
+        "The backlog lints clean after the move."
+      ]
+    },
+    {
+      "id": "fix_coherence",
+      "skill": "task_fix",
+      "prompt": "Health-check the tasks backlog in this project. Should these tasks all ship as they are, or do some need altering or deferring to stay coherent with each other and with the current code? Assess only — apply no coherence repair, since I have accepted nothing yet. Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line \"selected: <comma-separated task filenames>\" naming exactly the selected live set, one line per selected task in the form \"verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>\", and a \"## Ship order\" section naming each wave and the tasks in it.",
+      "expected_output": "One default-on backlog-coherence assessment over the whole live tree of the jointly incoherent fixture backlog, written to coherence-report.md as well as the response, with no task file touched. The double-owned severity_label edit, the stale unreachable_clean_bar anchor, the license finding that re-blocks the loop exception, the short check-module sweep, and the opposed path/glob postures each come back as alter findings carrying their evidence. The clean task is ship-as-is, the task whose premise tool/report_json.py invalidates is a defer candidate, the Goal-altering and Acceptance-altering candidates are surfaced rather than applied, the TOML-versus-JSON fork is a labeled decision with options and a suggested path, and the ship order places the severity registry ahead of the task that consumes it.",
+      "files": [
+        "evals/fixtures/fix_coherence/setup.sh"
+      ],
+      "expectations": [
+        "The selected live set is the whole live tree: all 17 live fixture tasks appear on the report's `selected:` line.",
+        "(a) tool_severity-label-rename.md and tool_severity-label-docstring.md are surfaced together as double-owning the severity_label edit, with one-owner-plus-verify-only proposed rather than applied.",
+        "(b) tool_clean-bar-note.md is an alter finding whose evidence is the unreachable_clean_bar anchor that no longer greps in the target artifacts.",
+        "(c) tool_missing-license-finding.md is an alter finding tied to the clean-bar loop exception tool_loop-exception.md establishes.",
+        "(d) tool_check-docstring-sweep.md is an alter finding naming the check modules its own rule implies but its Approach leaves un-enumerated.",
+        "(e) tool_path-check-severity.md and tool_glob-check-severity.md are surfaced as the same severity question answered oppositely with no recorded reason.",
+        "(f) the unsettled TOML/JSON fork stays visible with both options on the table, and the cross-task consequence is surfaced: tool_severity-registry.md, whose lookup call shape depends on that choice, is tied to tool_config-format.md by name. Picking a format is a per-task readiness matter task_check owns, so the pass is not asked to decide it.",
+        "(g) docs_exit-code-table.md is ship-as-is: the joint read finds no cross-task or premise defect on it.",
+        "(h) tool_json-output.md is a defer candidate because tool/report_json.py already ships the capability its premise says is absent, with the disposition handed to the user.",
+        "(i) tool_drop-legacy-module.md's Goal-altering repair is surfaced, not applied — deleting the shim outright would break the CLI render path tool_summary-line.md builds on, so the fitting deprecate-then-remove repair narrows its ## Goal, which stays byte-identical.",
+        "(l) tool_quiet-flag.md's Acceptance-altering repair is surfaced, not applied — its ## Acceptance is byte-identical.",
+        "(j) the ship-order waves place tool_severity-registry.md before tool_register-path-check.md, or name them as one land-together wave.",
+        "Nothing is written: no task file changes, since the run assesses and the user has accepted nothing.",
+        "The archive-inclusive linter still reports zero blocking findings."
+      ]
+    },
+    {
+      "id": "fix_coherence_reconcile_escalated",
+      "skill": "task_fix",
+      "prompt": "Health-check the tasks backlog in this project and assess whether these tasks stay coherent with each other and with the current code. I accept these five findings up front, so reconcile them in this run: the severity_label edit that two tasks both own, the stale unreachable_clean_bar anchor, the license-check severity that re-blocks the accepted-info clean-bar exception a sibling establishes, the check-module docstring sweep that enumerates fewer modules than its own rule implies, and the opposed path-check and glob-check severity postures. Resolve that accepted set autonomously through the task tree shaper. Leave every finding I have not accepted alone. Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line \"selected: <comma-separated task filenames>\" naming exactly the selected live set, one line per selected task in the form \"verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>\", and a \"## Ship order\" section naming each wave and the tasks in it.",
+      "expected_output": "The accepted five-finding set is reconciled through the existing auto_shaper_task escalation as the single writer: one owner plus a verify-only counterpart for the shared severity_label edit, the anchor refreshed to the shipped helper name, the license-finding severity changed with its rationale recorded once, the check-module enumeration completed, and the severity posture reconciled or its reason recorded. Everything unaccepted stays untouched, every edited task's Goal is byte-identical, and the archive-inclusive lint is clean.",
+      "files": [
+        "evals/fixtures/fix_coherence/setup.sh"
+      ],
+      "expectations": [
+        "The report names the escalated writer mode and auto_shaper_task as the single serialized writer for the run.",
+        "The whole accepted set rides that one escalated write — the staleness repair (b) included — rather than a parallel inline path.",
+        "(a) is repaired to one owner plus a verify-only counterpart, with reciprocal coordination links between the two task files.",
+        "(b) the stale unreachable_clean_bar anchor is refreshed to reachable_clean_bar and `updated` is bumped.",
+        "(c) the license-finding severity change records its clean-bar rationale once, or couples the change to the sibling that owns its precondition.",
+        "(d) the sweep enumerates every check module the rule implies, not a subset.",
+        "(e) the posture split is reconciled, or the principled reason is recorded on the task that carries it.",
+        "auto_reviewer_task proposes and auto_verifier_task approves backlog-coherence repair shapes, not only splits and relocations.",
+        "The unaccepted findings are untouched: the TOML/JSON fork stays unresolved, the Goal-altering repair is not applied, the Acceptance-altering repair is not applied, and the ready summary-line task is byte-identical.",
+        "Every edited task's ## Goal is byte-identical to its pre-reconcile Goal.",
+        "The archive-inclusive linter reports zero blocking findings after the reconcile."
+      ]
+    },
+    {
+      "id": "fix_coherence_reconcile_inline_staleness",
+      "skill": "task_fix",
+      "prompt": "Health-check the tasks backlog in this project and assess whether these tasks stay coherent with each other and with the current code. I accept only the staleness repairs: refresh the stale unreachable_clean_bar anchor in the clean-bar note task, and add the out-of-scope note the run-summary task needs. Leave the judgement calls unrepaired — the double-owned severity_label edit, the license-check severity, the check-module docstring sweep, and the opposed path and glob postures all stay as they are, and do not escalate to the task tree shaper. For the quiet-flag task, flag it for re-check in the report instead of applying the repair that would change what its Acceptance requires. Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line \"selected: <comma-separated task filenames>\" naming exactly the selected live set, one line per selected task in the form \"verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>\", and a \"## Ship order\" section naming each wave and the tasks in it.",
+      "expected_output": "The staleness-only accepted set is applied inline with no escalation: the stale anchor is refreshed and the additive Out of scope note lands, both files bump `updated`. The ready task stays ready because the note leaves its Goal, Approach, and Acceptance semantics unchanged. The Acceptance-altering candidate is flagged for re-check and not applied. Every judgement call the prompt withheld stays byte-identical, and the archive-inclusive lint is clean.",
+      "files": [
+        "evals/fixtures/fix_coherence/setup.sh"
+      ],
+      "expectations": [
+        "The report names `mode used: inline` and states that no auto_shaper_task escalation ran.",
+        "(b) the anchor refresh lands: unreachable_clean_bar is gone, reachable_clean_bar is in place, `updated` bumped.",
+        "(k) the additive **Out of scope:** note lands on the ready task and `updated` is bumped.",
+        "(k) that task stays `status: ready` — the change-significance rule leaves a semantics-preserving repair's status standing.",
+        "(l) the Acceptance-altering repair is flagged for re-check in the report and not applied; the file is byte-identical and no status is re-stamped.",
+        "The withheld judgement calls are all byte-identical: the double-owned edit on both sides, the license-finding severity, the short sweep, and both posture tasks.",
+        "(f) the TOML/JSON fork stays unresolved and (i) the Goal-altering repair is not applied.",
+        "Every edited task's ## Goal is byte-identical to its pre-reconcile Goal.",
+        "The archive-inclusive linter reports zero blocking findings after the reconcile."
+      ]
+    },
+    {
+      "id": "fix_coherence_selector_scope",
+      "skill": "task_fix",
+      "prompt": "Check backlog coherence for the tool scope. Assess only — apply no coherence repair. Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line \"selected: <comma-separated task filenames>\" naming exactly the selected live set, one line per selected task in the form \"verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>\", and a \"## Ship order\" section naming each wave and the tasks in it.",
+      "expected_output": "The scope filter named in the prompt fixes the selected live set: the report assesses exactly the three tool-scope fixture tasks and leaves the two docs-scope tasks out of it. Nothing is written.",
+      "files": [
+        "evals/fixtures/fix_coherence_selector_scope/setup.sh"
+      ],
+      "expectations": [
+        "The report's `selected:` line carries tool_alpha-flag.md, tool_beta-flag.md, and tool_gamma-flag.md.",
+        "It carries neither docs_delta-page.md nor docs_epsilon-page.md — the scope filter narrowed the selected live set.",
+        "The report states that the prompt's scope filter is what narrowed the set.",
+        "No task file is modified, and the backlog still lints clean in archive mode."
+      ]
+    },
+    {
+      "id": "fix_coherence_selector_explicit_list",
+      "skill": "task_fix",
+      "prompt": "Do tasks/svc_alpha-retry.md and tasks/svc_beta-retry.md ship together, or does either need altering? Assess just those two. Apply no coherence repair. Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line \"selected: <comma-separated task filenames>\" naming exactly the selected live set, one line per selected task in the form \"verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>\", and a \"## Ship order\" section naming each wave and the tasks in it.",
+      "expected_output": "The explicit list named in the prompt fixes the selected live set: the report assesses exactly the two named tasks and leaves the two unnamed siblings out, even though all four share one scope and one target file. Nothing is written.",
+      "files": [
+        "evals/fixtures/fix_coherence_selector_explicit_list/setup.sh"
+      ],
+      "expectations": [
+        "The report's `selected:` line carries svc_alpha-retry.md and svc_beta-retry.md.",
+        "It carries neither svc_gamma-timeout.md nor svc_delta-timeout.md, even though all four tasks share the scope and the target file.",
+        "The report states that the explicit list is what fixed the set, not the shared target artifact.",
+        "No task file is modified, and the backlog still lints clean in archive mode."
+      ]
+    },
+    {
+      "id": "fix_coherence_selector_whole_tree",
+      "skill": "task_fix",
+      "prompt": "Health-check and clean up the tasks backlog in this project — fix what is mechanical and flag the rest for review. Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line \"selected: <comma-separated task filenames>\" naming exactly the selected live set, one line per selected task in the form \"verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>\", and a \"## Ship order\" section naming each wave and the tasks in it.",
+      "expected_output": "No selector is named, so the selected live set defaults to the whole live tree: the report assesses all three live fixture tasks across both scopes and leaves the archived finished sibling out. The assessment appears without any coherence or consistency phrasing in the prompt.",
+      "files": [
+        "evals/fixtures/fix_coherence_selector_whole_tree/setup.sh"
+      ],
+      "expectations": [
+        "The report's `selected:` line carries core_alpha-cache.md, core_beta-cache.md, and docs_gamma-cache.md — the whole live tree, across both scopes.",
+        "It does not carry the archived core_omega-cache.md: 'whole live tree' excludes closed work.",
+        "The assessment appears although the prompt names no scope, no list, and no coherence or consistency phrasing — the no-filter default.",
+        "No live task's ## Goal moves, and the backlog still lints clean in archive mode."
+      ]
+    }
+  ]
+}

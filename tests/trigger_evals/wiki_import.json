@@ -1,0 +1,23 @@
+[
+  {"query": "import this URL into my wiki: https://blog.acolyer.org/2020/02/26/the-decision-tree-method/", "expected_skill": "wiki_import"},
+  {"query": "I downloaded this paper from arxiv (~/Downloads/2402.17764v1.pdf). Add it to my wiki and show me what's already overlapping with what we have.", "expected_skill": "wiki_import"},
+  {"query": "absorb this meeting transcript into my notes — it's at /tmp/2026-05-15-design-review.txt. Reconcile with existing pages first.", "expected_skill": "wiki_import"},
+  {"query": "digest this article and tell me where it conflicts with what's already in my wiki: https://www.example.com/blog/post", "expected_skill": "wiki_import"},
+  {"query": "review this paste before adding it to my wiki and flag any contradictions:\n\n> The decision tree method tends to overfit when depth > 6 …", "expected_skill": "wiki_import"},
+  {"query": "propose what to add to my wiki from this PDF, don't write anything yet. /Users/me/Downloads/scaling-llm-inference.pdf", "expected_skill": "wiki_import"},
+  {"query": "I have a confluence dump in /tmp/dump.html — please integrate it into my wiki", "expected_skill": "wiki_import"},
+  {"query": "process this transcript I just pasted (200 lines of meeting notes follow). Stop after the proposal so I can review.", "expected_skill": "wiki_import"},
+  {"query": "fetch and integrate https://example.com/blog/post into the wiki but show me the diff against existing pages first", "expected_skill": "wiki_import"},
+  {"query": "i've got an internal memo I want to add to my wiki — ~/work/notes/2026-05-12-strategy.md. Surface conflicts before writing anything.", "expected_skill": "wiki_import"},
+
+  {"query": "add a page about widgets to my wiki", "expected_skill": "wiki"},
+  {"query": "audit my wiki for orphans and broken links", "expected_skill": "wiki_fix"},
+  {"query": "wrap up this chat into my wiki — capture what we worked through", "expected_skill": "wiki_wrapup"},
+  {"query": "fix broken links in my wiki", "expected_skill": "wiki_fix"},
+  {"query": "summarize this article for me, executive-summary style:\n\nhttps://example.com/long-article", "expected_skill": null},
+  {"query": "fetch this URL and dump it to stdout: https://example.com/page", "expected_skill": null},
+  {"query": "what does my wiki say about retrieval-augmented generation", "expected_skill": "wiki"},
+  {"query": "format this markdown file in src/docs/intro.md to fix the lint nits", "expected_skill": null},
+  {"query": "create an SPR from this article so I can prime another LLM later", "expected_skill": null},
+  {"query": "set up a wiki for this codebase, none exists yet", "expected_skill": "wiki"}
+]

@@ -1,0 +1,42 @@
+[
+  {"query": "make a task for adding OAuth login to the dashboard", "expected_skill": "task_create"},
+  {"query": "add a todo to refactor the CSV parser", "expected_skill": "task_create"},
+  {"query": "file a task about the flaky checkout integration test", "expected_skill": "task_create"},
+
+  {"query": "is the task tasks/api_rate-limit.md ready to hand to an implementer?", "expected_skill": "task_check", "note": "instrument-limited (run 2026-05-31_003514: -/task_check/-): action verb + concrete file path; model reads the file rather than loading a skill on 2/3 runs. task_check is correct when it fires."},
+  {"query": "check whether this task is ready to build before I start on it", "expected_skill": "task_check"},
+  {"query": "assess this task's readiness — will a one-shot implementer get it right?", "expected_skill": "task_check"},
+
+  {"query": "explain the task tasks/api_rate-limit.md at a high level", "expected_skill": "task_explain"},
+  {"query": "summarize the task tasks/api_rate-limit.md — what is it about, why is it done, and how is it supposed to be achieved?", "expected_skill": "task_explain"},
+  {"query": "walk me through the task file tasks/task-skill_select-sibling-skill.md so I can orient on it", "expected_skill": "task_explain"},
+
+  {"query": "what task should I work on next?", "expected_skill": "task_select"},
+  {"query": "pick the next task from my backlog", "expected_skill": "task_select"},
+  {"query": "rank the open api tasks and recommend one", "expected_skill": "task_select"},
+
+  {"query": "implement the task tasks/calc_add-function.md", "expected_skill": "task_implement", "note": "instrument-limited (run 2026-05-31_003514: -/-/-): action verb + file path; model acts inline, loads no skill. No non-regressive lever (description-sharpening rejected)."},
+  {"query": "build the thing described in this task now", "expected_skill": "task_implement", "note": "known-accepted (run 2026-05-31_003514: task/task/task): base task swallows the bare action verb 'build'; no name token distinguishes it, description-sharpening regressed. Acceptable real-world behaviour."},
+  {"query": "go do task auth_session-rotation end to end", "expected_skill": "task_implement", "note": "known-accepted (run 2026-05-31_003514: task/task/task): base task swallows 'go do … end to end'; no name lever."},
+
+  {"query": "is this task actually done? verify it against the code", "expected_skill": "task_audit", "note": "known-accepted (run 2026-05-31_003514: -/task/task): base task swallows 'verify/done'; query lacks the 'audit' name token, so no name lever applies."},
+  {"query": "audit this task — is the work really implemented and backed by tests?", "expected_skill": "task_audit"},
+  {"query": "re-check this archived task; did the codebase drift away from what it describes?", "expected_skill": "task_audit", "note": "instrument-limited (run 2026-05-31_003514: -/-/-): model answers/acts inline, loads no skill."},
+
+  {"query": "mark this task done and archive it", "expected_skill": "task_finish", "note": "known-accepted (run 2026-05-31_003514: task/task/task): base task swallows 'mark … archive'; no name lever."},
+  {"query": "defer this task for now, we're not doing it this quarter", "expected_skill": "task_finish", "note": "known-accepted (run 2026-05-31_003514: task/-/task): base task swallows 'defer'; no name lever."},
+  {"query": "this task is implemented — close it out", "expected_skill": "task_finish"},
+
+  {"query": "health-check and clean up my whole task backlog", "expected_skill": "task_fix"},
+  {"query": "audit the entire tasks tree and fix whatever is mechanical", "expected_skill": "task_fix"},
+  {"query": "lint and repair the task backlog", "expected_skill": "task_fix"},
+
+  {"query": "list my open tasks", "expected_skill": "task"},
+  {"query": "what's left to do in this project?", "expected_skill": "task", "note": "instrument-limited (run 2026-05-31_003514: -/task/-): model answers the question inline on 2/3 runs rather than loading base task."},
+  {"query": "show me the tasks grouped by scope", "expected_skill": "task"},
+  {"query": "break this design doc into several trackable tasks", "expected_skill": "task", "note": "instrument-limited (run 2026-05-31_003514: -/-/-): model does the breakdown inline, loads no skill."},
+  {"query": "update the description on the rate-limit task", "expected_skill": "task"},
+
+  {"query": "format the python file at src/loader.py", "expected_skill": null},
+  {"query": "commit my staged changes with a good message", "expected_skill": null}
+]

@@ -588,3 +588,24 @@ narrowing.
 The narrow post-update lint exited 0. The live findings are the pre-existing
 `boilerplate` warn on `log.md` and the size info on
 `entities/openai-codex.md`; this update introduced neither.
+
+## [2026-08-30 14:32] update | Tests harness now committed; verification-surfaces reconciled
+
+The repository started tracking the `tests/` harness: the authored evals,
+fixtures, scripts, and READMEs are committed and linted, while `tests/.gitignore`
+keeps only run output out of git. The verification-surfaces concept page was
+built on the opposite premise, so its current-state section, its confidence
+caveat, and one open question were reconciled to the committed arrangement.
+
+- concepts/verification-surfaces.md (retitled and rewrote the lead subsection for
+  the committed-but-not-deployed apparatus; relieved the model-policy confidence
+  caveat, since `tests/CLAUDE.md` and the runner defaults now travel with a clone;
+  removed the resolved open question on whether the tree should stay uncommitted;
+  refreshed the `## Derived from` provenance)
+- concepts/instruction-defect-classes.md (a `## Derived from` bullet called the
+  Layer 2 harness the "uncommitted local test tree"; the session it cites stayed
+  ephemeral, but the tree is committed now, so the bullet says so)
+- summaries/ai-modules-repository.md (the "local-only test tree" is now the
+  "committed test tree")
+- index.md (updated the verification-surfaces summary line and the Last updated
+  stamp)

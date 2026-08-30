@@ -1,0 +1,105 @@
+{
+  "skill_name": "guardrail_audit",
+  "notes": "Pattern A behavioral evals. stage → agent runs skill → grade.sh checks byte-identity and response markers. The skill is prose-only; script_tests cover the static SKILL.md / registration contract.",
+  "evals": [
+    {
+      "id": "presence_gate",
+      "skill": "guardrail_audit",
+      "prompt": "Audit the guardrail docs in this repository.",
+      "expected_output": "Orientation inventories CHARTER.md and CLAUDE.md only. The run audits exactly those two, raises no missing-doc error for absent ARCHITECTURE/TESTING/SECURITY, edits nothing, and asks how to proceed.",
+      "files": [
+        "evals/fixtures/presence_gate/setup.sh"
+      ],
+      "expectations": [
+        "The response inventories CHARTER.md and CLAUDE.md as present.",
+        "The response raises no missing-doc error for absent ARCHITECTURE.md, TESTING.md, or SECURITY.md.",
+        "Every file under the sandbox remains byte-identical to the staged tree.",
+        "No TESTING.md, ARCHITECTURE.md, or SECURITY.md file is created.",
+        "The response ends by asking the user how to proceed."
+      ]
+    },
+    {
+      "id": "doc_vs_doc",
+      "skill": "guardrail_audit",
+      "prompt": "Audit the guardrail docs in this repository for contradictions.",
+      "expected_output": "Doc-vs-doc surfaces that ARCHITECTURE.md mandates a hosted SaaS product the charter's DOES NOT forbids, quotes greppable evidence from both passages, names the charter as authoritative, flags the architecture passage to reconcile, edits nothing, and asks how to proceed.",
+      "files": [
+        "evals/fixtures/doc_vs_doc/setup.sh"
+      ],
+      "expectations": [
+        "The response surfaces a doc-vs-doc contradiction between CHARTER.md and ARCHITECTURE.md.",
+        "The response quotes or cites the charter DOES NOT passage forbidding a hosted SaaS product / multi-tenant API gateway.",
+        "The response quotes or cites the ARCHITECTURE.md passage that mandates a multi-tenant hosted SaaS product.",
+        "The response names CHARTER.md as authoritative and flags the ARCHITECTURE.md passage as the one to reconcile.",
+        "Every file under the sandbox remains byte-identical to the staged tree.",
+        "The response ends by asking the user how to proceed."
+      ]
+    },
+    {
+      "id": "doc_vs_code",
+      "skill": "guardrail_audit",
+      "prompt": "Audit the guardrail docs against the codebase — we just adopted a charter into this mature repo.",
+      "expected_output": "Doc-vs-code surfaces that src/analytics_api.py implements a hosted analytics SaaS backend the charter's DOES NOT forbids, quotes greppable evidence from both sides, reports the divergence as unmet work with the code named as the side to move, offers no softening of the rule, edits nothing, and asks how to proceed.",
+      "files": [
+        "evals/fixtures/doc_vs_code/setup.sh"
+      ],
+      "expectations": [
+        "The response surfaces a doc-vs-code divergence involving CHARTER.md and src/analytics_api.py.",
+        "The response quotes or cites the charter DOES NOT passage forbidding a hosted service / SaaS backend / analytics system.",
+        "The response quotes or cites diverging code evidence such as serve_hosted_analytics or hosted-analytics.",
+        "The response reports unmet work with the code named as the side to move, and offers no softening of the rule.",
+        "Every file under the sandbox remains byte-identical to the staged tree.",
+        "The response ends by asking the user how to proceed."
+      ]
+    },
+    {
+      "id": "direction_target",
+      "skill": "guardrail_audit",
+      "prompt": "Audit the guardrail docs against the codebase.",
+      "expected_output": "Doc-vs-code reads ARCHITECTURE.md's ## Direction target — src/pipeline.py's StreamPipeline — in the hub's declared-direction register: the unbuilt target draws no describing-falsehood finding, it is reported as drive-toward work naming how to move the code toward the target or revise the target deliberately, no softening or deletion of the target to match today's code is offered, the tree stays byte-identical, and the run asks how to proceed.",
+      "files": [
+        "evals/fixtures/direction_target/setup.sh"
+      ],
+      "expectations": [
+        "The response names the unreached ## Direction target (src/pipeline.py / StreamPipeline / streaming pipeline).",
+        "The response reads that target in the declared-direction register rather than as a descriptive claim.",
+        "The response reports the unreached target as drive-toward work, naming how to move the code toward the target or how to revise the target deliberately.",
+        "The response raises no describing-falsehood finding against the target for naming a component the code does not use.",
+        "The response offers no softening or deletion of the target to match today's code.",
+        "Every file under the sandbox remains byte-identical to the staged tree.",
+        "The response ends by asking the user how to proceed."
+      ]
+    },
+    {
+      "id": "missing_testing",
+      "skill": "guardrail_audit",
+      "prompt": "Audit the guardrails and suggest any missing docs this repo warrants.",
+      "expected_output": "Missing-doc proposals recommend a grounded TESTING.md drawn from the real pytest suite, create no TESTING.md file, leave the tree byte-identical, and ask how to proceed.",
+      "files": [
+        "evals/fixtures/missing_testing/setup.sh"
+      ],
+      "expectations": [
+        "The response proposes a TESTING.md grounded in the existing pytest / tests/ surface.",
+        "No TESTING.md file is created on disk.",
+        "Every file under the sandbox remains byte-identical to the staged tree.",
+        "The response ends by asking the user how to proceed."
+      ]
+    },
+    {
+      "id": "nature_mismatch",
+      "skill": "guardrail_audit",
+      "prompt": "Audit the guardrails and suggest which docs this repository should adopt.",
+      "expected_output": "Orientation reads a mixed multi-project layout, names that a single-root ARCHITECTURE.md over unrelated projects is a mismatch, proposes nothing ill-fitting, edits nothing, and asks how to proceed.",
+      "files": [
+        "evals/fixtures/nature_mismatch/setup.sh"
+      ],
+      "expectations": [
+        "The response names the repository nature as a mixed multi-project layout (or equivalent).",
+        "The response names a single-root ARCHITECTURE.md (or software-shaped single-system guardrail) as a mismatch rather than proposing it.",
+        "No ARCHITECTURE.md, TESTING.md, SECURITY.md, or CHARTER.md file is created.",
+        "Every file under the sandbox remains byte-identical to the staged tree.",
+        "The response ends by asking the user how to proceed."
+      ]
+    }
+  ]
+}

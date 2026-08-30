@@ -1,0 +1,38 @@
+# tests/.gitignore — track the authored harness, drop everything a run regenerates.
+#
+# The authored surface is the harness itself: evals.json, fixtures and their
+# setup.sh stagers, the run/grade scripts, README.md and RUNBOOK.md. Everything
+# ignored below is produced by executing that surface and is reproducible from
+# it. Run output also embeds the absolute paths of the machine that produced it
+# and the full transcripts of the workers it spawned, so keeping it local is a
+# privacy measure as well as a size one.
+
+# --- Run output -------------------------------------------------------------
+workspace/
+scratch/
+.eval_cache/
+
+# Per-run logs and reports under results/. Hand-written analysis notes live in
+# the same directories, so exclude by pattern rather than ignoring results/
+# wholesale. Currently kept: task_auto_check/results/*.md, wiki/results/SUMMARY.md.
+**/results/*.log
+**/results/run-*.json
+**/results/run-*.md
+
+# trigger_evals writes one timestamped directory of per-query output per skill.
+trigger_evals/results/*/
+
+# --- Staged Layer 2 wiki sandboxes ------------------------------------------
+# wiki/layer2/setup_scenarios.sh deletes and restages every one of these on
+# each run, so the staged tree is output rather than source.
+wiki/layer2/AS-*/
+wiki/layer2/L2-*/
+wiki/layer2/WI-*/
+wiki/layer2/WU-*/
+
+# --- Python bytecode --------------------------------------------------------
+__pycache__/
+*.py[cod]
+
+# --- macOS ------------------------------------------------------------------
+.DS_Store

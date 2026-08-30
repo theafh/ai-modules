@@ -1,0 +1,23 @@
+[
+  {"query": "let's wrap up this session and save what we discussed into the wiki", "expected_skill": "wiki_wrapup"},
+  {"query": "ingest this chat into my wiki", "expected_skill": "wiki_wrapup"},
+  {"query": "we figured out a lot of things in this conversation, can you capture them in my wiki", "expected_skill": "wiki_wrapup"},
+  {"query": "harvest the durable bits from our chat and propose what to add to my notes", "expected_skill": "wiki_wrapup"},
+  {"query": "before we end, get the new knowledge into the wiki", "expected_skill": "wiki_wrapup"},
+  {"query": "close out this chat — anything worth saving to my wiki", "expected_skill": "wiki_wrapup"},
+  {"query": "i think we landed on some new decisions, please reconcile them with my wiki", "expected_skill": "wiki_wrapup"},
+  {"query": "save our conversation to my notes, but reconcile it with what's already there", "expected_skill": "wiki_wrapup"},
+  {"query": "what from this chat hasn't been captured in my wiki yet?", "expected_skill": "wiki_wrapup"},
+  {"query": "wrap up — propose wiki updates from our discussion. surface contradictions if any.", "expected_skill": "wiki_wrapup"},
+
+  {"query": "import this URL into my wiki: https://example.com/article", "expected_skill": "wiki_import"},
+  {"query": "audit my wiki for orphans and broken links", "expected_skill": "wiki_fix"},
+  {"query": "add a page to my wiki about transformers", "expected_skill": "wiki"},
+  {"query": "summarize this chat — i need a 2-paragraph exec summary", "expected_skill": null},
+  {"query": "wrap up this PR — push and merge", "expected_skill": null},
+  {"query": "close this terminal window", "expected_skill": null},
+  {"query": "fix broken links in my wiki", "expected_skill": "wiki_fix"},
+  {"query": "ingest a paper from arxiv into my wiki", "expected_skill": "wiki_import"},
+  {"query": "create a new wiki — none exists here yet", "expected_skill": "wiki"},
+  {"query": "log this session to my journal file at ~/journal/2026-05-17.md", "expected_skill": null}
+]

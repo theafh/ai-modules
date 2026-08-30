@@ -18,7 +18,7 @@ plugins/<plugin>/
   skills/<skill>/SKILL.md         # skill definition with YAML frontmatter
 styles/                           # tracked output styles (repo-root; not a plugin component)
 deployment/                       # deploy script + per-tool config
-tests/                            # local-only regression harnesses (gitignored)
+tests/                            # regression harnesses (authored files tracked; run output gitignored)
 Makefile                          # task entry point
 .markdownlint.jsonc               # markdown lint config (MD033 off — pseudo-XML is intentional)
 ```
@@ -84,7 +84,7 @@ Task files stay agent-harness agnostic. When a task needs standing repo instruct
 ## Regression test harnesses
 
 - **When the user says "tests" (or similar), run both skill surfaces unless the user narrows scope.** Run bundled-script tests under `tests/<skill>/script_tests/run.sh` and skill-behavior evals under `tests/<skill>/evals/evals.json`. Report both surfaces before claiming a skill is in good shape.
-- **One harness per skill under `tests/<skill_name>/`.** The whole `tests/` tree is in `.gitignore` and excluded from `make lint`; nothing in it gets committed. See `tests/README.md` for the full layout.
+- **One harness per skill under `tests/<skill_name>/`.** The authored harness is committed and linted; `tests/.gitignore` keeps run output (`workspace/`, `scratch/`, `.eval_cache/`, `results/` logs and run reports, and the staged `wiki/layer2` sandboxes) out of git, and the Makefile's `EXCLUDE` prunes the same subtrees so lint scope matches git scope. Change the two lists together. See `tests/README.md` for the full layout.
 - **Prefer the skill-creator-aligned pattern for new harnesses.** Keep evals in `evals/evals.json` (schema: `skill-creator/references/schemas.md`), fixtures in `evals/fixtures/`, run output in `workspace/iteration-N/`, and script unit tests in `script_tests/`. Run evals out-of-band via skill-creator's `scripts.run_eval`; `run_all.sh` drives only the script tests. Reference implementation: `tests/git_commit/`.
 - **`tests/wiki/` uses the legacy two-layer pattern.** Keep it as-is until its next significant iteration; create new harnesses with the skill-creator-aligned pattern.
 - **Ship the tests a change needs; separate only *unbounded* harness growth.** A skill change lands together with the tight scenario(s) and fixtures that prove *its own* new behavior — the evals a task's acceptance names are part of that change, not something to defer — and with the existing suite re-run to confirm no regression. What belongs in its own session is *unbounded* harness expansion beyond the change: backfilling coverage of pre-existing untested behavior, adding scenarios well past what the change needs, or restructuring the harness. The boundary is scope, not timing — prove this change now and run it, and keep an unrelated coverage sweep from ballooning the same session.

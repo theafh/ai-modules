@@ -1,7 +1,7 @@
 ---
 title: Instruction-defect classes
 created: 2026-08-15
-updated: 2026-08-29
+updated: 2026-08-30
 type: concept
 tags: [skill, agent, authoring, verification-gap, experiment]
 sources: []
@@ -156,4 +156,5 @@ carries.
   ephemeral session with no committed artefact of its own.
 - The re-audit session of 2026-08-22 that measured contradiction removal against
   the wiki agent's log-preamble fix in the local Layer 2 harness. An ephemeral
-  session; the harness runs live in the uncommitted local test tree.
+  session that left no committed record; the harness itself is committed, but
+  a run of it produces only gitignored output.

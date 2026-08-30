@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-08-29
+updated: 2026-08-30
 type: concept
 tags: [skill, repo-structure, authoring, verification-gap]
 sources: []
@@ -27,24 +27,27 @@ script that breaks on a path with a space in it.
 
 ## Current state of knowledge
 
-### The harnesses exist and do not ship
+### The harnesses are committed but do not ship
 
 Every harness lives under a repo-root `tests/` tree, one subdirectory per skill
-under test. The whole tree is in `.gitignore` and excluded from `make lint`, so
-nothing in it is committed and nothing in it appears in lint output. A clone of
-this repository therefore carries the rules for verification, stated in the
-repo-root instruction files, and none of the apparatus that performs it.
+under test. The authored harness is committed: the eval definitions, the fixtures
+and their stagers, the run and grade scripts, and the per-harness READMEs. A clone
+carries both the rules for verification, stated in the repo-root instruction
+files, and the apparatus that performs it. `tests/.gitignore` keeps out only what
+a run regenerates, which is the staged sandboxes, the per-iteration workspaces,
+and the per-run logs. The Makefile lint targets prune those same subtrees, so
+lint covers the committed harness and nothing else.
 
-That asymmetry is worth stating plainly rather than leaving implied. The
-repository's product is the published component, and a claim that a component
-works rests on a run that no other machine can reproduce, because the thing that
-performed the run was never distributed. The counterweight is that the harnesses
-are not component-shaped: they stage throwaway sandboxes, invoke vendor binaries,
-and grade model output, so committing them would add a second substantial program
-to a repository whose product is the components. The deploy script sits in the
-same category from the other direction, as
-[the deployment model](deployment-model.md) notes when it observes that the one
-program every machine depends on is the one program that ships to nobody.
+Committed is not the same as shipped. `make deploy` copies the skill directories
+into vendor config dirs and never touches `tests/`, so no deployed installation
+carries a test input it has no use for. The apparatus that verifies a component
+travels to every clone and reaches no deployment. This is the shape
+[the deployment model](deployment-model.md) notes from the other side, where the
+one program every machine depends on is the one program that ships to nobody. The
+earlier asymmetry is smaller for it. A second contributor who wants to re-run a
+verification now has the harness in hand, though the behavioral evals still need a
+model and spend tokens, so a run is reproducible in principle rather than for
+free.
 
 ### Two harness patterns, one preferred
 
@@ -72,9 +75,9 @@ reasons apart from a real regression. Pinning the subject makes the measurement
 comparable across runs, and leaving the meta level inherited keeps the grading as
 capable as the session paying for it.
 
-This is the claim that caps the page's confidence. It is recorded in the
-uncommitted tree and confirmed by reading it on one machine, so it is a house
-practice observed once rather than a rule any clone can check.
+This practice is recorded in `tests/CLAUDE.md` and encoded in each runner's
+default model. Both are committed now, so any clone can check the claim rather
+than take it on one machine's reading.
 
 ### Trigger coverage is a third question, asked separately
 
@@ -142,14 +145,7 @@ correctness.
 
 ## Open questions
 
-Whether the tree should stay uncommitted is unsettled in the record. The
-`.gitignore` entry states the current arrangement without stating a decision, so
-it reads equally as a considered position about what belongs in a component
-repository and as an early convenience nobody has revisited. The distinction
-matters because only one of the two readings has to be defended when a second
-contributor wants to re-run a verification.
-
-The weight a behavioral eval should carry is also open. A result drawn from a
+The weight a behavioral eval should carry is open. A result drawn from a
 model is a distribution rather than a value, and nothing here records how many
 passes make a verdict, or what a partial pass rate should block. The
 per-behaviour reporting rule above sharpens the framing without settling it:
@@ -176,6 +172,7 @@ make one behaviour's verdict stays unrecorded.
 
 - The repo-root instruction files, sections on regression test harnesses and on
   shipping the tests a change needs.
-- The repository's `.gitignore` and `Makefile` lint targets for the exclusion.
-- The local `tests/` tree, read 10 August 2026 for the two patterns and the model
-  policy. Uncommitted, so this is observation on one machine.
+- The repository's `tests/.gitignore` and `Makefile` lint targets for what is
+  committed versus regenerated.
+- The `tests/` tree, read 10 August 2026 for the two patterns and the model
+  policy, and committed since 30 August 2026 so a clone can re-read it.
