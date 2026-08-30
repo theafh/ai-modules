@@ -1,8 +1,8 @@
 ---
-description: Consolidate the task skill's two local test directories into one, register every task-family harness in the tests inventory table, and add the missing task_auto_check trigger cases.
+description: Consolidate the task skill's two local test dirs into one, register every task-family harness in the inventory table and README ## Current harnesses, and add task_auto_check trigger cases.
 scope: "task_* family local test harness"
 created: 2026-08-11T18:58:50
-updated: 2026-08-30T14:39:20
+updated: 2026-08-30T16:04:44
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -33,11 +33,11 @@ settled that the managed backlog directory keeps the name `tasks/` because the
 skill manages that data. The test directory names the skill rather than the data,
 so it belongs on the singular side of that split and was missed by the rename.
 
-The archived sibling [task-family_cross-link-hygiene.md](archive/task-family_cross-link-hygiene.md)
-stages its `lint.py` fixtures under `tests/tasks/script_tests/` and proves them
-through `tests/tasks/run_all.sh`. Those paths name the plural harness this task
-removes, so the consolidation rewrites that sibling's harness paths in place when
-the directory moves.
+The archived sibling task-family_cross-link-hygiene.md stages its `lint.py`
+fixtures under `tests/tasks/script_tests/` and proves them through
+`tests/tasks/run_all.sh`. Those paths name the plural harness this task removes,
+so the consolidation rewrites that sibling's harness paths in place when the
+directory moves.
 
 The inventory table under the `## What's here` heading in the tests tree's own
 `CLAUDE.md` lists four harnesses, none of them from the task family. The same file
@@ -46,7 +46,23 @@ section both name the task family's eval runners by path. A reader trusting the
 inventory concludes the family has no harness at all.
 
 Standing repo rules send operators to `tests/README.md` for the full layout; its
-`## Current harnesses` list likewise names none of the task-family directories.
+`## Current harnesses` list already names `task_create/` but omits the post-merge
+`task/` and `task_auto_check/` rows this task adds.
+
+Live sibling interactions. Acceptance "The set is re-run under the recorded protocol"
+**depends on**
+[tests_trigger-eval-harness-repair.md](tests_trigger-eval-harness-repair.md) as a
+hard prerequisite: that task repairs the shared trigger-eval runner the
+measurement consumes, and until it lands a precise run can report a clean-looking
+zero on every positive query. Shared documentation surfaces need ordered co-edits.
+This task owns the task-family rows under `## What's here` in the tests tree's
+`CLAUDE.md` and the post-merge task-family bullets under `## Current harnesses` in
+`tests/README.md`. The trigger-eval repair owns the zero-recall guidance at the
+trigger harness's tree-README entry.
+[tests_wiki-front-end-behavior-evals.md](tests_wiki-front-end-behavior-evals.md)
+owns the wiki harness bullet under `## Current harnesses`. This task is verify-only
+on those sibling-owned passages and co-edits the shared inventory/README surfaces
+in that ownership order.
 
 The trigger eval set for the family covers the hub and every family sibling except
 `task_auto_check`, and carries no case naming `task_auto_check` as the expected
@@ -55,9 +71,9 @@ no routing test. The family's own preference is that `task_auto_check` is the ro
 to reach, rather than driving `task_check` by hand — the same preference that keeps
 `task_check` out of the per-skill bullet lists in the plugin and root READMEs.
 
-[The sibling trigger-routing task](archive/task-family_sibling-trigger-routing.md)
-fixes the protocol any trigger-eval work here follows: `--runs-per-query 3`, a 50%
-per-query threshold, and the verdict read from a run's written `results.json`
+The sibling trigger-routing task fixes the protocol any trigger-eval work here
+follows: `--runs-per-query 3`, a 50% per-query threshold, and the verdict read
+from a run's written `results.json`
 summary. Its Findings note records precise `15/25` on the then-25-entry set as
 historical protocol precedent only — not this task's numeric floor. Dated
 evidence that the archived fraction is already unreachable on today's file:
@@ -80,41 +96,56 @@ shortfall and its disposition in the Findings note are the deliverable — do
 not chase the gap with description edits (see Out of scope).
 
 The authored harness is committed and linted, so this consolidation's directory
-move, new runners, and documentation edits land in git and must pass `make lint`;
-the task file is no longer the only committed artefact of the work. Each acceptance
-item is still verified by running the harness locally.
+move, new runners, and documentation edits land in git under the standing repo
+rule **Lint clean before every commit.**; the task file is no longer the only
+committed artefact of the work. Each acceptance item is still verified by
+running the harness locally.
 
 ## Approach
 
 Merge the two directories into the one named for the `task` skill, keeping both
-surfaces intact and distinct inside it. Under Pattern A, the `lint.py` unit-test
-suite becomes `tests/task/script_tests/run.sh`; the family contract assertions
-become `tests/task/script_tests/contract_run.sh`; and `tests/task/run_all.sh`
+surfaces intact and distinct inside it. Under Pattern A, relocate the family contract assertions into
+`tests/task/script_tests/contract_run.sh` before placing the `lint.py` unit-test
+suite at `tests/task/script_tests/run.sh`; then `tests/task/run_all.sh`
 drives both runners, matching the dual-runner layout `tests/deployment/run_all.sh`
-already uses. The behavioral evals keep their existing structure under
+already uses. When relocating those assertions, refresh the two drifted
+Decide-or-label needles in that runner so they match live skill prose — replace
+`without introducing a change the context cannot settle` with `When that clause
+cannot be written truthfully, the decision is reconcilable and the Reconcile
+branch applies.`, and replace `one labeled open decision is the authoring
+ceiling` with `Zero labeled open decisions is the expected authoring outcome and
+one is the ceiling`. The behavioral evals keep their existing structure under
 `tests/task/evals/`. Re-point every path the move invalidates, including the
 runner and cache references that name the old directory from the tests tree's
 `CLAUDE.md` and from any harness script that resolves a sibling path, and from
-the archived sibling [task-family_cross-link-hygiene.md](archive/task-family_cross-link-hygiene.md)
-whose Approach and Acceptance still name `tests/tasks/script_tests/` and
-`tests/tasks/run_all.sh`.
+the archived sibling task-family_cross-link-hygiene.md whose Approach and
+Acceptance still name `tests/tasks/script_tests/` and `tests/tasks/run_all.sh`.
 
 Rewrite the inventory table under `## What's here` in place so it names every
-task-family harness that exists alongside the four already listed, with the same
+task-family harness that exists alongside the rows already listed, with the same
 columns the table already uses. Reconcile it with the model-policy table and the
-verdict-cache section in that file so all three name the same directories.
+verdict-cache section in that file so its rows agree with the directories those
+passages name. Keep the
+owned-passage split named under Live sibling interactions in Context — rewrite only
+the task-family inventory rows and leave any sibling-owned inventory wording
+intact.
 
 Rewrite the `## Current harnesses` list in `tests/README.md` in place so it names
 every post-merge task-family harness directory that exists on disk alongside the
 entries already listed, keeping that section's existing bullet shape (directory
-name, pattern, one-line coverage).
+name, pattern, one-line coverage). Ordered co-edit per Live sibling interactions in
+Context — add or refresh only the task-family bullets; preserve the wiki front-end
+task's wiki-harness passage and the trigger-eval repair's zero-recall guidance when
+either is already present.
 
 Add trigger eval cases naming `task_auto_check` as the expected skill, matching the
 per-sibling case count the set already uses, and phrase them as the requests a user
 actually makes to reach the loop rather than as variants of a readiness question
-that the family accepts routing to `task_check`. Re-run the set under the recorded
-protocol and report the new cases' own pass rate separately from the pre-existing
-cohort, applying the **Trigger no-regression bar** in Context.
+that the family accepts routing to `task_check`. After
+tests_trigger-eval-harness-repair.md has restored a measuring runner, re-run the
+set under the recorded protocol and report the new cases' own pass rate separately
+from the pre-existing cohort, applying the **Trigger no-regression bar** in
+Context.
 
 **Out of scope:** editing any `description:` frontmatter to move a routing result.
 [The sibling trigger-routing task](archive/task-family_sibling-trigger-routing.md)
@@ -126,7 +157,11 @@ rather than the skills under test.
 - One directory named for the `task` skill holds both surfaces, and the
   plural-named sibling directory no longer exists.
 - Under that singular harness, `script_tests/run.sh` holds the lint suite,
-  `script_tests/contract_run.sh` holds the family contract assertions, and
+  `script_tests/contract_run.sh` holds the family contract assertions with both
+  refreshed Decide-or-label needles matching live skill prose (`When that clause
+  cannot be written truthfully, the decision is reconcilable and the Reconcile
+  branch applies.` and `Zero labeled open decisions is the expected authoring
+  outcome and one is the ceiling`) and neither drifted needle remaining, and
   `run_all.sh` drives both; the contract runner exits 0; the `lint.py` unit-test
   scenarios report the same pass count they report today; and the
   behavioral-evals tree is present under `evals/`.
@@ -138,13 +173,16 @@ rather than the skills under test.
   equivalent, and searching that sibling for `tests/tasks/` returns no
   harness-path hits.
 - The inventory table under `## What's here` in the tests tree's `CLAUDE.md`
-  names every task-family harness directory that exists on disk, and its rows
-  agree with the directories named in that file's model-policy table and
-  verdict-cache section.
+  names every task-family harness directory that exists on disk alongside its
+  prior entries, and its rows agree with the directories named in that file's
+  model-policy table and verdict-cache section.
 - The `## Current harnesses` list in `tests/README.md` names every post-merge
-  task-family harness directory that exists on disk alongside its prior
-  non-family entries, so an operator following the standing-repo-rules pointer
-  finds each family harness by skill-directory name.
+  task-family harness directory that exists on disk alongside its prior entries
+  (including the existing `task_create/` family entry), so an operator following
+  the standing-repo-rules pointer finds each family harness by skill-directory
+  name; when the wiki front-end task's wiki-harness passage or the trigger-eval
+  repair's zero-recall guidance is already present under that list, it remains
+  unchanged.
 - The family trigger eval set contains cases naming `task_auto_check` as the
   expected skill, where it contains none today, at the per-sibling count the set
   already uses.
