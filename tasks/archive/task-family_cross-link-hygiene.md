@@ -119,7 +119,7 @@ so re-read those sections and gather what belongs together. Keep the finding a
 candidate rather than a verdict, matching the soft-pointer warning, and leave it
 out of the mechanically fixable finding set, because deciding how to regroup a
 body is a prose judgement. Prove the lint scenarios through fixtures in
-`tests/tasks/script_tests/` run by `tests/tasks/run_all.sh`, matching the standing
+`tests/task/script_tests/` run by `tests/task/run_all.sh`, matching the standing
 `lint.py` unit-test harness for the task family.
 
 **b. Give the task skills a protocol for acting on the hint.** Add the protocol to
@@ -167,33 +167,33 @@ conventions the skill already follows.
 
 ## Acceptance
 
-1. A fixture in `tests/tasks/script_tests/` linking one target twice produces one
+1. A fixture in `tests/task/script_tests/` linking one target twice produces one
    `repeated-link` warning naming that target and the count of 2, and the message
    states that the count is a hint that the body may have grown organically and
    that re-reading those sections to regroup may help.
-2. A fixture in `tests/tasks/script_tests/` linking that target once produces no
+2. A fixture in `tests/task/script_tests/` linking that target once produces no
    warning, proving the floor is more than one link to a single target.
-3. A fixture in `tests/tasks/script_tests/` linking one target seven times produces
+3. A fixture in `tests/task/script_tests/` linking one target seven times produces
    one warning whose count is 7, and the message frames a higher count as a stronger
    hint than a lower one.
-4. A fixture in `tests/tasks/script_tests/` reaching one file through two
+4. A fixture in `tests/task/script_tests/` reaching one file through two
    different relative prefixes produces one warning with a count of 2, proving
    targets resolve by normalized path rather than by written path.
-5. A fixture in `tests/tasks/script_tests/` linking a sibling task, a `SKILL.md`, a
+5. A fixture in `tests/task/script_tests/` linking a sibling task, a `SKILL.md`, a
    wiki page, a `scripts/<name>` helper, and a `plugin.json` manifest twice each
    produces the finding for every target kind, and a target that never links back
    is counted the same as a reciprocal one.
-6. A fixture in `tests/tasks/script_tests/` linking nine distinct targets once each
+6. A fixture in `tests/task/script_tests/` linking nine distinct targets once each
    produces no warning, proving the check counts repeats of one target rather than
    the total link count.
-7. A fixture in `tests/tasks/script_tests/` linking one local target twice only
+7. A fixture in `tests/task/script_tests/` linking one local target twice only
    inside a fenced code block produces no warning, proving fenced links do not
    participate in the count.
-8. A fixture in `tests/tasks/script_tests/` linking the same `https://` URL and the
+8. A fixture in `tests/task/script_tests/` linking the same `https://` URL and the
    same `mailto:` address twice each produces no warning, proving external and
    `mailto:` targets are skipped the same way `check_local_links` skips them.
-9. `tests/tasks/script_tests/` covers the fixture scenarios in items 1–8, and
-   `tests/tasks/run_all.sh` exits 0.
+9. `tests/task/script_tests/` covers the fixture scenarios in items 1–8, and
+   `tests/task/run_all.sh` exits 0.
 10. The floor lives in a named constant whose comment records the measured
     distribution and the strengthens-with-count framing, so searching the script
     finds the number and its justification in one place.

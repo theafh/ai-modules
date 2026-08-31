@@ -72,13 +72,26 @@ don't bring up new harnesses under Pattern B.
   fixed 5-pass denominator, graded by a deterministic `grade.py` plus a
   refute-biased `judge.py`. No verdict cache: the repeated draws are
   the measurement.
+- **`task/`** — Pattern A. The `task_*` family hub, holding both
+  deterministic surfaces: `script_tests/run.sh` unit-tests the bundled
+  `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (54 scenarios), and
+  `script_tests/contract_run.sh` asserts the family contract across the
+  hub, its siblings, and the family agents. `run_all.sh` drives both and
+  aggregates their exit codes. `evals/` holds a behavioral eval per family
+  member, run out-of-band via `evals/run.py`.
 - **`task_create/`** — Pattern A, behavioral only (the skill drives the
-  base `task` skill's scripts, covered under `tasks/script_tests/`). Three
+  base `task` skill's scripts, covered under `task/script_tests/`). Three
   staged evals over the base **Decide or label** rule as the create path
   applies it: `reconcile-recorded` (evidence-settled fork, no label),
   `labeled-why-open` (no tier settles it), and `guardrail-bound-surface`
   (every path crosses a boundary). Grades the written task file and the
   worker's captured response, since the rule obliges both.
+- **`task_auto_check/`** — Pattern A. `script_tests/` covers the static
+  skill contract; `evals/` drives the autonomous readiness loop over staged
+  fixtures — repair-to-ready, the gate / verifier / drift stop conditions,
+  and the mechanical lint cleanup — through a sonnet-pinned `run.py` with a
+  deterministic `grade.sh`. The deepest loop here, so `RUNBOOK.md` records
+  the cheap-first fixture probe that keeps a fixture bug off the full run.
 - **`guardrail_audit/`** — Pattern A, prose-only skill. `script_tests/`
   covers the static SKILL.md / registration contract; `evals/` has five
   staged fixtures (presence-gating, doc-vs-doc, doc-vs-code retrofit,

@@ -2,7 +2,7 @@
 description: Make eval graders assert substance over surface form and split long conjunctions, with the durable rule in the versioned repo instructions and the mechanics in the tests tree.
 scope: "local test harnesses"
 created: 2026-08-15T14:08:10
-updated: 2026-08-30T14:39:20
+updated: 2026-08-30T17:36:22
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -85,10 +85,10 @@ second statement of them.
 **Out of scope:**
 
 - Consolidating or relocating any harness directory, which
-  [the harness consolidation task](task-family_test-harness-consolidation.md)
+  [the harness consolidation task](archive/task-family_test-harness-consolidation.md)
   owns.
-- Repairing the trigger-eval runner's measurement, which
-  [the trigger-harness repair task](tests_trigger-eval-harness-repair.md) owns.
+- Changing the trigger-eval runner or its harness, a separate surface this task
+  does not touch.
 - Authoring new scenarios or new coverage; this task changes how existing checks
   assert, not what is covered.
 

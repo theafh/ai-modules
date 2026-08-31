@@ -43,7 +43,7 @@ report hands the disposition to the operator instead of re-rolling the dice
 for a friendlier draw.
 
 There is deliberately **no verdict cache** here, unlike `tests/git_commit/`
-and `tests/tasks/`. Those harnesses cache to avoid paying for a re-run whose
+and `tests/task/`. Those harnesses cache to avoid paying for a re-run whose
 inputs did not change; here the repeated independent draws *are* the
 measurement, so replaying a stored verdict would report a sample size the run
 never took.

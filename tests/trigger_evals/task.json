@@ -7,9 +7,13 @@
   {"query": "check whether this task is ready to build before I start on it", "expected_skill": "task_check"},
   {"query": "assess this task's readiness — will a one-shot implementer get it right?", "expected_skill": "task_check"},
 
+  {"query": "auto-fix the readiness issues on tasks/api_rate-limit.md and keep going until it comes back ready", "expected_skill": "task_auto_check", "note": "known-accepted (run 2026-08-30_175359: task_check/task_check/task_check): task_check swallows 'readiness issues' even under an auto-fix-until-ready imperative. Family-passes; description-sharpening is the rejected lever."},
+  {"query": "make this task ready for me — repair whatever is blocking it, but don't implement it yet", "expected_skill": "task_auto_check", "note": "known-accepted (run 2026-08-30_175359: task_select/task_select/task_select): the bare 'this task' with no path reads as a backlog-choice request. Family-passes; description-sharpening is the rejected lever."},
+  {"query": "run the autonomous readiness loop on tasks/auth_session-rotation.md, refreshing it against the current codebase", "expected_skill": "task_auto_check"},
+
   {"query": "explain the task tasks/api_rate-limit.md at a high level", "expected_skill": "task_explain"},
-  {"query": "summarize the task tasks/api_rate-limit.md — what is it about, why is it done, and how is it supposed to be achieved?", "expected_skill": "task_explain"},
-  {"query": "walk me through the task file tasks/task-skill_select-sibling-skill.md so I can orient on it", "expected_skill": "task_explain"},
+  {"query": "summarize the task tasks/api_rate-limit.md — what is it about, why is it done, and how is it supposed to be achieved?", "expected_skill": "task_explain", "note": "instrument-limited (run 2026-08-30_201500: -/-/-): the model answers the three sub-questions inline from the named file rather than loading a skill, so the runner observes no skill load. Not a description defect."},
+  {"query": "walk me through the task file tasks/task-skill_select-sibling-skill.md so I can orient on it", "expected_skill": "task_explain", "note": "instrument-limited (run 2026-08-30_201500: -/-/-): action verb plus a concrete file path; the model reads and walks the file inline rather than loading task_explain. Not a description defect."},
 
   {"query": "what task should I work on next?", "expected_skill": "task_select"},
   {"query": "pick the next task from my backlog", "expected_skill": "task_select"},
@@ -27,15 +31,15 @@
   {"query": "defer this task for now, we're not doing it this quarter", "expected_skill": "task_finish", "note": "known-accepted (run 2026-05-31_003514: task/-/task): base task swallows 'defer'; no name lever."},
   {"query": "this task is implemented — close it out", "expected_skill": "task_finish"},
 
-  {"query": "health-check and clean up my whole task backlog", "expected_skill": "task_fix"},
-  {"query": "audit the entire tasks tree and fix whatever is mechanical", "expected_skill": "task_fix"},
+  {"query": "health-check and clean up my whole task backlog", "expected_skill": "task_fix", "note": "known-accepted (run 2026-08-30_201500: task_audit/task_audit/task_audit): the model maps whole-backlog health-checking to the task_audit name token even though this query carries no audit verb; family-passes. Description-sharpening is the rejected lever (see the harness-consolidation task Out of scope), so no non-regressive fix applies."},
+  {"query": "audit the entire tasks tree and fix whatever is mechanical", "expected_skill": "task_fix", "note": "known-accepted (run 2026-08-30_201500: task_audit/task_audit/task_fix): the audit name token pulls a whole-tree request to task_audit; scope qualifiers (entire tree) sit mid-sentence where routing does not weight them. Name-token dominance, no non-regressive lever; family-passes."},
   {"query": "lint and repair the task backlog", "expected_skill": "task_fix"},
 
   {"query": "list my open tasks", "expected_skill": "task"},
   {"query": "what's left to do in this project?", "expected_skill": "task", "note": "instrument-limited (run 2026-05-31_003514: -/task/-): model answers the question inline on 2/3 runs rather than loading base task."},
   {"query": "show me the tasks grouped by scope", "expected_skill": "task"},
   {"query": "break this design doc into several trackable tasks", "expected_skill": "task", "note": "instrument-limited (run 2026-05-31_003514: -/-/-): model does the breakdown inline, loads no skill."},
-  {"query": "update the description on the rate-limit task", "expected_skill": "task"},
+  {"query": "update the description on the rate-limit task", "expected_skill": "task", "note": "known-accepted (run 2026-08-30_201500: -/task_select/task_select): task_select swallows a task-reference edit query although update appears nowhere in its description — evidence that routing keys on task-reference vocabulary and name specificity, not verb semantics. Regressed at commit 2a65443 (2026-08-11: 2/2 precise before, 0 across five Aug-30 runs after); two description edits since (hub Use-when, task_select boundary) failed to recover it. Description lever dead; accepted."},
 
   {"query": "format the python file at src/loader.py", "expected_skill": null},
   {"query": "commit my staged changes with a good message", "expected_skill": null}

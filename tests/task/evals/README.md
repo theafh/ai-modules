@@ -1,4 +1,4 @@
-# tests/tasks/evals — task-family behavioral evals
+# tests/task/evals — task-family behavioral evals
 
 Pattern A (skill-creator-aligned), operator-driven — the same three-phase
 shape as `tests/git_commit/evals/`: **stage → agent runs → grade**. These
@@ -68,10 +68,10 @@ model; the output-verdict expectations stay for you to confirm from the
 captured `response.txt` on the inherited session model.
 
 ```bash
-python3 tests/tasks/evals/run.py                 # all evals
-python3 tests/tasks/evals/run.py check fix       # just those two
-python3 tests/tasks/evals/run.py lossless_split  # just the split-source fidelity eval
-python3 tests/tasks/evals/run.py --model ''      # inherit the CLI default instead
+python3 tests/task/evals/run.py                 # all evals
+python3 tests/task/evals/run.py check fix       # just those two
+python3 tests/task/evals/run.py lossless_split  # just the split-source fidelity eval
+python3 tests/task/evals/run.py --model ''      # inherit the CLI default instead
 ```
 
 Per eval it writes `workspace/run-<ts>/<id>/{response.txt, stderr.txt,
@@ -104,7 +104,7 @@ debugging a single eval by hand.
 
 ```bash
 # 1. Stage one fixture; exports shell-safe name=value lines.
-eval "$(bash tests/tasks/evals/stage.sh <eval_id>)"
+eval "$(bash tests/task/evals/stage.sh <eval_id>)"
 #    -> sandbox_proj, skill_name, skill_path, prompt
 
 # 2. Run the skill against the sandbox. run.py does this with a sonnet
@@ -117,7 +117,7 @@ eval "$(bash tests/tasks/evals/stage.sh <eval_id>)"
 #    skill's discover_tasks.sh resolves the sandbox, never the real repo.
 
 # 3. Grade the post-run sandbox programmatically.
-bash tests/tasks/evals/grade.sh <eval_id> "$sandbox_proj"
+bash tests/task/evals/grade.sh <eval_id> "$sandbox_proj"
 ```
 
 `stage.sh` stages under a fresh `mktemp` dir (the project lives at

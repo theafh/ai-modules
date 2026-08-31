@@ -66,7 +66,7 @@ rows are every other `expected_skill` in the same run (`task_explain`,
 `task_select`, and any later companion-owned skill including `task_auto_check`);
 report their pass rate separately so a changed denominator never inflates the
 headline. Soft companion: [the test-harness consolidation
-task](../task-family_test-harness-consolidation.md) shares this eval set and owns
+task](task-family_test-harness-consolidation.md) shares this eval set and owns
 adding further cases (including `task_auto_check`) under that
 separate-denominator reporting rule.
 
@@ -97,7 +97,7 @@ verb-ceding or hedging clause to either description. Both are the reverted lever
 [the sibling trigger-routing task](task-family_sibling-trigger-routing.md)
 holds rejected. Defer growing or re-annotating the family trigger-eval set
 (including adding `task_auto_check` cases) to [the test-harness consolidation
-task](../task-family_test-harness-consolidation.md).
+task](task-family_test-harness-consolidation.md).
 
 ## Acceptance
 

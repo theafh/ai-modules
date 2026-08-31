@@ -32,7 +32,7 @@ confirmed.`, `audit complete — …` strings) remain operator-confirmed
 from the captured `response.txt`.
 
 Usage:
-    python3 tests/tasks/evals/run.py [eval_id ...]
+    python3 tests/task/evals/run.py [eval_id ...]
       # default: every `id` in evals.json, derived at startup, so a newly
       #          authored eval joins the suite without editing this file
       [--model claude-sonnet-4-6]   # '' inherits the CLI default

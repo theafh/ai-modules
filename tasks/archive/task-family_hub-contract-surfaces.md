@@ -93,7 +93,7 @@ filesystem observables: the relative path of the file touched and that edit on
 disk; status stays `open` with no archive move; the reported linter outcome with
 a clean backlog lint; and assumptions or judgement calls for the user, or an
 explicit none. That eval set's directory
-[the test-harness consolidation task](../task-family_test-harness-consolidation.md)
+[the test-harness consolidation task](task-family_test-harness-consolidation.md)
 relocates.
 
 **Out of scope:** editing the hub's `description:` frontmatter to cede sibling

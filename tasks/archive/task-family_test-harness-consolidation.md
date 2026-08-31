@@ -2,9 +2,11 @@
 description: Consolidate the task skill's two local test dirs into one, register every task-family harness in the inventory table and README ## Current harnesses, and add task_auto_check trigger cases.
 scope: "task_* family local test harness"
 created: 2026-08-11T18:58:50
-updated: 2026-08-30T16:04:44
-status: ready
+updated: 2026-08-31T09:27:16
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Consolidate and complete the task-family test harness
@@ -27,7 +29,7 @@ the plural `tasks`; the other holds the family contract assertions, a single
 family's agents. The standing repo rule puts one harness per skill under a
 directory named for that skill, and the skill is named `task`.
 
-The plural name is a leftover rather than a decision. [The skill rename](archive/task-family_rename-tasks-to-task.md)
+The plural name is a leftover rather than a decision. [The skill rename](task-family_rename-tasks-to-task.md)
 renamed the skill from `tasks` to `task` across every artefact that names it, and
 settled that the managed backlog directory keeps the name `tasks/` because the
 skill manages that data. The test directory names the skill rather than the data,
@@ -50,16 +52,16 @@ Standing repo rules send operators to `tests/README.md` for the full layout; its
 `task/` and `task_auto_check/` rows this task adds.
 
 Live sibling interactions. Acceptance "The set is re-run under the recorded protocol"
-**depends on**
-[tests_trigger-eval-harness-repair.md](tests_trigger-eval-harness-repair.md) as a
-hard prerequisite: that task repairs the shared trigger-eval runner the
-measurement consumes, and until it lands a precise run can report a clean-looking
-zero on every positive query. Shared documentation surfaces need ordered co-edits.
-This task owns the task-family rows under `## What's here` in the tests tree's
-`CLAUDE.md` and the post-merge task-family bullets under `## Current harnesses` in
-`tests/README.md`. The trigger-eval repair owns the zero-recall guidance at the
-trigger harness's tree-README entry.
-[tests_wiki-front-end-behavior-evals.md](tests_wiki-front-end-behavior-evals.md)
+runs on the trigger-eval runner as it already stands, with no prerequisite gating
+the measurement: deployed mode measures the `task` fixture correctly, per the dated
+no-regression evidence this task records. Shared documentation surfaces still need
+ordered co-edits. This task owns the task-family rows under `## What's here` in the
+tests tree's `CLAUDE.md` and the post-merge task-family bullets under
+`## Current harnesses` in `tests/README.md`.
+[tests_trigger-eval-unavailable-skill-guard.md](../tests_trigger-eval-unavailable-skill-guard.md)
+owns the zero-recall guidance in the trigger harness's own `## tests/trigger_evals/`
+section of that `CLAUDE.md`, which this task leaves untouched.
+[tests_wiki-front-end-behavior-evals.md](../tests_wiki-front-end-behavior-evals.md)
 owns the wiki harness bullet under `## Current harnesses`. This task is verify-only
 on those sibling-owned passages and co-edits the shared inventory/README surfaces
 in that ownership order.
@@ -77,7 +79,7 @@ from a run's written `results.json`
 summary. Its Findings note records precise `15/25` on the then-25-entry set as
 historical protocol precedent only — not this task's numeric floor. Dated
 evidence that the archived fraction is already unreachable on today's file:
-precise `15/31` and `18/31` on the then-current cohort
+precise `15/31` and `18/31` in deployed mode on the then-current cohort
 (`tests/trigger_evals/results/task/2026-08-11_204958/` and
 `tests/trigger_evals/results/task/2026-08-11_210206/`). The pre-existing
 cohort is always the entries in `tests/trigger_evals/task.json` as it stands
@@ -135,20 +137,17 @@ every post-merge task-family harness directory that exists on disk alongside the
 entries already listed, keeping that section's existing bullet shape (directory
 name, pattern, one-line coverage). Ordered co-edit per Live sibling interactions in
 Context — add or refresh only the task-family bullets; preserve the wiki front-end
-task's wiki-harness passage and the trigger-eval repair's zero-recall guidance when
-either is already present.
+task's wiki-harness passage when it is already present.
 
 Add trigger eval cases naming `task_auto_check` as the expected skill, matching the
 per-sibling case count the set already uses, and phrase them as the requests a user
 actually makes to reach the loop rather than as variants of a readiness question
-that the family accepts routing to `task_check`. After
-tests_trigger-eval-harness-repair.md has restored a measuring runner, re-run the
-set under the recorded protocol and report the new cases' own pass rate separately
-from the pre-existing cohort, applying the **Trigger no-regression bar** in
-Context.
+that the family accepts routing to `task_check`. Then re-run the set under the
+recorded protocol and report the new cases' own pass rate separately from the
+pre-existing cohort, applying the **Trigger no-regression bar** in Context.
 
 **Out of scope:** editing any `description:` frontmatter to move a routing result.
-[The sibling trigger-routing task](archive/task-family_sibling-trigger-routing.md)
+[The sibling trigger-routing task](task-family_sibling-trigger-routing.md)
 measured that lever and holds it rejected, and this task changes test coverage
 rather than the skills under test.
 
@@ -168,7 +167,7 @@ rather than the skills under test.
 - A search of the tests tree for the old plural directory path returns no
   references from any runner, cache helper, or documentation file.
 - Every `tests/tasks/` harness path in
-  [task-family_cross-link-hygiene.md](archive/task-family_cross-link-hygiene.md)
+  [task-family_cross-link-hygiene.md](task-family_cross-link-hygiene.md)
   Approach and Acceptance is rewritten in place to the singular `tests/task/`
   equivalent, and searching that sibling for `tests/tasks/` returns no
   harness-path hits.
@@ -180,9 +179,8 @@ rather than the skills under test.
   task-family harness directory that exists on disk alongside its prior entries
   (including the existing `task_create/` family entry), so an operator following
   the standing-repo-rules pointer finds each family harness by skill-directory
-  name; when the wiki front-end task's wiki-harness passage or the trigger-eval
-  repair's zero-recall guidance is already present under that list, it remains
-  unchanged.
+  name; when the wiki front-end task's wiki-harness passage is already present under
+  that list, it remains unchanged.
 - The family trigger eval set contains cases naming `task_auto_check` as the
   expected skill, where it contains none today, at the per-sibling count the set
   already uses.
@@ -202,3 +200,65 @@ rather than the skills under test.
   disposition (accepted limitation under Out of scope — no description edits)
   rather than treating the shortfall as incomplete work; a `task_auto_check`
   pass rate below the per-query threshold is recorded the same way.
+
+## Findings
+
+Trigger measurement under the recorded protocol (`--runs-per-query 3`, 50%
+per-query threshold, `--model claude-sonnet-4-6`, verdict read from each run's
+`results.json` summary).
+
+- **Pre-change baseline:** `tests/trigger_evals/results/task/2026-08-30_175211/`
+  — precise **18/31**, family 24/31 over the pre-existing cohort. Taken fresh
+  rather than reused: `task.json` was unchanged since the archived `18/31` run,
+  but four family descriptions (`task_fix`, `task_audit`, `task_select`,
+  `task_explain`) changed after it, so the thing under test had moved and the
+  standing verification-economy rule calls for a new run.
+- **Post-change run:** `tests/trigger_evals/results/task/2026-08-30_175359/`
+  — 34 entries. Over the **same 31 pre-existing entries and the same
+  denominator**: precise **17/31**, family 25/31. Over the **3 new
+  `task_auto_check` entries**: precise **1/3**, family 3/3.
+- **No-regression check: shortfall of 1 on the pre-existing cohort**
+  (17/31 against the 18/31 baseline). Disposition: **accepted limitation**
+  under the task's Out of scope — no description edits. The whole delta is
+  one query, `task_fix`'s "lint and repair the task backlog", moving 3/3 to
+  1/3 as `task_audit` took two runs. Its text, its `expected_skill`, and every
+  family description were byte-identical across the two runs, so no mechanism
+  in this change reaches it; it is worker sampling variance. Same-cohort
+  precise has measured 15/31 and 18/31 (2026-08-11) and 17/31 and 18/31
+  (2026-08-30), a spread of 3 on identical inputs.
+- **`task_auto_check` cases: 1/3, below the 50% per-query threshold.**
+  Recorded the same way, as an accepted limitation rather than incomplete
+  work. Only "run the autonomous readiness loop on … refreshing it against
+  the current codebase" passes, at 3/3. "auto-fix the readiness issues on
+  … until it comes back ready" goes to `task_check` 3/3, and "make this task
+  ready for me — repair whatever is blocking it, but don't implement it yet"
+  goes to `task_select` 3/3. All three phrasings are loop invocations drawn
+  from the skill's own `Use when` triggers, so the two failures are sibling
+  description bleed the eval set now surfaces, which is what the coverage was
+  added to do. Each failing entry carries its disposition as a JSON-legal
+  `note` field beside it in `task.json`, matching the convention the sibling
+  trigger-routing task established; `run.py`'s `normalize_eval_entry` reads
+  only `query` and `expected_skill` and ignores the field.
+- **Protocol note:** pass `--skill-path plugins/ai_dev/skills/task`. Without
+  it the runner finds no source skill, the family auto-derives to `['task']`
+  alone, and the family metric collapses (a first run this session read
+  family 4/31 that way). Precise scoring is unaffected. Both runs above use
+  the flag; the harness `README.md` and `RUNBOOK.md` now state it.
+
+Deterministic surfaces after the merge: `tests/task/run_all.sh` exits 0,
+driving `script_tests/run.sh` at 54 scenarios — 54 pass, 0 fail, 0 skip, the
+same count it reported before the move — and `script_tests/contract_run.sh`,
+which failed on the drifted `without introducing a change the context cannot
+settle` needle before this change and passes after both needles were
+refreshed to live skill prose.
+
+Two reconciliations beyond the literal brief, both recorded here rather than
+left silent. The `trigger_evals/` row in the tests tree's `CLAUDE.md` said
+"various wiki skills"; it now names the wiki and `task_*` families, since this
+task adds task-family cases to that harness and the Goal asks the inventory to
+name every task-family harness that exists. The same file's model-policy
+table, verdict-cache section, and worker-auth passage each omitted
+`task_create/evals/run.py` (and the model-policy table also omitted
+`task_auto_check/evals/run.py`) while all four Pattern A runners cache and use
+the shared auth helper; the rows and those passages now agree, as the
+acceptance requires. Non-task-family harnesses were left out of both surfaces.

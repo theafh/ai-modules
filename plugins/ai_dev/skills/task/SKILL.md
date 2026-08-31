@@ -1,7 +1,7 @@
 ---
 name: task
-description: Manage the project task backlog as plain markdown files in tasks. Use for broad backlog work including create, list, query, update, triage, implement, audit, finish, defer, archive, lint, split, or repair tasks.
-version: 1.3.31
+description: Manage the project task backlog as plain markdown files in tasks/. Use when the user asks to list or query existing tasks, to update or expand one, to triage or split backlog items, or to work across several tasks at once, and as the fallback for any tasks, todos, or backlog request naming no single lifecycle step. Not for one named step on one task, which a sibling owns for creation, readiness checking, explanation, next-work selection, implementation, audit, and finish.
+version: 1.3.32
 author: Andreas F. Hoffmann
 license: MIT
 ---

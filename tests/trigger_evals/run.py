@@ -416,6 +416,46 @@ def run_uuid_fallback(eval_set_path: Path, source_skill_path: Path,
     return parsed
 
 
+def _load_results(path: Path) -> dict:
+    """Load a results.json given either that file or its run directory."""
+    p = path if path.is_file() else path / "results.json"
+    return json.loads(p.read_text())
+
+
+def compare_to_baseline(current: dict, baseline_path: Path) -> dict:
+    """Diff this run's per-query precise verdicts against a prior run.
+
+    Matches queries by text on the intersection of the two sets, so an
+    eval set that grew or shrank still compares on its shared queries. A
+    single-query flip can be sampling noise at the 50%-over-3-runs
+    threshold, so the report carries both the verdict change and the
+    per-run trigger counts; treat a lone regression as a prompt to re-run,
+    not proof of a real routing change.
+    """
+    base = _load_results(baseline_path)
+    cur_q = {r["query"]: r for r in current.get("results", [])}
+    base_q = {r["query"]: r for r in base.get("results", [])}
+    shared = [q for q in cur_q if q in base_q]
+    regressions, improvements = [], []
+    for q in shared:
+        b, c = base_q[q], cur_q[q]
+        move = {"query": q, "expected_skill": c["expected_skill"],
+                "baseline_precise": b["precise_triggers"],
+                "current_precise": c["precise_triggers"], "runs": c["runs"]}
+        if b["precise_pass"] and not c["precise_pass"]:
+            regressions.append(move)
+        elif c["precise_pass"] and not b["precise_pass"]:
+            improvements.append(move)
+    return {
+        "baseline_path": str(baseline_path),
+        "shared_queries": len(shared),
+        "only_in_current": sorted(set(cur_q) - set(base_q)),
+        "only_in_baseline": sorted(set(base_q) - set(cur_q)),
+        "regressions": regressions,
+        "improvements": improvements,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--eval-set", required=True)
@@ -447,6 +487,10 @@ def main() -> int:
                         help="Per-query timeout in seconds.")
     parser.add_argument("--workers", type=int, default=10)
     parser.add_argument("--results-dir", default=None)
+    parser.add_argument("--baseline", default=None,
+                        help="Prior results.json (or its run dir) to diff this run "
+                             "against per query. Reports precise regressions and "
+                             "improvements; a regression makes the exit code non-zero.")
     parser.add_argument("--force-uuid", action="store_true",
                         help="Skip deployed detection and use uuid fallback. "
                              "Mostly useful for testing the upstream runner "
@@ -530,6 +574,15 @@ def main() -> int:
             print(f"ERROR: {e}", file=sys.stderr)
             return 1
 
+        baseline_cmp = None
+        if args.baseline and output["mode"] == "deployed":
+            try:
+                baseline_cmp = compare_to_baseline(output, Path(args.baseline).resolve())
+                output["baseline_comparison"] = baseline_cmp
+            except Exception as e:
+                log.write(f"\nWARNING: could not compare to baseline: {e}\n")
+                print(f"WARNING: could not compare to baseline: {e}", file=sys.stderr)
+
         results_path.write_text(json.dumps(output, indent=2))
 
         if output["mode"] == "deployed":
@@ -548,6 +601,28 @@ def main() -> int:
             print(f"Family:  {s['family_passed']}/{s['total']} "
                   f"({s['family_passed']/s['total']*100:.0f}%) — any family member loaded "
                   f"when expected (or none, when expected_skill=null)")
+            if baseline_cmp is not None:
+                regs, imps = baseline_cmp["regressions"], baseline_cmp["improvements"]
+                header = (f"Baseline: {baseline_cmp['shared_queries']} shared queries vs "
+                          f"{baseline_cmp['baseline_path']}")
+                print(header); log.write("\n" + header + "\n")
+                if not regs and not imps:
+                    line = "  no per-query precise change vs baseline"
+                    print(line); log.write(line + "\n")
+                for r in regs:
+                    line = (f"  REGRESSION {r['baseline_precise']}/{r['runs']} -> "
+                            f"{r['current_precise']}/{r['runs']} "
+                            f"expected={r['expected_skill'] or '<none>'} : {r['query'][:70]}")
+                    print(line); log.write(line + "\n")
+                for r in imps:
+                    line = (f"  improved   {r['baseline_precise']}/{r['runs']} -> "
+                            f"{r['current_precise']}/{r['runs']} "
+                            f"expected={r['expected_skill'] or '<none>'} : {r['query'][:70]}")
+                    print(line); log.write(line + "\n")
+                if regs:
+                    tip = ("  note: a lone per-query flip can be sampling noise at the "
+                           "50%-over-3-runs threshold; re-run to confirm before acting.")
+                    print(tip); log.write(tip + "\n")
         else:
             # uuid fallback uses upstream schema
             s = output.get("summary", {})
@@ -558,6 +633,11 @@ def main() -> int:
     print(f"results.json: {results_path}")
     print(f"run.log:      {log_path}")
     if output["mode"] == "deployed":
+        cmp = output.get("baseline_comparison")
+        if cmp is not None:
+            # With a baseline the meaningful signal is regression, not the
+            # absolute pass rate (which never reaches 100% on this eval set).
+            return 1 if cmp["regressions"] else 0
         return 0 if output["summary"]["precise_passed"] == output["summary"]["total"] else 1
     return 0 if output.get("summary", {}).get("passed", 0) == output.get("summary", {}).get("total", 0) else 1
 

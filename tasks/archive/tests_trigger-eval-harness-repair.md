@@ -2,8 +2,8 @@
 description: Repair the trigger-eval harness, which reports a zero trigger rate on every positive query, so its numbers measure skill triggering again, then re-baseline the recorded results.
 scope: "local test harnesses"
 created: 2026-08-11T18:59:52
-updated: 2026-08-11T18:59:52
-status: open
+updated: 2026-08-30T16:53:10
+status: deferred
 reported-by: Andreas Hoffmann
 ---
 
@@ -28,7 +28,7 @@ reads like a description that matches nothing.
 
 The runner resolves the skill under test from the deployed skill tree, with a
 fallback path when that lookup misses. The finished precedent
-[archive/task-family_sibling-trigger-routing.md](archive/task-family_sibling-trigger-routing.md)
+[archive/task-family_sibling-trigger-routing.md](task-family_sibling-trigger-routing.md)
 records that the runner reads the deployed descriptions and produced non-zero
 routing numbers for the `task*` fixtures, so the harness worked at that time. What
 has changed since is how artefacts reach the deployed tree, which makes the
@@ -42,7 +42,7 @@ harness works again.
 
 The harness is shared: it carries `task` and `task_explain` fixtures beside the
 four wiki ones, so this repair is repo-wide tooling rather than wiki-specific.
-[wiki_activation-surface-and-descriptions.md](wiki_activation-surface-and-descriptions.md)
+[wiki_activation-surface-and-descriptions.md](../wiki_activation-surface-and-descriptions.md)
 rewrites two of those descriptions and needs this harness to measure the result,
 so that task consumes what this one restores.
 [task-family_test-harness-consolidation.md](task-family_test-harness-consolidation.md)
@@ -68,7 +68,7 @@ that inventory section.
 **Out of scope:**
 
 - Rewriting any skill description, owned by
-  [wiki_activation-surface-and-descriptions.md](wiki_activation-surface-and-descriptions.md).
+  [wiki_activation-surface-and-descriptions.md](../wiki_activation-surface-and-descriptions.md).
 - Changing the optimization loop's search strategy or its iteration budget.
 
 ## Acceptance

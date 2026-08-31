@@ -17,7 +17,10 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `wiki/` | `wiki` | Pattern B (legacy two-layer) | Layer 1 deterministic script unit tests + Layer 2 LLM skill-behavior evals via custom orchestrator. |
 | `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
 | `language_humanizer/` | `language_humanizer` | Pattern A (behavioral only) | 3 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py` for the qualitative assertions. |
-| `trigger_evals/` | various wiki skills | local `run.py` wrapper (auto: deployed-mode or UUID fallback) | Whether a skill *triggers* on realistic user messages (description-matching), separate from skill *behavior*. |
+| `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/` holds a behavioral eval per family member. `run_all.sh` drives both script runners. |
+| `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
+| `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks + `evals/` over the autonomous readiness loop (repair-to-ready, gate/verifier/drift stops, mechanical lint cleanup). |
+| `trigger_evals/` | wiki and `task_*` family skills | local `run.py` wrapper (auto: deployed-mode or UUID fallback) | Whether a skill *triggers* on realistic user messages (description-matching), separate from skill *behavior*. |
 
 Pattern A is preferred for new harnesses. Pattern B stays in `wiki/`
 until the next significant iteration; don't bring up new harnesses
@@ -41,19 +44,24 @@ aggregation — runs on the inherited session model. Concretely:
 | `trigger_evals/run.py` | `claude -p` per query (`--model` default `claude-sonnet-4-6`) | precise/family scoring — pure Python, no model |
 | `wiki/layer2/run.py` | `claude -p` per scenario×pass (`--model` default `claude-sonnet-4-6`) | `grade.py` / `aggregate.py` — pure Python, no model |
 | `git_commit/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
-| `tasks/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
+| `task/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
+| `task_create/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
+| `task_auto_check/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 
 Each runner takes `--model` to override, and `--model ''` inherits the
 CLI default. The behavioral eval runners (`git_commit/evals/run.py`,
-`tasks/evals/run.py`) automate the old operator-driven Phase 2: instead
+`task/evals/run.py`, `task_create/evals/run.py`,
+`task_auto_check/evals/run.py`) automate the old operator-driven Phase 2:
+instead
 of running the skill yourself in-session (which would use the inherited
 model), let the runner spawn the sonnet worker, then read `response.txt`
 for the prose-verdict expectations `grade.sh` can't check.
 
 ### Verdict cache: skip re-running an eval whose inputs haven't changed
 
-The three Pattern-A behavioral runners (`git_commit/evals/run.py`,
-`tasks/evals/run.py`, `task_auto_check/evals/run.py`) cache each eval's
+The four Pattern-A behavioral runners (`git_commit/evals/run.py`,
+`task/evals/run.py`, `task_create/evals/run.py`,
+`task_auto_check/evals/run.py`) cache each eval's
 graded verdict and skip re-spawning its `claude -p` worker when nothing that
 determines the verdict has changed. The shared helper is
 `tests/lib/eval_cache.py`; verdicts live per-harness in
@@ -119,9 +127,9 @@ login. The shared helper `tests/lib/worker_auth.py` does this — its
 `worker_env()` pops `CLAUDECODE` and the HAS_*_REFRESH flags, and its
 `preflight_auth()` fails fast on a dead login with one live `claude -p`
 probe (the remediation below) instead of 401-ing every eval. Every
-`claude -p` runner imports the helper: `tasks/evals/run.py`,
-`task_auto_check/evals/run.py`, and `git_commit/evals/run.py` use both
-the pre-flight and the worker env; `trigger_evals/run.py` and
+`claude -p` runner imports the helper: `task/evals/run.py`,
+`task_create/evals/run.py`, `task_auto_check/evals/run.py`, and
+`git_commit/evals/run.py` use both the pre-flight and the worker env; `trigger_evals/run.py` and
 `wiki/layer2/run.py` use `worker_env()`.
 
 **Failure signature:** worker rc≠0 with
@@ -542,6 +550,44 @@ After material edits to a skill's `description:` frontmatter, after
 adding or renaming a sibling skill in the same family, or when
 adding a new skill. Don't run them on every skill-content change —
 they're slow and the description usually isn't what you just edited.
+
+### Always diff against the prior run: `--baseline`
+
+The absolute pass rate hides drift. The precise rate is noisy (each
+query passes on a 50%-over-3-runs threshold), so two runs can report
+the same headline number while individual queries move underneath it.
+A routing regression once sat unnoticed for 19 days behind a flat
+aggregate for exactly this reason: a `description:` change to one
+sibling pulled two queries to it (2/2 precise before, 0 across five
+runs after), and nothing compared runs per query.
+
+So pass the prior run as `--baseline` on every trigger run:
+
+```bash
+python3 tests/trigger_evals/run.py \
+  --eval-set tests/trigger_evals/task.json \
+  --skill task --skill-path plugins/ai_dev/skills/task \
+  --model claude-sonnet-4-6 --runs-per-query 3 --timeout 45 --workers 10 \
+  --baseline tests/trigger_evals/results/task/<prior-timestamp>
+```
+
+`--baseline` accepts the prior run's directory or its `results.json`.
+The run then diffs per query on the shared cohort and reports each
+`REGRESSION` (a query that passed in the baseline and now fails) and
+each `improvement` (the reverse), with the before/after trigger
+counts. A regression makes the exit code non-zero, turning the
+runner into a real drift signal instead of the always-non-zero
+"did every query pass" check it was before. The comparison is also
+written into `results.json` under `baseline_comparison`.
+
+A lone per-query flip can still be sampling noise at the 50% threshold
+— the report says so — so confirm a single regression with a re-run
+before acting on it. A query that fails persistently and is understood
+(name-token dominance, an inline-acting model the runner can't observe,
+accepted sibling bleed) carries its disposition as a `note` field beside
+its entry in the eval set, so a baseline that already shows it failing
+never flags it as new. The detector's own unit tests live in
+`tests/trigger_evals/script_tests/run.sh` (hermetic, no LLM cost).
 
 ### Acting on family-only passes
 

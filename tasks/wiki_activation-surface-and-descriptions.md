@@ -2,7 +2,7 @@
 description: Realign the wiki family's activation surface: hub stops claiming import and audit ground, purpose-first descriptions, em-dash sentence splits, and trigger fixtures aligned to the boundary.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-08-13T22:32:17
+updated: 2026-08-30T17:36:22
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -55,9 +55,9 @@ break.
 Two related items bound the work. [archive/task-family_sibling-trigger-routing.md](archive/task-family_sibling-trigger-routing.md)
 records that description-sharpening regressed routing for the `task_*` family
 while naming helped, so treat wording changes here as measured rather than
-assumed. The measurement surface is currently unusable, and
-[tests_trigger-eval-harness-repair.md](tests_trigger-eval-harness-repair.md) owns
-repairing it, so the measured re-run happens once that lands.
+assumed. The trigger-eval surface measures in deployed mode, where the wiki
+fixtures score non-zero, so that measurement is available to check the wording
+changes here rather than blocked on a runner repair.
 
 Co-edit:
 [ai-dev_skill-doctor-typographic-punctuation-finding.md](archive/ai-dev_skill-doctor-typographic-punctuation-finding.md)
@@ -95,8 +95,7 @@ this task's verification holds either way.
   session already inside a wiki.
 - Family declaration and authority blocks, owned by
   [wiki_family-inheritance-blocks.md](wiki_family-inheritance-blocks.md).
-- Repairing the trigger-eval runner, owned by
-  [tests_trigger-eval-harness-repair.md](tests_trigger-eval-harness-repair.md).
+- Changing the trigger-eval runner, a separate harness this task does not touch.
 
 ## Acceptance
 

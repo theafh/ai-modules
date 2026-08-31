@@ -2,14 +2,14 @@
 
 Pattern A (skill-creator-aligned), behavioral only. `task_create` ships no
 scripts of its own — it drives the base `task` skill's `discover_tasks.sh`,
-`init_tasks.sh`, and `lint.py`, which `tests/tasks/script_tests/` already
+`init_tasks.sh`, and `lint.py`, which `tests/task/script_tests/` already
 covers — so there is no `script_tests/` and no `run_all.sh` here.
 
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
 | Skill behavior | `evals/` | the base **Decide or label** rule as the create path applies it: reconcile silently, else label *and* surface (stage → agent → grade) | `python3 tests/task_create/evals/run.py` |
 
-The whole-family behavioral suite lives in `tests/tasks/evals/` and keeps its
+The whole-family behavioral suite lives in `tests/task/evals/` and keeps its
 own `create`, `create_scope_trim`, `standing_rules_create`, and
 `lossless_single` evals for the rest of the create path. This harness is the
 one that exercises the open-decision half of it.

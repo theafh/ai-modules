@@ -5,7 +5,7 @@
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=tests/tasks/evals/fixtures/_common.sh
+# shellcheck source=tests/task/evals/fixtures/_common.sh
 . "$THIS_DIR/../_common.sh"
 
 target="${1:?target dir required}"
