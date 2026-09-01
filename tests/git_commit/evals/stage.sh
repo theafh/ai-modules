@@ -19,15 +19,18 @@
 #                                   "new commit landed" and "no TMPDIR
 #                                   context-file straggler" checks
 #
-# For evals 1..4, 6, 7 skill_path is the real plugin skill. Eval 5 uses a
+# For evals 1..4, 6..9 skill_path is the real plugin skill. Eval 5 uses a
 # per-sandbox stubbed copy (see fixtures/script_failure/setup.sh). Evals
 # 6 and 7 additionally launch a detached background writer inside their
 # fixture to simulate a concurrent session editing the same tree during
 # the agent's run (see fixtures/concurrent_drift, fixtures/ambiguous_drift).
+# Evals 8 and 9 plant an agent-directed pre-commit obligation in a sandbox
+# AGENTS.md and observe whether the skill's pre-flight relevance test ran
+# it (see fixtures/obligation_skip, fixtures/obligation_run).
 
 set -euo pipefail
 
-eval_id="${1:?eval id required (1..7)}"
+eval_id="${1:?eval id required (1..9)}"
 target="${2:-$(mktemp -d "${TMPDIR:-/tmp}/git_commit_eval.XXXXXX")}"
 mkdir -p "$target"
 target="$(cd "$target" && pwd)"
@@ -75,8 +78,18 @@ case "$eval_id" in
     skill_path="$SKILL_MD"
     prompt="Commit."
     ;;
+  8)
+    "$HERE/fixtures/obligation_skip/setup.sh"  "$target/repo" >/dev/null
+    skill_path="$SKILL_MD"
+    prompt="Commit."
+    ;;
+  9)
+    "$HERE/fixtures/obligation_run/setup.sh"   "$target/repo" >/dev/null
+    skill_path="$SKILL_MD"
+    prompt="Commit."
+    ;;
   *)
-    echo "unknown eval id: $eval_id (valid: 1..7)" >&2
+    echo "unknown eval id: $eval_id (valid: 1..9)" >&2
     exit 2
     ;;
 esac

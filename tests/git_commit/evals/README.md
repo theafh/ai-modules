@@ -59,7 +59,9 @@ tests/git_commit/evals/
     ├── large_changeset/setup.sh
     ├── script_failure/setup.sh     # self-contained — copies a stubbed skill
     ├── concurrent_drift/setup.sh   # foreign drift — detached writer, expects a pause
-    └── ambiguous_drift/setup.sh    # same-path drift — detached writer, expects commit-all
+    ├── ambiguous_drift/setup.sh    # same-path drift — detached writer, expects commit-all
+    ├── obligation_skip/setup.sh    # pre-flight relevance test — expects a stated skip
+    └── obligation_run/setup.sh     # pre-flight relevance test — expects the gate to run
 ```
 
 ## One-shot run (the default)
@@ -71,9 +73,10 @@ model; the prose-verdict expectations stay for you to confirm from the
 captured `response.txt` on the inherited session model.
 
 ```bash
-python3 tests/git_commit/evals/run.py            # all evals (1..7)
+python3 tests/git_commit/evals/run.py            # all evals (1..9)
 python3 tests/git_commit/evals/run.py 2 5        # just evals 2 and 5
 python3 tests/git_commit/evals/run.py 6 7        # just the drift-guard evals
+python3 tests/git_commit/evals/run.py 8 9        # just the pre-flight relevance evals
 python3 tests/git_commit/evals/run.py --model '' # inherit the CLI default instead
 ```
 
@@ -86,6 +89,16 @@ Eval 6 expects the skill to **pause** on the new outside-baseline file (no
 commit lands); eval 7 expects **commit-all** on an ambiguous same-path edit.
 If eval 6 shows the agent committed instead of pausing, the write likely fell
 outside that window — retry or tune `GIT_COMMIT_DRIFT_DELAY`.
+
+Evals 8 and 9 exercise `<prepare_worktree>`'s **relevance test** and are a
+matched pair: each sandbox plants one agent-directed pre-commit obligation in
+its own `AGENTS.md`, backed by a gate script that records having run by writing
+its epoch second under `.eval/markers/`. Eval 8's gate governs the Python
+package under `src/` while the commit changes `docs/handbook.md`, so the skill
+must **skip** it and say why; eval 9's gate lints Markdown under `docs/` against
+that same change, so the skill must **run** it before the commit lands. Run them
+together — eval 9 is eval 8's control, and a skip that came from ignoring
+`AGENTS.md` altogether shows up as an eval 9 failure.
 
 Per eval it writes `workspace/run-<ts>/<id>/{response.txt, stderr.txt,
 timing.json, grading.txt}` and exits 0 only if every eval's grade
@@ -101,7 +114,7 @@ agent running the skill against the staged sandbox.
 
 ```bash
 eval "$(bash tests/git_commit/evals/stage.sh <eval_id> [target_dir])"
-# eval_id: 1..7
+# eval_id: 1..9
 # target_dir: optional; if omitted, mktemp -d is used
 #
 # After eval, three shell variables are set:
@@ -157,6 +170,7 @@ manually from the agent's transcript.
 | Commit message shape ("file -> change" lines, summary sentence) | `git log -1 --format=%B HEAD` |
 | HEAD diff covers the expected file set | `git show --name-only HEAD` |
 | No `git_commit_context.*` straggler in TMPDIR | `find $TMPDIR -newer <marker>` |
+| Pre-flight gate ran or skipped an obligation | presence and epoch second of `.eval/markers/<gate>` |
 
 And these are marked `agent-attest` (not auto-checked):
 
@@ -176,6 +190,13 @@ And these are marked `agent-attest` (not auto-checked):
   file is present-but-uncommitted.)
 - Eval 7: the skill did not pause on the ambiguous same-path edit — the
   commit-all tiebreaker swept `seed.txt`'s latest content in.
+- Eval 8: the skill discovered the `AGENTS.md` obligation and stated the
+  grounds for skipping it — the gate governs `src/`, the commit changes
+  `docs/handbook.md`. (Deterministic half: the gate's marker is absent and
+  the commit still landed.)
+- Eval 9: the skill ran the obligation because the changed paths intersect
+  the subject matter it governs. (Deterministic half: the marker exists and
+  its epoch second is no later than the commit's.)
 
 ## Fixtures
 
@@ -192,6 +213,14 @@ plugin skill, overwrites `skill_under_test/scripts/prepare_commit_context.sh`
 with a failing stub, and lets the agent load the stubbed skill
 naturally. No runner-side wiring is required, which is what the
 "skill-creator is read-only" rule above demands.
+
+Evals 8 and 9 (`obligation_skip/`, `obligation_run/`) share the
+`plant_obligation_scaffold` helper in `_common.sh`, which writes and commits
+the sandbox's `AGENTS.md`, its `tools/<gate>.sh`, `docs/handbook.md`,
+`src/app.py`, and a `.gitignore` covering `.eval/`. Committing the scaffold
+leaves the fixture's own edit as the only dirty path, so the changed path set
+the relevance test reads is unambiguous, and gitignoring `.eval/` keeps the
+gate's marker out of both `git status` and the commit.
 
 Evals 6 and 7 (`concurrent_drift/`, `ambiguous_drift/`) each launch a
 **detached background writer** (`nohup ... &`) before returning, so running

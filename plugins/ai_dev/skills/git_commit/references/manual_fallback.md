@@ -18,19 +18,40 @@ workflow for any remaining steps.
 Preserve the primary workflow's `<prepare_worktree>` → `<gather_context>`
 ordering on the manual path. Before capturing context, discover every
 agent-directed rule that bears on the commit from all rule sources the current
-harness provides, satisfy every discovered tree-mutating obligation, and
-confirm each one is settled. A qualifying rule is a standing instruction
-addressed to the agent that only the agent invokes; repository and user
-standing instructions, agent memory, prompts, and further harness-provided
-sources are open-ended examples rather than an exhaustive source list.
+harness provides, decide each discovered obligation with the relevance test
+below, satisfy the ones it selects, and confirm each obligation it chose to run
+is settled. Discovery stays broad: finding a rule records that it exists, and
+the relevance test decides which candidates this commit runs. A qualifying rule
+is a standing instruction addressed to the agent that only the agent invokes;
+repository and user standing instructions, agent memory, prompts, and further
+harness-provided sources are open-ended examples rather than an exhaustive
+source list.
 
-Tree-mutating obligations clear this gate before either context path runs;
-check-only obligations may run here to expose a failure early. Leave
-command-triggered mechanical hooks, including git hooks and harness commit
-hooks, to the commit command that fires them so their logic runs once. This
-ordering honors agent-directed obligations, lets context be built and read once,
-and places the model's own pre-commit edits inside the reviewed-set baseline
-used by both drift-guard layers.
+The relevance test is domain intersection, and it governs tree-mutating and
+check-only obligations alike. Read the obligation to determine the subject
+matter it governs — the paths, file types, or artifacts it checks or rewrites —
+and compare that against the paths this commit changes, obtained here for path
+names alone by running `git status --short --untracked-files=all` once before
+either context path. Run the obligation when the two intersect and skip it when
+they do not, so a markdown lint over a documentation-only change still runs
+while a language- or asset-specific gate over that same change does not. Run an
+obligation whose governed subject matter you cannot determine, following the
+same no-miss-over-no-sweep tiebreaker the drift guard applies. State each skip
+as it happens, naming the obligation, the subject matter it governs, and the
+changed paths that miss it, so a wrong skip is correctable in the moment.
+
+The tree-mutating against check-only split governs ordering alone: a selected
+tree-mutating obligation clears this gate before either context path runs,
+while a selected check-only obligation may run on either side of that seam.
+Weigh where a check-only obligation runs on both counts — running it here
+exposes a failing gate before context work begins, and commit time spent on a
+check that exercises nothing this commit touched is the cost the relevance test
+exists to spare. Leave command-triggered mechanical hooks, including git hooks
+and harness commit hooks, to the commit command that fires them so their logic
+runs once. This ordering honors the agent-directed obligations this commit
+implicates, lets context be built and read once, and places the model's own
+pre-commit edits inside the reviewed-set baseline used by both drift-guard
+layers.
 
 ## Replacement for `prepare_commit_context.sh`
 

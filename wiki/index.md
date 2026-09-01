@@ -2,13 +2,13 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-08-30 | Total pages: 29
+> Last updated: 2026-09-01 | Total pages: 29
 
 ## Entities
 
 <!-- Alphabetical within section -->
 
-- [Anthropic Claude Code](entities/anthropic-claude-code.md) — configuration roots, skill loading, agent frontmatter tolerance, the file-edit read state, hooks, safe mode, and retired activation routes.
+- [Anthropic Claude Code](entities/anthropic-claude-code.md) — configuration roots, the hardcoded CLAUDE.md / AGENTS.md standing-instruction pair, skill loading, agent frontmatter tolerance, the file-edit read state, hooks, safe mode, and retired activation routes.
 - [Cursor](entities/cursor.md) — rules as the whole instruction mechanism, agent fields, and the undocumented home-directory rules folder.
 - [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md) — one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents, and preview plugins.
 - [Google Antigravity](entities/google-antigravity.md) — the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and four open verification gaps.

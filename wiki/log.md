@@ -609,3 +609,29 @@ caveat, and one open question were reconciled to the committed arrangement.
   "committed test tree")
 - index.md (updated the verification-surfaces summary line and the Last updated
   stamp)
+
+## [2026-09-01 13:23] update | Claude Code standing-instruction discovery verified
+
+The Claude Code entity page never said which files carry project standing
+instructions, a gap that surfaced while designing an eval sandbox that had to
+plant one. Build 2.1.226 states on its Codex-import path that it hardcodes the
+`CLAUDE.md` / `AGENTS.md` pair, which is also the point of contrast with Codex,
+where the filename set and its size bound are configurable settings. Two worker
+runs then honoured a rule written only in an `AGENTS.md`, confirming either
+filename stands alone.
+
+- entities/anthropic-claude-code.md (new dated standing-instruction-files
+  section covering the hardcoded filename pair, the Codex contrast, and the
+  observed either-filename-alone behaviour; `## Derived from` extended with the
+  build read and the two worker runs)
+- index.md (Anthropic Claude Code summary widened for the standing-instruction
+  pair; last-updated bumped)
+
+## [2026-09-01 13:26] lint | 0 blocking, 1 warn, 2 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is the
+pre-existing preamble deviation the open template-deviation work owns. The size
+info on `entities/openai-codex.md` is likewise pre-existing. The size info on
+`entities/anthropic-claude-code.md` is new: the standing-instruction section
+carried the page from 182 to 209 lines, past the ~200 soft threshold, and the
+split is left for a human to weigh rather than taken here.

@@ -16,7 +16,7 @@
 
 set -uo pipefail
 
-eval_id="${1:?eval id required (1..5)}"
+eval_id="${1:?eval id required (1..9)}"
 repo="${2:?sandbox repo path required}"
 
 if [[ ! -d "$repo/.git" ]]; then
@@ -159,8 +159,37 @@ case "$eval_id" in
     check "HEAD diff includes seed.txt (same-path drift committed, not dropped)" head_includes seed.txt
     check "committed seed.txt carries the concurrent further-edit marker (no-miss)" seed_has_marker
     ;;
+  8)
+    # Pre-flight relevance test — SKIP arm. The sandbox AGENTS.md obligation
+    # runs a Python gate over src/; the commit changes docs/handbook.md only.
+    # The two do not intersect, so the gate must not have run: its marker is
+    # absent. The commit still lands (covered by the universal checks above).
+    skip_marker="$repo/.eval/markers/verify_python"
+    gate_skipped() { [[ ! -e "$skip_marker" ]]; }
+    head_includes() { grep -qx "$1" <<<"$head_files"; }
+    check "irrelevant obligation skipped (no .eval/markers/verify_python)" gate_skipped
+    check "HEAD diff includes docs/handbook.md (the change still committed)" head_includes docs/handbook.md
+    ;;
+  9)
+    # Pre-flight relevance test — RUN arm, and eval 8's control. The sandbox
+    # AGENTS.md obligation lints Markdown under docs/ and the commit changes
+    # docs/handbook.md, so the gate must have run — and run at the pre-flight
+    # gate, meaning its recorded epoch second is no later than the commit's.
+    run_marker="$repo/.eval/markers/verify_docs"
+    commit_ct=$(git log -1 --format=%ct HEAD 2>/dev/null || echo 0)
+    gate_ran() { [[ -s "$run_marker" ]]; }
+    gate_ran_before_commit() {
+      local ran_at
+      ran_at=$(cat "$run_marker" 2>/dev/null) || return 1
+      [[ -n "$ran_at" && "$ran_at" -le "$commit_ct" ]]
+    }
+    head_includes() { grep -qx "$1" <<<"$head_files"; }
+    check "relevant obligation ran (.eval/markers/verify_docs written)" gate_ran
+    check "obligation ran before the commit landed (marker epoch <= commit epoch)" gate_ran_before_commit
+    check "HEAD diff includes docs/handbook.md" head_includes docs/handbook.md
+    ;;
   *)
-    echo "unknown eval id: $eval_id (valid: 1..7)" >&2
+    echo "unknown eval id: $eval_id (valid: 1..9)" >&2
     exit 2
     ;;
 esac
@@ -196,6 +225,12 @@ case "$eval_id" in
     ;;
   7)
     note_agent_attest "the skill did NOT pause: same-path drift is ambiguous, so the commit-all tiebreaker swept seed.txt's latest content in"
+    ;;
+  8)
+    note_agent_attest "the skill discovered the AGENTS.md pre-commit obligation and skipped it, stating the grounds: the Python gate governs src/ and this commit changes docs/handbook.md only"
+    ;;
+  9)
+    note_agent_attest "the skill ran the docs obligation at the pre-flight gate because the changed paths intersect the subject matter it governs"
     ;;
 esac
 

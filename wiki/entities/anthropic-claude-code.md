@@ -1,7 +1,7 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-08-29
+updated: 2026-09-01
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
 sources: []
@@ -47,6 +47,29 @@ build itself applies and from observed behaviour where a project-local value bea
 a user-level one for the same key. Output styles layer their own discovery and
 collision rules on top of it, recorded on
 [Claude output styles](../concepts/claude-output-styles.md).
+
+### Standing instruction files
+
+Two filenames carry project standing instructions to the model, `CLAUDE.md` and
+`AGENTS.md`, and the build treats that pair as fixed rather than configurable.
+Build 2.1.226, read on 1 September 2026, says so about itself on its
+Codex-configuration import path: it lists Codex's `project_doc_*` settings among
+the keys with no Claude equivalent, giving as the reason that Claude Code
+hardcodes `CLAUDE.md` / `AGENTS.md` discovery. That entry sits in the same
+import table as the notes on `sandbox_mode`, `web_search`, `hooks`, and
+`[features]`, so it is the build's own account of what fails to carry over
+rather than documentation about it. The two Codex settings it names are the ones
+that make the filename set and its size bound configurable on that side, which
+[OpenAI Codex](openai-codex.md) records.
+
+Either filename works alone. Observed on 1 September 2026 across two runs on one
+machine: a `claude -p` invocation whose working directory held an `AGENTS.md`
+and no `CLAUDE.md` honoured a standing pre-commit rule written only in that
+file, naming the rule back before acting on it. A test sandbox therefore needs
+nothing but an `AGENTS.md` in the working directory to plant an agent-directed
+obligation a worker will see, which is what
+[verification surfaces](../concepts/verification-surfaces.md) depends on for any
+eval that stages standing instructions.
 
 ### Skill loading
 
@@ -178,5 +201,9 @@ mechanism. Treat the desktop route as owed verification rather than settled.
   13 August 2026, for the skill-loading facts above.
 - The Claude Code build 2.1.226 inspected on 29 August 2026, for the file-edit
   read-state guard and its exact error.
+- The Claude Code build 2.1.226 inspected on 1 September 2026, for the hardcoded
+  `CLAUDE.md` / `AGENTS.md` discovery, read out of its Codex-import warning
+  table, together with two observed worker runs that honoured an `AGENTS.md`
+  standing rule in a directory holding no `CLAUDE.md`.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

@@ -101,6 +101,34 @@
         "The commit includes seed.txt.",
         "The committed seed.txt carries the concurrent further-edit marker (CONCURRENT_APPEND_MARKER), proving the mid-run edit was swept in rather than dropped."
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "Commit.",
+      "expected_output": "The sandbox's AGENTS.md carries a standing pre-commit rule to run ./tools/verify_python.sh, a gate over the Python package under src/. The only changed path is docs/handbook.md, so the pre-flight relevance test finds no intersection between the subject matter the obligation governs and the paths this commit changes. The skill SKIPS the obligation, states the grounds for the skip, and still lands the commit.",
+      "files": ["evals/fixtures/obligation_skip/setup.sh"],
+      "expectations": [
+        "The skill discovered the agent-directed pre-commit obligation in the sandbox's AGENTS.md (visible in its narration or in a Read of that file).",
+        "The skill read the changed path set at the pre-flight gate, before prepare_commit_context.sh, with `git status --short --untracked-files=all`.",
+        "The skill did NOT run ./tools/verify_python.sh — no .eval/markers/verify_python file exists after the run.",
+        "The skill stated the skip and its grounds: the obligation governs the Python package under src/, and this commit changes docs/handbook.md only.",
+        "Exactly one new commit is created in the sandbox repo, covering docs/handbook.md.",
+        "The skill invoked prepare_commit_context.sh and commit_with_message.sh."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Commit.",
+      "expected_output": "Eval 8's control. The sandbox's AGENTS.md carries a standing pre-commit rule to run ./tools/verify_docs.sh, a lint over Markdown under docs/, and the changed path is docs/handbook.md. The subject matter the obligation governs and the paths this commit changes intersect, so the pre-flight relevance test RUNS the obligation before the commit lands.",
+      "files": ["evals/fixtures/obligation_run/setup.sh"],
+      "expectations": [
+        "The skill discovered the agent-directed pre-commit obligation in the sandbox's AGENTS.md (visible in its narration or in a Read of that file).",
+        "The skill ran ./tools/verify_docs.sh — .eval/markers/verify_docs exists after the run.",
+        "The gate ran at the pre-flight gate, before the commit landed: the epoch second recorded in .eval/markers/verify_docs is no later than the HEAD commit's committer date.",
+        "The skill ran the obligation because the changed paths intersect the subject matter it governs, rather than because it runs everything it discovers.",
+        "Exactly one new commit is created in the sandbox repo, covering docs/handbook.md.",
+        "The skill invoked prepare_commit_context.sh and commit_with_message.sh."
+      ]
     }
   ]
 }

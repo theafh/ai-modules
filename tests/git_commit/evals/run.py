@@ -28,7 +28,7 @@ The prose-verdict expectations in evals.json remain operator-confirmed
 from the captured `response.txt`.
 
 Usage:
-    python3 tests/git_commit/evals/run.py [eval_id ...]   # default 1..7
+    python3 tests/git_commit/evals/run.py [eval_id ...]   # default 1..9
       [--model claude-sonnet-4-6]   # '' inherits the CLI default
       [--timeout 300] [--claude-bin claude]
 """
@@ -61,7 +61,7 @@ def source_roots_for(skill_path: str):
     return [pathlib.Path(skill_path).parent]
 
 
-DEFAULT_IDS = ["1", "2", "3", "4", "5", "6", "7"]
+DEFAULT_IDS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 WORKER_PROMPT = """\
 You are running an automated skill regression eval. Do exactly this:
@@ -194,7 +194,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("ids", nargs="*", default=None,
-                        help="Eval ids to run (default: 1 2 3 4 5 6 7)")
+                        help="Eval ids to run (default: 1 2 3 4 5 6 7 8 9)")
     parser.add_argument("--model", default="claude-sonnet-4-6",
                         help="Worker model for the skill under test "
                              "(default: claude-sonnet-4-6). '' inherits the "
