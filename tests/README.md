@@ -67,6 +67,12 @@ don't bring up new harnesses under Pattern B.
   bundled-script scenarios). `evals/` defined (5 evals with fixtures);
   the runner is skill-creator's own `scripts.run_eval`, invoked
   out-of-band per `evals/README.md`.
+- **`git_checkout/`** — Pattern A. `script_tests/` implemented (14
+  bundled-script scenarios over staged clones with real remotes).
+  `evals/` defined (7 evals over 5 fixtures) and run operator-driven
+  in a session: stage a fixture, let the agent run the skill, inspect
+  the repository and transcript against the expectations. See
+  `evals/README.md`.
 - **`language_humanizer/`** — Pattern A, behavioral only (the skill
   ships no scripts, so there is no `script_tests/`). 3 scenarios × a
   fixed 5-pass denominator, graded by a deterministic `grade.py` plus a

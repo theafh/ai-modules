@@ -53,6 +53,7 @@ ai-modules/
 │       ├── hooks/           # shared hook scripts plus Claude/Codex/Antigravity hook configs
 │       └── skills/
 │           ├── git_commit/
+│           ├── git_checkout/
 │           ├── git_refresh/
 │           ├── update_changelog/
 │           ├── task/
@@ -120,6 +121,7 @@ An LLM wiki sits between a full RAG pipeline and a loose pile of notes. It is st
 Skills and agents for day-to-day AI-assisted development: keeping git workflows and changelogs clean, writing and formatting the instructions an AI reads, checking skill artifacts with skill_doctor, keeping bundled skill and plugin runtime artefacts portable across agents and operating systems, and applying linter-aligned style conventions as you write.
 
 - **git_commit**: a step-by-step commit workflow with a hardened prepare script that handles special-character paths and detects binary files one by one. It stages changes, works out a sensible commit grouping, and writes a message that matches the project's existing style. A sibling reference covers the manual path when the script can't run.
+- **git_checkout**: a branch-switch workflow for the everyday "somebody pushed a branch, put me on it" step. It fetches every remote without pruning, switches when the branch is already local, creates a local branch with an explicit upstream when exactly one remote carries the name, asks which remote to track when several do, and tells a nonexistent branch apart from one a narrow fetch refspec never delivered. Every path ends on a named local branch rather than in detached `HEAD`.
 - **git_refresh**: a safe repo-refresh workflow that detects the remote default branch, fetches and prunes, switches to that branch, fast-forwards only, deletes cleanly merged local branches, and offers upstream-gone or force-delete cleanup only behind explicit opt-in.
 - **update_changelog**: builds or refreshes a day-grouped `CHANGELOG.md` from git history. It writes newest-first immutable day sections with `- **Category:** Plain-English summary.` entries, and hands large per-day context through a readable file path so long histories stay consumable.
 - **task**: a project-local backlog of upcoming work, as plain-Markdown files under `tasks/` at the project root, with `tasks/archive/` for `finished` and `deferred` items. Each task is a self-contained brief that a single-shot AI coder could pick up and build. The bundled linter checks naming, frontmatter, status/location consistency, and a 300-line split limit. It complements the `wiki` skill: tasks track *what is still to do*, the wiki holds *what is durably known*.

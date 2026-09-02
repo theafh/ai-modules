@@ -7,6 +7,7 @@ A plugin of skills and agents for day-to-day AI-assisted development: keeping gi
 ### Git
 
 - **git_commit**: stage new files and create one commit that captures the intended repository state, following the project's commit-message conventions.
+- **git_checkout**: put the repository onto an existing branch wherever it lives. It fetches every remote without pruning, switches when the branch is already local, creates a local branch with an explicit upstream when one remote carries the name, asks which remote to track when several do, and separates a nonexistent branch from one hidden by a narrow fetch refspec.
 - **git_refresh**: refresh the current repository to its detected default branch, fast-forward it only when safe, delete cleanly merged local branches, and offer upstream-gone or force-delete cleanup only behind explicit opt-in.
 - **update_changelog**: build or update a day-grouped `CHANGELOG.md` from git history. It writes newest-first immutable day sections with `- **Category:** Plain-English summary.` entries, and hands large per-day context through a readable file path so long histories stay consumable.
 

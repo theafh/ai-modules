@@ -1,0 +1,96 @@
+{
+  "skill_name": "git_checkout",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "A colleague just pushed feature/search. Check it out for me.",
+      "expected_output": "The agent invokes the bundled checkout_branch.sh helper, which fetches before resolving so the freshly pushed branch is visible, creates a local feature/search tracking origin/feature/search, and reports the created branch, its upstream, and the previous branch.",
+      "files": ["evals/fixtures/remote_only_branch/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/checkout_branch.sh instead of hand-running a git switch sequence.",
+        "The repository ends on a local branch named feature/search.",
+        "The upstream of feature/search is origin/feature/search.",
+        "HEAD resolves as a symbolic ref, so the run left no detached HEAD.",
+        "The response reports that the branch was created by this run, names its upstream, and names the previous branch."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Switch me to local-notes.",
+      "expected_output": "The branch already exists locally, so the run switches to it, creates no branch, and reports it as already present with no tracking branch created.",
+      "files": ["evals/fixtures/already_local/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/checkout_branch.sh.",
+        "The repository ends on local-notes.",
+        "No second branch was created for the same name.",
+        "The response reports the branch as already present rather than as created by this run.",
+        "The response states that no tracking branch was created."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Check out release-prep.",
+      "expected_output": "Two remotes carry release-prep, so the run lists both candidate remote branches, asks which remote the local branch should track, and creates nothing while switching nowhere.",
+      "files": ["evals/fixtures/two_remotes_same_name/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/checkout_branch.sh with the bare branch name.",
+        "The repository is still on main and no local release-prep branch exists.",
+        "The response lists both origin/release-prep and fork/release-prep as candidates.",
+        "The response asks the user which remote the local branch should track and picks no default.",
+        "The response states that nothing was created and nowhere was switched to."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Check out release-prep from the fork remote.",
+      "expected_output": "The remote-qualified form selects fork, so the run creates a local release-prep tracking fork/release-prep without asking which remote to use.",
+      "files": ["evals/fixtures/two_remotes_same_name/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/checkout_branch.sh with the remote-qualified argument fork/release-prep.",
+        "The repository ends on a local branch named release-prep.",
+        "The upstream of release-prep is fork/release-prep.",
+        "HEAD resolves as a symbolic ref, so naming the remote did not detach HEAD onto the remote-tracking ref.",
+        "The response asks no question about which remote to track."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I cannot check out hotfix/tls. Git says the pathspec did not match. Put me on that branch.",
+      "expected_output": "The single-branch clone's fetch refspec never maps the branch into refs/remotes, so the run names that cause, shows the configured refspec with the widening remedy, and creates nothing.",
+      "files": ["evals/fixtures/restricted_refspec/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/checkout_branch.sh.",
+        "The response names the restricted fetch refspec or single-branch clone as the cause rather than only relaying git's pathspec message.",
+        "The response shows the configured fetch refspec for origin.",
+        "The response offers the refspec-widening remedy.",
+        "No local hotfix/tls branch was created and the repository is still on main."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Check out the branch called ship-it.",
+      "expected_output": "No remote advertises the branch, so the run reports it as nonexistent, creates nothing, and switches nowhere.",
+      "files": ["evals/fixtures/remote_only_branch/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/checkout_branch.sh.",
+        "The response reports that the branch exists neither locally nor on any remote.",
+        "The response distinguishes this from a branch hidden by a fetch refspec.",
+        "No local ship-it branch was created and the repository is still on main.",
+        "The agent does not create the branch to satisfy the request."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Put me on rework.",
+      "expected_output": "The worktree holds an uncommitted edit to a file the target branch rewrites, so git refuses the switch; the run surfaces the blocking paths, keeps the change, and stops on the original branch.",
+      "files": ["evals/fixtures/dirty_conflict/setup.sh"],
+      "expectations": [
+        "The agent invokes scripts/checkout_branch.sh.",
+        "The repository is still on main and no local rework branch exists.",
+        "The uncommitted content of seed.txt is unchanged and still uncommitted.",
+        "The response names seed.txt as the blocking path.",
+        "The agent runs no stash, reset, or checkout-discard to make the switch proceed."
+      ]
+    }
+  ]
+}
