@@ -73,6 +73,16 @@ don't bring up new harnesses under Pattern B.
   in a session: stage a fixture, let the agent run the skill, inspect
   the repository and transcript against the expectations. See
   `evals/README.md`.
+- **`git_review/`** — Pattern A. `script_tests/` implemented (20
+  bundled-script scenarios over staged clones with real remotes, plus the
+  plugin-meta lockstep checks): the ordered evidence collection, the two
+  commit walks, the base-side versions of deleted files, the test merge, the
+  head-against-its-upstream relationship the fast-forward decision rests on,
+  the stub-`gh` thread pagination, and the heading-range helper. `evals/` holds 48
+  behavioral evals over 36 fixtures, run through a sonnet-pinned
+  `evals/run.py` with a deterministic `grade.sh`. Forge fixtures put a stub
+  `gh` on `PATH` that serves fixture JSON and logs every call, so a run that
+  posts nothing is provable. See `evals/README.md`.
 - **`language_humanizer/`** — Pattern A, behavioral only (the skill
   ships no scripts, so there is no `script_tests/`). 3 scenarios × a
   fixed 5-pass denominator, graded by a deterministic `grade.py` plus a

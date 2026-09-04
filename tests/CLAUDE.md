@@ -17,6 +17,7 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `wiki/` | `wiki` | Pattern B (legacy two-layer) | Layer 1 deterministic script unit tests + Layer 2 LLM skill-behavior evals via custom orchestrator. |
 | `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
 | `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
+| `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread pagination, the heading-range helper) + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
 | `language_humanizer/` | `language_humanizer` | Pattern A (behavioral only) | 3 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py` for the qualitative assertions. |
 | `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/` holds a behavioral eval per family member. `run_all.sh` drives both script runners. |
 | `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
@@ -48,21 +49,22 @@ aggregation — runs on the inherited session model. Concretely:
 | `task/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 | `task_create/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 | `task_auto_check/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
+| `git_review/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 
 Each runner takes `--model` to override, and `--model ''` inherits the
 CLI default. The behavioral eval runners (`git_commit/evals/run.py`,
 `task/evals/run.py`, `task_create/evals/run.py`,
-`task_auto_check/evals/run.py`) automate the old operator-driven Phase 2:
-instead
-of running the skill yourself in-session (which would use the inherited
-model), let the runner spawn the sonnet worker, then read `response.txt`
-for the prose-verdict expectations `grade.sh` can't check.
+`task_auto_check/evals/run.py`, `git_review/evals/run.py`) automate the old
+operator-driven Phase 2: instead of running the skill yourself in-session
+(which would use the inherited model), let the runner spawn the sonnet
+worker, then read `response.txt` for the prose-verdict expectations
+`grade.sh` can't check.
 
 ### Verdict cache: skip re-running an eval whose inputs haven't changed
 
-The four Pattern-A behavioral runners (`git_commit/evals/run.py`,
+The five Pattern-A behavioral runners (`git_commit/evals/run.py`,
 `task/evals/run.py`, `task_create/evals/run.py`,
-`task_auto_check/evals/run.py`) cache each eval's
+`task_auto_check/evals/run.py`, `git_review/evals/run.py`) cache each eval's
 graded verdict and skip re-spawning its `claude -p` worker when nothing that
 determines the verdict has changed. The shared helper is
 `tests/lib/eval_cache.py`; verdicts live per-harness in
@@ -72,7 +74,9 @@ The cache key is a content hash of: the skill source under test **and its
 family dependencies** — for the task family that means the loaded sibling
 *plus* the base `task` skill *plus* `plugins/ai_dev/agents/`, because every
 sibling reads the base via `<authority>` and the `auto_*` siblings spawn
-those agents — the harness definition (the whole `evals/` dir: evals.json,
+those agents, and for `git_review` it means the `git_checkout` and
+`git_commit` skill directories it hands work to — the harness definition
+(the whole `evals/` dir: evals.json,
 stage.sh, grade.sh, fixtures, run.py), the worker model, the eval id, and
 the prompt. Change any of those and the key moves, so the cache misses and
 the eval re-runs. It can never serve a stale pass: a hit means byte-identical
@@ -129,8 +133,9 @@ login. The shared helper `tests/lib/worker_auth.py` does this — its
 `preflight_auth()` fails fast on a dead login with one live `claude -p`
 probe (the remediation below) instead of 401-ing every eval. Every
 `claude -p` runner imports the helper: `task/evals/run.py`,
-`task_create/evals/run.py`, `task_auto_check/evals/run.py`, and
-`git_commit/evals/run.py` use both the pre-flight and the worker env; `trigger_evals/run.py` and
+`task_create/evals/run.py`, `task_auto_check/evals/run.py`,
+`git_commit/evals/run.py`, and `git_review/evals/run.py` use both the
+pre-flight and the worker env; `trigger_evals/run.py` and
 `wiki/layer2/run.py` use `worker_env()`.
 
 **Failure signature:** worker rc≠0 with

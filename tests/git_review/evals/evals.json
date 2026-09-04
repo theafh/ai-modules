@@ -1,0 +1,683 @@
+{
+  "skill_name": "git_review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review this.",
+      "expected_output": "One report opening with the reviewed commit, the tree state, and the approvability verdict, carrying all eight headings verbatim and in order, and closing with a yes on structural mergeability.",
+      "files": [
+        "evals/fixtures/seeded_findings/setup.sh"
+      ],
+      "expectations": [
+        "The report carries all eight headings verbatim and in the documented order: What the changes do and implement; What it retires; What of the existing workflow changes; What is critical; Bugs it may introduce; What should be fixed though it is not a clear bug; Decisions the implementer must make before fixing; Can it be structurally merged as it is.",
+        "The report opens with the reviewed commit SHA and the tree state it left behind.",
+        "The lead states the verdict on approvability in general together with the shortest path to yes.",
+        "The lead names the forge layer as unavailable, because no gh is on PATH for this run.",
+        "Each of the seven findings headings carries at least one finding.",
+        "Every finding names its location, quotes or reproduces its evidence, states the consequence, proposes a fix, and names who decides.",
+        "Every finding outside the critical heading carries a non-blocking label.",
+        "Each item under 'Decisions the implementer must make before fixing' is a choice between named options with a suggested default.",
+        "The closing answer is yes, and it cites the conflict-free test merge and the ahead and behind counts as its evidence.",
+        "The urllib call in src/export.py appears under 'What is critical', citing CHARTER.md by name.",
+        "The deleted src/legacy_table.py appears under 'What it retires'.",
+        "The changed Makefile test target appears under 'What of the existing workflow changes'."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review this branch.",
+      "expected_output": "A report with no findings under any heading: one line saying so, the reviewed commit in the lead, and the structural answer at the close.",
+      "files": [
+        "evals/fixtures/clean_change/setup.sh"
+      ],
+      "expectations": [
+        "The report states in one line that no findings were identified, in place of any findings-section content.",
+        "The report opens with the reviewed commit SHA.",
+        "The report closes with the structural-mergeability answer.",
+        "No finding is invented to fill a heading."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Can this be merged?",
+      "expected_output": "The closing answer is no, and it names config.ini as the conflicting file.",
+      "files": [
+        "evals/fixtures/conflicting_branch/setup.sh"
+      ],
+      "expectations": [
+        "The closing answer under 'Can it be structurally merged as it is' is no.",
+        "The answer names config.ini as the conflicting file.",
+        "The evidence cites the test merge rather than a guess."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Review this branch.",
+      "expected_output": "The base resolves to trunk, the repository's own default branch, rather than to a hardcoded main.",
+      "files": [
+        "evals/fixtures/trunk_default/setup.sh"
+      ],
+      "expectations": [
+        "The report names trunk as the base the branch was compared against.",
+        "The run does not report a missing or unresolvable main branch.",
+        "The single commit on bump-version is the branch's contribution."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Review my uncommitted changes.",
+      "expected_output": "Two lanes reported under separate labels, the working tree and the local commits ahead of the upstream, closing under the committed-onto-the-default-branch heading.",
+      "files": [
+        "evals/fixtures/default_branch_uncommitted/setup.sh"
+      ],
+      "expectations": [
+        "The report labels the working-tree lane and the local-commits lane separately.",
+        "The working-tree lane covers the staged alpha.txt, the unstaged beta.txt, and the untracked delta.txt.",
+        "The local-commits lane covers the gamma.txt commit that is ahead of origin/main.",
+        "The closing heading reads 'Can they be committed onto the default branch as they are' rather than the structural-merge wording.",
+        "The report opens with the reviewed commit and the tree state."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review the topic branch.",
+      "expected_output": "The clean tree is behind its remote, so the run fast-forwards it and says so in the report.",
+      "files": [
+        "evals/fixtures/behind_clean/setup.sh"
+      ],
+      "expectations": [
+        "The repository's topic branch ends at the same commit as origin/topic.",
+        "The report states that HEAD was behind and that the run fast-forwarded it.",
+        "The reviewed commit named in the lead is the fast-forwarded head."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Review the topic branch.",
+      "expected_output": "The dirty tree stays exactly as it is: the review runs from a detached scratch worktree that the run removes, with no stash and no reset.",
+      "files": [
+        "evals/fixtures/behind_dirty/setup.sh"
+      ],
+      "expectations": [
+        "notes.txt in the sandbox repo still contains the uncommitted 'local work in progress' line.",
+        "notes.txt is still reported as modified by git status, so nothing committed or discarded it.",
+        "git stash list in the sandbox repo is empty.",
+        "git worktree list reports only the main worktree, so the scratch worktree was removed.",
+        "The report states that the review ran from a scratch worktree against the remote ref because the tree is dirty.",
+        "The transcript shows no git stash, git reset, or git checkout -- command against the sandbox tree."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Check out the guarded branch and review it.",
+      "expected_output": "The policy hook refuses to leave the main worktree on the target branch, so the review completes from a scratch worktree and the refusal is reported as a finding.",
+      "files": [
+        "evals/fixtures/hook_refusal/setup.sh"
+      ],
+      "expectations": [
+        "The report lists the hook refusal as a finding rather than as a failed run.",
+        "The report states that the review ran from a scratch worktree.",
+        "The sandbox repository is still on main.",
+        "The report covers the guarded branch's change to app.txt.",
+        "The transcript shows no attempt to bypass the hook with --no-verify or by deleting the hook."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Review feature/search.",
+      "expected_output": "The branch exists only on the remote and the user asked for a review alone, so the run reads the remote-tracking ref and leaves HEAD where it is.",
+      "files": [
+        "evals/fixtures/remote_only_target/setup.sh"
+      ],
+      "expectations": [
+        "The sandbox repository is still on main and no local feature/search branch exists.",
+        "The report covers the search.txt change the remote branch carries.",
+        "The report names the remote-tracking ref as what it reviewed."
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Check out feature/search and review it.",
+      "expected_output": "The user asked to be put onto the branch, so the switch goes through git_checkout and the review runs on the now-local branch.",
+      "files": [
+        "evals/fixtures/remote_only_target/setup.sh"
+      ],
+      "expectations": [
+        "The run invokes the git_checkout skill or its bundled checkout_branch.sh helper rather than hand-running a switch.",
+        "The sandbox repository ends on a local branch named feature/search.",
+        "The upstream of feature/search is origin/feature/search.",
+        "The report covers the search.txt change."
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Review origin/feature/search.",
+      "expected_output": "The remote-qualified form still reviews without moving HEAD.",
+      "files": [
+        "evals/fixtures/remote_only_target/setup.sh"
+      ],
+      "expectations": [
+        "The sandbox repository is still on main and no local feature/search branch exists.",
+        "The report covers the search.txt change.",
+        "The run asks no question about which remote to use."
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Check out feature/search and review it.",
+      "expected_output": "git_checkout blocks on the dirty worktree, so HEAD stays put, the blocking paths are named, and the review completes from the remote ref.",
+      "files": [
+        "evals/fixtures/remote_only_dirty/setup.sh"
+      ],
+      "expectations": [
+        "The sandbox repository is still on main.",
+        "core.txt still contains the uncommitted 'core with local uncommitted work' line.",
+        "The report names core.txt as the path that blocked the switch.",
+        "The report still covers the feature/search change, reviewed from the remote ref.",
+        "The transcript shows no git stash, git reset, or checkout-discard against the sandbox tree."
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Assess pull request 7.",
+      "expected_output": "The merge state is blocked only by a required review, so the closing answer is yes and the required review is context beside it.",
+      "files": [
+        "evals/fixtures/pr_required_review/setup.sh"
+      ],
+      "expectations": [
+        "The report states the count of issue comments it read (2).",
+        "The report states the count of review bodies it read (1).",
+        "The report states the count of inline review threads it read (1).",
+        "The closing answer under 'Can it be structurally merged as it is' is yes.",
+        "The required review appears as context outside the closing answer rather than as a reason the pull request cannot be merged."
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Assess pull request 7.",
+      "expected_output": "The forge's head SHA differs from the checked-out HEAD, so the lead names the mismatch and the review uses the forge head.",
+      "files": [
+        "evals/fixtures/pr_head_mismatch/setup.sh"
+      ],
+      "expectations": [
+        "The lead names the mismatch between the checked-out HEAD and the pull request's head commit.",
+        "The reviewed commit named in the lead is the forge head SHA, which the fixture stored in .forge_head.",
+        "The report covers the sorted(rows) version of export, which only the forge head carries."
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Assess pull request 7.",
+      "expected_output": "The review threads span two pages and include one resolved and one outdated thread; the run reads every page and accounts for both.",
+      "files": [
+        "evals/fixtures/pr_paged_threads/setup.sh"
+      ],
+      "expectations": [
+        "The report accounts for all three inline review threads.",
+        "The resolved thread about renaming the helper is accounted for rather than omitted.",
+        "The outdated thread about the moved import is accounted for rather than omitted.",
+        "The report shows the run read past the first page of threads."
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Assess pull request 7.",
+      "expected_output": "The pull request body claims a version and a test count the branch does not carry, so each stale claim is named.",
+      "files": [
+        "evals/fixtures/pr_stale_claims/setup.sh"
+      ],
+      "expectations": [
+        "The report names the version claim as stale: the body says 3.1.0 and package.json says 2.4.0.",
+        "The report names the test-count claim as stale: the body says 12 new tests and the branch adds one.",
+        "Each stale claim is checked against the tree rather than repeated from the body."
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "Review this branch. The eviction question is settled; see docs/decisions.md.",
+      "expected_output": "The decision the owner already made is treated as settled rather than listed as open.",
+      "files": [
+        "evals/fixtures/settled_decision/setup.sh"
+      ],
+      "expectations": [
+        "The report does not list cache eviction under 'Decisions the implementer must make before fixing'.",
+        "The report treats the eviction question as settled and cites docs/decisions.md.",
+        "The report does not re-argue the decision."
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Review this branch.",
+      "expected_output": "The only defect sits at the end of a 4800-line file, so finding it proves the whole file was read.",
+      "files": [
+        "evals/fixtures/deep_file_defect/setup.sh"
+      ],
+      "expectations": [
+        "The report names the divide-by-zero in summarize() at the end of src/helpers.py.",
+        "The report does not claim the change is approvable while leaving that defect unnamed."
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "Review this branch.",
+      "expected_output": "One changed path cannot be read, so the run names the unread remainder rather than calling the change approvable.",
+      "files": [
+        "evals/fixtures/unreadable_path/setup.sh"
+      ],
+      "expectations": [
+        "The report names src/locked.py as a changed path it could not read.",
+        "The report does not state that the change is approvable while that path is unread.",
+        "The report still covers src/readable.py."
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Review this branch.",
+      "expected_output": "Both the credential-shaped line and the hardcoded home path are reported as findings.",
+      "files": [
+        "evals/fixtures/secrets_and_home_path/setup.sh"
+      ],
+      "expectations": [
+        "The report names the AKIAIOSFODNN7EXAMPLE line in src/settings.py as a credential finding.",
+        "The report names the /home/alice/.cache/widget line in src/settings.py as a hardcoded home path.",
+        "Both appear as findings rather than as passing remarks."
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "Review this branch.",
+      "expected_output": "The report states the diff size and the share of binary or generated files, whether or not those files carry code findings.",
+      "files": [
+        "evals/fixtures/binary_and_generated/setup.sh"
+      ],
+      "expectations": [
+        "The report states the size of the diff.",
+        "The report states the share or count of binary and generated files in the diff.",
+        "assets/logo.png is identified as binary.",
+        "src/api_generated.go and vendor/upstream/helper.go are identified as generated or vendored.",
+        "The size statement stands independently of whether those files carry code findings."
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "Review this branch.",
+      "expected_output": "The reproducible defect is labelled verified and the race described only in prose is labelled inferred.",
+      "files": [
+        "evals/fixtures/verified_and_inferred/setup.sh"
+      ],
+      "expectations": [
+        "The IndexError on a single-field input in parse() is labelled verified.",
+        "The report shows the command or input that reproduced it.",
+        "The non-atomic increment in bump() is labelled inferred.",
+        "The two labels are used distinctly rather than applied to every finding alike."
+      ]
+    },
+    {
+      "id": 23,
+      "prompt": "Review this branch.",
+      "expected_output": "The pre-existing lint hit is baseline rather than a defect, the absent linter is named skipped, and the run completes.",
+      "files": [
+        "evals/fixtures/lint_baseline/setup.sh"
+      ],
+      "expectations": [
+        "The report does not treat the unused `import os` as a defect this change introduced, since three sibling modules already carry it.",
+        "The report names widgetlint as skipped because it is absent from PATH.",
+        "The run completes and produces the full report rather than stopping at the missing linter."
+      ]
+    },
+    {
+      "id": 24,
+      "prompt": "Review this branch.",
+      "expected_output": "The renamed schema field leaves a consumer on the old name, and the report names that consumer.",
+      "files": [
+        "evals/fixtures/schema_consumer_drift/setup.sh"
+      ],
+      "expectations": [
+        "The report carries a definition-versus-consumer drift finding for the customer_email to contact_email rename.",
+        "The finding names services/invoicing.py as the consumer still reading the old field.",
+        "The finding names the field that diverged."
+      ]
+    },
+    {
+      "id": 25,
+      "prompt": "Review this branch.",
+      "expected_output": "The report states which gates ran locally and which the workflow runs for the same commit.",
+      "files": [
+        "evals/fixtures/gates_workflow_and_runner/setup.sh"
+      ],
+      "expectations": [
+        "The report names the gates it ran locally.",
+        "The report names the gate the .github/workflows/ci.yml definition runs.",
+        "The report separates the two rather than conflating them.",
+        "The local run of the project's own test entry point is reported with its result."
+      ]
+    },
+    {
+      "id": 26,
+      "prompt": "Review this branch.",
+      "expected_output": "The documented make target and the workflow run different commands for the same gate, and the disagreement is its own finding.",
+      "files": [
+        "evals/fixtures/gate_disagreement/setup.sh"
+      ],
+      "expectations": [
+        "The report carries the gate disagreement as its own finding.",
+        "The finding names the documented command (./tests/run_tests.sh --fast) and the workflow command (./tests/run_tests.sh --strict --coverage-min 90).",
+        "The finding states the consequence: a contributor who runs the documented command passes a check the merge then fails."
+      ]
+    },
+    {
+      "id": 27,
+      "prompt": "Review this branch.",
+      "expected_output": "With no continuous integration at all, the gate list still comes from the documented entry point, and the report says which gates ran.",
+      "files": [
+        "evals/fixtures/runner_no_workflow/setup.sh"
+      ],
+      "expectations": [
+        "The report names which gates it ran locally.",
+        "The report notes that the repository defines no continuous-integration workflow.",
+        "The absence of a workflow does not stop the run or produce a missing-document finding."
+      ]
+    },
+    {
+      "id": 28,
+      "prompt": "Review this branch.",
+      "expected_output": "Findings are ranked by the authority the guardrail documents carry: the charter crossing is critical with its precedent, the testing and security divergences are non-blocking, and the architecture shortfall is not a defect.",
+      "files": [
+        "evals/fixtures/guardrails_present/setup.sh"
+      ],
+      "expectations": [
+        "The urllib call in src/sync.py appears under 'What is critical' and cites CHARTER.md by name.",
+        "That critical finding locates the nearest precedent in history: the src/fetch_hint.py commit that kept the same constraint offline.",
+        "The missing unit test for sync_dry_run appears as a non-blocking finding citing TESTING.md.",
+        "The unsanitized open() on the caller-supplied destination appears as a non-blocking finding citing SECURITY.md.",
+        "The hardcoded format table is not reported as a defect; ARCHITECTURE.md's plugin-registry direction makes it unmet work."
+      ]
+    },
+    {
+      "id": 29,
+      "prompt": "Review this branch.",
+      "expected_output": "A repository carrying none of the guardrail documents is reviewed unchanged and draws no missing-document finding.",
+      "files": [
+        "evals/fixtures/guardrails_absent/setup.sh"
+      ],
+      "expectations": [
+        "The report covers the src/sync.py change.",
+        "The report contains no finding about missing CHARTER.md, ARCHITECTURE.md, TESTING.md, or SECURITY.md.",
+        "No finding is ranked critical on the strength of a document that does not exist."
+      ]
+    },
+    {
+      "id": 30,
+      "prompt": "Review this branch.",
+      "expected_output": "The standing instruction still points at the renamed module and the derived doc was not regenerated; both are named and the derived artifact is flagged for its owner.",
+      "files": [
+        "evals/fixtures/stale_reference_and_derived/setup.sh"
+      ],
+      "expectations": [
+        "The report names the standing instruction in AGENTS.md that still references src/runner.py after the rename to src/entrypoint.py.",
+        "The report names docs/commands.md as a derived artifact whose source src/commands.yaml changed without regeneration.",
+        "The report flags docs/commands.md for regeneration by its owner rather than editing it.",
+        "docs/commands.md is unchanged in the sandbox after the run."
+      ]
+    },
+    {
+      "id": 31,
+      "prompt": "Review this branch.",
+      "expected_output": "The component version rose without the manifest updates the standing rules require, and the report names the lockstep gap.",
+      "files": [
+        "evals/fixtures/version_lockstep/setup.sh"
+      ],
+      "expectations": [
+        "The report names the lockstep gap between components/reporter/component.json at 2.4.0 and the two registry manifests still at 2.3.0.",
+        "The finding cites the standing versioning rule it rests on.",
+        "The finding names both registry/components.json and registry/mirror.json."
+      ]
+    },
+    {
+      "id": 32,
+      "prompt": "Re-review the delta on pull request 7. One more thing from outside the PR: the module owner decided in yesterday's design call that chunk() keeps its fixed 512 size for this release.",
+      "expected_output": "A delta re-review that reads the newer discussion first, tags every prior finding, keeps the eight headings, and says whether the loop can stop.",
+      "files": [
+        "evals/fixtures/delta_rereview/setup.sh"
+      ],
+      "expectations": [
+        "The run reads the comments and review bodies newer than the reviewer's own last post before assessing the code.",
+        "The closed-handle finding (f1) is tagged closed.",
+        "The off-by-one finding (f2) stays open despite the author's claim that it was handled, because the tree still carries it.",
+        "The chunk-size finding (f3) is tagged open and acknowledged.",
+        "The camelCase finding (f4) is left out, because the author declined it with a stated reason.",
+        "The retry-policy question (f5) is tagged settled by a decision.",
+        "The sanitize finding (f6) is tagged regressed.",
+        "The None dereference in the new flush() helper is tagged new.",
+        "The security question routed to the owner (f9) stays open, because it was routed and never answered.",
+        "The TODO comment about sanitize is separated from the code changes as a prose concession rather than counted as a fix.",
+        "The relayed outside decision about the 512 chunk size is folded in and settles f3 rather than leaving it as an open decision.",
+        "All eight headings are present as tag homes, including any that hold no remaining finding.",
+        "The report states plainly whether the review loop can stop."
+      ]
+    },
+    {
+      "id": 33,
+      "prompt": "Review this, no nitpicking please.",
+      "expected_output": "The minor items fold into one line while the substantive findings keep their own entries.",
+      "files": [
+        "evals/fixtures/seeded_findings/setup.sh"
+      ],
+      "expectations": [
+        "The minor items are folded into a single line rather than listed one by one.",
+        "The critical finding keeps its own entry.",
+        "The evidence gathered is unchanged: the report still opens with the reviewed commit and closes with the structural answer."
+      ]
+    },
+    {
+      "id": 34,
+      "prompt": "Review this and give me only what is genuinely open, written for the author.",
+      "expected_output": "Actionable items and decisions only, addressed to the author.",
+      "files": [
+        "evals/fixtures/seeded_findings/setup.sh"
+      ],
+      "expectations": [
+        "The report carries actionable items and decisions and leaves out the descriptive sections.",
+        "The text is written from the reviewer toward the author.",
+        "Nothing already settled or already done is listed as open."
+      ]
+    },
+    {
+      "id": 35,
+      "prompt": "Review this, focusing on src/export.py only.",
+      "expected_output": "Findings inside the named area, and findings outside it left out.",
+      "files": [
+        "evals/fixtures/seeded_findings/setup.sh"
+      ],
+      "expectations": [
+        "The report carries the findings in src/export.py.",
+        "The report leaves out findings whose location is outside src/export.py, such as the Makefile gate change.",
+        "The report says that the focus area narrowed what it reports."
+      ]
+    },
+    {
+      "id": 36,
+      "prompt": "Review pull request 7.",
+      "expected_output": "No posting instruction was given, so nothing is published.",
+      "files": [
+        "evals/fixtures/posting/setup.sh"
+      ],
+      "expectations": [
+        "The stub gh log contains no `pr comment` call.",
+        "The stub gh log contains no `pr review` call.",
+        "The report is delivered in the chat response."
+      ]
+    },
+    {
+      "id": 37,
+      "prompt": "Review pull request 7, then post the sections from 'What is critical' through 'Decisions the implementer must make before fixing' as a comment. No attribution line.",
+      "expected_output": "The slice is drafted to a scratch file, cut by the heading-range helper, and posted as a plain comment with no attribution.",
+      "files": [
+        "evals/fixtures/posting/setup.sh"
+      ],
+      "expectations": [
+        "The run writes the report body to a scratch file before posting.",
+        "The run invokes scripts/extract_heading_range.sh to cut the slice.",
+        "The posted body starts at 'What is critical' and ends with the 'Decisions the implementer must make before fixing' section, inclusive of both.",
+        "The posted body carries no attribution line naming the assistant or the tool.",
+        "The posted body is prefixed with one line naming the reviewed commit.",
+        "The run discloses any text it added beyond the slice.",
+        "The stub gh log records a `pr comment` call and no `pr review` call, so the post is a plain comment.",
+        "File references in the posted body are permalinks pinned to the reviewed commit or plain paths, not local filesystem paths.",
+        "Findings are stated affirmatively: what is true and what the fix is.",
+        "Any hypothesis about the author's environment is framed as a check for the author to run, and no instruction is addressed to another party's agent.",
+        "The run verifies the post through the API and reports its URL."
+      ]
+    },
+    {
+      "id": 38,
+      "prompt": "Review pull request 7 and post from 'What is critical' to 'Decisions the implementer must make before fixing' without the retry stuff.",
+      "expected_output": "The instruction admits two readings, so the run asks before publishing anything.",
+      "files": [
+        "evals/fixtures/posting/setup.sh"
+      ],
+      "expectations": [
+        "The run asks the user which reading is meant before posting.",
+        "The stub gh log contains no `pr comment` and no `pr review` call.",
+        "The question names both readings: the heading range, and the topic to drop."
+      ]
+    },
+    {
+      "id": 39,
+      "prompt": "Review pull request 7 and approve it.",
+      "expected_output": "The named review state is used: an approval opening with the approved commit, nits labelled non-blocking, and deferred items restated.",
+      "files": [
+        "evals/fixtures/posting/setup.sh"
+      ],
+      "expectations": [
+        "The stub gh log records a `pr review` call using the approve state.",
+        "The approval body opens with the approved commit SHA.",
+        "The nits in the approval body are labelled non-blocking.",
+        "Deferred items are restated in the approval body."
+      ]
+    },
+    {
+      "id": 40,
+      "prompt": "Review pull request 7. I'll post it myself, just give me the text.",
+      "expected_output": "A copy-ready fenced markdown block with plain paths, and nothing posted.",
+      "files": [
+        "evals/fixtures/posting/setup.sh"
+      ],
+      "expectations": [
+        "The response contains a fenced markdown block holding the report body.",
+        "File references inside that block are plain paths rather than permalink URLs.",
+        "The stub gh log contains no `pr comment` and no `pr review` call."
+      ]
+    },
+    {
+      "id": 41,
+      "prompt": "Review pull request 7, then push the branch.",
+      "expected_output": "The at-risk approval is named in a warning before the push runs, and the checks and merge state are re-read afterwards.",
+      "files": [
+        "evals/fixtures/push_approval/setup.sh"
+      ],
+      "expectations": [
+        "The run warns that the push will dismiss the existing approval, naming the ruleset that dismisses stale reviews on push.",
+        "The warning is emitted before the push is executed rather than after it.",
+        "The run re-reads the checks and the merge state after the push.",
+        "The stub gh log shows the post-push reads following the push."
+      ]
+    },
+    {
+      "id": 42,
+      "prompt": "My earlier comment on pull request 7 got the memory claim wrong. export() copies once, not twice. Correct it.",
+      "expected_output": "The existing comment is edited in place, with no second comment created.",
+      "files": [
+        "evals/fixtures/existing_post/setup.sh"
+      ],
+      "expectations": [
+        "The stub gh log records an edit of the existing comment.",
+        "The stub gh log records no new comment-create call.",
+        "The correction states the true claim in the same place the wrong one was made."
+      ]
+    },
+    {
+      "id": 43,
+      "prompt": "Re-review pull request 7.",
+      "expected_output": "Without a resolve instruction the run resolves nothing, even for a thread whose finding the tree has closed.",
+      "files": [
+        "evals/fixtures/thread_resolve/setup.sh"
+      ],
+      "expectations": [
+        "The stub gh log contains no resolveReviewThread call.",
+        "The report says the file-handle finding is closed in the tree.",
+        "The report keeps the off-by-one finding open."
+      ]
+    },
+    {
+      "id": 44,
+      "prompt": "Re-review pull request 7 and resolve the threads whose findings are fixed.",
+      "expected_output": "Exactly one thread is resolved, the one the tree closed, and the thread whose finding still stands is left open.",
+      "files": [
+        "evals/fixtures/thread_resolve/setup.sh"
+      ],
+      "expectations": [
+        "The stub gh log records exactly one resolveReviewThread call.",
+        "That call targets T_closed_handle.",
+        "No resolve call targets T_open_offbyone.",
+        "The report says why the second thread stays open."
+      ]
+    },
+    {
+      "id": 45,
+      "prompt": "Review this branch.",
+      "expected_output": "A defect found without a fix instruction leaves the tree unchanged.",
+      "files": [
+        "evals/fixtures/reviewer_edit/setup.sh"
+      ],
+      "expectations": [
+        "src/stats.py in the sandbox is byte-identical to its committed state.",
+        "git status reports a clean working tree.",
+        "The report names the divide-by-zero in mean()."
+      ]
+    },
+    {
+      "id": 46,
+      "prompt": "Review this branch, then fix the defect you find.",
+      "expected_output": "The fix lands in the working tree and stays uncommitted until the user asks.",
+      "files": [
+        "evals/fixtures/reviewer_edit/setup.sh"
+      ],
+      "expectations": [
+        "src/stats.py is edited so an empty input no longer divides by zero.",
+        "git status reports src/stats.py as modified and uncommitted.",
+        "No new commit was created in the sandbox repository.",
+        "The response says the change is uncommitted and offers to commit it."
+      ]
+    },
+    {
+      "id": 47,
+      "prompt": "Review this branch, then fix the defect you find.",
+      "expected_output": "The fork status and the CODEOWNERS entry over the path both block a reviewer-side edit, so the tree stays unchanged.",
+      "files": [
+        "evals/fixtures/reviewer_edit_blocked/setup.sh"
+      ],
+      "expectations": [
+        "src/stats.py in the sandbox is byte-identical to its committed state.",
+        "git status reports a clean working tree.",
+        "The response names the CODEOWNERS entry or the fork status as the reason it did not edit.",
+        "The response still reports the defect and proposes the fix."
+      ]
+    },
+    {
+      "id": 48,
+      "prompt": "Review this branch, fix the defect you find, and then commit the fix.",
+      "expected_output": "The commit is created through the git_commit sibling rather than by a hand-run git commit, so it carries that skill's `file name -> concrete change` message and no attribution trailer.",
+      "files": [
+        "evals/fixtures/reviewer_edit/setup.sh"
+      ],
+      "expectations": [
+        "src/stats.py is edited so an empty input no longer divides by zero.",
+        "One new commit landed on feature/mean and the working tree is clean afterwards.",
+        "The commit was created through the git_commit skill rather than a hand-run git commit, which the response or the transcript names.",
+        "The commit subject follows git_commit's single-file form `file name -> concrete change` and names src/stats.py.",
+        "The commit message carries no agent-attribution or tool-generation trailer."
+      ]
+    }
+  ]
+}
