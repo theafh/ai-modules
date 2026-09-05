@@ -1,7 +1,7 @@
-# git_commit — manual fallback
+# git_commit: manual fallback
 
 Trigger: a primary `git_commit` script (`scripts/prepare_commit_context.sh` or
-`scripts/commit_with_message.sh`) failed during the current run — a non-zero
+`scripts/commit_with_message.sh`) failed during the current run with a non-zero
 exit other than status `3`. A `commit_with_message.sh` exit of `3` is an
 intentional foreign-drift refusal, not a failure, and does not open this manual
 path; handle it in `SKILL.md`'s `<execute_commit>` by surfacing the printed
@@ -29,8 +29,8 @@ source list.
 
 The relevance test is domain intersection, and it governs tree-mutating and
 check-only obligations alike. Read the obligation to determine the subject
-matter it governs — the paths, file types, or artifacts it checks or rewrites —
-and compare that against the paths this commit changes, obtained here for path
+matter it governs, meaning the paths, file types, or artifacts it checks or
+rewrites, and compare that against the paths this commit changes, obtained here for path
 names alone by running `git status --short --untracked-files=all` once before
 either context path. Run the obligation when the two intersect and skip it when
 they do not, so a markdown lint over a documentation-only change still runs
@@ -43,7 +43,7 @@ changed paths that miss it, so a wrong skip is correctable in the moment.
 The tree-mutating against check-only split governs ordering alone: a selected
 tree-mutating obligation clears this gate before either context path runs,
 while a selected check-only obligation may run on either side of that seam.
-Weigh where a check-only obligation runs on both counts — running it here
+Weigh where a check-only obligation runs on both counts: running it here
 exposes a failing gate before context work begins, and commit time spent on a
 check that exercises nothing this commit touched is the cost the relevance test
 exists to spare. Leave command-triggered mechanical hooks, including git hooks
@@ -56,10 +56,10 @@ layers.
 ## Replacement for `prepare_commit_context.sh`
 
 Goal: produce the same evidence the script would have written to its context
-file — staged untracked files, full status, recent commits, per-file staged
+file, namely staged untracked files, full status, recent commits, per-file staged
 diffs, per-file unstaged diffs, and a generic note for binary files. Pick a
 unique context path with `ctx_file=$(mktemp "${TMPDIR:-/tmp}/git_commit_context.XXXXXX")`
-(pass the full template — `mktemp -t prefix` leaves the literal `XXXXXX` in
+(pass the full template, because `mktemp -t prefix` leaves the literal `XXXXXX` in
 the filename on BSD/macOS)
 and write the captured evidence there so the rest of the workflow can consume
 it the same way as the scripted path, by the same size-driven contract
@@ -68,7 +68,7 @@ it fits under your reader's per-read cap; when it exceeds the cap, cover every
 byte with sequential non-overlapping pages, halving the span on overflow; and
 when even paginated reading cannot cover it, or where this agent has no Read
 tool, read ordered non-overlapping shell slices (`wc -l` for the line count,
-then consecutive `sed -n` spans) that cover every byte in order — never
+then consecutive `sed -n` spans) that cover every byte in order, never
 sampling by filename. Keep the `ctx_file` value: pass it as the
 `CONTEXT_FILE` argument to `commit_with_message.sh` when you return to the
 primary commit step, so that script's drift backstop reads the baseline block
@@ -107,7 +107,7 @@ too, delete the file yourself per that section's last step.
 ## Drift check before staging
 
 This is the same model-side `<detect_drift>` step the primary `SKILL.md`
-workflow runs at the seam before committing — not a per-script fallback
+workflow runs at the seam before committing, not a per-script fallback
 section, so it runs once here whether the context came from the script or the
 manual replacement above. `commit_with_message.sh` enforces the same guard as a
 mechanical backstop, refusing with exit status `3`; this manual re-check and
@@ -117,19 +117,19 @@ and the message composed, and before the `git add -A` in the commit step below.
 Re-run `git status --short --untracked-files=all` and compare its paths to the
 reviewed-set baseline captured in the status step above, on equal footing.
 
-1. **No drift — commit all.** The re-check surfaces no path outside the
-   baseline — the path set matches. Proceed to the commit step with no prompt.
+1. **No drift, commit all.** The re-check surfaces no path outside the
+   baseline, meaning the path set matches. Proceed to the commit step with no prompt.
    This is the common case, a clean single-session tree included.
-2. **Foreign drift — pause and ask.** One or more paths appear that were
+2. **Foreign drift, pause and ask.** One or more paths appear that were
    outside the reviewed-set baseline and entered commit-time status after it was
    captured (a new file, or a path that was clean or absent from the baseline
    and is now changed). Pause, list those paths to the user, and ask whether
    they belong in this commit before staging them. On the scripted path a commit
    the user confirms passes `--accept-drift` to `commit_with_message.sh`; in this
    manual replacement, proceed to `git add -A` once the user confirms.
-3. **In doubt — commit all.** A concurrent session's edit to a path already in
+3. **In doubt, commit all.** A concurrent session's edit to a path already in
    the baseline adds no path outside it, so this path-level comparison cannot
-   separate that further edit from your own — such a same-path change stays on
+   separate that further edit from your own, and such a same-path change stays on
    the commit-all path rather than pausing. The tiebreaker favors no-miss over
    no-sweep.
 
@@ -140,7 +140,7 @@ stdin without altering its line breaks, and clean up the context file on
 success. There is no intermediate message file.
 
 1. Confirm the composed message is non-empty.
-2. Confirm the drift check above has cleared — no drift, or the user confirmed
+2. Confirm the drift check above has cleared: no drift, or the user confirmed
    the drifted paths belong.
 3. Stage everything: `git add -A`.
 4. Commit from stdin via a single-quoted heredoc so no shell expansion runs

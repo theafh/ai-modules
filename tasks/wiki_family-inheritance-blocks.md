@@ -2,7 +2,7 @@
 description: Give the wiki family one source of truth: a hub family block, an authority block per front end, cited rather than restated base rules, and one orientation log-read quantity.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:49:52
-updated: 2026-08-21T08:01:08
+updated: 2026-09-05T21:33:57
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -52,7 +52,7 @@ artefact reference sibling artefacts by name instead, so the fix belongs with th
 family's other cross-reference work.
 
 The orientation log read is stated three ways. `wiki_wrapup` contradicts itself:
-its `<orient_first>` policy says "the last 20–30 entries of `log.md`" while its
+its `<orient_first>` policy says "the last 20 to 30 entries of `log.md`" while its
 own steps say "roughly the last 350 lines of `log.md`". `wiki_import` says 350
 lines in both places, and the hub says only `recent log`.
 
@@ -68,7 +68,7 @@ this task settles and that idiom must land coherently whichever ships first.
 2. Add an `<authority>` block to each front end that cites the hub as the source
    of truth for wiki structure, discovery, orientation, ingest, and lint. In
    `wiki_import` and `wiki_wrapup`, rewrite the prose deferral sentence it
-   replaces so one statement remains — the hub citation in `<authority>`. In
+   replaces so one statement remains: the hub citation in `<authority>`. In
    `wiki_fix`, pair `<authority>` with the agent-delegation contract: the hub
    owns shared family rules; `auto_shaper_wiki` remains the execution delegate
    for discovery, orientation, lint, semantic audit, remediation, and
@@ -78,7 +78,7 @@ this task settles and that idiom must land coherently whichever ships first.
    hub's blocks by their verbatim tag names, keeping any genuinely
    import-specific detail that the hub's version does not carry.
 4. State the orientation log-read quantity once in the hub's
-   `<resuming_an_existing_wiki>` block as the last 20–30 log entries retrieved
+   `<resuming_an_existing_wiki>` block as the last 20 to 30 log entries retrieved
    by entry boundary (not a fixed line count), coordinating with
    [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md)
    so that statement and that task's entry-anchor idiom stay coherent
@@ -117,9 +117,9 @@ this task settles and that idiom must land coherently whichever ships first.
    `<list_before_manipulating_unfamiliar_paths>` by tag name, and searching
    `wiki_import` for `raw/<kind>/` returns a match guarding writes into a
    `raw/<kind>/` bucket with `ls "$WIKI/raw/<kind>/"`.
-4. Searching the family for `the last 20–30 entries` returns no match outside
+4. Searching the family for `the last 20 to 30 entries` returns no match outside
    the hub and one match in the hub's `<resuming_an_existing_wiki>` naming the
-   last 20–30 log entries by entry boundary (not line count). Searching the
+   last 20 to 30 log entries by entry boundary (not line count). Searching the
    hub's `<searching>` and pitfall `<orient_first>` finds each cites
    `<resuming_an_existing_wiki>` by its verbatim tag name and restates no
    quantity. Searching `wiki_import` and `wiki_wrapup` finds each cites
@@ -137,5 +137,5 @@ this task settles and that idiom must land coherently whichever ships first.
    read for the entry-aware log-read idiom it prescribes, the hub
    orientation-read statement and the cited front-end references name the same
    entry bound the sibling prescribes when it has shipped, or the same entry
-   bound settled in Acceptance item 4 when it has not — so whichever ships
+   bound settled in Acceptance item 4 when it has not. So whichever ships
    first, the quantity and idiom read as one coordinated rule.

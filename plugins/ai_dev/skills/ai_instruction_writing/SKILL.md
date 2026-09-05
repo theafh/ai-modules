@@ -1,7 +1,7 @@
 ---
 name: ai_instruction_writing
 description: Write AI-consumed content using positive, action-oriented language as the primary carrier of every instruction. Use when creating or editing any artifact an AI reads at inference time. Those artifacts include SKILL.md files, .mdc rule files, CLAUDE.md/AGENTS.md/GEMINI.md configuration, prompt templates, system prompts, commands, agent and sub-agent definitions, instruction sets, and persona definitions.
-version: 3.0.3
+version: 3.0.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -10,7 +10,7 @@ license: MIT
 
 <ai_instruction_writing>
   <objective>
-    Write AI-consumed content so every instruction's primary carrier is a positive, action-oriented statement that tells the LLM what to do, what something is, or how it should be. Allow negative or contrastive supplements when they add information the positive carrier cannot imply: a broad catch-all class, specific banned forms, or an exact set a downstream mechanism checks. Build each of those statements as an ordinary sentence, so no em dash carries a clause break the sentence has not earned.
+    Write AI-consumed content so every instruction's primary carrier is a positive, action-oriented statement that tells the LLM what to do, what something is, or how it should be. Allow negative or contrastive supplements when they add information the positive carrier cannot imply: a broad catch-all class, specific banned forms, or an exact set a downstream mechanism checks. Build each of those statements as an ordinary sentence, so no em dash or en dash appears in it.
   </objective>
 
   <core_rule>
@@ -20,13 +20,13 @@ license: MIT
   <self_check>
     <procedure>Delete the negative or contrastive portion of a rule, then apply the matching outcome below.</procedure>
     <when_positive_is_empty_or_vague>The rule is inverted. Rewrite the positive carrier first.</when_positive_is_empty_or_vague>
-    <when_positive_is_complete>The negative just restates the inverse. Drop the negative — it is redundant.</when_positive_is_complete>
+    <when_positive_is_complete>The negative just restates the inverse. Drop the negative because it is redundant.</when_positive_is_complete>
     <when_positive_is_complete_but_negative_is_load_bearing>The positive can read complete while the listed exclusions still carry information it cannot imply. Keep the negative when the reader learns a banned form from it, or when a downstream tool acts on the exact named set.</when_positive_is_complete_but_negative_is_load_bearing>
     <when_negative_names_a_broader_class>Keep the negative. It covers a long tail that no single positive could enumerate.</when_negative_names_a_broader_class>
   </self_check>
 
   <applicability>
-    This rule governs the model's *output*. In production rules, negative specifications are legitimate when they name load-bearing banned forms or exact checked sets. In meta or teaching context — including this skill — contrastive pairs, ❌/✅ examples, and "X replaces Y" patterns are legitimate when they illustrate how to transform inputs.
+    This rule governs the model's *output*. In production rules, negative specifications are legitimate when they name load-bearing banned forms or exact checked sets. In meta or teaching context, including this skill, contrastive pairs, ❌/✅ examples, and "X replaces Y" patterns are legitimate when they illustrate how to transform inputs.
   </applicability>
 
   <authoring_guidelines>
@@ -43,12 +43,12 @@ license: MIT
     <ordinary_joins>Join clauses with a comma, a colon, a full stop, or a conjunction such as because, so, while, or although.</ordinary_joins>
     <rewrite_an_unearned_em_dash>Where an em dash is the only thing holding two clauses together, rebuild the sentence: introduce the elaboration with a colon, or split it into two sentences. Substituting a hyphen, a double hyphen, or an en dash preserves the same unearned break, so it resolves nothing and counts as no fix.</rewrite_an_unearned_em_dash>
     <split_inside_a_yaml_scalar>Inside an unquoted YAML scalar such as a frontmatter `description:`, split the sentence in two rather than reaching for the colon, because a mid-value colon is a parser footgun that downstream discovery checks flag.</split_inside_a_yaml_scalar>
-    <keep_a_working_em_dash>An em dash that sets off a genuine aside or introduces a list is doing its job, so leave it in place. Reserve the rewrite for the dash that substitutes for a joint the sentence should have made explicit.</keep_a_working_em_dash>
-    <encoding_stays_a_separate_question>An em dash, a curly quote, and an ellipsis are all valid UTF-8, so a tool that flags them raises a question about what the consuming parser reads. Answer it by confirming the consumer reads UTF-8, and keep the character as written.</encoding_stays_a_separate_question>
+    <rewrite_an_aside_or_list_em_dash>An em dash that sets off a genuine aside or introduces a list goes the same way, because the character is banned outright rather than only where it stands in for a joint. Set the aside off with a pair of commas or parentheses, give it its own sentence, or introduce the list with a colon.</rewrite_an_aside_or_list_em_dash>
+    <encoding_stays_a_separate_question>A curly quote and an ellipsis are valid UTF-8, so a tool that flags them raises a question about what the consuming parser reads, which is separate from the dash rules above. Answer it by confirming the consumer reads UTF-8, and keep the character as written.</encoding_stays_a_separate_question>
   </sentence_construction>
 
   <positive_only_examples>
-    <when_to_apply>These enumerate their full positive set, so no catch-all negative is needed — see catch_all_negative for the cases where the long tail forces one.</when_to_apply>
+    <when_to_apply>These enumerate their full positive set, so no catch-all negative is needed. See catch_all_negative for the cases where the long tail forces one.</when_to_apply>
     <examples>
       <example>Use specific exception types like `except ValueError:`.</example>
       <example>Use absolute imports like `from package.module import function`.</example>
@@ -123,7 +123,7 @@ license: MIT
   </good_vs_poor_transformations>
 
   <enhancement_strategies>
-    <when_to_apply>Apply these when improving existing positive rules — layer value on top rather than rewriting.</when_to_apply>
+    <when_to_apply>Apply these when improving existing positive rules by layering value on top rather than rewriting.</when_to_apply>
     <add_specificity>Include error codes, specific examples, concrete details.</add_specificity>
     <expand_context>Add rationale, benefits, and when to apply.</expand_context>
     <enhance_examples>Provide more detailed, actionable examples.</enhance_examples>

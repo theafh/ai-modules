@@ -1,4 +1,4 @@
-# evals/ — language_humanizer behavioral evals
+# evals/: language_humanizer behavioral evals
 
 Three scenarios, each run over a fixed denominator of passes. `evals.json`
 carries the canonical schema (`id`, `prompt`, `expected_output`, `files`,
@@ -41,9 +41,9 @@ part that genuinely needs reading comprehension gets it.
 ## The worker prompt
 
 `run.py` tells the worker to read the SKILL.md, follow it exactly, carry out
-the staged request inside the sandbox, and then save the delivered document —
-document text only, no commentary, notes, or metadata lines — verbatim to
-`delivered.md`. The full reply still goes to `response.txt`, so the skill's own
+the staged request inside the sandbox, and then save the delivered document
+verbatim to `delivered.md`: the document text only, no commentary, notes, or
+metadata lines. The full reply still goes to `response.txt`, so the skill's own
 output contract (selection line, preservation note, open items) stays visible
 for inspection while `delivered.md` gives the graders a clean word-count and
 item-presence surface. The prompt names none of the skill's rules, so the

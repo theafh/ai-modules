@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**ai-modules is a meta-repository.** It defines AI components — skills, agents, commands, hooks — and packages them as plugins. Here **command** means the legacy standalone command artefact the deployer can still install (for example a Claude slash-command file under `commands/`), not a shell command and not a skill that is merely slash-invocable. Treat every `SKILL.md`, `plugin.json`, and `marketplace.json` as a published artefact: edits propagate to every machine that re-runs `make deploy`.
+**ai-modules is a meta-repository.** It defines AI components (skills, agents, commands, hooks) and packages them as plugins. Here **command** means the legacy standalone command artefact the deployer can still install (for example a Claude slash-command file under `commands/`), not a shell command and not a skill that is merely slash-invocable. Treat every `SKILL.md`, `plugin.json`, and `marketplace.json` as a published artefact: edits propagate to every machine that re-runs `make deploy`.
 
 ## What this repo is not
 
@@ -20,7 +20,7 @@ styles/                           # tracked output styles (repo-root; not a plug
 deployment/                       # deploy script + per-tool config
 tests/                            # regression harnesses (authored files tracked; run output gitignored)
 Makefile                          # task entry point
-.markdownlint.jsonc               # markdown lint config (MD033 off — pseudo-XML is intentional)
+.markdownlint.jsonc               # markdown lint config (MD033 off, pseudo-XML is intentional)
 ```
 
 ## Authoring conventions
@@ -37,18 +37,18 @@ Makefile                          # task entry point
 
 ## Versioning
 
-- **Ship a new skill, agent, or plugin at 1.0.0.** In the commit that first introduces it, leave the version at 1.0.0 — no bump.
-- **Bump once per commit, with the change — and only at commit time.** When a commit edits an existing skill, agent, or plugin, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
+- **Ship a new skill, agent, or plugin at 1.0.0.** In the commit that first introduces it, leave the version at 1.0.0 and add no bump.
+- **Bump once per commit, with the change, and only at commit time.** When a commit edits an existing skill, agent, or plugin, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
 - **Use patch increments for minor maintenance changes.** For a small follow-up, wording fix, or environment-specific hint, advance only the patch component.
 - **Advance the plugin minor when adding a skill or agent.** Adding a skill or agent to an existing plugin advances the plugin's minor component (`x.Y.0`); the new skill or agent itself still ships at 1.0.0. Patch stays for maintenance-only edits of already-shipped surfaces.
 - **Plugin meta stays lockstep.** When a skill or agent `version:` rises, or a skill or agent is added to an existing plugin, raise the matching plugin's `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and both marketplace registrations (`.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) to the same new plugin version in the same commit.
 
 ## Common tasks
 
-- `make help` — list every target.
-- `make lint` / `make fix` — runs `markdownlint`, `jq` syntax check, `shellcheck`. `fix` auto-fixes markdown only.
-- `make deploy` — copy components into vendor config dirs. Aliases: `global`, `install`. **Run only when the user asks for it.**
-- `make uninstall` — remove deployed artefacts via the deployment log.
+- `make help`: list every target.
+- `make lint` / `make fix`: runs `markdownlint`, `jq` syntax check, `shellcheck`. `fix` auto-fixes markdown only.
+- `make deploy`: copy components into vendor config dirs. Aliases: `global`, `install`. **Run only when the user asks for it.**
+- `make uninstall`: remove deployed artefacts via the deployment log.
 
 `CHANGELOG.md` is git-history-derived. Update it only through the `update_changelog` skill, run on demand. Don't hand-edit CHANGELOG entries as part of other work. Committing the skill's output is fine.
 
@@ -80,4 +80,4 @@ Task files stay agent-harness agnostic. When a task needs standing repo instruct
 - **One harness per skill under `tests/<skill_name>/`.** The authored harness is committed and linted; `tests/.gitignore` keeps run output (`workspace/`, `scratch/`, `.eval_cache/`, `results/` logs and run reports, and the staged `wiki/layer2` sandboxes) out of git, and the Makefile's `EXCLUDE` prunes the same subtrees so lint scope matches git scope. Change the two lists together. See `tests/README.md` for the full layout.
 - **Prefer the skill-creator-aligned pattern for new harnesses.** Keep evals in `evals/evals.json` (schema: `skill-creator/references/schemas.md`), fixtures in `evals/fixtures/`, run output in `workspace/iteration-N/`, and script unit tests in `script_tests/`. Run evals out-of-band via skill-creator's `scripts.run_eval`; `run_all.sh` drives only the script tests. Reference implementation: `tests/git_commit/`.
 - **`tests/wiki/` uses the legacy two-layer pattern.** Keep it as-is until its next significant iteration; create new harnesses with the skill-creator-aligned pattern.
-- **Ship the tests a change needs; separate only *unbounded* harness growth.** A skill change lands together with the tight scenario(s) and fixtures that prove *its own* new behavior — the evals a task's acceptance names are part of that change, not something to defer — and with the existing suite re-run to confirm no regression. What belongs in its own session is *unbounded* harness expansion beyond the change: backfilling coverage of pre-existing untested behavior, adding scenarios well past what the change needs, or restructuring the harness. The boundary is scope, not timing — prove this change now and run it, and keep an unrelated coverage sweep from ballooning the same session.
+- **Ship the tests a change needs; separate only *unbounded* harness growth.** A skill change lands together with the tight scenario(s) and fixtures that prove *its own* new behavior (the evals a task's acceptance names are part of that change, not something to defer) and with the existing suite re-run to confirm no regression. What belongs in its own session is *unbounded* harness expansion beyond the change: backfilling coverage of pre-existing untested behavior, adding scenarios well past what the change needs, or restructuring the harness. The boundary is scope, not timing: prove this change now and run it, and keep an unrelated coverage sweep from ballooning the same session.

@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; whenever the user mentions their wiki, knowledge base, or research notes in any way, including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.24.2
+version: 1.24.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -25,7 +25,7 @@ agent summarizes, cross-references, files, and maintains consistency.
 <orient_first_top>
 **Read `$WIKI/SCHEMA.md` once at the start of any session that activates this
 skill.** The schema declares the domain, the page-type enum, the tag taxonomy,
-and the conventions every subsequent action must honor — reading it first
+and the conventions every subsequent action must honor. Reading it first
 prevents wrong-type pages, off-taxonomy tags, and duplicate or misfiled work.
 The full orientation pass (SCHEMA + index + recent log) is covered in
 `<resuming_an_existing_wiki>`; this top-line note exists so the SCHEMA read is
@@ -38,9 +38,9 @@ Use this skill when the user:
 - Asks to create, build, or start a wiki or knowledge base.
 - Asks to ingest, add, or process a source into their wiki.
 - Asks a question that an existing wiki at the discovered location could answer.
-- Asks to lint, audit, fix, health-check, clean up, or auto-repair their wiki — delegate the work to the `auto_shaper_wiki` agent (see `<lint_and_audit>`).
+- Asks to lint, audit, fix, health-check, clean up, or auto-repair their wiki; delegate the work to the `auto_shaper_wiki` agent (see `<lint_and_audit>`).
 - References their wiki, knowledge base, or "notes" in a research context.
-- Asks to capture procedural knowledge — workflows, conventions, runbooks — alongside the wiki's subject pages.
+- Asks to capture procedural knowledge (workflows, conventions, runbooks) alongside the wiki's subject pages.
 </when_to_activate>
 
 <architecture>
@@ -71,27 +71,27 @@ lint break it introduced, keeping what it records and where it sits. See
 `<appending_to_log>` for the rule, and `<lint_and_audit>` for the duplicate
 heading the linter surfaces.
 
-**Layer 1 — Raw Sources.** Immutable. The agent reads but never modifies these.
-**Layer 2 — The Wiki.** Agent-owned markdown files. Created, updated, and
+**Layer 1: Raw Sources.** Immutable. The agent reads but never modifies these.
+**Layer 2: The Wiki.** Agent-owned markdown files. Created, updated, and
 cross-referenced by the agent. Page types split into *declarative* (what / why)
-and *procedural* (how) — see `<page_types>` below.
-**Layer 3 — The Schema.** `SCHEMA.md` defines structure, conventions, and tag
+and *procedural* (how). See `<page_types>` below.
+**Layer 3: The Schema.** `SCHEMA.md` defines structure, conventions, and tag
 taxonomy. The linter reads its `## Frontmatter` yaml block to learn the
 page-type enum, so wikis can declare additional types there without modifying
 the linter.
 
 <folder_layout>
 **The folder tree is the type axis only.** Every page lives directly at
-`<pluralized-type>/<slug>.md` — flat, one layer deep. No thematic prefix
+`<pluralized-type>/<slug>.md`, flat, one layer deep. No thematic prefix
 (`themes/ai/concepts/foo.md` is wrong), no sub-folder nesting inside a type
 folder (`concepts/ai/foo.md` is wrong), no bare files at the wiki root.
-Thematic scope belongs in `tags:` and `type:`, not in folder names — tags have
+Thematic scope belongs in `tags:` and `type:`, not in folder names, because tags have
 an enumerated taxonomy in SCHEMA.md and don't drift the way emergent theme
 folders do. The linter's `structure` check enforces this with **blocking**
 severity on misfiled pages (with a concrete move suggestion) and **warn**
 when an expected type folder is missing on disk. Because the wiki's primary
-consumer is an LLM with tools — which greps and follows links rather than
-browsing — visual folder shelving adds no real value and trades it for
+consumer is an LLM with tools that greps and follows links rather than
+browsing, visual folder shelving adds no real value and trades it for
 filing-drift risk.
 </folder_layout>
 </architecture>
@@ -102,7 +102,7 @@ point you (or a future operator) will re-find the page from.
 
 | Type | Answers | When to use |
 | --- | --- | --- |
-| **entity** | "Who/what *is* X?" | A single named person, org, product, model, place — something with identity. |
+| **entity** | "Who/what *is* X?" | A single named person, org, product, model, or place that has identity. |
 | **concept** | "What does X *mean*, and why?" | An idea, mechanism, or technique that's describable on its own. |
 | **comparison** | "How does X *compare to* Y?" | Side-by-side with dimensions and a verdict. |
 | **summary** | "What's the *overview* of topic X?" | Topic-organized digest. Re-found by browsing the topic. |
@@ -110,10 +110,10 @@ point you (or a future operator) will re-find the page from.
 | **procedure** | "*How* should X be done?" | An evergreen rule, convention, or workflow. The page holds the *rule*; the instance that prompted it lives elsewhere. |
 
 <declarative_vs_procedural>
-**Declarative vs procedural — the load-bearing split.** Entity, concept,
+**Declarative vs procedural: the load-bearing split.** Entity, concept,
 comparison, summary, and query capture *what is true* and *why* (subject
 knowledge). `procedures/` captures *how to act* and *how things should be
-organized* (operational knowledge — workflows, conventions, runbooks, build
+organized* (operational knowledge: workflows, conventions, runbooks, build
 steps, sourcing rules, review checklists, naming rules). A wiki without
 procedure pages is a research notebook; a wiki without the declarative types
 is just a runbook collection. Most projects need both.
@@ -121,7 +121,7 @@ is just a runbook collection. Most projects need both.
 
 <summary_vs_query>
 **summary vs query.** Same content, different framing. Topic-organized →
-summary. Question-organized → query. When both work, prefer **summary** —
+summary. Question-organized → query. When both work, prefer **summary** for its
 broader entry surface. File as **query** only when the question shape itself
 is what makes the answer valuable.
 </summary_vs_query>
@@ -130,17 +130,17 @@ is what makes the answer valuable.
 **procedure vs concept.** Both page types can answer "how"
 questions, but they answer different ones:
 
-- A **concept** answers "how does X work?" or "what is X?" — the
+- A **concept** answers "how does X work?" or "what is X?" The
   reader walks away understanding a feature, mechanism, or design
   choice the project implements. Concept pages can be deeply
   technical, can discuss how the system was built and why it was
   designed a certain way, and can carry rules that constrain
   authors. Those rules describe *properties* of the system
   ("errors must live in a closed set", "module folders contain
-  `main.mdl`") — they are facts about how the project is built,
+  `main.mdl`"); they are facts about how the project is built,
   not actions a contributor performs.
 - A **procedure** answers "how do I do X?" or "what do I do when
-  Y?" — the reader walks away with the sequence of actions needed
+  Y?" The reader walks away with the sequence of actions needed
   to accomplish a specific task. Procedure pages are action lists:
   open this file, add this variant, implement these methods, run
   this test.
@@ -151,8 +151,8 @@ add a new training run" (how do I do X → procedure). Both contain
 action sequence.
 
 The trap: a page about how the system works can wear imperative
-voice and operator-facing scaffolding — trigger lists, "must"
-bullets, pitfalls — and still be a concept. Authorial rules that
+voice and operator-facing scaffolding (trigger lists, "must"
+bullets, pitfalls) and still be a concept. Authorial rules that
 describe system properties belong on concept pages even when they
 constrain author behavior. A procedure page is the one that lists
 the actual steps a contributor takes (open file X, add variant Y,
@@ -182,13 +182,13 @@ take", that is a procedure.
 Cross-links go in every section that references another wiki page. The object
 being attributed picks the channel. A source the wiki captured under `raw/` is
 cited inline next to the claim it supports, as a standard-markdown link rather
-than a footnote marker, and is listed in the page's `sources:` frontmatter —
+than a footnote marker, and is listed in the page's `sources:` frontmatter, whose
 `raw/<kind>/<slug>.md` paths the lint validates against disk (see
 `<write_or_update_pages>`). That field is present on a page citing a captured
 raw source and absent from a page citing none, so a wiki that captures nothing
 carries no `sources:` key rather than an empty list everywhere. External
-material the page was distilled from but that stays outside `raw/` — e.g.
-doctrine in another repo — goes into an optional `## Derived from` body section
+material the page was distilled from but that stays outside `raw/` (e.g.
+doctrine in another repo) goes into an optional `## Derived from` body section
 at the page bottom; the renamed heading does not match the linter's deprecated
 `## Sources` regex, so it does not collide with the structured `sources:`
 channel.
@@ -200,7 +200,7 @@ channel.
 Three bundled scripts handle discovery, init, and lint. Every one of them
 runs from `$WIKI_SKILL`, resolved through `<resolve_wiki_skill_bundle>` below
 before the first of these calls. **Always run
-`"$WIKI_SKILL/scripts/discover_wiki.sh"` first** — never resolve the wiki path
+`"$WIKI_SKILL/scripts/discover_wiki.sh"` first**, and never resolve the wiki path
 with your own inline Python or shell logic; the script is the single source of
 truth for walk-up semantics, and bypassing it is what causes silent upstream
 adoptions.
@@ -280,7 +280,7 @@ marker; a directory merely named `wiki` without markers is not adopted.)
 
 It resolves in this order:
 
-1. **CWD short-circuit** — if the current working directory is itself a
+1. **CWD short-circuit.** If the current working directory is itself a
    recognised wiki, print it and stop, before any walk-up. This covers
    standing inside a wiki, including a topic-named one like `ml-wiki/`.
 2. **Walk up** level by level from CWD toward `$HOME`. At each level:
@@ -313,7 +313,7 @@ falls back to the pre-walk-up behavior (a recognised wiki child of CWD,
 `./.no_wiki`, or ask).
 
 Two more exit codes complete the set. **Exit 1** says the resolved path does
-not exist on disk — `--check` reports it for an auto-resolved path, and a
+not exist on disk: `--check` reports it for an auto-resolved path, and a
 given `WIKI_PATH` reports it for itself. **Exit 3** is a usage error, an
 unknown flag or an unsupported argument shape, with the message on stderr and
 nothing on stdout; it carries no candidate list, so it stays a hard failure
@@ -323,14 +323,14 @@ Passing a `WIKI_PATH` positionally skips discovery and answers for that path
 alone: an existing directory prints its canonical path and exits 0, a missing
 one exits 1, and the wiki predicate stays out of it. That is how a caller
 hands back the candidate the user chose under `<resolving_the_wiki_location>`,
-an `AVAILABLE:` level included — re-running bare discovery against a choice
+an `AVAILABLE:` level included, because re-running bare discovery against a choice
 would only reproduce the same exit-2 list. `lint.py` takes the same path as
 its optional positional argument.
 
 `.no_wiki` is the explicit opt-out and overrides the predicate: drop an empty
 file by that name in any directory you do not want a local wiki for, and the
 walk skips that level. Place it at an existing `<wiki-path>/.no_wiki` to retire
-that wiki dir without deleting it — discovery then declines to adopt it.
+that wiki dir without deleting it; discovery then declines to adopt it.
 </discover_wiki>
 
 <init_wiki>
@@ -344,11 +344,11 @@ template (domain, tag taxonomy, page-type sections, update policy).
 
 <lint>
 `lint.py` reads the page-type enum from `SCHEMA.md`'s `## Frontmatter` yaml
-block — wikis can extend the type set in their schema without touching the
+block, so wikis can extend the type set in their schema without touching the
 script. See `<lint_and_audit>` below for the iteration loop;
 `references/lint_checks.md` has the full check matrix. The
 `auto_shaper_wiki` agent wraps `lint.py` with a complete
-assess → fix → verify loop in an isolated context — spawn it when the user
+assess → fix → verify loop in an isolated context. Spawn it when the user
 asks for a broad audit, lint, fix, health-check, clean-up, or auto-repair
 pass over the wiki.
 </lint>
@@ -363,13 +363,13 @@ child directory recognised as a wiki (lexical order) as a hit (and stop
 walking), anything else as a creation candidate. Auto-resolve only when the
 closest non-opted-out level holds a recognised wiki or every level up through
 `$HOME` is opted out (use `$HOME/wiki`). Otherwise follow the explicit workflow
-in `<resolving_the_wiki_location>` — never silently route to an upstream wiki.
+in `<resolving_the_wiki_location>`. Never silently route to an upstream wiki.
 </fallback_without_scripts>
 </tools>
 
 <resolving_the_wiki_location>
-This is **the** discovery flow. **Every** wiki operation — ingest, query,
-update, archive, lint, audit, init — runs it before touching any file in a
+This is **the** discovery flow. **Every** wiki operation (ingest, query,
+update, archive, lint, audit, init) runs it before touching any file in a
 wiki. The rule applies regardless of how the user phrased their request
 ("update the wiki", "add a page", "lint", etc.); the operation does not
 begin until this resolves.
@@ -378,7 +378,7 @@ begin until this resolves.
 **The hard rule.** When `discover_wiki.sh` exits 2, you MUST present the
 candidates and ask the user, **unless `<adopt_when_user_named_the_path>`
 applies**. Do **not** silently adopt an upstream `EXISTING:` candidate
-when CWD is an unresolved `AVAILABLE:` level — the user may want a local
+when CWD is an unresolved `AVAILABLE:` level, because the user may want a local
 wiki for this directory, and silently writing to a wiki one or more
 levels above the current project is a confidentiality and scoping
 mistake. Exit 2 is the script telling you the location is **ambiguous**,
@@ -393,13 +393,13 @@ in one line** so the auto-choice is observable to the user, e.g.
 
 > `Using $WIKI=/path/to/wiki (per your message).`
 
-The user can correct in the next turn if the match was wrong — silence
+The user can correct in the next turn if the match was wrong. Silence
 is the failure mode this surface report exists to prevent. Two bounds
 keep this safe:
 
 - **Only adopt a path the script surfaced.** If the user named a path
   that is not on the exit-2 candidate list, fall back to the full
-  `<the_flow>` — never invent or extrapolate a wiki location.
+  `<the_flow>`. Never invent or extrapolate a wiki location.
 - **Only when the user named exactly one candidate in the current
   request.** If the user named none, or named more than one, present
   all candidates and ask.
@@ -422,9 +422,9 @@ keep this safe:
 **Present every candidate to the user, in walk order**, with the kind
 spelled out so the choice is unambiguous:
 
-- `AVAILABLE` — no wiki at that level yet; selecting it creates one
+- `AVAILABLE`: no wiki at that level yet; selecting it creates one
   there via `init_wiki.sh`.
-- `EXISTING` — a wiki already lives at that level; selecting it adopts
+- `EXISTING`: a wiki already lives at that level; selecting it adopts
   that wiki for the current operation.
 
 Ask: **"Which path should host the wiki for this operation?"** Wait
@@ -433,7 +433,7 @@ for the user's answer.
 
 <offer_no_wiki_markers>
 **Offer `.no_wiki` markers** for the unchosen `AVAILABLE` candidates
-between CWD (inclusive) and the chosen path (exclusive) — the levels
+between CWD (inclusive) and the chosen path (exclusive), the levels
 the user walked over to reach their pick. Ask once, covering all of
 them in a single yes/no:
 
@@ -441,7 +441,7 @@ them in a single yes/no:
 > so future walks from those subtrees skip straight past?"
 
 On yes, create an empty `.no_wiki` file at each path. On no, leave
-them untouched. Levels above the chosen path are not offered markers —
+them untouched. Levels above the chosen path are not offered markers, because
 the walk-up will short-circuit at the chosen wiki anyway.
 </offer_no_wiki_markers>
 
@@ -457,12 +457,12 @@ the walk-up will short-circuit at the chosen wiki anyway.
 **Common case worth calling out.** CWD has no wiki and no `.no_wiki`,
 but a parent directory does. The script reports
 `AVAILABLE:<CWD>` followed by `EXISTING:<parent>/wiki` and exits 2. The
-default response is **to ask** — silently routing to the upstream is the
+default response is **to ask**. Silently routing to the upstream is the
 mistake `<the_hard_rule>` exists to prevent. The user may want to
 (a) create a wiki right here, (b) drop a `.no_wiki` here and let the
 upstream wiki own this subtree from now on, or (c) adopt the upstream
 wiki for this session without a marker. They pick. The single
-exception is `<adopt_when_user_named_the_path>` — when the user's
+exception is `<adopt_when_user_named_the_path>`: when the user's
 current request already named one of the candidates, adopt it and
 report the adoption in one line instead of asking.
 </common_case>
@@ -473,9 +473,9 @@ report the adoption in one line instead of asking.
 When the user has an existing wiki, **always orient yourself before doing
 anything**:
 
-1. **Read `SCHEMA.md`** — understand the domain, conventions, and tag taxonomy.
-2. **Read `index.md`** — learn what pages exist and their summaries.
-3. **Scan recent `log.md`** — read the last 20–30 entries with
+1. **Read `SCHEMA.md`** to understand the domain, conventions, and tag taxonomy.
+2. **Read `index.md`** to learn what pages exist and their summaries.
+3. **Scan recent `log.md`**: read the last 20 to 30 entries with
    `tail -n 350 "$WIKI/log.md"` (cap each entry at roughly 20 lines; tune the
    tail by entry length). The log can grow to 500 entries before rotation; a
    full read wastes context.
@@ -490,17 +490,17 @@ For large wikis (100+ pages), also run a quick recursive search (`rg` /
 
 <initializing_a_new_wiki>
 When the user asks to create or start a wiki, `<resolving_the_wiki_location>`
-already covers steps 1–3 (run discovery, present candidates, offer
+already covers steps 1 to 3 (run discovery, present candidates, offer
 `.no_wiki` markers in unchosen levels). The init-specific steps follow once
 `$WIKI` is chosen:
 
 1. **Run `"$WIKI_SKILL/scripts/init_wiki.sh" "$WIKI"`** against the chosen path
    to scaffold `SCHEMA.md`, `index.md`, `log.md`, and the directory tree.
-2. **Customize the schema.** Ask the user what domain the wiki covers —
-   be specific. The freshly initialized `SCHEMA.md` has placeholder text
+2. **Customize the schema.** Ask the user what domain the wiki covers.
+   Be specific. The freshly initialized `SCHEMA.md` has placeholder text
    in the **Domain** and **Tag Taxonomy** sections. Read
    `references/template_schema.md` for what each section should contain.
-   Define 10–20 starting tags before any pages are written, since the
+   Define 10 to 20 starting tags before any pages are written, since the
    linter flags off-taxonomy tags.
 3. **Confirm the wiki is ready** and suggest first sources to ingest.
 </initializing_a_new_wiki>
@@ -518,22 +518,22 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
 - Meeting note, interview, spoken-word transcript (podcast, talk) → save to `raw/meetings/`.
 - Internal memo, discussion writeup, ad-hoc observation, internal doc not published externally → save to `raw/notes/`.
 - Pasted text → save to the appropriate `raw/` subdirectory by kind, not by source format.
-- For edge cases (article that embeds a transcript, transcript of a private meeting, paste of unknown provenance, etc.) consult `references/raw_taxonomy.md` — the canonical reference for bucket meanings and classification heuristics.
+- For edge cases (article that embeds a transcript, transcript of a private meeting, paste of unknown provenance, etc.) consult `references/raw_taxonomy.md`, the canonical reference for bucket meanings and classification heuristics.
 - Name files descriptively: `raw/articles/transformer-architecture-2024.md`.
 - Add raw frontmatter (`ingested`, body-only `sha256`, plus an origin field
   where one applies). Use `source_url:` for an externally-published source and
   a relative `source_path:` for a source the repo tracks (it may sit outside the
-  wiki dir but must stay inside the repo) — never an absolute, `~`-prefixed, or
+  wiki dir but must stay inside the repo), never an absolute, `~`-prefixed, or
   repo-escaping path. A raw-sidecar `source_path:` resolves from the wiki root;
   open it with `Read` as `$WIKI/<source_path-value>`. A local file outside the
   repo takes no path:
   excerpt it into the body and note its locality in prose. The
   `### raw/ Frontmatter` contract in `references/template_schema.md` is the
   canonical statement of these field meanings and of how a mislabeled or legacy
-  sidecar reconciles onto them — follow it rather than restating it here.
+  sidecar reconciles onto them. Follow it rather than restating it here.
   Compute and write the hash with
-  `python3 "$WIKI_SKILL/scripts/compute_sha256.py" raw/<kind>/<slug>.md` —
-  never invent the value by hand.
+  `python3 "$WIKI_SKILL/scripts/compute_sha256.py" raw/<kind>/<slug>.md`.
+  Never invent the value by hand.
 - **Re-ingest compares before it writes.** The recorded `sha256` is the only
   record of what the source said last time, so establish drift while that
   record still stands. Write the freshly fetched or converted body to a
@@ -543,7 +543,7 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   sidecar keeps beneath that closing `---` because the hash covers everything
   after it. Run
   `python3 "$WIKI_SKILL/scripts/compute_sha256.py" --check <temp-sidecar>` on
-  that temporary file — report-only mode, it writes nothing — while the
+  that temporary file (report-only mode, it writes nothing) while the
   sidecar on disk stays as it is. `ok` and exit 0 mean the source is
   unchanged: skip, leaving the sidecar untouched, with no body rewrite, no
   hash refresh, and no `log.md` entry. `update` and exit 1 mean drift: rewrite
@@ -559,12 +559,12 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
 </capture_raw_source>
 
 <discuss_takeaways>
-**Discuss takeaways** with the user — what's interesting, what matters
+**Discuss takeaways** with the user: what's interesting, what matters
 for the domain. (Skip in automated/cron contexts.)
 </discuss_takeaways>
 
 <check_what_already_exists>
-**Check what already exists** — search `index.md` and run a recursive
+**Check what already exists.** Search `index.md` and run a recursive
 search to find existing pages for mentioned entities/concepts. The
 difference between a growing wiki and a pile of duplicates.
 </check_what_already_exists>
@@ -572,22 +572,22 @@ difference between a growing wiki and a pile of duplicates.
 <write_or_update_pages>
 **Write or update wiki pages:**
 
-- **Page thresholds** — apply the right action for what you found:
+- **Page thresholds.** Apply the right action for what you found:
   - **Create** a new page when an entity/concept appears in 2+ sources OR is central to one source.
   - **Add** to an existing page when content is already covered there.
   - **Skip** passing mentions, minor details, or material outside the domain.
   - **Split** a page that exceeds ~200 lines into sub-topics with cross-links.
-  - **Archive** a page whose content is fully superseded — see `<archive>`.
-- **Update Policy** — when new content conflicts with what's already on a page:
-  1. Check the dates — newer sources generally supersede older ones.
+  - **Archive** a page whose content is fully superseded (see `<archive>`).
+- **Update Policy.** When new content conflicts with what's already on a page:
+  1. Check the dates; newer sources generally supersede older ones.
   2. If genuinely contradictory, record both positions with their dates and sources on the page.
   3. Mark the contradiction in frontmatter: `contradictions: [other-page-slug]` and `contested: true`.
-  4. Rely on lint to surface contested pages for user review — leave the resolution to the human.
+  4. Rely on lint to surface contested pages for user review; leave the resolution to the human.
 - **Updating existing pages**: always bump the `updated` date.
 - **Cross-reference**: every new/updated page links to ≥2 others.
 - **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page.
-- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. It is also listed in the page-level `sources:` frontmatter, the canonical inventory of captured sources the page draws on — present on a page citing a captured raw source, absent from a page citing none, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`. Uncaptured external lineage takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
-- **External derivation**: when a page is distilled from material that is **not** itself the subject of classification — doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes — that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns", and leave the field off entirely when the page cites no captured raw source. A page may have either, both, or neither.
+- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. It is also listed in the page-level `sources:` frontmatter, the canonical inventory of captured sources the page draws on, present on a page citing a captured raw source, absent from a page citing none, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`. Uncaptured external lineage takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
+- **External derivation**: when a page is distilled from material that is **not** itself the subject of classification (doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes), that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns", and leave the field off entirely when the page cites no captured raw source. A page may have either, both, or neither.
 - **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
 - **Freshness**: a page drawing on a moving external subject carries `checked: YYYY-MM-DD`, the date its claims were last checked against that subject. Stamp it when you verify the claims, leave it untouched otherwise, and read a page without it as a page to re-check.
@@ -602,24 +602,24 @@ difference between a growing wiki and a pile of duplicates.
   files actually created or updated in this ingest. Skip files that were
   inspected, considered, or deliberately left unchanged, and do not
   narrate decisions about what *not* to do. Aim for roughly 20 lines per
-  entry — if it grows past that, the entry is logging non-changes or
+  entry. If it grows past that, the entry is logging non-changes or
   prose that belongs on a wiki page instead.
 </update_navigation>
 
 <run_linter_and_iterate>
-**Run the linter and iterate** — `python3 "$WIKI_SKILL/scripts/lint.py"`.
+**Run the linter and iterate.** `python3 "$WIKI_SKILL/scripts/lint.py"`.
 Fix every blocking finding before declaring complete. This is the narrow
 post-ingest check; for broad audits across the whole wiki, spawn the
 `auto_shaper_wiki` agent instead. See `<lint_and_audit>` below.
 </run_linter_and_iterate>
 
 <report_what_changed>
-**Report what changed** to the user — list only files actually created or
+**Report what changed** to the user: list only files actually created or
 updated, matching what the log entry contains.
 </report_what_changed>
 
 <bulk_ingest>
-**Bulk ingest** (multiple sources at once): batch the work — read all sources
+**Bulk ingest** (multiple sources at once): batch the work. Read all sources
 first, identify all entities/concepts in one pass, check existing pages once
 (not N times), write in one pass, update `index.md` once, single batch log
 entry. Bulk ingests are the most likely operation to introduce structural
@@ -629,8 +629,8 @@ issues, so always lint to clean.
 </ingest>
 
 <capture_procedure>
-When the user asks to record a workflow rule, convention, or runbook — or you
-notice an operational pattern worth keeping — file it as a **procedure page**.
+When the user asks to record a workflow rule, convention, or runbook, or you
+notice an operational pattern worth keeping, file it as a **procedure page**.
 The page holds the *evergreen rule*; the worked example that prompted it
 lives elsewhere. The default failure mode here is over-indexing on the current
 example: a procedure page should still read as a rule six months from now on a
@@ -640,11 +640,11 @@ different task, with none of today's specifics in it.
 Run every step in order:
 
 <name_the_rule>
-**Name the rule.** State the policy in 1–3 sentences using the form
+**Name the rule.** State the policy in 1 to 3 sentences using the form
 "When [trigger], do [action], because [reason]." Keep the trigger and
 action operator-neutral; "after every ingest that touches 5+ entities" is a
 trigger, "the user just asked X" is not. Confirm the page reads as steps
-for an operator to follow — pages that read as facts about how a
+for an operator to follow. Pages that read as facts about how a
 mechanism works belong in `concepts/`, even when worded as "rules".
 </name_the_rule>
 
@@ -668,8 +668,8 @@ to be written.
 </hoist_non_rule_content>
 
 <bound_the_page>
-**Bound the page.** Keep atomic procedure pages 30–80 lines. Hub pages
-that chain atomics stay 30–60 lines and link out rather than restating
+**Bound the page.** Keep atomic procedure pages 30 to 80 lines. Hub pages
+that chain atomics stay 30 to 60 lines and link out rather than restating
 the underlying rules. Past the bound, hoist worked content per
 `<hoist_non_rule_content>` or split into two atomic pages.
 </bound_the_page>
@@ -706,12 +706,12 @@ When the user asks a question about the wiki's domain:
 
 1. **Read `index.md`** to identify relevant pages.
 2. **For wikis with 100+ pages**, also run a recursive search across all
-   `.md` files for key terms — the index alone may miss relevant content.
+   `.md` files for key terms, because the index alone may miss relevant content.
 3. **Read the relevant pages.**
 4. **Synthesize an answer** with citations: "Based on
    [page-a](concepts/page-a.md) and [page-b](entities/page-b.md)…"
-5. **File the answer back on the three-page-or-novel-reasoning trigger** —
-   filing is the default action for an answer that draws on three or more
+5. **File the answer back on the three-page-or-novel-reasoning trigger.**
+   Filing is the default action for an answer that draws on three or more
    wiki pages, or that carries cross-page reasoning present on no single
    page. Those are the answers painful to re-derive. An answer restating one
    or two pages is a direct lookup, so it stays in chat. Pick the type by
@@ -720,7 +720,7 @@ When the user asks a question about the wiki's domain:
    Two provisions keep the trigger deterministic:
    - **File the first synthesis while validation is pending.** An answer the
      user has not yet reacted to gets filed on the same trigger, and its
-     page carries `confidence: medium` — a field every page type takes.
+     page carries `confidence: medium`, a field every page type takes.
      Write `medium` for a first synthesis however many pages it draws on:
      what stays pending is the user's validation, while the `high` that the
      `**Confidence**` bullet in `<write_or_update_pages>` reserves for
@@ -731,18 +731,18 @@ When the user asks a question about the wiki's domain:
      `<write_or_update_pages>` path.
    - **State a concrete reason whenever you skip a trigger-worthy answer.**
      Name that reason in the one-line decision report below.
-6. **Append a `query` log entry when the query changed files** — a query that
+6. **Append a `query` log entry when the query changed files.** A query that
    filed a page or updated existing pages appends one entry listing exactly
    those files. A query that answered from what was already there changed
    nothing, so it appends nothing and the in-chat answer is its only trace
    (see `<appending_to_log>`).
-7. **Report the filing decision in one line** — close every query answer with
+7. **Report the filing decision in one line.** Close every query answer with
    one line covering whichever branch happened: filed → name the created
    page's path; skipped → give the reason in the trigger's own terms,
    naming the page count or the absent cross-page reasoning. This line
    stands in place of asking permission before filing: decide on the
-   trigger, report the call, and let the user correct it in the next turn
-   — the same surface-the-auto-choice shape
+   trigger, report the call, and let the user correct it in the next turn,
+   the same surface-the-auto-choice shape
    `<adopt_when_user_named_the_path>` uses.
 </query>
 
@@ -752,7 +752,7 @@ When content is fully superseded or the domain scope changes:
 1. Create `_archive/` if it doesn't exist; move the page there preserving its
    path (e.g., `_archive/entities/old-page.md`).
 2. Remove from `index.md`.
-3. Update inbound links — replace with plain text + "(archived)".
+3. Update inbound links: replace with plain text + "(archived)".
 4. Log the archive action.
 5. Run `python3 "$WIKI_SKILL/scripts/lint.py"`: a page link left pointing at
    the moved file surfaces as a blocking `broken-link`, and an `index.md`
@@ -765,9 +765,9 @@ When content is fully superseded or the domain scope changes:
 Two paths, picked by scope.
 
 <broad_audits>
-**Broad audits — spawn the `auto_shaper_wiki` agent.** When the user asks
-to lint, audit, fix, health-check, clean up, or auto-repair the wiki — or
-the wiki has accumulated drift across many pages — delegate to the
+**Broad audits: spawn the `auto_shaper_wiki` agent.** When the user asks
+to lint, audit, fix, health-check, clean up, or auto-repair the wiki, or
+the wiki has accumulated drift across many pages, delegate to the
 `auto_shaper_wiki` agent. The agent runs a complete
 assess → fix → verify loop in an isolated context: runs `lint.py`,
 audits the prose for issues the linter cannot see (topic mixing,
@@ -776,12 +776,12 @@ of the page-type anatomy), fixes every blocking and warn finding, splits
 or relocates pages where the schema demands it, re-lints until the wiki is
 clean, appends the audit entry to `log.md`, and reports back a per-file
 change list. Keep that work in the agent rather than running the iteration
-loop inline — the fix loop on a real wiki touches dozens of files and
+loop inline, because the fix loop on a real wiki touches dozens of files and
 displaces conversation context.
 </broad_audits>
 
 <narrow_inline_checks>
-**Narrow inline checks — run `"$WIKI_SKILL/scripts/lint.py"` directly.**
+**Narrow inline checks: run `"$WIKI_SKILL/scripts/lint.py"` directly.**
 After a single ingest, a single archive, a schema edit, or a small batch
 update, run the linter in-flow and fix what it surfaces:
 
@@ -793,14 +793,14 @@ python3 "$WIKI_SKILL/scripts/lint.py" --quiet      # blocking + warn only
 
 Findings come in three buckets:
 
-- **blocking** — broken links, missing/malformed frontmatter, missing
+- **blocking**: broken links, missing/malformed frontmatter, missing
   `index.md`, missing or unparseable `SCHEMA.md` (no extractable type enum).
   Exits 1; must fix.
-- **warn** — orphans, contested pages, source drift, off-taxonomy tags,
+- **warn**: orphans, contested pages, source drift, off-taxonomy tags,
   invalid enum/date values, pages missing from the index, verbatim-boilerplate
   mismatches (the log.md preamble drifting from the canonical template in
   `references/`).
-- **info** — markdown style nits, oversized pages, low-confidence
+- **info**: markdown style nits, oversized pages, low-confidence
   single-source pages, unused taxonomy tags, log over 500 entries, duplicate
   `log.md` entry headings (`log-heading`), and `log.md` entry bullets whose
   subject is a path outside the wiki (`log-scope`). The two log-entry checks
@@ -813,7 +813,7 @@ Full check matrix: `references/lint_checks.md`.
 <inline_iteration_loop>
 **Inline iteration loop.** When the lint scope is narrow (one ingest, one
 archive), run, fix the highest-severity findings, re-run. Repeat until the
-script exits 0. A `contested: true` page keeps its warn by design — that
+script exits 0. A `contested: true` page keeps its warn by design. That
 dispute signal is for a human to resolve, so it stays in the report. Append
 the outcome to `log.md`:
 
@@ -826,7 +826,7 @@ synthesis page), record it once as an `- Accepted finding: …` bullet in
 `SCHEMA.md`'s `## Lint` section, whose grammar that section documents. The
 next run drops the finding from the live report and the live counts and lists
 it under `ACKNOWLEDGED` instead, so the live info bucket holds only findings
-nobody has reviewed yet. Write the decision there and nowhere else — never as
+nobody has reviewed yet. Write the decision there and nowhere else: never as
 rationale prose in the page body, and never as a fresh log paragraph each run.
 Leave the script alone: it surfaces, it doesn't enforce.
 </inline_iteration_loop>
@@ -848,7 +848,7 @@ tail -n 350 "$WIKI/log.md"                    # ~last 20 log entries
 
 <appending_to_log>
 **An entry records a change.** Append to `log.md` when the operation created
-or updated wiki files, and write no entry at all when it changed none — a
+or updated wiki files, and write no entry at all when it changed none: a
 question answered from existing pages, an inspection that found nothing to
 fix, a proposal the user declined. Lint and audit runs are the one exception:
 each records its outcome as a process record even when it changed nothing
@@ -857,8 +857,8 @@ the next run has a baseline to read.
 
 **An entry is about the wiki, and only the wiki.** The subject of every bullet
 is a file under the wiki and what changed on it. A change elsewhere in the
-repository that holds the wiki — its source tree, tooling, tests, or version
-metadata — belongs to that change's own commit message, and a finding worth
+repository that holds the wiki (its source tree, tooling, tests, or version
+metadata) belongs to that change's own commit message, and a finding worth
 keeping goes onto the wiki page that owns it, after which the bullet names that
 page instead of restating what it says. Citing an outside path *mid-bullet* as
 the source a claim came from stays legitimate provenance; what stays out is
@@ -891,7 +891,7 @@ insert *before* it, producing inverted order. Avoid that:
   goes *after* the anchor.
 - **Cluster ordering matches file ordering.** When one workflow produces
   several entries (ingest → sidecar update → cite), write them earliest-first
-  within the cluster — same direction as the whole-file rule. Resist
+  within the cluster, same direction as the whole-file rule. Resist
   reverse-chronological "outcome first" narrative ordering.
 - **Verify after every log edit:**
 
@@ -925,7 +925,7 @@ run in auto-fix mode, helper scripts under `skills/wiki/scripts/`
 subagent that performed edits during this session, and any external command
 that touches the working tree. A stale Read causes the next `Edit` or
 `Write` to fail with `<tool_use_error>File has not been read yet. Read it
-first before writing to it.</tool_use_error>` and burns 3–5 turns per
+first before writing to it.</tool_use_error>` and burns 3 to 5 turns per
 occurrence on retries.
 
 The pattern that triggers this most often: rename a page with `git mv`, then
@@ -948,13 +948,13 @@ instead:
 This applies in particular to Confluence-page tool-result tempfiles under
 `.../tool-results/mcp-claude_ai_Atlassian-getConfluencePage-*.txt` and to
 large raw sources (long transcripts, dense PDFs converted to markdown). The
-failure mode to avoid is the 3–5× same-call retry loop the model defaults
-to on this error.
+failure mode to avoid is the same-call retry loop the model defaults to 3 to 5
+times on this error.
 </too_large_to_read_in_one_shot>
 
 <list_before_manipulating_unfamiliar_paths>
-**Before manipulating a wiki path you have not recently confirmed — rename,
-move, Read of a new location, Write of a new file — list the parent
+**Before manipulating a wiki path you have not recently confirmed (rename,
+move, Read of a new location, Write of a new file), list the parent
 directory once.** A single `ls <parent>` or
 `fd -e md . <parent> -d 1` is enough. This catches stale path
 assumptions (a slug the model remembers from earlier that was already
@@ -971,67 +971,67 @@ bucket that was retired) before they turn into `No such file or directory`,
 Quick-scan reminders. See the named section for full guidance.
 
 <resolve_before_writing>
-**Resolve before writing** — `discover_wiki.sh` exit 2 means ambiguous, not "use the upstream". Always present candidates and ask the user, even when an `EXISTING:` parent wiki shows up in the list. Silent upstream adoption is a confidentiality and scoping mistake. *(see `<resolving_the_wiki_location>`)*
+**Resolve before writing.** `discover_wiki.sh` exit 2 means ambiguous, not "use the upstream". Always present candidates and ask the user, even when an `EXISTING:` parent wiki shows up in the list. Silent upstream adoption is a confidentiality and scoping mistake. *(see `<resolving_the_wiki_location>`)*
 </resolve_before_writing>
 
 <orient_first>
-**Orient first** — read SCHEMA + index + recent log before any operation. *(see `<resuming_an_existing_wiki>`)*
+**Orient first.** Read SCHEMA + index + recent log before any operation. *(see `<resuming_an_existing_wiki>`)*
 </orient_first>
 
 <raw_is_read_only>
-**`raw/` is read-only** — corrections live in wiki pages, not in the source.
+**`raw/` is read-only.** Corrections live in wiki pages, not in the source.
 </raw_is_read_only>
 
 <cross_references_are_layer_2>
-**Cross-references are layer 2, not raw** — synthesis links between sources live on the wiki page that cites both, never inside a raw body. *(see `<capture_raw_source>` in `<ingest>`)*
+**Cross-references are layer 2, not raw.** Synthesis links between sources live on the wiki page that cites both, never inside a raw body. *(see `<capture_raw_source>` in `<ingest>`)*
 </cross_references_are_layer_2>
 
 <update_navigation_reminder>
-**Update navigation** — `index.md` and `log.md` lag → wiki degrades. *(see `<update_navigation>` in `<ingest>`)*
+**Update navigation.** `index.md` and `log.md` lag → wiki degrades. *(see `<update_navigation>` in `<ingest>`)*
 </update_navigation_reminder>
 
 <log_only_what_changed>
-**Log only what changed** — an operation that created or updated no wiki file writes no entry at all, and an entry that is written lists the wiki files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. Every bullet's subject is a file under the wiki: a change elsewhere in the repository goes in that change's own commit message, and a finding worth keeping goes onto the page that owns it so the bullet names that page. Lint and audit outcome entries are the sanctioned exception. *(see the `Scope:` group in `log.md`'s preamble for the point-of-use copy of the subject rule, `<appending_to_log>` for when an entry is written, `<update_navigation>` in `<ingest>` for what it lists)*
+**Log only what changed.** An operation that created or updated no wiki file writes no entry at all, and an entry that is written lists the wiki files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. Every bullet's subject is a file under the wiki: a change elsewhere in the repository goes in that change's own commit message, and a finding worth keeping goes onto the page that owns it so the bullet names that page. Lint and audit outcome entries are the sanctioned exception. *(see the `Scope:` group in `log.md`'s preamble for the point-of-use copy of the subject rule, `<appending_to_log>` for when an entry is written, `<update_navigation>` in `<ingest>` for what it lists)*
 </log_only_what_changed>
 
 <page_thresholds>
-**Page thresholds** — passing mentions don't earn a page. *(`template_schema.md`)*
+**Page thresholds.** Passing mentions don't earn a page. *(`template_schema.md`)*
 </page_thresholds>
 
 <cross_link_or_vanish>
-**Cross-link or vanish** — every page links to ≥2 others.
+**Cross-link or vanish.** Every page links to ≥2 others.
 </cross_link_or_vanish>
 
 <frontmatter_is_required>
-**Frontmatter is required** — enables search, filtering, staleness detection.
+**Frontmatter is required**: enables search, filtering, staleness detection.
 </frontmatter_is_required>
 
 <tags_from_taxonomy_only>
-**Tags from taxonomy only** — add new tags to SCHEMA first.
+**Tags from taxonomy only.** Add new tags to SCHEMA first.
 </tags_from_taxonomy_only>
 
 <pages_stay_scannable>
-**Pages stay scannable** — split at >200 lines; deep dives go to dedicated pages.
+**Pages stay scannable.** Split at >200 lines; detailed treatments go to dedicated pages.
 </pages_stay_scannable>
 
 <generalize_procedure_pages>
-**Generalize procedure pages** — name the rule, strip the instance, hoist worked content to `raw/` sidecars or concept pages. The page reads as a rule on a different task next month, or it isn't a procedure. *(see `<capture_procedure>`)*
+**Generalize procedure pages.** Name the rule, strip the instance, hoist worked content to `raw/` sidecars or concept pages. The page reads as a rule on a different task next month, or it isn't a procedure. *(see `<capture_procedure>`)*
 </generalize_procedure_pages>
 
 <procedure_or_concept>
-**Procedure or concept?** — file pages an operator reads as steps to follow under `procedures/`; file pages a reader reads as facts about how something works under `concepts/`. Wording the body as "rules govern X" does not turn a description into a procedure. *(see `<page_types>` and `<capture_procedure>`)*
+**Procedure or concept?** File pages an operator reads as steps to follow under `procedures/`; file pages a reader reads as facts about how something works under `concepts/`. Wording the body as "rules govern X" does not turn a description into a procedure. *(see `<page_types>` and `<capture_procedure>`)*
 </procedure_or_concept>
 
 <confirm_scope>
-**Confirm scope** — ingests touching 10+ existing pages need user OK first.
+**Confirm scope.** Ingests touching 10+ existing pages need user OK first.
 </confirm_scope>
 
 <rotate_log_at_500>
-**Rotate the log at 500 entries** — `log.md` → `log-YYYY.md`.
+**Rotate the log at 500 entries**: `log.md` → `log-YYYY.md`.
 </rotate_log_at_500>
 
 <contradictions_are_explicit>
-**Contradictions are explicit** — record both with dates, mark in frontmatter, flag for review.
+**Contradictions are explicit.** Record both with dates, mark in frontmatter, flag for review.
 </contradictions_are_explicit>
 
 </pitfalls>

@@ -1,7 +1,7 @@
 ---
 name: task_explain
 description: Explain one project task in compact what/why/how prose without editing it. Use when the user asks to explain, summarize, walk through, or orient on a task file by path, partial name, or conversation context. If the task reference is missing or ambiguous, activate and ask which task to explain. Not for readiness, next-work selection, implementation, audit, finish, or repair.
-version: 1.0.3
+version: 1.0.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -52,7 +52,7 @@ When no file matches, report the unresolved reference and ask for a task path or
 2. **Resolve the target.** Use `<target_resolution>` to find exactly one task across `tasks/` and `tasks/archive/`.
 3. **Read the task fully.** Read frontmatter, title, Goal, Context, Approach, Acceptance, and task-local links before synthesizing. Do not explain from filename, status, or description alone.
 4. **Extract the orienting frame.** Capture the relative path, status, scope, short title or description, and any load-bearing dependencies or cross-linked tasks that change how the task should be understood.
-5. **Synthesize the explanation.** Explain the task at altitude across the three beats: what it delivers, why it exists, and how the approach achieves it. Use the file's content as evidence, but synthesize rather than reproducing the task's sections verbatim.
+5. **Synthesize the explanation.** Explain the task at a high level across the three beats: what it delivers, why it exists, and how the approach achieves it. Use the file's content as evidence, but synthesize rather than reproducing the task's sections verbatim.
 6. **Return the readout.** Follow `<output_contract>` and preserve `<read_only_guarantee>`.
 </workflow>
 
@@ -71,17 +71,17 @@ Make no file edits, status changes, timestamp changes, lint or fix mutations, or
 </read_only_guarantee>
 
 <family>
-The `task_*` family - each sibling does one job, then points to the next; the base `task` skill is the hub that can do all of it:
+In the `task_*` family, each sibling does one job, then points to the next; the base `task` skill is the hub that can do all of it:
 
-- `task_create` - write one task file
-- `task_check` - readiness gate before building (read-only)
-- `task_auto_check` - autonomously repair one task until `task_check` reports ready
-- `task_explain` - explain one task at a high level (read-only) **(this skill)**
-- `task_select` - choose and rank the next eligible task/action (read-only)
-- `task_implement` - do the work
-- `task_audit` - verify a believed-done task against the codebase (read-only)
-- `task_finish` - close out: set status, bump `updated`, archive
-- `task_fix` - audit and repair the whole tasks tree
+- `task_create`: write one task file
+- `task_check`: readiness gate before building (read-only)
+- `task_auto_check`: autonomously repair one task until `task_check` reports ready
+- `task_explain`: explain one task at a high level (read-only) **(this skill)**
+- `task_select`: choose and rank the next eligible task/action (read-only)
+- `task_implement`: do the work
+- `task_audit`: verify a believed-done task against the codebase (read-only)
+- `task_finish`: close out (set status, bump `updated`, archive)
+- `task_fix`: audit and repair the whole tasks tree
 
 These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>

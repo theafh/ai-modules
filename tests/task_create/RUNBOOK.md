@@ -1,4 +1,4 @@
-# RUNBOOK — tests/task_create
+# RUNBOOK: tests/task_create
 
 ## Full suite
 
@@ -35,12 +35,12 @@ python3 tests/task_create/evals/run.py --no-cache
 
 Each run writes `evals/workspace/run-<ts>/<id>/`:
 
-- `response.txt` — the worker's user-facing turn. This is the graded surface
+- `response.txt`: the worker's user-facing turn. This is the graded surface
   for the "surfaced to the user" half of the rule; read it when a
   `response surfaces the open decision` check fails.
-- `grading.txt` — every PASS/FAIL line plus the agent-attest notes.
-- `sandbox/proj/tasks/` — the task file the worker actually wrote.
-- `stderr.txt`, `timing.json` — worker diagnostics.
+- `grading.txt`: every PASS/FAIL line plus the agent-attest notes.
+- `sandbox/proj/tasks/`: the task file the worker actually wrote.
+- `stderr.txt`, `timing.json`: worker diagnostics.
 
 A `worker did not complete` line means the grade cannot be trusted: the worker
 timed out or crashed, and grade.sh saw partial state.

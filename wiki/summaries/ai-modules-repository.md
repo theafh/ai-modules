@@ -1,7 +1,7 @@
 ---
 title: The ai-modules repository
 created: 2026-08-08
-updated: 2026-08-30
+updated: 2026-09-05
 type: summary
 tags: [repo-structure, plugin, skill, agent, deployment]
 sources: []
@@ -68,7 +68,7 @@ during a create, check, implement, audit, finish lifecycle. Wiki narrows it for
 the knowledge by having the agent write what it learned and the human correct
 the page when it reads wrong.
 
-Until August 2026 the repository dogfooded only one of the two. `tasks/` has
+Until August 2026 the repository used only one of the two on itself. `tasks/` has
 been live for a long time and the guardrail documents are in place, while the
 wiki family was designed and maintained here against instances that lived in
 other repositories. This wiki closes that gap, and it exists for its own sake as

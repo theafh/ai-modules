@@ -37,7 +37,7 @@ FAMILY_OPEN_LINE_RE = re.compile(
 )
 FAMILY_CLOSE_RE = re.compile(r"</family>", re.IGNORECASE)
 # A member is the leading backticked token of a block list item, not every
-# backticked word in the block: an entry reading ``- `x` — bumps `updated` ``
+# backticked word in the block: an entry reading ``- `x`: bumps `updated` ``
 # declares `x` alone.
 FAMILY_ENTRY_RE = re.compile(r"^[ \t]*[-*+][ \t]+`([a-z][a-z0-9_]*)`", re.MULTILINE)
 FENCE_OPEN_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})")

@@ -731,10 +731,12 @@ def analyze_skill(
                     "code": "description_typographic_punctuation",
                     "message": (
                         "description contains typographic punctuation (em "
-                        "dash, en dash, curly quote, or ellipsis). Where a "
-                        "dash holds together a clause break the sentence "
-                        "never earned, split the description into two "
-                        "sentences; a hyphen, a double hyphen, or an en dash "
+                        "dash, en dash, curly quote, or ellipsis). "
+                        "ai_instruction_writing bans the em dash and en "
+                        "dash outright in AI-consumed content, so split "
+                        "the description into two sentences where a dash "
+                        "joins two clauses; a hyphen, a double hyphen, or "
+                        "an en dash "
                         "substituted into that slot keeps the same break and "
                         "fixes nothing"
                     ),
@@ -889,10 +891,11 @@ def group_sibling_findings(label: str, with_desc: list[dict]) -> list[dict]:
     typographic_message = (
         f"{len(typographic_outliers)} of {len(with_desc)} descriptions in the "
         f"{label} carry typographic punctuation ({typographic_carriers}). "
-        "Where a dash holds together a clause break the sentence never "
-        "earned, split the description into two sentences; a hyphen, a double "
-        "hyphen, or an en dash substituted into that slot keeps the same "
-        "break and fixes nothing"
+        "ai_instruction_writing bans the em dash and en dash outright in "
+        "AI-consumed content, so split the description into two sentences "
+        "where a dash joins two clauses; a hyphen, a double hyphen, or an en "
+        "dash substituted into that slot keeps the same break and fixes "
+        "nothing"
     )
 
     for report in with_desc:

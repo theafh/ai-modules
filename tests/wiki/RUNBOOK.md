@@ -1,4 +1,4 @@
-# Wiki skill regression — quick reference
+# Wiki skill regression: quick reference
 
 For the full design, philosophy, and gotchas, see `README.md`. This is
 the operator's quick-ref.
@@ -9,7 +9,7 @@ the operator's quick-ref.
 # Layer 1 only (fast, deterministic, ~1 sec)
 ./tests/wiki/run_all.sh
 
-# Layer 1 + Layer 2 (full regression, ~5–10 min, spawns claude -p subprocesses)
+# Layer 1 + Layer 2 (full regression, ~5 to 10 min, spawns claude -p subprocesses)
 ./tests/wiki/run_all.sh --layer2
 
 # Single Layer 2 scenario while debugging
@@ -43,7 +43,7 @@ any assertion that was 100% in the prior run is now <100%.
 
 ## Adding a scenario
 
-1. Layer 1: edit `layer1/run.sh` — add a body function and a
+1. Layer 1: edit `layer1/run.sh` to add a body function and a
    `scenario` invocation.
 2. Layer 2: add a sandbox block in `layer2/setup_scenarios.sh` and a
    scenario block in `layer2/evals.json`.

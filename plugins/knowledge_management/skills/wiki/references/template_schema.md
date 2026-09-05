@@ -4,7 +4,7 @@ This LLM-Wiki is managed by the `wiki` skill created by Andreas F. Hoffmann from
 
 ## Domain
 
-[What this wiki covers — e.g., "AI/ML research", "personal health", "startup intelligence"]
+[What this wiki covers, e.g., "AI/ML research", "personal health", "startup intelligence"]
 
 While customizing this schema, replace every remaining example identifier in it
 (slugs, page names, tags, source labels) with one drawn from this domain, so the
@@ -28,7 +28,7 @@ rules below read in the vocabulary of the wiki they govern.
 - **Add every new page to `index.md`** under the correct section.
 - **Append every operation that creates or updates wiki files to `log.md`**;
   write no entry for an operation that changes no file (lint and audit runs
-  excepted — each records its outcome as a process record). **An entry records
+  excepted, since each records its outcome as a process record). **An entry records
   changes to this wiki, and only those**: its subject is a file under the wiki,
   a change elsewhere in the repository that holds the wiki goes in that change's
   own commit message, and a finding worth keeping goes onto the page that owns
@@ -58,15 +58,15 @@ rules below read in the vocabulary of the wiki they govern.
   easily drift into dangling references.
 
 - **Record uncaptured external lineage under `## Derived from`.** Some pages
-  exist because external material exists — a doctrine file in another repo, a
-  codebase the page distills, a notebook the analysis was extracted from —
-  where that external material is **not** itself the subject of
+  exist because external material exists, such as a doctrine file in another
+  repo, a codebase the page distills, or a notebook the analysis was extracted
+  from. That external material is **not** itself the subject of
   classification, so it does not get captured into `raw/<kind>/<slug>.md`.
   Put that lineage in an optional bottom-of-page `## Derived from` section
   (bulleted list of external paths, URLs, or descriptors with whatever
   standing commentary applies). The heading is deliberately distinct from
   `## Sources` so the linter does not flag it as the deprecated body-Sources
-  section — `sources:` frontmatter remains the single structured channel
+  section. The `sources:` frontmatter remains the single structured channel
   (strict `raw/<kind>/<slug>.md` paths, lint-validated), while
   `## Derived from` is the unstructured channel for external derivation
   material that lives outside the wiki by design. A page may have `sources:`,
@@ -136,16 +136,16 @@ sha256: <hex digest of the raw content below the frontmatter>
 
 `source_url:` records where an externally-published source was fetched from. `source_path:`
 records a source kept **inside the repository the wiki ships within**, written as a relative path
-from the wiki root — it may point outside the wiki directory (for example `../shared/spec.md`) but
+from the wiki root. It may point outside the wiki directory (for example `../shared/spec.md`) but
 must stay inside the repo, and it is never an absolute or `~`-prefixed path, since a path that
 leaves the repo or names a machine-specific prefix resolves only on the machine that wrote it and
 dangles on every clone. Reach for it when the ingested source is a file the repo already tracks;
 the linter blocks an absolute or repo-escaping `source_path:` and a relative one that does not
 resolve on disk. (A wiki that is not in a repository is local-only and ships nowhere, so this rule
-does not apply to it — its paths only ever resolve on the one machine that holds them.)
+does not apply to it; its paths only ever resolve on the one machine that holds them.)
 
-A local file that lives **outside the repository** — a chat-session transcript, a local note, a
-working file under a home directory with no public URL — takes no path at all. Excerpt enough of
+A local file that lives **outside the repository**, such as a chat-session transcript, a local note,
+or a working file under a home directory with no public URL, takes no path at all. Excerpt enough of
 its content into the sidecar body to stand on its own, and note its locality in prose, for example
 "Local file on the author's workstation; relevant content excerpted below." A machine-local
 absolute path would only add a pointer that breaks everywhere else, so the excerpt is the
@@ -157,21 +157,21 @@ state deterministically recoverable from the values present, without inventing o
 provenance?* When it is, the move is deterministic and lossless, and applies automatically:
 
 - A `file://` URL or a bare path in `source_url:` that names an in-repo target becomes a
-  `source_path:` — a relative path from the wiki root, which may point outside the wiki directory
-  via `../` — and the `source_url:` is dropped.
+  `source_path:`, a relative path from the wiki root that may point outside the wiki directory
+  via `../`, and the `source_url:` is dropped.
 - An absolute or `~`-prefixed `source_path:` that resolves to an in-repo file normalizes to its
-  wiki-root-relative equivalent — the same file, portably spelled.
+  wiki-root-relative equivalent: the same file, portably spelled.
 - A remote URL sitting in `source_path:` becomes `source_url:`.
 - Two fields naming the *same* origin collapse to the one field whose form fits, dropping the
   duplicate.
 
-When the values do not settle it, a human decides — reconciliation stops and the case is surfaced
+When the values do not settle it, a human decides, so reconciliation stops and the case is surfaced
 rather than guessed:
 
 - Two fields naming *different* plausible origins: choosing one discards provenance, so the user picks.
-- A value that fits no field and whose removal would strand the source — an out-of-repo `file://`
-  or absolute path with no stand-alone body excerpt — drops to a body excerpt plus a prose locality
-  note only once a human confirms it.
+- A value that fits no field and whose removal would strand the source, such as an out-of-repo
+  `file://` or absolute path with no stand-alone body excerpt, drops to a body excerpt plus a prose
+  locality note only once a human confirms it.
 
 These cases illustrate the recoverable-without-inventing-or-discarding test; they are not a closed list.
 
@@ -179,7 +179,7 @@ The `sha256:` lets a future re-ingest of the same source skip processing when co
 and flag drift when it has changed. Compute over the body only (everything after the closing
 `---`), not the frontmatter itself. Use
 `python3 "$WIKI_SKILL/scripts/compute_sha256.py" raw/<kind>/<slug>.md` to write or refresh the
-field — the script handles the body-boundary detail correctly and keeps the rest of the
+field. The script handles the body-boundary detail correctly and keeps the rest of the
 frontmatter intact. Run it without arguments to refresh every raw file at once (it walks the
 discovered wiki's `raw/` tree).
 
@@ -190,7 +190,7 @@ schema names the same way.
 
 ## Tag Taxonomy
 
-[Define 10–20 top-level tags for the domain.]
+[Define 10 to 20 top-level tags for the domain.]
 
 Example for AI/ML:
 
@@ -202,7 +202,7 @@ Example for AI/ML:
 ```
 
 The linter reads only unfenced `- Label: tag, …` bullets, so the block above is
-documentation rather than the live taxonomy — replace it with your own unfenced
+documentation rather than the live taxonomy. Replace it with your own unfenced
 bullets. Until you do, the linter reports "no Tag Taxonomy section" rather than
 validating pages against these placeholder tags.
 
@@ -214,8 +214,8 @@ add it here first, then use it. This prevents tag sprawl.
 - **Create a page** when an entity/concept appears in 2+ sources OR is central to one source
 - **Add to existing page** when a source mentions something already covered
 - **Skip page creation** for passing mentions, minor details, or things outside the domain
-- **Split a page** when it exceeds ~200 lines — break into sub-topics with cross-links
-- **Archive a page** when its content is fully superseded — move to `_archive/`, remove from index
+- **Split a page** when it exceeds ~200 lines, then break into sub-topics with cross-links
+- **Archive a page** when its content is fully superseded, then move to `_archive/` and remove from index
 
 ## Page Types: Pick by Question
 
@@ -225,16 +225,16 @@ Each type answers a different shape of question. The first five capture
 
 | Type | Answers |
 | --- | --- |
-| **entity** | "Who/what *is* X?" — a named person, org, product, model, place. |
-| **concept** | "What does X *mean*, and why?" — an idea or mechanism. |
-| **comparison** | "How does X *compare to* Y?" — side-by-side with verdict. |
-| **summary** | "What's the *overview* of topic X?" — topic-organized digest. |
-| **query** | "What's the answer to *my specific question*?" — question-organized. |
-| **procedure** | "*How* should X be done?" — rule, convention, or workflow. |
+| **entity** | "Who/what *is* X?" A named person, org, product, model, place. |
+| **concept** | "What does X *mean*, and why?" An idea or mechanism. |
+| **comparison** | "How does X *compare to* Y?" Side-by-side with verdict. |
+| **summary** | "What's the *overview* of topic X?" Topic-organized digest. |
+| **query** | "What's the answer to *my specific question*?" Question-organized. |
+| **procedure** | "*How* should X be done?" Rule, convention, or workflow. |
 
-When **summary** and **query** both feel possible, prefer summary — broader
-entry surface. When **procedure** and **concept** feel possible, ask whether
-the page *describes* (concept) or *prescribes* (procedure) — wording a
+When **summary** and **query** both feel possible, prefer summary for its
+broader entry surface. When **procedure** and **concept** feel possible, ask
+whether the page *describes* (concept) or *prescribes* (procedure). Wording a
 description as "rules govern X" leaves it descriptive and keeps it in
 `concepts/`.
 
@@ -305,20 +305,20 @@ working in this domain (workflows, conventions, runbooks, build steps,
 sourcing rules, review checklists, naming rules). Procedure pages capture
 *how-to* knowledge and complement
 the *what/why* knowledge in entity, concept, and comparison pages. They
-are first-class wiki citizens — same frontmatter, same lint, same tag
+are first-class wiki citizens: same frontmatter, same lint, same tag
 and index discipline as content pages.
 
 A procedure page reads as steps an operator follows. Pages that read as
-facts about how a mechanism works — even when worded as "rules govern X"
-— stay descriptive and file as `concept`.
+facts about how a mechanism works stay descriptive and file as `concept`,
+even when worded as "rules govern X".
 
 Page anatomy:
 
 - **Title** at H1; one-paragraph summary directly below stating the rule and its scope.
-- **When this applies** — the trigger. What is the operator about to do that pulls this page in?
-- **The rule** — the evergreen content. Tight, self-contained, independent of any specific worked example.
-- **Pitfalls / edge cases** (optional) — short, rule-shaped only. Not a place for "and once we did X" narrative.
-- **See Also** — links to related procedure pages and any worked-example sources where the rule was instantiated.
+- **When this applies**: the trigger. What is the operator about to do that pulls this page in?
+- **The rule**: the evergreen content. Tight, self-contained, independent of any specific worked example.
+- **Pitfalls / edge cases** (optional): short, rule-shaped only. Not a place for "and once we did X" narrative.
+- **See Also**: links to related procedure pages and any worked-example sources where the rule was instantiated.
 
 **Atomic vs. hub.** Atomic procedure pages answer one question (e.g.,
 "how precise should my citation be?"). Hub pages chain three or more
@@ -329,8 +329,8 @@ not a re-statement of the underlying rules.
 **Where worked examples live.** Procedure pages hold the rule. Worked
 examples and anecdotes live where they were generated:
 
-- Source-specific worked examples — on the source sidecar in `raw/<kind>/<slug>.md`.
-- Mechanism-explanation worked examples — on the relevant `concepts/` page.
+- Source-specific worked examples belong on the source sidecar in `raw/<kind>/<slug>.md`.
+- Mechanism-explanation worked examples belong on the relevant `concepts/` page.
 
 If commentary starts accumulating on a procedure page, hoist it. See the
 **Capture Procedure** protocol in `SKILL.md` for the strip-the-instance
@@ -343,7 +343,7 @@ single statement of the contradiction path, and the `contested` and `contradicti
 frontmatter fields and the lint report point back to it. Resolving a contradiction here
 is what keeps a weak claim from silently hardening into accepted wiki fact.
 
-1. Check the dates — newer sources generally supersede older ones
+1. Check the dates, since newer sources generally supersede older ones
 2. If genuinely contradictory, note both positions with dates and sources
 3. Mark the contradiction in frontmatter: `contested: true` plus `contradictions: [page-name]`
 4. Flag for user review in the lint report
@@ -352,7 +352,7 @@ is what keeps a weak claim from silently hardening into accepted wiki fact.
 
 `$WIKI_SKILL/scripts/lint.py` walks every Markdown file under the type folders and always
 skips the `raw/` and `_archive/` trees. A vault that also holds non-page
-folders — synced notes, generated artifacts, imported working files — names
+folders, such as synced notes, generated artifacts, or imported working files, names
 them here so the page rules (frontmatter, links, structure, orphans) stay off
 files that were never meant to be wiki pages:
 
@@ -363,7 +363,7 @@ files that were never meant to be wiki pages:
 List the directory names directly under the wiki root, comma-separated, on one
 `Page-check exclusions:` bullet. The names are additive to the always-skipped
 `raw/` and `_archive/`, not a replacement. Omit the bullet when the vault holds
-only pages — the default skips the two standard trees and nothing else. The
+only pages. The default skips the two standard trees and nothing else. The
 linter reads this bullet only outside fenced code blocks, so the example above
 is documentation rather than a live setting.
 
@@ -384,9 +384,9 @@ messages carry a counter or a date that moves between runs. The path alone
 identifies the finding there. Every other category takes the finding's exact
 message as a third field, and slots its line number in ahead of that message as
 a fourth-field form when the report shows one (`path.md:42`). Copy the message
-from the report verbatim — the match is exact. Fields are separated by ` — `,
+from the report verbatim. The match is exact. Fields are separated by ` — `,
 and the message runs to the end of the line, so a message carrying its own em
-dash is quoted in full. Acceptance covers info findings alone — a blocking or
+dash is quoted in full. Acceptance covers info findings alone. A blocking or
 warn finding stays in the report whatever a bullet says. The example above sits
 in a fenced block, so it is documentation; a live acceptance goes on an
 unfenced bullet.

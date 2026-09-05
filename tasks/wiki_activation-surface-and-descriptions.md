@@ -2,7 +2,7 @@
 description: Realign the wiki family's activation surface: hub stops claiming import and audit ground, purpose-first descriptions, em-dash sentence splits, and trigger fixtures aligned to the boundary.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-08-30T17:36:22
+updated: 2026-09-05T21:33:57
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -109,8 +109,8 @@ this task's verification holds either way.
    verbatim: `Asks to create, build, or start a wiki or knowledge base.`; `Asks
    a question that an existing wiki at the discovered location could answer.`;
    `References their wiki, knowledge base, or "notes" in a research context.`;
-   and `Asks to capture procedural knowledge — workflows, conventions, runbooks
-   — alongside the wiki's subject pages.`
+   and `Asks to capture procedural knowledge (workflows, conventions, runbooks)
+   alongside the wiki's subject pages.`
 4. Reading the hub's `<lint_and_audit>` block shows it unchanged, so the agent
    handoff for an in-session audit still exists.
 5. The hub description's first sentence states the skill's purpose with no router

@@ -39,7 +39,7 @@ printf 'format_rust script_tests\n'
 
 check "SKILL.md exists" test -f "$SKILL"
 check "frontmatter name: format_rust" file_has "$SKILL" '^name: format_rust$'
-check "frontmatter version: 1.3.1" file_has "$SKILL" '^version: 1\.3\.1$'
+check "frontmatter version: 1.3.2" file_has "$SKILL" '^version: 1\.3\.2$'
 
 # Description: added coverage + idiom-by-consumer slot rewrite.
 check "description names error-versus-invariant model" \

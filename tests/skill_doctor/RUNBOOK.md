@@ -22,7 +22,7 @@ resamples, `--no-cache` bypasses). Results land in
 `workspace/run-<ts>/`, and `summary.json` there is the verdict of record.
 
 `evals/README.md` carries the manual stage-run-grade path and explains why
-skill-creator's `scripts.run_eval` is the wrong runner for these — it is a
+skill-creator's `scripts.run_eval` is the wrong runner for these: it is a
 trigger evaluator, not a behavioral one.
 
 ## Reading a result

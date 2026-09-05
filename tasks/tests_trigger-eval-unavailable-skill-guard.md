@@ -2,7 +2,7 @@
 description: Make the trigger-eval runner fail loudly on an unavailable skill instead of silently scoring a zero, and document how to read a zero-recall outcome in the tests-tree README.
 scope: "local test harnesses"
 created: 2026-08-30T16:57:07
-updated: 2026-08-30T16:57:07
+updated: 2026-09-05T21:26:04
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -24,10 +24,10 @@ genuine zero in deployed mode reads as evidence about the description.
 
 `tests/trigger_evals/run.py` resolves the skill under test from the deployed tree
 (`~/.claude/skills/<name>/`) and falls back to skill-creator's UUID-proxy runner
-when that lookup misses. Deployed mode measures triggering correctly — recent
+when that lookup misses. Deployed mode measures triggering correctly. Recent
 deployed runs scored `wiki` 19/20 (2026-05-25) and the `task` fixture 18/31
 (2026-08-11). The UUID fallback is the path that once reported `precision=100%
-recall=0% accuracy=50%` — a clean-looking zero that reads as "the description
+recall=0% accuracy=50%`, a clean-looking zero that reads as "the description
 matches nothing" when the real cause is that the skill was unavailable to the
 worker.
 
@@ -42,8 +42,8 @@ Direct-deploy now symlinks every skill into the deployed tree, so the fallback i
 rarely taken today. The guard matters for the next skill authored but not yet
 deployed, whose run would otherwise repeat the silent-zero misread that produced
 the now-deferred [archive/tests_trigger-eval-harness-repair.md](archive/tests_trigger-eval-harness-repair.md).
-This task carries the genuinely-open remainder of that deferred task — its
-loud-failure and zero-recall-documentation acceptance — while that task's
+This task carries the genuinely-open remainder of that deferred task, its
+loud-failure and zero-recall-documentation acceptance, while that task's
 reproduce-and-fix-the-resolution framing is moot, since deployed mode already
 measures.
 
@@ -56,7 +56,7 @@ zero-recall result.
 
 Change the unavailable-skill branch in `run.py` so a run whose skill under test is
 absent from the deployed tree, taken without `--force-uuid`, exits non-zero with a
-distinct message naming the unavailability and writes no results score — folding
+distinct message naming the unavailability and writes no results score, folding
 today's narrower no-skill-path error into that one named failure. Keep
 `--force-uuid` as the deliberate opt-in that still reaches the UUID proxy, so
 exercising the proxy on purpose stays possible.

@@ -10,12 +10,12 @@ at, which `tests/.gitignore` keeps out of git.
 
 ## Harness rule: skill-creator is read-only
 
-The skill-creator skill — installed under
-`~/.claude/plugins/cache/claude-plugins-official/skill-creator/.../skill-creator/`
-— is **read-only** for this harness. We never copy into it, overwrite
+The skill-creator skill, installed under
+`~/.claude/plugins/cache/claude-plugins-official/skill-creator/<version>/skills/skill-creator/`,
+is **read-only** for this harness. We never copy into it, overwrite
 files inside it, or rely on patches to it. If a behavioral-eval need
 arises that would otherwise require modifying the skill-creator skill,
-solve it inside `tests/git_commit/` instead — extend `stage.sh`,
+solve it inside `tests/git_commit/` instead: extend `stage.sh`,
 extend `grade.sh`, add a per-fixture mechanism, or document an
 in-session manual step. This keeps the harness portable across
 machines where skill-creator may be at different versions or paths,
@@ -31,12 +31,12 @@ loads the skill in response. It does NOT spawn the model to execute
 the skill against fixtures, has no `--workspace` argument, and does
 not understand the `{id, prompt, expected_output, expectations}`
 schema in `evals.json`. An older version of this README and the
-top-level RUNBOOK assumed otherwise — both have been corrected.
+top-level RUNBOOK assumed otherwise. Both have been corrected.
 
 The behavioral workflow described in skill-creator's own `SKILL.md`
 ("spawn with-skill and without-skill subagents per eval, capture
 timing, run the grader, aggregate") is something a Claude **in a
-session** orchestrates — it isn't a CLI tool you can invoke directly.
+session** orchestrates, not a CLI tool you can invoke directly.
 The harness in this directory gives you the deterministic pieces of
 that workflow (stage a fixture, grade the post-run sandbox) and
 leaves the actual model-runs-the-skill step to be driven by whoever
@@ -67,7 +67,7 @@ tests/git_commit/evals/
 ## One-shot run (the default)
 
 `run.py` drives all three phases for you and pins the skill under test
-to **sonnet** — the worker model the repo's test policy standardizes on
+to **sonnet**, the worker model the repo's test policy standardizes on
 (see `tests/CLAUDE.md`). The deterministic `grade.sh` it calls uses no
 model; the prose-verdict expectations stay for you to confirm from the
 captured `response.txt` on the inherited session model.
@@ -81,14 +81,14 @@ python3 tests/git_commit/evals/run.py --model '' # inherit the CLI default inste
 ```
 
 Evals 6 and 7 exercise the drift guard with a **detached, delayed writer**
-that stands in for a concurrent session editing the same tree mid-run — no
+that stands in for a concurrent session editing the same tree mid-run, with no
 real second agent. They are timing-based: the writer's fixed delay
 (`GIT_COMMIT_DRIFT_DELAY`, default 20s) must land its write after the agent
 runs `prepare_commit_context.sh` but before its commit-time drift re-check.
 Eval 6 expects the skill to **pause** on the new outside-baseline file (no
 commit lands); eval 7 expects **commit-all** on an ambiguous same-path edit.
 If eval 6 shows the agent committed instead of pausing, the write likely fell
-outside that window — retry or tune `GIT_COMMIT_DRIFT_DELAY`.
+outside that window, so retry or tune `GIT_COMMIT_DRIFT_DELAY`.
 
 Evals 8 and 9 exercise `<prepare_worktree>`'s **relevance test** and are a
 matched pair: each sandbox plants one agent-directed pre-commit obligation in
@@ -97,13 +97,13 @@ its epoch second under `.eval/markers/`. Eval 8's gate governs the Python
 package under `src/` while the commit changes `docs/handbook.md`, so the skill
 must **skip** it and say why; eval 9's gate lints Markdown under `docs/` against
 that same change, so the skill must **run** it before the commit lands. Run them
-together — eval 9 is eval 8's control, and a skip that came from ignoring
+together, because eval 9 is eval 8's control, and a skip that came from ignoring
 `AGENTS.md` altogether shows up as an eval 9 failure.
 
 Per eval it writes `workspace/run-<ts>/<id>/{response.txt, stderr.txt,
 timing.json, grading.txt}` and exits 0 only if every eval's grade
 passed. The manual three-phase workflow below is what `run.py`
-automates — reach for it when debugging a single eval by hand.
+automates. Reach for it when debugging a single eval by hand.
 
 ## The manual workflow
 
@@ -141,8 +141,8 @@ default). When driving it by hand instead, point the worker at
   pointing at `$skill_path`, `$sandbox_repo`, and `$prompt`.
 - **In-session.** Tell the current Claude session to read `$skill_path`
   and apply it to `$sandbox_repo`. Convenient for a quick look, but it
-  runs on the inherited session model — not the pinned sonnet worker —
-  so it's for debugging, not for a measurement run.
+  runs on the inherited session model rather than the pinned sonnet
+  worker, so it's for debugging, not for a measurement run.
 
 Whichever shape you use, the contract is: when this phase ends, the
 agent has either left a new commit at HEAD of `$sandbox_repo` (good)
@@ -156,7 +156,7 @@ bash tests/git_commit/evals/grade.sh <eval_id> "$sandbox_repo"
 ```
 
 `grade.sh` prints PASS/FAIL per check. Some expectations cannot be
-verified from filesystem state alone — "the skill did NOT use the
+verified from filesystem state alone: "the skill did NOT use the
 Write tool to create a commit-message file", "the skill consulted
 references/manual_fallback.md after the non-zero exit". Those are
 printed as `agent-attest` lines for the operator to confirm
@@ -188,12 +188,12 @@ And these are marked `agent-attest` (not auto-checked):
   (`concurrent_reorg.txt`) and paused to ask, rather than sweeping it
   into the commit. (Deterministic half: no new commit landed and the
   file is present-but-uncommitted.)
-- Eval 7: the skill did not pause on the ambiguous same-path edit — the
+- Eval 7: the skill did not pause on the ambiguous same-path edit. The
   commit-all tiebreaker swept `seed.txt`'s latest content in.
 - Eval 8: the skill discovered the `AGENTS.md` obligation and stated the
-  grounds for skipping it — the gate governs `src/`, the commit changes
-  `docs/handbook.md`. (Deterministic half: the gate's marker is absent and
-  the commit still landed.)
+  grounds for skipping it. The gate governs `src/` while the commit
+  changes `docs/handbook.md`. (Deterministic half: the gate's marker is
+  absent and the commit still landed.)
 - Eval 9: the skill ran the obligation because the changed paths intersect
   the subject matter it governs. (Deterministic half: the marker exists and
   its epoch second is no later than the commit's.)
@@ -237,7 +237,7 @@ sleep 4 && git -C /tmp/drift-debug status --short --untracked-files=all
 ## Why under tests/ and not inside the skill
 
 Skill-creator's default is `evals/` inside the skill directory. We
-deviate on location only — keeping these under `tests/` because:
+deviate on location only, keeping these under `tests/` because:
 
 1. The repo's deploy pipeline (`make deploy`) copies the skill into
    vendor config dirs. Holding the evals outside the skill directory

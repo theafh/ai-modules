@@ -19,12 +19,12 @@ tests/guardrail_audit/
 
 ## Surfaces
 
-- **script_tests** — frontmatter, `<authority>`, `<audit_bound>`, no
+- **script_tests**: frontmatter, `<authority>`, `<audit_bound>`, no
   restated hub definitional content, hub forward-references intact,
   plugin / marketplace / README registration, plus
   `sandbox_git_isolation.sh` (fixture git cannot commit into the host
   checkout).
-- **evals** — six staged fixtures covering presence-gating, doc-vs-doc,
+- **evals**: six staged fixtures covering presence-gating, doc-vs-doc,
   doc-vs-code (retrofit), an unreached `## Direction` target read as
   drive-toward work, grounded TESTING.md proposal, and multi-project
   nature mismatch. `grade.sh` always asserts the sandbox

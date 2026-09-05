@@ -1,7 +1,7 @@
 ---
 title: Claude output styles
 created: 2026-08-08
-updated: 2026-08-10
+updated: 2026-09-05
 type: concept
 tags: [claude, output-style, system-prompt, frontmatter, deployment]
 sources: []
@@ -109,11 +109,11 @@ can be filed at user, project, or local scope. Both facts were re-verified on
 observed behaviour where a project-local value beat a user-level one.
 
 The consequence for deployment is that a machine-wide style has no interactive
-route. Since neither the picker nor any CLI subcommand writes the user-level key —
-the retired surfaces are on
-[Anthropic Claude Code](../entities/anthropic-claude-code.md) — writing the
-user-level settings file is the only way to set it, and a project holding its own
-local `outputStyle` keeps overriding that value until the key is removed there.
+route. Since neither the picker nor any CLI subcommand writes the user-level
+key, writing the user-level settings file is the only way to set it, and a
+project holding its own local `outputStyle` keeps overriding that value until
+the key is removed there. The retired surfaces are on
+[Anthropic Claude Code](../entities/anthropic-claude-code.md).
 
 The style is read into the system prompt once at session start, so an edit to
 either half takes effect after `/clear` or in a new session.

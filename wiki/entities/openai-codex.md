@@ -1,7 +1,7 @@
 ---
 title: OpenAI Codex
 created: 2026-08-08
-updated: 2026-08-13
+updated: 2026-09-05
 type: entity
 tags: [codex, skill, agent, hook, plugin, system-prompt, frontmatter, discovery, verification-gap]
 sources: []
@@ -23,8 +23,8 @@ Facts below were verified on 7 August 2026 against
 and against the `openai/codex` repository on `main`. On that date no local Codex
 build had been located, so the configuration claims rest on documentation and
 source rather than on observation. On 13 August 2026 an installed CLI was found
-and read directly — `codex-cli 0.147.0-alpha.6.5`, shipped inside the ChatGPT
-desktop application bundle rather than on `PATH` — and the skill-loading facts
+and read directly: `codex-cli 0.147.0-alpha.6.5`, shipped inside the ChatGPT
+desktop application bundle rather than on `PATH`. The skill-loading facts
 below carry that stamp. The configuration claims were not re-checked against it.
 Re-verify before relying on any of them.
 
@@ -60,8 +60,8 @@ instructions-slot section below already warns about for `codex debug models`.
 
 Codex splits skill validation from skill loading, and the two enforce different
 things. The skill-creation and install tooling requires `name` and `description`
-in `SKILL.md` frontmatter and validates every key against a closed allowlist —
-`name`, `description`, `license`, `allowed-tools`, `metadata` — rejecting
+in `SKILL.md` frontmatter and validates every key against a closed allowlist of
+`name`, `description`, `license`, `allowed-tools`, and `metadata`, rejecting
 anything else with an `Unexpected key(s) in SKILL.md frontmatter` error. The
 runtime loader is tolerant of what that allowlist rejects: skill files placed
 under `skills/` by direct copy carrying keys outside the allowlist (`version`,
@@ -73,16 +73,16 @@ and its directory is enforced.
 
 At the listing layer the runtime truncates skill metadata to fit a skills
 context budget, omits a skill whose metadata is too large to list, and caps the
-`/skills` scan at a traversal limit — each visible in the binary's own strings
+`/skills` scan at a traversal limit. Each is visible in the binary's own strings
 (`truncated skill metadata to fit skills context budget`, `Some skills were
 omitted because their metadata is too large.`, `/skills scan reached its
 traversal limit`).
 
 One negative is worth recording because a task in this repository asserted the
-opposite: the per-file loader messages the Claude Code build emits — `Skipping
-plugin skill <path>: not a regular file or exceeds <N> byte limit`, `Multiple
-skill files found`, `Failed to load skill from` — appear nowhere in the Codex
-binary. That message family, and the one-mebibyte plugin-skill byte limit it
+opposite: the per-file loader messages the Claude Code build emits appear nowhere
+in the Codex binary. Those messages are `Skipping plugin skill <path>: not a
+regular file or exceeds <N> byte limit`, `Multiple skill files found`, and
+`Failed to load skill from`. That message family, and the one-mebibyte plugin-skill byte limit it
 names, belong to
 [Anthropic Claude Code](anthropic-claude-code.md)'s skill load path. Codex's
 tooling resolves the exact uppercase `SKILL.md` spelling; whether its runtime

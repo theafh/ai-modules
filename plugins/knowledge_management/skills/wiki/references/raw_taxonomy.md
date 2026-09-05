@@ -1,6 +1,6 @@
 # Raw Source Taxonomy
 
-Reference for the `raw/` subtree — what each canonical bucket is for, and how to classify a source into one of them. Consulted by the wiki skill on ingest and by the `auto_shaper_wiki` agent when it surfaces extra `raw/<kind>/` subdirectories for the user to route.
+Reference for the `raw/` subtree: what each canonical bucket is for, and how to classify a source into one of them. Consulted by the wiki skill on ingest and by the `auto_shaper_wiki` agent when it surfaces extra `raw/<kind>/` subdirectories for the user to route.
 
 The canonical *set* of buckets is whatever `scripts/init_wiki.sh` materializes today (it is the script that creates a new wiki's raw subtree, and the set evolves with the skill). This file defines *what each bucket means* and how to pick between them.
 
@@ -8,17 +8,17 @@ The canonical *set* of buckets is whatever `scripts/init_wiki.sh` materializes t
 
 | Bucket | What lives here | Typical origin | Body shape |
 | --- | --- | --- | --- |
-| `raw/articles/` | Externally-published written content — blog posts, news, opinion pieces, vendor write-ups, online essays. | Public URL to the original article, in `source_url:`. | Long-form prose; one author or editorial voice. |
-| `raw/papers/` | Academic and technical papers — arxiv, conference proceedings, journal articles, vendor white papers, formal technical reports. | Public URL to the PDF or paper page in `source_url:` (`arxiv.org/abs/...`, doi, etc.). | Structured prose with abstract, sections, citations. |
-| `raw/meetings/` | Meeting notes, interviews, recorded calls, and spoken-word transcripts — podcasts, talks, conference recordings, video interviews. | Recording URL in `source_url:` when external; a repo-tracked recording or transcript takes a wiki-root-relative `source_path:`; an internal meeting with no stored file takes neither. | Speaker turns, timestamps, Q&A markers, or verbatim spoken language. |
-| `raw/notes/` | Internal memos, discussion writeups, ad-hoc observations, internal docs not published externally. | Usually neither field — an internal doc the repo tracks takes a wiki-root-relative `source_path:`; a memo with no stored file takes neither and is captured by the body excerpt. | Memo / writeup framing; author voice; no speaker turns. |
-| `raw/assets/` | Binary attachments referenced by other raw files — images, diagrams, slide exports, PDFs that are illustrations rather than content. | Optional. | Not text; frontmatter optional. |
+| `raw/articles/` | Externally-published written content: blog posts, news, opinion pieces, vendor write-ups, online essays. | Public URL to the original article, in `source_url:`. | Long-form prose; one author or editorial voice. |
+| `raw/papers/` | Academic and technical papers: arxiv, conference proceedings, journal articles, vendor white papers, formal technical reports. | Public URL to the PDF or paper page in `source_url:` (`arxiv.org/abs/...`, doi, etc.). | Structured prose with abstract, sections, citations. |
+| `raw/meetings/` | Meeting notes, interviews, recorded calls, and spoken-word transcripts: podcasts, talks, conference recordings, video interviews. | Recording URL in `source_url:` when external; a repo-tracked recording or transcript takes a wiki-root-relative `source_path:`; an internal meeting with no stored file takes neither. | Speaker turns, timestamps, Q&A markers, or verbatim spoken language. |
+| `raw/notes/` | Internal memos, discussion writeups, ad-hoc observations, internal docs not published externally. | Usually neither field: an internal doc the repo tracks takes a wiki-root-relative `source_path:`; a memo with no stored file takes neither and is captured by the body excerpt. | Memo / writeup framing; author voice; no speaker turns. |
+| `raw/assets/` | Binary attachments referenced by other raw files: images, diagrams, slide exports, PDFs that are illustrations rather than content. | Optional. | Not text; frontmatter optional. |
 
 ## Classification heuristics
 
 Apply in order. The first match wins. "A remote `source_url:`" below means an externally-published
-source reached by a real remote URL; an in-repo source instead carries a `source_path:` — a path
-resolved from the wiki root that may reach an in-repo target outside the wiki dir via `../` —
+source reached by a real remote URL; an in-repo source instead carries a `source_path:`, a path
+resolved from the wiki root that may reach an in-repo target outside the wiki dir via `../`,
 and an out-of-repo local file carries neither field (see the origin contract in `template_schema.md`).
 The origin field never overrides body shape: an in-repo or path-less source is bucketed by what its
 body *is*, exactly as an external one is.

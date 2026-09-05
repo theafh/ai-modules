@@ -1,11 +1,11 @@
-# task-family regression — quick reference
+# task-family regression: quick reference
 
 For the full design, see `README.md`. This is the operator's quick-ref.
 
 ## Harness rule
 
 All harness logic lives under `tests/task/`. The skills under test are
-read-only to the harness — fixtures stage their own sandboxes and never
+read-only to the harness. Fixtures stage their own sandboxes and never
 patch the deployed or source skills. Every behavioral eval also asserts
 an isolation fail-safe (no writes to the real repo's `tasks/` tree), so
 the suite is safe to run on the operator's real filesystem.
@@ -68,8 +68,8 @@ tests/trigger_evals/results/task/<ts>/
   `assert_not_contains` / `assert_count` line to
   `script_tests/contract_run.sh`, using a literal from the live skill
   prose. When a skill reworks the wording a needle pins, refresh the
-  needle to the new prose in the same change — the failure is the drift
-  signal working.
+  needle to the new prose in the same change, because the failure is
+  the drift signal working.
 - **Behavioral eval**: add an entry to `evals/evals.json`
   (`id`, `skill`, `prompt`, `expected_output`, `files`, `expectations`),
   a fixture `setup.sh` under `evals/fixtures/<id>/`, and the case

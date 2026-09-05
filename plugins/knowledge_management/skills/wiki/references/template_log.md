@@ -6,7 +6,7 @@
 > Actions: ingest, update, query, lint, create, archive, delete, audit, import, session-wrapup
 > Entries: an operation that creates or updates wiki files appends one entry; an
 > operation that changes no file appends none. Lint and audit runs are the
-> exception — each records its outcome, including a zero-change one, as a
+> exception. Each records its outcome, including a zero-change one, as a
 > process record.
 > Repair: append-only binds the substance, so never reword, reorder, or delete
 > what a past entry records. An entry may still be edited to repair a

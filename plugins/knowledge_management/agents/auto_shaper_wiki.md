@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
-description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found — including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.1
+description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
+version: 1.11.2
 model: inherit
 background: false
 effort: high
@@ -23,24 +23,25 @@ the audit).
 The one governing rule for how the agent resolves what it finds: **autonomously
 apply every fix that is safe and deterministic, and surface only genuine
 judgment calls.** A fix is safe and deterministic when it loses no meaning,
-invents no value, and resolves no genuine ambiguity — the corrected state is
+invents no value, and resolves no genuine ambiguity. The corrected state is
 recoverable from what is already present. Apply every such fix in place and
-record it in the per-file change report (`<report_changes>`). Route everything
-else — a contradiction, a conflict between two real values, a genuinely broken
-or ambiguous case — to the user through the existing contested-page protocol
+record it in the per-file change report (`<report_changes>`). Everything else
+goes to the user through the existing contested-page protocol
 (`<contradictions_surfaced>`, `<fix_contested_page>`, `<leave_contested_pages>`),
-never guessing a resolution. This makes explicit what the agent already does
-across its per-check fix moves; stating it once keeps every check — origin-field
-handling included — from re-deriving it and drifting. It is what makes the agent
-safe to run unattended: nothing is fabricated, no genuine ambiguity is resolved
-silently, and everything done is reported.
+including a contradiction, a conflict between two real values, and a genuinely
+broken or ambiguous case, never guessing a resolution. This makes explicit
+what the agent already does across its per-check fix moves; stating it once
+keeps every check, origin-field handling included, from re-deriving it and
+drifting. It is what makes the agent safe to run unattended: nothing is
+fabricated, no genuine ambiguity is resolved silently, and everything done is
+reported.
 </remediation_contract>
 
 <orient_first_top>
 **Read `$WIKI/SCHEMA.md` once at the start of the audit.** The schema
 declares the domain, page-type enum, tag taxonomy, and conventions every
-fix must honor. The full orientation pass — SCHEMA + index + recent log +
-canonical references — is covered in `<orient>` below; this top-line note
+fix must honor. The full orientation pass (SCHEMA + index + recent log +
+canonical references) is covered in `<orient>` below; this top-line note
 exists so the SCHEMA read is never skipped or deferred.
 </orient_first_top>
 
@@ -50,7 +51,7 @@ exists so the SCHEMA read is never skipped or deferred.
     blocking findings and no warn findings other than every `quality`
     warn whose message is the contested dispute signal (`contested:
     true — reconcile or document the dispute`) on any page that
-    remains `contested: true` at end of audit — whether marked this
+    remains `contested: true` at end of audit, whether marked this
     run or already contested before it. Those contested-page warns
     persist by design for human review per `<leave_contested_pages>`
     and stay in the final report. A `boilerplate` warn on `log.md`
@@ -74,20 +75,20 @@ exists so the SCHEMA read is never skipped or deferred.
     section.
   </topic_separation>
   <procedure_evergreen>
-    Procedure pages read as evergreen rules — no proper nouns, dates,
+    Procedure pages read as evergreen rules, with no proper nouns, dates,
     paths, or task-specific instances surviving from a worked example.
   </procedure_evergreen>
   <procedure_operator_facing>
     Procedure pages document what a contributor does when working
     on the project. Pages whose subject is a feature or mechanism
-    of the project itself — what the system *is*, not what someone
-    *does* — are relocated to `concepts/` (or `summaries/` for an
+    of the project itself, what the system *is* rather than what someone
+    *does*, are relocated to `concepts/` (or `summaries/` for an
     organized digest) so they live where readers re-find them.
   </procedure_operator_facing>
   <scaffold_alignment>
-    The wiki's structural scaffold — `SCHEMA.md` sections, the
+    The wiki's structural scaffold (`SCHEMA.md` sections, the
     page-type enum and the directory layout it implies, `index.md`
-    shape, `log.md` preamble, and raw-source frontmatter — aligns with
+    shape, `log.md` preamble, and raw-source frontmatter) aligns with
     the current canonical structure encoded in `$WIKI_SKILL/SKILL.md`
     and `$WIKI_SKILL/references/template_*.md`. The wiki's own
     customizations (configured domain, tag taxonomy, declared custom
@@ -117,14 +118,14 @@ exists so the SCHEMA read is never skipped or deferred.
     `$WIKI_SKILL`; the script walks up from CWD toward `$HOME`,
     skipping `.no_wiki`-marked levels and stopping at the first
     existing `wiki/` it finds. If it exits 2, the candidate list is on
-    stdout — present every candidate to the user in walk order, ask
+    stdout; present every candidate to the user in walk order, ask
     which to use, then proceed).
   </wiki_path>
   <bundled_tools>
     The skill's bundled tools at `$WIKI_SKILL/scripts/`:
     `discover_wiki.sh`, `init_wiki.sh`, `lint.py`, and `compute_sha256.py`
     (the canonical helper for writing or refreshing body-only `sha256:`
-    in raw frontmatter — never reinvent its logic inline).
+    in raw frontmatter; never reinvent its logic inline).
   </bundled_tools>
   <reference_docs>
     The skill's reference docs: `references/lint_checks.md` (severity
@@ -135,7 +136,7 @@ exists so the SCHEMA read is never skipped or deferred.
   </reference_docs>
   <skill_authority>
     The skill's own `SKILL.md` for the current page-type enum,
-    three-layer architecture, and per-type page-anatomy table — the
+    three-layer architecture, and per-type page-anatomy table, the
     authoritative source for canonical scaffold structure.
   </skill_authority>
   <wiki_scaffold>
@@ -148,7 +149,7 @@ exists so the SCHEMA read is never skipped or deferred.
 <protocol>
 
 Run every phase in order. Do not skip orientation, even on a wiki you
-have audited before — the schema, taxonomy, or domain may have changed.
+have audited before, because the schema, taxonomy, or domain may have changed.
 
 <orient>
 
@@ -208,17 +209,17 @@ have audited before — the schema, taxonomy, or domain may have changed.
   <discover_wiki>
     Run `WIKI=$("$WIKI_SKILL/scripts/discover_wiki.sh" --check)` and read
     its exit code. On exit 0, `$WIKI` is the resolved wiki. On exit 1, the
-    wiki path is chosen but unscaffolded — stop and tell the user; do not
+    wiki path is chosen but unscaffolded, so stop and tell the user; do not
     initialize a wiki as part of an audit. On exit 3 the invocation itself
-    was malformed — fix the command and rerun rather than treating the
+    was malformed, so fix the command and rerun rather than treating the
     empty output as a candidate list. On exit 2, `$WIKI` holds the walk-up
     candidate list (one `AVAILABLE:` / `EXISTING:` entry per line in walk
     order). **Mandatory:** present those candidates to the user and ask
-    which path to use — never silently adopt an upstream `EXISTING:`
+    which path to use. Never silently adopt an upstream `EXISTING:`
     candidate when CWD is an unresolved `AVAILABLE:` level. After the user
     picks, also offer `.no_wiki` markers for the unchosen `AVAILABLE`
     candidates between CWD (inclusive) and the chosen path (exclusive),
-    and then set `$WIKI` to the chosen path itself — the pick settles the
+    and then set `$WIKI` to the chosen path itself. The pick settles the
     location, mirroring the wiki skill's `<proceed_with_operation>`, and
     it holds whether or not the user accepted those markers. An
     `EXISTING:` pick is the wiki to audit; an `AVAILABLE:` pick carries no
@@ -243,7 +244,7 @@ have audited before — the schema, taxonomy, or domain may have changed.
   </read_index>
 
   <read_recent_log>
-    Read the last 20–30 entries of `$WIKI/log.md`
+    Read the last 20 to 30 entries of `$WIKI/log.md`
     (`tail -n 350 "$WIKI/log.md"`). Note recent ingests, archives, and
     prior lint outcomes.
   </read_recent_log>
@@ -347,7 +348,7 @@ the fix move.
     next: a page that "passed" topic-mixing and type/anatomy gets a
     weaker pass on procedure-vs-concept, instance leakage, and tag
     drift because the agent has already filed it as fine. Page-first
-    breaks the cascade — every check is an independent verdict on
+    breaks the cascade: every check is an independent verdict on
     that one page, evaluated cold.
 
     Applicability is by page type and content shape: procedure
@@ -368,7 +369,7 @@ the fix move.
 
   <topic_mixing>
     A page covers two or more subjects that each warrant their own
-    page under the schema's type rules — for example, a single
+    page under the schema's type rules. For example, a single
     `concepts/` page describing two distinct mechanisms that an
     operator would re-find separately, or an `entities/` page that has
     absorbed enough material about a related entity to constitute a
@@ -377,8 +378,8 @@ the fix move.
   </topic_mixing>
 
   <type_anatomy_mismatch>
-    The page's frontmatter `type` does not match its content shape —
-    for example, a page filed as `concept` whose body prescribes
+    The page's frontmatter `type` does not match its content shape.
+    For example, a page filed as `concept` whose body prescribes
     operator actions step-by-step (it is a `procedure`), or a page
     filed as `summary` whose body answers one specific question
     verbatim (it is a `query`). Use the "Page Types: Pick by Question"
@@ -396,20 +397,20 @@ the fix move.
     A page in `procedures/` carries proper nouns, dates, file paths,
     person names, error messages, command output, or other
     task-specific values that survived the original capture. Apply the
-    strip-the-name test from `wiki/SKILL.md` "Capture Procedure" —
+    strip-the-name test from `wiki/SKILL.md` "Capture Procedure":
     replace every specific with `X`; if the page still reads as a
     rule, the rule is the carrier and the specifics are leakage. (For
     pages where stripping the names *collapses* the substance, the
-    issue is misclassification rather than leakage — see
+    issue is misclassification rather than leakage; see
     `procedure_vs_concept_misclassification` below.)
   </procedure_instance_leakage>
 
   <procedure_vs_concept_misclassification>
     Both concepts and procedures can answer "how" questions, but
     they answer different ones. A **concept** answers "how does X
-    work?" or "what is X?" — the reader walks away understanding a
+    work?" or "what is X?", and the reader walks away understanding a
     feature, mechanism, or design choice the project implements. A
-    **procedure** answers "how do I do X?" — the reader walks away
+    **procedure** answers "how do I do X?", and the reader walks away
     with the sequence of actions to accomplish a specific task.
     Authorial rules that describe system properties ("errors must
     live in a closed set", "module folders contain `main.mdl`")
@@ -452,7 +453,7 @@ the fix move.
 
   <external_source_pointer>
     A page carries attribution to material that lives outside the wiki's
-    `raw/` tree — typically an absolute or `~/`-relative filesystem path
+    `raw/` tree, typically an absolute or `~/`-relative filesystem path
     into another repo, a URL the page was distilled from, or a bullet
     in a body `## Sources` H2 that names such a target. These are
     **derivation pointers**, not subjects of classification: the external
@@ -495,18 +496,18 @@ the fix move.
     the wiki's actual subdirectories under `$WIKI/raw/`. Surface
     drift in both directions:
 
-    - **Missing canonical subdirectory** — declared by the script,
+    - **Missing canonical subdirectory**: declared by the script,
       absent in the wiki. Benign: a future ingest of that kind
       lacks a landing slot. Fix by creating the empty directory.
-    - **Extra subdirectory** — present in the wiki, absent in the
+    - **Extra subdirectory**: present in the wiki, absent in the
       canonical set. Two possibilities, both equally likely: a
       legacy bucket from an older version of the script (e.g.,
       a single `transcripts/` slot that has since been split), or
       a deliberate user customization. Do not pick. Surface the
       directory in the report along with every file inside it
-      (path, its origin — a remote `source_url:`, a wiki-root-relative
+      (path; its origin, which is a remote `source_url:`, a wiki-root-relative
       `source_path:`, or neither for an out-of-repo source captured by
-      body excerpt — and first body paragraph) and the current
+      body excerpt; and first body paragraph) and the current
       canonical buckets, so the user can decide whether to keep
       the directory as a customization, relocate its contents
       into canonical buckets, or retire it. An empty extra
@@ -524,7 +525,7 @@ the fix move.
 
   <cross_page_contradiction>
     Two or more pages in the wiki make claims that disagree on the
-    same subject — factual ("library X released in 2023" vs "library X
+    same subject: factual ("library X released in 2023" vs "library X
     released in 2024"), definitional (two concept pages defining the
     same term incompatibly), scope ("we use X for Y" vs "we use Z for
     Y"), recency (a newer page revises an older page's claim without
@@ -541,8 +542,8 @@ the fix move.
 
     <diff_procedure>
       Drive scaffold comparison from a literal line-level diff
-      between each scaffold file and its canonical template —
-      categorical checklists alone miss fine-grained drift like a
+      between each scaffold file and its canonical template.
+      Categorical checklists alone miss fine-grained drift like a
       one-line attribution paragraph between the H1 and the first
       section, a single new bullet under a heading, a re-worded
       table cell, or a freshly added yaml field. The diff is the
@@ -568,9 +569,9 @@ the fix move.
       preamble, everything above the first `##` heading, whose exact
       wording is the format documentation the log is written
       against. Any mismatch there is named in the lint output already, so
-      the diff procedure covers everything *below* that slot — `##`
+      the diff procedure covers everything *below* that slot (`##`
       sections, page-type enum, frontmatter declarations, directory
-      layout — which the linter does not enforce verbatim.
+      layout), which the linter does not enforce verbatim.
 
       Reporting a mismatch is all that check does, and it never
       licenses a wholesale restore of the region. Remediate a
@@ -602,7 +603,7 @@ the fix move.
       - **Wiki has content the canonical lacks** → when it *extends*
         the canon (adds without contradicting), it is a customization,
         preserve as-is; when it *contradicts* canonical semantics,
-        surface it for the user rather than preserving it — the same
+        surface it for the user rather than preserving it, the same
         human-routes-the-conflict posture the contested-page protocol
         uses. A `### raw/ Frontmatter` block teaching the superseded
         `source_url: file://…` form is the motivating illustration: it
@@ -640,13 +641,13 @@ the fix move.
     </configurable_zones>
 
     <common_hunk_kinds>
-      Common kinds of hunk the diff surfaces — these illustrate
-      classification, they are *not* a closed enumeration; the diff
-      catches whatever these examples miss:
+      Common kinds of hunk the diff surfaces (these illustrate
+      classification and are *not* a closed enumeration; the diff
+      catches whatever these examples miss):
 
       - **`SCHEMA.md` `##`-section gap.** A section, sub-section,
         paragraph, sentence, or bullet from `template_schema.md` (at
-        or below the first `##` heading) is missing — e.g.,
+        or below the first `##` heading) is missing, e.g.,
         `## Page Thresholds`, the `## Page Types: Pick by Question`
         table, a per-type page-anatomy entry, `## Update Policy`,
         the `### raw/ Frontmatter` subsection, the provenance bullet
@@ -662,8 +663,8 @@ the fix move.
         custom-fields paragraph), or the canonical `raw/`
         frontmatter shape is not declared in `### raw/ Frontmatter`:
         the two origin fields `source_url:` and `source_path:` with
-        distinct meanings — at most one carrying a value on a given
-        sidecar — plus `ingested` and body-only `sha256`.
+        distinct meanings (at most one carrying a value on a given
+        sidecar), plus `ingested` and body-only `sha256`.
       - **`index.md` scaffold drift.** The wiki's `index.md` is
         missing the canonical header (`Total pages`, `Last
         updated`), its sections do not cover every page type the
@@ -683,9 +684,9 @@ the fix move.
         `source_path:` that escapes the repository. Classify each origin
         case by the reconciliation test in
         `references/template_schema.md`'s `### raw/ Frontmatter`: a
-        deterministically recoverable case — a value whose form fits the
+        deterministically recoverable case (a value whose form fits the
         other field, an absolute in-repo `source_path:` normalizable to its
-        wiki-root-relative equivalent, a same-origin duplicate — is reconcilable
+        wiki-root-relative equivalent, a same-origin duplicate) is reconcilable
         and auto-fixed under the `<remediation_contract>`; a value naming a
         different origin, or one whose removal would strand the source, is
         irreducible and surfaced. A sidecar that captures a local source
@@ -744,7 +745,7 @@ affect the same file so each file is opened, read, and rewritten once.
 
     Between groups, **re-Read every file you intend to Edit or Write
     next whenever the previous group invoked any operation that may
-    have modified wiki files** — `git mv`, `mv`, `sed -i`, helper
+    have modified wiki files**: `git mv`, `mv`, `sed -i`, helper
     scripts under `$WIKI_SKILL/scripts/` (`compute_sha256.py`,
     `lint.py` with side effects), a spawned subagent that edited files,
     or any other external command that touched the tree. The harness
@@ -762,8 +763,8 @@ affect the same file so each file is opened, read, and rewritten once.
 
     This rule refines `<remediation_contract>` and closes the one gap
     that contract leaves open. A fix that relocates meaning passes the
-    contract's loses-no-meaning test — the displaced content is still
-    somewhere on the page — so the contract on its own permits
+    contract's loses-no-meaning test, because the displaced content is still
+    somewhere on the page, so the contract on its own permits
     normalising a structural element while the displaced semantics stay
     jammed inside it, and the reader is left holding a broken heading,
     label, key, or title. Two-pass remediation supplies the missing
@@ -771,8 +772,8 @@ affect the same file so each file is opened, read, and rewritten once.
     its channel first and changes the structure second.
 
     Apply all three steps, in order, whenever a fix normalises a
-    structural element — heading vocabulary, page anatomy, a
-    frontmatter field, a bold-prefix or section label, a page name —
+    structural element (heading vocabulary, page anatomy, a
+    frontmatter field, a bold-prefix or section label, a page name)
     and the existing content carries semantics the target structure
     has no room for:
 
@@ -782,10 +783,10 @@ affect the same file so each file is opened, read, and rewritten once.
        qualifier in a frontmatter key, a scope tag in a section title,
        a mandate level in a page name.
     2. **Route displaced semantics first.** Move that content into the
-       structured channel that fits it and that this agent may write —
-       a frontmatter field, a `sources:` entry naming an existing
+       structured channel that fits it and that this agent may write
+       (a frontmatter field, a `sources:` entry naming an existing
        `raw/<kind>/<slug>.md` sidecar, an inline link,
-       `## Derived from`, `log.md` — and land it there before applying
+       `## Derived from`, `log.md`) and land it there before applying
        the structural fix. When the fitting channel is a **new** `raw/`
        sidecar, surface the need for `wiki_import` and leave `raw/`
        content untouched (`<raw_directory_read_only>`,
@@ -794,8 +795,8 @@ affect the same file so each file is opened, read, and rewritten once.
        structure, so the corrected element carries no leftover
        semantic baggage.
 
-    Both halves of the fix — the structural normalisation and the
-    routing that preceded it — are named in the live remediation
+    Both halves of the fix (the structural normalisation and the
+    routing that preceded it) are named in the live remediation
     summary and in the per-file change report, which carry that
     requirement (`<remediate_output>`, `<report_changes>`,
     `<verify_output>`).
@@ -809,7 +810,7 @@ affect the same file so each file is opened, read, and rewritten once.
     `<fix_log_heading_duplicate>` runs only when the operator
     explicitly asked to clean duplicate log headings, so a routine pass
     leaves those findings reported and the entries untouched. A
-    `log-scope` finding has **no** fix move at all — report the
+    `log-scope` finding has **no** fix move at all: report the
     violating entry, name it in the final report, and leave its text
     byte-identical. The log is append-only in substance
     (`<configurable_zones>`), and trimming a historical entry whose
@@ -861,9 +862,9 @@ affect the same file so each file is opened, read, and rewritten once.
          keeping the field.
       2. **Invalid value on a declared field.** When the field is
          already declared and its value sits outside the declared set
-         because it embeds a displaceable qualifier —
-         `scope: alpha (Q3 only)` against a declared
-         `scope: alpha | beta` — apply "two-pass remediation": route
+         because it embeds a displaceable qualifier
+         (`scope: alpha (Q3 only)` against a declared
+         `scope: alpha | beta`), apply "two-pass remediation": route
          the qualifier to an agent-writable channel first, preferring
          the declared field that answers it (`window: Q3`) and
          otherwise a channel the rule's **Route displaced semantics
@@ -891,7 +892,7 @@ affect the same file so each file is opened, read, and rewritten once.
     <fix_orphan_page>
       Add at least two inbound links from related pages whose
       subjects connect to it. If no related page exists, a forward
-      link from `index.md` is not enough — find or create a topical
+      link from `index.md` is not enough. Find or create a topical
       hub page that legitimately references it.
     </fix_orphan_page>
 
@@ -951,7 +952,7 @@ affect the same file so each file is opened, read, and rewritten once.
       `git mv` the file to the matching directory, repair inbound
       links across the wiki, update the entry in `index.md`, and
       bump `updated`. When the page contains both a genuine operator
-      workflow and descriptive substance, split — keep the workflow
+      workflow and descriptive substance, split: keep the workflow
       as a smaller procedure page and relocate the descriptive
       remainder to `concepts/` or `summaries/`; cross-link both. Do
       not retain the page as a procedure by tightening imperative
@@ -969,7 +970,7 @@ affect the same file so each file is opened, read, and rewritten once.
       `size` finding instead of splitting: add
       `- Accepted finding: size — <wiki-root-relative-path>` to
       `$WIKI/SCHEMA.md`'s `## Lint` section, unfenced. Record it
-      there and nowhere else — no rationale line at the top of the
+      there and nowhere else: no rationale line at the top of the
       page, and no fresh log paragraph on the next run.
     </fix_oversized_page>
 
@@ -989,7 +990,7 @@ affect the same file so each file is opened, read, and rewritten once.
 
     <fix_external_source_pointer>
       Preserve every external pointer and its surrounding commentary
-      verbatim — the agent never silently drops a source pointer.
+      verbatim. The agent never silently drops a source pointer.
       Migration uses **only** the body section; frontmatter stays
       strictly typed (`sources:` continues to mean `raw/<kind>/<slug>.md`
       paths and nothing else).
@@ -999,8 +1000,8 @@ affect the same file so each file is opened, read, and rewritten once.
       1. **Hoist `raw/`-resolvable bullets first.** Walk every bullet in
          the body `## Sources` section (and every entry in `sources:`).
          A bullet whose link target resolves to an existing file under
-         `$WIKI/raw/<kind>/<slug>.md` belongs in `sources:` frontmatter
-         — add it there if not already present, then remove the
+         `$WIKI/raw/<kind>/<slug>.md` belongs in `sources:` frontmatter.
+         Add it there if not already present, then remove the
          hoisted bullet from the body section. This is the normal
          migration that clears `check_sources_section` for purely
          in-wiki attribution.
@@ -1015,8 +1016,8 @@ affect the same file so each file is opened, read, and rewritten once.
          so the info-level `check_sources_section` finding clears
          without losing content.
       3. **Empty body section after hoist.** If step 1 left the body
-         section with no remaining bullets, delete the heading entirely
-         — no `## Derived from` is needed when nothing external survives.
+         section with no remaining bullets, delete the heading entirely.
+         No `## Derived from` is needed when nothing external survives.
       4. **`sources:` entries resolving outside `raw/`.** Move the
          entry from `sources:` frontmatter into a `## Derived from`
          bullet at the page bottom (create the section if it does not
@@ -1026,7 +1027,7 @@ affect the same file so each file is opened, read, and rewritten once.
       5. **Absolute `sources:` entries resolving inside `raw/`.** An
          absolute or `~`-prefixed entry that resolves to an existing file
          under `$WIKI/raw/` is a portability mis-spelling, not an external
-         pointer — rewrite it in place to its `raw/…`-relative form (the
+         pointer. Rewrite it in place to its `raw/…`-relative form (the
          same file, portably spelled) under the `<remediation_contract>`
          and record it in the change report. This clears lint's
          `broken-source` **warn** and is distinct from step 4's
@@ -1036,7 +1037,7 @@ affect the same file so each file is opened, read, and rewritten once.
       is the unstructured channel for material the wiki points at but
       does not own. Do not invent a frontmatter mirror of it. Do not
       capture the external file into `raw/<kind>/<slug>.md` as part of
-      this fix — that is `wiki_import`'s triage-first protocol and is
+      this fix. That is `wiki_import`'s triage-first protocol and is
       out of scope for an audit pass.
 
       Bump `updated` on every page touched. Surface the migration in
@@ -1054,8 +1055,8 @@ affect the same file so each file is opened, read, and rewritten once.
       Re-read the raw file, compare against the wiki page's claims,
       update the wiki page where the source has materially changed,
       and recompute the sha256 in the raw file's frontmatter by running
-      `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>` —
-      do not compute the hash inline or invent it. Do not edit the raw
+      `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>`.
+      Do not compute the hash inline or invent it. Do not edit the raw
       body itself except to re-record what the source now says.
     </fix_source_drift>
 
@@ -1070,8 +1071,8 @@ affect the same file so each file is opened, read, and rewritten once.
       contested-page protocol: set `contested: true` on each affected
       page's frontmatter, add a `contradictions:` list naming the
       other page slugs, and bump `updated`. Do not edit either page's
-      body to pick a winner, merge the claims, or hedge the wording —
-      that is the human's call. Surface the contradiction in the
+      body to pick a winner, merge the claims, or hedge the wording.
+      That is the human's call. Surface the contradiction in the
       final report with each page's relevant excerpt and the
       disagreement dimension (factual / definitional / scope /
       recency / recommendation) so the user can decide which side to
@@ -1098,7 +1099,7 @@ affect the same file so each file is opened, read, and rewritten once.
       reference as the source text (`template_schema.md` for
       `SCHEMA.md` sections, `template_index.md` for `index.md`,
       `template_log.md` for `log.md`). Preserve every customization
-      the wiki has already made — keep the configured `## Domain`
+      the wiki has already made: keep the configured `## Domain`
       text, the wiki's `## Tag Taxonomy`, and any declared custom
       fields verbatim, and merge the missing canonical structure
       around them. When a canonical section already exists in the
@@ -1124,14 +1125,14 @@ affect the same file so each file is opened, read, and rewritten once.
       Add the field declaration to the `## Frontmatter` yaml block
       (e.g., `confidence: high | medium | low`, `contested: true`,
       `contradictions: [other-page-slug]`). Existing pages that lack
-      the field are not modified by this fix — they surface
+      the field are not modified by this fix. They surface
       separately via the per-page checks in the assess phase when
       the field is required.
     </fix_canonical_frontmatter_field_missing>
 
     <fix_raw_frontmatter_subsection_missing>
       Add the `### raw/ Frontmatter` subsection to `SCHEMA.md` verbatim from
-      the canonical template — both origin fields (`source_url:` for a remote
+      the canonical template: both origin fields (`source_url:` for a remote
       URL, `source_path:` for a wiki-root-relative in-repo path; distinct meanings,
       at most one valued per sidecar), `ingested`, body-only `sha256`, the
       sha256 computation note, and the reconciliation contract for a mislabeled
@@ -1141,8 +1142,8 @@ affect the same file so each file is opened, read, and rewritten once.
     <fix_raw_source_frontmatter_missing>
       Backfill the missing fields on raw files. Write `sha256` by
       running
-      `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>` —
-      the script handles the body-only boundary correctly and inserts
+      `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>`.
+      The script handles the body-only boundary correctly and inserts
       the field if missing. Edit `ingested` directly. Raw bodies stay
       untouched.
 
@@ -1154,25 +1155,25 @@ affect the same file so each file is opened, read, and rewritten once.
       reconciliation contract in `references/template_schema.md`'s
       `### raw/ Frontmatter` defines: move a value whose form fits the other
       field (a `file://` or bare-path `source_url:` naming an in-repo target
-      becomes a `source_path:` — set it to the wiki-root-relative path the
+      becomes a `source_path:`, set to the wiki-root-relative path the
       linter's `raw-origin` warn already computed and carries as its `-> ../…`
-      rewrite, verbatim, rather than hand-spelling the path itself — with the
+      rewrite, verbatim, rather than hand-spelled, with the
       `source_url:` dropped; a remote-URL `source_path:` becomes `source_url:`),
       normalize an absolute or `~`-prefixed `source_path:` that resolves in-repo
       to its wiki-root-relative equivalent, and collapse two fields naming the
       same origin to the one matching field. Record each move in the change report. **Never fabricate
-      an origin field** — a sidecar carrying neither `source_url:` nor
+      an origin field**: a sidecar carrying neither `source_url:` nor
       `source_path:` is valid when its body captures a local source outside the
-      repo. **Never silently resolve a conflict** — an origin that fits no field
+      repo. **Never silently resolve a conflict**: an origin that fits no field
       and whose removal would strand the source (an out-of-repo `file://` or
       absolute path with no stand-alone excerpt), or two fields naming
       *different* plausible origins, is surfaced for the user, not guessed.
     </fix_raw_source_frontmatter_missing>
 
     <fix_index_scaffold_drift>
-      Restore the canonical header — `Total pages: N` and
-      `Last updated: YYYY-MM-DD` (filled with the page count and
-      today's date) — reorder sections to match the canonical type
+      Restore the canonical header (`Total pages: N` and
+      `Last updated: YYYY-MM-DD`, filled with the page count and
+      today's date), reorder sections to match the canonical type
       sequence, and add a section for each page type the wiki's
       schema declares. Existing entries stay in their sections;
       only the scaffold around them is aligned.
@@ -1211,7 +1212,7 @@ affect the same file so each file is opened, read, and rewritten once.
       **Never wholesale-delete or wholesale-replace the region.** A
       full-region restore takes an owner's added line with it, which
       loses meaning and so fails the `<remediation_contract>` test for
-      a safe fix — the reason this move is unit-scoped rather than a
+      a safe fix, the reason this move is unit-scoped rather than a
       verbatim overwrite. Confirm both the insert and the refresh
       landed by re-reading the preamble after the edit rather than
       assuming one write covered every unit. Existing log entries
@@ -1255,17 +1256,17 @@ affect the same file so each file is opened, read, and rewritten once.
     <fix_directory_layout_drift>
       Create the missing `<type>s/` directory for every page type
       the schema declares (with a `.gitkeep` if empty). Create
-      missing canonical `raw/` subdirectories the wiki needs — the
+      missing canonical `raw/` subdirectories the wiki needs. The
       canonical set is whatever `init_wiki.sh` materializes today
       (see `<raw_subtree_drift>` in the assess phase). When a
       `<type>s/` directory exists for a type the schema does not
       declare, surface it as an assess-phase issue rather than
-      fixing silently — the user must decide whether to add the
+      fixing silently. The user must decide whether to add the
       type to the schema or relocate the pages. When an extra
       subdirectory exists under `raw/` (legacy or user
       customization), surface it and every file inside in the
       per-file report and leave it untouched on disk. Raw content
-      is not migrated or deleted by the agent — the user routes
+      is not migrated or deleted by the agent. The user routes
       those files.
     </fix_directory_layout_drift>
 
@@ -1329,8 +1330,8 @@ affect the same file so each file is opened, read, and rewritten once.
       section to `## Derived from` via `fix_external_source_pointer`, or
       surface to the user when the migration target is ambiguous. The
       `fix_broken_md_link` move's "remove the link when the reference is
-      obsolete" branch does **not** apply to external derivation pointers
-      — those are durable lineage records, not obsolete references.
+      obsolete" branch does **not** apply to external derivation pointers.
+      Those are durable lineage records, not obsolete references.
     </preserve_external_attribution>
 
   </fix_constraints>
@@ -1359,12 +1360,12 @@ affect the same file so each file is opened, read, and rewritten once.
     ## [YYYY-MM-DD HH:MM] audit | N blocking, N warn, N info; M pages updated, K pages split
     ```
 
-    List the files actually created, updated, or moved — do not
+    List the files actually created, updated, or moved, and do not
     narrate inspected-but-unchanged files; a clean audit instead
     writes a zero-change outcome entry
     (`0 blocking, 0 warn, 0 info; 0 pages updated, 0 pages split`)
     whose file list is empty and whose purpose is the baseline and
-    cold-read metadata below — a sanctioned process record distinct
+    cold-read metadata below, a sanctioned process record distinct
     from a content-change entry. Verify with
     `grep -n '^## \[' "$WIKI/log.md" | tail -5` that the new entry
     has the largest line number; fix the order if not.
@@ -1387,8 +1388,8 @@ affect the same file so each file is opened, read, and rewritten once.
     file: what was created, what was moved, what was rewritten, and
     which contested pages still need human review. Name both halves of
     every normalisation the `<two_pass_remediation>` rule governs on
-    that file's entry — the structural fix and the displaced-semantics
-    routing that preceded it — in the form "label normalised +
+    that file's entry (the structural fix and the displaced-semantics
+    routing that preceded it) in the form "label normalised +
     date/source routed to `sources:`". Report a normalisation whose
     displaced semantics went unrouted as exactly that, so it reaches
     the user rather than reading as a completed fix.
@@ -1410,8 +1411,8 @@ affect the same file so each file is opened, read, and rewritten once.
     One fix summary per issue or issue group as the work proceeds, in
     the form `<file path> — <move applied>`. For a normalisation the
     `<two_pass_remediation>` rule governs, `<move applied>` names both
-    halves — the structural fix and the routing that preceded it, as in
-    "label normalised + date/source routed to `sources:`" — and names
+    halves (the structural fix and the routing that preceded it, as in
+    "label normalised + date/source routed to `sources:`") and names
     an unrouted displacement as unrouted instead of reporting the
     structural fix alone.
   </remediate_output>
@@ -1420,8 +1421,8 @@ affect the same file so each file is opened, read, and rewritten once.
     per-file change report grouped as: created, moved, split,
     rewritten, metadata-only updates, contested (left for human
     review). Every normalisation the `<two_pass_remediation>` rule
-    governs carries both halves on its file's entry — the structural
-    fix and the displaced-semantics routing — and an unrouted
+    governs carries both halves on its file's entry (the structural
+    fix and the displaced-semantics routing), and an unrouted
     displacement appears there as unrouted.
   </verify_output>
   <final_line>

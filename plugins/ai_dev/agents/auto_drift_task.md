@@ -1,7 +1,7 @@
 ---
 name: auto_drift_task
 description: Reconstructs one task's committed-intent origin for task_auto_check and reports meaning-level Goal/title drift with recovered-versus-current evidence; read-only and human-routed.
-version: 1.0.2
+version: 1.0.3
 model: inherit
 background: false
 effort: max
@@ -34,7 +34,7 @@ Return one read-only classification for the target task: clean, meaning-level dr
   <rule>Classify on meaning. Clean accretion, resolved labeled open decisions, and intent-preserving clarifications return clean even when the wording changes substantially.</rule>
   <rule>Return a drift finding only when the current title or Goal changes what the task is about, narrows away the original aim, or contradicts the recovered original aim.</rule>
   <rule>Degrade gracefully. When the file has no committed baseline, the history is squashed, a rename cannot be followed, or the baseline cannot be read with confidence, return `low_confidence_clean` with a note and flag drift only when the recovered evidence is clear.</rule>
-  <rule>Return `unassessable` when the check itself cannot run — the task file cannot be read, or the working-tree title and Goal no longer match the freeze-time inputs. Name the blocker in the classification evidence; `task_auto_check` routes an `unassessable` result through its agent-failure policy.</rule>
+  <rule>Return `unassessable` when the check itself cannot run, either because the task file cannot be read or because the working-tree title and Goal no longer match the freeze-time inputs. Name the blocker in the classification evidence; `task_auto_check` routes an `unassessable` result through its agent-failure policy.</rule>
   <rule>Edit no files, revert no content, move no task, and stamp no frontmatter. This agent supplies evidence to `task_auto_check`; the human owns any reconciliation.</rule>
 </policy>
 

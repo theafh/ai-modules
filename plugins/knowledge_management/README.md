@@ -12,7 +12,7 @@ The wiki itself, plus paired front ends that wrap two of its workflows behind si
 
 Two distillation skills that work on text outside the wiki:
 
-- **executive_summary**: condense documents, reports, and written content into structured executive-summary prose at 10–15% of the original length, preserving logic and reasoning chains rather than collapsing them into bullet-point keywords.
+- **executive_summary**: condense documents, reports, and written content into structured executive-summary prose at 10 to 15% of the original length, preserving logic and reasoning chains rather than collapsing them into bullet-point keywords.
 - **spr**: convert text into a Sparse Priming Representation (SPR): a compact, Markdown-structured set of dense, non-overlapping priming statements built for passing knowledge from one LLM to another.
 
 ## Agents
@@ -34,7 +34,7 @@ This skill keeps the compile-once-and-compound idea but moves it to a tool-neutr
 
 ## Why it compounds
 
-Beyond compiling knowledge once, the wiki grows into a mirror of how you see the project (your sense of what matters and how the pieces fit), written in a form an agent can read. The leverage is in who writes it and how it converges.
+Beyond compiling knowledge once, the wiki grows into a mirror of how you see the project (your sense of what matters and how the pieces fit), written in a form an agent can read. The advantage is in who writes it and how it converges.
 
 Telling an agent what knowledge is important does not transfer your meaning. Each time you say it, the agent reinterprets it from scratch, so it misunderstands you a little differently every time. Writing it down changes that. The agent writes what it learns into the wiki in its own words, and you correct or refine a page when you notice it read wrong. Page by page, session by session, the two of you converge, until the agent attaches the same meaning to your knowledge that you do.
 

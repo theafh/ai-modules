@@ -635,3 +635,20 @@ info on `entities/openai-codex.md` is likewise pre-existing. The size info on
 `entities/anthropic-claude-code.md` is new: the standing-instruction section
 carried the page from 182 to 209 lines, past the ~200 soft threshold, and the
 split is left for a human to weigh rather than taken here.
+
+## [2026-09-05 21:26] update | punctuation sweep across the wiki's own pages
+
+Applied the repo-wide em-dash and en-dash rewrite to the wiki pages, rewording
+each dash into ordinary punctuation with no change of meaning, then bumped
+`updated` on the eight content pages and refreshed the index stamp.
+
+- SCHEMA.md (dash rewrites in the conventions, page-type, and provenance prose)
+- index.md (dash rewrites in every entry summary; Last updated bumped)
+- concepts/claude-output-styles.md
+- concepts/deployment-model.md
+- concepts/guardrail-documents-as-rules.md
+- concepts/skill-family-architecture.md
+- entities/anthropic-claude-code.md
+- entities/cursor.md
+- entities/openai-codex.md
+- summaries/ai-modules-repository.md

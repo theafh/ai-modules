@@ -2,7 +2,7 @@
 description: Give wiki-harness runs self-describing provenance, surface a narrowed regression baseline, retire the docs' frozen run-cost counts, and fail fast on a dead worker login.
 scope: "local test harnesses"
 created: 2026-08-22T08:19:15
-updated: 2026-08-22T08:19:15
+updated: 2026-09-05T21:33:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -48,11 +48,11 @@ a reader at that field. On 2026-08-21 this led to a debug run being read as the
 standing suite record.
 
 **The docs quote counts and costs frozen at the harness's five-scenario era.**
-The README heading `### Full — Layer 1 + Layer 2 (~5–10 min, ~50k tokens per pass
+The README heading `### Full: Layer 1 + Layer 2 (~5 to 10 min, ~50k tokens per pass
 × 10)` freezes both the duration and the pass count; the orchestration prompt
-under `### Inside a Claude Code session (faster — true parallel subagents)`
+under `### Inside a Claude Code session (faster, true parallel subagents)`
 instructs a reader to "spawn 5 subagents in parallel" and to act "After all 10
-runs finish"; the RUNBOOK comment `# Layer 1 + Layer 2 (full regression, ~5–10
+runs finish"; the RUNBOOK comment `# Layer 1 + Layer 2 (full regression, ~5 to 10
 min, spawns claude -p subprocesses)` repeats the duration; and `## Latest
 results` still reports "two independent end-to-end runs (4 samples per
 scenario)". Measured on the 2026-08-21 full-suite run, the suite ran every
@@ -83,8 +83,8 @@ speaks only to the original discovery scenarios and names none of the
 Rewrite each diverging passage in the two operator docs in place, and make the
 runner state its own provenance.
 
-Have the runner record and print the shape of the run it just performed — the
-scenario set and pass count it covered — into the run's own summary output, so
+Have the runner record and print the shape of the run it just performed, the
+scenario set and pass count it covered, into the run's own summary output, so
 the run kind is readable without opening `benchmark.json`. Have the regression
 compare name the baseline it selected and state that baseline's shape alongside
 the verdict, and flag the case where the baseline covered fewer scenarios than
@@ -93,10 +93,10 @@ clean pass. Keep the existing latest-previous baseline selection: surfacing the
 narrowing preserves the operator's information without adding a second
 baseline-selection mechanism to reason about.
 
-Replace each frozen figure in the two docs with the derivation that yields it —
-the scenario inventory in `layer2/evals.json` and that file's `passes` value, and
-the runner's own default worker count — following the shape the README's live
-inventory passage already uses. Rewrite the in-session orchestration prompt so it
+Following the shape the README's live inventory passage already uses, replace
+each frozen figure in the two docs with the derivation that yields it: the
+scenario inventory in `layer2/evals.json` and that file's `passes` value, and
+the runner's own default worker count. Rewrite the in-session orchestration prompt so it
 instructs a reader in terms of that inventory rather than a fixed subagent and
 run count. Restate `## Latest results` so it points at the current record rather
 than describing a superseded pair of runs.
@@ -122,8 +122,8 @@ shared module.
 
 ## Acceptance
 
-1. A layer-2 run's own summary output states the shape of that run — the
-   scenarios and pass count it covered — so a `--scenario`-scoped run and a
+1. A layer-2 run's own summary output states the shape of that run, the
+   scenarios and pass count it covered, so a `--scenario`-scoped run and a
    full-suite run are distinguishable from that output alone. Verify by running
    one scoped run and one full-suite run and reading the shape back from each.
 2. The regression compare names the baseline run it selected and that baseline's
@@ -133,7 +133,7 @@ shared module.
    presenting an unqualified pass.
 3. Searching the two operator docs for the frozen forms returns nothing: the
    `× 10` pass count in the full-run heading, the "spawn 5 subagents" and "After
-   all 10 runs finish" instructions in the in-session prompt, the `~5–10 min`
+   all 10 runs finish" instructions in the in-session prompt, the `~5 to 10 min`
    duration in both docs, and the "4 samples per scenario" claim under
    `## Latest results`. Each site instead names the inventory or value it derives
    from, and no second copy of the retired figure remains elsewhere in either

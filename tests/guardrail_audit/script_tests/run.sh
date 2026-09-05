@@ -46,7 +46,7 @@ printf 'guardrail_audit script_tests\n'
 
 check "SKILL.md exists" test -f "$SKILL"
 check "frontmatter name: guardrail_audit" file_has "$SKILL" '^name: guardrail_audit$'
-check "frontmatter version: 1.0.2" file_has "$SKILL" '^version: 1\.0\.2$'
+check "frontmatter version: 1.0.4" file_has "$SKILL" '^version: 1\.0\.4$'
 check "dual-audience description mentions read-only audit" \
   file_has "$SKILL" '^description:.*[Rr]ead-only audit'
 check "description distinct from hub explain/suggest/create surface" \
@@ -81,7 +81,7 @@ check "empty-or-harness-locked tier-3 finding class named" \
 check "doc-vs-code scopes both-directions to descriptive statements" \
   file_has "$SKILL" 'purely descriptive statement'
 check "output_contract closing question omits softening for guarding findings" \
-  file_has "$SKILL" 'never offer softening the rule'
+  file_has "$SKILL" 'Never offer softening the rule'
 
 # Declared-direction register: an unreached ## Direction target is drive-toward
 # work, cited from the hub rather than restated here.
@@ -98,7 +98,7 @@ check "finding_shape names the third reconcile shape for a direction target" \
 check "finding_shape scopes both-directions to present-tense description" \
   section_has "$SKILL" finding_shape 'present-tense description'
 check "output_contract closing question omits softening for direction findings" \
-  section_has "$SKILL" output_contract 'never offer softening the target to the code'
+  section_has "$SKILL" output_contract 'Never offer softening the target to the code'
 check "direction passages cite the hub instead of restating it" \
   file_has "$SKILL" 'declared-direction register the hub defines'
 

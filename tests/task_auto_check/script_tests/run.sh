@@ -173,7 +173,7 @@ s5_family_rosters() {
     "$REPO_ROOT/plugins/ai_dev/skills/task_audit/SKILL.md" \
     "$REPO_ROOT/plugins/ai_dev/skills/task_finish/SKILL.md" \
     "$REPO_ROOT/plugins/ai_dev/skills/task_fix/SKILL.md"; do
-    assert_contains "family roster includes task_auto_check in ${file#"$REPO_ROOT"/}" "$file" "task_auto_check\` — autonomously repair one task until \`task_check\` reports ready" || ok=false
+    assert_contains "family roster includes task_auto_check in ${file#"$REPO_ROOT"/}" "$file" "task_auto_check\`: autonomously repair one task until \`task_check\` reports ready" || ok=false
   done
   $ok
 }

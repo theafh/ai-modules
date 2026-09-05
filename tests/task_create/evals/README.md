@@ -1,4 +1,4 @@
-# evals — task_create open-decision behaviour
+# evals: task_create open-decision behaviour
 
 Canonical skill-creator schema in `evals.json`, fixtures under
 `fixtures/<id>/setup.sh`, deterministic grading in `grade.sh`, and a
@@ -10,12 +10,12 @@ sonnet-pinned worker runner in `run.py`.
    project at `<target>/proj` with its own `tasks/` tree and a discovery marker,
    and prints `sandbox_proj` / `skill_name` / `skill_path` / `prompt` as
    `printf %q`-quoted lines safe to `eval` in bash. It also writes
-   `<target>/.eval_started_at` — the run-start epoch the grader uses for
+   `<target>/.eval_started_at`, the run-start epoch the grader uses for
    timestamp tolerance and isolation checks.
 2. `run.py` spawns one `claude -p` worker per eval with `sandbox_proj` as the
    working directory, so the skill's `discover_tasks.sh` resolves the sandbox
    and never the real repo. The worker prompt tells it to load the `SKILL.md`
-   at `skill_path`, which is the repo copy — edits under `plugins/` are what
+   at `skill_path`, which is the repo copy. Edits under `plugins/` are what
    gets tested, not whatever is deployed.
 3. `grade.sh <id> <sandbox_proj>` checks the post-run state and exits 0 only
    when every check passed.
@@ -32,7 +32,7 @@ other, so the grader reads both.
 - The **surfaced** half comes from the worker's captured `response.txt`.
   `run.py` exports `RESPONSE_FILE` when it calls the grader; a hand-run grade
   should export it too. When no response is readable, the surface checks FAIL
-  rather than pass vacuously — a label the user never saw is exactly the
+  rather than pass vacuously. A label the user never saw is exactly the
   failure mode this harness exists to catch.
 
 ## What stays prose
@@ -48,4 +48,4 @@ notes for what an operator confirms from `response.txt`.
 `.eval_cache/<id>.json` holds the last conclusive verdict, keyed on the
 `task_create` and base `task` skill sources, this directory, the model, and the
 prompt. Editing either skill invalidates it. Timeouts and crashes are never
-cached — they are environmental, not a property of the inputs.
+cached. They are environmental, not a property of the inputs.

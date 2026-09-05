@@ -1,7 +1,7 @@
 ---
 title: Skill family architecture
 created: 2026-08-08
-updated: 2026-08-29
+updated: 2026-09-05
 type: concept
 tags: [skill, agent, authoring, repo-structure, portability, discovery]
 sources: []
@@ -124,7 +124,7 @@ its frontmatter `name:` and falls back to the directory only when that field is
 absent, so the mismatch never stops the skill loading, and the script carries that
 observation beside the finding so the record and the severity move together. A
 third **info** tier holds a fact that is true of the file while a repository
-convention owns the requirement — an absent `version:` sits there, since no
+convention owns the requirement. An absent `version:` sits there, since no
 harness field reads it, and the finding cites the checked repository's own version
 rule or says its rule files state none.
 
@@ -160,7 +160,7 @@ description survives into the skill listing at all, and one relative to the
 siblings in the selected set. It also knows the one hard body limit the harness
 imposes, the byte ceiling above which a skill file is skipped outright, which sits
 orders of magnitude above any body written by hand. The size question that
-matters — whether a body has outgrown its purpose — is therefore still answered by
+matters, whether a body has outgrown its purpose, is therefore still answered by
 reading.
 
 ## Related concepts

@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-08-10
+updated: 2026-09-05
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -89,15 +89,15 @@ pages, starting with
 On several harnesses a project-level or profile-level setting outranks the
 user-level one the global deploy writes. Claude resolves `outputStyle` from three
 files, where local project settings outrank checked-in project settings, which in
-turn outrank the user-level key — the order and its verification date are on
-[Anthropic Claude Code](../entities/anthropic-claude-code.md) — and Codex applies
+turn outrank the user-level key. The order and its verification date are on
+[Anthropic Claude Code](../entities/anthropic-claude-code.md). Codex applies
 a profile file and a project configuration over the user configuration. A global
 deploy therefore establishes the machine default, which a project can override.
 
 That override is a silent-failure surface as much as it is a feature. The deploy
 merges its key, logs the merge, and reports the run as successful, and nothing in
 that report separates a style that took effect from one a project-local key
-already shadows — the operator reads a clean summary and then meets a session that
+already shadows. The operator reads a clean summary and then meets a session that
 ignores the style. On Claude the confusion compounds, because the only interactive
 route writes the file that wins, recorded on
 [Claude output styles](claude-output-styles.md), so a style picked by hand sticks

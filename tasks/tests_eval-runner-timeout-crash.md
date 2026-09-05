@@ -2,7 +2,7 @@
 description: Re-measure the task_auto_check eval timing band against the current loop, set its default --timeout above the re-measured ceiling, and update the RUNBOOK and run.py help to match.
 scope: "local test harnesses"
 created: 2026-09-05T03:06:08
-updated: 2026-09-05T10:05:57
+updated: 2026-09-05T21:33:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -37,7 +37,7 @@ evals queued behind it, so the sampling below can proceed to completion.
 
 The one remaining thread is the timing band, which is stale.
 `tests/task_auto_check/RUNBOOK.md` states the repair-class scenarios "take
-~900–1500s solo" and tells the operator to "pass `--timeout 1800` or more", and
+~900 to 1500s solo" and tells the operator to "pass `--timeout 1800` or more", and
 the `--timeout` help in `tests/task_auto_check/evals/run.py` repeats "runs
 ~900-1500s solo". The default is already 1800. Yet on 2026-09-05 three evals run
 solo and sequentially each reached the 1800-second deadline: `repair_to_ready`
@@ -66,7 +66,7 @@ the same headroom the default already keeps above the old band rather than
 sitting on its floor. Rewrite the band in place in both
 `tests/task_auto_check/RUNBOOK.md` and the `--timeout` help in
 `tests/task_auto_check/evals/run.py` so one figure governs both, superseding the
-stale "900–1500s" wording rather than leaving a second figure beside it.
+stale "900 to 1500s" wording rather than leaving a second figure beside it.
 
 The recorded measurement is the deliverable, so the durations and the band drive
 the default rather than the reverse. Where the completing runs show the loop does
@@ -92,7 +92,7 @@ The observed `duration_s` values and the band derived from them, its lower and
 upper end, are recorded in `tests/task_auto_check/RUNBOOK.md`, taken from the
 completing runs above rather than from any run the deadline cut off.
 
-`tests/task_auto_check/RUNBOOK.md` no longer states the `~900–1500s` band or
+`tests/task_auto_check/RUNBOOK.md` no longer states the `~900 to 1500s` band or
 instructs passing `--timeout 1800`; the superseding passage states the
 re-measured band and the current default.
 

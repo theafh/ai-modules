@@ -1,7 +1,7 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-09-01
+updated: 2026-09-05
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
 sources: []
@@ -99,7 +99,7 @@ when that field is a non-empty string, falling back to the containing
 directory's basename only otherwise. The result is sanitised by replacing every
 character outside `[a-zA-Z0-9_-]` with a hyphen, then namespaced as
 `<plugin>:<skill>`. A `name:` disagreeing with its directory therefore loads,
-lists, and routes without complaint — the alignment this repository requires is
+lists, and routes without complaint. The alignment this repository requires is
 its own convention rather than a harness constraint, which is why
 [skill family architecture](../concepts/skill-family-architecture.md) records the
 auditor reporting the mismatch below its blocking tier.
@@ -170,7 +170,7 @@ own subcommand list, which contains no `config` entry.
 Both closures land on one consequence worth stating outright: no interactive and
 no CLI surface writes the user-level `outputStyle`, so editing the user-level
 settings file is the only route to a machine-wide style. The `/config` picker is
-not that route, because it writes project-local scope — recorded on
+not that route, because it writes project-local scope, as recorded on
 [Claude output styles](../concepts/claude-output-styles.md).
 
 `/config` is an interactive terminal dialog, so a desktop-application session

@@ -15,7 +15,7 @@ orphan/broken `.git` cases).
 Staging needs a working `git init` inside the sandbox (writes under
 `<sandbox>/proj/.git`). Run fixture staging outside a filesystem sandbox
 that blocks `.git` creation, or the helpers abort instead of walking up
-to this repo — that parent-walk is what produced the accidental
+to this repo. That parent-walk is what produced the accidental
 `stage presence_gate` host commit.
 
 ```bash

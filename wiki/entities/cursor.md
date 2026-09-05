@@ -1,7 +1,7 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-09-05
 type: entity
 tags: [cursor, agent, frontmatter, discovery, verification-gap]
 sources: []
@@ -69,7 +69,7 @@ there governs part of the product rather than all of it.
 ### Modes
 
 Modes exist and switch from the picker or with Shift and Tab, but the modes
-documentation sources no user-defined mode carrying its own instructions. Treat a
+documentation describes no user-defined mode carrying its own instructions. Treat a
 mode as a tool-and-behaviour preset rather than a style slot until that changes.
 
 ## Verification gaps

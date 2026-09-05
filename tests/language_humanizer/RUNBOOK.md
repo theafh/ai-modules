@@ -1,4 +1,4 @@
-# RUNBOOK — tests/language_humanizer/
+# RUNBOOK: tests/language_humanizer/
 
 Operational guide for the `language_humanizer` behavioral harness. Design and
 rationale live in `README.md`; this file is how to run it and how to read the
@@ -7,8 +7,8 @@ result without misleading yourself.
 ## Pre-flight: worker auth
 
 Every pass spawns a nested `claude -p` worker, so the CLI's own stored OAuth
-login has to be alive — the host session's in-memory auth does not reach a
-grandchild process. `run.py` probes it once before spending anything and aborts
+login has to be alive, because the host session's in-memory auth does not
+reach a grandchild process. `run.py` probes it once before spending anything and aborts
 with the remediation rather than 401-ing fifteen runs in a row.
 
 ```bash
@@ -29,10 +29,10 @@ python3 tests/language_humanizer/evals/run.py
 
 That is the deliverable run: three scenarios × five passes, `claude-sonnet-4-6`
 for both the worker and the judge. The fifteen passes run five at a time
-(`--workers`, default 5), so budget roughly 8–15 minutes rather than the hour
+(`--workers`, default 5), so budget roughly 8 to 15 minutes rather than the hour
 the same run takes serially. Each pass is one worker call plus one judge call
-inside its own staged sandbox, which is why they parallelize safely — nothing
-is shared but the model endpoint.
+inside its own staged sandbox, which is why they parallelize safely, since
+nothing is shared but the model endpoint.
 
 `--workers 1` forces the serial path when you want a clean latency reading per
 pass or suspect the concurrency itself is distorting results. Going much above
@@ -86,16 +86,16 @@ tests/language_humanizer/results/run-<ts>.{json,md}   # the recorded copy
 ```
 
 Read `summary.md` first. Per scenario it reports `pass_rate` over the
-denominator, whether the bar was met, and — when it was not — exactly which
+denominator, whether the bar was met, and, when it was not, exactly which
 assertions diverged and on how many passes. `verdict.json` in the failing pass
 carries the judge's one-sentence reason per assertion, which is where a
 qualitative failure becomes actionable.
 
 ## The three ground-truth signals
 
-1. **`run.py`'s exit code** — 0 only when every scenario passed on every pass.
-2. **`summary.json`'s `all_scenarios_met_bar`** — the graded verdict.
-3. **`timing.json`'s `claude_rc` per pass** — a worker that timed out or
+1. **`run.py`'s exit code**: 0 only when every scenario passed on every pass.
+2. **`summary.json`'s `all_scenarios_met_bar`**: the graded verdict.
+3. **`timing.json`'s `claude_rc` per pass**: a worker that timed out or
    crashed makes its pass a void measurement, not a real failure. `run.py`
    already fails such a pass rather than trusting a partial sandbox, so check
    this before reading a red result as a skill regression.
@@ -107,7 +107,7 @@ subprocess artifacts, not graded verdicts. Trust the files.
 
 The measurement contract is deliberate: report the measured rate and the
 diverging assertions, then decide with a human in the loop. Do not re-run for
-a better draw — a 4/5 is data about the skill, and burying it under a fresh
+a better draw, because a 4/5 is data about the skill, and burying it under a fresh
 sample is how a real weakness survives. The honest next steps are to read the
 failing pass's `delivered.md` and judge reasons, decide whether the skill's
 prose or the assertion is wrong, and fix whichever it is.
@@ -115,7 +115,7 @@ prose or the assertion is wrong, and fix whichever it is.
 Diagnose by reading, not by counting. A per-assertion rate says which check
 fired, never why. The two graders disagreeing is the loudest signal available:
 when the regex fails an item the judge passes in context, suspect the regex
-first — that is exactly how the causal-joint pattern was caught scoring 0/5 on
+first. That is exactly how the causal-joint pattern was caught scoring 0/5 on
 rewrites that had kept the joint in other words.
 
 ## Re-grading versus re-running
@@ -136,8 +136,8 @@ python3 tests/language_humanizer/evals/regrade.py \
 `regrade.py` spawns no worker: responses are immutable once captured, so this
 measures the same sample with a fixed instrument. It writes
 `verdict.regrade.json` beside each original and `summary.regrade.{json,md}`
-for the run, never overwriting the original — the as-run rates stay readable
-next to the corrected ones so the correction is auditable instead of a quiet
+for the run, never overwriting the original, so the as-run rates stay readable
+next to the corrected ones and the correction is auditable instead of a quiet
 edit of history. Report both when a fix moves a number.
 
 One caveat the first correction surfaced: the judge is itself a sampled
@@ -146,15 +146,15 @@ instrument, so a re-grade can move a borderline verdict on unchanged input
 judge flip as noise and a repeated one as signal, and lean on the deterministic
 checks for anything a regex can settle honestly.
 
-A fresh `run.py` is the right move only after the *skill* changes — then the
+A fresh `run.py` is the right move only after the *skill* changes. Then the
 new sample measures the new artifact, and the prior run stays on record as the
 before.
 
 ## Fixing the skill from an eval result: name the target, not the trap
 
 One measured lesson from the first repair round, worth more than the rule it
-confirms. Two edits answered two failures the same way — by naming the shape to
-avoid — and they went in opposite directions:
+confirms. Two edits answered two failures the same way, by naming the shape to
+avoid, and they went in opposite directions:
 
 - The requirement-strength rule named the exact substitutions that had softened
   a `must` ("a hard limit", "a firm constraint", "a target"). That fixed it:
@@ -166,8 +166,8 @@ avoid — and they went in opposite directions:
   had just made vivid.
 
 The difference is what the named negative gives the model. A banned
-*substitution* is a lookup — it recognises "hard limit" and reaches for the
-modal instead. A banned *shape* is a template — a sentence pattern it can copy,
+*substitution* is a lookup: it recognises "hard limit" and reaches for the
+modal instead. A banned *shape* is a template: a sentence pattern it can copy,
 and salience beats prohibition. So when an eval failure is about form, spend the
 words on a positive specification of what the passage must contain (the first
 sentence carries the action, its owner, and its date) and let the banned shape
@@ -177,6 +177,6 @@ here; this is the measurement that shows what ignoring it costs.
 ## Scope discipline
 
 Ship the scenarios a change needs in the same session as the change, and re-run
-the suite to confirm no regression. Keep unbounded harness growth — backfilling
-coverage of behavior this change did not touch, or restructuring the harness —
-for its own session.
+the suite to confirm no regression. Keep unbounded harness growth for its own
+session: backfilling coverage of behavior this change did not touch, or
+restructuring the harness.

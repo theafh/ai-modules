@@ -20,7 +20,7 @@ tests/skill_doctor/
 
 ## Surfaces
 
-- **script_tests** — deterministic coverage of:
+- **script_tests** gives deterministic coverage of:
   - `scripts/resolve_scope.py` layout discovery: the plugin layout, a
     repo-root `skills/` tree, a `<vendor-config-dir>/skills/` tree, a
     single-skill repo whose `SKILL.md` sits at the root, and a lowercase
@@ -30,7 +30,7 @@ tests/skill_doctor/
     walk; a selector under a harness configuration directory outside the
     root substituting the repository source and naming the swap; the
     nearest plugin manifest above a skill recorded as its `plugin_host`;
-    and the ignore filter from both sides — a walk rooted at a repository
+    and the ignore filter from both sides: a walk rooted at a repository
     toplevel drops ignored paths (this suite's own scratch fixtures are
     the case that matters), while a walk rooted inside some other
     repository keeps its own skills instead of inheriting that repo's
@@ -97,7 +97,7 @@ tests/skill_doctor/
     purpose sentence, `Covers a, b, c` tail, plural artefact nouns with
     no trigger clause, bare file type). Each shape carries two
     assertions: no blocking finding, and no dual-audience warning code.
-    The second is the one that bites — `blocking_count == 0` alone
+    The second is the one that bites: `blocking_count == 0` alone
     cannot catch a reverted purpose or trigger heuristic, since the
     severity split means such a finding surfaces as a warning. Verified
     by mutation: reverting the purpose floor, the typographic-punctuation
@@ -105,7 +105,7 @@ tests/skill_doctor/
     check;
   - a self-check that `skill_doctor` clears its own gate;
   - static `SKILL.md` contract anchors from the task acceptance list.
-- **evals** — staged prompts for family scope resolution,
+- **evals** are staged prompts for family scope resolution,
   discovery-safety-first ordering, and the two behaviours that come from
   the checked repository rather than from this one: `registration_no_manifest`
   stages a repo-root `skills/` tree with no manifest, no marketplace and no

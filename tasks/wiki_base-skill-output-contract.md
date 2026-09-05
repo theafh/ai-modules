@@ -2,7 +2,7 @@
 description: Give the wiki hub an output contract stating what each core operation returns, since all three front ends carry one and the hub states its report only per operation.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:59:52
-updated: 2026-08-12T21:20:23
+updated: 2026-09-05T21:26:04
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -50,24 +50,24 @@ Insert one `<output_contract>` immediately after `</pitfalls>` and before
 matching the task hub precedent. For each core operation, state the
 report shape the agent returns:
 
-- **`<ingest>`** — files created or updated; cite `<report_what_changed>` and
+- **`<ingest>`**: files created or updated; cite `<report_what_changed>` and
   keep its text canonical there.
-- **`<capture_procedure>`** — the procedure page path created or updated and the
+- **`<capture_procedure>`**: the procedure page path created or updated and the
   `index.md` navigation updates applied.
-- **`<query>`** — synthesized answer with citations plus the one-line filing
+- **`<query>`**: synthesized answer with citations plus the one-line filing
   decision from **Report the filing decision in one line** (filed page path, or
   skip reason in the trigger's terms); cite that step rather than restating it.
-- **`<archive>`** — archived page path, `index.md` and inbound-link updates, and
+- **`<archive>`**: archived page path, `index.md` and inbound-link updates, and
   post-archive lint outcome.
-- **`<lint_and_audit>`** — inline lint finding counts logged to `log.md`, or the
+- **`<lint_and_audit>`**: inline lint finding counts logged to `log.md`, or the
   delegated agent's per-file change list and audit-complete line for broad scope.
-- **`<present_candidates>`** — every `AVAILABLE:` and `EXISTING:` candidate in
+- **`<present_candidates>`**: every `AVAILABLE:` and `EXISTING:` candidate in
   walk order, the chosen or adopted path, and the one-line adoption report per
   `<adopt_when_user_named_the_path>` when it applies.
 
 Cite an existing inline promise by its verbatim pseudo-XML tag when one exists;
 otherwise cite the step's verbatim bold lead-in. Frame each entry as what the
-agent returns to the user — file paths, lint counts, log lines, filing
+agent returns to the user: file paths, lint counts, log lines, filing
 decisions, or candidate lists. One statement per promise remains in the hub.
 
 **Out of scope:**

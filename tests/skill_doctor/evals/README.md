@@ -50,10 +50,10 @@ schema in `evals.json`. Use `run.py` here instead.
 
 `grade.sh` checks the two surfaces a model is not needed for:
 
-- **Filesystem state** — `stage.sh` records a sha256 manifest of every
+- **Filesystem state**: `stage.sh` records a sha256 manifest of every
   staged `SKILL.md`, and `grade.sh` re-verifies it. This is the whole
   check-only contract, and it is the strongest signal in the harness.
-- **Response text** — whether the resolved target set the skill named
+- **Response text**: whether the resolved target set the skill named
   matches the expected one, and whether discovery safety came before the
   registration and instruction-quality passes.
 

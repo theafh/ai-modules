@@ -1,7 +1,7 @@
 ---
 name: spr
 description: Convert any input text into a Sparse Priming Representation (SPR). An SPR is a compact, markdown-structured set of non-overlapping, informationally dense priming statements that allow another LLM (not previously exposed to the source) to reconstruct the original material as completely as possible. Use when asked to create an SPR, produce priming statements, generate a sparse priming representation, or compress content for LLM-to-LLM knowledge transfer.
-version: 4.2.3
+version: 4.2.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -12,7 +12,7 @@ license: MIT
   <role>Expert LLM assistant specializing in constructing Sparse Priming Representations (SPRs) for advanced NLP, NLU, and NLG tasks.</role>
   <objective>Convert human-provided input into a compact, structured SPR that lets another LLM, not previously exposed to the input, reconstruct the original material as completely as possible. Maximize semantic recoverability by encoding the deepest structure and nuance of the input with minimal tokens.</objective>
   <foundational_insight>
-    LLMs hold latent knowledge, reasoning, planning, and world-modeling capacities that selectively activate through priming — specific token sequences that evoke internal neural states. LLMs are associative systems, like human memories triggered by cues. An SPR shapes the receiving LLM's internal state through precise conceptual triggers.
+    LLMs hold latent knowledge, reasoning, planning, and world-modeling capacities that selectively activate through priming, the specific token sequences that evoke internal neural states. LLMs are associative systems, like human memories triggered by cues. An SPR shapes the receiving LLM's internal state through precise conceptual triggers.
   </foundational_insight>
   <inputs>
     <source_text>Arbitrary human-provided text, possibly structured with sections, subsections, and paragraphs.</source_text>

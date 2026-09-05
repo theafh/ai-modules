@@ -1,7 +1,7 @@
 ---
 name: task_finish
 description: Close one completed or parked task. Use when the user asks to finish, mark done, defer, park, drop, or archive a task. Set finished or deferred, move the file to archive, update links, and relint.
-version: 1.0.12
+version: 1.0.13
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -29,7 +29,7 @@ The base `task` skill's `SKILL.md` is the single source of truth; keep every sha
 </authority>
 
 <path_resolution>
-The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to the base `task` skill's `SKILL.md`, not next to this one. After reading that base `SKILL.md` (per `<authority>`), resolve each script's absolute path by combining the directory you loaded it from with `scripts/<script-name>` and invoke that absolute path — never a bare `scripts/...`, which resolves against the current working directory (the target project) rather than the skill, and so finds the project's own `scripts/` or nothing. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed.
+The bundled scripts (`discover_tasks.sh`, `lint.py`) ship in `scripts/` next to the base `task` skill's `SKILL.md`, not next to this one. After reading that base `SKILL.md` (per `<authority>`), resolve each script's absolute path by combining the directory you loaded it from with `scripts/<script-name>` and invoke that absolute path, never a bare `scripts/...`, which resolves against the current working directory (the target project) rather than the skill, and so finds the project's own `scripts/` or nothing. If the first invocation reports a missing file, re-resolve the absolute path once before treating the script as failed.
 </path_resolution>
 
 <workflow>
@@ -37,7 +37,7 @@ Close one task, in order:
 
 1. **Identify the target task.** Run the base skill's `<discover>` step to resolve `tasks/`, and confirm which single task file is being closed. Read it so you know its current `status`, links, and the work it claims.
 2. **Decide the outcome.** Set `finished` when the work is done and shipped, or `deferred` when the task is parked or dropped and not pursued for now. When the user's intent is ambiguous between the two, ask before changing anything.
-3. **Verify before a `finished` close when needed.** Marking a task `finished` asserts the work is genuinely done, so make the verification decision from the task's current `status`: when it is `audited`, treat the codebase-verification gate as already satisfied and proceed to close-out; when it is `implemented` or any other non-`audited` live status being closed as `finished`, run `task_audit` (the read-only gate) or carry out its check, and resolve or report any gap before closing. Trust a current `audited` stamp; when you have concrete evidence the code changed since that audit, re-verify rather than relying on the stamp. On the trust-the-stamp path, read `design-extended` from task frontmatter as the design-extension signal the close-out rule consumes, reading absence as `false` per the base `<frontmatter>` entry, so the close proceeds without re-reading the code the shortcut deliberately skips. Absence and a recorded `false` both decline the refresh, and the report keeps them apart rather than presenting an assessment nobody made as a decision. A `deferred` close skips this step, since parking a task makes no claim about completion. Mark a task `finished` on codebase evidence, not on prose. This trust-the-stamp gate is the lifecycle-scale instance of the base `<verification_economy>` rule: the audit is the prior run whose evidence stands until an input changes, and code that changed since the audit is that input change — so the stamp is trusted by default and re-verification fires exactly on fresh evidence.
+3. **Verify before a `finished` close when needed.** Marking a task `finished` asserts the work is genuinely done, so make the verification decision from the task's current `status`: when it is `audited`, treat the codebase-verification gate as already satisfied and proceed to close-out; when it is `implemented` or any other non-`audited` live status being closed as `finished`, run `task_audit` (the read-only gate) or carry out its check, and resolve or report any gap before closing. Trust a current `audited` stamp; when you have concrete evidence the code changed since that audit, re-verify rather than relying on the stamp. On the trust-the-stamp path, read `design-extended` from task frontmatter as the design-extension signal the close-out rule consumes, reading absence as `false` per the base `<frontmatter>` entry, so the close proceeds without re-reading the code the shortcut deliberately skips. Absence and a recorded `false` both decline the refresh, and the report keeps them apart rather than presenting an assessment nobody made as a decision. A `deferred` close skips this step, since parking a task makes no claim about completion. Mark a task `finished` on codebase evidence, not on prose. This trust-the-stamp gate is the lifecycle-scale instance of the base `<verification_economy>` rule: the audit is the prior run whose evidence stands until an input changes, and code that changed since the audit is that input change, so the stamp is trusted by default and re-verification fires exactly on fresh evidence.
 4. **Run the base skill's `<archive>` close-out.** Follow the `task` skill's `<archive>` workflow end to end, including the `ARCHITECTURE.md` presence gate and refresh decision the base step defines. Those rules live in the base skill; follow them there rather than restating them here.
 </workflow>
 
@@ -46,17 +46,17 @@ Report the task's new path under `archive/`, the `status` you set, the cross-ref
 </output_contract>
 
 <family>
-The `task_*` family — each sibling does one job, then points to the next; the base `task` skill is the hub that can do all of it:
+In the `task_*` family, each sibling does one job, then points to the next; the base `task` skill is the hub that can do all of it:
 
-- `task_create` — write one task file
-- `task_check` — readiness gate before building (read-only)
-- `task_auto_check` — autonomously repair one task until `task_check` reports ready
-- `task_explain` — explain one task at a high level (read-only)
-- `task_select` — choose and rank the next eligible task/action (read-only)
-- `task_implement` — do the work
-- `task_audit` — verify a believed-done task against the codebase (read-only)
-- `task_finish` — close out: set status, bump `updated`, archive **(this skill)**
-- `task_fix` — audit and repair the whole tasks tree
+- `task_create`: write one task file
+- `task_check`: readiness gate before building (read-only)
+- `task_auto_check`: autonomously repair one task until `task_check` reports ready
+- `task_explain`: explain one task at a high level (read-only)
+- `task_select`: choose and rank the next eligible task/action (read-only)
+- `task_implement`: do the work
+- `task_audit`: verify a believed-done task against the codebase (read-only)
+- `task_finish`: close out (set status, bump `updated`, archive) **(this skill)**
+- `task_fix`: audit and repair the whole tasks tree
 
 These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>

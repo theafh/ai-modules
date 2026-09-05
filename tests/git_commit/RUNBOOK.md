@@ -1,12 +1,12 @@
-# git_commit skill regression — quick reference
+# git_commit skill regression: quick reference
 
 For the full design, see `README.md`. This is the operator's
 quick-ref.
 
 ## Harness rule
 
-The installed skill-creator skill is **read-only** for this harness —
-nothing under `tests/git_commit/` copies into, overwrites, or patches
+The installed skill-creator skill is **read-only** for this harness.
+Nothing under `tests/git_commit/` copies into, overwrites, or patches
 it. All harness logic lives in this directory. See
 `evals/README.md` for the rule and the rationale.
 
@@ -44,7 +44,7 @@ tests/git_commit/script_tests/scratch/<id>/
 └── .eval_started_at                   staged HEAD SHA marker
 ```
 
-There is no `workspace/iteration-N/` tree — that was inherited from
+There is no `workspace/iteration-N/` tree. That was inherited from
 an aspirational skill-creator runner that doesn't actually exist for
 this kind of eval. The harness now stages each run wherever you
 point it.

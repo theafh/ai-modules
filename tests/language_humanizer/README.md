@@ -2,7 +2,7 @@
 
 Pattern A (skill-creator-aligned) harness for the `language_humanizer` skill
 in the `ai_editorial` plugin. The skill ships no bundled scripts, so there is
-no `script_tests/` layer here — the whole harness is behavioral.
+no `script_tests/` layer here. The whole harness is behavioral.
 
 ```text
 tests/language_humanizer/
@@ -29,8 +29,8 @@ three directions.
 
 | Scenario | Path | The pressure |
 | --- | --- | --- |
-| `fidelity_padded` | rewrite | A 390-word padded status update carrying nine load-bearing items. A faithful restatement of all nine needs ~80 words, so the fixture's content is well under half its length — a rewrite has ample room to hit the 75% ceiling *and* keep everything, which makes any dropped item a real failure rather than a length casualty. |
-| `compression_trap` | rewrite | One long paragraph whose argument lives entirely in its transitions, plus one hedged uncertain claim. The two obvious "readability" moves — bulleting the paragraph, asserting the hedge flatly — both destroy meaning. |
+| `fidelity_padded` | rewrite | A 390-word padded status update carrying nine load-bearing items. A faithful restatement of all nine needs ~80 words, so the fixture's content is well under half its length. A rewrite has ample room to hit the 75% ceiling *and* keep everything, which makes any dropped item a real failure rather than a length casualty. |
+| `compression_trap` | rewrite | One long paragraph whose argument lives entirely in its transitions, plus one hedged uncertain claim. The two obvious "readability" moves, bulleting the paragraph and asserting the hedge flatly, both destroy meaning. |
 | `write_path` | write | Unordered retro notes carrying five load-bearing items among the noise, with no draft length to measure against. Tests that the write path leads with the main point and adds no filler of its own. |
 
 ## The measurement contract
@@ -38,7 +38,7 @@ three directions.
 Each scenario runs over a **fixed denominator** of passes (default 5). The
 recorded per-scenario pass rate over that denominator is the deliverable, and
 the bar is every assertion holding on every pass. A scenario that misses the
-bar is reported with its measured rate and the diverging assertions — the
+bar is reported with its measured rate and the diverging assertions. The
 report hands the disposition to the operator instead of re-rolling the dice
 for a friendlier draw.
 
@@ -63,11 +63,11 @@ clause, the causal joint), the bullet-cascade shape, a filler-phrase list, and
 two harness-integrity checks (the source document came out untouched, and
 `delivered.md` was written).
 
-`judge.py` owns the rest of each scenario's named assertions — "reads
+`judge.py` owns the rest of each scenario's named assertions: "reads
 plainly", "strength and scope unchanged in context", "opens with its main
-point", "no invented content" — with one pinned-sonnet call per pass against
-a refute-biased rubric: fail the assertion unless the delivered text plainly
-satisfies it. Both graders' verdicts gate the pass; a pass is clean only when
+point", and "no invented content". It makes one pinned-sonnet call per pass
+against a refute-biased rubric: fail the assertion unless the delivered text
+plainly satisfies it. Both graders' verdicts gate the pass; a pass is clean only when
 every assertion from both sides held.
 
 The dividing line is *fact versus meaning*, and the first run taught it the
@@ -77,7 +77,7 @@ misfired: counting `because|since|so that|therefore` scored the causal joint
 the source's own transition words failed rewrites that substituted "yet" for
 "but" while keeping every joint. Both moved to the judge, which names the
 specific joints and accepts any wording that carries them, and both grew
-*stricter* in the move — the judge now fails a joint that survives only as
+*stricter* in the move: the judge now fails a joint that survives only as
 juxtaposition with no connective. Keep new assertions on the right side of
 that line: a regex may ask whether a string is present, never whether meaning
 survived.
@@ -85,5 +85,5 @@ survived.
 Model policy follows the tree-wide convention in `tests/CLAUDE.md`: the skill
 under test runs on `claude-sonnet-4-6`. The judge is pinned to the same model
 so a rubric verdict does not drift with the host session, which is the one
-place this harness extends the convention — the other harnesses keep their
+place this harness extends the convention. The other harnesses keep their
 meta level model-free because their grading is fully deterministic.

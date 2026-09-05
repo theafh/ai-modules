@@ -1,4 +1,4 @@
-# CLAUDE.md — running the local test harnesses
+# CLAUDE.md: running the local test harnesses
 
 Operational guide for everything under `tests/`. The authored harness
 is committed, including this file; `tests/.gitignore` keeps every
@@ -44,15 +44,15 @@ harness here regardless of pattern.
 ### Model policy: pin the skill-under-test to sonnet, keep the meta level inherited
 
 Every harness that runs a skill as a subprocess pins that worker to
-**`claude-sonnet-4-6`** — the thing under test runs on one cheap, stable
+**`claude-sonnet-4-6`**: the thing under test runs on one cheap, stable
 model so results don't drift with whatever the host session happens to
-be. Only the **meta level on top** — the orchestrator, the grader, the
-aggregation — runs on the inherited session model. Concretely:
+be. Only the **meta level on top** (the orchestrator, the grader, the
+aggregation) runs on the inherited session model. Concretely:
 
 | Harness | Worker (sonnet-pinned) | Meta level (inherited) |
 | --- | --- | --- |
-| `trigger_evals/run.py` | `claude -p` per query (`--model` default `claude-sonnet-4-6`) | precise/family scoring — pure Python, no model |
-| `wiki/layer2/run.py` | `claude -p` per scenario×pass (`--model` default `claude-sonnet-4-6`) | `grade.py` / `aggregate.py` — pure Python, no model |
+| `trigger_evals/run.py` | `claude -p` per query (`--model` default `claude-sonnet-4-6`) | precise/family scoring (pure Python, no model) |
+| `wiki/layer2/run.py` | `claude -p` per scenario×pass (`--model` default `claude-sonnet-4-6`) | `grade.py` / `aggregate.py` (pure Python, no model) |
 | `git_commit/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 | `task/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
 | `task_create/evals/run.py` | `claude -p` per eval (`--model` default `claude-sonnet-4-6`) | `grade.sh` (deterministic) + operator prose-verdict confirmation |
@@ -78,18 +78,18 @@ determines the verdict has changed. The shared helper is
 `tests/lib/eval_cache.py`; verdicts live per-harness in
 `<evals>/.eval_cache/` (gitignored as run output, like `workspace/`).
 
-The cache key is a content hash of: the skill source under test **and its
-family dependencies** — for the task family that means the loaded sibling
-*plus* the base `task` skill *plus* `plugins/ai_dev/agents/`, because every
-sibling reads the base via `<authority>` and the `auto_*` siblings spawn
-those agents, and for `git_review` it means the `git_checkout` and
-`git_commit` skill directories it hands work to — the harness definition
-(the whole `evals/` dir: evals.json,
-stage.sh, grade.sh, fixtures, run.py), the worker model, the eval id, and
-the prompt. Change any of those and the key moves, so the cache misses and
+The cache key is a content hash of these inputs: the skill source under
+test **and its family dependencies**, the harness definition (the whole
+`evals/` dir: evals.json, stage.sh, grade.sh, fixtures, run.py), the worker
+model, the eval id, and the prompt. Family dependencies means, for the task
+family, the loaded sibling *plus* the base `task` skill *plus*
+`plugins/ai_dev/agents/`, because every sibling reads the base via
+`<authority>` and the `auto_*` siblings spawn those agents; for `git_review`
+it means the `git_checkout` and `git_commit` skill directories it hands work
+to. Change any of those and the key moves, so the cache misses and
 the eval re-runs. It can never serve a stale pass: a hit means byte-identical
 inputs to a run already graded. Over-inclusion (e.g. editing `task_select`
-invalidates a `task_implement` eval) only costs an occasional extra run — the
+invalidates a `task_implement` eval) only costs an occasional extra run, the
 safe direction.
 
 - **Default: on.** A hit prints `CACHED PASS/FAIL … skipped claude -p` and
@@ -131,16 +131,16 @@ writes would forgive a real escape too.
 
 ### Cheap-first: probe an LLM-eval fixture before paying for the full loop
 
-For any eval whose worker runs a deep, slow loop — the `task_auto_check`
-repair loop is the current example (~15–25 min per run, timeout-prone) —
+For any eval whose worker runs a deep, slow loop (currently the
+`task_auto_check` repair loop, ~15 to 25 min per run, timeout-prone),
 validate the fixture with the cheapest surface that reveals the same
 verdict *before* running the loop. For a readiness-repair eval that means
 running the gate skill (`task_check`) alone against the staged fixture: a
-single `claude -p` reading that skill, ~1–3 min, reporting its verdict and
+single `claude -p` reading that skill, ~1 to 3 min, reporting its verdict and
 issue list. A fixture-design bug (an unintended second readiness gap, an
 inaccurate premise) caught at the gate costs minutes; the same bug caught
-via a full-loop timeout costs 15–25. And run these deep loops
-**sequentially** — two in parallel contend for the model and both slow
+via a full-loop timeout costs 15 to 25. And run these deep loops
+**sequentially**: two in parallel contend for the model and both slow
 past even an 1800s timeout. `task_auto_check/RUNBOOK.md` has the specifics
 and the grade-check pitfall that goes with them.
 
@@ -157,9 +157,9 @@ treats itself as nested and expects the parent's SDK-held auth.
 `CLAUDECODE` from the worker env so the child is a plain CLI invocation.
 It then reads the CLI's own stored OAuth credential (macOS keychain item
 `Claude Code-credentials`) directly, and no separate token is needed
-while that login is present and unexpired. Never pass `--bare` — it
+while that login is present and unexpired. Never pass `--bare`; it
 forces `ANTHROPIC_API_KEY` / `apiKeyHelper` auth and 401s a subscription
-login. The shared helper `tests/lib/worker_auth.py` does this — its
+login. The shared helper `tests/lib/worker_auth.py` does this: its
 `worker_env()` pops `CLAUDECODE` and the HAS_*_REFRESH flags, and its
 `preflight_auth()` fails fast on a dead login with one live `claude -p`
 probe (the remediation below) instead of 401-ing every eval. Every
@@ -170,7 +170,7 @@ pre-flight and the worker env; `trigger_evals/run.py` and
 `wiki/layer2/run.py` use `worker_env()`.
 
 **Failure signature:** worker rc≠0 with
-`API Error: 401 Invalid authentication credentials` in `response.txt` —
+`API Error: 401 Invalid authentication credentials` in `response.txt`,
 an expired or absent login, not a skill regression (check `timing.json`
 before attributing). The CLI's keychain OAuth is not self-refreshing (a
 known bug, anthropics/claude-code#31095, #50743): an expired accessToken
@@ -178,7 +178,7 @@ with no usable refreshToken 401s forever. `claude auth status` still
 reports `loggedIn` past expiry, so trust the live probe, then re-auth
 with `claude auth login` and re-run.
 
-**Optional headless-token override** — for a machine with no interactive
+**Optional headless-token override**, for a machine with no interactive
 login (e.g. cron). Mint a `claude setup-token` (interactive browser
 OAuth; 1-year inference-only token) and park it in the keychain;
 `worker_env()` picks it up and it wins over the stored login:
@@ -196,7 +196,7 @@ runner, since they all build their worker env from the shared
 
 A `claude -p` worker that overruns its deadline raises `TimeoutExpired`, and the
 partial output that exception carries is **bytes** even though the runner passed
-`text=True` — `text=True` governs only what a normal completion returns. The
+`text=True`, which governs only what a normal completion returns. The
 runners append a `[TIMEOUT after Ns]` note to that output, so a raw
 `(exc.stderr or "") + note` raises `TypeError: can't concat str to bytes`. That
 error escapes both the per-eval function and `main()`, which used to abort the
@@ -208,8 +208,8 @@ Every runner now resolves both streams through `as_text()` from the shared
 `tests/lib/worker_io.py`, which returns `""` for `None`, decodes `bytes` with
 `errors="replace"` (the deadline can cut the stream mid multi-byte sequence),
 and passes `str` through. A timed-out eval is then recorded like any other
-failure — `claude_rc` of `-1`, a `stderr.txt` ending in the note, a failed
-verdict — and the run continues to its graded summary. Unit tests live in
+failure (`claude_rc` of `-1`, a `stderr.txt` ending in the note, a failed
+verdict), and the run continues to its graded summary. Unit tests live in
 `tests/lib/test_worker_io.py` (run `python3 tests/lib/test_worker_io.py`).
 
 Keep the decode in that one module rather than reintroducing a local copy.
@@ -242,20 +242,20 @@ monitor's timeout. You then have to call `TaskStop` to clean it up.
 `Monitor` is the right shape for *unbounded* per-occurrence streams
 (log-tailing for ERROR lines indefinitely), not for completion waits.
 For per-occurrence with a natural end, write a script that emits one
-line per event and *exits* when done — don't lean on `tail -f`.
+line per event and *exits* when done; don't lean on `tail -f`.
 
 ### Ground truth lives in files, not mid-stream events
 
 When a harness spawns LLM subagents (Layer 2 in `wiki/`, the
 behavioral evals in `git_commit/`), the host Claude Code instrumentation
 may surface subprocess-level events into the parent session's
-notification stream. These look like real test outcomes — e.g.
+notification stream. These look like real test outcomes, e.g.
 
 ```text
 [WU-2 pass-1] FAIL (524.0s)
 ```
 
-— but they are **not** in the orchestrator's stdout, are **not**
+But they are **not** in the orchestrator's stdout, are **not**
 printed by any script in the harness, and are **not** the graded
 verdict. They are subprocess-timing artifacts from the host's wrapper
 around `claude -p`. A `FAIL (524s)` usually means the subprocess ran
@@ -264,7 +264,7 @@ it, and the final graded state is what counts.
 
 Always cross-check mid-stream impressions against the ground-truth
 files the harness writes. If those agree on "clean run," the run was
-clean — regardless of what flickered through the notification stream.
+clean, regardless of what flickered through the notification stream.
 
 ### The three ground-truth signals to check after any LLM-in-the-loop run
 
@@ -304,7 +304,7 @@ than grepping the file for a version string, since a registration lists
 many plugins and a bare grep matches any of them; the helper already
 does this.
 
-## tests/wiki/ — Pattern B, two-layer
+## tests/wiki/: Pattern B, two-layer
 
 The wiki skill ships bundled scripts (`discover_wiki.sh`,
 `init_wiki.sh`, `lint.py`, `compute_sha256.py`) **and** load-bearing
@@ -388,7 +388,7 @@ clean.
 default under load. If a run shows transient single-pass fails that
 recover on retry, prefer `--timeout 900` over chasing the symptom.
 
-### Layer 2 sandbox isolation — load-bearing assertions
+### Layer 2 sandbox isolation: load-bearing assertions
 
 Every Layer 2 scenario asserts:
 
@@ -400,7 +400,7 @@ filesystem rather than a container. They've never failed in any run,
 but they're the reason the harness can be safely re-run without
 isolation. Don't drop them when adding scenarios.
 
-## tests/git_commit/ — Pattern A, skill-creator-aligned
+## tests/git_commit/: Pattern A, skill-creator-aligned
 
 Two surfaces, each in its own subdir:
 
@@ -409,7 +409,7 @@ Two surfaces, each in its own subdir:
 | `script_tests/` | `prepare_commit_context.sh`, `commit_with_message.sh` | Stdout / exit-code / git-state on real working trees | `./tests/git_commit/run_all.sh` |
 | `evals/` | Skill agent behavior | Primary workflow + commit-message format + fallback discipline | Operator-driven: `stage.sh` → agent runs → `grade.sh` |
 
-### script_tests — fast, deterministic
+### script_tests: fast, deterministic
 
 ```bash
 ./tests/git_commit/run_all.sh
@@ -418,9 +418,9 @@ Two surfaces, each in its own subdir:
 Stages a fresh per-scenario temp git repo under
 `script_tests/scratch/<id>/`. ~1 sec. No LLM cost.
 
-### Behavioral evals — three-phase operator workflow
+### Behavioral evals: three-phase operator workflow
 
-The installed skill-creator skill is **read-only** for this harness —
+The installed skill-creator skill is **read-only** for this harness;
 nothing under `tests/git_commit/` copies into or patches it. All
 harness logic stays in this directory.
 
@@ -437,7 +437,7 @@ bash tests/git_commit/evals/grade.sh <eval_id> "$sandbox_repo"
 ```
 
 `evals/README.md` has the full recipe and the per-eval expectations.
-Phase 2 is operator-driven — there is no `workspace/iteration-N/`
+Phase 2 is operator-driven; there is no `workspace/iteration-N/`
 tree to inspect (the older README claimed there was; it's been
 corrected).
 
@@ -453,11 +453,11 @@ Ship the tests a change needs in the same session as the change: a
 skill change lands with the tight new scenario(s) that prove its own
 behavior, and you run `./tests/git_commit/run_all.sh` to confirm no
 regression before committing. Keep only *unbounded* harness growth for
-its own session — backfilling coverage of pre-existing behavior, or
+its own session: backfilling coverage of pre-existing behavior, or
 adding scenarios well past what the change needs. The boundary is
 scope, not timing.
 
-## tests/trigger_evals/ — skill triggering (description-matching)
+## tests/trigger_evals/: skill triggering (description-matching)
 
 Tests a separate axis from the other harnesses: whether a skill's
 *description* causes Claude to load the skill on a realistic user
@@ -483,7 +483,7 @@ The runner is the local wrapper `tests/trigger_evals/run.py`.
 `null` to mean "no skill from this family should fire" (a request
 that's outside wiki/wiki_import/wiki_fix/wiki_wrapup territory
 entirely). For backward compatibility the runner still accepts the
-older `{"query": "...", "should_trigger": true|false}` form —
+older `{"query": "...", "should_trigger": true|false}` form:
 `should_trigger: true` maps to `expected_skill = <--skill>` and
 `should_trigger: false` maps to `expected_skill = null`. The legacy
 form can't express "trigger a sibling instead," so prefer the
@@ -516,11 +516,11 @@ python3 tests/trigger_evals/run.py \
   under `~/.claude/commands/<name>-skill-<uuid>.md` carrying the
   description being tested and watches for the UUID in `Skill` /
   `Read` inputs. Useful for testing a description *before* deploy.
-  Family/precise grading is NOT supported in this mode — the fallback
+  Family/precise grading is NOT supported in this mode; the fallback
   reports only the upstream single-skill pass/fail.
 - **Force UUID** (`--force-uuid`): override auto-detect and use the
   UUID-proxy path even when the skill is deployed. Rarely useful in
-  practice — if you have the real skill deployed *and* you pass the
+  practice: if you have the real skill deployed *and* you pass the
   same description through the proxy, the model picks the deployed
   one (because names like `wiki` beat names like `wiki-skill-<uuid>`),
   and the proxy never gets called, which scores 0/N falsely.
@@ -529,10 +529,10 @@ python3 tests/trigger_evals/run.py \
 
 `run.py` reports two pass rates per run:
 
-- **Precise** — the FIRST tool the model invoked loaded the *exact*
+- **Precise**: the FIRST tool the model invoked loaded the *exact*
   `expected_skill`. For `expected_skill: null`, precise = "no skill
   was loaded as the first tool."
-- **Family** — the first tool loaded *any* skill in the family list.
+- **Family**: the first tool loaded *any* skill in the family list.
   For `expected_skill: null`, family = "no family member was loaded."
 
 The family list defaults to skills sharing the same name root as
@@ -544,7 +544,7 @@ auto-derivation isn't what you want.
 A query that says "audit my wiki for broken links" with
 `expected_skill: wiki_fix` and an actual triggered run of
 `[wiki_fix, wiki, wiki]` will score precise = 1/3 (FAIL at the 50%
-threshold) but family = 3/3 (PASS — the model always recognized
+threshold) but family = 3/3 (PASS, the model always recognized
 wiki-territory). That's the diagnosis the family metric is designed
 to surface: "description bleed between siblings" looks very different
 from "the skill doesn't trigger at all."
@@ -599,7 +599,7 @@ The run.log per-query line uses a two-letter marker `[Xy]` where
 
 `run.py` exits 0 when *precise* passes for every query, 1 otherwise.
 The graded summary is the verdict; exit code is just a CI signal.
-Family-only passes still count as failures by exit code — they're
+Family-only passes still count as failures by exit code; they're
 diagnostic, not "good enough." Treat them as "fix the description
 bleed," not as "done."
 
@@ -607,7 +607,7 @@ bleed," not as "done."
 
 After material edits to a skill's `description:` frontmatter, after
 adding or renaming a sibling skill in the same family, or when
-adding a new skill. Don't run them on every skill-content change —
+adding a new skill. Don't run them on every skill-content change;
 they're slow and the description usually isn't what you just edited.
 
 ### Always diff against the prior run: `--baseline`
@@ -640,7 +640,7 @@ runner into a real drift signal instead of the always-non-zero
 written into `results.json` under `baseline_comparison`.
 
 A lone per-query flip can still be sampling noise at the 50% threshold
-— the report says so — so confirm a single regression with a re-run
+(the report says so), so confirm a single regression with a re-run
 before acting on it. A query that fails persistently and is understood
 (name-token dominance, an inline-acting model the runner can't observe,
 accepted sibling bleed) carries its disposition as a `note` field beside
@@ -655,7 +655,7 @@ correctly seen but a *sibling* is stealing the trigger. The fix is
 usually in the *sibling's* description, not the expected one:
 sharpen the sibling away from the territory it's encroaching on.
 E.g. "audit my wiki for broken links" with `expected: wiki_fix` but
-triggered `[wiki_fix, wiki, wiki]` — sharpen the `wiki` description
+triggered `[wiki_fix, wiki, wiki]`: sharpen the `wiki` description
 to NOT claim "audit / lint / fix / health-check" verbs that belong
 to `wiki_fix`.
 
@@ -690,7 +690,7 @@ Deployed-mode runs leave no temp files.
 
 2. Implement `script_tests/run.sh` first if the skill ships bundled
    scripts. Stage a fresh sandbox per scenario; never operate on the
-   host repo's working tree. The runner must fail loud — exit
+   host repo's working tree. The runner must fail loud: exit
    non-zero on any failed assertion.
 
 3. Author `evals/evals.json` and per-eval fixture `setup.sh` scripts
@@ -700,17 +700,17 @@ Deployed-mode runs leave no temp files.
    `skill-creator/references/schemas.md`.
 
 4. Add per-skill `<skill>.json` to `tests/trigger_evals/` only when
-   the skill's *triggering* behavior is non-trivial — usually a new
+   the skill's *triggering* behavior is non-trivial, usually a new
    skill that overlaps semantically with an existing one.
 
 5. When designing eval assertions, lean on filesystem-state and
    structured-report-field checks first. Reach for free-form
    response-text checks only when no other signal captures the
-   behavior — agent prose is the most variable surface and the
+   behavior; agent prose is the most variable surface and the
    surface most likely to make a real change look like a regression.
 
 6. If the harness runs the skill against a real filesystem (no
-   container), add explicit sandbox-isolation fail-safes — e.g.
+   container), add explicit sandbox-isolation fail-safes, e.g.
    "no files modified outside the sandbox," "no writes to
    `$HOME/<destination>`." See `wiki/` Layer 2 for the load-bearing
    pattern.
@@ -722,7 +722,7 @@ Deployed-mode runs leave no temp files.
   specified for every input shape we test.
 - **Behavioral evals** (Layer 2 in `wiki/`, `evals/` in
   `git_commit/`): the agent followed the skill's load-bearing
-  workflow across N independent samples — invoked the right scripts,
+  workflow across N independent samples: invoked the right scripts,
   composed conformant output, honored refusal/fallback rules, didn't
   leak outside the sandbox.
 - **Trigger evals** (`trigger_evals/`): the skill's description is

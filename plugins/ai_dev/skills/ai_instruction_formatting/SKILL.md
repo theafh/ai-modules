@@ -1,7 +1,7 @@
 ---
 name: ai_instruction_formatting
 description: Organize AI-consumed content (prompts, rules, skills, commands, agents, system instructions) into pseudo-XML by wrapping each semantic concern in a dedicated tag for role, policy, inputs, and output contract. Use when structuring or reorganizing the body of a SKILL.md, agent or sub-agent definition, command file, rules document (.mdc), CLAUDE.md, AGENTS.md, or GEMINI.md configuration, prompt template, or system prompt into semantic tags, when choosing tag boundaries, or when checking whether an instruction file follows the pseudo-XML convention. This is the structure-and-tags skill; its sibling ai_instruction_writing governs the wording.
-version: 3.4.2
+version: 3.4.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -16,7 +16,7 @@ Use pseudo-XML structuring for any document where an LLM is the primary consumer
 
 ## File Shape
 
-A pseudo-XML artifact lives inside a host file — a `SKILL.md`, an agent definition, a command file, a rules document, or a snippet. Four document shapes are valid, and this skill's bundled linter (`scripts/lint_pseudo_xml.py`) recognizes all four:
+A pseudo-XML artifact lives inside a host file: a `SKILL.md`, an agent definition, a command file, a rules document, or a snippet. Four document shapes are valid, and this skill's bundled linter (`scripts/lint_pseudo_xml.py`) recognizes all four:
 
 | Shape | Where it appears | Body content |
 | :--- | :--- | :--- |
@@ -31,7 +31,7 @@ Whenever the host file is a `SKILL.md` or agent definition, keep the YAML frontm
 
 Two tiers of guidance live in this skill: **mechanical rules** that are bugs when violated, and **stylistic guidance** that names well-tested defaults. The bundled linter enforces only the mechanical rules; an artifact that satisfies them while shaping content differently from the stylistic recommendations is correct, not deviant.
 
-- **Mechanical rules (linter-enforced, bugs when violated)**: frontmatter `name:` matches the directory name; H1 is present and is a casing-or-spacing variant of `name:` (so `# Auto Shaper Wiki` matches `name: auto_shaper_wiki` — only genuine name drift is flagged); ASCII snake_case tag names; no attributes, no entities, no self-closing tags; balanced opening and closing tags with a recognized file shape; max nesting depth five (covers the canonical workflow shape `<wrapper> → <section_group> → <named_phase> → <list_parent> → <list_item>`; deeper is flagged); no duplicate siblings outside the repeating-tags allowlist; trailing newline.
+- **Mechanical rules (linter-enforced, bugs when violated)**: frontmatter `name:` matches the directory name; H1 is present and is a casing-or-spacing variant of `name:` (so `# Auto Shaper Wiki` matches `name: auto_shaper_wiki`, and only genuine name drift is flagged); ASCII snake_case tag names; no attributes, no entities, no self-closing tags; balanced opening and closing tags with a recognized file shape; max nesting depth five (covers the canonical workflow shape `<wrapper> → <section_group> → <named_phase> → <list_parent> → <list_item>`; deeper is flagged); no duplicate siblings outside the repeating-tags allowlist; trailing newline.
 - **Stylistic guidance (defaults, not violations)**: which named container holds which kind of content (see "Section Separation"), the relative order of objective / tools / policy / output_contract, and which tags from the standard vocabulary appear at all. Apply the defaults when authoring from scratch; deviate when the artifact's own structure carries the meaning more clearly. An artifact whose tag names are fully self-describing (e.g., `<commit_message_multi_file>`, `<scoring_criteria>`) often needs less wrapper ceremony than one whose children share a generic name like `<rule>` or `<step>`.
 
 ## Core Format
@@ -77,10 +77,10 @@ Wrap the entire artifact in a descriptive outer tag. Nest semantic sections insi
 Encode every semantic distinction in the tag name itself. Each tag is a self-describing label: the name alone communicates the full purpose.
 
 - **Encode meaning in the tag name**: write `<scope_boundary_discipline>`, where the tag name carries the full semantic. Move every descriptive label into the tag name itself.
-- **Match each distinct concept to its own tag name**: write `<after_spec_execution>` for that specific concern. Two concerns with genuinely different semantics carry different tag names; two list items of the same kind repeat the same tag — see "Repeating Tags".
+- **Match each distinct concept to its own tag name**: write `<after_spec_execution>` for that specific concern. Two concerns with genuinely different semantics carry different tag names; two list items of the same kind repeat the same tag. See "Repeating Tags".
 - **Use ASCII snake_case for tag names**: `<output_contract>`, `<scoring_criteria>`, `<triage_agent>`. Tag names match `[a-z][a-z0-9_]*`. Capitals, hyphens, dots, colons, and HTML entities like `&amp;` never appear in tag names.
 - **Carry no attributes on tags**: write `<output_contract>` instead of `<output type="contract">`. Pseudo-XML carries every distinction in the tag name itself, so attribute syntax has no role; move the attribute meaning into the tag name.
-- **Place all content between explicit opening and closing tags**: use plain text or nested child tags inside. Self-closing forms (`<tag/>`) are unused — a tag with no content carries no meaning, so omit it entirely.
+- **Place all content between explicit opening and closing tags**: use plain text or nested child tags inside. Self-closing forms (`<tag/>`) are unused. A tag with no content carries no meaning, so omit it entirely.
 
 ## Named Tags First
 
@@ -103,7 +103,7 @@ Sibling tags with **distinct** semantic roles always carry distinct tag names, e
 </inputs>
 ```
 
-Numeric or alphabetic suffixes (`<rule_1>`, `<rule_2>`, `<step1>`) inject artificial distinction without naming anything — they are neither named tags nor a clean homogeneous list. Replace them with either real names or the homogeneous-list shape below.
+Numeric or alphabetic suffixes (`<rule_1>`, `<rule_2>`, `<step1>`) inject artificial distinction without naming anything. They are neither named tags nor a clean homogeneous list. Replace them with either real names or the homogeneous-list shape below.
 
 ## Repetition as the Exception
 
@@ -117,7 +117,7 @@ Some siblings genuinely belong in a homogeneous list, where repeating the same t
 </policy>
 ```
 
-The decisive question is **unit vs. anchor**: are the children read as a unit (an ordered sequence or group consumed together) or as anchors a reader (or LLM) might jump to and reference individually? Unit favors repetition; anchor favors named tags. Different content alone is not the signal — addressability is.
+The decisive question is **unit vs. anchor**: are the children read as a unit (an ordered sequence or group consumed together) or as anchors a reader (or LLM) might jump to and reference individually? Unit favors repetition; anchor favors named tags. Different content alone is not the signal; addressability is.
 
 Reach for repetition when the unit signals all hold:
 
@@ -125,7 +125,7 @@ Reach for repetition when the unit signals all hold:
 - Each child body is short (a sentence or fragment), not a developed phase worth recalling by name.
 - The visual rhythm of identical siblings communicates "homogeneous list" at a glance.
 
-When any child is something a reader would land on independently — a named procedure phase, a uniquely-scoped rule, a specific concern with its own identity — promote that child to a self-describing tag instead. Worked cases: `<rule>` items inside a `<policy>` are a unit (the policy applies as a whole). `<example>` items inside `<examples>` are a unit (collectively demonstrate). Four micro-substeps inside a single loop iteration are a unit (always read in order, every iteration). Five top-level procedure phases the artifact references by name are anchors.
+When any child is something a reader would land on independently (a named procedure phase, a uniquely-scoped rule, a specific concern with its own identity), promote that child to a self-describing tag instead. Worked cases: `<rule>` items inside a `<policy>` are a unit (the policy applies as a whole). `<example>` items inside `<examples>` are a unit (collectively demonstrate). Four micro-substeps inside a single loop iteration are a unit (always read in order, every iteration). Five top-level procedure phases the artifact references by name are anchors.
 
 The repeatable-pair allowlist:
 
@@ -167,7 +167,7 @@ When the children inside a section share a generic tag name (e.g., several `<rul
 - **Demonstration**, show what good looks like: `<examples>`
 - **Output contract**, lock the response shape: `<output_contract>`, `<format>`, `<validation>`
 
-When each child already carries its full semantic in its own tag name (e.g., `<commit_message_multi_file>`, `<file_line_quality>`, `<execution_default>`), the section wrapper is optional — the tag name already serves the segmentation that the wrapper would otherwise provide. Apply this guidance as a default for content that benefits from grouping, not as a forced shape.
+When each child already carries its full semantic in its own tag name (e.g., `<commit_message_multi_file>`, `<file_line_quality>`, `<execution_default>`), the section wrapper is optional, because the tag name already serves the segmentation that the wrapper would otherwise provide. Apply this guidance as a default for content that benefits from grouping, not as a forced shape.
 
 ## Cross-Artefact References
 
@@ -179,15 +179,15 @@ When an artifact references content owned by a different skill, agent, command, 
 | Sibling artefact name (no path) | bare slug in backticks | `` `auto_shaper_wiki` `` |
 | Within-artifact path | relative path in backticks | `` `references/lint_checks.md` `` |
 
-The `$<SLUG>_SKILL/...` form makes cross-skill paths visually spotable (the `$` sigil stands out from surrounding prose), keeps boundaries unambiguous (the placeholder ends at the next whitespace or path separator), and stays orthogonal to pseudo-XML tags so the two conventions never collide. It is also greppable for tooling — `grep -r '\$[A-Z_]\+_SKILL/'` enumerates every cross-skill dependency in the codebase.
+The `$<SLUG>_SKILL/...` form makes cross-skill paths visually spotable (the `$` sigil stands out from surrounding prose), keeps boundaries unambiguous (the placeholder ends at the next whitespace or path separator), and stays orthogonal to pseudo-XML tags so the two conventions never collide. It is also greppable for tooling: `grep -r '\$[A-Z_]\+_SKILL/'` enumerates every cross-skill dependency in the codebase.
 
-Why the `_SKILL` suffix on the slug: it keeps skill-install paths visually distinct from content/data shell variables that an agent or skill may already define (e.g., `$WIKI` resolved to the user's wiki location is a different thing from `$WIKI_SKILL` resolved to the wiki skill's install location). The suffix is self-documenting — the placeholder identifies as a skill path on sight, with no risk of conflating skill code with the data it operates on.
+Why the `_SKILL` suffix on the slug: it keeps skill-install paths visually distinct from content/data shell variables that an agent or skill may already define (e.g., `$WIKI` resolved to the user's wiki location is a different thing from `$WIKI_SKILL` resolved to the wiki skill's install location). The suffix is self-documenting: the placeholder identifies as a skill path on sight, with no risk of conflating skill code with the data it operates on.
 
-Apply this convention in `<policy>` lines, `<steps>` instructions, `<output_contract>` entries, reference lists, and any other structured section where the path is the meaningful payload. Free-flowing explanatory prose (e.g., "see the `wiki` skill for the full ingest flow") stays in prose — the rule covers paths, not every mention of a sibling. When in doubt: if the line is telling the model *where to read*, use the placeholder; if it is telling the model *what concept lives elsewhere*, prose is fine.
+Apply this convention in `<policy>` lines, `<steps>` instructions, `<output_contract>` entries, reference lists, and any other structured section where the path is the meaningful payload. Free-flowing explanatory prose (e.g., "see the `wiki` skill for the full ingest flow") stays in prose, because the rule covers paths, not every mention of a sibling. When in doubt: if the line is telling the model *where to read*, use the placeholder; if it is telling the model *what concept lives elsewhere*, prose is fine.
 
 ## Constraint-First Ordering
 
-Place the constraints that bound the procedure before the procedure itself, so the model reads its boundaries before the open-ended instructions. The relative order of intent (`<objective>`), resources (`<tools>`, `<inputs>`), and constraints (`<policy>`, `<output_contract>`) is flexible — what matters is that whatever shapes how the model executes `<steps>` appears before `<steps>`. Encode default behavior and edge-case handling as explicit tagged rules inside `<policy>` or `<output_contract>`.
+Place the constraints that bound the procedure before the procedure itself, so the model reads its boundaries before the open-ended instructions. The relative order of intent (`<objective>`), resources (`<tools>`, `<inputs>`), and constraints (`<policy>`, `<output_contract>`) is flexible; what matters is that whatever shapes how the model executes `<steps>` appears before `<steps>`. Encode default behavior and edge-case handling as explicit tagged rules inside `<policy>` or `<output_contract>`.
 
 ## Deterministic Structure
 
@@ -276,4 +276,4 @@ python3 scripts/lint_pseudo_xml.py --quiet    # issues only, suppress good list
 
 The linter auto-detects the file shape from the four shapes above, reports what it detected, applies the rules to whatever pseudo-XML the file contains, and emits prose suggestions for every violation. When a file passes cleanly, it lists the checks that confirmed the file is in good shape. The script exits non-zero only when error-severity findings are present, so warnings stay actionable without blocking surrounding workflows.
 
-Output is split into two sections: **Issues** (errors and warnings — mechanical violations) and **Hints** (info-severity prompts that surface judgment calls, like the named-phases-vs-repetition decision above). Hints never gate the build and never block PASS; they exist so the LLM weighs each repetition site rather than defaulting into the canonical pattern.
+Output is split into two sections: **Issues** (errors and warnings, the mechanical violations) and **Hints** (info-severity prompts that surface judgment calls, like the named-phases-vs-repetition decision above). Hints never gate the build and never block PASS; they exist so the LLM weighs each repetition site rather than defaulting into the canonical pattern.

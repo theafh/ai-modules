@@ -30,7 +30,7 @@ model-mediated behavior that static checks cannot prove:
 - No verified fix: stops as `checked`.
 - Cap override: honors a user-supplied max-round bound.
 - Gate helper failure: stops with a clear helper-failure error, lists
-  options, and asks the user — no inline gate, no self-computed
+  options, and asks the user. No inline gate, no self-computed
   readiness verdict, and the task file stays untouched.
 - Drift helper failure: stops at freeze time with the same user-facing
   error instead of proceeding or improvising a drift verdict.
@@ -67,7 +67,7 @@ editing unrelated real tasks no longer trips it; a hit on a
 fixture-namespace file is a genuine sandbox escape. The repair-class scenarios (`repair_to_ready`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
 `immediate_ready_citations_overturn`) run the full
-nested-agent loop and take ~900–1500s solo — pass `--timeout 1800` or
+nested-agent loop and take ~900 to 1500s solo, so pass `--timeout 1800` or
 more, since the default 900 cuts many of them off. A `worker rc=-1` in
 `timing.json` means the worker was cut off mid-run: its grade reflects an
 unfinished sandbox and is inconclusive, never a behavioral pass or fail
@@ -76,26 +76,26 @@ unfinished sandbox and is inconclusive, never a behavioral pass or fail
 ## Cost discipline
 
 These behavioral evals are the most expensive surface in the repo. Two
-habits — learned from a session that burned hours re-running them — cut
+habits, learned from a session that burned hours re-running them, cut
 the iteration cost sharply:
 
 - **Validate a fixture with a single `task_check` gate before running the
   full loop.** Stage the fixture (`evals/stage.sh <id> <dir>`), then run
   `task_check` alone against the staged task: a `claude -p` that reads
   `plugins/ai_dev/skills/task_check/SKILL.md` and reports its verdict plus
-  issue list, ~1–3 min. This reveals whether the fixture lands on the
+  issue list, ~1 to 3 min. This reveals whether the fixture lands on the
   intended verdict and what side-findings it carries, so a fixture-design
   bug (an unintended second readiness gap, an inaccurate premise) surfaces
-  in minutes rather than via a 15–25 min repair-loop timeout. Run the full
+  in minutes rather than via a 15 to 25 min repair-loop timeout. Run the full
   loop only once the gate verdict matches what the eval expects.
 - **Run repair-class evals sequentially, never concurrently.** Two deep
   nested-agent loops in parallel contend for the model and both slow past
-  even an 1800s timeout; solo, each finishes in ~900–1500s. Launch one
+  even an 1800s timeout; solo, each finishes in ~900 to 1500s. Launch one
   `run.py` invocation at a time.
 
 When authoring a `grade.sh` check for an edit-supersedes behavior, assert
 that the stale content is **gone** (or that the superseding concept is
-named), not that a specific token appears: an incidental token — e.g. the
-`100` inside `list(range(100))` — false-passes a loose check, while
+named), not that a specific token appears: an incidental token, e.g. the
+`100` inside `list(range(100))`, false-passes a loose check, while
 demanding a literal keyword false-fails a valid supersession that simply
 lowered a value.

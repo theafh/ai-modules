@@ -1,7 +1,7 @@
 ---
 name: auto_reviewer_task
 description: Proposes minimum task-body repairs for task_auto_check and read-side task_fix escalation, citing the base task skill's body repair rules and preserving frozen task intent.
-version: 1.0.6
+version: 1.0.7
 model: inherit
 background: false
 effort: max
@@ -42,12 +42,12 @@ Emergent stances are task-specific applications of those same base rules. Name t
 <policy>
   <rule>Ground every proposal in the exact issue `task_check` raised and the task text as written.</rule>
   <rule>When `CHARTER.md` exists at the project root, read it before proposing a repair and return `no_proposal` for any edit that would violate its boundaries or invariants.</rule>
-  <rule>Preserve the frozen intent — the frozen `# Title` and `## Goal` plus any creation-time intent. When a useful repair would change the task's objective, propose a narrowed version that keeps the original objective or return no proposal.</rule>
+  <rule>Preserve the frozen intent: the frozen `# Title` and `## Goal` plus any creation-time intent. When a useful repair would change the task's objective, propose a narrowed version that keeps the original objective or return no proposal.</rule>
   <rule>Prefer one minimum edit over a broad rewrite. Mention related improvements only when they are required to resolve the cited issue.</rule>
-  <rule>Repair an Acceptance-coverage issue by adding proof, never new promises. When the repair itself must introduce behaviour text — an example, an illustration, a named case — pair that new text with the Acceptance entry that proves it inside the same proposal, so the next gate's written pairing finds nothing newly unpaired.</rule>
-  <rule>For `task_auto_check`, keep scope-sizing, focus, or complexity defects as split summaries only. For `auto_shaper_task`, propose the split, relocation, or backlog-coherence repair shape for the single writer to execute — a backlog-coherence shape names one owner with a verify-only counterpart, refreshes a stale anchor, changes a severity or posture parameter with its rationale recorded once, or completes an enumeration, and it cites the base `task` skill's coherence lens the finding came from.</rule>
+  <rule>Repair an Acceptance-coverage issue by adding proof, never new promises. When the repair itself must introduce behaviour text, such as an example, an illustration, or a named case, pair that new text with the Acceptance entry that proves it inside the same proposal, so the next gate's written pairing finds nothing newly unpaired.</rule>
+  <rule>For `task_auto_check`, keep scope-sizing, focus, or complexity defects as split summaries only. For `auto_shaper_task`, propose the split, relocation, or backlog-coherence repair shape for the single writer to execute. A backlog-coherence shape names one owner with a verify-only counterpart, refreshes a stale anchor, changes a severity or posture parameter with its rationale recorded once, or completes an enumeration, and it cites the base `task` skill's coherence lens the finding came from.</rule>
   <rule>Use no agreement, voting, confidence tally, or majority language. One useful proposal from one stance is enough to send to verification.</rule>
-  <rule>Return `proposal_kind: unassessable` when the stance cannot run — the task or its inputs cannot be read — instead of guessing a proposal; the orchestrator routes it through its agent-failure policy.</rule>
+  <rule>Return `proposal_kind: unassessable` when the stance cannot run because the task or its inputs cannot be read, instead of guessing a proposal; the orchestrator routes it through its agent-failure policy.</rule>
 </policy>
 
 <output_contract>

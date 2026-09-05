@@ -1,7 +1,7 @@
 ---
 name: task_select
 description: Select and rank eligible live tasks from the project backlog. Use when the user asks what task to work on next, asks the agent to pick or prioritize backlog work, rank open tasks, choose from tasks/, or recommend the next task/action without editing task files.
-version: 1.0.6
+version: 1.0.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -61,7 +61,7 @@ Implementation friction measures how likely the work is to stall because context
 </criterion>
 
 <criterion>
-Dependency and ordering relationships measure how candidate tasks sequence with each other inside the live eligible backlog. Read prerequisites and classify each tie using the base `task` skill's `<dependency_signals>` taxonomy — the prerequisite rule, the relationship signals, the bidirectional outbound/inbound reading, and the hard-ordering-dependency versus soft-companion-relationship split with its directional-evidence rule all live there. Applied to ranking: a hard ordering dependency sequences the prerequisite ahead of its dependent, while a soft companion relationship is surfaced in the report without reordering the candidates.
+Dependency and ordering relationships measure how candidate tasks sequence with each other inside the live eligible backlog. Read prerequisites and classify each tie using the base `task` skill's `<dependency_signals>` taxonomy. The prerequisite rule, the relationship signals, the bidirectional outbound/inbound reading, and the hard-ordering-dependency versus soft-companion-relationship split with its directional-evidence rule all live there. Applied to ranking: a hard ordering dependency sequences the prerequisite ahead of its dependent, while a soft companion relationship is surfaced in the report without reordering the candidates.
 </criterion>
 
 <criterion>
@@ -89,7 +89,7 @@ Use status to select the next action after ranking:
 3. **Apply narrowing.** When the user supplied a scope, prefix, label, or task name, filter the eligible set before ranking using the forms in `<candidate_policy>`.
 4. **Handle empty sets.** If discovery or filtering leaves no eligible candidates, report that state and stop without recommending archived work.
 5. **Read candidates.** Read each remaining task file in full, including frontmatter, Goal, Context, Approach, and Acceptance.
-6. **Derive dependency and ordering relationships.** Apply the base `task` skill's `<dependency_signals>` taxonomy in both directions. Read each filtered candidate's own outbound signals, and also scan the full live eligible set for inbound ordering declarations that point at any candidate — a live task whose body names a first-ship order over a candidate or forward-references an artefact the candidate creates. Honor such an ordering note whether it was authored in the candidate or in the pointing task, including when the pointing task sits outside the applied scope filter. Then classify hard ordering dependencies and soft companion relationships before scoring and ranking.
+6. **Derive dependency and ordering relationships.** Apply the base `task` skill's `<dependency_signals>` taxonomy in both directions. Read each filtered candidate's own outbound signals, and also scan the full live eligible set for inbound ordering declarations that point at any candidate, meaning a live task whose body names a first-ship order over a candidate or forward-references an artefact the candidate creates. Honor such an ordering note whether it was authored in the candidate or in the pointing task, including when the pointing task sits outside the applied scope filter. Then classify hard ordering dependencies and soft companion relationships before scoring and ranking.
 7. **Score and rank.** Evaluate impact, implementation complexity, implementation friction, dependency and ordering relationships, and bug-fix preference from the task body and available repo context. Keep the reasoning compact and evidence-based.
 8. **Recommend the next action.** Name the best unblocked candidate first, state the suggested next action for its current status, then list top alternatives and the tradeoff that kept them behind the recommendation. In the all-blocked filtered case, name the outside-scope prerequisite that should be handled next instead of presenting a blocked filtered task as the recommendation.
 </workflow>
@@ -110,17 +110,17 @@ Make no file edits, status changes, timestamp changes, or archive moves.
 </output_contract>
 
 <family>
-The `task_*` family — each sibling does one job, then points to the next; the base `task` skill is the hub that can do all of it:
+In the `task_*` family, each sibling does one job, then points to the next; the base `task` skill is the hub that can do all of it:
 
-- `task_create` — write one task file
-- `task_check` — readiness gate before building (read-only)
-- `task_auto_check` — autonomously repair one task until `task_check` reports ready
-- `task_explain` — explain one task at a high level (read-only)
-- `task_select` — choose and rank the next eligible task/action (read-only) **(this skill)**
-- `task_implement` — do the work
-- `task_audit` — verify a believed-done task against the codebase (read-only)
-- `task_finish` — close out: set status, bump `updated`, archive
-- `task_fix` — audit and repair the whole tasks tree
+- `task_create`: write one task file
+- `task_check`: readiness gate before building (read-only)
+- `task_auto_check`: autonomously repair one task until `task_check` reports ready
+- `task_explain`: explain one task at a high level (read-only)
+- `task_select`: choose and rank the next eligible task/action (read-only) **(this skill)**
+- `task_implement`: do the work
+- `task_audit`: verify a believed-done task against the codebase (read-only)
+- `task_finish`: close out (set status, bump `updated`, archive)
+- `task_fix`: audit and repair the whole tasks tree
 
 These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>

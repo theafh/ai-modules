@@ -1,7 +1,7 @@
 ---
 title: Guardrail documents as normative rules
 created: 2026-08-09
-updated: 2026-08-29
+updated: 2026-09-05
 type: concept
 tags: [skill, authoring, repo-structure]
 sources: []
@@ -124,8 +124,8 @@ rules migrate up into the domain docs for want of anywhere else to live.
 
 Whether the touch-it-and-fix-it path actually closes gaps in practice is
 unmeasured. It is an obligation on the agent with nothing structural behind it,
-and the alternative reading — that agents quietly skip it and gaps persist
-until someone files the work — has not been ruled out. The drive-toward path for
+and the alternative reading, that agents quietly skip it and gaps persist
+until someone files the work, has not been ruled out. The drive-toward path for
 a declared target shares that gap. Steering work toward a target is the same kind
 of obligation on the agent, with the same absence of a check behind it.
 
