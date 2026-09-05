@@ -1,7 +1,7 @@
 ---
 name: wiki_wrapup
 description: Wrap up the current chat session by mining it for durable knowledge, comparing the findings against the existing wiki, and surfacing both candidate additions and contradictions with concrete reconciliation suggestions. Use when the user asks to wrap up, close, or end a session; to capture, harvest, or persist what we discussed into the wiki; to ingest the session into the wiki; to reconcile the conversation with existing notes; or whenever a research or exploration chat is concluding and produced reusable knowledge worth keeping.
-version: 1.1.2
+version: 1.1.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -15,7 +15,7 @@ license: MIT
   <policy>
     <resolve_skill_bundle>Resolve `$WIKI_SKILL` before the first bundled tool call and before `$WIKI`. It is the installed `wiki` skill bundle holding the scripts this skill invokes. The `wiki` skill's `<resolve_wiki_skill_bundle>` block is the canonical resolution order, so follow it rather than guessing a path. From this skill's own directory the sibling hub is `../wiki`. Every `$WIKI_SKILL/...` path below resolves through that block.</resolve_skill_bundle>
     <resolve_first>Resolve `$WIKI` through the `wiki` skill's discovery flow before reading the session. Honor exit-2 ambiguity by presenting candidates and asking the user.</resolve_first>
-    <orient_first>Read `SCHEMA.md`, `index.md`, and the last 20–30 entries of `log.md` before diffing, so the diff runs against an understood corpus.</orient_first>
+    <orient_first>Read `SCHEMA.md`, `index.md`, and roughly the last 350 lines of `log.md` before diffing, so the diff runs against an understood corpus.</orient_first>
     <mine_session>Extract durable claims, decisions, definitions, conventions, comparisons, workflows, and named entities. Skip abandoned hypotheses, transient back-and-forth, and user-private ephemera.</mine_session>
     <classify>For each candidate, pick a page type from the `wiki` skill's enum and tag it NEW, EXTEND, CONFIRM, or CONFLICT against `$WIKI`.</classify>
     <surface_contradictions>For every CONFLICT, capture both excerpts verbatim, name the disagreement dimension (factual / definitional / scope / recency / source-quality), and offer two or three concrete reconciliation paths.</surface_contradictions>

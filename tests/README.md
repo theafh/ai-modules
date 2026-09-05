@@ -64,9 +64,9 @@ don't bring up new harnesses under Pattern B.
   `layer2/evals.json`, each over that file's top-level `passes`
   denominator). Mature, working.
 - **`git_commit/`** — Pattern A. `script_tests/` implemented (16
-  bundled-script scenarios). `evals/` defined (5 evals with fixtures);
-  the runner is skill-creator's own `scripts.run_eval`, invoked
-  out-of-band per `evals/README.md`.
+  bundled-script scenarios). `evals/` holds nine behavioral evals with
+  fixtures, run through a sonnet-pinned `evals/run.py` with a
+  deterministic `grade.sh`. See `evals/README.md`.
 - **`git_checkout/`** — Pattern A. `script_tests/` implemented (14
   bundled-script scenarios over staged clones with real remotes).
   `evals/` defined (7 evals over 5 fixtures) and run operator-driven
@@ -122,6 +122,29 @@ don't bring up new harnesses under Pattern B.
   shapes), plus the static SKILL.md contract. `evals/` has three
   staged fixtures driven by a sonnet-pinned `run.py` with a
   deterministic `grade.sh`; `run_all.sh` drives only the script tests.
+- **`git_refresh/`** — Pattern A. `script_tests/` covers the bundled
+  `refresh_repo.sh` over staged repositories. `evals/` defines four
+  behavioral evals with fixtures but ships no runner, so an eval sweep
+  reaches only the script surface here.
+- **`ai_instruction_writing/`** — Pattern A, script-only. The skill ships
+  no bundled scripts, so `script_tests/` asserts its static prose
+  contract instead.
+- **`charter_guardrail/`** — Pattern A, script-only. `script_tests/run.sh`
+  greps the guardrail doc set against its documented contract. No
+  `run_all.sh`; run `script_tests/run.sh` directly.
+- **`format_rust/`** — Pattern A, script-only. `script_tests/run.sh` greps
+  SKILL.md and the plugin README for the error-versus-invariant model,
+  panic discipline, and clippy wiring. No `run_all.sh`.
+- **`update_changelog/`** — Pattern A, script-only. `script_tests/` covers
+  the deterministic parts of the incremental day-grouping walk.
+- **`deployment/`** — Pattern A, script-only, and the one harness that
+  belongs to the deploy script rather than to a skill. `script_tests/run.sh`
+  covers the OpenCode, Antigravity, and bytecode-exclusion paths;
+  `script_tests/style_run.sh` covers output-style deployment and uninstall.
+- **`trigger_evals/`** — a different axis from the rest: whether a skill's
+  `description:` makes Claude load it on a realistic user message. Driven
+  by the local `run.py` wrapper, with hermetic unit tests for the
+  detector under `script_tests/`.
 
 ## Adding a harness for a new skill
 

@@ -1,7 +1,7 @@
 ---
 name: spr
-description: Convert any input text into a Sparse Priming Representation (SPR) — a compact, markdown-structured set of non-overlapping, informationally dense priming statements that allow another LLM (not previously exposed to the source) to reconstruct the original material as completely as possible. Use when asked to create an SPR, produce priming statements, generate a sparse priming representation, or compress content for LLM-to-LLM knowledge transfer.
-version: 4.2.2
+description: Convert any input text into a Sparse Priming Representation (SPR). An SPR is a compact, markdown-structured set of non-overlapping, informationally dense priming statements that allow another LLM (not previously exposed to the source) to reconstruct the original material as completely as possible. Use when asked to create an SPR, produce priming statements, generate a sparse priming representation, or compress content for LLM-to-LLM knowledge transfer.
+version: 4.2.3
 author: Andreas F. Hoffmann
 license: MIT
 ---

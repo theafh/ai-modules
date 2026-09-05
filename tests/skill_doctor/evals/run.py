@@ -45,6 +45,7 @@ WORKSPACE = THIS.parent / "workspace"
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
 from worker_auth import preflight_auth, worker_env  # noqa: E402  (shared)
+from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 EVALS_JSON = THIS / "evals.json"
 
@@ -149,13 +150,8 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
         rc, stdout, stderr = result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired as exc:
         rc = -1
-        stdout = exc.stdout or ""
-        if isinstance(stdout, bytes):
-            stdout = stdout.decode("utf-8", "replace")
-        stderr = (exc.stderr or "")
-        if isinstance(stderr, bytes):
-            stderr = stderr.decode("utf-8", "replace")
-        stderr += f"\n[TIMEOUT after {timeout}s]"
+        stdout = as_text(exc.stdout)
+        stderr = as_text(exc.stderr) + f"\n[TIMEOUT after {timeout}s]"
     duration_s = time.time() - start
 
     response_path = eval_dir / "response.txt"

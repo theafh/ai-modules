@@ -1,7 +1,7 @@
 ---
 name: guardrail_audit
-description: Read-only audit of a repository's existing guardrail docs — surfaces doc-vs-doc contradictions and doc-vs-code divergences ranked by the guardrail hierarchy, plus grounded missing-doc proposals where repo substance warrants an absent doc. Edits nothing; every finding carries evidence and a reconcile recommendation, and the run ends by asking how to proceed. Use when auditing, health-checking, or retrofitting guardrail docs against each other and the codebase; when a freshly adopted CHARTER.md, ARCHITECTURE.md, TESTING.md, or SECURITY.md needs a divergence report; or when the user asks whether existing guardrails still match the code. For explaining, suggesting, or drafting guardrail docs, route to the guardrail hub.
-version: 1.0.2
+description: Read-only audit of a repository's existing guardrail docs. It surfaces doc-vs-doc contradictions and doc-vs-code divergences ranked by the guardrail hierarchy, plus grounded missing-doc proposals where repo substance warrants an absent doc. Edits nothing; every finding carries evidence and a reconcile recommendation, and the run ends by asking how to proceed. Use when auditing, health-checking, or retrofitting guardrail docs against each other and the codebase; when a freshly adopted CHARTER.md, ARCHITECTURE.md, TESTING.md, or SECURITY.md needs a divergence report; or when the user asks whether existing guardrails still match the code. For explaining, suggesting, or drafting guardrail docs, route to the guardrail hub.
+version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---

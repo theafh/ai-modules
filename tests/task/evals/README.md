@@ -84,21 +84,22 @@ debugging a single eval by hand.
 
 > **`auto_check_boundary` is slow and time-variable.** It runs the full
 > task_auto_check nested-agent loop (drift → gate → reviewer → verifier)
-> and has measured at 405–676s — over the 600s default. Run it with
-> `--timeout 900` or higher; at the default it can trip the worker-timeout
-> guard and (correctly) fail. See the fixture header for why no `report`
-> codebase is seeded (a valid premise pushes the loop past the gate, and
-> the loop then never finishes headlessly).
+> and has measured at 405–676s. It carries its own `"timeout": 3000` in
+> `evals.json`, so it needs no flag. See the fixture header for why no
+> `report` codebase is seeded (a valid premise pushes the loop past the
+> gate, and the loop then never finishes headlessly).
 
 <!-- -->
 
 > **The `fix_coherence*` evals are the other slow group.** All six read a
 > whole live task set plus the artifacts it targets in one context. The
-> assess-only and selector ones fit the 600s default; the two reconcile
-> ones want more, and `fix_coherence_reconcile_escalated` spawns the
-> `auto_shaper_task` → reviewer/verifier fan-out on top of that. Give
-> those `--timeout 1800`, and run the deep ones sequentially — two nested
-> loops in parallel contend for the model and both slow down.
+> assess-only and selector ones finish quickly; the two reconcile ones
+> want far longer, and `fix_coherence_reconcile_escalated` spawns the
+> `auto_shaper_task` → reviewer/verifier fan-out on top of that. The
+> `--timeout` default is 1800s so those run without a flag, and a
+> timeout is a ceiling rather than a wait, so the fast evals pay nothing
+> for it. Run the deep ones sequentially — two nested loops in parallel
+> contend for the model and both slow down.
 
 ## Manual three-phase workflow
 

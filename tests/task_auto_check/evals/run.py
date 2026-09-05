@@ -28,6 +28,7 @@ WORKSPACE = THIS.parent / "workspace"
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
 from worker_auth import preflight_auth, worker_env  # noqa: E402  (shared; tests/ is gitignored)
+from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 
 def source_roots_for(skill_path: str):
@@ -172,9 +173,13 @@ def run_one(
         )
         rc, stdout, stderr = result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired as exc:
+        # TimeoutExpired carries whatever communicate() had buffered, and that
+        # stays bytes even though subprocess.run was given text=True. Decode
+        # before appending the note, or the timeout path raises TypeError and
+        # takes the whole run down with it instead of failing this one eval.
         rc = -1
-        stdout = exc.stdout or ""
-        stderr = (exc.stderr or "") + f"\n[TIMEOUT after {timeout}s]"
+        stdout = as_text(exc.stdout)
+        stderr = as_text(exc.stderr) + f"\n[TIMEOUT after {timeout}s]"
     duration_s = time.time() - start
 
     (eval_dir / "response.txt").write_text(stdout)
@@ -229,7 +234,10 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("ids", nargs="*", default=None)
     parser.add_argument("--model", default="claude-sonnet-4-6")
-    parser.add_argument("--timeout", type=int, default=900)
+    parser.add_argument("--timeout", type=int, default=1800,
+                        help="Per-eval worker timeout in seconds. The repair loop "
+                             "runs ~900-1500s solo, so the default leaves headroom "
+                             "above that band rather than sitting on its floor.")
     parser.add_argument("--claude-bin", default="claude")
     parser.add_argument("--force", action="store_true",
                         help="Ignore cached verdicts and re-run every eval, "

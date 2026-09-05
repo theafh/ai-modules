@@ -60,6 +60,7 @@ RESULTS = HARNESS / "results"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 from worker_auth import preflight_auth, worker_env  # noqa: E402  (shared; tests/ gitignored)
+from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 import judge as judge_mod  # noqa: E402  (sibling module in this harness)
 
@@ -140,14 +141,11 @@ def run_pass(scenario: str, n: int, run_dir: pathlib.Path, args) -> dict:
                              text=True, timeout=args.timeout)
         rc, stdout, stderr = res.returncode, res.stdout, res.stderr
     except subprocess.TimeoutExpired as e:
-        rc, stdout = -1, (e.stdout or "")
-        stderr = (e.stderr or "") + f"\n[TIMEOUT after {args.timeout}s]"
+        rc, stdout = -1, as_text(e.stdout)
+        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {args.timeout}s]"
     duration = time.time() - start
 
-    if isinstance(stdout, bytes):
-        stdout = stdout.decode("utf-8", "replace")
-    if isinstance(stderr, bytes):
-        stderr = stderr.decode("utf-8", "replace")
+    stdout, stderr = as_text(stdout), as_text(stderr)
 
     (pass_dir / "response.txt").write_text(stdout)
     (pass_dir / "stderr.txt").write_text(stderr)

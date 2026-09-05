@@ -1,7 +1,7 @@
 ---
 name: executive_summary
 description: "Create executive summaries from documents, reports, and written content. Use when user asks to summarize a document, create an executive summary, condense content, extract key takeaways, or synthesize written materials. Produces structured prose preserving logic and reasoning at 10-15% of original length."
-version: 4.2.0
+version: 4.2.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -27,7 +27,7 @@ license: MIT
     <scope_boundary>Use only INPUT content; introduce no additions or assumptions.</scope_boundary>
     <multiple_inputs>When multiple documents are provided, merge them into a unified narrative while preserving the internal sequence and context of each source.</multiple_inputs>
     <self_contained>The summary must be fully understandable on its own, including problem context, definitions, implications, and key results.</self_contained>
-    <prose_only>Use continuous prose ALWAYS — this rule takes absolute precedence over INPUT formatting. NEVER use bullet points or numbered lists, regardless of INPUT format. Rephrase and condense rather than copying directly.</prose_only>
+    <prose_only>Use continuous prose ALWAYS. This rule takes absolute precedence over INPUT formatting. NEVER use bullet points or numbered lists, regardless of INPUT format. Rephrase and condense rather than copying directly.</prose_only>
     <data_inclusion>Include representative results or metrics when they are critical to understanding the findings or argument.</data_inclusion>
     <tone>Professional, clear, and suitable for executive use.</tone>
     <flow>Use varied sentence lengths for rhythm and readability.</flow>

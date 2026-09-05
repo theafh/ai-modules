@@ -69,8 +69,11 @@ byte with sequential non-overlapping pages, halving the span on overflow; and
 when even paginated reading cannot cover it, or where this agent has no Read
 tool, read ordered non-overlapping shell slices (`wc -l` for the line count,
 then consecutive `sed -n` spans) that cover every byte in order — never
-sampling by filename. Keep the `ctx_file` value — you will pass it to the
-commit step so it gets cleaned up on success.
+sampling by filename. Keep the `ctx_file` value: pass it as the
+`CONTEXT_FILE` argument to `commit_with_message.sh` when you return to the
+primary commit step, so that script's drift backstop reads the baseline block
+below and removes the file on success. When the commit step is running manually
+too, delete the file yourself per that section's last step.
 
 1. Stage every untracked, non-ignored file:
 
@@ -79,10 +82,15 @@ commit step so it gets cleaned up on success.
      | xargs -0 -I{} git add -- "{}"
    ```
 
-2. Inspect status: `git status --short --untracked-files=all`. This snapshot
-   is the reviewed-set baseline the drift check below compares against, exactly
-   as the script's `<status_after_staging_new_files>` block serves the scripted
-   path.
+2. Inspect status: `git status --short --untracked-files=all`, and write that
+   snapshot into `$ctx_file` between a literal `<status_after_staging_new_files>`
+   opening line and a matching `</status_after_staging_new_files>` closing line,
+   exactly as the script emits the block. This snapshot is the reviewed-set
+   baseline the drift check below compares against, and those two tag lines are
+   what `commit_with_message.sh` looks for, so writing them keeps the mechanical
+   backstop live once you return to the primary commit step. A context file that
+   carries the same evidence under any other marker leaves that backstop with
+   nothing to compare, which drops the guard back onto this prose step alone.
 3. Inspect recent commits: `git --no-pager log --oneline -8`.
 4. List staged new files: `git diff --cached --name-only --diff-filter=A`.
 5. List every staged path: `git diff --cached --name-only`.

@@ -59,6 +59,7 @@ WORKSPACE = THIS / "workspace"
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
 from worker_auth import preflight_auth, worker_env  # noqa: E402  (shared; tests/ is gitignored)
+from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 
 def source_roots_for(skill_path: str):
@@ -201,8 +202,8 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
         rc, stdout, stderr = result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired as e:
         rc = -1
-        stdout = e.stdout or ""
-        stderr = (e.stderr or "") + f"\n[TIMEOUT after {timeout}s]"
+        stdout = as_text(e.stdout)
+        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
     duration_s = time.time() - start
 
     (eval_dir / "response.txt").write_text(stdout)
@@ -255,10 +256,13 @@ def main() -> int:
                         help="Worker model for the skill under test "
                              "(default: claude-sonnet-4-6). '' inherits the "
                              "CLI default. Grading stays model-free.")
-    parser.add_argument("--timeout", type=int, default=600,
-                        help="Default per-eval worker timeout in seconds "
-                             "(default 600). An eval carrying its own "
-                             "\"timeout\" in evals.json overrides this.")
+    parser.add_argument("--timeout", type=int, default=1800,
+                        help="Default per-eval worker timeout in seconds. "
+                             "evals/README.md documents the fix_coherence "
+                             "reconcile evals as wanting 1800s, so the "
+                             "default performs the documented run rather "
+                             "than needing the flag. An eval carrying its "
+                             "own \"timeout\" in evals.json overrides this.")
     parser.add_argument("--claude-bin", default="claude")
     parser.add_argument("--force", action="store_true",
                         help="Ignore cached verdicts and re-run every eval, "

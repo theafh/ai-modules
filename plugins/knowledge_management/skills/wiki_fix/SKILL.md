@@ -1,7 +1,7 @@
 ---
 name: wiki_fix
-description: Audit and autonomously fix every issue in the wiki — structure, content, splits, links, tags, scaffold drift, and cross-page contradictions — by invoking the `auto_shaper_wiki` agent. Use when the user asks to fix, repair, lint, audit, health-check, clean up, or auto-repair their wiki.
-version: 1.1.1
+description: Audit and autonomously fix every issue in the wiki by invoking the `auto_shaper_wiki` agent. The issues it covers are structure, content, splits, links, tags, scaffold drift, and cross-page contradictions. Use when the user asks to fix, repair, lint, audit, health-check, clean up, or auto-repair their wiki.
+version: 1.1.2
 author: Andreas F. Hoffmann
 license: MIT
 ---

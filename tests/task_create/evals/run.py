@@ -53,6 +53,7 @@ WORKSPACE = THIS / "workspace"
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
 from worker_auth import preflight_auth, worker_env  # noqa: E402  (shared; tests/ is gitignored)
+from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 
 def source_roots_for(skill_path: str):
@@ -180,8 +181,8 @@ def run_one(eval_id: str, run_dir: pathlib.Path, claude_bin: str,
         rc, stdout, stderr = result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired as e:
         rc = -1
-        stdout = e.stdout or ""
-        stderr = (e.stderr or "") + f"\n[TIMEOUT after {timeout}s]"
+        stdout = as_text(e.stdout)
+        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
     duration_s = time.time() - start
 
     response_path.write_text(stdout)

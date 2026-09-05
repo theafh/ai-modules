@@ -1,7 +1,7 @@
 ---
 name: task_explain
 description: Explain one project task in compact what/why/how prose without editing it. Use when the user asks to explain, summarize, walk through, or orient on a task file by path, partial name, or conversation context. If the task reference is missing or ambiguous, activate and ask which task to explain. Not for readiness, next-work selection, implementation, audit, finish, or repair.
-version: 1.0.2
+version: 1.0.3
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -83,7 +83,7 @@ The `task_*` family - each sibling does one job, then points to the next; the ba
 - `task_finish` - close out: set status, bump `updated`, archive
 - `task_fix` - audit and repair the whole tasks tree
 
-These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create -> check -> implement -> audit -> finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
+These ship together as a family; any sibling may be absent if a deployment excluded it. The default manual chain is create → check → implement → audit → finish, with `task_auto_check` as an opt-in readiness repair loop, `task_select` a read-only chooser for what to work on next, and `task_fix` maintaining the tree.
 </family>
 
 </task_explain_skill>

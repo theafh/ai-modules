@@ -22,6 +22,14 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/` holds a behavioral eval per family member. `run_all.sh` drives both script runners. |
 | `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
 | `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks + `evals/` over the autonomous readiness loop (repair-to-ready, gate/verifier/drift stops, mechanical lint cleanup). |
+| `guardrail_audit/` | `guardrail_audit` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md and registration contract + `evals/` over five staged fixtures with byte-identity grading. |
+| `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract + `evals/` over three staged fixtures. |
+| `git_refresh/` | `git_refresh` | Pattern A (script surface automated) | `script_tests/` over the bundled `refresh_repo.sh` on staged repositories. `evals/` holds four behavioral evals with fixtures but ships no runner, so a sweep does not reach them. |
+| `ai_instruction_writing/` | `ai_instruction_writing` | Pattern A (script-only) | `script_tests/` asserts the static prose contract of a skill that ships no bundled scripts. |
+| `charter_guardrail/` | `guardrail` | Pattern A (script-only) | `script_tests/` greps the guardrail doc set for its documented contract; no `run_all.sh`, so drive `script_tests/run.sh` directly. |
+| `format_rust/` | `format_rust` | Pattern A (script-only) | `script_tests/` greps SKILL.md and the plugin README for the error-versus-invariant model, panic discipline, and clippy wiring; no `run_all.sh`. |
+| `update_changelog/` | `update_changelog` | Pattern A (script-only) | `script_tests/` covers the deterministic parts of the incremental day-grouping walk. |
+| `deployment/` | the deploy script (no single skill) | Pattern A (script-only) | `script_tests/run.sh` covers the OpenCode, Antigravity, and bytecode-exclusion deployment paths; `script_tests/style_run.sh` covers output-style deployment and uninstall. |
 | `trigger_evals/` | wiki and `task_*` family skills | local `run.py` wrapper (auto: deployed-mode or UUID fallback) | Whether a skill *triggers* on realistic user messages (description-matching), separate from skill *behavior*. |
 
 Pattern A is preferred for new harnesses. Pattern B stays in `wiki/`
@@ -98,6 +106,29 @@ LLM-sampling variance for cost; `--force` is the escape hatch when the
 variance is what you want. Unit + plumbing tests live in
 `tests/lib/test_eval_cache.py` (run `python3 tests/lib/test_eval_cache.py`).
 
+### Leave the repo's own `tasks/` and `wiki/` trees alone while a run is live
+
+Every `task`-family eval carries the isolation fail-safe `no writes to the real
+repo's tasks/ tree`, graded as `find "$REPO_ROOT/tasks" -type f -newer
+"$marker"` against a per-eval marker `stage.sh` stamps at staging time. The
+check cannot tell an escaped worker from the operator, so **any** write to the
+backlog during a run fails every eval whose marker predates it, and the
+`wiki/` harness's `real_home_wiki_absent` fail-safe has the same reach over the
+wiki tree.
+
+Measured on 2026-09-05: filing one task file mid-run failed `audit_clean` and
+`finish` in a sample that was otherwise clean, and the failure reads exactly
+like a sandbox escape until you compare the marker epochs against the file's
+mtime.
+
+So finish the run before filing tasks, editing the wiki, or touching anything
+those fail-safes watch. When a run has already been contaminated, confirm the
+cause by comparing each eval's `.eval_started_at` epoch against the mtime of
+whatever landed in the watched tree, then re-run only the evals whose marker
+predates that write. Keep the fail-safe as it is: it is the reason these
+harnesses can run on a real filesystem, and widening it to forgive operator
+writes would forgive a real escape too.
+
 ### Cheap-first: probe an LLM-eval fixture before paying for the full loop
 
 For any eval whose worker runs a deep, slow loop — the `task_auto_check`
@@ -160,6 +191,28 @@ security add-generic-password -a "$USER" -s claude-headless-token -w '<token>' -
 `CLAUDE_CODE_OAUTH_TOKEN` exported in the shell wins over both, in every
 runner, since they all build their worker env from the shared
 `worker_env()`.
+
+### Timed-out worker output: decode it through `tests/lib/worker_io.py`
+
+A `claude -p` worker that overruns its deadline raises `TimeoutExpired`, and the
+partial output that exception carries is **bytes** even though the runner passed
+`text=True` — `text=True` governs only what a normal completion returns. The
+runners append a `[TIMEOUT after Ns]` note to that output, so a raw
+`(exc.stderr or "") + note` raises `TypeError: can't concat str to bytes`. That
+error escapes both the per-eval function and `main()`, which used to abort the
+whole run: no verdict for the timed-out eval, none for anything queued behind
+it, and a traceback where the graded summary belongs. It bit hardest on the
+runners most likely to time out, which are the ones driving the slowest loops.
+
+Every runner now resolves both streams through `as_text()` from the shared
+`tests/lib/worker_io.py`, which returns `""` for `None`, decodes `bytes` with
+`errors="replace"` (the deadline can cut the stream mid multi-byte sequence),
+and passes `str` through. A timed-out eval is then recorded like any other
+failure — `claude_rc` of `-1`, a `stderr.txt` ending in the note, a failed
+verdict — and the run continues to its graded summary. Unit tests live in
+`tests/lib/test_worker_io.py` (run `python3 tests/lib/test_worker_io.py`).
+
+Keep the decode in that one module rather than reintroducing a local copy.
 
 ### Running long jobs in the background: `Bash --run_in_background`, not `Monitor + tail -f`
 

@@ -1,7 +1,7 @@
 ---
 name: format_python
 description: Apply formatting standards, code quality rules, structure conventions, linting prevention, and best practices when generating or editing Python code (.py). Covers indentation, quoting, imports, naming, line length, type hints, error handling, logging, data structures, testing, and security practices aligned with common linters (flake8, ruff, pylint).
-version: 1.4.0
+version: 1.4.1
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -12,7 +12,9 @@ license: MIT
 
 - Use exactly 4 spaces for indentation (never tabs)
 - Use double quotes for all string literals consistently
-- Write one import per line, group in order: stdlib → third party → first party → local
+- Write one import per line, grouped stdlib → third party → first party → local, to prevent the E401 multiple-imports error
+- Use absolute imports, and import from the `typing` module only when a built-in type will not do
+- Import only the modules, names, and types you use, and remove unused imports immediately to prevent F401 errors
 - Use `snake_case` for variables/functions, `PascalCase` for classes, `UPPER_CASE` for constants
 - Keep lines under 88 characters, break long lines at logical points with proper indentation
 
@@ -21,10 +23,8 @@ license: MIT
 - Write valid Python syntax that passes all linter checks
 - Use specific exception types like `ValueError`, `FileNotFoundError`
 - Assign error messages to variables before raising exceptions
-- **Import only what you use** - avoid unused imports, types, or variables
-- Use `_` for intentionally unused values to prevent F841 errors
+- Remove unused variables, and use `_` for intentionally unused values, to prevent F841 errors
 - Use modern type hints: `dict[str, Any]` instead of `Dict[str, Any]`, `str | None` instead of `Optional[str]`
-- **Import types only when needed** - prefer built-in types over `typing` module when possible
 - Use f-strings for general formatting, use % formatting in logging statements
 - Use `is`/`is not` for `None` comparisons, use `in`/`not in` for membership testing
 - Avoid single-letter variable names except for loop counters
@@ -42,8 +42,6 @@ license: MIT
 
 ## Linting Prevention (Critical for LLM Code Generation)
 
-- Write one import per line to prevent E401 multiple imports error
-- **Import only modules you actively use** - remove unused imports immediately to prevent F401 errors
 - Omit exception variable name when not using the exception object
 - Remove commented-out code and unreachable statements immediately
 - Update all class references when renaming to prevent F821 undefined name errors
@@ -53,7 +51,6 @@ license: MIT
 ## Best Practices
 
 - Define named functions instead of lambda assignments for better readability
-- Use absolute imports for clarity
 - Write one statement per line for maximum readability
 - Create variables only when needed; use unique, descriptive names per scope
 - Use `isinstance()` for type comparisons instead of `type()` checks

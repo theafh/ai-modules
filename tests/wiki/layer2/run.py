@@ -58,6 +58,7 @@ WORKSPACE = THIS / "workspace"
 
 sys.path.insert(0, str(WIKI_TESTS.parent / "lib"))
 from worker_auth import worker_env  # noqa: E402  (shared; tests/ is gitignored)
+from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 
 def latest_previous_benchmark() -> pathlib.Path | None:
@@ -115,8 +116,8 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
         stderr = result.stderr
     except subprocess.TimeoutExpired as e:
         rc = -1
-        stdout = e.stdout or ""
-        stderr = (e.stderr or "") + f"\n[TIMEOUT after {timeout}s]"
+        stdout = as_text(e.stdout)
+        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
     duration_s = time.time() - start
 
     (pass_dir / "response.txt").write_text(stdout)

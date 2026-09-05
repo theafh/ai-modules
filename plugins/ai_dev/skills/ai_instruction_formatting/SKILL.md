@@ -1,7 +1,7 @@
 ---
 name: ai_instruction_formatting
-description: Organize AI-consumed content (prompts, rules, skills, commands, agents, system instructions) into pseudo-XML by wrapping each semantic concern in a dedicated tag for role, policy, inputs, and output contract.
-version: 3.4.1
+description: Organize AI-consumed content (prompts, rules, skills, commands, agents, system instructions) into pseudo-XML by wrapping each semantic concern in a dedicated tag for role, policy, inputs, and output contract. Use when structuring or reorganizing the body of a SKILL.md, agent or sub-agent definition, command file, rules document (.mdc), CLAUDE.md, AGENTS.md, or GEMINI.md configuration, prompt template, or system prompt into semantic tags, when choosing tag boundaries, or when checking whether an instruction file follows the pseudo-XML convention. This is the structure-and-tags skill; its sibling ai_instruction_writing governs the wording.
+version: 3.4.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
