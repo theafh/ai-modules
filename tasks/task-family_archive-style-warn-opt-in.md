@@ -2,8 +2,8 @@
 description: Gate archive size and repeated-link lint warns behind an opt-in flag for task_fix sweeps so create, update, and close-out lint stay free of permanent archive style noise.
 scope: plugins/ai_dev/skills/task
 created: 2026-09-05T22:39:53
-updated: 2026-09-05T22:39:53
-status: open
+updated: 2026-09-05T23:01:56
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -19,19 +19,19 @@ Ordinary task-family lint (create, update, one-task / connected-file checks, and
 
 `check_size` and `check_repeated_links` do not skip archived pages. Once `--include-archive` is on, every archived body is scored for those warns.
 
-Measured on this repo (2026-09-05): default `--quiet` ≈ 39 warns (live only); `--include-archive --quiet` ≈ 122 warns, of which ~95 are archive `repeated-link` and 2 are archive `size`. The delta is historical style debt, not actionable close-out work.
+Measured on this repo (2026-09-05): default `--quiet` ≈ 39 warns (live only); `--include-archive --quiet` ≈ 122 warns, of which 81 are archive `repeated-link` and 2 are archive `size`. The delta is historical style debt, not actionable close-out work.
 
 Skill wiring today:
 
 - Create / update / `task_create`: `lint.py --quiet` (no archive iteration) — correct for live work.
 - `task_fix` / `auto_shaper_task`: `lint.py --include-archive` — intended full sweep.
-- `<archive>` close-out / `task_finish` step 6: also passes `--include-archive` so the just-moved file is checked in its new home. The base `<lint>` text already says other archived findings are pre-existing context for `task_fix`, yet the script still emits the full archive warn set, and agents routinely surface dozens of those lines in ordinary finish reports.
+- `<archive>` close-out / `task_finish` (the instruction that runs `python3 scripts/lint.py --include-archive --quiet`): also passes `--include-archive` so the just-moved file is checked in its new home. The base `<lint>` text already says other archived findings are pre-existing context for `task_fix`, yet the script still emits the full archive warn set, and agents routinely surface dozens of those lines in ordinary finish reports.
 
 There is no separate flag for archive *style* warns, and no file-scoped lint path that would let close-out verify one archived file without iterating the whole archive.
 
 ## Approach
 
-1. **Add an opt-in for archive style warns.** In `lint.py`, keep `--include-archive` as the iterator that includes archived files in per-file checks (blocking frontmatter, location, migration, broken links, naming). Gate `size` and `repeated-link` on archived pages behind a new flag (suggested name: `--archive-style-warns`) that is off by default. When the page is archived and that flag is unset, those two checks return empty the same way soft-pointer already does. Live pages keep today's behaviour under every flag combination.
+1. **Add an opt-in for archive style warns.** In `lint.py`, keep `--include-archive` as the iterator that includes archived files in per-file checks (blocking frontmatter, location, migration, broken links, naming). Gate `size` and `repeated-link` on archived pages behind a new flag (suggested name: `--archive-style-warns`) that is off by default, and update that file’s module-docstring `Usage:` CLI list in the same edit so it lists the shipped flag name beside `[TASKS_PATH] [--quiet] [--include-archive]`. When the page is archived and that flag is unset, those two checks return empty the same way soft-pointer already does. Live pages keep today's behaviour under every flag combination.
 
 2. **Wire skills to the split.** `task_fix` and `auto_shaper_task` pass both `--include-archive` and `--archive-style-warns` on assess and verify. Create, update, and the `<archive>` close-out keep `--include-archive` only where structural verify of a moved file still needs archive iteration, and never pass `--archive-style-warns`. Rewrite the base skill `<lint>` / `<archive>` prose so the two flags and their owners are unambiguous: ordinary ops stay quiet on archive style debt; full-tree maintenance opts in.
 
@@ -41,8 +41,10 @@ There is no separate flag for archive *style* warns, and no file-scoped lint pat
 
 ## Acceptance
 
-- `lint.py --help` documents `--archive-style-warns` (or the shipped name) as the opt-in that enables `size` and `repeated-link` on archived pages, and states that `--include-archive` alone does not enable those style warns on archive.
+- `lint.py --help` and the module-docstring `Usage:` CLI list both document `--archive-style-warns` (or the shipped name) as the opt-in that enables `size` and `repeated-link` on archived pages, and state that `--include-archive` alone does not enable those style warns on archive.
 - On a fixture tree with an archived page over 300 lines and an archived page that links one local target twice: `python3 lint.py --quiet` and `python3 lint.py --include-archive --quiet` report zero archive `size` / `repeated-link` findings; `python3 lint.py --include-archive --archive-style-warns --quiet` reports both.
+- On a fixture tree that also includes a live page over 300 lines and a live page that links one local target twice: `python3 lint.py --quiet` and `python3 lint.py --include-archive --quiet` (without `--archive-style-warns`) still report those live `size` and `repeated-link` findings.
+- With an archived page that triggers a non-style finding (legacy non-terminal status under archive): `python3 lint.py --include-archive --quiet` without `--archive-style-warns` still reports that migration finding; existing `tests/task/script_tests/` archive-iteration coverage of this case (or an equivalent structural archive finding) stays green.
 - Soft-pointer continues to skip archived pages under every flag combination (no regression of the existing archive skip).
-- Base `task` skill `<lint>` and `<archive>` step 6, plus `task_fix` and `auto_shaper_task`, name which flag set each workflow passes; close-out verify does not opt into archive style warns.
-- `tests/task/script_tests/run.sh` covers the three invocation cases above and stays green under the skill's script-test runner.
+- Base `task` skill `<lint>` and the `<archive>` close-out instruction that runs `python3 scripts/lint.py --include-archive --quiet`, plus `task_fix` and `auto_shaper_task`, name which flag set each workflow passes; close-out verify does not opt into archive style warns.
+- `tests/task/script_tests/run.sh` covers the three archive-gate invocation cases and the live-page style-warn regression above and stays green under the skill's script-test runner.
