@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks/. Use when the user asks to list or query existing tasks, to update or expand one, to triage or split backlog items, or to work across several tasks at once, and as the fallback for any tasks, todos, or backlog request naming no single lifecycle step. Not for one named step on one task, which a sibling owns for creation, readiness checking, explanation, next-work selection, implementation, audit, and finish.
-version: 1.3.33
+version: 1.3.34
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -372,17 +372,18 @@ When a task is finished or being dropped, run all six steps:
 3. Move the file from `<tasks>/` to `<tasks>/archive/` as a rename git records, probing the live path once with `git ls-files --error-unmatch <path>` and then moving the file with `git mv` when that probe exits 0 or with plain `mv` when it exits non-zero. One probe settles both fallback conditions, because `git ls-files --error-unmatch` exits non-zero on an untracked path and outside a git repository alike. Report which of the two branches the move took. The filename does not change. Recreating the file at the archive path with a file-writing tool and then deleting the original is the superseded pattern here, because git records that as a delete plus an unrelated add, which drops rename detection and breaks the `git log --follow` walk `auto_drift_task` runs on the archived path to recover a task's committed origin.
 4. Update cross-references. Re-point every relative link inside the moved task so it still resolves from the file's new home under `archive/`, covering all three outbound classes: a live sibling still at `<tasks>/` (`foo.md` becomes `../foo.md`), an already-archived sibling (`archive/foo.md` becomes `foo.md`), and a target outside the tasks tree, now one `../` deeper (`../plugins/…` becomes `../../plugins/…`). Then scan the whole tasks tree for inbound links to the moving file, covering `tasks/` and `tasks/archive/` alike (e.g. `rg` the moving filename across both), and rewrite every hit to either point at the archived location or convert to plain text plus `(archived)` when the link is no longer load-bearing.
 5. When closing as `finished`, use this trigger test for whether the completed work extended the system's design: refresh `ARCHITECTURE.md` when the finished work changes goals, stack, or design decisions that the doc narrates; decline when the change is operational or procedural, belongs in the `FEATURES.md` behaviour ledger, or is status-board / stage-index / build-order material. `task_implement` detects this and records the verdict as `design-extended: true|false`, `task_audit` verifies that signal when it runs, and `task_finish` consumes it at close-out. When `ARCHITECTURE.md` exists at the project root and `design-extended` is `true`, update `ARCHITECTURE.md` in the same archive pass. When the doc is absent, or the signal is `false` or carried by absence, continue unchanged, and report which of those held, so a decline stays distinguishable from an assessment nobody made.
-6. Run `python3 scripts/lint.py --include-archive --quiet` so the just-moved file is checked in its new location, and resolve every blocking finding for that file before declaring the archive complete; findings in other archived files are pre-existing context for `task_fix` rather than blockers of this close-out.
+6. Run `python3 scripts/lint.py --file tasks/archive/<name>.md --quiet` so the just-moved file is checked in its new location under file scope, naming the moved file's archived path. The file-scoped run reports only findings whose path is the moved file, so resolve every blocking finding for that file before declaring the archive complete. The same run also surfaces that file's own style warns (`size`, `repeated-link`), which close-out does not newly require cleared before it completes.
 </archive>
 
 <lint>
-The linter checks naming, frontmatter completeness, provenance, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across live + archive. By default it iterates live files in `tasks/*.md`, while still resolving links into `archive/` and checking filename collisions across both roots. `--include-archive` is dual-use. `task_fix` is the archive-maintenance owner: it passes the flag to extend the per-file checks across the whole archive, surface legacy provenance retrofit hints, and migrate non-terminal archived statuses to `finished`. The `<archive>` close-out passes the same flag for a narrower purpose: to verify the single file it just moved, resolving that file's findings and leaving the rest of the archive to `task_fix`.
+The linter checks naming, frontmatter completeness, provenance, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across live + archive. By default it iterates live files in `tasks/*.md`, while still resolving links into `archive/` and checking filename collisions across both roots. `--include-archive` is the full-tree maintenance flag, and `task_fix` is its sole owner: it passes the flag to extend the per-file checks across the whole archive, surface legacy provenance retrofit hints, and migrate non-terminal archived statuses to `finished`. `--file <path>` is the file-scoped mode: it restricts the per-file checks to one named task file, live or archived, so the `<archive>` close-out verifies the single file it just moved and no other. The two flags are mutually exclusive; dual-root collision detection still runs under `--file`, and only the named file's collision finding is emitted.
 
 ```bash
 python3 scripts/lint.py              # auto-discover via discover_tasks.sh
 python3 scripts/lint.py /custom/path # explicit tasks directory
 python3 scripts/lint.py --quiet      # blocking + warn only
-python3 scripts/lint.py --include-archive  # archive-inclusive: task_fix maintenance + close-out verify
+python3 scripts/lint.py --include-archive       # full-tree maintenance (task_fix)
+python3 scripts/lint.py --file tasks/archive/<name>.md --quiet  # file-scoped close-out verify
 ```
 
 Findings come in three buckets:
@@ -441,7 +442,7 @@ Close every hub workflow (`<create>`, `<query>`, `<update>`, `<archive>`, `<lint
 
 - **The files touched, by relative path.** Name each task file created, edited, or moved by its path relative to the project root. State that no file changed when the workflow only read, as a `<query>` listing does.
 - **The status or lifecycle move made, where one applies.** Name the `status` written and the move it stands for: `open` on a fresh create, `finished` or `deferred` together with the archive move on a close-out. State that the status stayed as it was when the run made no lifecycle move.
-- **The linter outcome.** Report what the bundled linter returned and which invocation produced it, naming `--include-archive` when a close-out used that form. State that the linter did not run when the workflow never called it.
+- **The linter outcome.** Report what the bundled linter returned and which invocation produced it, naming the file-scoped `--file` form when a close-out produced the outcome and `--include-archive` when a full-tree maintenance run used that form. State that the linter did not run when the workflow never called it.
 - **The assumptions and judgement calls the user should correct.** Name every assumption made about scope, naming, body content, or disposition, every decision reconciled under **Decide or label**, and every surfaced open decision still waiting on the user. State that the run made none when it made none. This part appears on every run, the read-only ones included.
 </output_contract>
 

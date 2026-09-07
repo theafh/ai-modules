@@ -137,6 +137,16 @@ run_lint() {
     printf '%s|%s' "$rc" "$out"
 }
 
+# run_lint_in <dir> <tasks> [args...] -> echoes "<exit>|<combined output>",
+# running lint.py with CWD set to <dir> so a relative `--file` value is
+# resolved against that directory as well as against <tasks>.
+run_lint_in() {
+    local dir=$1 tasks=$2 out rc
+    shift 2 || true
+    out=$(cd "$dir" && python3 "$LINT" "$tasks" "$@" 2>&1) && rc=0 || rc=$?
+    printf '%s|%s' "$rc" "$out"
+}
+
 # run_discover_in <dir> [args...] -> echoes "<exit>|<combined output>",
 # running discover_tasks.sh with CWD set to <dir> so resolution reflects
 # that directory's project context.
@@ -1600,6 +1610,261 @@ am3_probe_fails_outside_a_repository() {
 }
 
 ###############################################################################
+# File-scoped mode (--file): close-out verifies exactly the one moved file.
+# stage_scoped_tree lays down three archived pages (an oversized one, one
+# that links a local target twice, one carrying a blocking frontmatter
+# defect) plus the clean link target, so a scoped run's "reports only the
+# named file" contract can be asserted against real neighbours.
+###############################################################################
+
+# archived_task <tasks> <filename> <status> -> writes a finished/deferred
+# archive fixture carrying the provenance that status needs.
+archived_task() {
+    local tasks=$1 filename=$2 status=$3 now
+    now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/archive/$filename" <<EOF
+---
+description: archived $status fixture
+scope: "test"
+created: $now
+updated: $now
+status: $status
+reported-by: Test User
+implemented-by: Test User
+---
+
+# Archived $filename
+EOF
+}
+
+stage_scoped_tree() {
+    local tasks=$1 now
+    now=$(date +%Y-%m-%dT%H:%M:%S)
+    archived_task "$tasks" "link_target.md" "finished"
+    # Oversized archived page: header plus >300 filler lines.
+    {
+        cat <<EOF
+---
+description: oversized archived fixture
+scope: "test"
+created: $now
+updated: $now
+status: finished
+reported-by: Test User
+implemented-by: Test User
+---
+
+# Big oversized
+EOF
+        local i
+        for i in $(seq 1 320); do printf 'filler line %s\n' "$i"; done
+    } > "$tasks/archive/big_oversized.md"
+    # Archived page linking one existing local target twice.
+    emit "$tasks/archive/twice_linker.md" <<EOF
+---
+description: archived page linking one target twice
+scope: "test"
+created: $now
+updated: $now
+status: finished
+reported-by: Test User
+implemented-by: Test User
+---
+
+# Twice linker
+
+Context cites [t](link_target.md) as background.
+Approach edits [t](link_target.md) again.
+EOF
+    # Archived page carrying a blocking frontmatter defect (invalid status).
+    emit "$tasks/archive/defect_badstatus.md" <<EOF
+---
+description: archived page with a blocking defect
+scope: "test"
+created: $now
+updated: $now
+status: wip
+reported-by: Test User
+---
+
+# Defect badstatus
+EOF
+}
+
+fs1_scoped_archived_page_reports_only_itself() {
+    local tasks; tasks=$(fresh_tasks fs1)
+    stage_scoped_tree "$tasks"
+    local ok=true
+
+    # Scope to the oversized page: its own size warn, nothing else named.
+    local ret; ret=$(run_lint "$tasks" --file tasks/archive/big_oversized.md)
+    local rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 0 (scoped size warn does not block)" "$rc" "0" || ok=false
+    assert_contains "reports the scoped page's size warn" "$out" "split into multiple tasks" || ok=false
+    assert_not_contains "does not name the twice-linking page" "$out" "twice_linker" || ok=false
+    assert_not_contains "does not name the defect page" "$out" "defect_badstatus" || ok=false
+
+    # Scope to the twice-linking page: its own repeated-link warn only.
+    ret=$(run_lint "$tasks" --file archive/twice_linker.md)
+    rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "repeated-link" <<<"$out")
+    assert_eq "exit 0 (scoped repeated-link warn does not block)" "$rc" "0" || ok=false
+    assert_eq "exactly one repeated-link finding" "$count" "1" || ok=false
+    assert_contains "names the repeated target" "$out" "link_target.md" || ok=false
+    assert_not_contains "does not name the oversized page" "$out" "big_oversized" || ok=false
+    assert_not_contains "does not name the defect page" "$out" "defect_badstatus" || ok=false
+    $ok
+}
+
+fs2_scoped_live_page_excludes_all_others() {
+    local tasks; tasks=$(fresh_tasks fs2)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    # Live page under test carries its own (live-only) soft-pointer warn.
+    emit "$tasks/live_target.md" <<EOF
+---
+description: live page with its own soft-pointer warn
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Live target
+
+The guard sits in \`deployment.sh:242\` and must stay put.
+EOF
+    # A second live page and an archived blocking defect must not surface.
+    write_task "$tasks" "live_sibling.md" "$now"
+    archived_task_defect() {
+        emit "$tasks/archive/defect_badstatus.md" <<EOF
+---
+description: archived page with a blocking defect
+scope: "test"
+created: $now
+updated: $now
+status: wip
+reported-by: Test User
+---
+
+# Defect badstatus
+EOF
+    }
+    archived_task_defect
+    local ret; ret=$(run_lint "$tasks" --file live_target.md)
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (only the scoped live page's warn counts)" "$rc" "0" || ok=false
+    assert_contains "reports the scoped page's soft-pointer warn" "$out" "soft-pointer" || ok=false
+    assert_not_contains "does not name the live sibling" "$out" "live_sibling" || ok=false
+    assert_not_contains "does not name the archived defect" "$out" "defect_badstatus" || ok=false
+    $ok
+}
+
+fs3_invalid_path_exits_nonzero() {
+    local tasks; tasks=$(fresh_tasks fs3)
+    local root; root=$(dirname "$tasks")
+    write_task "$tasks" "test_present.md" "$(date +%Y-%m-%dT%H:%M:%S)"
+    # A real file sitting beside tasks/, inside the project root but
+    # outside the tasks tree, so it resolves-outside rather than missing.
+    : > "$root/outside.md"
+    local ok=true
+
+    local ret; ret=$(run_lint "$tasks" --file tasks/archive/nope.md)
+    local rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 1 (named file does not exist)" "$rc" "1" || ok=false
+    assert_contains "names the missing path" "$out" "tasks/archive/nope.md" || ok=false
+
+    ret=$(run_lint "$tasks" --file "$root/outside.md")
+    rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 1 (named file resolves outside the tasks root)" "$rc" "1" || ok=false
+    assert_contains "names the offending path" "$out" "outside.md" || ok=false
+    assert_contains "explains the out-of-root cause" "$out" "outside the tasks root" || ok=false
+    $ok
+}
+
+fs4_conflicting_flags_and_file_only() {
+    local tasks; tasks=$(fresh_tasks fs4)
+    write_task "$tasks" "test_present.md" "$(date +%Y-%m-%dT%H:%M:%S)"
+    local ok=true
+
+    # --file with --include-archive is rejected at argparse, naming both.
+    local ret; ret=$(run_lint "$tasks" --file tasks/test_present.md --include-archive)
+    local rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 2 (mutually exclusive flags)" "$rc" "2" || ok=false
+    assert_contains "names the conflicting flags" "$out" "not allowed with argument" || ok=false
+    assert_contains "names --include-archive" "$out" "--include-archive" || ok=false
+
+    # --file alone scopes without requiring --include-archive.
+    ret=$(run_lint "$tasks" --file tasks/test_present.md)
+    rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 0 (--file only, no --include-archive needed)" "$rc" "0" || ok=false
+    assert_contains "reports a clean scoped run" "$out" "clean — no issues" || ok=false
+    $ok
+}
+
+fs5_scoped_duplicate_basename_reports_named_only() {
+    local tasks; tasks=$(fresh_tasks fs5)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    write_task "$tasks" "dup_page.md" "$now"
+    archived_task "$tasks" "dup_page.md" "finished"
+    local ret; ret=$(run_lint "$tasks" --file tasks/dup_page.md)
+    local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "collision" <<<"$out")
+    local ok=true
+    assert_eq "exit 1 (named file collides)" "$rc" "1" || ok=false
+    assert_eq "exactly one collision finding (named file only)" "$count" "1" || ok=false
+    assert_contains "reports the duplicate filename" "$out" "duplicate task filename" || ok=false
+    $ok
+}
+
+fs6_help_and_usage_document_file_option() {
+    local ok=true
+    # --help names the file-scoped option.
+    local help; help=$(python3 "$LINT" --help 2>&1)
+    assert_contains "--help documents --file" "$help" "--file" || ok=false
+    # The module-docstring Usage: CLI list names the option beside the others.
+    local usage; usage=$(grep -F "python3 lint.py [TASKS_PATH]" "$LINT")
+    assert_contains "Usage line names --file" "$usage" "--file" || ok=false
+    assert_contains "Usage line still names --include-archive" "$usage" "--include-archive" || ok=false
+    $ok
+}
+
+fs7_scoped_path_edge_cases() {
+    local tasks; tasks=$(fresh_tasks fs7)
+    local root; root=$(dirname "$tasks")
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    write_task "$tasks" "test_present.md" "$now"
+    # A decoy project whose tasks tree carries the same relative path, so a
+    # run started from inside it must still lint the tasks root it was given.
+    mkdir -p "$root/decoy/tasks/archive"
+    archived_task "$root/decoy/tasks" "test_moved.md" "finished"
+    archived_task "$tasks" "test_moved.md" "finished"
+    local ok=true
+
+    # An empty --file value is rejected instead of silently linting the tree.
+    local ret; ret=$(run_lint "$tasks" --file "")
+    local rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 1 (empty --file value)" "$rc" "1" || ok=false
+    assert_contains "explains the empty value" "$out" "value given is empty" || ok=false
+    assert_not_contains "lints no other page" "$out" "test_present" || ok=false
+
+    # The named tasks root outranks an identically named file under CWD.
+    ret=$(run_lint_in "$root/decoy" "$tasks" --file tasks/archive/test_moved.md)
+    rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 0 (named tasks root wins over the CWD decoy)" "$rc" "0" || ok=false
+    assert_contains "audits the named tasks root" "$out" "$tasks" || ok=false
+    assert_not_contains "audits no decoy tree" "$out" "decoy" || ok=false
+
+    # A directory argument is named as such rather than as a missing file.
+    ret=$(run_lint "$tasks" --file archive)
+    rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 1 (directory argument)" "$rc" "1" || ok=false
+    assert_contains "names the directory cause" "$out" "is a directory" || ok=false
+    $ok
+}
+
+###############################################################################
 # Run scenarios
 ###############################################################################
 
@@ -1663,6 +1928,14 @@ scenario de3 "lint: boolean design-extended is clean"          de3_boolean_desig
 scenario am1 "archive: tracked move records a rename"          am1_tracked_move_records_a_rename
 scenario am2 "archive: untracked move takes the fallback"      am2_untracked_move_takes_the_fallback
 scenario am3 "archive: one probe covers a missing repository"  am3_probe_fails_outside_a_repository
+
+scenario fs1 "lint: --file scopes an archived page to itself"  fs1_scoped_archived_page_reports_only_itself
+scenario fs2 "lint: --file scopes a live page, excludes others" fs2_scoped_live_page_excludes_all_others
+scenario fs3 "lint: --file invalid path exits non-zero"        fs3_invalid_path_exits_nonzero
+scenario fs4 "lint: --file conflicts with --include-archive"   fs4_conflicting_flags_and_file_only
+scenario fs5 "lint: --file duplicate basename reports named only" fs5_scoped_duplicate_basename_reports_named_only
+scenario fs6 "lint: --help and Usage document --file"          fs6_help_and_usage_document_file_option
+scenario fs7 "lint: --file edge cases (empty, CWD decoy, dir)"  fs7_scoped_path_edge_cases
 
 ###############################################################################
 # Summary

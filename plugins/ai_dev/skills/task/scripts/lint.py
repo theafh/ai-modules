@@ -5,12 +5,14 @@ Audits live `*.md` task files under the resolved tasks/ tree by default:
 filename naming convention, frontmatter completeness, provenance,
 status/location consistency, datetime format, title presence, page size,
 and name collisions across live + archive. Pass `--include-archive` to
-extend per-file checks over archived files: task_fix runs it for
-whole-archive maintenance, and the task archive close-out runs it to
-verify the single file it just moved.
+extend the per-file checks across the whole archive: task_fix runs it for
+whole-archive maintenance. Pass `--file PATH` to scope the per-file checks
+to one named task file, live or archived: the task archive close-out runs
+it to verify the single file it just moved. The two flags are mutually
+exclusive.
 
 Usage:
-    python3 lint.py [TASKS_PATH] [--quiet] [--include-archive]
+    python3 lint.py [TASKS_PATH] [--quiet] [--include-archive | --file PATH]
 
 When TASKS_PATH is omitted the linter shells out to the sibling
 ``discover_tasks.sh`` so it resolves the same path the skill uses at
@@ -233,6 +235,50 @@ def is_archived(tasks: Path, page: Path) -> bool:
     except ValueError:
         return False
     return len(rel.parts) == 2 and rel.parts[0] == "archive"
+
+
+def resolve_scoped_file(tasks: Path, arg: str, all_pages: list[Path]) -> Path:
+    """Resolve the `--file` argument to one task page, live or archived.
+
+    Try the value relative to the tasks root, then to the project root,
+    then as given (against the current directory), and return the first
+    candidate that names a page in ``all_pages`` (the live + archive page
+    set). Matching against that set rather than against the filesystem is
+    what lets an explicit ``TASKS_PATH`` outrank an identically named file
+    under the caller's own directory, and it returns the page object
+    itself, so the scoped page is object-identical to the one collision
+    detection sees. When no candidate names a page, the first one that
+    exists at all supplies the path the error message reports. Exit
+    non-zero naming the offending value when it is empty, missing, a
+    directory, outside the tasks root, or not a task file at either
+    task level.
+    """
+    if not arg.strip():
+        sys.exit("--file requires a task file path, and the value given is empty")
+    raw = Path(arg).expanduser()
+    candidates = (
+        [raw] if raw.is_absolute()
+        else [tasks / raw, tasks.parent / raw, Path.cwd() / raw]
+    )
+    by_resolved = {page.resolve(): page for page in all_pages}
+    fallback: Path | None = None
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved in by_resolved:
+            return by_resolved[resolved]
+        if fallback is None and resolved.exists():
+            fallback = resolved
+    if fallback is None:
+        sys.exit(f"--file target does not exist: {arg}")
+    if fallback.is_dir():
+        sys.exit(f"--file target is a directory, not a task file: {arg}")
+    try:
+        fallback.relative_to(tasks.resolve())
+    except ValueError:
+        sys.exit(f"--file target resolves outside the tasks root ({tasks}): {arg}")
+    sys.exit(
+        f"--file target is not a task file under tasks/ or tasks/archive/: {arg}"
+    )
 
 
 def check_filename(page: Path) -> list[Issue]:
@@ -782,20 +828,38 @@ def main() -> int:
         nargs="?",
         help="Path to the tasks directory. If omitted, defers to scripts/discover_tasks.sh.",
     )
-    parser.add_argument(
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument(
         "--include-archive",
         action="store_true",
-        help="Include tasks/archive/*.md in per-file checks and legacy retrofit hints.",
+        help="Extend the per-file checks across the whole tasks/archive/ tree "
+        "for task_fix whole-archive maintenance (legacy retrofit hints included).",
+    )
+    scope.add_argument(
+        "--file",
+        metavar="PATH",
+        help="Scope the per-file checks to one named task file, live or "
+        "archived — the archive close-out verifies the single file it just "
+        "moved. Mutually exclusive with --include-archive.",
     )
     parser.add_argument("--quiet", action="store_true", help="Suppress info-level findings.")
     args = parser.parse_args()
 
     tasks = discover_tasks(args.tasks_path)
-    pages = list(iter_task_files(tasks, include_archive=args.include_archive))
     collision_pages = list(iter_task_files(tasks, include_archive=True))
 
+    if args.file is not None:
+        scoped_file = resolve_scoped_file(tasks, args.file, collision_pages)
+        pages = [scoped_file]
+    else:
+        scoped_file = None
+        pages = list(iter_task_files(tasks, include_archive=args.include_archive))
+
     issues: list[Issue] = []
-    issues.extend(check_name_collisions(collision_pages))
+    collision_issues = check_name_collisions(collision_pages)
+    if scoped_file is not None:
+        collision_issues = [i for i in collision_issues if i.path == scoped_file]
+    issues.extend(collision_issues)
 
     for page in pages:
         issues.extend(check_filename(page))
