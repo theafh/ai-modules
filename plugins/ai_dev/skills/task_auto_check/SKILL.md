@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, refresh a stale task against the current codebase, or run an autonomous readiness loop without implementing the task. A task whose premise the code invalidates stops the loop and surfaces deferral as the user's option.
-version: 1.0.16
+version: 1.0.17
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -39,6 +39,7 @@ The user supplies one task file path or one unambiguous task name. The optional 
 - A max-round override, expressed as a positive integer such as "max rounds 2".
 - Creation-time intent context, used only when the loop runs immediately after a task is drafted.
 - An explicit request to use an available foreign-model reviewer stance. The default is single-model operation with no foreign-model stance.
+- An optional `attested_intent` statement that a change to the title or Goal is deliberate, passed through to `auto_drift_task`.
 </inputs>
 
 <loop_policy>
@@ -51,7 +52,7 @@ Freeze the original task's `# Title` and `## Goal` before the first gate call. W
 </frozen_intent>
 
 <intent_drift_boundary>
-Invoke `auto_drift_task` once at freeze time, before the first `<gate>` call and any repair. A `drift` classification is human-routed through the same surfaced stuck channel as `<structural_split_boundary>` and `<mechanical_lint_boundary>`: report the intention check that names the field `auto_drift_task` flagged in its `drifted_fields`, along with the recovered-versus-current evidence, then halt the auto-repair path for this run, leave the task body unchanged, and keep `<frozen_intent>` intact. The intention check reads `Attention: this task's Title appears to have already drifted from its original intent.` for title-only drift, `…this task's Goal appears…` for goal-only drift, or `…this task's Title and Goal appear…` when both drifted. Use the recovered origin as evidence for the human, not as an edit target; the loop never auto-repairs toward the recovered original intent. Clean, meaning-preserving, and `low_confidence_clean` results proceed without surfacing the intention check.
+Invoke `auto_drift_task` once at freeze time, before the first `<gate>` call and any repair. That agent returns `drift` only when the working-tree `# Title` or `## Goal` broadens what the task is for compared with the last-commit baseline; narrowing, refinement, bug fixes, and resolved labeled open decisions classify `clean`. A `drift` classification is human-routed through the same surfaced stuck channel as `<structural_split_boundary>` and `<mechanical_lint_boundary>`: report the intention check that names the field `auto_drift_task` flagged in its `drifted_fields`, along with the recovered-versus-current evidence, then halt the auto-repair path for this run, leave the task body unchanged, and keep `<frozen_intent>` intact. The intention check reads `Attention: this task's Title appears to have already drifted from its original intent.` for title-only drift, `…this task's Goal appears…` for goal-only drift, or `…this task's Title and Goal appear…` when both drifted. Use the recovered origin as evidence for the human, not as an edit target; the loop never auto-repairs toward the recovered original intent. The agent's four classifications are exactly `clean`, `drift`, `low_confidence_clean`, and `unassessable`; `clean` and `low_confidence_clean` proceed without surfacing the intention check, and `unassessable` follows `<agent_failure_policy>`.
 </intent_drift_boundary>
 
 <invalidated_premise_boundary>
@@ -110,7 +111,7 @@ Read the target task end to end. Read the base `task` skill and `task_check` ski
 </orient>
 
 <freeze>
-Snapshot the original `# Title`, `## Goal`, and any creation-time user intent, and record the target file's current on-disk content and `updated` stamp as the `<concurrent_modification_guard>` baseline. Keep this snapshot in loop-local state and pass it to every reviewer and verifier call. Invoke `auto_drift_task` with the task path, resolved project root, resolved base `task` skill, and frozen title/Goal exactly once, before the first `<gate>` call and any repair. If it returns `clean` or `low_confidence_clean`, continue to `<gate>` without surfacing an intention check. If it returns `drift`, surface the single human intention check from `<intent_drift_boundary>`, report the recovered-versus-current evidence, leave the task body unchanged, preserve `<frozen_intent>`, and stop before `task_check`, body repair, or mechanical lint finalization. Treat a failed or `unassessable` drift invocation per `<agent_failure_policy>`.
+Snapshot the original `# Title`, `## Goal`, and any creation-time user intent, and record the target file's current on-disk content and `updated` stamp as the `<concurrent_modification_guard>` baseline. Keep this snapshot in loop-local state and pass it to every reviewer and verifier call. Invoke `auto_drift_task` with the task path, resolved project root, resolved base `task` skill, frozen title/Goal, and any optional `attested_intent` from the run prompt exactly once, before the first `<gate>` call and any repair. The agent's four classifications are exactly `clean`, `drift`, `low_confidence_clean`, and `unassessable`. If it returns `clean` or `low_confidence_clean`, continue to `<gate>` without surfacing an intention check. If it returns `drift`, surface the single human intention check from `<intent_drift_boundary>`, report the recovered-versus-current evidence, leave the task body unchanged, preserve `<frozen_intent>`, and stop before `task_check`, body repair, or mechanical lint finalization. Treat a failed or `unassessable` drift invocation per `<agent_failure_policy>`.
 </freeze>
 
 <gate>
@@ -152,7 +153,7 @@ Report the loop result with concrete evidence:
 - For each gate verdict: the stamp it wrote and the prior status it read, naming a `checked` → `ready` flip explicitly when one occurs. A flip means an earlier check found blocking issues this verdict no longer reports, and the user reads that movement rather than discovering it in git history.
 - Whether the immediate-ready refutation trigger fired, and when it fired: whether each citation `survived` or was `refuted`, and whether the `ready` stamp stood or the run returned to the gate.
 - Whether the stop reason was ready, no verified fix, structural split boundary, intent drift boundary, invalidated-premise boundary, concurrent-modification guard, helper-failure stop, or iteration cap.
-- For the freeze-time drift check: the `auto_drift_task` classification, baseline commit when available, recovered-versus-current evidence, whether the run halted before `<gate>`, and the exact human intention check message when surfaced.
+- For the freeze-time drift check: the `auto_drift_task` classification, the baseline commit whose version served as the baseline, the recovered-versus-current juxtaposition, any attestation relied on, whether the run halted before `<gate>`, and the exact human intention check message when surfaced.
 - For each applied edit group: the `task_check` issue it addressed, the reviewer stance(s) that proposed it, the verifier decision, and the base `<body>` repair rule cited.
 - For each rejected or human-routed issue: the reason it was rejected or routed.
 - For an invalidated-premise stop: the gate's contradiction evidence and the disposition options presented for the user's decision.

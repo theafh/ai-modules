@@ -9,6 +9,8 @@
 #   mechanical_lint_markdown  mechanical_lint_oversized_surface
 #   already_ready  repair_to_ready  scope_split_stuck
 #   intent_drift_human_route  fidelity_rejects_drift
+#   drift_gate_narrowing_clean  drift_gate_refinement_clean
+#   drift_gate_broadening_drift  drift_gate_committed_broadening_clean
 #   no_verified_fix  cap_override
 #   gate_failure_user_stop  drift_failure_user_stop
 #   verifier_failure_user_stop  guard_rebaseline_after_gate
@@ -53,6 +55,22 @@ case "$eval_id" in
     ;;
   intent_drift_human_route)
     "$HERE/fixtures/intent_drift_human_route/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_search-pagination.md."
+    ;;
+  drift_gate_narrowing_clean)
+    "$HERE/fixtures/drift_gate_narrowing_clean/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_search-results.md."
+    ;;
+  drift_gate_refinement_clean)
+    "$HERE/fixtures/drift_gate_refinement_clean/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_timeout-headers.md."
+    ;;
+  drift_gate_broadening_drift)
+    "$HERE/fixtures/drift_gate_broadening_drift/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_search-pagination.md."
+    ;;
+  drift_gate_committed_broadening_clean)
+    "$HERE/fixtures/drift_gate_committed_broadening_clean/setup.sh" "$target" >/dev/null
     prompt="Run task_auto_check on tasks/api_search-pagination.md."
     ;;
   repair_to_ready)

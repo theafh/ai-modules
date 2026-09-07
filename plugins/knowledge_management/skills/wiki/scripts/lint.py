@@ -6,10 +6,13 @@ the format_markdown skill), tag taxonomy compliance, stale content,
 oversized pages, source drift, and log rotation. Findings are grouped
 by severity so the caller knows what to fix first.
 
-An info finding the wiki owner has reviewed and accepted is declared on an
-``- Accepted finding: …`` bullet in SCHEMA.md's ``## Lint`` section. It leaves
-the live counts and the report body for a trailing context-only section, so an
-accepted finding stops re-surfacing as work.
+Three sources leave the live blocking, warn, and info totals for a trailing
+context-only ``ACKNOWLEDGED`` section: an info finding the wiki owner has
+reviewed and accepted (``- Accepted finding: …`` in SCHEMA.md's ``## Lint``
+section), an insert-only locked-slot extension the boilerplate check classifies
+as such, and a matching ``- Declared boilerplate: …`` honour for an intentional
+locked-slot remove-or-rewrite divergence. Each one is reported outside the live
+counts so a settled decision stops re-surfacing as work.
 
 Usage:
     python3 lint.py [WIKI_PATH] [--quiet]
@@ -38,6 +41,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import difflib
 import hashlib
 import os
 import re
@@ -246,15 +250,21 @@ class Issue:
         label = SEVERITY_LABEL[self.severity]
         return f"  [{label:8}] {self.category:14} {rel_to_wiki(self.path, wiki)}{loc}  {self.message}"
 
-    def render_acknowledged(self, wiki: Path) -> str:
-        """Render an accepted finding for the acknowledged section.
+    def render_acknowledged(self, wiki: Path, marker: str = "accepted") -> str:
+        """Render a settled finding for the acknowledged section.
 
-        Deliberately drops the `[severity]` bracket the live buckets use, so an
-        accepted finding never reads — to an agent or a grep — as a finding that
-        still wants action.
+        ``marker`` selects the line tag: ``accepted`` for Accepted-finding
+        suppressions, ``extension`` for insert-only locked-slot extensions, and
+        ``declared`` for matching ``Declared boilerplate:`` honours. Drops the
+        ``[severity]`` bracket the live buckets use, so an acknowledged line
+        never reads — to an agent or a grep — as a finding that still wants
+        action.
         """
         loc = f":{self.line}" if self.line else ""
-        return f"  (accepted) {self.category:14} {rel_to_wiki(self.path, wiki)}{loc}  {self.message}"
+        return (
+            f"  ({marker}) {self.category:14} "
+            f"{rel_to_wiki(self.path, wiki)}{loc}  {self.message}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -397,8 +407,19 @@ LINT_ACCEPT_RE = re.compile(
     re.IGNORECASE,
 )
 
-# The field separator inside an ``Accepted finding:`` bullet: an em dash with a
-# space on each side, so a path or a message may carry a bare hyphen.
+# A third ``## Lint`` bullet kind declares an intentional locked-slot
+# remove-or-rewrite divergence: ``- Declared boilerplate: <slot.label> — <reason>``.
+# ``<slot.label>`` must equal a ``VerbatimSlot.label`` exactly; the reason is
+# free text after the first `` — `` and is not matched. Same fence-safe scan and
+# marker tolerance as the exclusions and acceptance bullets.
+LINT_DECLARE_RE = re.compile(
+    r"^\s*[-*+]\s+declared boilerplate\s*:\s*(.+)$",
+    re.IGNORECASE,
+)
+
+# The field separator inside an ``Accepted finding:`` or ``Declared boilerplate:``
+# bullet: an em dash with a space on each side, so a path, message, or reason
+# may carry a bare hyphen.
 ACCEPT_SEP = " — "
 
 # Categories whose acceptance takes the short two-field (path-only) form. Each
@@ -412,9 +433,10 @@ def iter_lint_section_lines(wiki: Path) -> Iterator[str]:
     """Yield the unfenced lines of SCHEMA.md's ``## Lint`` section.
 
     Every machine-read setting in that section — the ``Page-check exclusions:``
-    walk exclusions and the ``Accepted finding:`` acceptance store — reads its
-    bullets through here, so one fence-safe scan serves them all. Fenced blocks
-    are skipped, mirroring ``load_taxonomy`` and the body scanners, so a bullet
+    walk exclusions, the ``Accepted finding:`` acceptance store, and the
+    ``Declared boilerplate:`` locked-slot declarations — reads its bullets
+    through here, so one fence-safe scan serves them all. Fenced blocks are
+    skipped, mirroring ``load_taxonomy`` and the body scanners, so a bullet
     shown inside a fenced example (in the canonical template, or where a vault
     documents its own settings) is never read as live config. A missing
     SCHEMA.md or a missing section yields nothing and leaves every caller on
@@ -562,6 +584,49 @@ def load_accepted_findings(wiki: Path) -> tuple[Acceptance, ...]:
         if acceptance is not None:
             accepted.append(acceptance)
     return tuple(accepted)
+
+
+def parse_declared_boilerplate(payload: str) -> tuple[str, str] | None:
+    """Parse ``<slot.label> — <reason>`` from a Declared boilerplate bullet.
+
+    Left-anchored on ``ACCEPT_SEP`` so the machine key is the slot-label field
+    and the reason is the remainder (which may carry further em dashes). Returns
+    None when the payload names no label or no separator.
+    """
+    if ACCEPT_SEP not in payload:
+        return None
+    label, reason = payload.split(ACCEPT_SEP, 1)
+    label = label.strip()
+    if not label:
+        return None
+    return label, reason
+
+
+def load_declared_boilerplate(
+    wiki: Path, known_labels: frozenset[str]
+) -> tuple[dict[str, str], list[str]]:
+    """Parse live ``Declared boilerplate:`` bullets from SCHEMA.md ``## Lint``.
+
+    Returns ``(matched, unmatched_labels)`` where ``matched`` maps each
+    ``VerbatimSlot.label`` that has a live bullet to its declared reason, and
+    ``unmatched_labels`` lists slot-label fields that match no known label (each
+    draws one live info finding). Fence-safe via ``iter_lint_section_lines``.
+    """
+    matched: dict[str, str] = {}
+    unmatched: list[str] = []
+    for line in iter_lint_section_lines(wiki):
+        m = LINT_DECLARE_RE.match(line)
+        if not m:
+            continue
+        parsed = parse_declared_boilerplate(m.group(1).rstrip())
+        if parsed is None:
+            continue
+        label, reason = parsed
+        if label in known_labels:
+            matched[label] = reason
+        else:
+            unmatched.append(label)
+    return matched, unmatched
 
 
 def partition_accepted(
@@ -849,14 +914,22 @@ def check_taxonomy_style(wiki: Path) -> list[Issue]:
 
 
 # ---------------------------------------------------------------------------
-# Verbatim boilerplate (deterministic prelude/preamble enforcement)
+# Locked-slot boilerplate (classify-as-extension / delete-or-replace-warn)
 #
-# A slot covers a region whose exact wording is load-bearing format
-# documentation the rest of the wiki is written against: the log.md
-# preamble carrying the append-only conventions blockquote is the one
-# such region. The agent's diff-driven scaffold audit catches drift in
-# theory but depends on diligence; this check enforces verbatim equality
-# deterministically, so the lint output is the structural source of truth.
+# A slot covers a region whose wording is load-bearing format documentation
+# the rest of the wiki is written against: the log.md preamble carrying the
+# append-only conventions blockquote is the one such region. The agent's
+# diff-driven scaffold audit catches drift in theory but depends on diligence;
+# this check classifies each mismatch deterministically, so the lint output is
+# the structural source of truth.
+#
+# Contract: every canonical line must survive in order. An insert-only
+# divergence (only non-equal opcodes are inserts) is an acknowledged
+# extension — reported outside the live totals, never as a restore warn. Any
+# delete or replace of canonical content is a live warn naming both remedies
+# (restore verbatim, or update the template). A matching
+# ``Declared boilerplate:`` bullet suppresses that warn for one slot and
+# reports the divergence on the acknowledged channel instead.
 #
 # The SCHEMA.md attribution paragraph is deliberately not a slot. Every
 # wiki the skill scaffolds ships it, and an owner who would rather not
@@ -867,7 +940,7 @@ def check_taxonomy_style(wiki: Path) -> list[Issue]:
 # file with its canonical template and an extractor that returns the
 # region to compare. The default extractor returns everything above the
 # first `## ` second-level heading — pluggable for future slots whose
-# verbatim region has a different shape.
+# locked region has a different shape.
 # ---------------------------------------------------------------------------
 
 REFERENCES_DIR = Path(__file__).resolve().parent.parent / "references"
@@ -878,10 +951,10 @@ def extract_h1_prelude(text: str) -> str:
     the first `## ` second-level heading. Trailing newlines are stripped so
     equal preludes compare equal regardless of trailing whitespace.
 
-    The prelude is the canonical home for "must-stay-verbatim" content like
-    the conventions blockquote in log.md — everything above where
-    configurable section bodies begin. What lands in a slot is decided by
-    VERBATIM_SLOTS, not by this extractor.
+    The prelude is the canonical home for locked-slot content like the
+    conventions blockquote in log.md — everything above where configurable
+    section bodies begin. What lands in a slot is decided by VERBATIM_SLOTS,
+    not by this extractor; comparison uses the classify-as-extension contract.
     """
     out: list[str] = []
     for line in text.splitlines(keepends=True):
@@ -893,7 +966,13 @@ def extract_h1_prelude(text: str) -> str:
 
 @dataclass(frozen=True)
 class VerbatimSlot:
-    """A region of a wiki file required to match its canonical template."""
+    """A locked region of a wiki file compared against its canonical template.
+
+    Comparison follows the classify-as-extension contract: insert-only
+    additions are acknowledged extensions; any delete or replace warns unless
+    a matching ``Declared boilerplate:`` bullet honours the divergence.
+    """
+
     wiki_file: str
     template_file: str
     label: str
@@ -909,13 +988,48 @@ VERBATIM_SLOTS: tuple[VerbatimSlot, ...] = (
 )
 
 
-def check_verbatim_boilerplate(wiki: Path) -> list[Issue]:
-    """Compare each VERBATIM_SLOT region against its canonical template
-    and warn on mismatch. Deterministic and independent of any other
-    check — the agent treats this output as structural source of truth
-    for these slots.
+def _is_insert_only(canonical: str, wiki_region: str) -> bool:
+    """True when every canonical line survives in order and only inserts differ.
+
+    Walks ``difflib.SequenceMatcher`` opcodes over lines (without keepends, so
+    the extractor's trailing-newline strip cannot turn a pure insert into a
+    replace of the last canonical line). Insert-only means the only non-equal
+    opcodes are ``insert``; any ``delete`` or ``replace`` fails.
     """
-    issues: list[Issue] = []
+    canon_lines = canonical.splitlines()
+    wiki_lines = wiki_region.splitlines()
+    for tag, _i1, _i2, _j1, _j2 in difflib.SequenceMatcher(
+        a=canon_lines, b=wiki_lines
+    ).get_opcodes():
+        if tag in ("delete", "replace"):
+            return False
+    return True
+
+
+def check_verbatim_boilerplate(
+    wiki: Path,
+) -> tuple[list[Issue], list[tuple[Issue, str]]]:
+    """Classify each VERBATIM_SLOT region against its canonical template.
+
+    Returns ``(live_issues, acknowledged_items)`` where each acknowledged item
+    is ``(Issue, marker)`` with marker ``extension`` or ``declared``. Insert-only
+    mismatches become acknowledged extensions; matching ``Declared boilerplate:``
+    bullets honour remove-or-rewrite divergences the same way; undeclared delete
+    or replace still warns with both remedies named. Unmatched declaration
+    labels emit one live info finding on SCHEMA.md each.
+    """
+    live: list[Issue] = []
+    acknowledged: list[tuple[Issue, str]] = []
+    known_labels = frozenset(s.label for s in VERBATIM_SLOTS)
+    declared, unmatched_labels = load_declared_boilerplate(wiki, known_labels)
+
+    for label in unmatched_labels:
+        live.append(Issue(
+            SEV_INFO, "boilerplate", wiki / "SCHEMA.md",
+            f"Declared boilerplate label {label!r} matches no locked slot; "
+            f"declaration suppresses nothing",
+        ))
+
     for slot in VERBATIM_SLOTS:
         wiki_path = wiki / slot.wiki_file
         template_path = REFERENCES_DIR / slot.template_file
@@ -925,13 +1039,36 @@ def check_verbatim_boilerplate(wiki: Path) -> list[Issue]:
         canonical_region = slot.extract(template_path.read_text(encoding="utf-8"))
         if wiki_region == canonical_region:
             continue
-        issues.append(Issue(
+
+        if slot.label in declared:
+            reason = declared[slot.label]
+            acknowledged.append((
+                Issue(
+                    SEV_WARN, "boilerplate", wiki_path,
+                    f"{slot.label}: declared divergence — {reason}",
+                ),
+                "declared",
+            ))
+            continue
+
+        if _is_insert_only(canonical_region, wiki_region):
+            acknowledged.append((
+                Issue(
+                    SEV_WARN, "boilerplate", wiki_path,
+                    f"{slot.label}: content added beyond canonical "
+                    f"references/{slot.template_file}",
+                ),
+                "extension",
+            ))
+            continue
+
+        live.append(Issue(
             SEV_WARN, "boilerplate", wiki_path,
             f"{slot.label} differs from canonical "
             f"references/{slot.template_file}; restore the region verbatim "
             f"or update the template if the change is intentional",
         ))
-    return issues
+    return live, acknowledged
 
 
 # ---------------------------------------------------------------------------
@@ -2094,16 +2231,18 @@ def render_report(
     wiki: Path,
     issues: list[Issue],
     quiet: bool,
-    acknowledged: list[Issue] | None = None,
+    acknowledged: list[tuple[Issue, str]] | None = None,
 ) -> str:
     """Render the audit report over the live findings.
 
-    `acknowledged` holds the info findings an ``Accepted finding:`` bullet has
-    already settled. They stay out of every live bucket, out of the total, and
-    out of the counts, and appear only in a trailing context section that names
-    itself as needing no action — so a reviewed decision is still visible
-    without asking to be re-justified. ``--quiet`` drops them with the rest of
-    the info level.
+    ``acknowledged`` holds settled items reported outside the live blocking,
+    warn, and info totals: Accepted-finding suppressions (marker ``accepted``),
+    insert-only locked-slot extensions (``extension``), and matching
+    ``Declared boilerplate:`` honours (``declared``). They stay out of every
+    live bucket, out of the total, and out of the counts, and appear only in a
+    trailing context section that names itself as needing no action — so a
+    reviewed decision is still visible without asking to be re-justified.
+    ``--quiet`` drops them with the rest of the info level.
     """
     ack = list(acknowledged or [])
     if quiet:
@@ -2112,13 +2251,16 @@ def render_report(
 
     ack_block: list[str] = []
     if ack:
-        ack.sort(key=lambda i: (i.category, str(i.path), i.line or 0))
+        ack.sort(key=lambda pair: (pair[0].category, str(pair[0].path), pair[0].line or 0))
         ack_block.append("")
         ack_block.append(
-            f"ACKNOWLEDGED ({len(ack)}) — accepted in SCHEMA.md `## Lint`; "
+            f"ACKNOWLEDGED ({len(ack)}) — settled outside live counts "
+            "(accepted findings, locked-slot extensions, declared boilerplate); "
             "context only, already decided, no action and no rationale needed"
         )
-        ack_block.extend(issue.render_acknowledged(wiki) for issue in ack)
+        ack_block.extend(
+            issue.render_acknowledged(wiki, marker) for issue, marker in ack
+        )
 
     if not issues:
         return "\n".join([f"clean — no issues in {wiki}", *ack_block])
@@ -2211,7 +2353,8 @@ def main() -> int:
         issues.extend(check_footnote_syntax(wiki))
         issues.extend(check_sources_section(wiki))
 
-    issues.extend(check_verbatim_boilerplate(wiki))
+    boilerplate_live, boilerplate_ack = check_verbatim_boilerplate(wiki)
+    issues.extend(boilerplate_live)
     issues.extend(check_taxonomy_style(wiki))
     issues.extend(check_log_rotation(wiki))
     issues.extend(check_log_heading_uniqueness(wiki))
@@ -2221,9 +2364,13 @@ def main() -> int:
     issues.extend(check_raw_origin_form(wiki))
     issues.extend(check_raw_frontmatter(wiki))
 
-    issues, acknowledged = partition_accepted(
+    issues, accepted_ack = partition_accepted(
         wiki, issues, load_accepted_findings(wiki)
     )
+    acknowledged: list[tuple[Issue, str]] = [
+        (issue, "accepted") for issue in accepted_ack
+    ]
+    acknowledged.extend(boilerplate_ack)
 
     print(render_report(wiki, issues, args.quiet, acknowledged))
     return 1 if any(i.severity == SEV_BLOCKING for i in issues) else 0

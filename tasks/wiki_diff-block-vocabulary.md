@@ -2,7 +2,7 @@
 description: Replace the diff-jargon term hunk with plain English across the auto_shaper_wiki agent, rename its two hunk tags, and update the Layer 1 contract test and live tasks that pin the old wording.
 scope: plugins/knowledge_management
 created: 2026-08-25T01:08:56
-updated: 2026-08-25T11:59:29
+updated: 2026-09-07T19:44:01
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -37,7 +37,7 @@ The Layer 1 contract test `tests/wiki/layer1/agent_contract.py` pins the templat
 
 Two live tasks quote the old tag names and are co-edited by this one. Take their set at implementation time from `grep -rlniE "\bhunk" tasks/*.md`, and refresh each hit rather than a list fixed at authoring time.
 
-- [wiki_sanctioned-template-deviations.md](wiki_sanctioned-template-deviations.md) instructs rewriting `<hunk_classification>` and quotes it at several sites across its Approach and Acceptance. It is the heavier collision, and it edits the same agent file.
+- [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md) instructs rewriting `<hunk_classification>` and quotes it at several sites across its Approach and Acceptance. It is the heavier collision, and it edits the same agent file.
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) names the tag once, in the passage explaining that a declared growth pattern would otherwise survive on the tag's generic extends-the-canon fallback.
 
 Neither sibling imposes a build order on this task, and this task imposes none on them. Whichever lands second refreshes the names the first left behind, which is why the enumeration above is a search rather than a fixed list.

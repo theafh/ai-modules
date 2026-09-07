@@ -2313,7 +2313,7 @@
     {
       "id": "AS-15",
       "name": "auto-shaper-inserts-canonical-unit-without-restoring-owner-region",
-      "description": "auto_shaper_wiki (via wiki_fix) inserts the absent canonical `Scope:` group into a preamble that also carries an owner-added line, proving <fix_log_preamble_drift> ensures units additively rather than restoring the region wholesale. A wholesale restore would take the owner's line with it. Only the log.md postconditions are graded: a leftover `boilerplate` warn about the owner extension is expected, because classifying an owner extension belongs to wiki_sanctioned-template-deviations, so this scenario does not require a clean lint exit. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: the `Scope:` group lands at template text and the owner's line stays byte-identical).",
+      "description": "auto_shaper_wiki (via wiki_fix) inserts the absent canonical `Scope:` group into a preamble that also carries an owner-added line, proving <fix_log_preamble_drift> ensures units additively rather than restoring the region wholesale. A wholesale restore would take the owner's line with it. Only the log.md postconditions are graded: the owner insert-only line is an acknowledged locked-slot extension with no live `boilerplate` warn for that class. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: the `Scope:` group lands at template text and the owner's line stays byte-identical).",
       "skill_name": "wiki_fix",
       "sandbox_path": "AS-15",
       "fake_home_subpath": "HOME",
@@ -2446,7 +2446,7 @@
     {
       "id": "AS-17",
       "name": "auto-shaper-refreshes-drifted-labeled-preamble-unit",
-      "description": "auto_shaper_wiki (via wiki_fix) refreshes a DRIFTED labeled canonical unit: the `Entries:` group is present but carries an older reword, and an owner-added line sits in the same region. The move must rewrite the labeled unit to current template text, matched by its label, while leaving the owner's line byte-identical — a refresh rather than an insert, and never a region restore. Only the log.md postconditions are graded; a leftover `boilerplate` warn about the owner extension is expected, so this scenario does not require a clean lint exit. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: refresh-by-label without wholesale region restore).",
+      "description": "auto_shaper_wiki (via wiki_fix) refreshes a DRIFTED labeled canonical unit: the `Entries:` group is present but carries an older reword, and an owner-added line sits in the same region. The move must rewrite the labeled unit to current template text, matched by its label, while leaving the owner's line byte-identical — a refresh rather than an insert, and never a region restore. Only the log.md postconditions are graded; the owner insert-only line is an acknowledged locked-slot extension with no live `boilerplate` warn for that class. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: refresh-by-label without wholesale region restore).",
       "skill_name": "wiki_fix",
       "sandbox_path": "AS-17",
       "fake_home_subpath": "HOME",
@@ -2519,7 +2519,7 @@
     {
       "id": "AS-18",
       "name": "auto-shaper-refreshes-drifted-unlabeled-preamble-unit",
-      "description": "auto_shaper_wiki (via wiki_fix) refreshes a DRIFTED unlabeled canonical unit: the chronological-record opener is present but reworded, and an owner-added line sits in the same region. The move must match the unit by its greppable stem, rewrite it to current template text, and leave the owner's line byte-identical. Only the log.md postconditions are graded; a leftover `boilerplate` warn about the owner extension is expected, so this scenario does not require a clean lint exit. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: refresh-by-stem without wholesale region restore).",
+      "description": "auto_shaper_wiki (via wiki_fix) refreshes a DRIFTED unlabeled canonical unit: the chronological-record opener is present but reworded, and an owner-added line sits in the same region. The move must match the unit by its greppable stem, rewrite it to current template text, and leave the owner's line byte-identical. Only the log.md postconditions are graded; the owner insert-only line is an acknowledged locked-slot extension with no live `boilerplate` warn for that class. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: refresh-by-stem without wholesale region restore).",
       "skill_name": "wiki_fix",
       "sandbox_path": "AS-18",
       "fake_home_subpath": "HOME",
@@ -2572,6 +2572,227 @@
           "type": "report_field_eq",
           "field": "owner_preamble_line_preserved",
           "expected": "yes"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-19",
+      "name": "auto-shaper-preserves-acknowledged-locked-slot-extension",
+      "description": "auto_shaper_wiki (via wiki_fix) leaves an insert-only owner preamble line byte-identical. The line is an acknowledged locked-slot extension with no live `boilerplate` warn, so no scaffold restore fires on it, and the run's report does not claim a scaffold repair it did not make. Graded out-of-band against the top-level passes denominator (wiki_sanctioned-template-deviations, Acceptance: extension fixture preserved).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-19",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Do not restore or rewrite an acknowledged locked-slot insert-only extension.",
+        "Leave the log entries below the preamble exactly as they are.",
+        "If you made no scaffold repair, say so plainly rather than claiming one."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "owner_preamble_line_preserved: yes|no",
+        "scaffold_repair_claimed: yes|no"
+      ],
+      "extra_report_field_doc": "- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.\n- `scaffold_repair_claimed`: `yes` if your final report claims you repaired or restored a scaffold region; `no` if you made no such repair and said so.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_owner_line_byte_identical",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Local: this vault names the tenant alongside every rollout entry\\.$"
+        },
+        {
+          "id": "A70_owner_line_preserved_reported",
+          "type": "report_field_eq",
+          "field": "owner_preamble_line_preserved",
+          "expected": "yes"
+        },
+        {
+          "id": "A71_no_false_scaffold_repair_claim",
+          "type": "report_field_eq",
+          "field": "scaffold_repair_claimed",
+          "expected": "no"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-20",
+      "name": "auto-shaper-preserves-declared-locked-slot-divergence",
+      "description": "auto_shaper_wiki (via wiki_fix) leaves a declared locked-slot remove-or-rewrite divergence byte-identical. SCHEMA.md carries a live `- Declared boilerplate:` bullet for the log.md preamble slot, so no repair touches that region. Graded out-of-band against the top-level passes denominator (wiki_sanctioned-template-deviations, Acceptance: declared deviation preserved).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-20",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Honour any live `- Declared boilerplate:` bullet: leave that locked-slot region untouched.",
+        "Leave the log entries below the preamble exactly as they are."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "declared_preamble_preserved: yes|no"
+      ],
+      "extra_report_field_doc": "- `declared_preamble_preserved`: `yes` if the declared log.md preamble region is still byte-identical to how you found it; `no` if you changed it.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_declared_preamble_text_present",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> House conventions: tenant-scoped rollout notes stay in the preamble\\.$"
+        },
+        {
+          "id": "A3_custom_title_present",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^# Custom Log Title$"
+        },
+        {
+          "id": "A70_declared_preserved_reported",
+          "type": "report_field_eq",
+          "field": "declared_preamble_preserved",
+          "expected": "yes"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-21",
+      "name": "auto-shaper-reports-declared-divergence-as-template-candidate",
+      "description": "auto_shaper_wiki (via wiki_fix) preserves a declared locked-slot divergence framed as a general improvement, names that slot or deviation as a candidate for the shipped template in the verify report, and leaves every skill `references/template_*.md` path byte-identical. Graded out-of-band against the top-level passes denominator (wiki_sanctioned-template-deviations, Acceptance: template-candidate report).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-21",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory. The declared log preamble divergence is a general improvement that belongs in the shipped template for every wiki, not a local-only preference.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Honour the live `- Declared boilerplate:` bullet: leave that locked-slot region untouched.",
+        "Because the declared divergence is framed as generally applicable, name that slot or deviation in your final verify report as a candidate for the shipped template.",
+        "Do not edit any `$WIKI_SKILL/references/template_*.md` path from inside this managed wiki.",
+        "Leave the log entries below the preamble exactly as they are."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "declared_preamble_preserved: yes|no",
+        "template_candidate_named: yes|no",
+        "skill_templates_edited: yes|no"
+      ],
+      "extra_report_field_doc": "- `declared_preamble_preserved`: `yes` if the declared log.md preamble region is still byte-identical to how you found it; `no` if you changed it.\n- `template_candidate_named`: `yes` if your final verify report names the declared slot or divergence as a candidate for the shipped template; `no` otherwise.\n- `skill_templates_edited`: `yes` if you modified any `$WIKI_SKILL/references/template_*.md` path; `no` if every such path is untouched.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_declared_preamble_text_present",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> House conventions: tenant-scoped rollout notes stay in the preamble\\.$"
+        },
+        {
+          "id": "A3_custom_title_present",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^# Custom Log Title$"
+        },
+        {
+          "id": "A4_template_log_unchanged",
+          "type": "repo_relative_file_matches_baseline",
+          "path": "plugins/knowledge_management/skills/wiki/references/template_log.md",
+          "baseline": "baseline/template_log.md.sha256"
+        },
+        {
+          "id": "A5_template_schema_unchanged",
+          "type": "repo_relative_file_matches_baseline",
+          "path": "plugins/knowledge_management/skills/wiki/references/template_schema.md",
+          "baseline": "baseline/template_schema.md.sha256"
+        },
+        {
+          "id": "A6_template_index_unchanged",
+          "type": "repo_relative_file_matches_baseline",
+          "path": "plugins/knowledge_management/skills/wiki/references/template_index.md",
+          "baseline": "baseline/template_index.md.sha256"
+        },
+        {
+          "id": "A70_declared_preserved_reported",
+          "type": "report_field_eq",
+          "field": "declared_preamble_preserved",
+          "expected": "yes"
+        },
+        {
+          "id": "A71_template_candidate_named",
+          "type": "report_field_eq",
+          "field": "template_candidate_named",
+          "expected": "yes"
+        },
+        {
+          "id": "A72_skill_templates_not_edited",
+          "type": "report_field_eq",
+          "field": "skill_templates_edited",
+          "expected": "no"
+        },
+        {
+          "id": "A73_response_names_template_candidate",
+          "type": "response_text_matches",
+          "regex": "candidate for the shipped|shipped .{0,40}template|template candidate"
         },
         {
           "id": "A80_lint_invoked",

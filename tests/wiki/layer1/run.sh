@@ -2951,6 +2951,287 @@ l64_lint_log_scope_decorated_path_subject() {
 }
 
 ###############################################################################
+# Locked-slot classify / declare scenarios (sanctioned template deviations)
+###############################################################################
+
+# Exact VerbatimSlot.label for the production log.md preamble slot.
+LOG_SLOT_LABEL='log.md preamble (H1 plus blockquote above first `##`)'
+
+# Insert an owner line into the log.md preamble (before the first `##` heading)
+# so the region is insert-only relative to the canonical template.
+# Args: <wiki> <line text without trailing newline>
+add_log_preamble_owner_line() {
+    local wiki=$1 line=$2
+    python3 - "$wiki/log.md" "$line" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+line = sys.argv[2]
+text = p.read_text()
+out = []
+inserted = False
+for ln in text.splitlines(keepends=True):
+    if not inserted and ln.startswith("## "):
+        out.append(line + "\n")
+        inserted = True
+    out.append(ln)
+p.write_text("".join(out))
+PY
+}
+
+# Rewrite the log.md preamble to a delete/replace divergence (canonical lines gone).
+# Args: <wiki>
+rewrite_log_preamble_divergence() {
+    local wiki=$1
+    python3 - "$wiki/log.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+i = text.find("\n## ")
+rest = text[i:] if i != -1 else ""
+p.write_text("# Custom Log Title\n\n> House conventions instead.\n" + rest)
+PY
+}
+
+# Replace live `- Declared boilerplate:` bullets. Pass no payload to clear.
+# Args: <wiki> [payload without the label prefix]...
+set_declare_bullets() {
+    local wiki=$1
+    shift
+    python3 - "$wiki/SCHEMA.md" "$@" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+kept = [ln for ln in p.read_text().splitlines() if not ln.startswith("- Declared boilerplate:")]
+while kept and kept[-1] == "":
+    kept.pop()
+if sys.argv[2:]:
+    kept.append("")
+    kept.extend(f"- Declared boilerplate: {payload}" for payload in sys.argv[2:])
+p.write_text("\n".join(kept) + "\n")
+PY
+}
+
+# Append a Declared boilerplate bullet inside a fence (documentation only).
+add_fenced_declare_bullet() {
+    local wiki=$1 payload=$2
+    printf '\n```text\n- Declared boilerplate: %s\n```\n' "$payload" >> "$wiki/SCHEMA.md"
+}
+
+# Assert ACKNOWLEDGED lists a marker for category/file.
+# Args: <label> <output> <marker> <category> <file>
+assert_acknowledged_marker() {
+    local label=$1 out=$2 marker=$3 cat=$4 file=$5
+    local ok=true
+    printf '%s' "$out" | grep -Eq "^ACKNOWLEDGED \([0-9]+\)" || ok=false
+    printf '%s' "$out" | grep -F "accepted findings, locked-slot extensions, declared boilerplate" >/dev/null || ok=false
+    printf '%s' "$out" | grep -E "^[[:space:]]*\(${marker}\)[[:space:]]+${cat}[[:space:]]" \
+        | grep -qF "$file" || ok=false
+    if $ok; then
+        return 0
+    fi
+    log "    [missing acknowledgement: $label — expected ($marker) $cat for $file under ACKNOWLEDGED]"
+    printf '%s\n' "$out" | indent
+    return 1
+}
+
+# Assert live totals carry zero findings of the named severity label in the summary.
+# Args: <label> <output> <severity word e.g. warn>
+assert_live_severity_count() {
+    local label=$1 out=$2 sev=$3 expected=$4
+    local actual
+    actual=$(printf '%s\n' "$out" | sed -n "s/^total: .*(\(.*\))/\1/p" | head -1 \
+        | grep -oE "[0-9]+ ${sev}" | awk '{print $1}')
+    actual=${actual:-0}
+    assert_eq "$label" "$actual" "$expected"
+}
+
+# L65: insert-only locked-slot addition is an acknowledged extension, not a restore warn.
+l65_lint_insert_only_extension_acknowledged() {
+    local wiki; wiki=$(stage_fresh_wiki l65)
+    customize_taxonomy "$wiki"
+    add_log_preamble_owner_line "$wiki" \
+        "> Local: this vault names the tenant alongside every rollout entry."
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "no live boilerplate warn" "$out" "boilerplate" || ok=false
+    assert_acknowledged_marker "extension listed" "$out" extension boilerplate "log.md" || ok=false
+    assert_live_severity_count "zero live warn from boilerplate" "$out" warn "0" || ok=false
+    printf '%s' "$out" | grep -q "restore the region verbatim" && {
+        log "    [unexpected restore instruction on insert-only extension]"
+        ok=false
+    }
+    $ok
+}
+
+# L66: Accepted-finding suppressions still use the (accepted) marker.
+l66_lint_accepted_marker_parameterized() {
+    local wiki; wiki=$(stage_fresh_wiki l66)
+    customize_taxonomy "$wiki"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    grow_page_past_soft_cap "$wiki/concepts/widget.md"
+    set_accept_bullets "$wiki" "size — concepts/widget.md"
+    local ret; ret=$(run_lint "$wiki")
+    local out=${ret#*|}
+    local ok=true
+    assert_acknowledged_marker "accepted marker" "$out" accepted size "concepts/widget.md" || ok=false
+    printf '%s' "$out" | grep -E '\(extension\)|\(declared\)' | grep -q size && {
+        log "    [size acceptance used wrong marker]"
+        ok=false
+    }
+    $ok
+}
+
+# L67: delete/replace of canonical locked-slot text still warns with both remedies.
+l67_lint_delete_replace_still_warns() {
+    local wiki; wiki=$(stage_fresh_wiki l67)
+    customize_taxonomy "$wiki"
+    rewrite_log_preamble_divergence "$wiki"
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_lint_finding "boilerplate warn" "$out" warn "boilerplate" || ok=false
+    printf '%s' "$out" | grep -q "restore the region verbatim" || ok=false
+    printf '%s' "$out" | grep -q "update the template if the change is intentional" || ok=false
+    $ok
+}
+
+# L68: matching Declared boilerplate honour — no live warn, (declared) on ACKNOWLEDGED.
+l68_lint_declared_boilerplate_honoured() {
+    local wiki; wiki=$(stage_fresh_wiki l68)
+    customize_taxonomy "$wiki"
+    rewrite_log_preamble_divergence "$wiki"
+    set_declare_bullets "$wiki" \
+        "${LOG_SLOT_LABEL} — local house conventions for this vault"
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "declared suppresses live warn" "$out" "boilerplate" || ok=false
+    assert_acknowledged_marker "declared listed" "$out" declared boilerplate "log.md" || ok=false
+    printf '%s' "$out" | grep -q "local house conventions for this vault" || ok=false
+    printf '%s' "$out" | grep -q "restore the region verbatim" && ok=false
+    assert_live_severity_count "zero live warn" "$out" warn "0" || ok=false
+    $ok
+}
+
+# L69: same delete/replace without declaration still warns with both remedies.
+l69_lint_undeclared_delete_replace_warns() {
+    local wiki; wiki=$(stage_fresh_wiki l69)
+    customize_taxonomy "$wiki"
+    rewrite_log_preamble_divergence "$wiki"
+    local ret; ret=$(run_lint "$wiki")
+    local out=${ret#*|}
+    local ok=true
+    assert_lint_finding "boilerplate warn" "$out" warn "boilerplate" || ok=false
+    printf '%s' "$out" | grep -q "restore the region verbatim" || ok=false
+    printf '%s' "$out" | grep -q "update the template if the change is intentional" || ok=false
+    $ok
+}
+
+# L70: fenced Declared boilerplate is documentation — warn still fires.
+l70_lint_fenced_declare_is_documentation() {
+    local wiki; wiki=$(stage_fresh_wiki l70)
+    customize_taxonomy "$wiki"
+    rewrite_log_preamble_divergence "$wiki"
+    add_fenced_declare_bullet "$wiki" \
+        "${LOG_SLOT_LABEL} — local house conventions for this vault"
+    local ret; ret=$(run_lint "$wiki")
+    local out=${ret#*|}
+    local ok=true
+    assert_lint_finding "fenced declaration suppresses nothing" "$out" warn "boilerplate" || ok=false
+    printf '%s' "$out" | grep -qE '\(declared\)' && {
+        log "    [unexpected declared acknowledgement from fenced bullet]"
+        ok=false
+    }
+    $ok
+}
+
+# L71: unmatched Declared boilerplate label → live info on SCHEMA.md, not ACKNOWLEDGED.
+l71_lint_unmatched_declare_is_live_info() {
+    local wiki; wiki=$(stage_fresh_wiki l71)
+    customize_taxonomy "$wiki"
+    rewrite_log_preamble_divergence "$wiki"
+    set_declare_bullets "$wiki" \
+        "nonexistent slot label — should not suppress"
+    local ret; ret=$(run_lint "$wiki")
+    local out=${ret#*|}
+    local ok=true
+    assert_lint_finding "undeclared divergence still warns" "$out" warn "boilerplate" || ok=false
+    assert_finding_for_file "unmatched label info" "$out" info boilerplate "SCHEMA.md" || ok=false
+    printf '%s' "$out" | grep -q "nonexistent slot label" || ok=false
+    printf '%s' "$out" | grep -E '\(declared\)' | grep -q "SCHEMA.md" && {
+        log "    [unmatched declare wrongly acknowledged]"
+        ok=false
+    }
+    $ok
+}
+
+# L72: per-slot isolation with a temporary second VerbatimSlot (torn down after).
+l72_lint_declared_per_slot_isolation() {
+    local wiki; wiki=$(stage_fresh_wiki l72)
+    customize_taxonomy "$wiki"
+    rewrite_log_preamble_divergence "$wiki"
+    # Drift SCHEMA.md prelude so a temporary second slot would warn when undeclared.
+    python3 - "$wiki/SCHEMA.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+i = text.find("\n## ")
+rest = text[i:] if i != -1 else ""
+p.write_text("# Custom Schema Title\n\nCustom attribution.\n" + rest)
+PY
+    set_declare_bullets "$wiki" \
+        "SCHEMA.md test-only prelude — intentional schema prelude rewrite"
+    local out
+    out=$(python3 - "$LINT" "$wiki" <<'PY'
+import importlib.util, sys
+from pathlib import Path
+
+lint_path = Path(sys.argv[1])
+wiki = Path(sys.argv[2])
+spec = importlib.util.spec_from_file_location("lint", lint_path)
+lint = importlib.util.module_from_spec(spec)
+sys.modules["lint"] = lint
+spec.loader.exec_module(lint)
+
+test_slot = lint.VerbatimSlot(
+    wiki_file="SCHEMA.md",
+    template_file="template_schema.md",
+    label="SCHEMA.md test-only prelude",
+)
+old = lint.VERBATIM_SLOTS
+lint.VERBATIM_SLOTS = old + (test_slot,)
+try:
+    live, ack = lint.check_verbatim_boilerplate(wiki)
+finally:
+    lint.VERBATIM_SLOTS = old
+
+print(lint.render_report(wiki, live, quiet=False, acknowledged=list(ack)))
+PY
+)
+    local ok=true
+    # Declared SCHEMA test slot → no live warn for SCHEMA.md boilerplate
+    printf '%s' "$out" | grep -E '^[[:space:]]*\[warn[[:space:]]*\][[:space:]]+boilerplate[[:space:]]' \
+        | grep -qF "SCHEMA.md" && {
+        log "    [declared test slot still warned]"
+        ok=false
+    }
+    # Undeclared log slot → live warn with both remedies
+    printf '%s' "$out" | grep -E '^[[:space:]]*\[warn[[:space:]]*\][[:space:]]+boilerplate[[:space:]]' \
+        | grep -qF "log.md" || {
+        log "    [undeclared log slot missing warn]"
+        ok=false
+    }
+    printf '%s' "$out" | grep -q "restore the region verbatim" || ok=false
+    printf '%s' "$out" | grep -q "update the template if the change is intentional" || ok=false
+    assert_acknowledged_marker "declared SCHEMA slot" "$out" declared boilerplate "SCHEMA.md" || ok=false
+    $ok
+}
+
+###############################################################################
 # compute_sha256.py scenarios
 ###############################################################################
 
@@ -3246,6 +3527,14 @@ scenario l61 "lint clean on non-path log subject"        l61_lint_log_scope_non_
 scenario l62 "lint clean on scaffold seed prose subject" l62_lint_log_scope_scaffold_seed_prose_subject
 scenario l63 "lint clean on absent wiki-file subject"    l63_lint_log_scope_absent_wiki_file_is_clean
 scenario l64 "lint reads a decorated path subject"        l64_lint_log_scope_decorated_path_subject
+scenario l65 "lint insert-only extension acknowledged"   l65_lint_insert_only_extension_acknowledged
+scenario l66 "lint accepted marker stays parameterized"  l66_lint_accepted_marker_parameterized
+scenario l67 "lint delete/replace still warns"           l67_lint_delete_replace_still_warns
+scenario l68 "lint declared boilerplate honoured"        l68_lint_declared_boilerplate_honoured
+scenario l69 "lint undeclared delete/replace warns"      l69_lint_undeclared_delete_replace_warns
+scenario l70 "lint fenced declare is documentation"      l70_lint_fenced_declare_is_documentation
+scenario l71 "lint unmatched declare is live info"       l71_lint_unmatched_declare_is_live_info
+scenario l72 "lint declared per-slot isolation"          l72_lint_declared_per_slot_isolation
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

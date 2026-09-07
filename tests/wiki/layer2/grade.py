@@ -182,6 +182,23 @@ def check(assertion: dict, ctx: dict) -> tuple[bool, str]:
         return ok, (f"{assertion['path']} byte-identical to staged baseline" if ok
                     else f"{assertion['path']} CHANGED: {actual[:12]} != staged {expected[:12]}")
 
+    if t == "repo_relative_file_matches_baseline":
+        # Byte-identity of a file outside the sandbox (e.g. a shipped skill
+        # template under plugins/) against a sha256 recorded at staging time
+        # inside the sandbox. Proves the agent left repo artefacts unedited.
+        repo_root = LAYER2_ROOT.parent.parent.parent
+        target = repo_root / assertion["path"]
+        baseline_file = sandbox / assertion["baseline"]
+        if not target.is_file():
+            return False, f"{target} missing (cannot compare to baseline)"
+        if not baseline_file.is_file():
+            return False, f"baseline {baseline_file} missing — restage the sandbox"
+        actual = hashlib.sha256(target.read_bytes()).hexdigest()
+        expected = baseline_file.read_text().split()[0].strip()
+        ok = actual == expected
+        return ok, (f"{assertion['path']} byte-identical to staged baseline" if ok
+                    else f"{assertion['path']} CHANGED: {actual[:12]} != staged {expected[:12]}")
+
     if t == "raw_sha256_matches_body":
         # Self-consistency of a raw sidecar: the recorded `sha256:` equals the
         # SHA-256 of the body (everything after the frontmatter's closing

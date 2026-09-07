@@ -2,7 +2,7 @@
 description: Bundle a wiki-skill log-preamble merge script that converges canonical units, preserves owner lines by construction, and never duplicates a unit; route `<fix_log_preamble_drift>` through it.
 scope: plugins/knowledge_management
 created: 2026-08-26T18:53:13
-updated: 2026-09-05T21:26:04
+updated: 2026-09-07T19:44:01
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -39,7 +39,7 @@ The script follows the skill's existing bundled-script conventions: it lives in 
 Two sibling tasks bound this one:
 
 - [wiki_log-scope-wiki-changes-only.md](archive/wiki_log-scope-wiki-changes-only.md) shipped the unit-scoped move; its acceptance defines the insert-missing, refresh-by-label, refresh-by-stem, and owner-line-preservation semantics this task mechanizes, and its measured residue is the motivation above.
-- [wiki_sanctioned-template-deviations.md](wiki_sanctioned-template-deviations.md) owns the linter side: the `check_verbatim_boilerplate` classification, the acknowledged report channel, and declared contradictions. Once it lands, an insert-only owner extension stops warning at all, which removes most occasions for this merge to run; the script stays the remediation for a preamble whose canonical units actually drifted. The two tasks ship in either order, with two named touch points. Both edit `<fix_log_preamble_drift>`'s closing paragraph about a surviving owner-line `boilerplate` warn. And that sibling's declare-and-honour path gates what any repair may touch: a declared or acknowledged region stays untouched whichever mechanism performs the repair, so once both tasks are in, the agent checks declarations before invoking the script, or the invocation skips declared slots. Whichever task lands second reconciles both points against the text the first left behind.
+- [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md) owns the linter side: the `check_verbatim_boilerplate` classification, the acknowledged report channel, and declared contradictions. Once it lands, an insert-only owner extension stops warning at all, which removes most occasions for this merge to run; the script stays the remediation for a preamble whose canonical units actually drifted. The two tasks ship in either order, with two named touch points. Both edit `<fix_log_preamble_drift>`'s closing paragraph about a surviving owner-line `boilerplate` warn. And that sibling's declare-and-honour path gates what any repair may touch: a declared or acknowledged region stays untouched whichever mechanism performs the repair, so once both tasks are in, the agent checks declarations before invoking the script, or the invocation skips declared slots. Whichever task lands second reconciles both points against the text the first left behind.
 
 ## Approach
 
@@ -59,7 +59,7 @@ Two sibling tasks bound this one:
 
 8. **Shrink Layer 2 to routing.** Extend the recorded grading of the Layer 2 scenarios that exercise `<fix_log_preamble_drift>` so each pass records the remediation mechanism observed, script or hand edit, then run the measurement in Acceptance.
 
-**Out of scope:** The linter's classification of preamble mismatches, the `boilerplate` warn message, and the acknowledged or declared channels, owned by [wiki_sanctioned-template-deviations.md](wiki_sanctioned-template-deviations.md). The stored-base three-way merge that would auto-resolve the ambiguous local-rewrite case, which needs a per-wiki base marker this task does not add and is named here as the forward path. Relabeling the template's unlabeled units to make every unit label-matched, which changes the rendered preamble and is not needed once identity is declared. A lint auto-fix mode that runs this merge from inside `lint.py`, since remediation stays an agent move the linter only reports on. Any delete or reconcile branch for owner lines, since removing the delete operation is the property this task ships.
+**Out of scope:** The linter's classification of preamble mismatches, the `boilerplate` warn message, and the acknowledged or declared channels, owned by [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md). The stored-base three-way merge that would auto-resolve the ambiguous local-rewrite case, which needs a per-wiki base marker this task does not add and is named here as the forward path. Relabeling the template's unlabeled units to make every unit label-matched, which changes the rendered preamble and is not needed once identity is declared. A lint auto-fix mode that runs this merge from inside `lint.py`, since remediation stays an agent move the linter only reports on. Any delete or reconcile branch for owner lines, since removing the delete operation is the property this task ships.
 
 ## Acceptance
 

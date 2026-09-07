@@ -1155,9 +1155,8 @@ stage_AS-15() {
     # the same missing `Scope:` group, plus an owner-added line inside the
     # preamble region. The move must insert the canonical unit AND leave the
     # owner's line byte-identical, which a verbatim full-region restore cannot
-    # do. Only the log.md postconditions are graded: a leftover `boilerplate`
-    # warn about the owner extension is expected here, because classifying an
-    # owner extension belongs to wiki_sanctioned-template-deviations.
+    # do. Only the log.md postconditions are graded: the owner insert-only line
+    # is an acknowledged locked-slot extension with no live `boilerplate` warn.
     _assert_template_log_contains \
         "> Scope: an entry records changes to this wiki, and only those. Name the files"
     local sb
@@ -1200,7 +1199,8 @@ stage_AS-17() {
     # in the same region. The move must refresh the labeled unit to current
     # template text while leaving the owner's line byte-identical — a refresh,
     # not an insert, and not a region restore. Only the log.md postconditions are
-    # graded.
+    # graded; the owner insert-only line is an acknowledged locked-slot
+    # extension with no live `boilerplate` warn.
     _assert_template_log_contains \
         "> Entries: an operation that creates or updates wiki files appends one entry; an"
     local sb
@@ -1222,7 +1222,8 @@ stage_AS-18() {
     # chronological-record opener is present but reworded, and an owner-added
     # line sits in the same region. The move must refresh the unlabeled unit by
     # its greppable stem while leaving the owner's line byte-identical. Only the
-    # log.md postconditions are graded.
+    # log.md postconditions are graded; the owner insert-only line is an
+    # acknowledged locked-slot extension with no live `boilerplate` warn.
     _assert_template_log_contains \
         "> Chronological record of wiki changes. Append-only."
     local sb
@@ -1239,7 +1240,102 @@ stage_AS-18() {
         "## [2026-06-18 10:00] session-wrapup | 0 new, 2 extended, 0 contested|||- concepts/alpha.md: extended"
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18)
+# Exact production VerbatimSlot.label for the log.md preamble.
+LOG_SLOT_LABEL='log.md preamble (H1 plus blockquote above first `##`)'
+
+_add_declared_boilerplate() {
+    local wiki=$1 reason=$2
+    python3 - "$wiki/SCHEMA.md" "$LOG_SLOT_LABEL" "$reason" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+label, reason = sys.argv[2], sys.argv[3]
+text = p.read_text().rstrip() + f"\n\n- Declared boilerplate: {label} — {reason}\n"
+p.write_text(text)
+PY
+}
+
+_rewrite_log_preamble_divergence() {
+    local wiki=$1
+    python3 - "$wiki/log.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+i = text.find("\n## ")
+rest = text[i:] if i != -1 else ""
+p.write_text(
+    "# Custom Log Title\n\n"
+    "> House conventions: tenant-scoped rollout notes stay in the preamble.\n"
+    + rest
+)
+PY
+}
+
+_baseline_skill_templates() {
+    local sb=$1
+    local t
+    for t in "$WIKI_SKILL"/references/template_*.md; do
+        _sha_baseline "$t" "$sb/baseline/$(basename "$t").sha256"
+    done
+}
+
+stage_AS-19() {
+    # AS-19 (wiki_sanctioned-template-deviations): insert-only owner extension on
+    # an otherwise canonical preamble. The agent must leave the owner line
+    # byte-identical and must not claim a scaffold repair it did not make.
+    local sb
+    sb=$(reset_sandbox AS-19)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    _stage_log_preamble "$wiki/log.md" "$WIKI_SKILL/references/template_log.md" \
+        "add-owner|||Local: this vault names the tenant alongside every rollout entry."
+    _set_log_entries "$wiki/log.md" \
+        "## [2026-06-17 09:14] create | Wiki initialized|||- Domain: widget delivery" \
+        "## [2026-06-18 10:00] session-wrapup | 0 new, 2 extended, 0 contested|||- concepts/alpha.md: extended"
+    _sha_baseline "$wiki/log.md" "$sb/baseline/log.md.sha256"
+}
+
+stage_AS-20() {
+    # AS-20 (wiki_sanctioned-template-deviations): declared delete/replace
+    # divergence. The agent must leave the declared preamble region
+    # byte-identical.
+    local sb
+    sb=$(reset_sandbox AS-20)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    _rewrite_log_preamble_divergence "$wiki"
+    _add_declared_boilerplate "$wiki" \
+        "tenant-scoped rollout notes belong in the preamble for this vault"
+    _set_log_entries "$wiki/log.md" \
+        "## [2026-06-17 09:14] create | Wiki initialized|||- Domain: widget delivery" \
+        "## [2026-06-18 10:00] session-wrapup | 0 new, 2 extended, 0 contested|||- concepts/alpha.md: extended"
+    _sha_baseline "$wiki/log.md" "$sb/baseline/log.md.sha256"
+}
+
+stage_AS-21() {
+    # AS-21 (wiki_sanctioned-template-deviations): declared divergence framed as
+    # a general improvement. The agent must preserve the region, name it as a
+    # template candidate in the report, and leave skill templates unedited.
+    local sb
+    sb=$(reset_sandbox AS-21)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    _rewrite_log_preamble_divergence "$wiki"
+    _add_declared_boilerplate "$wiki" \
+        "tenant-scoped rollout notes belong in every wiki preamble"
+    _set_log_entries "$wiki/log.md" \
+        "## [2026-06-17 09:14] create | Wiki initialized|||- Domain: widget delivery" \
+        "## [2026-06-18 10:00] session-wrapup | 0 new, 2 extended, 0 contested|||- concepts/alpha.md: extended"
+    _sha_baseline "$wiki/log.md" "$sb/baseline/log.md.sha256"
+    _baseline_skill_templates "$sb"
+}
+
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

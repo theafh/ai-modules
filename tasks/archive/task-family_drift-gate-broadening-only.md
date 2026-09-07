@@ -2,9 +2,11 @@
 description: Make auto_drift_task return drift only when the title or Goal broadens what the task is for, judged against the last commit; narrowing, refinement, and bug fixes classify clean.
 scope: plugins/ai_dev
 created: 2026-09-06T15:28:22
-updated: 2026-09-06T22:54:59
-status: ready
+updated: 2026-09-07T19:38:34
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # task_auto_check: a drift gate that halts only on broadened intent, judged against the last commit
@@ -15,7 +17,7 @@ reported-by: Andreas Hoffmann
 
 ## Context
 
-The gate shipped through the archived [intent-drift detection task](archive/task-family_intent-drift-detection.md) with a symmetric definition. The `<policy>` in `plugins/ai_dev/agents/auto_drift_task.md` reads "Return a drift finding only when the current title or Goal changes what the task is about, narrows away the original aim, or contradicts the recovered original aim", so a narrowing is drift by specification, and its `<compare_meaning>` step compares "scope boundaries", so a tightened boundary reads as a change. The gate exists to catch unattended drift, and unattended drift in an autonomous repair loop runs one way: toward scope creep. A human shaping a task narrows it, sharpens it, and corrects it, and none of that is a reason to stop a readiness loop.
+The gate shipped through the archived [intent-drift detection task](task-family_intent-drift-detection.md) with a symmetric definition. The `<policy>` in `plugins/ai_dev/agents/auto_drift_task.md` reads "Return a drift finding only when the current title or Goal changes what the task is about, narrows away the original aim, or contradicts the recovered original aim", so a narrowing is drift by specification, and its `<compare_meaning>` step compares "scope boundaries", so a tightened boundary reads as a change. The gate exists to catch unattended drift, and unattended drift in an autonomous repair loop runs one way: toward scope creep. A human shaping a task narrows it, sharpens it, and corrects it, and none of that is a reason to stop a readiness loop.
 
 The baseline compounds this. The same `<policy>` treats "the earliest committed baseline as the origin" and compares "against the full followed history, not merely the previous commit, so intent narrowed across several commits still remains detectable". That rationale exists only to catch narrowing, so it falls with the symmetric definition. It also leaves the human no way to attest a changed intent: a task broadened deliberately and committed weeks ago is compared against its first commit on every later run, so one legitimate expansion becomes a halt on every run for the rest of the task's life. In this repository a commit is the checkpoint the user owns (standing repo rules), so the version in the last commit is the human-attested intent, and the working-tree delta since then is exactly what an unattended run may have produced.
 

@@ -93,7 +93,7 @@ accepted and leaves the rest human-owned.
 
 Every layer also freezes the task's title and goal before it touches anything,
 and gates each edit on fidelity to them. The drift agent exists for one case the
-others cannot see. It catches intent that already moved away from the first
+others cannot see. It catches intent that already broadened past the last
 committed goal before repair began, and it routes that drift to the human. An
 autonomous writer validates the repository's `CHARTER.md` before it writes and
 stops the run on a violation.

@@ -390,3 +390,18 @@ dash is quoted in full. Acceptance covers info findings alone. A blocking or
 warn finding stays in the report whatever a bullet says. The example above sits
 in a fenced block, so it is documentation; a live acceptance goes on an
 unfenced bullet.
+
+An intentional remove-or-rewrite divergence from a locked boilerplate slot goes
+on a `Declared boilerplate:` bullet in this same section. The slot-label field
+must equal the locked slot's label exactly (today the log.md preamble label);
+the reason is free text after the first ` — `. A matching live bullet suppresses
+the `boilerplate` warn and lists the divergence under `ACKNOWLEDGED` instead.
+An insert-only addition to a locked slot needs no declaration: the linter
+classifies it as an extension on that same channel automatically.
+
+```text
+- Declared boilerplate: log.md preamble (H1 plus blockquote above first `##`) — local house conventions for this vault
+```
+
+The example sits in a fenced block, so it is documentation; a live declaration
+goes on an unfenced bullet.

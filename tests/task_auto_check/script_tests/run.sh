@@ -227,12 +227,12 @@ s8_mechanical_lint_finalization() {
 s9_intent_drift_boundary() {
   local ok=true drift="$AGENTS_DIR/auto_drift_task.md" check="$REPO_ROOT/plugins/ai_dev/skills/task_check/SKILL.md" gate="$AGENTS_DIR/auto_gate_task.md"
   assert_contains "drift agent follows renames" "$drift" "git log --follow" || ok=false
-  assert_contains "drift agent earliest committed baseline" "$drift" "earliest committed" || ok=false
-  assert_contains "drift agent full history not previous commit" "$drift" "not merely the previous commit" || ok=false
-  assert_contains "drift agent meaning-preserving accretion clean" "$drift" "Clean accretion" || ok=false
+  assert_contains "drift agent last-commit baseline" "$drift" "last commit as the baseline" || ok=false
+  assert_contains "drift agent rename-follow last-commit-only" "$drift" "git diff HEAD -M --name-status" || ok=false
+  assert_contains "drift agent narrowing-as-clean" "$drift" "narrowing" || ok=false
   assert_contains "drift agent resolved open decisions clean" "$drift" "resolved labeled open decisions" || ok=false
-  assert_contains "drift agent intent-preserving clarification clean" "$drift" "intent-preserving clarifications" || ok=false
-  assert_contains "drift agent flags changed objective only" "$drift" "changes what the task is about" || ok=false
+  assert_contains "drift agent refinement-as-clean" "$drift" "refinement" || ok=false
+  assert_contains "drift agent flags broadening only" "$drift" "broadens what the task is for" || ok=false
   assert_contains "drift agent read-only" "$drift" "Edit no files, revert no content, move no task, and stamp no frontmatter." || ok=false
   assert_contains "drift agent low-confidence clean" "$drift" "low_confidence_clean" || ok=false
   assert_contains "task_auto_check resolves drift agent" "$SKILL" "auto_drift_task" || ok=false

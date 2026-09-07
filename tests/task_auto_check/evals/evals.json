@@ -99,7 +99,7 @@
       "id": "intent_drift_human_route",
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_search-pagination.md.",
-      "expected_output": "The task's earliest committed Goal is API search cursor pagination, while the current working-tree Goal is API search filter documentation. The freeze-time auto_drift_task check classifies this as meaning-level drift, surfaces one human intention check with recovered-versus-current evidence, stops before task_check and repair, leaves the current body unchanged, leaves status and updated unchanged, and does not restore the committed origin.",
+      "expected_output": "The task's last-commit Goal is API search cursor pagination, while the current working-tree Goal is API search filter documentation — a subject replacement. The freeze-time auto_drift_task check classifies this as drift, surfaces one human intention check with recovered-versus-current evidence, stops before task_check and repair, leaves the current body unchanged, leaves status and updated unchanged, and does not restore the committed Goal.",
       "files": ["evals/fixtures/intent_drift_human_route/setup.sh"],
       "expectations": [
         "The response invokes auto_drift_task exactly once at freeze time before any task_check gate call.",
@@ -110,6 +110,60 @@
         "The committed cursor-pagination Goal is not restored into the working-tree task.",
         "The updated timestamp is unchanged because no edit is applied.",
         "The response reports zero gate calls, zero body edit rounds, and zero mechanical-lint edit groups."
+      ]
+    },
+    {
+      "id": "drift_gate_narrowing_clean",
+      "skill": "task_auto_check",
+      "prompt": "Run task_auto_check on tasks/api_search-results.md.",
+      "expected_output": "The uncommitted rewrite drops CSV export into Out of scope and renames the title to the narrower pagination scope. auto_drift_task classifies clean, the gate runs, and no intention check is surfaced.",
+      "files": ["evals/fixtures/drift_gate_narrowing_clean/setup.sh"],
+      "expectations": [
+        "The response invokes auto_drift_task exactly once at freeze time and classifies clean.",
+        "The response reports no human intention check.",
+        "The response reaches the task_check gate (at least one gate call).",
+        "The narrowed Out of scope carve-out remains in the task body."
+      ]
+    },
+    {
+      "id": "drift_gate_refinement_clean",
+      "skill": "task_auto_check",
+      "prompt": "Run task_auto_check on tasks/api_timeout-headers.md.",
+      "expected_output": "The uncommitted rewrite rewords the Goal, corrects the wrong docs path, and widens the title to name the unit-test deliverable the body already carried. auto_drift_task classifies clean, the gate runs, and no intention check is surfaced.",
+      "files": ["evals/fixtures/drift_gate_refinement_clean/setup.sh"],
+      "expectations": [
+        "The response invokes auto_drift_task exactly once at freeze time and classifies clean.",
+        "The response reports no human intention check.",
+        "The response reaches the task_check gate (at least one gate call).",
+        "The corrected docs/api.md path remains in the task body."
+      ]
+    },
+    {
+      "id": "drift_gate_broadening_drift",
+      "skill": "task_auto_check",
+      "prompt": "Run task_auto_check on tasks/api_search-pagination.md.",
+      "expected_output": "The uncommitted rewrite adds a webhook delivery deliverable on a new surface to the Goal. auto_drift_task classifies drift with drifted_fields: goal, surfaces the Goal intention check, halts before the gate, and leaves the body unchanged.",
+      "files": ["evals/fixtures/drift_gate_broadening_drift/setup.sh"],
+      "expectations": [
+        "The response invokes auto_drift_task exactly once at freeze time before any task_check gate call.",
+        "The response reports classification drift with drifted_fields: goal.",
+        "The response surfaces the human intention check about Goal drift.",
+        "The task remains status: open because task_check is not run.",
+        "The current webhook-broadened body is unchanged.",
+        "The response reports zero gate calls, zero body edit rounds, and zero mechanical-lint edit groups."
+      ]
+    },
+    {
+      "id": "drift_gate_committed_broadening_clean",
+      "skill": "task_auto_check",
+      "prompt": "Run task_auto_check on tasks/api_search-pagination.md.",
+      "expected_output": "A second commit already broadened the Goal to include CSV export; the uncommitted change is only a refinement. auto_drift_task classifies clean against the last-commit baseline, the gate runs, and no intention check is surfaced.",
+      "files": ["evals/fixtures/drift_gate_committed_broadening_clean/setup.sh"],
+      "expectations": [
+        "The response invokes auto_drift_task exactly once at freeze time and classifies clean.",
+        "The response reports no human intention check.",
+        "The response reaches the task_check gate (at least one gate call).",
+        "The committed CSV-export Goal remains in the task body."
       ]
     },
     {

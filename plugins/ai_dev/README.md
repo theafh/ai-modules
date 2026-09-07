@@ -59,7 +59,7 @@ Three tools sit beside the spine rather than on it:
 
 ## Agents
 
-- **auto_drift_task**: reconstructs a task's earliest committed title and Goal for `task_auto_check`, classifies meaning-level drift, and returns recovered-versus-current evidence without editing files.
+- **auto_drift_task**: reconstructs a task's last-commit title, Goal, and body for `task_auto_check`, classifies drift only when the working tree broadens what the task is for, and returns recovered-versus-current evidence without editing files.
 - **auto_gate_task**: wraps `task_check` for `task_auto_check` and returns `task_check`'s full report followed by a structured verdict derived from it: final status, prior status, ready boolean, per-item checklist record, issue list, and evidence labels.
 - **auto_reviewer_task**: proposes minimum task-body repairs from one assigned stance, citing the base `task` skill's `<body>` repair rules and preserving the frozen task intent.
 - **auto_verifier_task**: verifies reviewer proposals with a refute-by-default stance, keeping only real, minimum, issue-resolving, frozen-intent-preserving edits for the orchestrator to apply.

@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages; whenever the user mentions their wiki, knowledge base, or research notes in any way, including queries that compare, contrast, reference, analyze, or discuss wiki content rather than ask to edit it; or whenever the user names the wiki, the knowledge base, or their notes in the current request even as a passing reference.
-version: 1.24.3
+version: 1.24.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -797,9 +797,10 @@ Findings come in three buckets:
   `index.md`, missing or unparseable `SCHEMA.md` (no extractable type enum).
   Exits 1; must fix.
 - **warn**: orphans, contested pages, source drift, off-taxonomy tags,
-  invalid enum/date values, pages missing from the index, verbatim-boilerplate
-  mismatches (the log.md preamble drifting from the canonical template in
-  `references/`).
+  invalid enum/date values, pages missing from the index, and locked-slot
+  boilerplate mismatches that delete or replace canonical content (the
+  log.md preamble under the classify-as-extension contract). Insert-only
+  locked-slot additions are acknowledged-channel extensions, not live warns.
 - **info**: markdown style nits, oversized pages, low-confidence
   single-source pages, unused taxonomy tags, log over 500 entries, duplicate
   `log.md` entry headings (`log-heading`), and `log.md` entry bullets whose
@@ -821,14 +822,25 @@ the outcome to `log.md`:
 ## [YYYY-MM-DD HH:MM] lint | N blocking, N warn, N info
 ```
 
-If a check is wrong for the situation (e.g., a deliberately oversized
-synthesis page), record it once as an `- Accepted finding: …` bullet in
-`SCHEMA.md`'s `## Lint` section, whose grammar that section documents. The
-next run drops the finding from the live report and the live counts and lists
-it under `ACKNOWLEDGED` instead, so the live info bucket holds only findings
-nobody has reviewed yet. Write the decision there and nowhere else: never as
-rationale prose in the page body, and never as a fresh log paragraph each run.
-Leave the script alone: it surfaces, it doesn't enforce.
+Three non-overlapping structural routes settle a finding without editing the
+script, and each covers only its own finding class:
+
+- `- Accepted finding: …` in `SCHEMA.md`'s `## Lint` section for intentional
+  info-level findings only (grammar that section documents). The next run
+  drops the finding from the live report and the live counts and lists it
+  under `ACKNOWLEDGED`.
+- An acknowledged insert-only locked-slot extension (no SCHEMA bullet; the
+  boilerplate check classifies it and reports it on the acknowledged
+  channel).
+- `- Declared boilerplate: …` in that same `## Lint` section for an
+  intentional locked-slot remove-or-rewrite divergence.
+
+These are not alternatives for one another: the acceptance store never
+suppresses a warn, a declaration never accepts an info finding, and
+`Page-check exclusions:` only drops whole trees from the page walk. Write a
+decision in SCHEMA.md when that route owns it, never as rationale prose in
+the page body, and never as a fresh log paragraph each run. Leave the script
+alone: it surfaces, it doesn't enforce.
 </inline_iteration_loop>
 
 </lint_and_audit>

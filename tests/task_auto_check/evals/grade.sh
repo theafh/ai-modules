@@ -272,6 +272,80 @@ case "$eval_id" in
     note_agent_attest "response reports zero gate calls, zero body edit rounds, and zero mechanical-lint edit groups"
     ;;
 
+  drift_gate_narrowing_clean)
+    f="$TASKS/api_search-results.md"
+    one_task() { task_count_is 1; }
+    gate_reached() { status_is_one_of "$f" ready checked; }
+    narrowing_kept() {
+      grep -Fq '**Out of scope:** CSV export of search results' "$f" \
+        && grep -Fq '# API search cursor pagination' "$f"
+    }
+    check "no extra task files created" one_task
+    check "gate reached (status ready or checked)" gate_reached
+    check "narrowed Out of scope carve-out remains" narrowing_kept
+    check "task lints clean" task_lints
+    note_agent_attest "response invokes auto_drift_task once and classifies clean"
+    note_agent_attest "response reports no human intention check"
+    note_agent_attest "response reaches the task_check gate (at least one gate call)"
+    ;;
+
+  drift_gate_refinement_clean)
+    f="$TASKS/api_timeout-headers.md"
+    one_task() { task_count_is 1; }
+    gate_reached() { status_is_one_of "$f" ready checked; }
+    path_corrected() {
+      grep -Fq 'docs/api.md' "$f" \
+        && ! grep -Fq 'docs/timeout.md' "$f" \
+        && grep -Fq '# API timeout headers and response-test coverage' "$f"
+    }
+    check "no extra task files created" one_task
+    check "gate reached (status ready or checked)" gate_reached
+    check "corrected docs/api.md path and widened title remain" path_corrected
+    check "task lints clean" task_lints
+    note_agent_attest "response invokes auto_drift_task once and classifies clean"
+    note_agent_attest "response reports no human intention check"
+    note_agent_attest "response reaches the task_check gate (at least one gate call)"
+    ;;
+
+  drift_gate_broadening_drift)
+    f="$TASKS/api_search-pagination.md"
+    status_open() { status_is "$f" open; }
+    one_task() { task_count_is 1; }
+    no_archive_task() { [[ -z "$(find "$TASKS/archive" -type f -name '*.md' 2>/dev/null)" ]]; }
+    body_preserved() {
+      grep -Fq 'webhook delivery surface' "$f" \
+        && grep -Fq 'src/api/webhooks.py' "$f"
+    }
+    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-02T00:00:00" ]]; }
+    check "task remains status: open because task_check is not run" status_open
+    check "no extra task files created" one_task
+    check "no task file is archived or moved" no_archive_task
+    check "webhook-broadened body is unchanged" body_preserved
+    check "updated timestamp remains unchanged because no edit was applied" updated_unchanged
+    check "task lints clean after drift route" task_lints
+    note_agent_attest "response invokes auto_drift_task exactly once at freeze time before any task_check gate call"
+    note_agent_attest "response reports classification drift with drifted_fields: goal"
+    note_agent_attest "response surfaces the human intention check about Goal drift"
+    note_agent_attest "response reports zero gate calls, zero body edit rounds, and zero mechanical-lint edit groups"
+    ;;
+
+  drift_gate_committed_broadening_clean)
+    f="$TASKS/api_search-pagination.md"
+    one_task() { task_count_is 1; }
+    gate_reached() { status_is_one_of "$f" ready checked; }
+    csv_goal_kept() {
+      grep -Fq 'CSV export of the same result set' "$f" \
+        && grep -Fq 'download them in one file' "$f"
+    }
+    check "no extra task files created" one_task
+    check "gate reached (status ready or checked)" gate_reached
+    check "committed CSV-export Goal remains with refinement wording" csv_goal_kept
+    check "task lints clean" task_lints
+    note_agent_attest "response invokes auto_drift_task once and classifies clean"
+    note_agent_attest "response reports no human intention check"
+    note_agent_attest "response reaches the task_check gate (at least one gate call)"
+    ;;
+
   repair_to_ready)
     f="$TASKS/api_retry-after.md"
     status_ready() { status_is "$f" ready; }
