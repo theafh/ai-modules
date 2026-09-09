@@ -516,6 +516,38 @@
       ]
     },
     {
+      "id": "check_commit_proof_surface",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/docs_status-output.md ready to hand to an implementer? Check it.",
+      "expected_output": "The task proves its documentation correction through the commit message. The checker raises the Acceptance proof surface finding, proposes proof available in the working tree through Decide or label, stamps checked, and preserves the body.",
+      "files": [
+        "evals/fixtures/check_commit_proof_surface/setup.sh"
+      ],
+      "expectations": [
+        "A numbered Acceptance proof surface issue identifies the commit message as the invalid proof surface and cites the base <body> Deliverable items flip. bullet.",
+        "The disposition follows Decide or label and proposes moving proof onto a tree artifact, or dropping the item while preserving full Acceptance coverage.",
+        "The issue concerns proof availability before a commit, independently of whether an action is user-gated under Implementer-runnable.",
+        "The proof-surface violation is the only blocking finding, so the withheld ready stamp is attributable to this rule.",
+        "The task is stamped status: checked and its body is preserved byte-for-byte.",
+        "No writes reach the real repository's tasks/ tree."
+      ]
+    },
+    {
+      "id": "check_commit_proof_surface_control",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/docs_status-output.md ready to hand to an implementer? Check it.",
+      "expected_output": "The task proves its documentation correction by inspecting docs/status.md directly. The checker finds no readiness issues, stamps ready, and preserves the body.",
+      "files": [
+        "evals/fixtures/check_commit_proof_surface_control/setup.sh"
+      ],
+      "expectations": [
+        "No Acceptance proof surface finding is raised for inspecting docs/status.md directly.",
+        "The report finds no readiness issues and stamps status: ready.",
+        "The task body is preserved byte-for-byte.",
+        "No writes reach the real repository's tasks/ tree."
+      ]
+    },
+    {
       "id": "check_count_stable",
       "skill": "task_check",
       "prompt": "Is the task tasks/build_manifest-smoke.md ready to hand to an implementer? Check it.",

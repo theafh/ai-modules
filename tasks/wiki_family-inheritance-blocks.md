@@ -2,7 +2,7 @@
 description: Give the wiki family one source of truth: a hub family block, an authority block per front end, cited rather than restated base rules, and one orientation log-read quantity.
 scope: plugins/knowledge_management
 created: 2026-08-11T18:49:52
-updated: 2026-09-05T21:33:57
+updated: 2026-09-08T10:58:19
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -129,8 +129,9 @@ this task settles and that idiom must land coherently whichever ships first.
    URL returns no match, while the `<role>` block still credits the author and
    keeps its RAG contrast.
 6. Running `lint_pseudo_xml.py` from the `ai_instruction_formatting` skill over
-   all four family skills reports no errors, and any homogeneous-list hint on the
-   new blocks is recorded as judged in the commit.
+   all four family skills reports no errors; any homogeneous-list hint it emits
+   on the new blocks is an accepted info-level hint rather than an error, so the
+   run carries no blocking finding.
 7. Searching the hub, `wiki_import`, and `wiki_wrapup` for `350 lines` and
    `tail -n 350` returns no match. With
    [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md)

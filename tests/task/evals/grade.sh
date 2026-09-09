@@ -833,6 +833,29 @@ case "$eval_id" in
     note_agent_attest "the verdict distinguishes narrowing work from waiving a rule rather than flagging every standing-rule mention inside an **Out of scope:** block"
     ;;
 
+  check_commit_proof_surface)
+    rel="tasks/docs_status-output.md"
+    f="$proj/$rel"
+    status_checked() { [[ "$(fm_field "$f" status)" == "checked" ]]; }
+    check "status stamped checked for the commit-proof violation" status_checked
+    check "read-only stamp: the body is byte-identical to the seed" body_unchanged "$rel"
+    check "the task still lints clean" lint_no_blocking
+    note_agent_attest "a numbered Acceptance proof surface issue identifies the commit message and cites the base <body> Deliverable items flip. rule"
+    note_agent_attest "the disposition follows Decide or label and proposes tree-artifact proof, or dropping the item while preserving coverage"
+    note_agent_attest "the proof-surface violation is the only blocking finding; its cause is proof availability rather than a user-gated action"
+    ;;
+
+  check_commit_proof_surface_control)
+    rel="tasks/docs_status-output.md"
+    f="$proj/$rel"
+    status_ready() { [[ "$(fm_field "$f" status)" == "ready" ]]; }
+    check "status stamped ready for the tree-proof control" status_ready
+    check "read-only stamp: the body is byte-identical to the seed" body_unchanged "$rel"
+    check "the task still lints clean" lint_no_blocking
+    note_agent_attest "no Acceptance proof surface finding is raised for inspecting docs/status.md directly"
+    note_agent_attest "the report finds no readiness issues"
+    ;;
+
   check_count_stable)
     rel="tasks/build_manifest-smoke.md"
     f="$proj/$rel"

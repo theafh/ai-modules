@@ -27,6 +27,9 @@
 #   check_count_stable                (count-stable reference discipline: one
 #                                      body carrying a frozen mutable-set count
 #                                      beside a legal measurement-protocol count)
+#   check_commit_proof_surface  check_commit_proof_surface_control
+#                                     (commit-message proof violation and its
+#                                      tree-artifact proof control)
 #   finish_arch_extended  finish_arch_declined  finish_arch_absent
 #                                     (close-out ARCHITECTURE.md refresh: the
 #                                      design-extended signal driving a refresh,
@@ -65,7 +68,7 @@
 
 set -euo pipefail
 
-eval_id="${1:?eval id required (create|check|standing_rules_create|standing_rules_check|standing_rules_check_control|explain|select|implement|implement_dep_gate|select_inbound_dep|select_dep_regression|audit_gaps|audit_clean|finish|fix|query|update|update_contract|triage|lossless_split|lossless_single|check_boundary_contradiction|check_boundary_clean|implement_boundary_cross|implement_boundary_agree|create_scope_trim|auto_check_boundary|check_exclusion_requirement|check_exclusion_requirement_control|check_exclusion_waiver|check_exclusion_waiver_control|check_count_stable|finish_arch_extended|finish_arch_declined|finish_arch_absent|fix_coherence|fix_coherence_reconcile_escalated|fix_coherence_reconcile_inline_staleness|fix_coherence_selector_scope|fix_coherence_selector_explicit_list|fix_coherence_selector_whole_tree)}"
+eval_id="${1:?eval id required (create|check|standing_rules_create|standing_rules_check|standing_rules_check_control|explain|select|implement|implement_dep_gate|select_inbound_dep|select_dep_regression|audit_gaps|audit_clean|finish|fix|query|update|update_contract|triage|lossless_split|lossless_single|check_boundary_contradiction|check_boundary_clean|implement_boundary_cross|implement_boundary_agree|create_scope_trim|auto_check_boundary|check_exclusion_requirement|check_exclusion_requirement_control|check_exclusion_waiver|check_exclusion_waiver_control|check_count_stable|check_commit_proof_surface|check_commit_proof_surface_control|finish_arch_extended|finish_arch_declined|finish_arch_absent|fix_coherence|fix_coherence_reconcile_escalated|fix_coherence_reconcile_inline_staleness|fix_coherence_selector_scope|fix_coherence_selector_explicit_list|fix_coherence_selector_whole_tree)}"
 target="${2:-$(mktemp -d "${TMPDIR:-/tmp}/task_eval.XXXXXX")}"
 mkdir -p "$target"
 target="$(cd "$target" && pwd)"
@@ -236,6 +239,16 @@ case "$eval_id" in
     "$HERE/fixtures/check_exclusion_waiver_control/setup.sh" "$target" >/dev/null
     skill_name="task_check"
     prompt="Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it."
+    ;;
+  check_commit_proof_surface)
+    "$HERE/fixtures/check_commit_proof_surface/setup.sh" "$target" >/dev/null
+    skill_name="task_check"
+    prompt="Is the task tasks/docs_status-output.md ready to hand to an implementer? Check it."
+    ;;
+  check_commit_proof_surface_control)
+    "$HERE/fixtures/check_commit_proof_surface_control/setup.sh" "$target" >/dev/null
+    skill_name="task_check"
+    prompt="Is the task tasks/docs_status-output.md ready to hand to an implementer? Check it."
     ;;
   check_count_stable)
     "$HERE/fixtures/check_count_stable/setup.sh" "$target" >/dev/null
