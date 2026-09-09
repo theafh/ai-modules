@@ -5,7 +5,7 @@ Regression harness for the `git_review` skill, on Pattern A
 
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
-| `script_tests/` | `collect_review_evidence.sh`, `extract_heading_range.sh` | Stdout, exit codes, and the written evidence set over real staged repositories with real remotes | `./tests/git_review/run_all.sh` |
+| `script_tests/` | `collect_review_evidence.sh`, `extract_heading_range.sh`, grader form checks | Stdout, exit codes, written evidence over staged repositories, and prose/field-block discrimination | `./tests/git_review/run_all.sh` |
 | `evals/` | Skill agent behavior | Target resolution, the fixed report shape, the two verdicts, the criteria ranking, the delta re-review, the publishing gate, and the reviewer-edit gate | `python3 tests/git_review/evals/run.py` |
 
 ## script_tests: fast, deterministic, no LLM cost
@@ -14,9 +14,9 @@ Regression harness for the `git_review` skill, on Pattern A
 ./tests/git_review/run_all.sh
 ```
 
-Nineteen scenarios plus the four plugin-meta lockstep checks. Each one stages a
-fresh bare origin and clone under `script_tests/scratch/<id>/`; nothing touches
-the host repository's working tree.
+The runner registers script scenarios plus plugin-meta lockstep checks.
+Repository scenarios stage a fresh bare origin and clone under
+`script_tests/scratch/<id>/`; form checks read committed response fixtures.
 
 The load-bearing ones:
 
@@ -35,6 +35,12 @@ The load-bearing ones:
 - **s16** through **s19** cover the heading-range helper: inclusive of both named
   headings, the run-to-end form, the error exits, and the same-heading-twice
   case.
+- **form_discrimination** runs evals 1 and 2's form checks against
+  `script_tests/fixtures/prose_report.md` and `field_block_report.md`. Every
+  check accepts the prose fixture, including fenced and blockquoted H3 evidence,
+  and every check rejects its seeded violation in the field-block fixture.
+  `bash tests/git_review/evals/grade.sh --form-only 1 <response-file>` runs
+  the checks alone without staging a repository.
 
 ## evals: skill behavior, one sonnet worker per eval
 

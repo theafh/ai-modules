@@ -97,13 +97,20 @@ Each entry names the prompt the worker receives and the outcome the expectations
 
 > Review this.
 
-One report opening with the reviewed commit, the tree state, and the approvability verdict, carrying all eight headings verbatim and in order, and closing with a yes on structural mergeability.
+One prose report with a single-paragraph lead naming the reviewed commit,
+tree state, and approvability verdict, all eight H2 headings in order, and a
+closing yes on structural mergeability. Findings use bold titles and prose
+ending in `Fix:`; decisions have one home. Form checks reject field labels,
+finding/decision H3 outlines, a leading H1 title, and `Suggested default`
+outside the decisions section, while accepting quoted H3 evidence.
 
 ### 2: `clean_change`
 
 > Review this branch.
 
-A report with no findings under any heading: one line saying so, the reviewed commit in the lead, and the structural answer at the close.
+A prose report with no findings: one line saying so, the reviewed commit in a
+single-paragraph lead, and the structural answer at the close. The same form
+checks as eval 1 apply without requiring empty findings or decision sections.
 
 ### 3: `conflicting_branch`
 

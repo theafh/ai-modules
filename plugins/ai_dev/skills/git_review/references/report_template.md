@@ -1,21 +1,20 @@
 # Review report template
 
-The skeleton to fill, plus one worked example of each shape. The rules that
-govern the report live in `SKILL.md`'s `<report>` stage and are not repeated
-here: which headings a run omits or keeps, the closing heading for the
-uncommitted-changes target, which findings carry which label, and what a
-critical finding must cite. Read `<report>` for the rules and this file for the
-form they take on the page.
+Worked examples of the report form pinned by `SKILL.md`'s `<report>` stage
+and its `<form>` rule. Use these examples to see those rules on the page;
+the skill body owns the binding form, heading presence, labels, and variants.
 
 ---
 
-Reviewed commit: `<sha>` (`<ref>`). Tree state: `<clean | dirty, unchanged>`.
-Forge layer: `<available via gh | unavailable because ...>`.
-Diff: `<n>` changed files, `<a>` added and `<r>` removed lines, `<p>`% binary or
-generated (`<paths>`).
-
-**Approvable in general:** `<yes | yes once ... | no because ...>`. The shortest
-path to yes is `<the one change that would flip the verdict>`.
+I reviewed `<sha>` (`<ref>`) and left the tree `<clean | dirty, unchanged>`.
+The change is `<approvable | approvable once ... | not approvable because ...>`,
+with `<the one change that would flip the verdict>` as the shortest path to yes.
+The forge layer is `<available via gh | unavailable because ...>`.
+The diff contains `<n>` changed files, `<a>` added and `<r>` removed lines,
+with `<p>`% binary or generated (`<paths>`).
+`<Gate names>` ran `<locally | on the forge only>`, with `<skipped gates>` skipped.
+The discussion contains `<review, issue-comment, and thread counts>`.
+`<Unread paths or ranges>` remain unread.
 
 ## What the changes do and implement
 
@@ -37,11 +36,13 @@ path to yes is `<the one change that would flip the verdict>`.
 
 ## A finding on the page
 
-> **`<path>:<line>` — `<the defect in one clause>`.** `<the evidence, quoted
-> from the diff or reproduced by a command that was run>`. `<the consequence,
-> as what goes wrong and for whom>`. Fix: `<concrete enough to act on>`.
-> Decides: `<who>`, where the fix is a judgement call. `(verified,
-> non-blocking)`
+**`<path>:<line>`: `<the defect in one clause>` (`verified`, `non-blocking`).**
+
+`<The evidence, quoted from the diff or reproduced by a command that was run>`.
+`<The consequence, as what goes wrong and for whom>`. `<The governing document
+and nearest precedent, when the finding rests on one>`.
+Fix: `<concrete enough to act on, with a clause pointing to the decisions
+section when the fix needs a judgement call>`.
 
 ## A decision on the page
 

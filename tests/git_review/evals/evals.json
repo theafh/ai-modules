@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Review this.",
-      "expected_output": "One report opening with the reviewed commit, the tree state, and the approvability verdict, carrying all eight headings verbatim and in order, and closing with a yes on structural mergeability.",
+      "expected_output": "One prose report opening with a single paragraph naming the reviewed commit, tree state, and approvability verdict, with no H1 title or metadata block, carrying all eight H2 headings verbatim and in order, and closing with a yes on structural mergeability. Findings use bold titles with location and label tokens followed by prose ending in Fix:, with no field labels or H3 outline headings. Decisions have one home under the decisions heading.",
       "files": [
         "evals/fixtures/seeded_findings/setup.sh"
       ],
@@ -13,10 +13,17 @@
         "The report opens with the reviewed commit SHA and the tree state it left behind.",
         "The lead states the verdict on approvability in general together with the shortest path to yes.",
         "The lead names the forge layer as unavailable, because no gh is on PATH for this run.",
-        "Each of the seven findings headings carries at least one finding.",
-        "Every finding names its location, quotes or reproduces its evidence, states the consequence, proposes a fix, and names who decides.",
+        "The descriptive headings describe the change, retirement, and workflow; each findings heading carries at least one finding, and the decisions heading carries the choices needed to fix them.",
+        "Every finding gives location, evidence, consequence, and Fix; a judgement-call fix points to its decision, whose options, suggested default, and owner appear only in the decisions section.",
         "Every finding outside the critical heading carries a non-blocking label.",
         "Each item under 'Decisions the implementer must make before fixing' is a choice between named options with a suggested default.",
+        "The lead is one prose paragraph with no leading H1 title and no key-value metadata block.",
+        "Each finding has a bold one-line title carrying its location and verified or inferred label token, plus non-blocking where required, then one to three prose paragraphs ending with a Fix: sentence; no Location:, Label:, Governing document:, or Decides: field labels appear.",
+        "Findings and decisions use no H3 outline headings; H3 text inside quoted evidence, including CHARTER.md headings, remains allowed.",
+        "Each decision has a bold one-line title, named options, and a Suggested default: that occurs only in the decisions section.",
+        "The lead names only the shortest-path finding and owns the gate-execution summary, discussion counts, unread remainder, and any author question no fix depends on; structural signals and one policy-context sentence stay in the closing answer.",
+        "The descriptive sections carry no finding labels, Fix:, or verification narrative; baseline items are omitted or one clause, with no checked-and-not-raised list, and minor items fold into the last should-fix paragraph.",
+        "The report ends at the closing answer with no unsolicited publish or copy offer, and any report.md draft holds that same report verbatim without an added title.",
         "The closing answer is yes, and it cites the conflict-free test merge and the ahead and behind counts as its evidence.",
         "The urllib call in src/export.py appears under 'What is critical', citing CHARTER.md by name.",
         "The deleted src/legacy_table.py appears under 'What it retires'.",
@@ -26,7 +33,7 @@
     {
       "id": 2,
       "prompt": "Review this branch.",
-      "expected_output": "A report with no findings under any heading: one line saying so, the reviewed commit in the lead, and the structural answer at the close.",
+      "expected_output": "A prose report with no findings: one line saying so, one opening paragraph naming the reviewed commit with no H1 title or metadata block, the applicable H2 headings, and the structural answer at the close. The report carries no field labels or finding/decision H3 outline headings and no Suggested default outside the decisions section.",
       "files": [
         "evals/fixtures/clean_change/setup.sh"
       ],
@@ -34,7 +41,11 @@
         "The report states in one line that no findings were identified, in place of any findings-section content.",
         "The report opens with the reviewed commit SHA.",
         "The report closes with the structural-mergeability answer.",
-        "No finding is invented to fill a heading."
+        "No finding is invented to fill a heading.",
+        "The lead is one prose paragraph with no leading H1 title or key-value metadata block; the report stays prose under the applicable H2 headings.",
+        "The response carries no Location:, Label:, Governing document:, or Decides: field labels and no H3 outline headings for findings or decisions; quoted evidence may contain H3 text.",
+        "Suggested default appears only in the decisions section when a fix requires a decision; a clean review invents no decision to fill that section.",
+        "The report ends at the closing answer with no unsolicited publish or copy offer, and any report.md draft holds that same report verbatim without an added title."
       ]
     },
     {

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Bundled-script unit tests for the git_review skill.
 #
-# Two surfaces: collect_review_evidence.sh, which gathers the git layer (and the
+# Covers collect_review_evidence.sh, which gathers the git layer (and the
 # forge layer through a stub gh) into a scratch directory, and
 # extract_heading_range.sh, which cuts an inclusive heading range out of a
-# drafted report. Every scenario stages its own sandbox under scratch/<id>/ and
-# never touches the host repository's working tree.
+# drafted report, plus the grader's report-form discrimination. Repository
+# scenarios stage their own sandbox under scratch/<id>/; form checks read fixtures.
 # shellcheck disable=SC2329
 
 set -uo pipefail
@@ -682,6 +682,21 @@ JSON
 JSON
 }
 
+form_discrimination() {
+    local eval_id out rc ok=true
+    local grader="$HERE/../evals/grade.sh"
+    for eval_id in 1 2; do
+        out=$(bash "$grader" --form-only "$eval_id" "$HERE/fixtures/prose_report.md" 2>&1) && rc=0 || rc=$?
+        assert_eq "eval $eval_id accepts prose and quoted H3 evidence" "$rc" "0" || ok=false
+        assert_contains "eval $eval_id runs every form check" "$out" "6 passed, 0 failed" || ok=false
+
+        out=$(bash "$grader" --form-only "$eval_id" "$HERE/fixtures/field_block_report.md" 2>&1) && rc=0 || rc=$?
+        assert_eq "eval $eval_id rejects field-block form" "$rc" "1" || ok=false
+        assert_contains "eval $eval_id detects every seeded form violation" "$out" "0 passed, 6 failed" || ok=false
+    done
+    $ok
+}
+
 # --- run ----------------------------------------------------------------------
 
 scenario s1  "fetch precedes the three-dot diff"                      s1_fetches_before_the_three_dot_diff
@@ -704,6 +719,7 @@ scenario s17 "a single heading runs to the end of the file"           s17_range_
 scenario s18 "range errors and the heading listing"                   s18_range_errors_and_listing
 scenario s19 "the same heading twice is that section alone"           s19_single_heading_range_is_that_section_alone
 scenario s20 "head_sync reports the upstream relationship"            s20_head_sync_reports_the_upstream_relationship
+scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the
 # invariant rather than the literal version this change shipped at.

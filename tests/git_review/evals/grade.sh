@@ -11,23 +11,35 @@
 #
 # Expectations that only a reading of the transcript can settle are printed as
 # "agent-attest" lines rather than silently dropped, so the operator can see
-# what the grader did not decide.
+# what the grader did not decide. --form-only <1|2> <response-file> runs only
+# that eval's report-form checks, without a staged repository.
 
 set -uo pipefail
 
+form_only=false
+if [[ "${1:-}" == "--form-only" ]]; then
+    form_only=true
+    shift
+fi
 eval_id="${1:?eval id required}"
-repo="${2:?sandbox repo path required}"
-response="${3:-}"
+repo=""
+if $form_only; then
+    [[ "$eval_id" == 1 || "$eval_id" == 2 ]] || { echo "form-only supports evals 1 and 2" >&2; exit 2; }
+    response="${2:?response file required}"
+else
+    repo="${2:?sandbox repo path required}"
+    response="${3:-}"
 
-[[ -d "$repo/.git" ]] || { echo "FAIL: $repo is not a git repo" >&2; exit 1; }
+    [[ -d "$repo/.git" ]] || { echo "FAIL: $repo is not a git repo" >&2; exit 1; }
 
-target="$(cd "$repo/.." && pwd)"
-marker="$target/.eval_started_at"
-gh_log="$target/gh_calls.log"
-script_log="$target/script_calls.log"
+    target="$(cd "$repo/.." && pwd)"
+    marker="$target/.eval_started_at"
+    gh_log="$target/gh_calls.log"
+    script_log="$target/script_calls.log"
 
-[[ -s "$marker" ]] || { echo "FAIL: $marker missing (did stage.sh run?)" >&2; exit 1; }
-staged_head="$(cat "$marker")"
+    [[ -s "$marker" ]] || { echo "FAIL: $marker missing (did stage.sh run?)" >&2; exit 1; }
+    staged_head="$(cat "$marker")"
+fi
 
 pass=0
 fail=0
@@ -193,6 +205,58 @@ headings_in_order() {
     done
 }
 
+# Inspect report chrome, leaving quoted evidence and fenced code out. Track the
+# fence character and length so a shorter or different fence inside a quote
+# cannot accidentally expose a source heading as report structure.
+report_structure() {
+    awk '
+        /^[[:space:]]*>/ { next }
+        {
+            line = $0
+            sub(/^ {0,3}/, "", line)
+            if (match(line, /^```+|^~~~+/)) {
+                marker = substr(line, 1, RLENGTH)
+                if (fence == "") {
+                    fence = substr(marker, 1, 1)
+                    width = length(marker)
+                } else if (substr(marker, 1, 1) == fence && length(marker) >= width &&
+                           substr(line, length(marker) + 1) ~ /^[[:space:]]*$/) {
+                    fence = ""
+                }
+                next
+            }
+            if (fence == "") print line
+        }
+    ' "$response"
+}
+
+no_leading_h1_title() {
+    have_response || return 1
+    report_structure | awk '/^## / { body = 1 } !body && /^# / { bad = 1 } END { exit bad }'
+}
+
+no_finding_or_decision_h3() {
+    have_response || return 1
+    report_structure | awk '
+        /^## / {
+            active = ($0 ~ /^## (What is critical|Bugs it may introduce|What should be fixed though it is not a clear bug|Decisions the implementer must make before fixing)[[:space:]]*$/)
+        }
+        active && /^### / { bad = 1 }
+        END { exit bad }
+    '
+}
+
+suggested_defaults_in_decisions() {
+    have_response || return 1
+    report_structure | awk '
+        /^## / {
+            decisions = ($0 ~ /^## Decisions the implementer must make before fixing[[:space:]]*$/)
+        }
+        tolower($0) ~ /suggested default/ && !decisions { bad = 1 }
+        END { exit bad }
+    '
+}
+
 reviewed_commit_named() {
     have_response || return 1
     local short
@@ -206,26 +270,46 @@ reviewed_commit_named() {
 # prove, since the base comparison uses the same words.
 says_staged_head() { reviewed_commit_named; }
 
-echo "grading eval $eval_id in $repo"
+if $form_only; then
+    echo "grading eval $eval_id report form in $response"
+else
+    echo "grading eval $eval_id in $repo"
+fi
 
 case "$eval_id" in
   1)
-    check "all eight headings present and in order" headings_in_order
-    check "the lead names the reviewed commit" reviewed_commit_named
-    check "the lead names the forge layer as unavailable" says "forge"
-    check "the report names the charter boundary" says "CHARTER.md"
-    check "the retired legacy table is named" says "legacy_table"
-    check "the changed gate target is named" says_regex "Makefile|make test"
-    check "findings carry a non-blocking label" says "non-blocking"
-    attest "every finding names location, evidence, consequence, fix, and who decides"
-    attest "the closing answer is yes, drawn from the test merge and the counts"
+    if ! $form_only; then
+        check "all eight headings present and in order" headings_in_order
+        check "the lead names the reviewed commit" reviewed_commit_named
+        check "the lead names the forge layer as unavailable" says "forge"
+        check "the report names the charter boundary" says "CHARTER.md"
+        check "the retired legacy table is named" says "legacy_table"
+        check "the changed gate target is named" says_regex "Makefile|make test"
+        check "findings carry a non-blocking label" says "non-blocking"
+        attest "every finding gives location, evidence, consequence, and Fix; a judgement-call fix points to its decision, whose options, suggested default, and owner appear only in the decisions section"
+        attest "the closing answer is yes, drawn from the test merge and the counts"
+    fi
+    check "no Location field label" says_not "**Location:**"
+    check "no Label field label" says_not "**Label:**"
+    check "no Decides field label" says_not "**Decides:**"
+    check "findings and decisions have no H3 outline headings" no_finding_or_decision_h3
+    check "no leading H1 title" no_leading_h1_title
+    check "Suggested default belongs only in decisions" suggested_defaults_in_decisions
     ;;
   2)
-    check "one line states that no findings were identified" \
-        says_regex "no findings|findings sections? (are|is) empty|identified no findings|no .{0,20}findings were (identified|found)|nothing to (report|fix|flag)"
-    check "the lead names the reviewed commit" reviewed_commit_named
-    check "the closing structural heading is present" says "structurally merged"
-    attest "no finding was invented to fill a heading"
+    if ! $form_only; then
+        check "one line states that no findings were identified" \
+            says_regex "no findings|findings sections? (are|is) empty|identified no findings|no .{0,20}findings were (identified|found)|nothing to (report|fix|flag)"
+        check "the lead names the reviewed commit" reviewed_commit_named
+        check "the closing structural heading is present" says "structurally merged"
+        attest "no finding was invented to fill a heading"
+    fi
+    check "no Location field label" says_not "**Location:**"
+    check "no Label field label" says_not "**Label:**"
+    check "no Decides field label" says_not "**Decides:**"
+    check "findings and decisions have no H3 outline headings" no_finding_or_decision_h3
+    check "no leading H1 title" no_leading_h1_title
+    check "Suggested default belongs only in decisions" suggested_defaults_in_decisions
     ;;
   3)
     check "the conflicting file is named" says "config.ini"
