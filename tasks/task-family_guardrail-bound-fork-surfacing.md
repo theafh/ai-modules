@@ -2,8 +2,8 @@
 description: Make the task family's Decide or label rule reliably surface a guardrail-bound fork instead of auto-resolving it from the guardrail hierarchy, and re-measure over repeated draws.
 scope: plugins/ai_dev/skills
 created: 2026-09-05T02:35:10
-updated: 2026-09-05T02:35:10
-status: open
+updated: 2026-09-11T22:20:10
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -45,7 +45,7 @@ grader's literal label needle, a grader defect this task leaves to its owner
 named under **Out of scope**.
 
 The likely cause is discoverability rather than absence. The rule is present and
-explicit, but it sits inside a single paragraph running past seven hundred words
+explicit, but it sits inside a single paragraph running about five hundred words
 in the base skill's body section, where the guardrail-bound ground appears as one
 clause in a chain that also carries the reconcile branch, the ordered evidence
 tiers, the decisive-default test, the insufficient-evidence ground, the dual
@@ -66,20 +66,19 @@ actually did rather than what the rule already says. Both runs had read the
 guardrail documents and reasoned explicitly about which outranks which, so the
 gap is that the hierarchy statement reached them as a licence to decide.
 
-Give the guardrail-bound ground its own structural home rather than leaving it a
-clause in the chain, and pair it at the point where the hierarchy is stated: the
-standing-doc consumption section says the charter is the highest-order guardrail
-and that a harness rule conflicting with a softer doc is surfaced for human
-review. Make that section carry the same boundary for a conflict between two
-guardrail docs, so an agent that reads the hierarchy meets the limit on using it
-in the same breath, and keep the full rule in **Decide or label** rather than
-restating it, per the family's author-once convention.
-
-State the discriminator the two draws needed. Ranking the documents settles which
-constraint wins in the abstract; it does not authorise the concrete act each
-draw took, which was to rewrite or work around the losing document. Rewriting a
-guardrail doc, or routing around it, is the user's call, and that is what makes
-the fork open even when the ranking is unambiguous.
+Rewrite the guardrail-bound ground out of the **Decide or label** clause chain
+into its own paragraph under **Decide or label**, led by the bold lead-in
+**Guardrail-bound ground.** That paragraph is the one place the skill edit
+states the discriminator: ranking may settle which constraint wins in the
+abstract (softer-versus-charter in the charter's favor), while rewriting a
+guardrail document or routing around it remains a user-owned labelled fork.
+Pair that ground at the hierarchy site in the standing-doc consumption section
+(which already says the charter is the highest-order guardrail and that a
+harness rule conflicting with a softer doc is surfaced for human review) by
+citing or pointing at the **Guardrail-bound ground.** paragraph without
+copying the discriminator or the full Decide or label procedure, so an agent
+that reads the hierarchy meets the limit in the same breath and one canonical
+statement remains, per the family's author-once convention.
 
 Re-measure with repeated draws rather than one. A single sample cannot separate
 a rule change from model sampling, which is how this defect went unnoticed: the
@@ -93,22 +92,28 @@ cleanly.
 
 ## Acceptance
 
-The base task skill states the guardrail-bound ground where the guardrail
-hierarchy is introduced as well as inside **Decide or label**, and the statement
-at the hierarchy says that a conflict between two guardrail documents is
-surfaced rather than resolved by rank.
+The base task skill's **Decide or label** section no longer carries the
+guardrail-bound ground as a clause in the chain: that ground is its own
+paragraph led by **Guardrail-bound ground.**, and that paragraph is the one
+place in the skill that states the discriminator Approach names for the edit.
 
-The rule names the act that makes the fork open, that rewriting a guardrail
-document or routing around it belongs to the user, so an unambiguous ranking
-still leaves the decision open.
+The hierarchy-site statement cites or points at the ground in **Decide or
+label** without copying the full Decide or label procedure, so one canonical
+procedure remains.
 
-Five consecutive draws of the `guardrail-bound-surface` eval, run with
-`--no-cache` so each is an independent sample, produce a labelled open decision
-naming the guardrail boundary in at least four of them, recorded with the run
-directories as evidence.
+After [the grader-authoring discipline
+task](tests_grader-authoring-discipline.md) Acceptance entry whose lead-in is
+"Each label-structure check in the `task_create` grader" holds, five consecutive
+draws of the `guardrail-bound-surface` eval, run with `--no-cache` so each is an
+independent sample, produce both a labelled open decision naming the guardrail
+boundary and a user-facing surface of that decision in at least four of the five
+draws, recorded with the run directories and each draw's `response.txt` as
+evidence. When fewer than four of five draws meet both halves, leave the
+measurement incomplete, revise the wording, and re-run; do not treat a
+sub-threshold result as done.
 
-The `reconcile-recorded` eval still passes across those same five draws, so the
-change sharpens the guardrail-bound ground without pushing evidence-settled forks
-back into labels.
-
-`make lint` passes.
+Across those same five consecutive `--no-cache` draws, the `reconcile-recorded`
+eval also passes on every draw (five of five), recorded with the same run
+directories and each draw's `response.txt` as evidence. When any of those five
+draws fails `reconcile-recorded`, leave the measurement incomplete, revise the
+wording, and re-run; do not treat a partial pass as done.
