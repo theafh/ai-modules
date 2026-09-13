@@ -498,6 +498,62 @@ c8_context_file_kept_on_failure() {
 }
 
 ###############################################################################
+# commit_with_message.sh — message-structure backstop scenario
+###############################################################################
+
+# Git reads line 1 as the subject and needs line 2 blank for the rest to parse
+# as the body. The script refuses a body-bearing message that skips that blank
+# line with exit 4 — a dedicated code so the refusal reads apart from the drift
+# refusal (3) and from a generic failure. This scenario covers both sides of the
+# check in one place: the refuse path and the two shapes that must still pass.
+cx_message_structure_backstop() {
+    local repo; repo=$(fresh_repo cx) || return 1
+    local ok=true
+
+    # --- refuse path: non-blank line 2 -------------------------------------
+    printf 'reviewed change\n' > "$repo/seed.txt"
+    local ctx; ctx=$(mktemp "${TMPDIR:-/tmp}/git_commit_context.XXXXXX")
+    write_ctx "$ctx" " M seed.txt"
+    local head_before; head_before=$(cd "$repo" && git rev-parse HEAD)
+    local staged_before; staged_before=$(cd "$repo" && git diff --cached --name-only)
+    local rc out
+    out=$(cd "$repo" && printf '%s' $'summary line\nseed.txt -> reviewed change\n' \
+        | "$COMMIT" "$ctx" 2>&1) && rc=0 || rc=$?
+    assert_eq "run-on message exits with structure-refusal 4" "$rc" "4" || ok=false
+    assert_contains "stderr names the structure failure" "$out" "line 2 must be blank" || ok=false
+    local head_after; head_after=$(cd "$repo" && git rev-parse HEAD)
+    assert_eq "HEAD unchanged (no commit created)" "$head_after" "$head_before" || ok=false
+    local staged_after; staged_after=$(cd "$repo" && git diff --cached --name-only)
+    assert_eq "index unchanged (nothing staged by the refusal)" "$staged_after" "$staged_before" || ok=false
+    if [[ ! -e "$ctx" ]]; then
+        log "    [context file removed on structure refusal; it must be preserved]"
+        ok=false
+    fi
+    rm -f "$ctx"
+
+    # --- accept path: blank line 2, body follows ---------------------------
+    local rc2
+    (cd "$repo" && printf '%s' $'summary line\n\nseed.txt -> reviewed change\n' \
+        | "$COMMIT" >/dev/null 2>&1) && rc2=0 || rc2=$?
+    assert_eq "subject + blank line + body exits 0" "$rc2" "0" || ok=false
+    local subject; subject=$(cd "$repo" && git log -1 --format=%s)
+    local body; body=$(cd "$repo" && git log -1 --format=%b)
+    assert_eq "git parses the subject alone" "$subject" "summary line" || ok=false
+    assert_contains "git parses the per-file body" "$body" "seed.txt -> reviewed change" || ok=false
+
+    # --- accept path: one-line subject-only message ------------------------
+    printf 'second change\n' > "$repo/seed.txt"
+    local rc3
+    (cd "$repo" && printf '%s' $'seed.txt -> second change\n' \
+        | "$COMMIT" >/dev/null 2>&1) && rc3=0 || rc3=$?
+    assert_eq "one-line subject-only message exits 0" "$rc3" "0" || ok=false
+    local subject2; subject2=$(cd "$repo" && git log -1 --format=%s)
+    assert_eq "subject-only message commits as its own subject" "$subject2" "seed.txt -> second change" || ok=false
+
+    $ok
+}
+
+###############################################################################
 # commit_with_message.sh — foreign-drift backstop scenarios
 ###############################################################################
 
@@ -677,6 +733,7 @@ scenario c5  "commit: --help flag prints usage"               c5_help_flag
 scenario c6  "commit: multi-line message preserved"           c6_multiline_message_preserved
 scenario c7  "commit: context file cleaned up on success"     c7_context_file_cleanup_on_success
 scenario c8  "commit: context file kept on commit failure"    c8_context_file_kept_on_failure
+scenario cx  "commit: message structure backstop (exit 4)"     cx_message_structure_backstop
 scenario c9  "commit: foreign drift blocks (exit 3)"          c9_foreign_drift_blocks
 scenario c10 "commit: --accept-drift override commits"        c10_accept_drift_override_commits
 scenario c11 "commit: no-drift pass-through preserved"        c11_no_drift_passthrough_preserved

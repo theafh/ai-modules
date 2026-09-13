@@ -15,6 +15,13 @@ Behavior:
   - Reads the commit message from stdin. Refuses an empty or
     whitespace-only message (exit 1). Refuses to read from a TTY so an
     interactive invocation cannot hang forever waiting on input (exit 2).
+  - Message-structure backstop: git reads line 1 as the subject and needs
+    line 2 blank for the rest to parse as the body, so a message whose
+    second line carries text is refused (exit 4). The refusal prints the
+    problem to stderr, stages nothing, commits nothing, and leaves the
+    CONTEXT_FILE in place for the retry. A one-line subject-only message
+    and a message with a blank line 2 both pass, and a refusal never
+    rewrites the message, so line breaks stay exact either way.
   - Runs from any path inside a git repository.
   - Foreign-drift backstop: when CONTEXT_FILE carries a
     <status_after_staging_new_files> baseline block, re-runs
@@ -36,14 +43,15 @@ Behavior:
   - If CONTEXT_FILE is provided (typically the path printed by
     prepare_commit_context.sh), removes it on a successful commit so
     each /git_commit run leaves no stale context behind. The context
-    file is preserved if the commit fails or drift is refused so the next
-    attempt can reuse it.
+    file is preserved if the commit fails or either refusal fires
+    (drift, message structure) so the next attempt can reuse it.
 
 Exit status:
   0  committed
   1  empty commit message on stdin
   2  refused to read the message from a TTY
   3  refused: foreign drift (paths outside the reviewed-set baseline)
+  4  refused: message structure (line 2 carries text; git needs it blank)
 USAGE
 }
 
@@ -86,6 +94,26 @@ message="$(cat)"
 if [[ -z "${message//[[:space:]]/}" ]]; then
   echo "commit message on stdin is empty" >&2
   exit 1
+fi
+
+# Message-structure backstop. Git reads line 1 as the subject and the rest as
+# the body only when line 2 is blank; a body-bearing message that skips that
+# blank line parses as one long subject, so git log --oneline, git shortlog,
+# and git format-patch show the whole message as the title and the commit
+# carries no body. Like the drift backstop below, this catches a model that
+# composed past the skill's <message_policy> prose. Refusing rather than
+# rewriting is what keeps the preserve-exact-line-breaks property intact. The
+# check belongs with the stdin-message validations above and sits well ahead of
+# git add -A, so a refusal stages nothing, commits nothing, and leaves
+# CONTEXT_FILE in place. A whitespace-only line 2 passes: git's default
+# --cleanup=whitespace strips it to empty, so the message still parses as
+# subject plus body.
+second_line="$(printf '%s\n' "$message" | sed -n '2p')"
+if [[ -n "${second_line//[[:space:]]/}" ]]; then
+  echo "commit message structure: line 2 must be blank so git reads line 1 as the subject and the rest as the body" >&2
+  echo "line 2 was: $second_line" >&2
+  echo "refusing to commit; recompose the message as a subject line, a blank line, then the body." >&2
+  exit 4
 fi
 
 repo_root="$(git rev-parse --show-toplevel)"
@@ -141,9 +169,9 @@ printf '%s' "$message" | git commit -F -
 git status --short --untracked-files=all
 
 # Clean up the context file produced by prepare_commit_context.sh. Only runs on
-# a successful commit (set -e exits the script earlier on any failure, and the
-# drift backstop exits 3 before this point), so the context survives for a retry
-# if the commit itself fails or drift is refused.
+# a successful commit (set -e exits the script earlier on any failure, and both
+# refusals exit before this point: message structure with 4, drift with 3), so
+# the context survives for a retry if the commit itself fails or a refusal fires.
 if [[ -n "$context_file" && -f "$context_file" ]]; then
   rm -f "$context_file"
 fi

@@ -73,7 +73,7 @@ repo:
 | ID | Eval | What it proves |
 | --- | --- | --- |
 | 1 | single-file commit | Single-line `file -> change` format; bundled scripts both invoked |
-| 2 | multi-file commit | Summary sentence + N `file -> change` lines |
+| 2 | multi-file commit | Subject line, blank line 2, then N `file -> change` body lines |
 | 3 | mixed staged/unstaged/untracked | Stages every untracked file; commits whole state; no scope confirmation prompt |
 | 4 | 60-file changeset | Still uses the script. Large changesets do NOT trigger panic-fallback (the rule hardened in skill 3.2.0) |
 | 5 | simulated script failure | Fallback fires only on non-zero exit; agent consults `references/manual_fallback.md`; one commit still lands |

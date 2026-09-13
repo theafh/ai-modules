@@ -2,12 +2,15 @@
 
 Trigger: a primary `git_commit` script (`scripts/prepare_commit_context.sh` or
 `scripts/commit_with_message.sh`) failed during the current run with a non-zero
-exit other than status `3`. A `commit_with_message.sh` exit of `3` is an
-intentional foreign-drift refusal, not a failure, and does not open this manual
-path; handle it in `SKILL.md`'s `<execute_commit>` by surfacing the printed
-paths, asking the user, and re-invoking with `--accept-drift`. A genuine script
-failure is the only authorized trigger here. If neither script has been invoked
-yet, return to `SKILL.md` and run the primary workflow first.
+exit other than status `3` or status `4`. Those two `commit_with_message.sh`
+exits are intentional refusals, not failures, and neither opens this manual
+path; handle both in `SKILL.md`'s `<execute_commit>`. For status `3`, the
+foreign-drift refusal, surface the printed paths, ask the user, and re-invoke
+with `--accept-drift`. For status `4`, the message-structure refusal, recompose
+the message as a subject line, a blank line, then the body, and re-invoke with
+the corrected message. A genuine script failure is the only authorized trigger
+here. If neither script has been invoked yet, return to `SKILL.md` and run the
+primary workflow first.
 
 The sections below replace the failing script step-for-step. Run only the
 section that corresponds to the script that failed; return to the primary
@@ -140,10 +143,16 @@ stdin without altering its line breaks, and clean up the context file on
 success. There is no intermediate message file.
 
 1. Confirm the composed message is non-empty.
-2. Confirm the drift check above has cleared: no drift, or the user confirmed
+2. Confirm the message's structure the same way `commit_with_message.sh` does:
+   line 1 is the subject, and line 2 is blank whenever a body follows, because
+   git reads a non-blank line 2 as a continuation of the subject and leaves the
+   commit with no body. A one-line subject-only message passes as it stands.
+   When line 2 carries text, recompose the message as a subject line, a blank
+   line, then the body before going on, and commit nothing until it does.
+3. Confirm the drift check above has cleared: no drift, or the user confirmed
    the drifted paths belong.
-3. Stage everything: `git add -A`.
-4. Commit from stdin via a single-quoted heredoc so no shell expansion runs
+4. Stage everything: `git add -A`.
+5. Commit from stdin via a single-quoted heredoc so no shell expansion runs
    inside the message:
 
    ```bash
@@ -154,8 +163,8 @@ success. There is no intermediate message file.
    COMMIT_MSG_END
    ```
 
-5. Print final status: `git status --short --untracked-files=all`.
-6. On successful commit, delete the context file from the previous step:
+6. Print final status: `git status --short --untracked-files=all`.
+7. On successful commit, delete the context file from the previous step:
    `rm -f "$ctx_file"` (using the `mktemp` path you kept). Skip this step
    if the commit failed so the context survives for a retry.
 

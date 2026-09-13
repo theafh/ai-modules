@@ -195,7 +195,7 @@ ctx_file="$(mktemp "$tmp_root/git_commit_context.XXXXXX")"
   print_file_loop "unstaged"
 
   printf '<commit_message_instruction>\n'
-  printf "Write the commit message from this context. For multiple files, use one concise summary sentence followed by one line per changed file in the format \`file name -> concrete change\`.\n"
+  printf "Write the commit message from this context. Open with one short subject line carrying no trailing period. For multiple files, follow that subject with a blank line and then one line per changed file in the format \`file name -> concrete change\` as the body; for a single file, that one \`file name -> concrete change\` line is the subject and stands as the whole message.\n"
   printf '</commit_message_instruction>\n'
   printf '</commit_context>\n'
 } > "$ctx_file"

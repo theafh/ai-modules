@@ -19,12 +19,12 @@
     {
       "id": 2,
       "prompt": "Commit.",
-      "expected_output": "One commit lands whose message has a concise summary sentence on line 1, then one 'file -> change' line per modified file. All three modified files are referenced.",
+      "expected_output": "One commit lands whose message has a short subject line on line 1, a blank line 2, then one 'file -> change' line per modified file as the body. All three modified files are referenced.",
       "files": ["evals/fixtures/multi_file/setup.sh"],
       "expectations": [
         "Exactly one new commit is created in the sandbox repo.",
-        "The HEAD commit subject is one concise summary sentence covering all three changes.",
-        "The commit body contains exactly three lines in the format '<path> -> <description>' — one per modified file.",
+        "The HEAD commit subject (git log -1 --format=%s) is one short line summarizing all three changes, with no trailing period, and it carries none of the 'file -> change' body lines.",
+        "The commit body (git log -1 --format=%b) contains exactly three lines in the format '<path> -> <description>' — one per modified file — which git yields only when line 2 of the message is blank.",
         "Every modified file (src/a.py, src/b.py, docs/notes.md) is referenced by exactly one 'file -> change' line.",
         "The skill invoked prepare_commit_context.sh and commit_with_message.sh.",
         "The skill did NOT use the Write tool (or a Bash heredoc like 'cat > /tmp/...') to create an intermediate commit-message file — the v3.4.0 stdin contract has the message piped directly into commit_with_message.sh via a single-quoted heredoc.",
@@ -56,7 +56,7 @@
         "The commit references all 60 modified files (f01.txt through f60.txt).",
         "The skill invoked prepare_commit_context.sh — it did NOT switch to raw git commands citing the changeset size.",
         "The skill invoked commit_with_message.sh — it did NOT invoke `git add -A && git commit` directly.",
-        "The commit message has one summary line followed by 'file -> change' lines.",
+        "The commit message has one subject line, a blank second line, then the 'file -> change' lines as the body.",
         "The skill did NOT use the Write tool (or a Bash heredoc like 'cat > /tmp/...') to create an intermediate commit-message file — the v3.4.0 stdin contract has the message piped directly into commit_with_message.sh via a single-quoted heredoc, even for a 60-file message body.",
         "After the commit succeeds, the context file whose path prepare_commit_context.sh printed on its first stdout line no longer exists on disk (the skill passed that path as commit_with_message.sh's positional argument so the script cleans it up)."
       ]

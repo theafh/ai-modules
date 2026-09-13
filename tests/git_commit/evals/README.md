@@ -167,7 +167,7 @@ manually from the agent's transcript.
 | Check kind | Source of truth |
 | --- | --- |
 | New commit landed, HEAD^ is the staged baseline, working tree clean | `git rev-parse`, `git status` |
-| Commit message shape ("file -> change" lines, summary sentence) | `git log -1 --format=%B HEAD` |
+| Commit message shape (subject line, blank line 2, "file -> change" body lines) | `git log -1 --format=%B HEAD` |
 | HEAD diff covers the expected file set | `git show --name-only HEAD` |
 | No `git_commit_context.*` straggler in TMPDIR | `find $TMPDIR -newer <marker>` |
 | Pre-flight gate ran or skipped an obligation | presence and epoch second of `.eval/markers/<gate>` |

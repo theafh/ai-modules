@@ -103,6 +103,22 @@ head_subject=$(git log -1 --format=%s HEAD 2>/dev/null || echo)
 head_body=$(git log -1 --format=%B HEAD 2>/dev/null || echo)
 head_files=$(git show --name-only --format= HEAD 2>/dev/null | sort)
 
+# Git's message convention: line 1 is the subject, line 2 is blank, the rest is
+# the body. A body-bearing message that skips the blank line parses as one long
+# subject with no body, which the skill's <message_policy> now rules out. The
+# multi-file evals check line 2 here because counting 'file -> change' lines
+# across the whole message cannot tell the two shapes apart — both carry the
+# same lines. A whitespace-only line 2 counts as blank: git's default
+# --cleanup=whitespace strips it, so the message still parses as subject + body.
+message_line_two=$(sed -n '2p' <<<"$head_body")
+line_two_is_blank() { [[ -z "${message_line_two//[[:space:]]/}" ]]; }
+subject_carries_no_body_line() {
+  # Store the regex in a variable so the literal '>' inside '->' is not parsed
+  # as a shell redirection by bash's [[ ]] form.
+  local re='[^[:space:]]+[[:space:]]+->[[:space:]]+'
+  [[ ! "$head_subject" =~ $re ]]
+}
+
 # --- Per-eval checks ---------------------------------------------------------
 
 case "$eval_id" in
@@ -123,6 +139,8 @@ case "$eval_id" in
     body_has_three_file_lines() { [[ "$file_lines" -eq 3 ]]; }
     body_mentions() { grep -qF "$1" <<<"$head_body"; }
     diff_matches_three_sources() { [[ "$head_files" == "$expected_files" ]]; }
+    check "message line 2 is blank (subject and body split per git convention)" line_two_is_blank
+    check "HEAD subject carries no 'file -> change' body line" subject_carries_no_body_line
     check "HEAD body contains exactly 3 'file -> change' lines (got $file_lines)" body_has_three_file_lines
     check "body mentions src/a.py"      body_mentions src/a.py
     check "body mentions src/b.py"      body_mentions src/b.py
@@ -141,6 +159,7 @@ case "$eval_id" in
     file_lines=$(grep -cE '^[^[:space:]]+[[:space:]]+->[[:space:]]+' <<<"$head_body" || true)
     body_has_sixty_file_lines() { [[ "$file_lines" -ge 60 ]]; }
     check "HEAD diff covers exactly f01.txt..f60.txt"                           diff_covers_sixty
+    check "message line 2 is blank (subject and body split per git convention)" line_two_is_blank
     check "HEAD body has >= 60 'file -> change' lines (got $file_lines)"        body_has_sixty_file_lines
     ;;
   5)

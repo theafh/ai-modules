@@ -2,9 +2,11 @@
 description: Give git_commit a git-standard subject/blank/body: rewrite <message_policy> and prepare-context instruction, add status-4 blank-line refusal, rewire consumers, update evals.
 scope: plugins/ai_dev/skills
 created: 2026-09-09T13:17:22
-updated: 2026-09-09T19:16:49
-status: ready
+updated: 2026-09-13T18:11:36
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Give git_commit's message policy a git-standard subject and blank line, with prepare-context, status-4 backstop, consumers, and evals
@@ -23,7 +25,7 @@ The skill is already internally inconsistent about this. Its own `references/man
 
 Git's own convention is the authority: the first line is the subject, the second line is blank, and the rest is the body. The common commit-message linter gitlint encodes the same rule as its `B4` check, "second line is not empty", so a message missing the blank line also fails a standard message-lint gate wherever one runs.
 
-The archived [drift guard in the script](archive/ai-dev_git-commit-drift-guard-in-script.md) is the precedent behind putting the enforcement in the script: it deliberately moved the foreign-drift guarantee out of a prose-only step into `commit_with_message.sh` so the guarantee "no longer depends on the running model following a prose instruction".
+The archived [drift guard in the script](ai-dev_git-commit-drift-guard-in-script.md) is the precedent behind putting the enforcement in the script: it deliberately moved the foreign-drift guarantee out of a prose-only step into `commit_with_message.sh` so the guarantee "no longer depends on the running model following a prose instruction".
 
 ## Approach
 
