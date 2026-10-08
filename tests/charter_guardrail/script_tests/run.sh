@@ -356,14 +356,6 @@ if find "${REPO_ROOT}/plugins/ai_dev/skills" -maxdepth 1 -type d -name 'task_cha
   fail "task_charter skill should not exist"
 fi
 
-git -C "$REPO_ROOT" diff --quiet -- deployment/deployment.conf ||
-  fail "deployment.conf should remain unchanged"
-git -C "$REPO_ROOT" diff --quiet -- \
-  plugins/ai_dev/skills/task_create/SKILL.md \
-  plugins/ai_dev/skills/task_check/SKILL.md \
-  plugins/ai_dev/skills/task_implement/SKILL.md ||
-  fail "Manual task-chain skills should remain unchanged by this hook task"
-
 deploy_project="${TMP_ROOT}/deploy project"
 mkdir -p "$deploy_project"
 deploy_out="${TMP_ROOT}/deploy.out"

@@ -2,7 +2,7 @@
 description: "Refine the natural-language output style toward connected, balanced prose: relation-keeping splits, paragraph rules, colons, glosses, a list test, and an eval harness on a shared isolation helper."
 scope: styles
 created: 2026-10-02T12:20:55
-updated: 2026-10-08T12:43:40
+updated: 2026-10-08T22:56:55
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -99,7 +99,7 @@ Build the eval harness at `tests/natural_language/` on the skill-creator-aligned
 
 - Deploying the refined style, which the standing repo rules leave to the user.
 - Editing the language-humanizer skill task; style alignment for this task is already stated in the Approach's style-rewrite items and needs no SKILL.md diff.
-- Editing the harness under `tests/language_humanizer/`, including moving its runner and judge onto the isolation helper, which [tests_language-humanizer-worker-isolation.md](../tests_language-humanizer-worker-isolation.md) owns.
+- Editing the harness under `tests/language_humanizer/`, including moving its runner and judge onto the isolation helper, which [tests_language-humanizer-worker-isolation.md](tests_language-humanizer-worker-isolation.md) owns.
 
 ## Acceptance
 

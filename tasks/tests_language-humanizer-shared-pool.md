@@ -2,7 +2,7 @@
 description: Point language_humanizer's already-parallel, isolated pool at the shared eval-runner helper without changing the five-pass measurement.
 scope: tests/language_humanizer/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-08T22:06:22
+updated: 2026-10-08T22:56:55
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,7 +21,7 @@ the Pattern A parallel reference without a second copy of the pool.
 
 This runner already parallelizes (`vendor.DEFAULT_PARALLEL_WORKERS`) and
 deliberately skips the verdict cache because repeated draws are the
-measurement. [The isolation task](tests_language-humanizer-worker-isolation.md)
+measurement. [The isolation task](archive/tests_language-humanizer-worker-isolation.md)
 already runs each pass and the judge under `tests/lib/worker_isolation.py`, and
 [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
 shipped as `tests/lib/eval_runner.py`, so the pool can switch now.

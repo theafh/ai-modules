@@ -177,8 +177,13 @@ don't bring up new harnesses under Pattern B.
   no bundled scripts, so `script_tests/` asserts its static prose
   contract instead.
 - **`charter_guardrail/`**: Pattern A, script-only. `script_tests/run.sh`
-  greps the guardrail doc set against its documented contract. No
-  `run_all.sh`; run `script_tests/run.sh` directly.
+  exercises the `charter_guardrail.sh` hook that protects `CHARTER.md`:
+  its block and allow decisions for Claude, Codex, and Antigravity tool
+  calls and for shell commands that read or write the charter, the
+  `guardrail/charter-*` branch exception, and its behavior without `jq`.
+  It also checks the hook registrations, the Codex deploy wiring, and how
+  the docs and wiki describe Codex plugin-hook trust. No `run_all.sh`;
+  run `script_tests/run.sh` directly.
 - **`format_rust/`**: Pattern A, script-only. `script_tests/run.sh` greps
   SKILL.md and the plugin README for the error-versus-invariant model,
   panic discipline, and clippy wiring. No `run_all.sh`.

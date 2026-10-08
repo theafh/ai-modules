@@ -2,7 +2,7 @@
 description: Isolate git_commit eval TMPDIR per job, run the suite at default 4 workers through the shared Pattern A helper, and prove both vendors on that path.
 scope: tests/git_commit/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-08T22:06:22
+updated: 2026-10-08T22:56:55
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -29,7 +29,7 @@ shared `TMPDIR` cross-talk. `DEFAULT_IDS` is a frozen `"1"`..`"9"` list.
 
 This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
 and follows it. Host-instruction isolation stays with
-[the language_humanizer isolation task](tests_language-humanizer-worker-isolation.md).
+[the language_humanizer isolation task](archive/tests_language-humanizer-worker-isolation.md).
 
 ## Approach
 

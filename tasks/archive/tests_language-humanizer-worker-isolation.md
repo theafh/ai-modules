@@ -2,8 +2,8 @@
 description: "Isolate the language_humanizer eval worker and judge from host instructions through a shared tests/lib helper, re-measure on Cursor, and keep Claude isolation as compatibility."
 scope: tests
 created: 2026-10-02T12:56:51
-updated: 2026-10-08T11:00:56
-status: implemented
+updated: 2026-10-08T22:56:55
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -47,7 +47,7 @@ helper contract as compatibility.
   available through the same helper for compatibility and for harnesses that
   exercise Claude-only product surfaces such as output-style loading.
 - **The shared isolation helper.** This task must follow
-  [styles_natural-language-connected-prose.md](archive/styles_natural-language-connected-prose.md),
+  [styles_natural-language-connected-prose.md](styles_natural-language-connected-prose.md),
   because it imports `tests/lib/worker_isolation.py`, which that task builds. The
   helper creates a fresh sandbox root under the system temporary directory,
   raises its create-root refusal for a root under the home directory or inside a
@@ -107,7 +107,7 @@ helper contract as compatibility.
 - Changing the skill, its fixtures or its grader rubrics.
 - Building the isolation helper, its unit tests and its `### Worker isolation`
   section, and proving Claude output-style loading, all of which
-  [styles_natural-language-connected-prose.md](archive/styles_natural-language-connected-prose.md)
+  [styles_natural-language-connected-prose.md](styles_natural-language-connected-prose.md)
   owns.
 - Turning off Cursor User Rules or deployed user-level skills, which the
   helper's isolation contract names as Cursor sources outside its reach.
