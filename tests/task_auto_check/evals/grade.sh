@@ -92,11 +92,12 @@ status_is() {
 }
 
 # no_repeated_link_finding <task file> -> the target carries no repeated-link
-# warn after the run. The base protocol makes the gathered account, not the
-# surviving link count, the measure of a resolved finding — but in these
-# fixtures neither repeat earns its link, so a genuine regroup necessarily
-# leaves one link and clears the warn. Grading the linter's own verdict keeps
-# the check off any particular sentence the regroup happened to write.
+# warn after the run. The base protocol makes the gathered material, not the
+# surviving link count, the measure of a resolved finding, and in these
+# fixtures both links carry one handoff that belongs in one passage, so a
+# genuine reorganization necessarily leaves one link and clears the warn.
+# Grading the linter's own verdict keeps the check off any particular sentence
+# the regroup happened to write.
 no_repeated_link_finding() {
   local file="$1"
   ! python3 "$LINT" "$TASKS" --file "$file" 2>/dev/null | grep -q 'repeated-link'
@@ -113,10 +114,33 @@ sections_naming() {
     END { c=0; for (k in seen) c++; print c }'
 }
 
+# section_text <file> <heading> -> one H2 section's text with its hard wraps
+# collapsed, so a re-wrapped section compares equal to the staged one.
+section_text() {
+  body_text "$1" | awk -v h="$2" '
+    $0 == h { f=1; next }
+    /^## / { f=0 }
+    f { print }' | tr '\n' ' ' | tr -s ' '
+}
+
 # Response helpers. RESPONSE is absent for an operator-staged run, so a check
 # that needs it fails loudly rather than passing vacuously.
 response_has() { [[ -s "$RESPONSE" ]] && grep -qiE -- "$1" "$RESPONSE"; }
 response_readable() { [[ -s "$RESPONSE" ]]; }
+
+# surfaced_channel_names_repeated_link -> a surfaced-but-not-fixed line names
+# a repeated-link finding. The output contract has the run report that channel
+# with the Repeated-link disposition filter already applied, so a faithful
+# empty-channel line names the filter ("Surfaced-but-not-fixed (after
+# Repeated-link disposition filter): none"); its label is dropped before the
+# match so the filter's name never reads as a finding. grep reads one line at a
+# time, so `.` keeps the match on the channel line.
+surfaced_channel_names_repeated_link() {
+  response_readable || return 1
+  tr '[:upper:]' '[:lower:]' < "$RESPONSE" \
+    | sed 's/repeated-link disposition filter//g' \
+    | grep -qE 'surfaced-but-not-fixed.{0,160}repeated-link'
+}
 
 # disposition_blocks -> one line per `repeated-link:` lead-in, with that line's
 # own wrapping collapsed. A report hard-wraps a disposition line across several
@@ -129,6 +153,54 @@ disposition_blocks() {
   tr '\n' ' ' < "$RESPONSE" | tr -s ' ' \
     | sed 's/repeated-link:/\n&/g' \
     | awk 'NR>1 { print substr($0, 1, 400) }'
+}
+
+# disposition_of <needle-for-the-target> -> the disposition that finding's line
+# reports, read as the first disposition word on it. The shape puts the
+# disposition after the file, target, and sections, none of which carry one of
+# those words, so the first match is the field itself and a surfaced reason
+# that happens to say "kept" later on cannot be mistaken for a kept line.
+disposition_of() {
+  disposition_blocks | grep -iE -- "repeated-link:.*$1" | head -1 \
+    | grep -oiE 'regrouped|surfaced|kept' | head -1 | tr '[:upper:]' '[:lower:]'
+}
+
+# disposition_reason <needle-for-the-target> -> the reason on that finding's
+# surfaced line, from `surfaced because` to its first sentence end. The report
+# is read as records with their hard wraps joined, and a blank line, a code
+# fence, a heading, a table row, or a list marker ends a record, so prose that
+# follows the line never lends the reason a word it lacks. A record holding
+# several lines, as a fenced block of disposition lines does, is split on the
+# `repeated-link:` lead-in so each finding keeps its own reason.
+disposition_reason() {
+  response_readable || return 1
+  awk -v needle="$1" '
+    function take(rec,    low, rest, i, seg, j, reason, n) {
+      low = tolower(rec)
+      rest = rec
+      while ((i = index(tolower(rest), "repeated-link:")) > 0) {
+        rest = substr(rest, i + 14)
+        j = index(tolower(rest), "repeated-link:")
+        seg = (j > 0) ? substr(rest, 1, j - 1) : rest
+        if (index(tolower(seg), tolower(needle)) == 0) continue
+        i = index(tolower(seg), "surfaced because")
+        if (i == 0) return 0
+        reason = substr(seg, i + 16)
+        n = match(reason, /[.;!?]([[:space:]]|$)|[[:space:]]\|/)
+        if (n > 0) reason = substr(reason, 1, n - 1)
+        print reason
+        return 1
+      }
+      return 0
+    }
+    function flush() {
+      if (rec != "" && !done) done = take(rec)
+      rec = ""
+    }
+    /^[[:space:]]*$/ || /^[[:space:]]*```/ { flush(); next }
+    /^[[:space:]]*(#|\||[-*+][[:space:]]|[0-9]+[.)][[:space:]])/ { flush() }
+    { rec = (rec == "" ? $0 : rec " " $0) }
+    END { flush() }' "$RESPONSE"
 }
 
 status_is_one_of() {
@@ -681,9 +753,7 @@ case "$eval_id" in
     # a repeated-link finding is named on that channel. Do not grep
     # disposition_blocks for the channel label: those blocks collapse following
     # prose and false-fail on a legitimate empty-channel line.
-    not_surfaced_unfixed() {
-      ! response_has 'surfaced-but-not-fixed[^\n]{0,160}repeated-link'
-    }
+    not_surfaced_unfixed() { ! surfaced_channel_names_repeated_link; }
     check "the repeated-link warn is cleared on the target" warn_cleared
     check "the target's account of the sibling sits in one section" account_in_one_section
     check "the handoff account survives the regroup" handoff_survives
@@ -715,52 +785,131 @@ case "$eval_id" in
         && cmp -s "$target/.sibling.md" "$sibling"
     }
     updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
-    target_untouched() {
+    # The body, H1 onward, is exactly as staged. The frontmatter is left out
+    # because the gate's own ready stamp rewrites status and updated on every
+    # path, so a whole-file comparison would fail a surfaced run that left the
+    # body alone.
+    target_body_untouched() {
       git -C "$proj" show HEAD:tasks/api_retry-header.md >"$target/.target.md" \
-        && cmp -s "$target/.target.md" "$f"
+        && cmp -s <(body_text "$target/.target.md") <(body_text "$f")
     }
-    # This fixture's Approach names throttle.py as the edit site and the sibling
-    # task only as the dependency behind it, which sits on the contested edge of
-    # the grouping rule's "an edit site named in Approach that Context introduced
-    # as background" carve-out. Competent readers split on whether that earns the
-    # second link, so this eval grades the routing the immediate-ready path owns,
-    # not which side of the carve-out the Grouping advocate lands on. It requires
-    # a disposition line and then holds the file state to whichever disposition
-    # the run reported, so neither answer passes on a body that contradicts it.
+    # Context and Approach narrate one handoff, so the material belongs in one
+    # passage and regrouped is the expected disposition. The react protocol
+    # still lets a writing surface surface a finding for an organizational
+    # reason, so this eval accepts either of the two dispositions the protocol
+    # allows, holds the file state to whichever the run reported, and fails a
+    # kept line outright because kept is no longer a disposition.
     disposition_reported() {
-      disposition_blocks | grep -qiE 'repeated-link:.*(regrouped|kept|surfaced)'
+      [[ "$(disposition_of "api_retry-header")" =~ ^(regrouped|surfaced)$ ]]
+    }
+    no_kept_line() {
+      response_readable && [[ "$(disposition_of "api_retry-header")" != "kept" ]]
+    }
+    # A surfaced line must say how the body is organized: a Goal or Acceptance
+    # contract the reorganization would change, separate concerns, or no
+    # grouping that keeps the meaning. A reason that argues from one link's own
+    # value is the retired per-link reading and fails. The keywords are read
+    # from the reason alone, so a following sentence that mentions Goal cannot
+    # pass a per-link reason.
+    surfaced_reason_organizational() {
+      local reason
+      [[ "$(disposition_of "api_retry-header")" == "surfaced" ]] || return 0
+      reason="$(disposition_reason "api_retry-header")"
+      [[ -n "$reason" ]] || return 1
+      grep -qiE 'goal|acceptance|contract|concern|split|group|meaning|organi' <<<"$reason" \
+        && ! grep -qiE 'earns|each site|carve-out|its own link|distinct role' <<<"$reason"
     }
     disposition_matches_body() {
-      if disposition_blocks | grep -qiE 'repeated-link:.*regrouped'; then
+      if [[ "$(disposition_of "api_retry-header")" == "regrouped" ]]; then
         warn_cleared && account_in_one_section && updated_changed
       else
-        target_untouched
+        target_body_untouched
       fi
     }
-    no_link_stripped_to_plain_text() {
+    # A gathered account carries the link with it, so at least one link to the
+    # sibling survives; a round that stripped every link moved no material.
+    sibling_still_linked() {
       [[ "$(grep -c 'api_throttle-window-config.md' "$f")" -ge 1 ]]
     }
-    # A regrouped or kept finding carries its own disposition line and leaves
-    # the surfaced-but-not-fixed channel empty; a surfaced one belongs there,
-    # so the filter is asserted only for the two dispositioned outcomes.
+    # A regrouped finding carries its own disposition line and leaves the
+    # surfaced-but-not-fixed channel empty; a surfaced one belongs there, so
+    # the filter is asserted only for the regrouped outcome.
     # Same empty-channel rule as not_surfaced_unfixed (no disposition_blocks
     # channel-label grep — that helper collapses following prose).
     disposition_filter_holds() {
-      if disposition_blocks | grep -qiE 'repeated-link:.*surfaced'; then
+      if [[ "$(disposition_of "api_retry-header")" == "surfaced" ]]; then
         return 0
       fi
-      ! response_has 'surfaced-but-not-fixed[^\n]{0,160}repeated-link'
+      ! surfaced_channel_names_repeated_link
     }
     check "task ends status: ready, written only by task_check" status_ready
-    check "the ready path reports a disposition for the repeated-link finding" disposition_reported
+    check "the ready path reports a regrouped or surfaced disposition" disposition_reported
+    check "no disposition line for the finding reads kept" no_kept_line
+    check "a surfaced line carries an organizational reason" surfaced_reason_organizational
     check "the reported disposition matches the file state it claims" disposition_matches_body
-    check "no surviving mention lost its link to plain text" no_link_stripped_to_plain_text
+    check "the sibling stays linked from the body's account" sibling_still_linked
     check "the handoff account survives the round" handoff_survives
     check "Goal and the Acceptance contract keep their subject matter" goal_preserved
     check "the sibling task file is byte-identical" sibling_untouched
     check "a dispositioned finding stays out of surfaced-but-not-fixed" disposition_filter_holds
     check "tasks tree lints clean after the run" task_lints
     note_agent_attest "one repair round ran for the repeated-link finding before mechanical lint finalization, on a first-call ready verdict"
+    note_agent_attest "response points to task_implement as the next step"
+    ;;
+
+  regroup_same_paragraph_ready)
+    f="$TASKS/api_retry-header.md"
+    sibling="$TASKS/api_throttle-window-config.md"
+    staged="$target/.staged_target.md"
+    git -C "$proj" show HEAD:tasks/api_retry-header.md >"$staged" 2>/dev/null
+    status_ready() { status_is "$f" ready; }
+    warn_cleared() { no_repeated_link_finding "$f"; }
+    one_link() {
+      [[ "$(grep -oF '(api_throttle-window-config.md)' "$f" | wc -l | tr -d ' ')" == "1" ]]
+    }
+    # Both links sat in one Context paragraph, so the surviving link stays
+    # there and no other section takes up the sibling.
+    named_in_context_only() {
+      [[ "$(sections_naming "$f" "api_throttle-window-config")" == "1" ]] \
+        && section_text "$f" "## Context" | grep -q 'api_throttle-window-config'
+    }
+    handoff_survives() { section_text "$f" "## Context" | grep -qi 'service config'; }
+    # The one-paragraph case moves no material, so every other section reads
+    # exactly as staged once its hard wraps are collapsed.
+    section_as_staged() {
+      [[ "$(section_text "$f" "$1")" == "$(section_text "$staged" "$1")" ]]
+    }
+    other_sections_as_staged() {
+      section_as_staged "## Goal" && section_as_staged "## Approach" \
+        && section_as_staged "## Acceptance"
+    }
+    sibling_untouched() {
+      git -C "$proj" show HEAD:tasks/api_throttle-window-config.md >"$target/.sibling.md" \
+        && cmp -s "$target/.sibling.md" "$sibling"
+    }
+    regrouped_line() { [[ "$(disposition_of "api_retry-header")" == "regrouped" ]]; }
+    # Every line the report carries for this finding reads regrouped, so a
+    # second line reading kept or surfaced fails even when the first passes.
+    every_line_regrouped() {
+      local words
+      words="$(disposition_blocks | grep -iE -- 'repeated-link:.*api_retry-header' \
+        | while IFS= read -r l; do grep -oiE 'regrouped|surfaced|kept' <<<"$l" | head -1; done \
+        | tr '[:upper:]' '[:lower:]' | sort -u)"
+      [[ "$words" == "regrouped" ]]
+    }
+    not_surfaced_unfixed() { ! surfaced_channel_names_repeated_link; }
+    check "task ends status: ready, written only by task_check" status_ready
+    check "the repeated-link warn is cleared" warn_cleared
+    check "the body links the sibling exactly once" one_link
+    check "only ## Context names the sibling" named_in_context_only
+    check "## Context keeps the handoff account" handoff_survives
+    check "## Goal, ## Approach, and ## Acceptance read as staged" other_sections_as_staged
+    check "the sibling task file is byte-identical" sibling_untouched
+    check "the response's line for the finding reads regrouped" regrouped_line
+    check "no line for the finding reads kept or surfaced" every_line_regrouped
+    check "the regrouped finding stays out of surfaced-but-not-fixed" not_surfaced_unfixed
+    check "tasks tree lints clean after the run" task_lints
+    note_agent_attest "the verifier approved the plain-text naming as the protocol's one-paragraph case rather than rejecting it as link stripping"
     note_agent_attest "response points to task_implement as the next step"
     ;;
 

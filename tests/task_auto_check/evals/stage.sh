@@ -16,7 +16,7 @@
 #   verifier_failure_user_stop  guard_rebaseline_after_gate
 #   interaction_scan_surfaces  interaction_scan_no_false_alarm
 #   immediate_ready_citations_survive  immediate_ready_citations_overturn
-#   regroup_via_reviewer  regroup_immediate_ready
+#   regroup_via_reviewer  regroup_immediate_ready  regroup_same_paragraph_ready
 
 set -euo pipefail
 
@@ -134,6 +134,10 @@ case "$eval_id" in
     ;;
   regroup_immediate_ready)
     "$HERE/fixtures/regroup_immediate_ready/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_retry-header.md."
+    ;;
+  regroup_same_paragraph_ready)
+    "$HERE/fixtures/regroup_same_paragraph_ready/setup.sh" "$target" >/dev/null
     prompt="Run task_auto_check on tasks/api_retry-header.md."
     ;;
   *)

@@ -280,15 +280,18 @@ s10_failure_policy_and_rebaseline() {
 s11_repeated_link_repair_path() {
   local ok=true base="$REPO_ROOT/plugins/ai_dev/skills/task/SKILL.md" fix="$REPO_ROOT/plugins/ai_dev/skills/task_fix/SKILL.md"
   local reviewer="$AGENTS_DIR/auto_reviewer_task.md" verifier="$AGENTS_DIR/auto_verifier_task.md" shaper="$AGENTS_DIR/auto_shaper_task.md"
-  assert_contains "base names the four writing owners" "$base" "Four surfaces own the regroup and apply it in their own edit round" || ok=false
-  assert_contains "base names the reporting surfaces" "$base" "report the finding with the sections that link the target and leave the regroup to those four" || ok=false
+  assert_contains "base names the writing owners" "$base" "The writing owners apply the reorganization in their own edit round" || ok=false
+  assert_contains "base names the reporting surfaces" "$base" "report the finding with the sections that link the target and leave the reorganization to the writing owners" || ok=false
   assert_not_contains_re "base drops the unnamed writing surface" "$base" "A (writing|read-only) surface (applies|reports)" || ok=false
   assert_not_contains_re "base drops the two-site decision test" "$base" "name a distinct role each time" || ok=false
   assert_contains "base owns the shared disposition line shape" "$base" "**Repeated-link disposition line.**" || ok=false
   assert_contains "Goal move needs background, not just a surviving deliverable" "$base" "does not license dropping an outcome or requirement only Goal carried" || ok=false
-  assert_contains "the disposition set is closed at three" "$base" "there is no fourth: regrouped, kept, or surfaced" || ok=false
-  assert_contains "a link downgrade is not a disposition" "$base" "Converting a link to plain text is none of them" || ok=false
-  assert_contains "a link travels with its clause and only with it" "$base" "A link travels with the clause that carried it and only with that clause" || ok=false
+  assert_contains "the disposition set is closed at two" "$base" "A finding takes one of exactly two dispositions" || ok=false
+  assert_contains "stripping link syntax resolves nothing outside one paragraph" "$base" "Outside that one-paragraph case, stripping link syntax from a passage whose material stayed reorganizes nothing and resolves nothing" || ok=false
+  assert_contains "a repeat inside one paragraph resolves by plain-text naming" "$base" "A repeat inside one paragraph is already gathered, so the writing surface names the target again in plain text inside that paragraph" || ok=false
+  assert_contains "the one-paragraph case reads regrouped" "$base" "It is \`regrouped\` when the reorganization clears the warn, the one-paragraph case included" || ok=false
+  assert_contains "verifier approves the one-paragraph case" "$verifier" "approve the protocol's one-paragraph case, where an edit names the target again in plain text inside the one paragraph that already links it" || ok=false
+  assert_contains "a link moves with its material" "$base" "Each link moves with the material it carried, and a pointer left behind names the target in plain text" || ok=false
   assert_contains "a Goal plus Acceptance pair surfaces rather than gathers" "$base" "neither section can absorb the other's copy, so surface the finding instead of gathering it" || ok=false
   assert_contains "plain-text naming is bounded to one paragraph" "$base" "never licenses stripping the link from another section" || ok=false
   assert_contains "freeze records the repeated-link findings" "$SKILL" "record its \`repeated-link\` findings, each with the sections that link the counted target" || ok=false

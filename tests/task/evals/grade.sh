@@ -781,6 +781,79 @@ case "$eval_id" in
     note_agent_attest "no prompt was added beyond the existing create flow"
     ;;
 
+  create_regroup_owner_account)
+    sibling="cli_output-format-registry.md"
+    new_files=()
+    for nf in "$TASKS"/*.md; do
+      [[ -f "$nf" && "$(basename "$nf")" != "$sibling" ]] && new_files+=("$nf")
+    done
+    one_new_task() { [[ ${#new_files[@]} -eq 1 ]]; }
+    no_archived_task() { [[ -z "$(find "$TASKS/archive" -name '*.md' 2>/dev/null)" ]]; }
+    sibling_untouched() { file_unchanged "$sibling"; }
+    check "exactly one new task file beside the seeded sibling (got ${#new_files[@]})" one_new_task
+    check "nothing written under archive/"                                           no_archived_task
+    check "the tree lints with no blocking finding"                                  lint_no_blocking
+    check "the seeded sibling task is byte-identical"                                sibling_untouched
+    if one_new_task; then
+      f="${new_files[0]}"
+      no_repeated_link() {
+        ! python3 "$LINT" "$TASKS" --file "$f" 2>/dev/null | grep -q 'repeated-link'
+      }
+      # A markdown link whose target is the sibling, with or without ./ prefix.
+      sibling_link_re='\]\([^)]*cli_output-format-registry\.md'
+      linked_once() {
+        [[ "$(sed -n '/^# /,$p' "$f" | grep -oE "$sibling_link_re" | wc -l | tr -d ' ')" == "1" ]]
+      }
+      oos_block() { awk '/\*\*Out of scope:\*\*/{f=1} /^## /{f=0} f' "$f"; }
+      oos_names_yaml() { oos_block | grep -qi 'yaml'; }
+      # The owner may be named by its slug or in prose ("the output-format
+      # registry task"), linked or in plain text.
+      oos_names_owner() { oos_block | grep -qiE 'output.format.registry'; }
+      # The H2 section holding the one link. A link inside the Out of scope
+      # block belongs to the section the block sits in, ## Approach.
+      link_section() {
+        sed -n '/^# /,$p' "$f" | awk '
+          /^## / { sec=$0; next }
+          sec != "" && $0 ~ /\]\([^)]*cli_output-format-registry\.md/ { print sec; exit }'
+      }
+      # Sections naming the sibling outside the Out of scope block, by its slug
+      # or as a task: "sibling" or "registry task". A Context that tells the
+      # sibling's background in prose and leaves the only link to the deferral
+      # splits the account across two sections, so prose naming counts too.
+      # The generic phrase "output-format registry" stays uncounted, since
+      # Approach names the registry module it registers with, which is code
+      # rather than an account of the sibling. The block runs from its label
+      # to the next H2 heading, so a deferral pointer that names the owner in
+      # plain text is not counted as a second account. Each section is read
+      # with its hard wraps joined, so a phrase split across lines still counts.
+      sections_naming_outside_oos() {
+        sed -n '/^# /,$p' "$f" | awk '
+          /^## / { sec=$0; inoos=0; next }
+          /\*\*Out of scope:\*\*/ { inoos=1 }
+          !inoos && sec != "" { txt[sec] = txt[sec] " " tolower($0) }
+          END {
+            for (k in txt)
+              if (txt[k] ~ /cli_output-format-registry|sibling|registry task/) print k
+          }'
+      }
+      account_in_one_section() {
+        local linked
+        linked="$(link_section)"
+        [[ -n "$linked" ]] || return 1
+        ! sections_naming_outside_oos | grep -vxF -- "$linked" | grep -q .
+      }
+      created_eq_updated() { [[ "$(fm_field "$f" created)" == "$(fm_field "$f" updated)" ]]; }
+      check "the new file carries no repeated-link finding"                      no_repeated_link
+      check "the new file links the sibling exactly once"                        linked_once
+      check "the Out of scope block names the --yaml work"                       oos_names_yaml
+      check "the Out of scope block names the sibling as its owner"              oos_names_owner
+      check "every section naming the sibling outside the block is the linked one" account_in_one_section
+      check "created == updated (one creation timestamp)"                        created_eq_updated
+    fi
+    note_agent_attest "the --yaml deferral stays a one-line pointer, and the sibling's background and the work it owns are told once"
+    note_agent_attest "when the draft drew a repeated-link warn, the report carries its disposition line reading regrouped"
+    ;;
+
   auto_check_boundary)
     f="$TASKS/cli_json-output-flag.md"
     file_present() { [[ -f "$f" ]]; }

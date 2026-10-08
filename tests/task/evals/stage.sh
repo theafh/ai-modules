@@ -18,6 +18,10 @@
 #   implement_boundary_cross  implement_boundary_agree
 #   create_scope_trim  auto_check_boundary
 #                                     (Out of scope boundary-convention behaviours)
+#   create_regroup_owner_account      (the create path answering a repeated-link
+#                                      warn: a draft that builds on a live
+#                                      sibling and defers work to it keeps its
+#                                      account of the sibling under one link)
 #   check_exclusion_requirement  check_exclusion_requirement_control
 #   check_exclusion_waiver  check_exclusion_waiver_control
 #                                     (Out of scope not-for behaviours: an
@@ -68,7 +72,7 @@
 
 set -euo pipefail
 
-eval_id="${1:?eval id required (create|check|standing_rules_create|standing_rules_check|standing_rules_check_control|explain|select|implement|implement_dep_gate|select_inbound_dep|select_dep_regression|audit_gaps|audit_clean|finish|fix|query|update|update_contract|triage|lossless_split|lossless_single|check_boundary_contradiction|check_boundary_clean|implement_boundary_cross|implement_boundary_agree|create_scope_trim|auto_check_boundary|check_exclusion_requirement|check_exclusion_requirement_control|check_exclusion_waiver|check_exclusion_waiver_control|check_count_stable|check_commit_proof_surface|check_commit_proof_surface_control|finish_arch_extended|finish_arch_declined|finish_arch_absent|fix_coherence|fix_coherence_reconcile_escalated|fix_coherence_reconcile_inline_staleness|fix_coherence_selector_scope|fix_coherence_selector_explicit_list|fix_coherence_selector_whole_tree)}"
+eval_id="${1:?eval id required (create|check|standing_rules_create|standing_rules_check|standing_rules_check_control|explain|select|implement|implement_dep_gate|select_inbound_dep|select_dep_regression|audit_gaps|audit_clean|finish|fix|query|update|update_contract|triage|lossless_split|lossless_single|check_boundary_contradiction|check_boundary_clean|implement_boundary_cross|implement_boundary_agree|create_scope_trim|create_regroup_owner_account|auto_check_boundary|check_exclusion_requirement|check_exclusion_requirement_control|check_exclusion_waiver|check_exclusion_waiver_control|check_count_stable|check_commit_proof_surface|check_commit_proof_surface_control|finish_arch_extended|finish_arch_declined|finish_arch_absent|fix_coherence|fix_coherence_reconcile_escalated|fix_coherence_reconcile_inline_staleness|fix_coherence_selector_scope|fix_coherence_selector_explicit_list|fix_coherence_selector_whole_tree)}"
 target="${2:-$(mktemp -d "${TMPDIR:-/tmp}/task_eval.XXXXXX")}"
 mkdir -p "$target"
 target="$(cd "$target" && pwd)"
@@ -216,6 +220,11 @@ case "$eval_id" in
     "$HERE/fixtures/create_scope_trim/setup.sh" "$target" >/dev/null
     skill_name="task_create"
     prompt="Make a task to add a --json output flag to the report command. We also want --yaml and --csv output eventually, but not as part of this — those are separate, later work."
+    ;;
+  create_regroup_owner_account)
+    "$HERE/fixtures/create_regroup_owner_account/setup.sh" "$target" >/dev/null
+    skill_name="task_create"
+    prompt="Make a task to add a --json output flag to the report command. The JSON writer should register through the output-format registry that tasks/cli_output-format-registry.md is building. That task also owns the --yaml flag, so --yaml stays out of this one."
     ;;
   auto_check_boundary)
     "$HERE/fixtures/check_boundary_contradiction/setup.sh" "$target" >/dev/null

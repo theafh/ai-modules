@@ -10,12 +10,14 @@ init_proj "$target"
 
 mkdir -p "$target/proj/docs" "$target/proj/src/api" "$target/proj/tests"
 
-# Same clean-premise staging as immediate_ready_citations_survive: every span
-# the task's claims rest on exists, so a first-call gate can clear the whole
-# checklist and stamp ready without raising an issue. What this fixture adds is
-# a scattered account behind a repeated-link warn, which is a lint finding
-# rather than a readiness issue, so the ready verdict stands and the repeated
-# -link repair round is the only thing that can gather the account.
+# Same clean-premise staging as regroup_immediate_ready: every span the task's
+# claims rest on exists, so a first-call gate can clear the whole checklist and
+# stamp ready without raising an issue. What this fixture changes is where the
+# repeat sits. Both links fall inside one Context paragraph, so the material is
+# already gathered and the repeated-link repair round can only apply the react
+# protocol's one-paragraph case: the Grouping advocate names the sibling again
+# in plain text inside that paragraph, and the verifier approves that edit
+# rather than rejecting it as link stripping.
 cat > "$target/proj/src/api/throttle.py" <<'EOF'
 """Request throttling. Emits HTTP 429 when a client exceeds its budget."""
 
@@ -95,11 +97,10 @@ default, and leave the module-level name as a thin accessor.
   reports, proven by a pytest case in `tests/test_throttle.py`.
 EOF
 
-# Target task. Context and Approach carry the SAME account of one handoff,
-# that the sibling task is moving the window constant into config, and each
-# states it with its own link. Both passages describe one handoff, so the
-# material belongs together and the react protocol gathers the whole account
-# into one passage under one link.
+# Target task. One Context paragraph carries the whole account of the handoff,
+# that the sibling task is moving the window constant into config, and links
+# the sibling twice. Approach reads the window without naming the sibling, so
+# nothing outside that paragraph needs to move.
 cat > "$target/proj/tasks/api_retry-header.md" <<'EOF'
 ---
 description: Add a Retry-After header to API throttling responses so clients know when to retry after HTTP 429.
@@ -124,19 +125,19 @@ know when to retry after HTTP 429.
 headers. The module's `THROTTLE_WINDOW_SECONDS = 60` names the throttle
 window, and
 [api_throttle-window-config](api_throttle-window-config.md) is moving that
-constant into the service config. `docs/api.md` documents public response
-headers under its `## Response headers` section, which does not yet list
-`Retry-After`. `tests/test_throttle.py` covers the current 429 response with
-pytest.
+constant into the service config, so this task reads the window through the
+module-level name and leaves the config move to
+[api_throttle-window-config](api_throttle-window-config.md). `docs/api.md`
+documents public response headers under its `## Response headers` section,
+which does not yet list `Retry-After`. `tests/test_throttle.py` covers the
+current 429 response with pytest.
 
 ## Approach
 
 Update `build_throttle_response()` to include `Retry-After` in its headers,
-valued as `THROTTLE_WINDOW_SECONDS` in seconds. That constant is being moved
-into the service config by
-[api_throttle-window-config](api_throttle-window-config.md), so read it
-through the module-level name rather than inlining 60. Then document the
-header in the `## Response headers` section of `docs/api.md`.
+valued as `THROTTLE_WINDOW_SECONDS` in seconds and read through the
+module-level name rather than inlining 60. Then document the header in the
+`## Response headers` section of `docs/api.md`.
 
 ## Acceptance
 

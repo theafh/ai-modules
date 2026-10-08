@@ -2,7 +2,7 @@
 description: Gate the repeated-link and size checks to live task bodies, and rewrite the rules describing them so an archived finding is never reported rather than reported as a count nobody acts on.
 scope: plugins/ai_dev/skills
 created: 2026-09-18T21:27:49
-updated: 2026-10-07T08:43:23
+updated: 2026-10-08T18:49:04
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -38,11 +38,17 @@ The scope rule this task states belongs in the base `task` skill, because the st
 
 Coverage for the linter's rule set lives in `tests/task/script_tests/run.sh`, whose case groups already include one for the size check, so the new scenarios extend that harness rather than starting another.
 
-Three live tasks edit the same rules-layer passages this task rewrites (`<lint>` warn bucket, **Repeated-link react protocol**, **Repeated-link disposition line**, and/or `task_fix` `<output_contract>`), and whichever lands second reconciles its sentences against the text it finds:
+Other tasks may edit the surfaces this task changes, and that set shifts whenever a sibling ships or a new one is filed, so find the overlapping tasks when the work starts rather than trusting a list written earlier. List the candidates with
 
-- [repo-wide link integrity](task-family_repo-wide-link-integrity.md) also edits the same script and those passages, widening the page walk from task files to every repo file. It states that the repeated-link warn keeps its current per-file behaviour, so the two tasks do not contradict each other, but a wider walk changes what "archived" means for a page that is not a task file at all. Whichever lands second reconciles the gate against the walk it finds.
-- [Answer a repeated-link warn by reorganizing the task body](task-family_repeated-link-reorganize-body.md) rewrites the warn bucket, the react protocol, the disposition-line block, and the `task_fix` `<output_contract>` so a repeated-link finding is answered by reorganizing the body rather than by a per-link kept disposition. It already links this file and states the same second-to-land reconciliation; this task's archived-count removal and live-only qualification must land against whichever wording of those passages is present.
-- [Return a ready task to checked on any rewrite](task-family_stamp-consequence-on-any-rewrite.md) rewrites the **Repeated-link react protocol** so it leaves `implemented` and `audited` bodies alone, and adds a re-gate to the repeated-link round of `task_auto_check`. Whichever lands second reconciles this task's archived-finding removal against the protocol text it finds.
+```bash
+grep -ilE 'repeated-link|check_size|is_archived|archived.count|regroup_live_skip_archived|fs1_scoped_archived_page_reports_only_itself' tasks/*.md
+```
+
+and read each live task it names other than this one. Where one edits a surface this task changes, write this task's edit against the text the files hold when the work starts, and keep any guarantee that task establishes. These kinds of overlap change this task's work, each with an example that was live when this task was written:
+
+- **A wider page walk.** A task that makes the linter walk files other than task pages changes what "archived" means for this gate, since a page that is not a task file is neither live nor archived. [Repo-wide link integrity](task-family_repo-wide-link-integrity.md) is an example: it keeps the repeated-link warn's per-file behaviour while widening the walk, so reconcile the `is_archived` gate against the walk you find.
+- **A rewritten react protocol.** A task that rewrites the **Repeated-link react protocol** or the repeated-link round of `task_auto_check` may reword the closing sentence this task replaces. [Return a ready task to checked on any rewrite](task-family_stamp-consequence-on-any-rewrite.md) is an example: it makes the protocol leave `implemented` and `audited` bodies alone, so replace the routing of archived findings in whatever wording you find.
+- **A restructured `task_fix` grader.** A task that moves the `task_fix` grader's disposition helpers changes where the archived-count check lives. The disposition-helpers task, `tests_repeated-link-disposition-helpers.md`, is an example, so write the absence check this task requires against the helpers you find.
 
 ## Approach
 
@@ -52,14 +58,16 @@ Rewrite the four rules-layer passages so each states the scope rather than manag
 
 State the scope rule once in the base skill's `<lint>`, beside the mechanically fixable finding set it already defines, in the two-sided form the **Context** gives: a check repaired by rewriting an archived body's prose runs on live pages only, and a check repaired by mechanical metadata runs archive-inclusive. Write it so a future check is classified by reading it, rather than as a list of the three checks that currently qualify.
 
-Extend `tests/task/script_tests/run.sh` with the scenarios the Acceptance names, following the scratch-fixture pattern its existing size-check group uses.
+Extend `tests/task/script_tests/run.sh` with the scenarios the Acceptance names, following the scratch-fixture pattern its existing size-check group uses, and rewrite `fs1_scoped_archived_page_reports_only_itself` in the same script. That scenario proves a file-scoped run reports only the named file by scoping to an oversized archived page and a twice-linking archived page and asserting each reports its own size or repeated-link warn, which this task silences. Prove the same contract with a finding that still fires on an archived page: scope one run to the `defect_badstatus.md` page the scenario already stages, whose invalid status is a blocking finding on the mechanical side, and assert it reports that finding while naming neither neighbour. Then assert that the scoped runs on the oversized and twice-linking pages report neither check.
+
+Rewrite the `task_fix` eval `regroup_live_skip_archived` in `tests/task_fix/evals/` for the live-only scope, and keep its id, since skipping the archive still describes it. Today it stages an archived task that links one archived target twice and expects the archive-inclusive lint to report that finding and the run's report to carry the archived count line. After this task the archived pair draws no finding, so the grader check labelled `the report carries the archived-count line` becomes an absence check labelled `the report carries no archived-count line`. It fails when any disposition block opens with `repeated-link:` followed by a number of findings on archived tasks, an anchor on the count line's own lead-in that keeps prose merely saying "archived" from tripping it. Rewrite the eval's `expected_output` and count-line expectation in `evals.json`, the archived-pair comment in its fixture's `setup.sh`, and its entry in the `stage.sh` header so each says the archived body stays as archived and draws no finding. Rewrite the passages that describe the eval as counting the archive in `tests/task_fix/README.md`, `tests/README.md`, and `tests/CLAUDE.md` the same way.
 
 **Out of scope:**
 
 - The soft-pointer check, which already carries the guard this task copies and needs no edit beyond being cited as the precedent.
 - Reclassifying any check currently on the mechanical side. The rule this task states describes where the three body-prose checks already sit once the two guards land, and moves nothing else.
 - The wiki linter's equivalent checks, a separate tool with its own walk and its own archive convention.
-- Widening the page walk beyond task files, which the live sibling task named in **Context** owns.
+- Widening the page walk beyond task files, which the repo-wide link integrity task named in **Context** owns.
 
 ## Acceptance
 
@@ -67,10 +75,13 @@ Extend `tests/task/script_tests/run.sh` with the scenarios the Acceptance names,
 - The same two fixtures placed under `tasks/` still report both findings, so the gate narrowed by location rather than removing the checks.
 - `check_repeated_links` and `check_size` each open with a leading `is_archived` early-return and carry the same one-sentence live-only docstring rationale as `check_no_position_claims` (`Open tasks only — archived pages are closed records nobody maintains, so checking them would only create permanent noise.`), verified by reading those three functions side by side.
 - A live task body linking an archived target several times still reports its repeated-link finding, proving the gate keys on the linking page's own location.
-- An archive-inclusive run over this repository's tasks tree reports the same count as the live run for these two checks, and its remaining findings all name pages under `tasks/`.
+- An archive-inclusive run over this repository's tasks tree reports the same count as the live run for these two checks, and its remaining findings all name live pages directly under `tasks/`.
 - An archive-inclusive run still reports a staged archived fixture carrying a frontmatter, provenance, status-validity, status-location, datetime, or filename-collision defect, so the mechanical side of the mode is untouched.
 - A file-scoped run against an archived page reports neither check, and the close-out step's text no longer tells its reader to expect them.
 - The base skill's `<lint>` states the live-only scope for both checks in the warn bucket, and carries the two-sided scope rule beside the mechanically fixable finding set, phrased so a check not yet written can be classified by it.
 - No passage in the base skill or in `task_fix` instructs a reader to report, count, or otherwise handle a repeated-link finding on an archived task; the superseded wording is gone rather than sitting beside the new text.
 - The per-finding repeated-link disposition line shape survives unchanged for live findings, and `task_fix`'s output contract still requires it.
 - `tests/task/script_tests/run.sh` carries the scenarios above and passes.
+- `fs1_scoped_archived_page_reports_only_itself` scopes a run to `defect_badstatus.md` and asserts that page's blocking finding with neither neighbour named, and asserts that the oversized and twice-linking archived pages report neither check under file scope. Its assertions that those two pages report their size and repeated-link warns are gone.
+- `python3 tests/task_fix/evals/run.py --vendor cursor regroup_live_skip_archived` passes, and the eval's grader fails a response that still carries the line `repeated-link: 1 findings on archived tasks, reported with their bodies left as archived`.
+- `grep -rn -E 'count the archive|reported as (part of )?a count|archived-count line saying|archive-inclusive lint reports (a|two) repeated-link finding' tests/task_fix tests/README.md tests/CLAUDE.md --exclude-dir=workspace --exclude-dir=.eval_cache` prints nothing.

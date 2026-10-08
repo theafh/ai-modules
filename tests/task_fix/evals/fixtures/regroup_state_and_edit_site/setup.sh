@@ -34,11 +34,12 @@ payload came from us.
 A receiver recomputes the signature over the raw request body.
 EOF
 
-# Target task. Context introduces docs/webhooks.md as background, naming what
-# the page documents today, and Approach names the same page as an edit site with
-# its own account of the change. Two distinct roles, so each site earns its
-# link under the grouping rule's carve-out and the finding's disposition is
-# kept rather than regrouped.
+# Target task. Context describes what docs/webhooks.md says today and Approach
+# edits one of its sections, each passage with its own link. The page's current
+# state and the edit this task makes to it belong together, so the react
+# protocol gathers them into one passage under one link and the finding's
+# disposition is regrouped. The body is the shape the retired per-link reading
+# left alone, which is why a run that reports kept fails this eval.
 cat > "$target/proj/tasks/api_webhook-timestamp.md" <<'EOF'
 ---
 description: Add a signed timestamp header to outbound webhooks so receivers can reject replayed deliveries.

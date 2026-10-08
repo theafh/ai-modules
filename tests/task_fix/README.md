@@ -9,14 +9,14 @@ and `tests/task_auto_check/script_tests/run.sh`.
 
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
-| Skill behavior | `evals/` | the base `<lint>` **Repeated-link react protocol** as the inline `task_fix` path applies it: regroup live, keep what earns its links, surface what would change Goal, count the archive (stage → agent → grade) | `python3 tests/task_fix/evals/run.py` |
+| Skill behavior | `evals/` | the base `<lint>` **Repeated-link react protocol** as the inline `task_fix` path applies it: reorganize live bodies, surface what would change Goal or the Acceptance contract, count the archive (stage → agent → grade) | `python3 tests/task_fix/evals/run.py` |
 
 The whole-family behavioral suite keeps its own `fix`, `fix_coherence`, and
 `fix_coherence_selector_*` evals in `tests/task/evals/` for the rest of the
 `task_fix` surface. This harness is the one that exercises the repeated-link
 disposition.
 
-## What the three evals prove
+## What the four evals prove
 
 The protocol says the finding is resolved when the body's account of the
 counted target sits in one place, not when the link count drops. Each eval
@@ -28,11 +28,14 @@ file's bytes, and the run's per-finding disposition line.
   links one target twice. The live account gathers into `## Context`, Goal keeps
   stating what the task delivers, `updated` is bumped, and the archived body
   stays exactly as archived and is reported as a count.
-- **`kept_each_site_earns_link`**: `## Context` introduces a reference page as
-  background and `## Approach` names the same page as an edit site with its own
-  account. Each site earns its link under the grouping rule's carve-out, so the
-  body is left byte-identical and the finding's line reads kept. An agent that
-  drops a link to get the count down fails this eval.
+- **`regroup_state_and_edit_site`**: `## Context` describes what a reference
+  page says today and `## Approach` edits one of its sections, each passage
+  with its own link. The page's current state and the edit belong together, so
+  the run gathers them into one passage under one link, bumps `updated`, keeps
+  the meaning of Goal and the Acceptance contract, and reports the line as
+  regrouped. A run that reports the finding kept, or leaves the file as staged,
+  fails this eval: judging each link on its own merit is the reading the
+  reorganization rule retired.
 - **`surfaced_acceptance_contract`**: the two sites are `## Goal` and one
   `## Acceptance` item, and `## Context` says nothing about the sibling. Both
   copies state one account, that the linked task sets the retention window, and
@@ -50,6 +53,13 @@ file's bytes, and the run's per-finding disposition line.
   in Context to give up. Earlier Goal-and-Context designs failed for the
   matching reason, with the worker keeping the code reference Goal needs and
   dropping the separable task reference.
+- **`regroup_same_paragraph`**: one `## Context` paragraph links the sibling
+  twice and nothing else in the body names it. The material is already
+  gathered, so the protocol's one-paragraph case applies: the run names the
+  sibling again in plain text inside that paragraph, the warn clears, every
+  other section stays as staged, and the line reads regrouped. A run that keeps
+  or surfaces the finding fails, and so does one that moves material out of the
+  paragraph.
 
 ## Running
 

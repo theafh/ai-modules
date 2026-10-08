@@ -21,23 +21,28 @@
       ]
     },
     {
-      "id": "kept_each_site_earns_link",
+      "id": "regroup_state_and_edit_site",
       "skill": "task_fix",
       "prompt": "Health-check and clean up the tasks backlog.",
-      "expected_output": "Context introduces the webhook reference page as background and Approach names the same page as an edit site with its own account, so each site earns its link under the grouping rule's carve-out. The run leaves the body alone and reports the finding as kept because each site earns its link, rather than dropping a link to get the count down.",
-      "files": ["evals/fixtures/kept_each_site_earns_link/setup.sh"],
+      "expected_output": "Context describes what the webhook reference page says today and Approach edits its ## Verification section, each passage with its own link. The page's current state and the edit this task makes to it belong together, so the Remediate step applies the base react protocol's reorganization: it gathers both into one passage with one link in the section whose job the combined material mostly serves, bumps updated, and keeps the meaning of Goal and the Acceptance contract. The report carries the finding's disposition line as regrouped. A run that reports the finding kept, or leaves the file as staged, fails.",
+      "files": ["evals/fixtures/regroup_state_and_edit_site/setup.sh"],
       "expectations": [
-        "The task file api_webhook-timestamp.md is byte-identical.",
-        "Both links to ../docs/webhooks.md still stand.",
-        "The report carries one shared-shape disposition line for the finding reading kept because each site earns its link.",
-        "The report does not present the finding as resolved work, and the kept finding enters neither count in the closing line."
+        "The reference page's current state and the edit to its ## Verification section sit together in one passage of api_webhook-timestamp.md.",
+        "That passage carries the body's only link to ../docs/webhooks.md.",
+        "The linter reports no repeated-link finding on api_webhook-timestamp.md after the run.",
+        "The task's updated stamp is bumped for the edit.",
+        "## Goal still states the signed timestamp header and the replay it prevents.",
+        "## Acceptance still requires the signed timestamp header and the documented timestamp check with its freshness window.",
+        "The reference page docs/webhooks.md is byte-identical.",
+        "The report carries one shared-shape disposition line for the finding reading regrouped, and no line reading kept.",
+        "The regrouped finding is counted in the closing line's N issues resolved."
       ]
     },
     {
       "id": "surfaced_acceptance_contract",
       "skill": "task_fix",
       "prompt": "Health-check and clean up the tasks backlog.",
-      "expected_output": "The two sites are ## Goal and one ## Acceptance item, and ## Context says nothing about the sibling. Both copies state the same account, that the linked task sets the retention window, and each is load-bearing for its own section: Goal states the outcome, the item states the check that proves it. Neither section can absorb the other's copy and Context offers nothing to trim, so every gathering available strips a section of what its own contract owes. The run leaves the body alone and surfaces the finding with that reason, rather than reporting it kept: the two copies are one account, not two roles.",
+      "expected_output": "The two sites are ## Goal and one ## Acceptance item, and ## Context says nothing about the sibling. Both copies state the same account, that the linked task sets the retention window, and each is load-bearing for its own section: Goal states the outcome, the item states the check that proves it. Neither section can absorb the other's copy and Context offers nothing to trim, so every gathering available strips a section of what its own contract owes. The run leaves the body alone and surfaces the finding with that organizational reason.",
       "files": ["evals/fixtures/surfaced_acceptance_contract/setup.sh"],
       "expectations": [
         "The task file api_retirement-audit-log.md is byte-identical.",
@@ -46,6 +51,23 @@
         "The report carries one shared-shape disposition line for the finding reading surfaced.",
         "The surfaced reason names the section contract the gathering would strip, not merely that two sections link the target.",
         "The surfaced finding is counted in the closing line's K flagged for review."
+      ]
+    },
+    {
+      "id": "regroup_same_paragraph",
+      "skill": "task_fix",
+      "prompt": "Health-check and clean up the tasks backlog.",
+      "expected_output": "The only repeat sits inside one ## Context paragraph, which links api_export-schema.md twice and is the only place the body names it. That material is already gathered, so the Remediate step applies the base react protocol's one-paragraph case: it names the sibling again in plain text inside that paragraph, the warn clears, and the finding reads regrouped. The paragraph keeps both facts it carried, that the sibling fixes the column order and that this task lands after it, every other section stays as staged, and updated is bumped.",
+      "files": ["evals/fixtures/regroup_same_paragraph/setup.sh"],
+      "expectations": [
+        "The linter reports no repeated-link finding on api_export-gzip.md after the run.",
+        "The body links api_export-schema.md exactly once, from ## Context, and no other section names it.",
+        "## Context still says the sibling fixes the column order and that this task lands after it.",
+        "## Goal, ## Approach, and ## Acceptance are exactly as staged.",
+        "The task's updated stamp is bumped for the edit.",
+        "The link target api_export-schema.md is byte-identical.",
+        "The report carries one shared-shape disposition line for the finding reading regrouped, and no line reading kept or surfaced.",
+        "The regrouped finding is counted in the closing line's N issues resolved."
       ]
     }
   ]

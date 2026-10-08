@@ -31,9 +31,9 @@ The base `<lint>` **Repeated-link react protocol** obliges both, and neither
 half proves the other.
 
 - The **file** half comes from the sandbox, compared against the staged commit.
-  A regroup must land in the owning section with `updated` bumped; a kept or
-  surfaced finding must leave the file byte-identical, and every link target
-  and archived body must be untouched on all three evals.
+  A regroup must land in one passage with `updated` bumped; a surfaced finding
+  must leave the file byte-identical, and every link target and archived body
+  must be untouched on every eval.
 - The **report** half comes from the worker's captured `response.txt`. The
   per-finding disposition line exists nowhere else. `run.py` exports
   `RESPONSE_FILE` when it calls the grader; a hand-run grade should export it
@@ -44,12 +44,19 @@ half proves the other.
 
 A regroup writes a sentence nobody can predict, so grading it by matching text
 would score phrasing. Instead `no_repeated_link_finding` asks the linter, and
-`sections_naming` counts the H2 sections that name the target. The protocol is
-explicit that the surviving link count is not the measure of a resolved
-finding; in these fixtures the repeats that must go earn no link of their own,
-so a genuine regroup necessarily clears the warn and the linter's verdict is a
-sound proxy. The `kept` eval is the counterweight: there the correct outcome
-leaves the warn standing, and dropping a link to clear it fails.
+`sections_naming` and `sections_matching` count the H2 sections that carry the
+target or its material. The protocol is explicit that the surviving link count
+is not the measure of a resolved finding; in these fixtures everything the
+repeated links carry belongs in one passage, so a genuine reorganization
+necessarily clears the warn and the linter's verdict is a sound proxy. Two
+checks keep the proxy honest. On the regroup evals, the section checks fail a
+run that strips link syntax while the material stays spread across sections,
+because the warn then clears for a gathering that never happened. On
+`regroup_same_paragraph` the material already sits in one paragraph, so
+naming the sibling again in plain text there is the whole edit, and the
+section checks instead fail a run that moves material out of that paragraph.
+On `surfaced_acceptance_contract` the correct outcome leaves the warn standing,
+and dropping a link to clear it fails.
 
 ## What stays prose
 

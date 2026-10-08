@@ -44,26 +44,36 @@ Each run writes `workspace/run-<ts>-<pid>/<id>/`:
 A `worker did not complete` line means the grade cannot be trusted: the worker
 timed out or crashed, and grade.sh saw partial state.
 
-## Reading the two failure shapes that matter
+## Reading the failure shapes that matter
 
 A **regroup that dropped a link instead of gathering** shows up as a cleared
 warn with `the gathered account sits in ## Context only` failing, because the
-account is still narrated twice with one link. A **kept finding graded as
-resolved** shows up as `both links to the reference page still stand` failing:
-the run took the count as the measure, which is the reading the protocol reword
-supersedes.
+account is still narrated twice with one link. On `regroup_state_and_edit_site`
+the same shortcut fails `no other section restates the page's current state` or
+`no other section restates the edit outside Acceptance`. A **run that keeps the
+repeat** shows up there as `the repeated-link warn is cleared` and `the report's
+line for this finding reads regrouped` failing, with `no disposition line for
+this finding reads kept` naming the retired disposition: the run judged each
+link on its own instead of reorganizing the body.
+
+On `regroup_same_paragraph` the repeat sits inside one paragraph, so the
+correct edit names the sibling again in plain text there. A **run that leaves
+the paragraph alone** fails `the repeated-link warn is cleared` and `no line
+for this finding reads kept or surfaced`, and a **run that moves material out
+of the paragraph** fails `## Goal, ## Approach, and ## Acceptance read as
+staged`.
 
 ## Staging a sandbox by hand
 
 ```bash
-bash tests/task_fix/evals/stage.sh kept_each_site_earns_link /tmp/tf-sandbox
+bash tests/task_fix/evals/stage.sh regroup_state_and_edit_site /tmp/tf-sandbox
 ```
 
 Then drive the skill yourself with `/tmp/tf-sandbox/proj` as the working
 directory, and grade it:
 
 ```bash
-RESPONSE_FILE=/tmp/tf-sandbox/response.txt bash tests/task_fix/evals/grade.sh kept_each_site_earns_link /tmp/tf-sandbox/proj
+RESPONSE_FILE=/tmp/tf-sandbox/response.txt bash tests/task_fix/evals/grade.sh regroup_state_and_edit_site /tmp/tf-sandbox/proj
 ```
 
 Without `RESPONSE_FILE` the grader falls back to the runner's conventional

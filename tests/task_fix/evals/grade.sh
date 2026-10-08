@@ -6,7 +6,7 @@
 #
 # Two graded surfaces, because the base `<lint>` repeated-link react protocol
 # obliges both. The task file's bytes are read from the sandbox: a regroup must
-# land, and a kept or surfaced finding must leave the file exactly as staged.
+# land, and a surfaced finding must leave the file exactly as staged.
 # The per-finding disposition line exists only in the run's report, read from
 # $RESPONSE_FILE when the runner exports it and otherwise from the conventional
 # `<sandbox_proj>/../../response.txt` that run.py's workspace layout puts it at.
@@ -80,11 +80,11 @@ byte_identical() {
 tree_lints() { python3 "$LINT" "$TASKS" --include-archive >/dev/null 2>&1; }
 
 # no_repeated_link_finding <abs task file> -> the file carries no repeated-link
-# warn. The protocol makes the gathered account, not the surviving link count,
-# the measure of a resolved finding; in these fixtures the repeats that must go
-# earn no link of their own, so a genuine regroup necessarily clears the warn.
-# Reading the linter's verdict keeps the check off any sentence the regroup
-# happened to write.
+# warn. The protocol makes the gathered material, not the surviving link count,
+# the measure of a resolved finding; in these fixtures everything the repeated
+# links carry belongs in one passage, so a genuine reorganization necessarily
+# clears the warn. Reading the linter's verdict keeps the check off any
+# sentence the regroup happened to write.
 no_repeated_link_finding() {
   ! python3 "$LINT" "$TASKS" --file "$1" 2>/dev/null | grep -q 'repeated-link'
 }
@@ -105,6 +105,24 @@ section_body() {
     $0 == h { f=1; next }
     /^## / { f=0 }
     f { print }' | tr '\n' ' ' | tr -s ' '
+}
+
+# section_holding <file> <needle> -> the H2 heading of the first section whose
+# text contains the needle, so a check can follow a link to wherever the run
+# placed it instead of assuming one section.
+section_holding() {
+  body_text "$1" | awk -v n="$2" '
+    /^## / { sec=$0; next }
+    index($0, n) > 0 && sec != "" { print sec; exit }'
+}
+
+# sections_matching <file> <ERE> -> the H2 headings whose text matches the ERE,
+# one per line. Single-token patterns only, since lines are read as wrapped.
+sections_matching() {
+  body_text "$1" | awk -v re="$2" '
+    /^## / { sec=$0; next }
+    sec != "" && $0 ~ re { seen[sec]=1 }
+    END { for (k in seen) print k }'
 }
 
 response_readable() { [[ -s "$RESPONSE" ]]; }
@@ -129,6 +147,16 @@ disposition_blocks() {
 # that used the shape rather than one that merely mentioned the words.
 disposition_line() {
   disposition_blocks | grep -qiE -- "repeated-link:.*$1.*$2"
+}
+
+# disposition_of <needle-for-the-target> -> the disposition that finding's line
+# reports, read as the first disposition word on it. The shape puts the
+# disposition after the file, target, and sections, none of which carry one of
+# those words, so the first match is the field itself and a surfaced reason
+# that happens to say "kept" later on cannot be mistaken for a kept line.
+disposition_of() {
+  disposition_blocks | grep -iE -- "repeated-link:.*$1" | head -1 \
+    | grep -oiE 'regrouped|surfaced|kept' | head -1 | tr '[:upper:]' '[:lower:]'
 }
 
 no_real_repo_writes() {
@@ -189,27 +217,78 @@ case "$eval_id" in
     note_agent_attest "the gathered Context sentence reads as one account rather than two stitched clauses"
     ;;
 
-  kept_each_site_earns_link)
+  regroup_state_and_edit_site)
     f="$TASKS/api_webhook-timestamp.md"
-    body_unchanged() { byte_identical "tasks/api_webhook-timestamp.md"; }
-    both_links_stand() {
-      [[ "$(grep -c '(\.\./docs/webhooks\.md)' "$f")" == "2" ]]
+    link='(../docs/webhooks.md)'
+    warn_cleared() { no_repeated_link_finding "$f"; }
+    one_link() { [[ "$(grep -oF "$link" "$f" | wc -l | tr -d ' ')" == "1" ]]; }
+    # The passage the one surviving link sits in. The run may gather into
+    # Approach, which carries the edit, or into Context, which carries the
+    # page's current state, so the checks follow the link rather than pick.
+    linked_section() { section_holding "$f" "$link"; }
+    # The page's current state is the part Context staged: what its ## Delivery
+    # and ## Verification sections say today and that neither mentions replay.
+    # The edit is the freshness window this task adds under ## Verification.
+    state_and_edit_together() {
+      local sec text
+      sec="$(linked_section)"
+      [[ -n "$sec" ]] || return 1
+      text="$(section_body "$f" "$sec")"
+      grep -q 'Verification' <<<"$text" \
+        && grep -qi 'freshness' <<<"$text" \
+        && grep -qE 'Delivery|re-?comput|replay' <<<"$text"
     }
-    kept_line() { disposition_line "api_webhook-timestamp" "kept"; }
-    check "the task file is byte-identical"                  body_unchanged
-    check "both links to the reference page still stand"     both_links_stand
-    check "the report is readable"                           response_readable
-    check "the report's line for this finding reads kept"    kept_line
-    note_agent_attest "the report says each site earns its link rather than reporting the finding as resolved"
-    note_agent_attest "the kept finding enters neither the resolved count nor the flagged-for-review count"
+    # outside_linked_and_acceptance <ERE> -> a section other than the linked
+    # one and ## Acceptance matches. Acceptance keeps its own contract copy.
+    outside_linked_and_acceptance() {
+      local sec
+      sec="$(linked_section)"
+      [[ -n "$sec" ]] || return 0
+      sections_matching "$f" "$1" | grep -vxF -e "$sec" -e '## Acceptance' | grep -q .
+    }
+    state_not_elsewhere() { ! outside_linked_and_acceptance 'Delivery|re-?comput'; }
+    edit_not_elsewhere() { ! outside_linked_and_acceptance '[Ff]reshness'; }
+    goal_preserved() {
+      section_body "$f" "## Goal" | grep -qi 'timestamp' \
+        && section_body "$f" "## Goal" | grep -qi 'replay'
+    }
+    acceptance_preserved() {
+      local acc
+      acc="$(section_body "$f" "## Acceptance")"
+      grep -q 'webhooks\.py' <<<"$acc" && grep -qi 'timestamp' <<<"$acc" \
+        && grep -q 'docs/webhooks\.md' <<<"$acc" && grep -qi 'freshness' <<<"$acc"
+    }
+    updated_bumped() {
+      [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]
+    }
+    page_untouched() { byte_identical "docs/webhooks.md"; }
+    regrouped_line() { [[ "$(disposition_of "api_webhook-timestamp")" == "regrouped" ]]; }
+    no_kept_line() {
+      response_readable && [[ "$(disposition_of "api_webhook-timestamp")" != "kept" ]]
+    }
+    check "the repeated-link warn is cleared"                          warn_cleared
+    check "the body links the reference page exactly once"             one_link
+    check "the linked passage holds the page's state and its edit"     state_and_edit_together
+    check "no other section restates the page's current state"         state_not_elsewhere
+    check "no other section restates the edit outside Acceptance"      edit_not_elsewhere
+    check "## Goal still states the timestamp header and replay"       goal_preserved
+    check "## Acceptance keeps both items"                             acceptance_preserved
+    check "the task's updated stamp is bumped"                         updated_bumped
+    check "the reference page is byte-identical"                       page_untouched
+    check "the report is readable"                                     response_readable
+    check "the report's line for this finding reads regrouped"         regrouped_line
+    check "no disposition line for this finding reads kept"            no_kept_line
+    note_agent_attest "the regrouped finding is counted in the closing line's N issues resolved"
+    note_agent_attest "the gathered passage reads as one account of the page: what it says today, then the edit"
     ;;
 
   surfaced_acceptance_contract)
     f="$TASKS/api_retirement-audit-log.md"
     body_unchanged() { byte_identical "tasks/api_retirement-audit-log.md"; }
     link_target_untouched() { byte_identical "tasks/api_token-rotation.md"; }
-    # The escape the base protocol's disposition rule closes: a link travels
-    # with the clause that carried it, so a clause that stays keeps its link.
+    # The escape the base protocol's link rule closes: each link moves with the
+    # material it carried, so stripping link syntax from a clause whose
+    # material stayed resolves nothing.
     acceptance_link_intact() {
       [[ "$(grep -c '(api_token-rotation\.md)' "$f")" == "2" ]]
     }
@@ -226,6 +305,65 @@ case "$eval_id" in
     check "the surfaced reason names the contract it protects"     reason_names_acceptance
     note_agent_attest "the surfaced finding is counted in the closing line's K flagged for review"
     note_agent_attest "the reason states that gathering the account out would leave the Acceptance item nothing to measure"
+    ;;
+
+  regroup_same_paragraph)
+    f="$TASKS/api_export-gzip.md"
+    staged="$target/.staged_gzip.md"
+    git -C "$proj" show HEAD:tasks/api_export-gzip.md >"$staged" 2>/dev/null
+    warn_cleared() { no_repeated_link_finding "$f"; }
+    one_link() {
+      [[ "$(grep -oF '(api_export-schema.md)' "$f" | wc -l | tr -d ' ')" == "1" ]]
+    }
+    # The repeat sits inside one Context paragraph, so the one surviving link
+    # stays there and no other section takes up the sibling.
+    named_in_context_only() {
+      [[ "$(sections_naming "$f" "api_export-schema")" == "1" ]] \
+        && section_body "$f" "## Context" | grep -q 'api_export-schema'
+    }
+    # Both facts the paragraph carried survive the plain-text naming: the
+    # sibling fixes the column order, and this task lands after it.
+    context_keeps_both_facts() {
+      local ctx
+      ctx="$(section_body "$f" "## Context")"
+      grep -qi 'order' <<<"$ctx" \
+        && grep -qiE 'after|before|first|wait|depend|follow|land' <<<"$ctx"
+    }
+    # The one-paragraph case moves no material, so every other section reads
+    # exactly as staged once its hard wraps are collapsed.
+    section_as_staged() {
+      [[ "$(section_body "$f" "$1")" == "$(section_body "$staged" "$1")" ]]
+    }
+    other_sections_as_staged() {
+      section_as_staged "## Goal" && section_as_staged "## Approach" \
+        && section_as_staged "## Acceptance"
+    }
+    updated_bumped() {
+      [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]
+    }
+    link_target_untouched() { byte_identical "tasks/api_export-schema.md"; }
+    regrouped_line() { [[ "$(disposition_of "api_export-gzip")" == "regrouped" ]]; }
+    # Every line the report carries for this finding reads regrouped, so a
+    # second line reading kept or surfaced fails even when the first passes.
+    every_line_regrouped() {
+      local words
+      words="$(disposition_blocks | grep -iE -- 'repeated-link:.*api_export-gzip' \
+        | while IFS= read -r l; do grep -oiE 'regrouped|surfaced|kept' <<<"$l" | head -1; done \
+        | tr '[:upper:]' '[:lower:]' | sort -u)"
+      [[ "$words" == "regrouped" ]]
+    }
+    check "the repeated-link warn is cleared"                          warn_cleared
+    check "the body links the sibling exactly once"                    one_link
+    check "only ## Context names the sibling"                          named_in_context_only
+    check "## Context keeps the column order and the landing order"    context_keeps_both_facts
+    check "## Goal, ## Approach, and ## Acceptance read as staged"     other_sections_as_staged
+    check "the task's updated stamp is bumped"                         updated_bumped
+    check "the link target is byte-identical"                          link_target_untouched
+    check "the report is readable"                                     response_readable
+    check "the report's line for this finding reads regrouped"         regrouped_line
+    check "no line for this finding reads kept or surfaced"            every_line_regrouped
+    note_agent_attest "the regrouped finding is counted in the closing line's N issues resolved"
+    note_agent_attest "the paragraph still reads as one account after the second mention lost its link syntax"
     ;;
 
   *)

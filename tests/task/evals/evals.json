@@ -434,6 +434,26 @@
       ]
     },
     {
+      "id": "create_regroup_owner_account",
+      "skill": "task_create",
+      "prompt": "Make a task to add a --json output flag to the report command. The JSON writer should register through the output-format registry that tasks/cli_output-format-registry.md is building. That task also owns the --yaml flag, so --yaml stays out of this one.",
+      "expected_output": "task_create writes exactly one task for the --json work. Its body builds on the live sibling's output-format registry and defers the --yaml flag to that same sibling, the Context-plus-deferral shape that would otherwise link the sibling from Context and again from the **Out of scope:** entry. The create path applies the grouping rule while drafting and answers any repeated-link warn through the react protocol before reporting the file created, so the body's account of the sibling sits in one section under one link and the deferral still names the sibling as the owner of --yaml. created and updated keep the one creation timestamp.",
+      "files": [
+        "evals/fixtures/create_regroup_owner_account/setup.sh"
+      ],
+      "expectations": [
+        "Exactly one new *.md task file exists under tasks/ beside the seeded sibling (none under archive/), and the tree lints with no blocking finding.",
+        "The seeded sibling cli_output-format-registry.md is byte-identical.",
+        "The linter reports no repeated-link finding on the new file.",
+        "The new file links the sibling exactly once.",
+        "The **Out of scope:** block names the --yaml work and names the sibling as its owner, linked or in plain text.",
+        "Every section that names the sibling outside the **Out of scope:** block is the section that carries its link, so the body's account of the sibling sits in one section.",
+        "created equals updated, because reorganizing the draft belongs to the creation and keeps its one timestamp.",
+        "A created file that links the sibling from Context and again from its **Out of scope:** entry fails the eval.",
+        "A created file that tells the sibling's background in Context without its link and links the sibling only from its **Out of scope:** entry fails the eval."
+      ]
+    },
+    {
       "id": "auto_check_boundary",
       "skill": "task_auto_check",
       "timeout": 3000,

@@ -10,16 +10,22 @@
 #                               archived task links one target twice: the live
 #                               account gathers into Context, the archived body
 #                               stays as archived and is reported as a count
-#   kept_each_site_earns_link   Context introduces a page as background and
-#                               Approach names it as an edit site: each site
-#                               earns its link, so the body is left alone and
-#                               the finding is reported as kept
+#   regroup_state_and_edit_site Context describes what a reference page says
+#                               today and Approach edits one of its sections:
+#                               the page's state and its edit belong together,
+#                               so they gather into one passage under one link
+#                               and the finding is reported as regrouped
 #   surfaced_acceptance_contract
 #                               an `## Acceptance` item's copy of the account is
 #                               the check's own parameter, so gathering it out
 #                               would leave the item nothing to measure: the
 #                               body is left alone and the finding is surfaced
 #                               with that reason
+#   regroup_same_paragraph      one Context paragraph links a sibling twice and
+#                               nothing else names it: the material is already
+#                               gathered, so the run names the sibling again in
+#                               plain text inside that paragraph and the
+#                               finding is reported as regrouped
 #
 # Prints printf-%q-quoted `name=value` lines, safe to `eval` in bash:
 #
@@ -51,12 +57,16 @@ case "$eval_id" in
     "$HERE/fixtures/regroup_live_skip_archived/setup.sh" "$target" >/dev/null
     prompt="Health-check and clean up the tasks backlog."
     ;;
-  kept_each_site_earns_link)
-    "$HERE/fixtures/kept_each_site_earns_link/setup.sh" "$target" >/dev/null
+  regroup_state_and_edit_site)
+    "$HERE/fixtures/regroup_state_and_edit_site/setup.sh" "$target" >/dev/null
     prompt="Health-check and clean up the tasks backlog."
     ;;
   surfaced_acceptance_contract)
     "$HERE/fixtures/surfaced_acceptance_contract/setup.sh" "$target" >/dev/null
+    prompt="Health-check and clean up the tasks backlog."
+    ;;
+  regroup_same_paragraph)
+    "$HERE/fixtures/regroup_same_paragraph/setup.sh" "$target" >/dev/null
     prompt="Health-check and clean up the tasks backlog."
     ;;
   *)

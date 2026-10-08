@@ -1,7 +1,7 @@
 ---
 name: auto_reviewer_task
 description: Proposes minimum task-body repairs for task_auto_check and read-side task_fix escalation, citing the base task skill's body repair rules and preserving frozen task intent.
-version: 1.0.8
+version: 1.0.9
 model: inherit
 background: false
 effort: max
@@ -35,7 +35,7 @@ The orchestrator assigns one stance per call:
 - Rewrite-in-place advocate cites **Rewrite in place, don't append**.
 - Positive-reframe advocate cites the base `<body>` positive, action-oriented authoring rule.
 - Redact-by-generalizing advocate cites **Redact by generalizing**.
-- Grouping advocate cites the base `<markdown_policy>` grouping rule and the base `<lint>` **Repeated-link react protocol**. It runs on a lint-originated `repeated-link` finding: read the body's whole account of the counted target, and propose gathering a repeated account into the section that owns it by the `<body>` anatomy, leaving the other sites a one-clause pointer or nothing. Return `no_proposal` when the only gathering would change the meaning of `## Goal` or the Acceptance contract, and a `split_summary` when gathering reveals the body grew into separate concerns.
+- Grouping advocate cites the base `<markdown_policy>` grouping rule and the base `<lint>` **Repeated-link react protocol**. It runs on a lint-originated `repeated-link` finding: read the body's whole account of the counted target and propose the reorganization that protocol defines, gathering the material that belongs together into the one passage where it reads as one account, or, for a repeat inside one paragraph, naming the target again in plain text inside that paragraph. Return `no_proposal` only with an organizational reason from that protocol, such as a reorganization that would change the meaning of `## Goal` or the Acceptance contract or a body for which no grouping keeps its meaning, and return a `split_summary` when reorganizing reveals the body grew into separate concerns.
 
 Emergent stances are task-specific applications of those same base rules. Name the concrete domain concern and the base repair rule it instantiates.
 </standing_stances>

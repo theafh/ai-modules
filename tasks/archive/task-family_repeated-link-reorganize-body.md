@@ -2,9 +2,11 @@
 description: Make every task-writing surface answer a repeated-link warn by reorganizing the body so that what belongs together sits together, and retire the per-link kept disposition.
 scope: plugins/ai_dev
 created: 2026-10-07T08:07:22
-updated: 2026-10-08T10:34:55
-status: ready
+updated: 2026-10-08T15:35:28
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Answer a repeated-link warn by reorganizing the task body
@@ -34,12 +36,12 @@ The siblings and agents that apply the protocol repeat the per-link framing:
 
 The paths that write a body from scratch never answer the warn. The hub's `<lint_after_create>` and the **Lint.** step of `plugins/ai_dev/skills/task_create/SKILL.md` fix blocking findings only, and the `task_create` **Write.** step names the cross-link discipline and the soft-pointer rule but not the grouping rule. The hub's `<update>` workflow is a named owner in the protocol, yet its own text only says to re-run the linter after the edit.
 
-The framing fails in practice. On 2026-10-07, a backlog update in another repository ended with five repeated-link warns, and the agent kept all five as `kept because each site earns its link`, since each second link was "either a deferral to the owning task or a file to edit". Those are the grouping rule's carve-outs: four of the five paired a Context mention with an `**Out of scope:**` entry, and the fifth paired it with an edit site in Approach. The owner's correction is the rule this task installs: the links are a sign that the task needs reorganizing and clearer writing, so the judgement is whether the sections should be grouped better, never whether a single link makes sense. The archived [regroup-owners task](archive/task-family_repeated-link-regroup-owners.md) introduced the account test and the kept disposition that this task replaces, along with the guard against converting a link to plain text without moving material, which this task keeps in reworded form.
+The framing fails in practice. On 2026-10-07, a backlog update in another repository ended with five repeated-link warns, and the agent kept all five as `kept because each site earns its link`, since each second link was "either a deferral to the owning task or a file to edit". Those are the grouping rule's carve-outs: four of the five paired a Context mention with an `**Out of scope:**` entry, and the fifth paired it with an edit site in Approach. The owner's correction is the rule this task installs: the links are a sign that the task needs reorganizing and clearer writing, so the judgement is whether the sections should be grouped better, never whether a single link makes sense. The archived [regroup-owners task](task-family_repeated-link-regroup-owners.md) introduced the account test and the kept disposition that this task replaces, along with the guard against converting a link to plain text without moving material, which this task keeps in reworded form.
 
 The live tasks below edit the same passages for other purposes, and whichever task lands second rewrites its sentences against the text it finds:
 
-- [The live-only body-checks task](task-family_live-only-body-checks.md) qualifies the warn bucket as live-only, replaces the react protocol's closing routing of archived findings, and removes the archived count line from the disposition-line block and from the `task_fix` `<output_contract>`. Its Acceptance requires the per-finding disposition line shape to survive for live findings, and this task keeps that shape while changing only the values its disposition field takes.
-- [The stamp-consequence task](task-family_stamp-consequence-on-any-rewrite.md) makes the react protocol leave `implemented` and `audited` bodies alone, adds a re-gate to the repeated-link round of `task_auto_check`, and rewrites the status expectation of the `regroup_immediate_ready` eval. Its sentences and eval branches for a kept or surfaced outcome narrow to the surfaced outcome once this task lands.
+- [The live-only body-checks task](../task-family_live-only-body-checks.md) qualifies the warn bucket as live-only, replaces the react protocol's closing routing of archived findings, and removes the archived count line from the disposition-line block and from the `task_fix` `<output_contract>`. Its Acceptance requires the per-finding disposition line shape to survive for live findings, and this task keeps that shape while changing only the values its disposition field takes.
+- [The stamp-consequence task](../task-family_stamp-consequence-on-any-rewrite.md) makes the react protocol leave `implemented` and `audited` bodies alone, adds a re-gate to the repeated-link round of `task_auto_check`, and rewrites the status expectation of the `regroup_immediate_ready` eval. Its sentences and eval branches for a kept or surfaced outcome narrow to the surfaced outcome once this task lands.
 
 These test surfaces pin the per-link framing:
 

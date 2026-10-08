@@ -93,8 +93,8 @@ EOF
 
 # Target task. Two defects ride together on purpose. Context and Approach carry
 # the SAME account of one handoff (the sibling task moving the reset constant
-# into config), each with its own link, and Approach's edit site is quota.py
-# rather than the sibling, so neither repeat earns its link. Separately,
+# into config), each with its own link, so that material belongs in one
+# passage and the react protocol gathers it under one link. Separately,
 # Approach promises the 200 path leaves the header off and no Acceptance item
 # proves it, which is the gate-visible readiness issue that opens an ordinary
 # repair round for the regroup to ride.

@@ -103,13 +103,14 @@ lowered a value.
 ## Per-eval timeouts, and which evals need them
 
 `evals/run.py` takes a per-eval `"timeout"` from `evals.json`, falling back to
-its `--timeout` default. Three evals declare their own budget because they run
+its `--timeout` default. Four evals declare their own budget because they run
 materially longer than the ~700-1000s the loop normally takes:
 
 | Eval | Budget | Why |
 | --- | --- | --- |
 | `regroup_via_reviewer` | 3600s | Full repair path: the target carries both a gate-visible Acceptance gap and a `repeated-link` finding, so the reviewer fires several stances before one verifier pass and one apply. |
 | `regroup_immediate_ready` | 2700s | Ready verdict plus the repeated-link repair round the `<gate>` rule routes before finalization. |
+| `regroup_same_paragraph_ready` | 2700s | The same ready-verdict path, with both links inside one Context paragraph, so the repair round applies the react protocol's one-paragraph case and the verifier must approve it. |
 | `immediate_ready_citations_overturn` | 3600s | Citation refutation returns to the gate for a second full verdict over the largest fixture in the harness. |
 
 A timed-out worker fails its eval whatever `grade.sh` says, because the sandbox

@@ -10,8 +10,9 @@ covers, so there is no `script_tests/` and no `run_all.sh` here.
 | Skill behavior | `evals/` | the base **Decide or label** rule as the create path applies it: reconcile silently, else label *and* surface (stage → agent → grade) | `python3 tests/task_create/evals/run.py` |
 
 The whole-family behavioral suite lives in `tests/task/evals/` and keeps its
-own `create`, `create_scope_trim`, `standing_rules_create`, and
-`lossless_single` evals for the rest of the create path. This harness is the
+own `create`, `create_scope_trim`, `create_regroup_owner_account`,
+`standing_rules_create`, and `lossless_single` evals for the rest of the create
+path. This harness is the
 one that exercises the open-decision half of it.
 
 ## What the three evals prove

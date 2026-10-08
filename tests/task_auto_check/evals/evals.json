@@ -374,18 +374,40 @@
       "skill": "task_auto_check",
       "timeout": 2700,
       "prompt": "Run task_auto_check on tasks/api_retry-header.md.",
-      "expected_output": "task_check reports ready on the first gate call, since a repeated-link warn is a lint finding rather than a readiness issue. The ready verdict stands and the run still runs one repair round for the freeze-recorded repeated-link findings before finalization, because every path from a ready verdict to finalization runs that round first. The report carries the finding's disposition line in the shared shape. This fixture's Approach names throttle.py as the edit site and the sibling task only as the dependency behind it, which sits on the contested edge of the grouping rule's edit-site carve-out, so the eval grades the routing rather than which side of that carve-out the Grouping advocate lands on.",
+      "expected_output": "task_check reports ready on the first gate call, since a repeated-link warn is a lint finding rather than a readiness issue. The ready verdict stands and the run still runs one repair round for the freeze-recorded repeated-link findings before finalization, because every path from a ready verdict to finalization runs that round first. Context and Approach narrate one handoff, the sibling task moving the window constant into the service config, so that material belongs in one passage and the Grouping advocate proposes the reorganization the react protocol defines. The report carries the finding's disposition line in the shared shape, reading regrouped, or surfaced with an organizational reason from the protocol; kept is no longer a disposition.",
       "files": ["evals/fixtures/regroup_immediate_ready/setup.sh"],
       "expectations": [
         "The task ends status: ready, written only by task_check.",
         "One repair round runs for the repeated-link finding despite the ready verdict.",
-        "The response carries the finding's disposition line in the shared shape, reading regrouped, kept, or surfaced.",
-        "The file state matches the disposition the response reported: a regrouped finding clears the warn, leaves the account in one section, and bumps updated, while a kept or surfaced one leaves the body byte-identical.",
-        "No surviving mention of the sibling lost its link to plain text.",
+        "The response carries the finding's disposition line in the shared shape, reading regrouped or surfaced.",
+        "A surfaced disposition line carries an organizational reason from the react protocol: a reorganization that would change Goal or the Acceptance contract, separate concerns, or no grouping that keeps the body's meaning.",
+        "A disposition line reading kept fails the eval.",
+        "The file state matches the disposition the response reported: a regrouped finding clears the warn, leaves the account in one section, and bumps updated, while a surfaced one leaves the body byte-identical.",
+        "The sibling stays linked from the body's account of the handoff, so the round moved material rather than stripping link syntax.",
         "The body still carries the handoff account: the sibling task is moving the window constant into the service config.",
         "The Goal and the Acceptance contract keep their meaning.",
         "The sibling task api_throttle-window-config.md is byte-identical.",
-        "A regrouped or kept finding stays out of the surfaced-but-not-fixed line and the stuck channel.",
+        "A regrouped finding stays out of the surfaced-but-not-fixed line and the stuck channel.",
+        "The response points to task_implement as the next step."
+      ]
+    },
+    {
+      "id": "regroup_same_paragraph_ready",
+      "skill": "task_auto_check",
+      "timeout": 2700,
+      "prompt": "Run task_auto_check on tasks/api_retry-header.md.",
+      "expected_output": "task_check reports ready on the first gate call, and the run still runs one repair round for the freeze-recorded repeated-link finding before finalization. Both links to the sibling sit inside one ## Context paragraph that carries the whole handoff account, so the material is already gathered and the react protocol's one-paragraph case applies: the Grouping advocate proposes naming the sibling again in plain text inside that paragraph, the verifier approves it as that case rather than rejecting it as link stripping, and the edit clears the warn. The report carries the finding's disposition line reading regrouped.",
+      "files": ["evals/fixtures/regroup_same_paragraph_ready/setup.sh"],
+      "expectations": [
+        "The task ends status: ready, written only by task_check.",
+        "One repair round runs for the repeated-link finding despite the ready verdict.",
+        "The verifier approves the plain-text naming inside the paragraph as the protocol's one-paragraph case.",
+        "The response carries the finding's disposition line in the shared shape reading regrouped, and no line reading kept or surfaced.",
+        "The linter reports no repeated-link finding on the target after the run.",
+        "The body links the sibling exactly once, from the ## Context paragraph that carries the handoff account.",
+        "## Goal, ## Approach, and ## Acceptance read as staged.",
+        "The sibling task api_throttle-window-config.md is byte-identical.",
+        "A regrouped finding stays out of the surfaced-but-not-fixed line and the stuck channel.",
         "The response points to task_implement as the next step."
       ]
     }
