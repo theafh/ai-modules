@@ -2,7 +2,7 @@
 description: Isolate git_commit eval TMPDIR per job, run the suite at default 4 workers through the shared Pattern A helper, and prove both vendors on that path.
 scope: tests/git_commit/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-04T22:11:10
+updated: 2026-10-08T22:06:22
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -27,13 +27,13 @@ shared `TMPDIR` cross-talk. `DEFAULT_IDS` is a frozen `"1"`..`"9"` list.
 `WORKSPACE` is `tests/git_commit/evals/workspace`, unlike harnesses that write
 `tests/<skill>/workspace`.
 
-This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md)
+This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
 and follows it. Host-instruction isolation stays with
 [the language_humanizer isolation task](tests_language-humanizer-worker-isolation.md).
 
 ## Approach
 
-After the shared helper exists, rewrite `evals/run.py` to import it: derive ids
+Rewrite `evals/run.py` to import the shared helper, `tests/lib/eval_runner.py`: derive ids
 from `evals.json`, put run output under `tests/git_commit/workspace`, pass
 `--workers` defaulting to `vendor.DEFAULT_PARALLEL_WORKERS`, and give every job
 the helper's per-job `TMPDIR`. Keep the vendor path on `vendor.add_vendor_arguments`
@@ -44,8 +44,8 @@ beside the pool.
 Rewrite the straggler scan in `evals/grade.sh` so it uses the job's `TMPDIR`
 (the helper sets it) and still fails when that eval left a `git_commit_context.*`
 file behind. Rewrite `evals/README.md` and `RUNBOOK.md` to match. Drop this
-harness from any leftover sequential list only if the shared-runner docs still
-name it after that rewrite.
+harness from the sequential lists in `tests/CLAUDE.md` and `tests/AGENTS.md`,
+which still name it until this per-job `TMPDIR` conversion lands.
 
 Prove the isolation with a hermetic script-test or helper test that two overlapping
 dummy `TMPDIR` trees cannot see each other's `git_commit_context.*` files, then

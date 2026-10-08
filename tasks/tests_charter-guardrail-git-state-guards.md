@@ -2,8 +2,8 @@
 description: Delete the two one-time git diff --quiet guards from the charter_guardrail script tests so the suite judges file content and passes while an unrelated edit sits uncommitted.
 scope: tests/charter_guardrail
 created: 2026-10-08T17:28:56
-updated: 2026-10-08T17:28:56
-status: open
+updated: 2026-10-08T20:28:21
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -31,4 +31,4 @@ Delete both guard statements, each `git -C "$REPO_ROOT" diff --quiet` call toget
 ## Acceptance
 
 - `git diff -- tests/charter_guardrail/script_tests/run.sh` shows deleted lines only, and they are exactly the two guard statements: both `git -C "$REPO_ROOT" diff --quiet` calls with the `fail "deployment.conf should remain unchanged"` and `fail "Manual task-chain skills should remain unchanged by this hook task"` lines.
-- With a temporary uncommitted whitespace edit to both `plugins/ai_dev/skills/task_create/SKILL.md` and `deployment/deployment.conf`, `bash tests/charter_guardrail/script_tests/run.sh` exits 0 and prints its closing `ok` line. Revert both temporary edits after the run.
+- With a temporary uncommitted whitespace edit to one of the formerly guarded files (`deployment/deployment.conf` or one of the task-chain skill files the second guard named), `bash tests/charter_guardrail/script_tests/run.sh` exits 0 and prints its closing `ok` line. Revert the temporary edit after the run.

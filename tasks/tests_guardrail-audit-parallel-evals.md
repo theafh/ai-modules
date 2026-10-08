@@ -25,7 +25,7 @@ proven concurrent evals yet." Each eval already stages its own sandbox through
 byte-identity plus response markers, so they share no TMPDIR scan with
 `git_commit`.
 
-This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
 
 ## Approach
 

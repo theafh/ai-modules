@@ -2,7 +2,7 @@
 description: Give git_checkout and git_refresh the same vendor-aware Pattern A eval runner the other harnesses ship, so an eval sweep reaches their behavioral evals.
 scope: "local test harnesses"
 created: 2026-09-05T02:10:57
-updated: 2026-10-04T22:11:10
+updated: 2026-10-08T22:06:22
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -54,19 +54,20 @@ how `tests/lib/eval_cache.py` computes a key. This task consumes that helper
 through `source_roots_for()` rather than changing it, so the two impose no order
 on each other.
 
-[The shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md)
+[The shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
 is the helper both new runners import so they do not land as another sequential
 copy of `tests/git_commit/evals/run.py`.
 
 ## Approach
 
-Once that shared helper exists, both new `evals/run.py` files import it.
-Until it lands, take the git_commit runner as the shape reference: a small
-eval set, per-eval fixtures staged by `setup.sh`, a `grade.sh` that reads the
-post-run sandbox, and a vendor-aware loop over `tests/lib/vendor.py` and
-`tests/lib/eval_cache.py`. Either path ships `--workers` defaulting to
-`vendor.DEFAULT_PARALLEL_WORKERS` (4) with per-job `TMPDIR`, because these
-runners must not enter the tree as a new sequential copy.
+Both new `evals/run.py` files import that helper, `tests/lib/eval_runner.py`,
+for the job pool with `--workers` defaulting to
+`vendor.DEFAULT_PARALLEL_WORKERS` (4) and a per-job `TMPDIR`, because these
+runners must not enter the tree as a new sequential copy. Take the git_commit
+runner as the shape reference for the harness-specific parts: a small eval
+set, per-eval fixtures staged by `setup.sh`, a `grade.sh` that reads the
+post-run sandbox, and vendor and cache handling through `tests/lib/vendor.py`
+and `tests/lib/eval_cache.py`.
 
 For each of the two harnesses, add `evals/stage.sh` that stages one fixture and
 prints `printf %q`-quoted `name=value` lines for the sandbox path, the skill

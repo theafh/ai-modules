@@ -2,7 +2,7 @@
 description: Parallelize isolated task_auto_check evals at default 4 workers through the shared helper, and keep the repair-class nested loops sequential in the same run.
 scope: tests/task_auto_check/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-04T22:11:10
+updated: 2026-10-08T22:06:22
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -29,7 +29,7 @@ instead of passing agent files to `vendor.stage_skill_tree`. `WORKSPACE` is
 already `tests/task_auto_check/workspace`. Timing-band measurement is a
 separate remaining thread on the timeout-crash task.
 
-This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
 Cheap-first fixture probes in the RUNBOOK stay as operator guidance.
 
 ## Approach
@@ -40,7 +40,8 @@ in `evals.json` / the RUNBOOK: isolated evals go through the pool at default 4;
 repair-class evals run with effective workers 1 after (or before) that pool,
 never overlapping another repair-class job. Stage auto_* agents only through
 `vendor.stage_skill_tree(..., agent_files=)` and delete the local
-`stage_named_agents`. Keep the host `tasks/` `find -newer` fail-safe.
+`stage_named_agents`. Keep the fixture-scoped host `tasks/` fail-safe
+(`host_fixture_writes_clean` in `tests/lib/host_tasks_guard.sh`).
 
 Rewrite the RUNBOOK sequential rule in place so it names the repair-class
 subset only, and states that the rest of the suite uses the default 4 workers.

@@ -96,15 +96,33 @@ write it.
 
 ### Parallel workers
 
-`DEFAULT_PARALLEL_WORKERS` in `tests/lib/vendor.py` sets the `--workers`
-default to **4 concurrent jobs** on wiki layer 2, `language_humanizer`, and
-`natural_language`.
-Pass `--workers 1` to serialize. Pattern A runners stay sequential:
-`git_commit` (shared TMPDIR), `git_review` (timeout), the `task_*`
-family (serial until their parallel-worker tasks land; the host guard
-ignores unrelated live backlog edits), `agent_spinner` (host `git status`),
-and `guardrail_audit` / `skill_doctor` until an isolation sweep proves
-them. Details stay in lockstep with `tests/CLAUDE.md`.
+Isolated-sandbox evals that use `tests/lib/eval_runner` default to **4**
+concurrent jobs (`DEFAULT_PARALLEL_WORKERS` in `tests/lib/vendor.py`). Each
+job gets its own `TMPDIR`. Pass `--workers 1` to serialize. A harness keeps
+a sequential subset only when its jobs share a resource the helper cannot
+isolate. Today those are the `task_auto_check` repair-class nested loops and
+an escape guard that reads the whole host checkout, such as `agent_spinner`'s
+`git status`.
+
+The helper runs before and after hooks one call at a time, but it cannot tell
+which overlapping job changed a shared tree. Each hook receives its job's
+index, so a parallel escape guard claims only the names that job owns, as
+`tests/lib/host_tasks_guard.sh` does. A job that raises fills only its own
+result slot through the runner's required `on_error` callback, and a Ctrl-C
+keeps queued jobs from starting. Run `python3 tests/lib/test_eval_runner.py`
+for the helper's unit tests.
+
+Runners that already default to `DEFAULT_PARALLEL_WORKERS` outside this
+helper: wiki layer 2, `language_humanizer`, and `natural_language`. Pattern A
+runners that stay sequential until sibling conversion tasks wire them onto
+`eval_runner` (plus permanent isolation exceptions): `git_commit` (shared
+TMPDIR), `git_review` (timeout), the `task_*` family (serial until their
+parallel-worker tasks land; the host guard ignores unrelated live backlog
+edits; `task_auto_check` also keeps its deep repair loops serial),
+`agent_spinner` (unscoped host `git status`, until its guard compares only
+the names each eval owns), and `guardrail_audit` / `skill_doctor`
+until an isolation sweep proves them. Details stay in lockstep with
+`tests/CLAUDE.md`.
 
 ### Subset runs
 

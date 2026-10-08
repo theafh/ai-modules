@@ -2,9 +2,11 @@
 description: Ship one Pattern A eval-runner helper (default 4 workers, per-job isolation) and lockstep the CLAUDE.md/AGENTS.md/README.md parallel-workers rule with the vendor.py comment.
 scope: tests/lib
 created: 2026-10-04T22:11:10
-updated: 2026-10-05T04:49:27
-status: ready
+updated: 2026-10-08T20:43:59
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Extract a shared Pattern A eval runner with operator-doc lockstep and default four workers
@@ -45,24 +47,24 @@ list the Pattern A runners as sequential.
 
 Live siblings consume this helper rather than inventing a second pool:
 
-- [git_commit parallel evals](tests_git-commit-parallel-evals.md)
-- [git_review parallel evals](tests_git-review-parallel-evals.md)
-- [task hub parallel evals](tests_task-hub-parallel-evals.md)
-- [task_create parallel evals](tests_task-create-parallel-evals.md)
-- [task_fix parallel evals](tests_task-fix-parallel-evals.md)
-- [task_auto_check parallel evals](tests_task-auto-check-parallel-evals.md)
-- [agent_spinner parallel evals](tests_agent-spinner-parallel-evals.md)
-- [guardrail_audit parallel evals](tests_guardrail-audit-parallel-evals.md)
-- [skill_doctor parallel evals](tests_skill-doctor-parallel-evals.md)
-- [wiki layer-2 runner dedup](tests_wiki-layer2-runner-dedup.md)
-- [language_humanizer shared pool](tests_language-humanizer-shared-pool.md)
-- [git checkout and refresh runners](tests_git-eval-runner-parity.md)
+- [git_commit parallel evals](../tests_git-commit-parallel-evals.md)
+- [git_review parallel evals](../tests_git-review-parallel-evals.md)
+- [task hub parallel evals](../tests_task-hub-parallel-evals.md)
+- [task_create parallel evals](../tests_task-create-parallel-evals.md)
+- [task_fix parallel evals](../tests_task-fix-parallel-evals.md)
+- [task_auto_check parallel evals](../tests_task-auto-check-parallel-evals.md)
+- [agent_spinner parallel evals](../tests_agent-spinner-parallel-evals.md)
+- [guardrail_audit parallel evals](../tests_guardrail-audit-parallel-evals.md)
+- [skill_doctor parallel evals](../tests_skill-doctor-parallel-evals.md)
+- [wiki layer-2 runner dedup](../tests_wiki-layer2-runner-dedup.md)
+- [language_humanizer shared pool](../tests_language-humanizer-shared-pool.md)
+- [git checkout and refresh runners](../tests_git-eval-runner-parity.md)
 
 Host-instruction isolation for the language_humanizer worker and judge stays
-with [the isolation task](tests_language-humanizer-worker-isolation.md). Cache
-key narrowing stays with [the granularity task](tests_eval-cache-key-granularity.md).
+with [the isolation task](../tests_language-humanizer-worker-isolation.md). Cache
+key narrowing stays with [the granularity task](../tests_eval-cache-key-granularity.md).
 Alignment of trigger-eval `--workers` to `DEFAULT_PARALLEL_WORKERS` stays
-with [the Cursor vendor task](tests_trigger-evals-cursor-vendor.md).
+with [the Cursor vendor task](../tests_trigger-evals-cursor-vendor.md).
 
 ## Approach
 

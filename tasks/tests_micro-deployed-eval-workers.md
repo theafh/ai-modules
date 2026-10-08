@@ -185,7 +185,7 @@ measure the same deployed shape.
   `tests/lib/worker_isolation.py`, since this task controls which artefacts a
   worker loads, not which host instruction files it reaches.
 - The shared job pool and per-job `TMPDIR`, which
-  [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md) owns.
+  [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md) owns.
 - Narrowing cache keys per eval, which
   [the cache-key granularity task](tests_eval-cache-key-granularity.md) owns.
 

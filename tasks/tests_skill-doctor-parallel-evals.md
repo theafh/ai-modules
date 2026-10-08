@@ -2,7 +2,7 @@
 description: Run skill_doctor evals at default 4 workers through the shared helper, keep evals.json-derived ids, and prove isolation with a Cursor default run.
 scope: tests/skill_doctor/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-04T22:11:10
+updated: 2026-10-08T22:06:22
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -25,14 +25,17 @@ silently skipped new evals. `WORKSPACE` is already `tests/skill_doctor/workspace
 checksum manifests still prove the check-only contract. The runner already
 writes `summary.json`.
 
-This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
 
 ## Approach
 
 Rewrite `evals/run.py` onto the shared helper: `--workers` 4, per-job `TMPDIR`,
-keep evals.json-derived ids and `summary.json` if the helper does not already
-emit an equivalent. Add a staging marker if the shared escape hook needs one.
-Rewrite README / RUNBOOK sequential language.
+evals.json-derived ids, and this runner's own `summary.json`, since the helper
+prints its graded summary to stdout and writes no summary file. Keep the
+checksum manifest `stage.sh` writes to `$target/.eval_checksums` as each eval's
+escape check: it covers only that eval's own sandbox, so overlapping evals need
+no staging marker or hook to keep their verdicts apart. Rewrite README / RUNBOOK
+sequential language.
 
 **Out of scope:** Changing `resolve_scope.py` / `discovery_safety.py` script
 tests. Live-testing unshipped editorial plugin harnesses.

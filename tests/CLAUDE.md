@@ -87,28 +87,49 @@ the prompt a deployed copy still won over the project copy.
 
 ### Parallel workers: default 4 only where each job has its own sandbox
 
-`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS` is **4**. That is the
-`--workers` default on the runners whose jobs cannot collide:
+Isolated-sandbox evals that use `tests/lib/eval_runner` default to **4**
+concurrent jobs (`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`). Each job
+gets its own `TMPDIR`. Pass `--workers 1` to serialize. A harness keeps a
+sequential subset only when its jobs share a resource the helper cannot
+isolate. Today those are the `task_auto_check` repair-class nested loops and
+an escape guard that reads the whole host checkout, such as `agent_spinner`'s
+`git status`. Raising the default past 4 mostly buys model contention and
+timeouts, not faster wall-clock.
+
+The helper runs a harness's before and after hooks around each job, one hook
+call at a time, so two escape-guard snapshots never interleave. The hooks
+share one lock, and that lock cannot tell which overlapping job changed a
+shared tree. Each hook therefore receives its job's index, and a parallel
+escape guard uses it to claim only the names that job owns, the way
+`tests/lib/host_tasks_guard.sh` compares only the sandbox's fixture names.
+Every runner passes the required `on_error` callback, so a job that raises
+fills only its own result slot with the fault verdict that callback builds,
+and the run still reaches its graded summary. A Ctrl-C keeps queued jobs from
+starting and lets the running ones finish. Unit tests live in
+`tests/lib/test_eval_runner.py` (run `python3 tests/lib/test_eval_runner.py`).
+
+Runners that already default to `DEFAULT_PARALLEL_WORKERS` outside this
+helper (private pools, not yet on `eval_runner`):
 
 - `tests/wiki/layer2/run.py` — one sandbox directory per scenario; passes
   of the same scenario stay sequential.
-- `tests/language_humanizer/evals/run.py`: one isolated sandbox root per pass.
-- `tests/natural_language/evals/run.py` stages one sandbox per pass.
+- `tests/language_humanizer/evals/run.py` — one isolated sandbox root per pass.
+- `tests/natural_language/evals/run.py` — one sandbox per pass.
 
-`--workers 1` forces the serial path. Raising it past 4 mostly buys
-model contention and timeouts, not faster wall-clock.
+Pattern A runners that stay sequential until their sibling conversion tasks
+wire them onto `eval_runner` (plus permanent isolation exceptions):
 
-Leave these runners sequential. Parallelism would mix their fail-safes
-or blow their timeouts:
-
-- `git_commit` — `grade.sh` scans a shared `TMPDIR` for stragglers.
+- `git_commit` — `grade.sh` scans a shared `TMPDIR` for stragglers until the
+  per-job `TMPDIR` conversion lands.
 - `git_review` — two workers contend for the model past the per-eval timeout.
 - `task`, `task_create`, `task_fix`, `task_auto_check` — still serial until
   their parallel-worker tasks land. The host guard compares an isolated temp
   copy and only the sandbox's fixture names, so an unrelated live backlog edit
   no longer fails them. `task_auto_check` also keeps its deep repair loops
-  serial.
-- `agent_spinner` — brackets each eval with a host-checkout `git status`.
+  serial (a resource the helper cannot isolate).
+- `agent_spinner` brackets each eval with a host-checkout `git status`, which
+  sees every overlapping eval's changes, so it stays serial until its guard
+  compares only the names each eval owns.
 - `guardrail_audit`, `skill_doctor` — still serial; no isolation sweep
   has proven concurrent evals yet.
 

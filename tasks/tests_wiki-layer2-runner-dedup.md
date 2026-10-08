@@ -28,7 +28,7 @@ It still inlines the executor and copies `stage_named_agents`, which
 the Pattern A verdict cache, and it should not: multi-pass assertion rates are
 the measurement.
 
-This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
 Provenance and baseline-narrowing stay with
 [the wiki harness provenance task](tests_wiki-harness-run-provenance.md).
 

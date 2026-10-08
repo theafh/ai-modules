@@ -12,10 +12,10 @@ from dataclasses import dataclass
 
 VENDORS = ("claude", "cursor")
 
-# Concurrent workers for harnesses that isolate each scenario or pass in its
-# own sandbox. Pattern A runners that share TMPDIR, a host git status, or a
-# host-tree mtime fail-safe stay sequential; see tests/CLAUDE.md and
-# tests/AGENTS.md.
+# Isolated-sandbox evals that use tests/lib/eval_runner.py default to this many
+# concurrent jobs (each with its own TMPDIR). Pass --workers 1 to serialize.
+# Harnesses that share a resource the helper cannot isolate stay sequential;
+# see tests/CLAUDE.md and tests/AGENTS.md.
 DEFAULT_PARALLEL_WORKERS = 4
 
 CLAUDE_ONLY = {

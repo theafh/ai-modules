@@ -30,7 +30,7 @@ Contention can still lengthen a job. That is a timeout and `--workers` tuning
 concern. Isolated sandboxes already exist, so correctness does not require a
 single-file walk.
 
-This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
 [The timeout-crash task](tests_eval-runner-timeout-crash.md) still owns the
 `task_auto_check` timing band, not this harness.
 
