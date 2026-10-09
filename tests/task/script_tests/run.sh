@@ -987,6 +987,163 @@ EOF
     $ok
 }
 
+# Live-only body-prose checks: size and repeated-link stay quiet on
+# archived pages, keep firing on live pages, and leave mechanical
+# archive-inclusive findings untouched.
+write_oversized_task() {
+    local path=$1 status=$2 now=$3
+    {
+        cat <<EOF
+---
+description: oversized body-prose fixture
+scope: "test"
+created: $now
+updated: $now
+status: $status
+reported-by: Test User
+EOF
+        if [[ "$status" == "finished" || "$status" == "deferred" || "$status" == "implemented" || "$status" == "audited" ]]; then
+            printf 'implemented-by: Test User\n'
+        fi
+        cat <<EOF
+---
+
+# Oversized body
+EOF
+        local i
+        for i in $(seq 1 320); do printf 'filler line %s\n' "$i"; done
+    } > "$path"
+}
+
+write_twice_linker() {
+    local path=$1 status=$2 now=$3 target=$4
+    {
+        cat <<EOF
+---
+description: twice-linking body-prose fixture
+scope: "test"
+created: $now
+updated: $now
+status: $status
+reported-by: Test User
+EOF
+        if [[ "$status" == "finished" || "$status" == "deferred" || "$status" == "implemented" || "$status" == "audited" ]]; then
+            printf 'implemented-by: Test User\n'
+        fi
+        cat <<EOF
+---
+
+# Twice linker
+
+Context cites [t]($target) as background.
+Approach edits [t]($target) again.
+EOF
+    } > "$path"
+}
+
+lo1_archived_body_prose_checks_stay_quiet() {
+    local tasks; tasks=$(fresh_tasks lo1)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    archived_task "$tasks" "link_target.md" "finished"
+    write_oversized_task "$tasks/archive/big_oversized.md" "finished" "$now"
+    write_twice_linker "$tasks/archive/twice_linker.md" "finished" "$now" "link_target.md"
+    local ret; ret=$(run_lint "$tasks" --include-archive)
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local size_count rl_count
+    size_count=$(grep -c "split into multiple tasks" <<<"$out" || true)
+    rl_count=$(grep -c "repeated-link" <<<"$out" || true)
+    assert_eq "exit 0 (archived body-prose warns are silent)" "$rc" "0" || ok=false
+    assert_eq "no size finding on archived oversized page" "$size_count" "0" || ok=false
+    assert_eq "no repeated-link finding on archived twice-linker" "$rl_count" "0" || ok=false
+    $ok
+}
+
+lo2_live_body_prose_fixtures_still_warn() {
+    local tasks; tasks=$(fresh_tasks lo2)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    write_task "$tasks" "link_target.md" "$now"
+    write_oversized_task "$tasks/big_oversized.md" "open" "$now"
+    write_twice_linker "$tasks/twice_linker.md" "open" "$now" "link_target.md"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local size_count rl_count
+    size_count=$(grep -c "split into multiple tasks" <<<"$out" || true)
+    rl_count=$(grep -c "repeated-link" <<<"$out" || true)
+    assert_eq "exit 0 (live body-prose warns do not block)" "$rc" "0" || ok=false
+    assert_eq "size finding on live oversized page" "$size_count" "1" || ok=false
+    assert_eq "repeated-link finding on live twice-linker" "$rl_count" "1" || ok=false
+    $ok
+}
+
+lo3_live_linking_archived_target_still_warns() {
+    local tasks; tasks=$(fresh_tasks lo3)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    archived_task "$tasks" "link_target.md" "finished"
+    write_twice_linker "$tasks/live_archive-linker.md" "open" "$now" "archive/link_target.md"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local count; count=$(grep -c "repeated-link" <<<"$out" || true)
+    assert_eq "exit 0 (live repeated-link warn does not block)" "$rc" "0" || ok=false
+    assert_eq "exactly one repeated-link finding" "$count" "1" || ok=false
+    assert_contains "names the live linking page" "$out" "live_archive-linker" || ok=false
+    $ok
+}
+
+lo4_archive_mode_still_reports_mechanical() {
+    local tasks; tasks=$(fresh_tasks lo4)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/archive/defect_badstatus.md" <<EOF
+---
+description: archived page with a blocking defect
+scope: "test"
+created: $now
+updated: $now
+status: wip
+reported-by: Test User
+---
+
+# Defect badstatus
+EOF
+    local ret; ret=$(run_lint "$tasks" --include-archive)
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (mechanical archive defect still blocks)" "$rc" "1" || ok=false
+    assert_contains "reports invalid status on archived page" "$out" "invalid status" || ok=false
+    assert_contains "names the archived defect page" "$out" "defect_badstatus" || ok=false
+    $ok
+}
+
+lo5_live_and_archive_inclusive_body_prose_match() {
+    local tasks; tasks=$(fresh_tasks lo5)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    write_task "$tasks" "live_target.md" "$now"
+    write_oversized_task "$tasks/live_big.md" "open" "$now"
+    write_twice_linker "$tasks/live_twice.md" "open" "$now" "live_target.md"
+    archived_task "$tasks" "arch_target.md" "finished"
+    write_oversized_task "$tasks/archive/arch_big.md" "finished" "$now"
+    write_twice_linker "$tasks/archive/arch_twice.md" "finished" "$now" "arch_target.md"
+    local live_ret archive_ret
+    live_ret=$(run_lint "$tasks")
+    archive_ret=$(run_lint "$tasks" --include-archive)
+    local live_out=${live_ret#*|} archive_out=${archive_ret#*|}
+    local ok=true
+    local live_size archive_size live_rl archive_rl
+    live_size=$(grep -c "split into multiple tasks" <<<"$live_out" || true)
+    archive_size=$(grep -c "split into multiple tasks" <<<"$archive_out" || true)
+    live_rl=$(grep -c "repeated-link" <<<"$live_out" || true)
+    archive_rl=$(grep -c "repeated-link" <<<"$archive_out" || true)
+    assert_eq "size counts match across modes" "$live_size" "$archive_size" || ok=false
+    assert_eq "repeated-link counts match across modes" "$live_rl" "$archive_rl" || ok=false
+    assert_eq "one live size finding" "$live_size" "1" || ok=false
+    assert_eq "one live repeated-link finding" "$live_rl" "1" || ok=false
+    assert_not_contains "archive-inclusive size finding stays on live page" "$archive_out" "arch_big" || ok=false
+    assert_not_contains "archive-inclusive repeated-link stays on live page" "$archive_out" "arch_twice" || ok=false
+    $ok
+}
+
 c1_fully_valid_task_is_clean() {
     local tasks; tasks=$(fresh_tasks c1)
     local now; now=$(date +%Y-%m-%dT%H:%M:%S)
@@ -1696,21 +1853,29 @@ fs1_scoped_archived_page_reports_only_itself() {
     stage_scoped_tree "$tasks"
     local ok=true
 
-    # Scope to the oversized page: its own size warn, nothing else named.
-    local ret; ret=$(run_lint "$tasks" --file tasks/archive/big_oversized.md)
+    # Scope to the mechanical defect: its own blocking finding, neither
+    # body-prose neighbour named.
+    local ret; ret=$(run_lint "$tasks" --file tasks/archive/defect_badstatus.md)
     local rc=${ret%%|*} out=${ret#*|}
-    assert_eq "exit 0 (scoped size warn does not block)" "$rc" "0" || ok=false
-    assert_contains "reports the scoped page's size warn" "$out" "split into multiple tasks" || ok=false
+    assert_eq "exit 1 (scoped blocking defect)" "$rc" "1" || ok=false
+    assert_contains "reports the scoped page's invalid status" "$out" "invalid status" || ok=false
+    assert_not_contains "does not name the oversized page" "$out" "big_oversized" || ok=false
+    assert_not_contains "does not name the twice-linking page" "$out" "twice_linker" || ok=false
+
+    # Scope to the oversized page: body-prose size check is live-only.
+    ret=$(run_lint "$tasks" --file tasks/archive/big_oversized.md)
+    rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 0 (archived oversized page is quiet)" "$rc" "0" || ok=false
+    assert_not_contains "no size warn on archived oversized page" "$out" "split into multiple tasks" || ok=false
     assert_not_contains "does not name the twice-linking page" "$out" "twice_linker" || ok=false
     assert_not_contains "does not name the defect page" "$out" "defect_badstatus" || ok=false
 
-    # Scope to the twice-linking page: its own repeated-link warn only.
+    # Scope to the twice-linking page: body-prose repeated-link check is live-only.
     ret=$(run_lint "$tasks" --file archive/twice_linker.md)
     rc=${ret%%|*} out=${ret#*|}
-    local count; count=$(grep -c "repeated-link" <<<"$out")
-    assert_eq "exit 0 (scoped repeated-link warn does not block)" "$rc" "0" || ok=false
-    assert_eq "exactly one repeated-link finding" "$count" "1" || ok=false
-    assert_contains "names the repeated target" "$out" "link_target.md" || ok=false
+    local count; count=$(grep -c "repeated-link" <<<"$out" || true)
+    assert_eq "exit 0 (archived twice-linker is quiet)" "$rc" "0" || ok=false
+    assert_eq "no repeated-link finding on archived page" "$count" "0" || ok=false
     assert_not_contains "does not name the oversized page" "$out" "big_oversized" || ok=false
     assert_not_contains "does not name the defect page" "$out" "defect_badstatus" || ok=false
     $ok
@@ -1907,6 +2072,11 @@ scenario sc2 "lint: unquoted scope missing path blocks"        sc2_unquoted_scop
 scenario sc3 "lint: unquoted scope escaping root blocks"       sc3_unquoted_scope_escape_blocks
 scenario sc4 "lint: quoted-but-empty scope blocks"             sc4_quoted_empty_scope_blocks
 scenario sz1 "lint: oversized page warns"                      sz1_oversized_page_warns
+scenario lo1 "lint: archived body-prose checks stay quiet"     lo1_archived_body_prose_checks_stay_quiet
+scenario lo2 "lint: live body-prose fixtures still warn"       lo2_live_body_prose_fixtures_still_warn
+scenario lo3 "lint: live page linking archive still warns"     lo3_live_linking_archived_target_still_warns
+scenario lo4 "lint: archive mode still reports mechanical"     lo4_archive_mode_still_reports_mechanical
+scenario lo5 "lint: live and archive-inclusive body-prose match" lo5_live_and_archive_inclusive_body_prose_match
 scenario c1  "lint: fully valid task is clean"                 c1_fully_valid_task_is_clean
 scenario sp1 "lint: line-number position claims warn"          sp1_position_claims_warn
 scenario sp2 "lint: silent shapes stay quiet (fence-skip)"     sp2_silent_shapes_stay_quiet

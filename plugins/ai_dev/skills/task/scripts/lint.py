@@ -5,8 +5,9 @@ Audits live `*.md` task files under the resolved tasks/ tree by default:
 filename naming convention, frontmatter completeness, provenance,
 status/location consistency, datetime format, title presence, page size,
 and name collisions across live + archive. Pass `--include-archive` to
-extend the per-file checks across the whole archive: task_fix runs it for
-whole-archive maintenance. Pass `--file PATH` to scope the per-file checks
+extend the mechanical per-file checks across the whole archive: task_fix
+runs it for whole-archive maintenance, while the body-prose checks stay on
+live pages. Pass `--file PATH` to scope the per-file checks
 to one named task file, live or archived: the task archive close-out runs
 it to verify the single file it just moved. The two flags are mutually
 exclusive.
@@ -453,7 +454,14 @@ def check_archive_migration(tasks: Path, page: Path, fm: dict | None) -> list[Is
     )]
 
 
-def check_size(page: Path) -> list[Issue]:
+def check_size(tasks: Path, page: Path) -> list[Issue]:
+    """Warn when a live task body exceeds the split threshold.
+
+    Open tasks only — archived pages are closed records nobody maintains, so
+    checking them would only create permanent noise.
+    """
+    if is_archived(tasks, page):
+        return []
     text = page.read_text(encoding="utf-8")
     line_count = len(text.splitlines())
     if line_count > MAX_LINES_BEFORE_SPLIT:
@@ -734,8 +742,11 @@ def check_repeated_links(tasks: Path, page: Path) -> list[Issue]:
     file count once. Warn-only and candidate-not-verdict: the count is a
     hint that material about the target may sit in several places, not
     an instruction to drop a link. Leave out of the mechanically fixable
-    finding set.
+    finding set. Open tasks only — archived pages are closed records nobody
+    maintains, so checking them would only create permanent noise.
     """
+    if is_archived(tasks, page):
+        return []
     text = page.read_text(encoding="utf-8")
     _, body = parse_frontmatter(text)
     scrubbed = "\n".join(_scrub_fences(body))
@@ -832,8 +843,9 @@ def main() -> int:
     scope.add_argument(
         "--include-archive",
         action="store_true",
-        help="Extend the per-file checks across the whole tasks/archive/ tree "
-        "for task_fix whole-archive maintenance (legacy retrofit hints included).",
+        help="Extend the mechanical per-file checks across the whole "
+        "tasks/archive/ tree for task_fix whole-archive maintenance (legacy "
+        "retrofit hints included); body-prose checks stay on live pages.",
     )
     scope.add_argument(
         "--file",
@@ -868,7 +880,7 @@ def main() -> int:
         issues.extend(check_scope(tasks, page))
         issues.extend(check_location(tasks, page, fm))
         issues.extend(check_archive_migration(tasks, page, fm))
-        issues.extend(check_size(page))
+        issues.extend(check_size(tasks, page))
         issues.extend(check_no_footnotes(page))
         issues.extend(check_no_wikilinks(page))
         issues.extend(check_local_links(tasks, page))

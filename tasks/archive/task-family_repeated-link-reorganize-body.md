@@ -2,7 +2,7 @@
 description: Make every task-writing surface answer a repeated-link warn by reorganizing the body so that what belongs together sits together, and retire the per-link kept disposition.
 scope: plugins/ai_dev
 created: 2026-10-07T08:07:22
-updated: 2026-10-08T15:35:28
+updated: 2026-10-09T07:00:22
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -40,7 +40,7 @@ The framing fails in practice. On 2026-10-07, a backlog update in another reposi
 
 The live tasks below edit the same passages for other purposes, and whichever task lands second rewrites its sentences against the text it finds:
 
-- [The live-only body-checks task](../task-family_live-only-body-checks.md) qualifies the warn bucket as live-only, replaces the react protocol's closing routing of archived findings, and removes the archived count line from the disposition-line block and from the `task_fix` `<output_contract>`. Its Acceptance requires the per-finding disposition line shape to survive for live findings, and this task keeps that shape while changing only the values its disposition field takes.
+- [The live-only body-checks task](task-family_live-only-body-checks.md) qualifies the warn bucket as live-only, replaces the react protocol's closing routing of archived findings, and removes the archived count line from the disposition-line block and from the `task_fix` `<output_contract>`. Its Acceptance requires the per-finding disposition line shape to survive for live findings, and this task keeps that shape while changing only the values its disposition field takes.
 - [The stamp-consequence task](../task-family_stamp-consequence-on-any-rewrite.md) makes the react protocol leave `implemented` and `audited` bodies alone, adds a re-gate to the repeated-link round of `task_auto_check`, and rewrites the status expectation of the `regroup_immediate_ready` eval. Its sentences and eval branches for a kept or surfaced outcome narrow to the surfaced outcome once this task lands.
 
 These test surfaces pin the per-link framing:

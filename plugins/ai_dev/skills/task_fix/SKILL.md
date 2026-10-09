@@ -1,7 +1,7 @@
 ---
 name: task_fix
 description: Repair the whole tasks backlog tree in one pass and assess its backlog-coherence by default. Use when the user asks to health check, clean up, audit, or lint the backlog, to check backlog coherence or consistency, to say whether selected tasks ship together, or to autonomously resolve backlog judgement calls. Run the archive inclusive linter, fix mechanical frontmatter, status, location, link, datetime, and provenance issues inline, and gate coherence repairs on acceptance or escalate.
-version: 1.3.17
+version: 1.3.18
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -73,7 +73,7 @@ Surface these for human review in the inline path. When the user opted into auto
 <output_contract>
 End with a concise report: the mode used (`inline` or `escalated`), a backlog-coherence assessment section, the per-file changes made, the final lint outcome (triaged as above for inline, agent-verified for escalation), and a closing line in the shape `audit complete — N issues resolved, K flagged for review`. Name every judgement call left for the user and include the `auto_shaper_task` report when escalation ran.
 
-Report every `repeated-link` finding the run read. Each live finding gets one line in the base `<lint>` **Repeated-link disposition line** shape, the shared per-finding disposition line shape that carries the file, the link target, the sections linking it, and the disposition, which is `regrouped` or `surfaced because <reason>`, the only two the protocol allows. One further line carries the archived count in that block's count shape, since the writing owners regroup live tasks only. Count each regrouped finding in `N issues resolved` and each surfaced one in `K flagged for review`, so every live finding the run read lands in one of the two counts.
+Report every `repeated-link` finding the run read. Each live finding gets one line in the base `<lint>` **Repeated-link disposition line** shape, the shared per-finding disposition line shape that carries the file, the link target, the sections linking it, and the disposition, which is `regrouped` or `surfaced because <reason>`, the only two the protocol allows. Count each regrouped finding in `N issues resolved` and each surfaced one in `K flagged for review`, so every live finding the run read lands in one of the two counts.
 
 The backlog-coherence assessment section appears on every run, since the assessment is default-on. It names the selected live set and how the selector picked it, carries both indexes the assess phase wrote (the shared-surface map and the design-question grouping), gives each selected task its verdict with the evidence behind it and the fields that verdict class owes, names the ship-order waves, and states plainly that the joint read found nothing when the set is coherent. Keep the map in the report rather than dropping it after use: it is the evidence a shared-surface or contradiction verdict rests on, and a reader checking such a verdict needs the ownership rows it came from.
 

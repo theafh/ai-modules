@@ -201,7 +201,9 @@ case "$eval_id" in
     archived_untouched() { byte_identical "tasks/archive/api_legacy-export.md"; }
     archived_pair_untouched() { byte_identical "tasks/archive/api_legacy-columns.md"; }
     live_line_regrouped() { disposition_line "api_export-gzip" "regrouped"; }
-    archived_count_line() { disposition_blocks | grep -qiE 'repeated-link:.*archived'; }
+    no_archived_count_line() {
+      ! disposition_blocks | grep -qiE 'repeated-link:[[:space:]]*[0-9]+[[:space:]]+findings on archived tasks'
+    }
     check "the live task's repeated-link warn is cleared"        warn_cleared
     check "the gathered account sits in ## Context only"         account_in_context_only
     check "## Goal still states what the task delivers"          goal_still_delivers
@@ -212,7 +214,7 @@ case "$eval_id" in
     check "the archived link target is byte-identical"           archived_pair_untouched
     check "the report is readable"                               response_readable
     check "the report carries the live finding's line as regrouped" live_line_regrouped
-    check "the report carries the archived-count line"           archived_count_line
+    check "the report carries no archived-count line"            no_archived_count_line
     note_agent_attest "the regrouped finding is counted in the closing line's N issues resolved"
     note_agent_attest "the gathered Context sentence reads as one account rather than two stitched clauses"
     ;;

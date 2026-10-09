@@ -9,7 +9,7 @@
 #                               Context with a link at each site, and an
 #                               archived task links one target twice: the live
 #                               account gathers into Context, the archived body
-#                               stays as archived and is reported as a count
+#                               stays as archived and draws no finding
 #   regroup_state_and_edit_site Context describes what a reference page says
 #                               today and Approach edits one of its sections:
 #                               the page's state and its edit belong together,

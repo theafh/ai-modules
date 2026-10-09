@@ -2,7 +2,7 @@
 description: Share record-bounded repeated-link disposition helpers in tests/lib, rewrite both graders onto them, unit-test and document the shared file, and re-grade affected evals.
 scope: tests
 created: 2026-10-08T18:10:50
-updated: 2026-10-08T23:26:01
+updated: 2026-10-09T07:00:22
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -36,7 +36,7 @@ These steps share one rationale (record-bounded disposition reads), one edit sur
   - `disposition_words <needle>` prints that word for every block naming the needle, one per line.
   - `disposition_reason <needle>` prints a surfaced block's reason, from `surfaced because` to its first sentence end or table cell boundary.
 - **Source it.** In both graders, delete the local disposition helpers, `disposition_line` included, and source the shared file right after `RESPONSE` is set, through a `# shellcheck source=../../lib/repeated_link_disposition.sh` line.
-- **Rewrite the checks.** Before rewriting, inventory both graders for three properties: every `disposition_line` call, every grep of `disposition_blocks` output, and every remaining local `disposition_*` helper definition. Point every inventoried site at the shared helpers. A disposition-word check compares `disposition_of` or `disposition_words` for its own finding, and a reason check, `reason_names_acceptance` included, matches its keywords against `disposition_reason` only. The `task_fix` grader's archived-count check matches the count line's own block from its lead-in, `repeated-link:` followed by a number of findings on archived tasks. When [the live-only body-checks task](task-family_live-only-body-checks.md) has already landed, that check asserts the count line's absence instead, anchored on the same lead-in, so keep it as that task wrote it and only move it onto the shared helpers.
+- **Rewrite the checks.** Before rewriting, inventory both graders for three properties: every `disposition_line` call, every grep of `disposition_blocks` output, and every remaining local `disposition_*` helper definition. Point every inventoried site at the shared helpers. A disposition-word check compares `disposition_of` or `disposition_words` for its own finding, and a reason check, `reason_names_acceptance` included, matches its keywords against `disposition_reason` only. The `task_fix` grader's archived-count check matches the count line's own block from its lead-in, `repeated-link:` followed by a number of findings on archived tasks. When [the live-only body-checks task](archive/task-family_live-only-body-checks.md) has already landed, that check asserts the count line's absence instead, anchored on the same lead-in, so keep it as that task wrote it and only move it onto the shared helpers.
 - **Unit test.** Add `tests/lib/test_repeated_link_disposition.sh`, shaped like `tests/lib/test_host_tasks_guard.sh`. It writes hand-built responses to a temporary file and asserts that:
   - a block ends at its record, so a paragraph after a blank line stays out of it, while a hard-wrapped line yields one whole block;
   - a fenced block of two disposition lines yields two blocks, each keeping its own reason;

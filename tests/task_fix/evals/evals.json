@@ -5,7 +5,7 @@
       "id": "regroup_live_skip_archived",
       "skill": "task_fix",
       "prompt": "Health-check and clean up the tasks backlog.",
-      "expected_output": "The archive-inclusive lint reports two repeated-link findings. On the live task the Remediate step applies the base react protocol's meaning-preserving regroup: Goal and Context narrate the same handoff, so that account gathers into Context and Goal keeps stating what the task delivers. The archived finding is reported as part of a count with its body left exactly as archived. The report carries the live finding's disposition line as regrouped plus the archived-count line.",
+      "expected_output": "The archive-inclusive lint reports one repeated-link finding, on the live task. The Remediate step applies the base react protocol's meaning-preserving regroup: Goal and Context narrate the same handoff, so that account gathers into Context and Goal keeps stating what the task delivers. The archived body that links one archived target twice stays as archived and draws no finding. The report carries the live finding's disposition line as regrouped and carries no archived-count line.",
       "files": ["evals/fixtures/regroup_live_skip_archived/setup.sh"],
       "expectations": [
         "The live task api_export-gzip.md carries the handoff account in ## Context only.",
@@ -16,7 +16,7 @@
         "The archived link target archive/api_legacy-columns.md is byte-identical.",
         "The live link target api_export-schema.md is byte-identical.",
         "The report carries one shared-shape disposition line for the live finding reading regrouped.",
-        "The report carries one archived-count line saying the archived bodies were left as archived.",
+        "The report carries no archived-count line.",
         "The regrouped finding is counted in the closing line's N issues resolved."
       ]
     },

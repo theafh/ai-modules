@@ -9,7 +9,7 @@ and `tests/task_auto_check/script_tests/run.sh`.
 
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
-| Skill behavior | `evals/` | the base `<lint>` **Repeated-link react protocol** as the inline `task_fix` path applies it: reorganize live bodies, surface what would change Goal or the Acceptance contract, count the archive (stage → agent → grade) | `python3 tests/task_fix/evals/run.py` |
+| Skill behavior | `evals/` | the base `<lint>` **Repeated-link react protocol** as the inline `task_fix` path applies it: reorganize live bodies, surface what would change Goal or the Acceptance contract, leave archived bodies quiet (stage → agent → grade) | `python3 tests/task_fix/evals/run.py` |
 
 The whole-family behavioral suite keeps its own `fix`, `fix_coherence`, and
 `fix_coherence_selector_*` evals in `tests/task/evals/` for the rest of the
@@ -27,7 +27,7 @@ file's bytes, and the run's per-finding disposition line.
   Goal` and `## Context`, each site carrying its own link, and an archived task
   links one target twice. The live account gathers into `## Context`, Goal keeps
   stating what the task delivers, `updated` is bumped, and the archived body
-  stays exactly as archived and is reported as a count.
+  stays exactly as archived and draws no finding.
 - **`regroup_state_and_edit_site`**: `## Context` describes what a reference
   page says today and `## Approach` edits one of its sections, each passage
   with its own link. The page's current state and the edit belong together, so

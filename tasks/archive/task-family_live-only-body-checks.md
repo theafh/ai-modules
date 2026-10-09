@@ -2,9 +2,11 @@
 description: Gate the repeated-link and size checks to live task bodies, and rewrite the rules describing them so an archived finding is never reported rather than reported as a count nobody acts on.
 scope: plugins/ai_dev/skills
 created: 2026-09-18T21:27:49
-updated: 2026-10-08T18:49:04
-status: ready
+updated: 2026-10-09T07:00:14
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make the body-prose lint checks live-only, in the script and in the rules
@@ -46,8 +48,8 @@ grep -ilE 'repeated-link|check_size|is_archived|archived.count|regroup_live_skip
 
 and read each live task it names other than this one. Where one edits a surface this task changes, write this task's edit against the text the files hold when the work starts, and keep any guarantee that task establishes. These kinds of overlap change this task's work, each with an example that was live when this task was written:
 
-- **A wider page walk.** A task that makes the linter walk files other than task pages changes what "archived" means for this gate, since a page that is not a task file is neither live nor archived. [Repo-wide link integrity](task-family_repo-wide-link-integrity.md) is an example: it keeps the repeated-link warn's per-file behaviour while widening the walk, so reconcile the `is_archived` gate against the walk you find.
-- **A rewritten react protocol.** A task that rewrites the **Repeated-link react protocol** or the repeated-link round of `task_auto_check` may reword the closing sentence this task replaces. [Return a ready task to checked on any rewrite](task-family_stamp-consequence-on-any-rewrite.md) is an example: it makes the protocol leave `implemented` and `audited` bodies alone, so replace the routing of archived findings in whatever wording you find.
+- **A wider page walk.** A task that makes the linter walk files other than task pages changes what "archived" means for this gate, since a page that is not a task file is neither live nor archived. [Repo-wide link integrity](../task-family_repo-wide-link-integrity.md) is an example: it keeps the repeated-link warn's per-file behaviour while widening the walk, so reconcile the `is_archived` gate against the walk you find.
+- **A rewritten react protocol.** A task that rewrites the **Repeated-link react protocol** or the repeated-link round of `task_auto_check` may reword the closing sentence this task replaces. [Return a ready task to checked on any rewrite](../task-family_stamp-consequence-on-any-rewrite.md) is an example: it makes the protocol leave `implemented` and `audited` bodies alone, so replace the routing of archived findings in whatever wording you find.
 - **A restructured `task_fix` grader.** A task that moves the `task_fix` grader's disposition helpers changes where the archived-count check lives. The disposition-helpers task, `tests_repeated-link-disposition-helpers.md`, is an example, so write the absence check this task requires against the helpers you find.
 
 ## Approach

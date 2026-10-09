@@ -111,9 +111,9 @@ compressed content encoding in the `## CSV` section of `docs/export.md`.
   section.
 EOF
 
-# Archived pair. The archived task links one archived target twice, so the
-# archive-inclusive lint reports a repeated-link finding whose body the run
-# must leave exactly as archived.
+# Archived pair. The archived task links one archived target twice; the
+# archive-inclusive lint draws no finding on that archived body, and the
+# run leaves those bytes exactly as archived.
 cat > "$target/proj/tasks/archive/api_legacy-columns.md" <<'EOF'
 ---
 description: Retire the legacy fixed column list from the first reporting export.
