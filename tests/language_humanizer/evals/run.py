@@ -15,8 +15,10 @@ Every pass runs isolated from the host. Its sandbox root comes from
 directory, outside the home directory and outside any git repository, so no
 host standing-instruction file reaches the worker. The worker also carries the
 helper's arguments for the resolved vendor. The judge in `judge.py` runs the
-same way from an isolated root of its own. The skill under test is copied into
-the sandbox and path-read from there, never from the repository.
+same way from an isolated root of its own. The skill under test is
+micro-deployed through the deploy script into a scratch home, path-read from
+that deployed copy, never from the repository, and copied into the pass's
+sandbox record afterwards.
 
 Passes run **concurrently** (`--workers`, default
 `vendor.DEFAULT_PARALLEL_WORKERS`). Every pass owns its own isolated sandbox
@@ -32,13 +34,14 @@ Per scenario and pass the runner:
 
 1. Creates an isolated sandbox root and stages the fixture into it via
    `stage.sh <id> <root>`.
-2. Copies the skill under test into the root as a project skill
-   (`<root>/.cursor/skills/<name>/` or `<root>/.claude/skills/<name>/`), beside
-   the staged project, and names that copy's path in the worker prompt. It then
-   spawns one vendor-resolved print-mode worker with the staged
-   project as its cwd and the root as its Cursor workspace, telling it to load
-   the copied skill and carry out the staged prompt, then to save the
-   delivered document verbatim to `delivered.md`.
+2. Micro-deploys `language_humanizer` for the staged project through the deploy
+   script (scratch home, preflight off) and names the deployed `SKILL.md` path
+   in the worker prompt. It then spawns one vendor-resolved print-mode worker
+   with the staged project as its cwd and Cursor workspace, telling it to load
+   the deployed skill and carry out the staged prompt, then to save the
+   delivered document verbatim to `delivered.md`. The deployed `SKILL.md` is
+   copied to `<root>/language_humanizer/SKILL.md` before the scratch home goes
+   away, so the record keeps exactly what the pass measured.
 3. Grades the staged project deterministically with `grade.py` (word counts,
    ledger items, bullet shape, harness integrity).
 4. Grades the qualitative assertions with `judge.py` using the vendor-resolved
@@ -83,8 +86,8 @@ WORKSPACE = HARNESS / "workspace"
 RESULTS = HARNESS / "results"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
+import micro_deploy  # noqa: E402  (shared micro-deployment helper in tests/lib)
 import vendor  # noqa: E402  (shared vendor helper in tests/lib)
-from worker_io import as_text  # noqa: E402  (shared helper in tests/lib)
 import worker_isolation  # noqa: E402  (shared helper in tests/lib)
 
 import judge as judge_mod  # noqa: E402  (sibling module in this harness)
@@ -92,6 +95,8 @@ import judge as judge_mod  # noqa: E402  (sibling module in this harness)
 # Every isolated sandbox root this runner creates starts with this prefix, so a
 # leftover root is easy to find under the system temporary directory.
 ISOLATION_PREFIX = "lh_pass_"
+
+ARTEFACTS = ["language_humanizer"]
 
 SCENARIOS = ["fidelity_padded", "compression_trap", "write_path"]
 
@@ -178,60 +183,43 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
     workdir = staged["sandbox_proj"]
     skill_src = pathlib.Path(staged["skill_path"])
     # Fail fast with a named cause when the checkout lacks the skill, rather
-    # than letting stage_skill_tree raise mid-pass.
+    # than letting the deploy script fail mid-pass.
     if not skill_src.is_file():
         raise FileNotFoundError(
             f"language_humanizer SKILL.md missing at {skill_src}; "
             "this harness needs a checkout that carries the ai_editorial plugin"
         )
-    # The copy lands as a project skill of the isolated root
-    # (<root>/.cursor/skills/... or <root>/.claude/skills/...), beside the
-    # graded project rather than inside it, and the Cursor workspace is that
-    # root. Traced on 8 October 2026, a Cursor worker told to path-read a copy
-    # staged outside its workspace read the deployed ~/.cursor/skills copy
-    # instead, while a project-skill copy named by path was the one read. That
-    # placement is a mitigation rather than a guarantee: with no path in the
-    # prompt a deployed copy still wins over a project copy, which the shared
-    # micro-deployment in tests_micro-deployed-eval-workers replaces. The copy
-    # travels into pass-<n>/sandbox/ afterwards, which records exactly which
-    # SKILL.md each pass measured.
-    staged_skill = vendor.stage_skill_tree(
-        root,
-        skill_src.parent,
-        resolved.vendor,
-    )
     worker_model_label = resolved.worker_model or "<inherit>"
-
-    prompt = WORKER_PROMPT.format(skill_path=staged_skill, workdir=workdir,
-                                  prompt=staged["prompt"])
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(root),
-        extra_args=worker_isolation.isolation_args(resolved.vendor),
-    )
 
     emit(f"  [{scenario} pass-{n}] running {resolved.config.label} "
          f"(model={worker_model_label}) ...")
     start = time.time()
-    try:
-        res = subprocess.run(
-            cmd,
-            cwd=workdir,
-            env=vendor.worker_env(resolved.vendor),
-            capture_output=True,
-            text=True,
-            timeout=args.timeout,
+    # The skill lands in a scratch home that hides the host's deployed skills,
+    # and the prompt names that deployed path. The project (not the root) is
+    # the micro-deployment's sandbox, so the root keeps holding only the graded
+    # project, the pristine fixture, and the skill record copied below.
+    with micro_deploy.micro_deploy(
+        resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
+    ) as md:
+        deployed_skill = md.path_map["language_humanizer"]
+        prompt = WORKER_PROMPT.format(skill_path=deployed_skill,
+                                      workdir=workdir, prompt=staged["prompt"])
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=args.timeout, cwd=pathlib.Path(workdir),
+            extra_args=worker_isolation.isolation_args(resolved.vendor),
         )
-        rc, stdout, stderr = res.returncode, res.stdout, res.stderr
-    except subprocess.TimeoutExpired as e:
-        rc, stdout = -1, as_text(e.stdout)
-        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {args.timeout}s]"
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity_record = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
+        # The scratch home goes away on exit; keep the measured SKILL.md in the
+        # root so pass-<n>/sandbox/language_humanizer/SKILL.md records it.
+        record_dir = root / "language_humanizer"
+        record_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(deployed_skill, record_dir / "SKILL.md")
     duration = time.time() - start
-
-    stdout, stderr = as_text(stdout), as_text(stderr)
 
     (pass_dir / "response.txt").write_text(stdout)
     (pass_dir / "stderr.txt").write_text(stderr)
@@ -243,6 +231,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
             "worker_rc": rc,
             "claude_rc": rc,
             "model": worker_model_label,
+            "artefacts_read_from_micro_deployment": integrity_record,
         },
         indent=2,
     ))
@@ -275,6 +264,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
         **{k: v["passed"] for k, v in qual.items()},
     }
     integrity = {k: v["passed"] for k, v in mech.get("integrity", {}).items()}
+    integrity["artefacts_read_from_micro_deployment"] = integrity_record["passed"]
 
     # A worker that answered but skipped the harness's save-to-delivered.md
     # step leaves nothing to measure, so every content assertion reads FAIL on
@@ -298,6 +288,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
         "assertions": assertions, "integrity": integrity,
         "mechanical_detail": mech.get("mechanical", {}),
         "judge_detail": qual,
+        "artefacts_read_from_micro_deployment": integrity_record,
     }
     (pass_dir / "verdict.json").write_text(json.dumps(verdict, indent=2))
 
@@ -421,7 +412,10 @@ def main() -> int:
     )
     print(f"Scenarios: {scenarios}; passes per scenario: {args.passes}\n")
 
+    # Workers run in the micro-deployment environment and the judge in the host
+    # worker environment, so both logins are probed before the first pass.
     vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     jobs = [(s, n) for s in scenarios for n in range(1, args.passes + 1)]
     workers = max(1, min(args.workers, len(jobs)))

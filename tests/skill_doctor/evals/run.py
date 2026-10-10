@@ -3,19 +3,20 @@
 
 Modeled on tests/git_commit/evals/run.py: one vendor-resolved print-mode
 worker runs per eval, so the skill under test uses one explicit worker policy
-each run. By default that means `--vendor claude` with worker model
-`sonnet`, or `--vendor cursor` with worker model `auto`; pass `--model ''`
-to inherit the vendor CLI default. The deterministic `grade.sh` on top uses
+each run. By default that means the Cursor worker (`agent -p`, model
+`auto`); `--vendor claude` (model `sonnet`) runs where Claude is needed or asked for, and `--model ''` inherits the vendor CLI default. The deterministic `grade.sh` on top uses
 no model at all.
 
 Per eval the runner:
 
 1. Stages a fresh sandbox via `stage.sh <id> <target>` and reads back
    `sandbox_repo`, `skill_path`, `prompt`.
-2. Stages the skill into the sandbox's vendor discovery tree, then runs a
+2. Micro-deploys the skill under test and its declared companion skills
+   through the deploy script into a scratch home, then runs a
    vendor-resolved print-mode worker with the sandbox repo as the working
    directory.
-3. Captures `response.txt` / `stderr.txt` / `timing.json` under
+3. Captures `response.txt` / `stderr.txt` / `timing.json` (with the
+   `artefacts_read_from_micro_deployment` integrity record) under
    `workspace/run-<ts>/<id>/`.
 4. Grades with `grade.sh <id> <sandbox_repo> <response.txt>` — the sandbox
    checksum manifest proves the check-only contract, and the response text
@@ -48,10 +49,12 @@ WORKSPACE = THIS.parent / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
+import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper)
-from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 EVALS_JSON = THIS / "evals.json"
+
+ARTEFACTS = ["skill_doctor", "ai_instruction_formatting", "ai_instruction_writing"]
 
 
 def all_eval_ids() -> list[str]:
@@ -78,10 +81,10 @@ You are running an automated skill regression eval. Do exactly this:
 """
 
 
-def source_roots_for(skill_path: str):
-    """skill_doctor is self-contained: SKILL.md plus its scripts/ are the
-    whole artifact under test for the cache key."""
-    return [pathlib.Path(skill_path).parent]
+def source_roots_for():
+    """The micro-deployed skill trees are the artefacts under test for the
+    cache key."""
+    return micro_deploy.source_roots_for(ARTEFACTS)
 
 
 def stage(eval_id: str, target: pathlib.Path) -> dict:
@@ -115,17 +118,12 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
 
     staged = stage(eval_id, target)
     workdir = staged["sandbox_repo"]
-    staged_skill = vendor.stage_skill_tree(
-        eval_dir / "artefacts",
-        pathlib.Path(staged["skill_path"]).parent,
-        resolved.vendor,
-    )
     model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
-            source_roots=source_roots_for(staged["skill_path"]),
+            source_roots=source_roots_for(),
             harness_dir=THIS, model=resolved.worker_model, eval_id=eval_id,
             prompt=staged["prompt"],
         )
@@ -140,31 +138,25 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
-    prompt = WORKER_PROMPT.format(
-        skill_path=staged_skill, workdir=workdir, prompt=staged["prompt"]
-    )
-
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(workdir),
-    )
-
     print(f"  [{eval_id}] running {resolved.config.label} (model={model_label}) ...",
           flush=True)
     start = time.time()
-    try:
-        result = subprocess.run(
-            cmd, cwd=workdir, env=vendor.worker_env(resolved.vendor), capture_output=True,
-            text=True, timeout=timeout,
+    with micro_deploy.micro_deploy(
+        resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
+    ) as md:
+        prompt = WORKER_PROMPT.format(
+            skill_path=md.path_map["skill_doctor"], workdir=workdir,
+            prompt=staged["prompt"],
         )
-        rc, stdout, stderr = result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as exc:
-        rc = -1
-        stdout = as_text(exc.stdout)
-        stderr = as_text(exc.stderr) + f"\n[TIMEOUT after {timeout}s]"
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=timeout, cwd=pathlib.Path(workdir),
+        )
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
     duration_s = time.time() - start
 
     response_path = eval_dir / "response.txt"
@@ -176,6 +168,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         "worker_rc": rc,
         "claude_rc": rc,
         "model": model_label,
+        "artefacts_read_from_micro_deployment": integrity,
     }, indent=2))
 
     grade = subprocess.run(
@@ -186,7 +179,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
     print(grade.stdout, end="", flush=True)
     grade_passed = grade.returncode == 0
     completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed
+    passed = grade_passed and completed and integrity["passed"]
 
     if not completed:
         why = ("timeout" if "[TIMEOUT" in stderr
@@ -196,6 +189,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
               f"grade.sh ran on partial state and cannot be trusted "
               f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
               flush=True)
+    elif not integrity["passed"]:
+        print(f"  [{eval_id}] FAIL — worker read artefacts outside the "
+              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
     else:
         print(f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n",
               flush=True)
@@ -254,7 +250,7 @@ def main() -> int:
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")
 
-    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     results = {i: run_one(i, run_dir, resolved, args.timeout, cache, args.force)
                for i in ids}

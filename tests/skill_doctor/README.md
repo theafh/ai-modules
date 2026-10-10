@@ -11,7 +11,7 @@ tests/skill_doctor/
 ├── evals/
 │   ├── README.md
 │   ├── evals.json
-│   ├── run.py                   # sonnet-pinned worker runner
+│   ├── run.py                   # vendor worker runner (Cursor by default)
 │   ├── stage.sh                 # stage one fixture + checksum manifest
 │   ├── grade.sh                 # deterministic grader
 │   └── fixtures/<id>/setup.sh
@@ -114,6 +114,6 @@ tests/skill_doctor/
   `verification_repo_checks` stages a repo whose only gates are a mise
   `lint` task and a `.pre-commit-config.yaml`, and grades that the
   verification summary names those two commands and reaches for no entry
-  point the repo never exposed. Run by `evals/run.py` (one sonnet-pinned
-  `claude -p` worker per eval, deterministic `grade.sh` on top). See
+  point the repo never exposed. Run by `evals/run.py` (one vendor worker
+  per eval, Cursor by default, deterministic `grade.sh` on top). See
   `evals/README.md`; `run_all.sh` drives only the script tests.

@@ -87,7 +87,11 @@ printf 'agent_spinner script_tests\n'
 # --- frontmatter and budgets ------------------------------------------------
 check "SKILL.md exists" test -f "$SKILL"
 check "frontmatter name: agent_spinner" file_has "$SKILL" '^name: agent_spinner$'
-check "frontmatter version: 1.0.0" file_has "$SKILL" '^version: 1\.0\.0$'
+# Test Integrity: a grader fix. The skill must carry a semantic version, and a
+# literal pin breaks on every commit-time bump (the reason
+# tests/lib/plugin_version.sh gives against literal pins), so the check
+# asserts the shape.
+check "frontmatter version is semver" file_has "$SKILL" '^version: [0-9]+\.[0-9]+\.[0-9]+$'
 check "H1 matches the frontmatter name" file_has "$SKILL" '^# agent_spinner$'
 check "SKILL.md under 25000 bytes" bytes_under "$SKILL" 25000
 check "description under 1500 characters" description_under "$SKILL" 1500

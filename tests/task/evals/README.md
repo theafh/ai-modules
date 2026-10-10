@@ -62,9 +62,10 @@ The bundled-script surface is covered separately by
 
 ## One-shot run (the default)
 
-`run.py` drives all three phases and pins the skill under test to
-**sonnet**, the worker model the repo's test policy standardizes on
-(see `tests/CLAUDE.md`). It spawns the worker with `$sandbox_proj` as
+`run.py` drives all three phases with one vendor worker per eval: the
+Cursor worker (`agent -p`, model `auto`) by default, the project's
+measurement vendor, or Claude's `sonnet` under `--vendor claude` (see
+`tests/CLAUDE.md`). It spawns the worker with `$sandbox_proj` as
 the working directory, so `discover_tasks.sh` resolves the sandbox and
 never the real repo. The deterministic `grade.sh` it calls uses no
 model; the output-verdict expectations stay for you to confirm from the

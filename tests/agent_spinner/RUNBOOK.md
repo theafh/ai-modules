@@ -9,7 +9,7 @@ bash tests/agent_spinner/script_tests/run.sh
 `run_all.sh` drives the same entrypoint and nothing else; the behavioural evals
 spawn workers and stay out of band.
 
-## Behavioral evals (sonnet-pinned worker)
+## Behavioral evals (Cursor worker by default)
 
 ```bash
 python3 tests/agent_spinner/evals/run.py                     # all 21
@@ -58,8 +58,12 @@ Fixture helpers in `evals/fixtures/_common.sh`:
 
 ## Trigger evals
 
+Trigger evals are Claude-only, so they run on Claude where a change needs the
+measurement, such as a description edit, with `--vendor claude` in the command
+so the Claude run is visible.
+
 ```bash
-python3 tests/trigger_evals/run.py \
+python3 tests/trigger_evals/run.py --vendor claude \
   --eval-set tests/trigger_evals/agent_spinner.json --skill agent_spinner
 ```
 
@@ -76,7 +80,8 @@ that is when the cross-set regression check earns its cost. Re-run the
 pre-existing sets then, each against its own prior run:
 
 ```bash
-python3 tests/trigger_evals/run.py --eval-set tests/trigger_evals/<set>.json \
+python3 tests/trigger_evals/run.py --vendor claude \
+  --eval-set tests/trigger_evals/<set>.json \
   --skill <skill> --baseline tests/trigger_evals/results/<skill>/<prior-run>
 ```
 

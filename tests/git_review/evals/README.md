@@ -1,7 +1,8 @@
 # git_review behavioral evals
 
 Forty-eight evals over thirty-six fixtures, driven by `run.py`, which spawns one
-sonnet-pinned `claude -p` worker per eval and grades the result with `grade.sh`.
+vendor worker per eval, the Cursor `agent -p` worker by default, and grades the
+result with `grade.sh`.
 The schema is skill-creator's canonical `evals.json`
 (`{id, prompt, expected_output, files, expectations[]}`).
 

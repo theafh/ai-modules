@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-10-08
+updated: 2026-10-09
 type: concept
 tags: [skill, repo-structure, authoring, claude, cursor, verification-gap]
 sources: [raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
@@ -77,9 +77,24 @@ and the harness cannot tell those reasons apart from a real regression. The
 vendor defaults keep the subject comparable across runs; leaving the meta level
 inherited (or model-free) keeps grading as capable as the session paying for it.
 
-This practice is recorded in `tests/CLAUDE.md` and `tests/AGENTS.md` and encoded
-in `tests/lib/vendor.py`. Claude-only surfaces (`trigger_evals`, output-style
-deploy tests, `natural_language`) reject `--vendor cursor` until a Cursor equivalent exists.
+Evals run on the default vendor, Cursor, in the runners and in practice,
+because its runs are cheaper and faster. Development therefore iterates on
+Cursor results, which stand without a matching Claude run. A test that
+exercises a Claude-specific feature names that feature and runs on Claude as
+part of ordinary verification. Its command carries `--vendor claude` even on a
+Claude-only harness whose default is already Claude, so every Claude run is
+visible in its command, and the flag is how a test, or a task's acceptance,
+says it needs Claude. Any other Claude run, such as a whole suite run as a
+compatibility sample, is an occasional check that waits for the operator's
+explicit request, and an agent never starts one on its own initiative or in the
+background.
+
+This practice is recorded in the repo rules, `TESTING.md`, `tests/CLAUDE.md`,
+and `tests/AGENTS.md`, and encoded in `tests/lib/vendor.py`. Claude-only
+surfaces (`trigger_evals`, output-style deploy tests, `natural_language`)
+default to Claude instead and stop with an error on an explicit
+`--vendor cursor` until a Cursor equivalent exists, so they run on Claude
+wherever a change needs them.
 
 ### A worker inherits the host's instructions unless it is isolated
 
@@ -112,8 +127,26 @@ stage, such as the hub or base skill the skill under test reaches by name,
 resolved on both vendors to the deployed copy, or to the repository checkout when
 the sandbox sat inside it
 ([dependency reads](../raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md)).
-The backlog carries the work to stage those copies centrally and to check every
-worker's reads.
+The eval runners therefore deploy each pass's declared skills, agents, and styles
+through the repository's own deploy script into such a scratch home, plus the
+sandbox project for the types a vendor loads only at project scope, and every pass
+checks its worker's reads: a skill, agent, or style file read from anywhere else,
+the user's home and the checkout's own sources included, fails the pass
+(`tests/lib/micro_deploy.py`). A helper the worker spawns counts as the worker.
+Claude's stream carries a helper's tool calls
+([Claude Code delegation surfaces](claude-delegation-surfaces.md)), but Cursor's
+leaves them out, so on Cursor the check also reads each chat transcript the CLI
+writes under the scratch home ([Cursor](../entities/cursor.md)). Cursor's
+scratch home also carries login profiles that put back the worker's launch
+`PATH`. The print-mode CLI builds each shell command's environment from a login
+shell under that home, and without the operator's profile a bundled script got
+the stock bash 3.2 rather than the build the operator's `PATH` names
+([Cursor](../entities/cursor.md),
+[Interpreter and tool-path portability](interpreter-and-tool-path-portability.md)).
+A Claude worker's scratch configuration directory
+moves discovery but leaves `HOME` at the real home, so its shell can still reach
+the deployed copies, and the check expands shell paths against the worker's own
+environment to catch that.
 
 ### Trigger coverage is a third question, asked separately
 

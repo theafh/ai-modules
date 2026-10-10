@@ -4,9 +4,9 @@
 Phase 2 (the skill actually running) used to be operator-driven in the
 host session, i.e. on whatever model the session inherited. This runner
 instead spawns one vendor-resolved print-mode worker per eval. By default
-that means `--vendor claude` with worker model `sonnet`, or `--vendor
-cursor` with worker model `auto`; pass `--model ''` to inherit the
-vendor CLI default. The meta level on top — the deterministic `grade.sh`,
+that means the Cursor worker (`agent -p`, model `auto`); `--vendor claude`
+(model `sonnet`) runs where Claude is needed or asked for, and
+`--model ''` inherits the vendor CLI default. The meta level on top — the deterministic `grade.sh`,
 and any prose-verdict confirmation the operator does by reading
 `response.txt` — stays model-free.
 
@@ -14,12 +14,15 @@ Per eval the runner:
 
 1. Stages a fresh sandbox via `stage.sh <id> <target>` and reads back
    `sandbox_repo`, `skill_path`, `prompt`.
-2. Stages the skill into the sandbox's vendor discovery tree, then runs a
+2. Micro-deploys the skill through the deploy script into a scratch home
+   outside the sandbox repo and copies the edits of a fixture's own skill
+   copy (evals 5 to 7) onto that deployed skill. It then runs a
    vendor-resolved print-mode worker with the sandbox repo as the working
-   directory and a prompt that tells the worker to load the staged
-   SKILL.md and apply it.
-3. Captures `response.txt` / `stderr.txt` / `timing.json` under
-   `workspace/run-<ts>/<id>/`.
+   directory and a prompt that tells the worker to load the deployed SKILL.md
+   and apply it.
+3. Captures `response.txt` / `stderr.txt` / `timing.json` (with the
+   `fixture_overlay` file list and the `artefacts_read_from_micro_deployment`
+   integrity record) under `workspace/run-<ts>/<id>/`.
 4. Grades the post-run sandbox with `grade.sh <id> <sandbox_repo>`.
 
 Exit code is 0 only when every eval's worker completed cleanly (CLI rc 0
@@ -53,15 +56,17 @@ WORKSPACE = THIS / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
+import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
-from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
+
+ARTEFACTS = ["git_commit"]
 
 
-def source_roots_for(skill_path: str):
+def source_roots_for():
     """git_commit is self-contained: the SKILL.md the worker loads, its
     scripts/, and references/ all live in the one skill dir, so that dir is the
     whole artifact-under-test for the cache key."""
-    return [pathlib.Path(skill_path).parent]
+    return micro_deploy.source_roots_for(ARTEFACTS)
 
 
 DEFAULT_IDS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
@@ -112,19 +117,12 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
 
     staged = stage(eval_id, target)
     workdir = staged["sandbox_repo"]
-    # Stage beside the repo under test, never inside it: git_commit would
-    # otherwise pick up the copied skill tree as part of the commit.
-    skill_path = vendor.stage_skill_tree(
-        eval_dir / "artefacts",
-        pathlib.Path(staged["skill_path"]).parent,
-        resolved.vendor,
-    )
     model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
-            source_roots=source_roots_for(staged["skill_path"]),
+            source_roots=source_roots_for(),
             harness_dir=THIS,
             model=resolved.worker_model,
             eval_id=eval_id,
@@ -141,35 +139,35 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
-    prompt = WORKER_PROMPT.format(
-        skill_path=skill_path, workdir=workdir, prompt=staged["prompt"]
-    )
-
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(workdir),
-    )
-
     print(f"  [eval-{eval_id}] running {resolved.config.label} (model={model_label}) ...",
           flush=True)
     start = time.time()
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=workdir,
-            env=vendor.worker_env(resolved.vendor),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+    # The skill deploys into a scratch home beside, never inside, the repo
+    # under test: git_commit would otherwise pick up a copied skill tree.
+    with micro_deploy.micro_deploy(
+        resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
+    ) as md:
+        # Evals 5, 6, and 7 stage an edited copy of the skill as skill_path: a
+        # prepare script stubbed to fail, or one wrapped to touch the drift
+        # writer's marker. The worker loads the deployed copy, so those edits
+        # go onto it. Every other eval names the checkout source, which
+        # overlays nothing.
+        fixture_overlay = micro_deploy.overlay_fixture_edits(
+            md, "git_commit", pathlib.Path(staged["skill_path"]).parent
         )
-        rc, stdout, stderr = result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as e:
-        rc = -1
-        stdout = as_text(e.stdout)
-        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
+        prompt = WORKER_PROMPT.format(
+            skill_path=md.path_map["git_commit"], workdir=workdir,
+            prompt=staged["prompt"],
+        )
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=timeout, cwd=pathlib.Path(workdir),
+        )
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
     duration_s = time.time() - start
 
     (eval_dir / "response.txt").write_text(stdout)
@@ -180,6 +178,8 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         "worker_rc": rc,
         "claude_rc": rc,
         "model": model_label,
+        "fixture_overlay": fixture_overlay,
+        "artefacts_read_from_micro_deployment": integrity,
     }, indent=2))
 
     grade = subprocess.run(
@@ -189,7 +189,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
     print(grade.stdout, end="", flush=True)
     grade_passed = grade.returncode == 0
     completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed
+    passed = grade_passed and completed and integrity["passed"]
 
     if not completed:
         why = ("timeout" if "[TIMEOUT" in stderr
@@ -199,6 +199,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
               f"grade.sh ran on partial sandbox state and cannot be trusted "
               f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
               flush=True)
+    elif not integrity["passed"]:
+        print(f"  [eval-{eval_id}] FAIL — worker read artefacts outside the "
+              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
     else:
         print(f"  [eval-{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n",
               flush=True)
@@ -250,7 +253,7 @@ def main() -> int:
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")
 
-    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     # Sequential on purpose: grade.sh's TMPDIR straggler check would
     # cross-talk if two git_commit workers ran concurrently.

@@ -363,7 +363,7 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
         "response": response_text,
     }
 
-    # Worker-completion gate. A pass is trustworthy only if the claude -p worker
+    # Worker-completion gate. A pass is trustworthy only if the vendor worker
     # exited cleanly (rc 0) and produced a response. A timeout (rc -1) or crash
     # leaves partial/empty state that must not grade as a pass — an
     # absence-dominated scenario (path_does_not_exist, response_text_does_not_match,
@@ -371,11 +371,18 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
     # final `passed` without touching per-assertion pass_rate, so the aggregate
     # regression baseline is unperturbed.
     worker_rc = None
+    # A worker that read artefacts outside its micro-deployment measured
+    # something other than the skill under test, so the record fails the pass
+    # on its own and travels into grading.json with its path list.
+    integrity = None
     if timing_file.is_file():
         try:
-            worker_rc = json.loads(timing_file.read_text()).get("claude_rc")
+            timing_data = json.loads(timing_file.read_text())
+            worker_rc = timing_data.get("claude_rc")
+            integrity = timing_data.get("artefacts_read_from_micro_deployment")
         except (ValueError, OSError):
             worker_rc = None
+    integrity_ok = not isinstance(integrity, dict) or bool(integrity.get("passed", True))
     worker_ok = worker_rc == 0 and bool(response_text.strip())
 
     expectations = []
@@ -400,9 +407,10 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
         "report_parsed": parsed is not None,
         "worker_ok": worker_ok,
         "worker_rc": worker_rc,
+        "artefacts_read_from_micro_deployment": integrity,
         "expectations": expectations,
         "pass_rate": passed_count / len(scenario["assertions"]) if scenario["assertions"] else 0.0,
-        "passed": all_assertions_pass and worker_ok,
+        "passed": all_assertions_pass and worker_ok and integrity_ok,
     }
 
 
@@ -436,6 +444,10 @@ def main() -> int:
             mark = "PASS" if result["passed"] else "FAIL"
             note = ("" if result.get("worker_ok", True)
                     else f"  [worker rc={result.get('worker_rc')} — did not complete]")
+            record = result.get("artefacts_read_from_micro_deployment")
+            if isinstance(record, dict) and not record.get("passed", True):
+                note += ("  [artefacts_read_from_micro_deployment failed: "
+                         f"{record.get('out_of_set')}]")
             print(f"  [{mark}] {sid} {pass_dir.name}: {result['pass_rate']:.1%}{note}")
 
     (run_dir / "grading_summary.json").write_text(json.dumps(summary, indent=2))

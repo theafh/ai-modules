@@ -43,7 +43,7 @@ The load-bearing ones:
   `bash tests/git_review/evals/grade.sh --form-only 1 <response-file>` runs
   the checks alone without staging a repository.
 
-## evals: skill behavior, one sonnet worker per eval
+## evals: skill behavior, one vendor worker per eval
 
 ```bash
 python3 tests/git_review/evals/run.py            # every eval
@@ -51,8 +51,11 @@ python3 tests/git_review/evals/run.py 1 13 32    # a subset
 python3 tests/git_review/evals/run.py --force 32 # ignore the cached verdict
 ```
 
-Forty-eight evals over thirty-six fixtures. `evals/README.md` has the per-eval
-expectations and the fixture map; `RUNBOOK.md` has the operating notes.
+Forty-eight evals over thirty-six fixtures. The worker runs on Cursor
+(`agent -p`, model `auto`) by default, and `--vendor claude` runs it on Claude's
+`sonnet` where an eval needs a Claude-specific feature or the operator asks.
+`evals/README.md` has the per-eval expectations and the fixture map;
+`RUNBOOK.md` has the operating notes.
 
 Forge-layer evals stage a stub `gh` on `PATH` that serves fixture JSON and
 records every invocation in `gh_calls.log`. That log is half the evidence for

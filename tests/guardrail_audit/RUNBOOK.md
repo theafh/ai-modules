@@ -10,7 +10,7 @@ That entrypoint also runs `sandbox_git_isolation.sh`, which proves fixture
 `git commit` cannot land on the host checkout (happy-path stage + refused
 orphan/broken `.git` cases).
 
-## Behavioral evals (sonnet-pinned worker)
+## Behavioral evals (Cursor worker by default)
 
 Staging needs a working `git init` inside the sandbox (writes under
 `<sandbox>/proj/.git`). Run fixture staging outside a filesystem sandbox

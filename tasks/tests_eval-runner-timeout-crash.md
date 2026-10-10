@@ -2,7 +2,7 @@
 description: Re-measure the task_auto_check eval timing band against the current loop, set its default --timeout above the re-measured ceiling, and update the RUNBOOK and run.py help to match.
 scope: "local test harnesses"
 created: 2026-09-05T03:06:08
-updated: 2026-10-03T13:01:20
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -53,13 +53,15 @@ The RUNBOOK's repair-class set is `repair_to_ready`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`, and
 `immediate_ready_citations_overturn`, and its cost-discipline section requires
 running them solo and sequentially, because two nested loops in parallel contend
-for the model and both slow down. `TESTING.md` prefers `--vendor cursor` for
-behavioral runs; re-measure on that worker unless a Cursor sample cannot complete
-the loop, in which case record the Claude sample and why.
+for the model and both slow down. `TESTING.md` makes Cursor, the default
+vendor, the worker for behavioral runs, so re-measure on it. If a Cursor sample
+cannot complete the loop, record why in the RUNBOOK and ask the operator for a
+Claude sample, since a Claude run that no Claude-specific feature needs waits
+for the operator's request.
 
 ## Approach
 
-Run each repair-class eval solo and sequentially with `--vendor cursor`, with
+Run each repair-class eval solo and sequentially on the default vendor, with
 `--timeout` set to a ceiling well above 1800 so none is cut off, and capture
 `duration_s` from each `timing.json` at `worker_rc` 0 (the file also writes
 `claude_rc` as the same value). Take the band as the range across those
@@ -86,8 +88,9 @@ task lands.
 A sampled run measures each repair-class eval (`repair_to_ready`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
 `immediate_ready_citations_overturn`) solo and sequentially at a `--timeout`
-ceiling high enough that none is cut off, under `--vendor cursor` unless the
-RUNBOOK records why a Claude sample was required instead. Each measured run
+ceiling high enough that none is cut off, on the default vendor unless the
+RUNBOOK records why a Cursor sample could not complete the loop and that the
+operator asked for a Claude sample instead. Each measured run
 reaches a graded verdict with `worker_rc` of `0` and a recorded `duration_s`,
 with no `-1` cutoff among them, and each eval is run at least twice so the band
 rests on more than one draw per eval.

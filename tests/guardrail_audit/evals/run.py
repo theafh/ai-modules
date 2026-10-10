@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Vendor-aware worker runner for guardrail_audit behavioral evals.
 
-Stages a sandbox, stages the loaded skill into the sandbox's vendor
-discovery tree, runs one vendor-resolved print-mode worker that loads
-guardrail_audit (which reads the guardrail hub via <authority>), then
-grades byte-identity and response markers with grade.sh. By default
-`--vendor claude` uses worker model `sonnet`, `--vendor cursor` uses
-`auto`, and `--model ''` inherits the vendor CLI default.
+Stages a sandbox, micro-deploys guardrail_audit and the guardrail hub
+through the deploy script into a scratch home, runs one vendor-resolved
+print-mode worker that loads guardrail_audit (which reads the guardrail
+hub via <authority>), records `artefacts_read_from_micro_deployment`, then
+grades byte-identity and response markers with grade.sh. The worker runs
+on Cursor by default (`agent -p`, model `auto`); `--vendor claude` (model
+`sonnet`) runs where Claude is needed or asked for, and `--model ''`
+inherits the vendor CLI default.
 
 Usage:
     python3 tests/guardrail_audit/evals/run.py [eval_id ...]
@@ -32,8 +34,10 @@ WORKSPACE = THIS / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402
+import micro_deploy  # noqa: E402
 import vendor  # noqa: E402
-from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
+
+ARTEFACTS = ["guardrail_audit", "guardrail"]
 
 DEFAULT_IDS = [
     "presence_gate",
@@ -60,10 +64,8 @@ You are running an automated skill regression eval. Do exactly this:
 """
 
 
-def source_roots_for(skill_path: str):
-    skill_dir = pathlib.Path(skill_path).parent
-    skills = skill_dir.parent
-    return sorted({skill_dir, skills / "guardrail"})
+def source_roots_for():
+    return micro_deploy.source_roots_for(ARTEFACTS)
 
 
 def stage(eval_id: str, target: pathlib.Path) -> dict:
@@ -94,17 +96,12 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
 
     staged = stage(eval_id, target)
     workdir = staged["sandbox_proj"]
-    staged_skill = vendor.stage_skill_tree(
-        eval_dir / "artefacts",
-        pathlib.Path(staged["skill_path"]).parent,
-        resolved.vendor,
-    )
     model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
-            source_roots=source_roots_for(staged["skill_path"]),
+            source_roots=source_roots_for(),
             harness_dir=THIS,
             model=resolved.worker_model,
             eval_id=eval_id,
@@ -121,34 +118,27 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
-    prompt = WORKER_PROMPT.format(
-        skill_path=staged_skill,
-        hub_path=staged["hub_path"],
-        workdir=workdir,
-        prompt=staged["prompt"],
-    )
-
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(workdir),
-    )
-
     print(f"  [{eval_id}] running {resolved.config.label} "
           f"(model={model_label}) ...", flush=True)
     start = time.time()
-    try:
-        result = subprocess.run(
-            cmd, cwd=workdir, env=vendor.worker_env(resolved.vendor), capture_output=True,
-            text=True, timeout=timeout
+    with micro_deploy.micro_deploy(
+        resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
+    ) as md:
+        prompt = WORKER_PROMPT.format(
+            skill_path=md.path_map["guardrail_audit"],
+            hub_path=md.path_map["guardrail"],
+            workdir=workdir,
+            prompt=staged["prompt"],
         )
-        rc, stdout, stderr = result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as e:
-        rc = -1
-        stdout = as_text(e.stdout)
-        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=timeout, cwd=pathlib.Path(workdir),
+        )
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
     duration_s = time.time() - start
 
     (eval_dir / "response.txt").write_text(stdout)
@@ -159,6 +149,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         "worker_rc": rc,
         "claude_rc": rc,
         "model": model_label,
+        "artefacts_read_from_micro_deployment": integrity,
     }, indent=2))
 
     grade = subprocess.run(
@@ -169,7 +160,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
     print(grade.stdout, end="", flush=True)
     grade_passed = grade.returncode == 0
     completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed
+    passed = grade_passed and completed and integrity["passed"]
 
     if not completed:
         why = ("timeout" if "[TIMEOUT" in stderr
@@ -177,6 +168,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                else f"worker rc={rc}")
         print(f"  [{eval_id}] FAIL — worker did not complete ({why})\n",
               flush=True)
+    elif not integrity["passed"]:
+        print(f"  [{eval_id}] FAIL — worker read artefacts outside the "
+              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
     else:
         print(f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n",
               flush=True)
@@ -209,7 +203,7 @@ def main() -> int:
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
 
-    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = WORKSPACE / f"run-{ts}"

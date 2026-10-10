@@ -12,7 +12,7 @@ tests/guardrail_audit/
 │   ├── evals.json
 │   ├── stage.sh
 │   ├── grade.sh
-│   ├── run.py                   # sonnet-pinned worker runner
+│   ├── run.py                   # vendor worker runner (Cursor by default)
 │   └── fixtures/<id>/setup.sh
 └── workspace/                   # run output (gitignored)
 ```

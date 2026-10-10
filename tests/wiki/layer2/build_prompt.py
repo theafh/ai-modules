@@ -2,7 +2,8 @@
 """Build a Layer 2 subagent prompt from evals.json + a scenario id.
 
 Used both by the in-session orchestration (Agent tool) and the standalone
-re-runner (`run.py`, via `claude -p`). Keeping prompt assembly centralized
+re-runner (`run.py`, via the vendor worker, `agent -p` on Cursor by default).
+Keeping prompt assembly centralized
 means a future skill update only needs to edit evals.json, not multiple
 prompt files.
 

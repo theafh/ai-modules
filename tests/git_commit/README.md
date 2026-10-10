@@ -121,7 +121,7 @@ tests/git_commit/
         ├── multi_file/setup.sh
         ├── mixed_state/setup.sh
         ├── large_changeset/setup.sh
-        └── script_failure/setup.sh   # self-contained — copies a stubbed skill
+        └── script_failure/setup.sh   # stubbed prepare script, overlaid by run.py
 ```
 
 ## Scope discipline

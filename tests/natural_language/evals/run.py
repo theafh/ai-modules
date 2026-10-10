@@ -10,14 +10,21 @@ Passes run concurrently (`--workers`, default `vendor.DEFAULT_PARALLEL_WORKERS`)
 Each pass owns an isolated sandbox from `tests/lib/worker_isolation.py`.
 
 The harness exercises Claude output-style selection, so `--vendor cursor` is
-refused. Every worker and every judge takes its sandbox root and its worker
-arguments from the isolation helper. A scenario worker is asked only to rewrite
-the staged draft or to answer the staged question. It is not given a path to
-the style file.
+refused with an error while the runner defaults to Claude: a scenario run is a
+Claude run, made where a change to the style needs it, and its command names
+`--vendor claude` so the Claude run is visible. Every worker and every judge
+takes its sandbox root and its worker arguments from the isolation helper. The
+style under test is micro-deployed
+through the deploy script (`--only natural-language`) into the sandbox project
+and a scratch config home, and each worker's reads are classified against that
+deployment. The preflight marker style is written into the project after the
+micro-deployment and is never part of `--only`. A scenario worker is asked only
+to rewrite the staged draft or to answer the staged question. It is not given a
+path to the style file.
 
 Usage:
-    python3 tests/natural_language/evals/run.py [scenario ...]
-      [--passes 5] [--workers 4] [--vendor claude]
+    python3 tests/natural_language/evals/run.py --vendor claude [scenario ...]
+      [--passes 5] [--workers 4]
       [--style styles/natural-language.md] [--run-label baseline|refined]
       [--preflight malformed]
 """
@@ -55,6 +62,7 @@ MARKER_BODY = (
 MALFORMED_SETTINGS = '{\n  "outputStyle": "nl_load_marker",\n}\n'
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
+import micro_deploy  # noqa: E402
 import vendor  # noqa: E402
 from worker_io import as_text  # noqa: E402
 import worker_isolation  # noqa: E402
@@ -62,6 +70,7 @@ import worker_isolation  # noqa: E402
 import judge as judge_mod  # noqa: E402
 
 SCENARIOS = ["connected_rewrite", "chat_brevity"]
+ARTEFACTS = ["natural-language"]
 PRINT_LOCK = threading.Lock()
 
 REWRITE_PROMPT = """\
@@ -140,6 +149,15 @@ def write_settings(proj: pathlib.Path, selected: str) -> None:
     abort_on_malformed_settings(settings_text)
     settings_path = proj / ".claude" / "settings.json"
     settings_path.parent.mkdir(parents=True, exist_ok=True)
+    if settings_path.is_file():
+        try:
+            merged = json.loads(settings_path.read_text())
+        except json.JSONDecodeError:
+            merged = {}
+        if isinstance(merged, dict):
+            merged["outputStyle"] = selected
+            settings_text = json.dumps(merged, indent=2) + "\n"
+            abort_on_malformed_settings(settings_text)
     settings_path.write_text(settings_text)
 
 
@@ -159,44 +177,52 @@ def stage_marker(proj: pathlib.Path) -> None:
 
 
 def stage_style(proj: pathlib.Path, style_path: pathlib.Path) -> pathlib.Path:
+    """Select the style under test for the project after the micro-deployment.
+
+    The default repository style arrives through the deploy script, so only
+    the outputStyle selection is written. A custom ``--style`` file is copied
+    over the project's output-styles directory first.
+    """
+
     styles = proj / ".claude" / "output-styles"
     styles.mkdir(parents=True, exist_ok=True)
     selected = style_name(style_path)
     dest = styles / f"{selected}.md"
-    shutil.copyfile(style_path, dest)
+    if style_path.resolve() != DEFAULT_STYLE.resolve() or not dest.is_file():
+        shutil.copyfile(style_path, dest)
     write_settings(proj, selected)
     return dest
 
 
 def run_worker(
+    deploy: micro_deploy.MicroDeployHandle,
     proj: pathlib.Path,
     prompt: str,
     resolved: vendor.Resolved,
     timeout: int,
     extra_args: list[str],
-) -> tuple[int, str, str, float]:
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
+) -> tuple[int, str, str, float, dict]:
+    start = time.time()
+    worker = micro_deploy.run_worker(
+        vendor_name=resolved.vendor,
+        bin_name=resolved.bin,
         model=resolved.worker_model,
         prompt=prompt,
-        workspace=str(proj),
+        deploy=deploy,
+        timeout=timeout,
+        cwd=proj,
         extra_args=extra_args,
     )
-    start = time.time()
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=proj,
-            env=vendor.worker_env(resolved.vendor),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        return result.returncode, result.stdout, result.stderr, time.time() - start
-    except subprocess.TimeoutExpired as err:
-        stderr = as_text(err.stderr) + f"\n[TIMEOUT after {timeout}s]"
-        return -1, as_text(err.stdout), stderr, time.time() - start
+    integrity = micro_deploy.integrity_record(
+        worker.read_paths, worker.out_of_set_paths
+    )
+    return (
+        worker.returncode,
+        worker.stdout,
+        worker.stderr,
+        time.time() - start,
+        integrity,
+    )
 
 
 def run_malformed_preflight(resolved: vendor.Resolved) -> None:
@@ -221,14 +247,20 @@ def marker_preflight(resolved: vendor.Resolved, timeout: int) -> dict:
     proj = root / "proj"
     proj.mkdir()
     try:
-        stage_marker(proj)
-        code, stdout, stderr, duration = run_worker(
-            proj,
-            "Reply.",
-            resolved,
-            timeout,
-            worker_isolation.isolation_args(resolved.vendor),
-        )
+        # The marker style is written after the micro-deployment and never
+        # joins --only, so the deployed layout stays what a user would get.
+        with micro_deploy.micro_deploy(
+            resolved.vendor, ARTEFACTS, proj, preflight=False
+        ) as md:
+            stage_marker(proj)
+            code, stdout, stderr, duration, _integrity = run_worker(
+                md,
+                proj,
+                "Reply.",
+                resolved,
+                timeout,
+                worker_isolation.isolation_args(resolved.vendor),
+            )
     finally:
         shutil.rmtree(root, ignore_errors=True)
     present = MARKER_TOKEN in stdout
@@ -292,18 +324,21 @@ def run_pass(
     try:
         staged = stage(scenario, root)
         proj = pathlib.Path(staged["sandbox_proj"])
-        staged_style = stage_style(proj, style_path)
-        extra = worker_isolation.isolation_args(resolved.vendor)
-        if use_append:
-            extra = extra + ["--append-system-prompt-file", str(staged_style)]
         template = REWRITE_PROMPT if scenario == "connected_rewrite" else CHAT_PROMPT
         prompt = template.format(prompt=staged["prompt"])
         emit(
             f"  [{scenario} pass-{number}] running {resolved.config.label} ..."
         )
-        code, stdout, stderr, duration = run_worker(
-            proj, prompt, resolved, args.timeout, extra
-        )
+        with micro_deploy.micro_deploy(
+            resolved.vendor, ARTEFACTS, proj, preflight=False
+        ) as md:
+            staged_style = stage_style(proj, style_path)
+            extra = worker_isolation.isolation_args(resolved.vendor)
+            if use_append:
+                extra = extra + ["--append-system-prompt-file", str(staged_style)]
+            code, stdout, stderr, duration, integrity_record = run_worker(
+                md, proj, prompt, resolved, args.timeout, extra
+            )
         stdout, stderr = as_text(stdout), as_text(stderr)
         (pass_dir / "response.txt").write_text(stdout)
         (pass_dir / "stderr.txt").write_text(stderr)
@@ -363,6 +398,7 @@ def run_pass(
         integrity = {
             key: value["passed"] for key, value in mechanical.get("integrity", {}).items()
         }
+        integrity["artefacts_read_from_micro_deployment"] = integrity_record["passed"]
         void = (
             scenario == "connected_rewrite"
             and completed
@@ -397,6 +433,7 @@ def run_pass(
             "integrity": integrity,
             "mechanical_detail": mechanical.get("mechanical", {}),
             "judge_detail": qualitative,
+            "artefacts_read_from_micro_deployment": integrity_record,
         }
         (pass_dir / "verdict.json").write_text(json.dumps(verdict, indent=2))
         diverging = [key for key, ok in {**assertions, **integrity}.items() if not ok]
@@ -530,7 +567,7 @@ def main() -> int:
             "Each pass owns its own isolated sandbox."
         ),
     )
-    vendor.add_vendor_arguments(parser, with_judge=True)
+    vendor.add_vendor_arguments(parser, with_judge=True, harness_id="natural_language")
     parser.add_argument("--timeout", type=int, default=600)
     parser.add_argument("--judge-timeout", type=int, default=300)
     parser.add_argument("--style", default=str(DEFAULT_STYLE))
@@ -567,7 +604,10 @@ def main() -> int:
 
     version = cli_version(resolved.bin)
     print(f"CLI version: {version}")
+    # Workers run in the micro-deployment environment and the judge in the host
+    # worker environment, so both logins are probed before the marker preflight.
     vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
     preflight = marker_preflight(resolved, args.timeout)
     print(f"Preflight: {json.dumps(preflight)}")
     use_append, route = select_style_route(preflight, version)

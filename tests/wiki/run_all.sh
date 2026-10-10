@@ -2,8 +2,8 @@
 # Top-level wiki-skill regression test entrypoint.
 #
 # Layer 1 is fully deterministic and runs in this shell.
-# Layer 2 spawns Claude subagents — it can be run two ways:
-#   (a) standalone:   `python3 tests/wiki/layer2/run.py` (uses `claude -p`)
+# Layer 2 spawns vendor workers (Cursor by default) — it can be run two ways:
+#   (a) standalone:   `python3 tests/wiki/layer2/run.py` (Cursor `agent -p` by default; `--vendor claude` where Claude is needed or asked for)
 #   (b) interactive:  open a Claude session and paste the canonical
 #                     orchestration prompt (tests/wiki/RUNBOOK.md).
 #
@@ -23,7 +23,7 @@ for arg in "$@"; do
 Usage: $0 [--layer2]
 
 Layer 1 (script-level, deterministic) runs by default.
-Layer 2 (skill-level via claude -p) runs only with --layer2.
+Layer 2 (skill-level via the vendor worker, Cursor by default) runs only with --layer2.
 EOF
             exit 0
             ;;
@@ -59,7 +59,7 @@ fi
 
 echo ""
 echo "================================================================"
-echo "  Wiki skill regression — Layer 2 (skill-level via claude -p)"
+echo "  Wiki skill regression — Layer 2 (skill-level via the vendor worker)"
 echo "================================================================"
 python3 "$SCRIPT_DIR/layer2/run.py"
 L2_RC=$?

@@ -2,7 +2,7 @@
 description: Add `make update`, a log-driven deploy mode that redeploys each global or project scope the deploy log records, with its recorded targets and types, from this checkout.
 scope: deployment
 created: 2026-10-07T08:38:14
-updated: 2026-10-07T08:54:15
+updated: 2026-10-09T18:48:19
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -11,7 +11,7 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-`make update` redeploys every scope the deploy log records, so a user who edits a source artefact refreshes the global copies and every project copy with one command. It reads the log, groups the entries by deploy scope (the global scope and each project directory a `--project-dir` deploy wrote into), and redeploys each scope from the current checkout, limited to the target and type pairs that scope's entries record. That reaches what `make deploy` cannot, because a global deploy writes only the global scope while some artefacts now reach their harness only through a project deploy. A `--dry-run` previews the whole replay and writes nothing.
+`make update` redeploys every scope the deploy log records, so a user who edits a source artefact refreshes the global copies and every project copy with one command. It reads the log, groups the entries by deploy scope (the global scope and each project directory a `--project-dir` deploy wrote into), and redeploys each scope from the current checkout, limited to the artefacts that scope's entries record for each target and type. That reaches what `make deploy` cannot, because a global deploy writes only the global scope while some artefacts now reach their harness only through a project deploy. A `--dry-run` previews the whole replay and writes nothing.
 
 ## Context
 
@@ -38,7 +38,7 @@ Run the mode in these steps:
 1. **Read and group.** Read the log once and group its entries by scope, target, and type, taking each entry's scope from the helper named in Context. Report an entry the helper gives no scope as unrecognized, and keep it in the log and out of the replay.
 2. **Drop vanished scopes.** For a project directory that no longer exists, drop its entries from the log and report the scope with the number of entries dropped, as uninstall does for an absent path. Write the drop before the first replay, so the replay's own log appends survive. The replay never recreates a missing project directory.
 3. **Skip foreign groups.** Replay a (scope, target, type) group only when at least one of its entries has a source path under this checkout's `REPO_ROOT`. Report every other group as deployed from another checkout, and leave its paths untouched.
-4. **Replay.** Redeploy each remaining scope through the existing deploy path, one target at a time, so the scope receives what `deployment.sh <scope flag> --target <target> --type <types>` would deliver, where `<types>` lists the types that scope records for that target. Each scope thus receives its recorded (target, type) pairs and never the cross product of its targets and types. Discovery, `deployment.conf` rules, generated formats, and backups behave as on a manual deploy: the global scope backs up each of its target roots once, project scopes skip backups, and an artefact of a recorded type that joined the repo since the last deploy arrives as well.
+4. **Replay.** Redeploy each remaining scope through the existing deploy path, one target at a time, so the scope receives what `deployment.sh <scope flag> --target <target> --type <types> --only <names>` would deliver. `<types>` lists the types that scope records for that target, and `<names>` lists the artefacts it records there, each named the way `discover_artifacts` names it and `--only` (in the script since 9 October 2026) matches it: a skill's directory basename, or an agent's or style's file basename without its extension, taken from the entry's source path. An entry whose source is not an artefact, such as a settings merge sourced from the conf, adds no name. Each scope thus receives exactly its recorded artefacts: never the cross product of its targets and types, never an artefact added to the checkout since, and never more than a subset deploy through `--only` gave it. Discovery, `deployment.conf` rules, generated formats, and backups behave as on a manual deploy: the global scope backs up each of its target roots once, project scopes skip backups, and an artefact of a recorded type that joined the repo since the last deploy arrives as well.
 5. **Report orphans and summarize.** Report each entry whose source path lies under `REPO_ROOT` but no longer exists, naming its deployed path, and keep both that copy and its entry. Close the run with one line per scope that names what it replayed or why it was skipped.
 
 Bring the documentation of the deploy commands in line with the mode:
@@ -70,6 +70,7 @@ Every scenario runs in `update_run.sh` against a scratch home and scratch projec
 - A log entry whose deployed path fits neither the global nor the project form is reported as unrecognized and stays in the log.
 - With the global skill and the project rule both tampered again, `--update --project-dir <scratch project>` restores the project rule and leaves the global skill tampered.
 - With the project rule tampered once more, `--update --target cursor` restores it and leaves the global skill tampered.
+- A scratch project that received one skill through `--only`, in a checkout holding a second skill, still holds only that one skill after `--update`, refreshed from the checkout.
 - `--update --uninstall` exits non-zero with an error that names both flags.
 - `--update` without a deploy log reports the missing log and exits zero.
 - `deployment/README.md` has an `--update` row in its **Flags** table, names update in each passage that lists the modes able to run without a scope, and describes update beside uninstall in its log section.

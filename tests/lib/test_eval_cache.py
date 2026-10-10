@@ -103,6 +103,42 @@ def main() -> int:
         )
         check("extra source root moves key", with_extra != key_for(skill, harness))
 
+        # 6b. The shared verdict helpers feed every key: an edit to one moves
+        # it, and an edit to a tests/lib file outside the list does not.
+        helper_dir = root / "lib"
+        helper_dir.mkdir()
+        for name in eval_cache.VERDICT_HELPERS:
+            (helper_dir / name).write_text(f"# {name}\n")
+        (helper_dir / "test_unrelated.py").write_text("# unit test\n")
+        real_helper_dir = eval_cache._HELPER_DIR
+        eval_cache._HELPER_DIR = helper_dir
+        try:
+            check("key stable on unchanged helpers",
+                  key_for(skill, harness) == key_for(skill, harness))
+            for name in eval_cache.VERDICT_HELPERS:
+                before = key_for(skill, harness)
+                (helper_dir / name).write_text(f"# {name} CHANGED\n")
+                check(f"verdict-helper edit misses ({name})",
+                      before != key_for(skill, harness))
+            before = key_for(skill, harness)
+            (helper_dir / "test_unrelated.py").write_text("# unit test CHANGED\n")
+            check("an edit outside VERDICT_HELPERS keeps the key",
+                  before == key_for(skill, harness))
+        finally:
+            eval_cache._HELPER_DIR = real_helper_dir
+        # A subset, so a helper that joins the list later needs no test edit.
+        check(
+            "the helper list names the deployment and read check, the worker "
+            "command, and the host tasks/ guard",
+            {"micro_deploy.py", "vendor.py", "host_tasks_guard.sh"}
+            <= set(eval_cache.VERDICT_HELPERS),
+        )
+        check(
+            "every listed helper exists beside eval_cache, so a rename cannot "
+            "drop it from the key",
+            all((real_helper_dir / name).is_file() for name in eval_cache.VERDICT_HELPERS),
+        )
+
         # 7. record -> lookup round-trip (hit), and a wrong key misses.
         cache = eval_cache.EvalCache(root / ".eval_cache")
         k = key_for(skill, harness)

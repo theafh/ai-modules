@@ -16,7 +16,7 @@ Expect every scenario to PASS. Failures print under `Failed ids:`.
 python3 tests/skill_doctor/evals/run.py
 ```
 
-One sonnet-pinned `claude -p` worker per eval, graded deterministically by
+One vendor worker per eval, the Cursor `agent -p` worker by default, graded deterministically by
 `evals/grade.sh`, with the shared verdict cache on by default (`--force`
 resamples, `--no-cache` bypasses). Results land in
 `workspace/run-<ts>/`, and `summary.json` there is the verdict of record.

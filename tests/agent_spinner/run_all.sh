@@ -6,7 +6,7 @@
 # per-harness greps that must stay empty, and registration lockstep.
 #
 # The behavioral evals under evals/ are intentionally not run from here. They
-# spawn `claude -p` workers and consume tokens; see evals/README.md.
+# spawn vendor workers (`agent -p` by default) and consume tokens; see evals/README.md.
 
 set -uo pipefail
 

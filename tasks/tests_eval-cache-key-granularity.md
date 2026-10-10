@@ -2,7 +2,7 @@
 description: Narrow the shared behavioral-eval verdict cache key with fail-closed per-eval dependency declarations, so an edit re-runs only the evals that can reach it.
 scope: "local test harnesses"
 created: 2026-09-04T17:54:29
-updated: 2026-10-03T13:01:20
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -137,8 +137,8 @@ its own eval.
 7. Every Pattern A `evals/run.py` under `tests/` that already calls
    `content_key()` passes its declaration through to that helper, and each such
    runner's suite reaches the same verdicts it reached before the change on an
-   unchanged tree, recorded as the before-and-after comparison. Prefer
-   `--vendor cursor` for that comparison per `TESTING.md`.
+   unchanged tree, recorded as the before-and-after comparison. Run that
+   comparison on the default vendor per `TESTING.md`.
 8. The verdict-cache sections of `tests/CLAUDE.md` and `tests/AGENTS.md` state
    the narrowed key and the fail-closed rule, and the passages describing the
    whole-tree key are gone rather than left beside the new statement.

@@ -1,7 +1,7 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-10-08
+updated: 2026-10-09
 type: entity
 tags: [cursor, agent, skill, frontmatter, discovery, verification-gap]
 sources:
@@ -11,8 +11,10 @@ sources:
   - raw/notes/cursor-skill-shadowing-probes-2026-10-08.md
   - raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md
   - raw/notes/micro-deployed-worker-home-probes-2026-10-08.md
+  - raw/notes/cursor-helper-transcript-probes-2026-10-09.md
+  - raw/notes/cursor-print-mode-shell-probes-2026-10-09.md
 confidence: high
-checked: 2026-10-08
+checked: 2026-10-09
 ---
 
 # Cursor
@@ -129,7 +131,8 @@ background Task calls in one message and five foreground calls in one response.
 Helper progress updates never reach the parent (22 September 2026). In print
 mode a helper's result reaches the parent as its final text inside the `Task`
 result (`conversationSteps`), and the helper's own tool calls stay out of the
-parent's stream (4 October 2026).
+parent's stream (4 October 2026). They land in the helper's own chat transcript
+instead, whose print-mode location the next section records (9 October 2026).
 
 Nested spawning, where a subagent spawns helpers of its own, worked on
 2 July 2026. That day a subagent dispatched background reviewers and polled
@@ -149,10 +152,21 @@ isolates them from one another (16 and 22 September 2026). Given a path outside
 the workspace, Grep and Glob silently search the workspace instead
 (26 September 2026).
 
-Helper transcripts are JSONL files, written live, at
+In the IDE, helper transcripts are JSONL files, written live, at
 `agent-transcripts/<parent>/subagents/<id>.jsonl`. They end in a `turn_ended`
 record and hold no tool results (22 and 23 September 2026), and no transcript
-records token counts (16 to 26 September 2026). The editor's local state store
+records token counts (16 to 26 September 2026). In print mode the CLI writes
+one such file per chat under the home directory, the parent's and each
+helper's alike, at
+`.cursor/projects/<workspace>/agent-transcripts/<chat-id>/<chat-id>.jsonl`. The
+parent's chat id is the stream's `session_id`, and a helper's is the `agentId`
+in its `Task` result. An assistant line's `tool_use` blocks name each tool and
+its input, so a helper's reads, which the parent's stream leaves out, can be
+read back from its transcript (9 October 2026,
+[transcript probes](../raw/notes/cursor-helper-transcript-probes-2026-10-09.md)).
+The eval runners' read check relies on that, as
+[verification surfaces](../concepts/verification-surfaces.md) records. The
+editor's local state store
 keeps the tool results and termination reasons that the transcripts omit. Its
 change tally per session matched the working-tree diff of the target
 (26 September 2026).
@@ -186,7 +200,7 @@ and that session did not use them.
 
 ### The agent shell
 
-The agent's shell tool spawns non-login `zsh -i` shells (process listing,
+The IDE agent's shell tool spawns non-login `zsh -i` shells (process listing,
 18 September 2026). A non-login shell skips the login profile, so a tool that
 only the login profile puts on `PATH` does not resolve there. On the workstation
 measured on 27 September 2026, markdownlint and shellcheck reached `PATH` only
@@ -194,6 +208,19 @@ through the login profile. Wherever that holds, this repository's lint gates
 cannot run in that shell.
 [Interpreter and tool-path portability](../concepts/interpreter-and-tool-path-portability.md)
 explains the mechanism and what such a shell resolves.
+
+The print-mode agent CLI 2026.10.01 builds a command's environment from a login
+shell instead (probes of 9 October 2026). Each shell call ran as `/bin/zsh -c`
+with a wrapper that prepends `/usr/bin:/bin:/usr/sbin:/sbin` to `PATH` and then
+evaluates a saved shell-state snapshot, and inside it the shell reported the
+`login` option set. That snapshot follows the login profiles under the worker's
+`HOME`. With `HOME` at a scratch home holding no profile, `bash` resolved to the
+stock 3.2 because macOS's `path_helper` put the system directories first. A
+`.zprofile` in the scratch home that exports the worker's launch `PATH` brought
+the package-manager bash back
+([shell probes](../raw/notes/cursor-print-mode-shell-probes-2026-10-09.md)).
+The eval runners' scratch homes carry such a profile for that reason
+([Verification surfaces for a shipped skill](../concepts/verification-surfaces.md)).
 
 ### Builds and the print-mode agent CLI
 
@@ -238,7 +265,9 @@ text, `thinking` events carry deltas, and `tool_call` events carry a `subtype`
 of `started` or `completed`. The `result` event carries `result`, `session_id`,
 and `usage` (`inputTokens`, `outputTokens`, `cacheReadTokens`,
 `cacheWriteTokens`). A `tool_call` object holds one key naming the tool kind,
-with `args`. On completion it also holds a `result` with `success`,
+with `args`, beside `toolCallId`, `startedAtMs`, and `hookAdditionalContexts`,
+and it gains `completedAtMs` on completion (9 October 2026). On completion the
+tool-kind entry also holds a `result` with `success`,
 `permissionDenied`, `writePermissionDenied`, or `error`. The kinds seen were
 `readToolCall`, `shellToolCall`, `editToolCall`, `taskToolCall`,
 `createGoalToolCall`, `updateGoalToolCall`, and `getMcpToolsToolCall`.

@@ -10,16 +10,19 @@ writes no score. `--force-uuid` is the only entry to the skill-creator
 runner's UUID-proxy approach.
 
 This harness is Claude-only: it inspects Claude stream-json tool-use evidence.
-Its worker model still resolves through `tests/lib/vendor.py`, so the default
-worker policy is Claude `sonnet` and `--model ''` inherits the CLI default.
+Its worker resolves through `tests/lib/vendor.py`, which defaults this
+Claude-only harness to Claude (worker `sonnet`; `--model ''` inherits the CLI
+default) and stops with an error on `--vendor cursor`. A run is a Claude run,
+made where a change needs the measurement, and its command names
+`--vendor claude` so the Claude run is visible.
 
 Usage:
 
-    python3 tests/trigger_evals/run.py \\
+    python3 tests/trigger_evals/run.py --vendor claude \\
       --eval-set tests/trigger_evals/wiki.json \\
       --skill wiki \\
       [--family wiki,wiki_import,wiki_fix,wiki_wrapup] \\
-      [--vendor claude] [--model sonnet|''] \\
+      [--model sonnet|''] \\
       [--runs-per-query 3] [--timeout 45] [--workers 10]
 
 Outputs `results.json` and `run.log` under
@@ -486,7 +489,7 @@ def main() -> int:
                              "auto-derivation, and required by --force-uuid. "
                              "Defaults to "
                              "plugins/knowledge_management/skills/<skill>.")
-    vendor.add_vendor_arguments(parser)
+    vendor.add_vendor_arguments(parser, harness_id="trigger_evals")
     parser.add_argument("--runs-per-query", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=45,
                         help="Per-query timeout in seconds.")

@@ -9,10 +9,12 @@ This is the regression-test entrypoint for the wiki skill. Each invocation:
    `vendor.DEFAULT_PARALLEL_WORKERS`).
    Inside each worker, passes run sequentially:
      - Build the prompt via build_prompt.py.
-     - Stage the relevant knowledge-management skill trees and the
-       `auto_shaper_wiki` agent into the sandbox's vendor discovery tree.
+     - Micro-deploy the wiki family skills, the `auto_shaper_wiki` agent,
+       and the `format_markdown` skill that agent fixes markdown by, through
+       the deploy script into a scratch home, and rewrite the prompt's
+       source paths to the deployed paths.
      - Run the vendor-resolved print-mode worker; capture stdout/stderr/timing
-       into the pass dir.
+       (with `artefacts_read_from_micro_deployment`) into the pass dir.
      - Between passes within the same scenario, restage just that one
        sandbox so pass-2 starts from the same initial state as pass-1.
 3. Runs grade.py and aggregate.py.
@@ -36,8 +38,9 @@ Use `--passes N` to override the default from evals.json. Use `--scenario L2-1`
 to run a single scenario (useful when iterating on a specific failure).
 Use `--workers N` to tune parallelism (default
 `vendor.DEFAULT_PARALLEL_WORKERS`). The default worker policy comes from
-`tests/lib/vendor.py`: `--vendor claude` uses `sonnet`, `--vendor cursor`
-uses `auto`, and `--model ''` inherits the vendor CLI default.
+`tests/lib/vendor.py`: the worker runs on Cursor (`auto`) unless
+`--vendor claude` (`sonnet`) runs where Claude is needed or asked
+for, and `--model ''` inherits the vendor CLI default.
 """
 
 from __future__ import annotations
@@ -46,7 +49,6 @@ import argparse
 import concurrent.futures
 import datetime
 import json
-import os
 import pathlib
 import shutil
 import subprocess
@@ -65,13 +67,21 @@ WORKSPACE = THIS / "workspace"
 REPO_ROOT = THIS.parents[2]
 KM_SKILLS = REPO_ROOT / "plugins" / "knowledge_management" / "skills"
 WIKI_SKILL = KM_SKILLS / "wiki"
-WIKI_AGENT_FILES = [
-    REPO_ROOT / "plugins" / "knowledge_management" / "agents" / "auto_shaper_wiki.md"
+ARTEFACTS = [
+    "wiki",
+    "wiki_fix",
+    "wiki_import",
+    "wiki_wrapup",
+    "auto_shaper_wiki",
+    # auto_shaper_wiki fixes markdown "per the `format_markdown` skill rules",
+    # so a worker that follows it may load that skill by name.
+    "format_markdown",
 ]
+WIKI_SCRIPTS = ["discover_wiki.sh", "init_wiki.sh", "lint.py", "compute_sha256.py"]
 
 sys.path.insert(0, str(WIKI_TESTS.parent / "lib"))
+import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
-from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
 
 
 def latest_previous_benchmark() -> pathlib.Path | None:
@@ -85,7 +95,7 @@ def restage_one(scenario_id: str) -> None:
     """Restage a single scenario's sandbox. Safe to call concurrently from
     different worker threads only when each call targets a distinct scenario id.
     Within one scenario, callers must serialize this with that scenario's
-    in-flight claude -p subprocess."""
+    in-flight worker subprocess."""
     subprocess.run(
         [str(SETUP_SCRIPT), scenario_id],
         check=True, stdout=subprocess.DEVNULL,
@@ -96,63 +106,21 @@ def scenario_workdir(scenario: dict, sandbox_root: pathlib.Path) -> pathlib.Path
     return sandbox_root / scenario["cwd_subpath"]
 
 
-def stage_named_agents(
-    workdir: pathlib.Path, vendor_name: str, agent_files: list[pathlib.Path]
-) -> None:
-    vendor_root = workdir / (".cursor" if vendor_name == "cursor" else ".claude")
-    agents_root = vendor_root / "agents"
-    agents_root.mkdir(parents=True, exist_ok=True)
-    for agent_file in agent_files:
-        shutil.copy2(agent_file, agents_root / agent_file.name)
-
-
-def stage_vendor_skills(
-    scenario: dict,
-    workdir: pathlib.Path,
-    artefacts_root: pathlib.Path,
-    resolved: vendor.Resolved,
-) -> tuple[pathlib.Path, pathlib.Path]:
-    skill_name = scenario.get("skill_name", "wiki")
-    primary_skill_dir = KM_SKILLS / skill_name
-    staged_primary = vendor.stage_skill_tree(
-        artefacts_root / skill_name,
-        primary_skill_dir,
-        resolved.vendor,
-    )
-    staged_wiki = staged_primary
-    if primary_skill_dir != WIKI_SKILL:
-        staged_wiki = vendor.stage_skill_tree(
-            artefacts_root / "wiki",
-            WIKI_SKILL,
-            resolved.vendor,
-        )
-    stage_named_agents(workdir, resolved.vendor, WIKI_AGENT_FILES)
-    return staged_primary, staged_wiki
-
-
 def rewrite_prompt_paths(
     prompt: str,
     scenario: dict,
-    staged_primary: pathlib.Path,
-    staged_wiki: pathlib.Path,
+    path_map: dict[str, pathlib.Path],
 ) -> str:
+    """Point the prompt's repository source paths at the micro-deployed copies."""
     skill_name = scenario.get("skill_name", "wiki")
-    primary_skill_dir = KM_SKILLS / skill_name
     replacements = {
-        str(primary_skill_dir / "SKILL.md"): str(staged_primary),
-        str(WIKI_SKILL / "scripts" / "discover_wiki.sh"): str(
-            staged_wiki.parent / "scripts" / "discover_wiki.sh"
-        ),
-        str(WIKI_SKILL / "scripts" / "init_wiki.sh"): str(
-            staged_wiki.parent / "scripts" / "init_wiki.sh"
-        ),
-        str(WIKI_SKILL / "scripts" / "lint.py"): str(
-            staged_wiki.parent / "scripts" / "lint.py"
-        ),
-        str(WIKI_SKILL / "scripts" / "compute_sha256.py"): str(
-            staged_wiki.parent / "scripts" / "compute_sha256.py"
-        ),
+        str(KM_SKILLS / skill_name / "SKILL.md"): str(path_map[skill_name]),
     }
+    deployed_scripts = path_map["wiki"].parent / "scripts"
+    for script in WIKI_SCRIPTS:
+        replacements[str(WIKI_SKILL / "scripts" / script)] = str(
+            deployed_scripts / script
+        )
     for src, dest in replacements.items():
         prompt = prompt.replace(src, dest)
     return prompt
@@ -179,11 +147,6 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
         ],
         capture_output=True, text=True, check=True,
     ).stdout
-    staged_primary, staged_wiki = stage_vendor_skills(
-        scenario, workdir, pass_dir / "artefacts", resolved
-    )
-    prompt = rewrite_prompt_paths(prompt, scenario, staged_primary, staged_wiki)
-    prompt_path.write_text(prompt)
 
     model_label = resolved.worker_model or "<inherit>"
     print(
@@ -191,30 +154,27 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
         f"(model={model_label}) ...",
         flush=True,
     )
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(workdir),
-    )
     start = time.time()
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=workdir,
-            env=vendor.worker_env(resolved.vendor),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+    with micro_deploy.micro_deploy(
+        resolved.vendor, ARTEFACTS, workdir, preflight=False
+    ) as md:
+        prompt = rewrite_prompt_paths(prompt, scenario, md.path_map)
+        prompt_path.write_text(prompt)
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=timeout, cwd=workdir,
         )
-        rc = result.returncode
-        stdout = result.stdout
-        stderr = result.stderr
-    except subprocess.TimeoutExpired as e:
-        rc = -1
-        stdout = as_text(e.stdout)
-        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
+    if not integrity["passed"]:
+        print(
+            f"  [{sid} pass-{pass_num}] integrity FAIL: worker read artefacts "
+            f"outside the micro-deployment: {integrity['out_of_set']}",
+            flush=True,
+        )
     duration_s = time.time() - start
 
     (pass_dir / "response.txt").write_text(stdout)
@@ -224,7 +184,7 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
     if not report_path.is_file():
         report_path.write_text(stdout)
 
-    # `claude -p` doesn't expose token counts via the CLI; only duration.
+    # micro_deploy.run_worker keeps no token usage from the stream; only duration.
     timing = {
         "duration_s": duration_s,
         "duration_ms": int(duration_s * 1000),
@@ -232,6 +192,7 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
         "claude_rc": rc,
         "total_tokens": None,
         "model": model_label,
+        "artefacts_read_from_micro_deployment": integrity,
     }
     (pass_dir / "timing.json").write_text(json.dumps(timing, indent=2))
 
@@ -314,7 +275,7 @@ def main() -> int:
         f"model: {resolved.worker_model or '<inherit>'}"
     )
     print(f"Scenarios: {[s['id'] for s in scenarios]}, passes per scenario: {passes}")
-    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     # Restage only the scenarios this run will execute. A subset run must not
     # stage every sandbox just to skip them later.

@@ -14,11 +14,22 @@ step whenever either changes.
 ## Vendor switch
 
 Behavioral runners share `tests/lib/vendor.py` and accept `--vendor {claude,cursor}`
-(default `claude`). Claude workers use the latest `sonnet` alias; Cursor workers
-use `auto` via `agent -p`. See `tests/CLAUDE.md` and `tests/AGENTS.md` for the
+(default `cursor`; the Claude-only harnesses default to `claude` and stop with an
+error on an explicit `--vendor cursor`), so run them without `--vendor` unless
+the run is on Claude. Claude
+workers use the latest `sonnet` alias; Cursor workers
+use `auto` via `agent -p`. Cursor is the project's measurement vendor because
+its runs are cheaper and faster, so develop and iterate on it; it is fine to
+rely on Cursor results without running the Claude suites. A test that needs a
+Claude-specific feature runs on Claude with `--vendor claude` in its command,
+also on a Claude-only harness, so the Claude run is visible; any other Claude
+run waits for the operator's explicit request, and none runs in the
+background. See `tests/CLAUDE.md` and `tests/AGENTS.md` for the
 full matrix, auth, Claude-only rejects (`trigger_evals`, `natural_language/`),
-and skill/agent staging rules. Isolated-sandbox evals that use
-`tests/lib/eval_runner` default to 4 parallel workers
+and the per-pass micro-deployment rule (`tests/lib/micro_deploy.py`: workers
+load artefacts only from that deployment, deployed user copies stay out of
+view, and `artefacts_read_from_micro_deployment` enforces it). Isolated-sandbox
+evals that use `tests/lib/eval_runner` default to 4 parallel workers
 (`DEFAULT_PARALLEL_WORKERS` in `tests/lib/vendor.py`); runners still on a
 private pool or kept sequential are named in `tests/CLAUDE.md` /
 `tests/AGENTS.md`.
@@ -77,8 +88,8 @@ don't bring up new harnesses under Pattern B.
   denominator). Mature, working.
 - **`git_commit/`**: Pattern A. `script_tests/` implemented (16
   bundled-script scenarios). `evals/` holds nine behavioral evals with
-  fixtures, run through a sonnet-pinned `evals/run.py` with a
-  deterministic `grade.sh`. See `evals/README.md`.
+  fixtures, run through `evals/run.py` on the default Cursor worker with
+  a deterministic `grade.sh`. See `evals/README.md`.
 - **`git_checkout/`**: Pattern A. `script_tests/` implemented (14
   bundled-script scenarios over staged clones with real remotes).
   `evals/` defined (7 evals over 5 fixtures) and run operator-driven
@@ -93,8 +104,8 @@ don't bring up new harnesses under Pattern B.
   the stub-`gh` thread and thread-comment pagination, the heading-range helper,
   and the size-profile line counts (content-only, numstat-equal in range,
   uncommitted, and per-path-fallback modes). `evals/` holds 48
-  behavioral evals over 36 fixtures, run through a sonnet-pinned
-  `evals/run.py` with a deterministic `grade.sh`. Forge fixtures put a stub
+  behavioral evals over 36 fixtures, run through `evals/run.py` on the
+  default Cursor worker with a deterministic `grade.sh`. Forge fixtures put a stub
   `gh` on `PATH` that serves fixture JSON and logs every call, so a run that
   posts nothing is provable. See `evals/README.md`.
 - **`language_humanizer/`**: Pattern A, prose-only skill. The skill
@@ -114,14 +125,19 @@ don't bring up new harnesses under Pattern B.
   5-pass denominator, graded by a deterministic `grade.py` plus a
   refute-biased `judge.py`. No verdict cache: the repeated draws are
   the measurement. Workers load the style through Claude output-style
-  selection, so the runner stays on `--vendor claude`.
-- **`task/`**: Pattern A. The `task_*` family hub, holding both
+  selection, so the runner defaults to Claude, stops with an error on
+  `--vendor cursor`, and runs on Claude wherever a change needs it, with
+  `--vendor claude` in the command.
+- **`task/`**: Pattern A. The `task_*` family hub, holding three
   deterministic surfaces: `script_tests/run.sh` unit-tests the bundled
-  `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (54 scenarios), and
+  `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (54 scenarios),
   `script_tests/contract_run.sh` asserts the family contract across the
-  hub, its siblings, and the family agents. `run_all.sh` drives both and
-  aggregates their exit codes. `evals/` holds a behavioral eval per family
-  member, run out-of-band via `evals/run.py`.
+  hub, its siblings, and the family agents, and `evals/test_run.py` checks
+  that no eval grading the sandbox's whole `git status` declares an
+  artefact the micro-deployment writes into the sandbox project.
+  `run_all.sh` drives all three and aggregates their exit codes. `evals/`
+  holds a behavioral eval per family member, run out-of-band via
+  `evals/run.py`.
 - **`task_create/`**: Pattern A, behavioral only (the skill drives the
   base `task` skill's scripts, covered under `task/script_tests/`). Three
   staged evals over the base **Decide or label** rule as the create path
@@ -142,14 +158,14 @@ don't bring up new harnesses under Pattern B.
 - **`task_auto_check/`**: Pattern A. `script_tests/` covers the static
   skill contract; `evals/` drives the autonomous readiness loop over staged
   fixtures (repair-to-ready, the gate / verifier / drift stop conditions,
-  and the mechanical lint cleanup) through a sonnet-pinned `run.py` with a
-  deterministic `grade.sh`. The deepest loop here, so `RUNBOOK.md` records
+  and the mechanical lint cleanup) through `run.py` on the default Cursor
+  worker with a deterministic `grade.sh`. The deepest loop here, so `RUNBOOK.md` records
   the cheap-first fixture probe that keeps a fixture bug off the full run.
 - **`guardrail_audit/`**: Pattern A, prose-only skill. `script_tests/`
   covers the static SKILL.md / registration contract; `evals/` has five
   staged fixtures (presence-gating, doc-vs-doc, doc-vs-code retrofit,
   grounded TESTING.md proposal, multi-project nature mismatch) with
-  byte-identity grading and a sonnet-pinned `run.py`.
+  byte-identity grading and a `run.py` on the default Cursor worker.
 - **`skill_doctor/`**: Pattern A. `script_tests/` cover
   `resolve_scope.py` (hub-with-`<family>` and prefix-only) and
   `discovery_safety.py` (risky sibling-description outlier,
@@ -157,14 +173,15 @@ don't bring up new harnesses under Pattern B.
   line including a fixture per promised blocking class, and
   false-positive regression guards over real shipped description
   shapes), plus the static SKILL.md contract. `evals/` has three
-  staged fixtures driven by a sonnet-pinned `run.py` with a
+  staged fixtures driven by `run.py` on the default Cursor worker with a
   deterministic `grade.sh`; `run_all.sh` drives only the script tests.
 - **`agent_spinner/`**: Pattern A, prose-only skill. `script_tests/`
   covers the static contract (SKILL.md budgets and blocks, the six shape
   tags, the per-harness greps that must return nothing, the reference set,
   and registration lockstep); `evals/` holds 21 staged fixtures, one per
-  independently staged behavioural acceptance item, driven by a
-  sonnet-pinned `evals/run.py` with a deterministic `grade.sh`. The runner
+  independently staged behavioural acceptance item, driven by
+  `evals/run.py` on the default Cursor worker with a deterministic
+  `grade.sh`. The runner
   denies the spawn tool for the fixtures that stage a host with no
   delegation surface, and brackets every eval with a host-checkout
   `git status` so a sandbox escape fails the eval that caused it. See

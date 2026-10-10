@@ -179,7 +179,7 @@ withholds_approvability_while_unread() {
     ! grep -qiE -- '\bapprovable\b' "$response"
 }
 
-# stage.sh shims the bundled scripts so each invocation lands here. This makes
+# run.py shims the deployed bundled scripts so each invocation lands here. This makes
 # "did the run use the helper" a deterministic fact rather than a question about
 # whether the model happened to narrate the script's name in its answer.
 script_called()    { [[ -s "$script_log" ]] && grep -qF -- "$1" "$script_log"; }

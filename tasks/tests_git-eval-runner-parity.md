@@ -2,7 +2,7 @@
 description: Give git_checkout and git_refresh the same vendor-aware Pattern A eval runner the other harnesses ship, so an eval sweep reaches their behavioral evals.
 scope: "local test harnesses"
 created: 2026-09-05T02:10:57
-updated: 2026-10-08T22:06:22
+updated: 2026-10-09T17:46:37
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -23,8 +23,8 @@ regression-checked instead of being taken on trust.
 
 Every Pattern A harness under `tests/` that already defines behavioral evals and
 ships `evals/run.py` shares `tests/lib/vendor.py` and accepts
-`--vendor {claude,cursor}` (default `claude` with worker model `sonnet`, or
-`--vendor cursor` with `auto`). `tests/git_checkout/evals/` and
+`--vendor {claude,cursor}` (default `cursor` with worker model `auto`;
+`--vendor claude` with `sonnet` is a run the operator asks for). `tests/git_checkout/evals/` and
 `tests/git_refresh/evals/` still hold only `evals.json` and `fixtures/`.
 `tests/git_checkout/evals/README.md` records the consequence in its own words,
 that no command executes a behavioral eval and the model-runs-the-skill step is
@@ -70,14 +70,16 @@ post-run sandbox, and vendor and cache handling through `tests/lib/vendor.py`
 and `tests/lib/eval_cache.py`.
 
 For each of the two harnesses, add `evals/stage.sh` that stages one fixture and
-prints `printf %q`-quoted `name=value` lines for the sandbox path, the skill
-path, and the prompt; add `evals/grade.sh` as a `case` over eval id that asserts
+prints `printf %q`-quoted `name=value` lines for the sandbox path and the
+prompt; add `evals/grade.sh` as a `case` over eval id that asserts
 the post-run repository state each eval's expectations name; and add
-`evals/run.py` that calls `vendor.add_vendor_arguments`, `vendor.resolve`,
-`vendor.preflight_auth`, `vendor.stage_skill_tree`, and `vendor.build_print_cmd`,
-accepts `--force` and `--no-cache`, and records verdicts through
-`tests/lib/eval_cache.py` with `source_roots_for()` naming the skill directory
-under test. Keep the vendor defaults that `vendor.py` already defines: Claude
+`evals/run.py` that calls `vendor.add_vendor_arguments` and `vendor.resolve`,
+preflights through `micro_deploy.preflight_auth`, micro-deploys the skill under
+test per pass through `micro_deploy.micro_deploy`, runs the worker through
+`micro_deploy.run_worker`, records `artefacts_read_from_micro_deployment` in
+each pass's `timing.json`, accepts `--force` and `--no-cache`, and records
+verdicts through `tests/lib/eval_cache.py`, with one artefact declaration
+feeding both `--only` and `source_roots_for()`. Keep the vendor defaults that `vendor.py` already defines: Claude
 worker model `sonnet`, Cursor worker model `auto`. Do not pin a dated Claude
 model id.
 
@@ -104,17 +106,17 @@ to its own session.
 
 ## Acceptance
 
-- `python3 tests/git_checkout/evals/run.py --vendor cursor` with no eval-id
+- `python3 tests/git_checkout/evals/run.py` with no eval-id
   arguments runs every eval in that harness's `evals.json` and prints a graded
   summary naming each eval id and its verdict, and
-  `python3 tests/git_refresh/evals/run.py --vendor cursor` does the same for its
+  `python3 tests/git_refresh/evals/run.py` does the same for its
   evals. Both commands accept `--workers` defaulting to 4.
 - Re-running either command with unchanged inputs replays every verdict from the
   cache and spawns no worker, and re-running with `--force` spawns a worker for
   each eval and refreshes the stored verdict.
-- With `--vendor cursor` and no `--model`, each runner resolves to Cursor worker
-  model `auto`. With `--vendor claude` and no `--model`, each resolves to Claude
-  worker model `sonnet` for compatibility. Each fails fast with the shared vendor
+- Without `--vendor` and `--model`, each runner resolves to Cursor worker model
+  `auto`. With `--vendor claude` and no `--model`, each resolves to Claude
+  worker model `sonnet`. Each fails fast with the shared vendor
   preflight's remediation message when the chosen vendor's login is dead rather
   than recording a failed verdict per eval.
 - `tests/git_refresh/evals/README.md` exists and documents each of that harness's

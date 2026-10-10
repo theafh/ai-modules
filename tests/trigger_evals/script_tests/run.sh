@@ -167,6 +167,23 @@ check(not has_score_fields(Path(tempfile.mkdtemp()) / "missing.json"),
 eval_set = stage_eval_set()
 skill_src = stage_skill(Path(tempfile.mkdtemp()))
 
+# (0) an explicit --vendor cursor stops with an error before either mode runs;
+# without --vendor this Claude-only harness defaults to Claude (cases below)
+calls["uuid"] = calls["deployed"] = 0
+try:
+    run_main(
+        ["--vendor", "cursor", "--eval-set", str(eval_set), "--skill", "demo",
+         "--skill-path", str(skill_src)],
+        stage_home(),
+    )
+    cursor_exit = None
+except SystemExit as exc:
+    cursor_exit = str(exc)
+check(cursor_exit is not None and "does not support `--vendor cursor`" in cursor_exit,
+      "explicit --vendor cursor: stops with an error")
+check(calls["uuid"] == 0 and calls["deployed"] == 0,
+      "explicit --vendor cursor: neither mode runner is called")
+
 # (1) unavailable without --force-uuid → named failure, no score
 home1 = stage_home()
 results1 = Path(tempfile.mkdtemp()) / "out"

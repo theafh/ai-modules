@@ -3,9 +3,8 @@
 
 Same stage -> agent -> grade shape as the task_auto_check runner: one
 vendor-resolved print-mode worker per eval, so the skill under test uses one
-explicit worker policy each run. By default that means `--vendor claude` with
-worker model `sonnet`, or `--vendor cursor` with worker model `auto`; pass
-`--model ''` to inherit the vendor CLI default. Grading stays model-free.
+explicit worker policy each run. By default that means the Cursor worker
+(`agent -p`, model `auto`); `--vendor claude` (model `sonnet`) runs where Claude is needed or asked for, and `--model ''` inherits the vendor CLI default. Grading stays model-free.
 
 A pass requires both a clean worker completion (CLI rc 0 with a real response)
 and a passing grade.sh. A timed-out or crashed worker fails the eval regardless
@@ -42,24 +41,32 @@ WORKSPACE = THIS.parent / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
+import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
-from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
+
+ARTEFACTS = [
+    "task_fix",
+    "task",
+    "task_check",
+    "task_auto_check",
+    "auto_drift_task",
+    "auto_gate_task",
+    "auto_reviewer_task",
+    "auto_shaper_task",
+    "auto_verifier_task",
+]
 
 
-def source_roots_for(skill_path: str):
+def source_roots_for():
     """task_fix loads its own SKILL.md, reads the base `task` skill via
     <authority> for the lint rules and the repeated-link react protocol, and may
-    escalate to the auto_*_task agents. Hash the loaded skill, the base hub, and
-    the agents dir together so an edit to the base protocol or any helper agent
+    escalate to the auto_*_task agents. The escalated auto_shaper_task may run
+    auto_gate_task, which reads `task_check`, or invoke `task_auto_check`, so
+    both skills sit in the declaration too. Hash every declared artefact so an
+    edit to the base protocol, either of those skills, or any helper agent
     invalidates the cache, not just an edit to task_fix itself. Over-inclusion
     only forces an occasional extra run; it can never serve a stale pass."""
-    skill_dir = pathlib.Path(skill_path).parent        # .../skills/<skill>
-    skills = skill_dir.parent                          # .../skills
-    roots = {skill_dir, skills / "task"}               # loaded skill + base hub
-    agents = skills.parent / "agents"                  # .../ai_dev/agents
-    if agents.is_dir():
-        roots.add(agents)
-    return sorted(roots)
+    return micro_deploy.source_roots_for(ARTEFACTS)
 
 
 def _all_eval_ids():
@@ -130,17 +137,12 @@ def run_one(
 
     staged = stage(eval_id, target)
     workdir = staged["sandbox_proj"]
-    staged_skill = vendor.stage_skill_tree(
-        eval_dir / "artefacts",
-        pathlib.Path(staged["skill_path"]).parent,
-        resolved.vendor,
-    )
     model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
-            source_roots=source_roots_for(staged["skill_path"]),
+            source_roots=source_roots_for(),
             harness_dir=THIS,
             model=resolved.worker_model,
             eval_id=eval_id,
@@ -158,44 +160,29 @@ def run_one(
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
-    prompt = WORKER_PROMPT.format(
-        skill_path=staged_skill,
-        workdir=workdir,
-        prompt=staged["prompt"],
-    )
-
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(workdir),
-    )
-
     print(
         f"  [{eval_id}] running {resolved.config.label} "
         f"(skill={staged['skill_name']}, model={model_label}) ...",
         flush=True,
     )
     start = time.time()
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=workdir,
-            env=vendor.worker_env(resolved.vendor),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+    with micro_deploy.micro_deploy(
+        resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
+    ) as md:
+        prompt = WORKER_PROMPT.format(
+            skill_path=md.path_map["task_fix"],
+            workdir=workdir,
+            prompt=staged["prompt"],
         )
-        rc, stdout, stderr = result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as exc:
-        # TimeoutExpired carries whatever communicate() had buffered, and that
-        # stays bytes even though subprocess.run was given text=True. Decode
-        # before appending the note, or the timeout path raises TypeError and
-        # takes the whole run down with it instead of failing this one eval.
-        rc = -1
-        stdout = as_text(exc.stdout)
-        stderr = as_text(exc.stderr) + f"\n[TIMEOUT after {timeout}s]"
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=timeout, cwd=pathlib.Path(workdir),
+        )
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
     duration_s = time.time() - start
 
     (eval_dir / "response.txt").write_text(stdout)
@@ -209,6 +196,7 @@ def run_one(
                 "worker_rc": rc,
                 "claude_rc": rc,
                 "model": model_label,
+                "artefacts_read_from_micro_deployment": integrity,
             },
             indent=2,
         )
@@ -226,7 +214,7 @@ def run_one(
     print(grade.stdout, end="", flush=True)
     grade_passed = grade.returncode == 0
     completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed
+    passed = grade_passed and completed and integrity["passed"]
 
     if not completed:
         why = ("timeout" if "[TIMEOUT" in stderr
@@ -236,6 +224,9 @@ def run_one(
               f"grade.sh ran on partial sandbox state and cannot be trusted "
               f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
               flush=True)
+    elif not integrity["passed"]:
+        print(f"  [{eval_id}] FAIL, worker read artefacts outside the "
+              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
     else:
         print(f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n", flush=True)
 
@@ -288,7 +279,7 @@ def main() -> int:
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")
 
-    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     results = {
         eval_id: run_one(eval_id, run_dir, resolved, args.timeout, cache, args.force)

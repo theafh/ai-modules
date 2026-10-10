@@ -2,7 +2,7 @@
 description: Make git_review's secret scan report each hit's file and line, read every added line, catch the credential and home-path shapes it misses, and match the manual fallback.
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-06T13:25:39
-updated: 2026-10-08T10:00:53
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -65,5 +65,5 @@ Add a check to the `20)` case in `grade.sh` that the report names `src/settings.
 - In the new uncommitted-mode scenario, the staged shape and the untracked shape appear with their paths and line numbers, the untracked one counted from the first line of its file.
 - The fallback check passes, and it fails when either pattern string is removed from a copy of `references/manual_fallback.md`.
 - The scan passage in `references/manual_fallback.md` runs the header-aware extraction, and a search of that file for `grep -v '^\+\+\+'` and for the prior alternation `AKIA[0-9A-Z]{16}|-----BEGIN` returns no match.
-- The `20)` case in `grade.sh` checks that the report names `src/settings.py`, and eval 20 passes on a fresh `python3 tests/git_review/evals/run.py --vendor cursor 20` run.
+- The `20)` case in `grade.sh` checks that the report names `src/settings.py`, and eval 20 passes on a fresh `python3 tests/git_review/evals/run.py 20` run.
 - The `git_review/` entries in `tests/README.md` and `tests/CLAUDE.md` name the located secret-scan hits among the covered behaviours, and the `tests/README.md` scenario count equals the number of `scenario` registrations in `script_tests/run.sh`.

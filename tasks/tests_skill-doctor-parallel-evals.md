@@ -2,7 +2,7 @@
 description: Run skill_doctor evals at default 4 workers through the shared helper, keep evals.json-derived ids, and prove isolation with a Cursor default run.
 scope: tests/skill_doctor/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-08T22:06:22
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -43,7 +43,7 @@ tests. Live-testing unshipped editorial plugin harnesses.
 ## Acceptance
 
 - `run.py --help` shows `--workers` defaulting to 4.
-- `python3 tests/skill_doctor/evals/run.py --vendor cursor` at the default
+- `python3 tests/skill_doctor/evals/run.py` at the default worker count
   prints a graded summary over every id in `evals.json`.
 - A `--workers 4 --force` run of at least two uncached evals overlaps in
   `timing.json`, recorded under `tests/skill_doctor/results/`.

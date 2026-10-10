@@ -2,13 +2,12 @@
 # Eval 5 fixture: stage a sandbox where prepare_commit_context.sh
 # exits non-zero so the skill must use its fallback discipline.
 #
-# Self-contained: this fixture copies the git_commit skill into
-# $target/skill_under_test/ and overwrites the prepare script with a
-# failing stub. No runner-side wiring is required — the agent is
-# pointed at $target/skill_under_test/SKILL.md and loads the stubbed
-# scripts naturally. The constraint that the skill-creator skill is
-# read-only is therefore irrelevant for this eval; we copy the
-# git_commit plugin skill, which is not read-only.
+# This fixture copies the git_commit skill into $target/skill_under_test/
+# and overwrites the prepare script with a failing stub. run.py copies the
+# stub onto the micro-deployed git_commit its worker loads
+# (micro_deploy.overlay_fixture_edits), and an operator-driven run can load
+# $target/skill_under_test/SKILL.md directly. The skill-creator skill stays
+# read-only, because only the git_commit plugin skill is copied.
 #
 # Layout staged at $1:
 #   repo/                       fresh git repo with one modified file

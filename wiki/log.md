@@ -972,3 +972,92 @@ pre-existing.
 
 The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-09 14:32] update | Per-pass micro-deployment and read check
+
+- concepts/verification-surfaces.md (the backlog pointer replaced by the shipped
+  mechanism: per-pass deployment through the deploy script, the read check that
+  fails on home and checkout copies, and why it expands shell paths against the
+  worker's own environment on Claude)
+- index.md (Last updated)
+
+## [2026-10-09 14:33] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-09 16:52] update | Cursor as the default eval vendor
+
+- concepts/verification-surfaces.md (Cursor as the default vendor because its
+  runs are cheaper and faster, a Claude suite as an occasional sample the
+  operator asks for, and the repo rules and `TESTING.md` among the places the
+  practice is recorded)
+
+## [2026-10-09 16:53] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-09 17:16] update | Per-harness default eval vendor
+
+- concepts/verification-surfaces.md (evals run without `--vendor`; Claude-only
+  surfaces default to Claude and stop with an error on an explicit
+  `--vendor cursor`)
+
+## [2026-10-09 17:17] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-09 17:53] update | Claude runs where a test needs a Claude-specific feature
+
+- concepts/verification-surfaces.md (a test that exercises a Claude-specific
+  feature names it and runs on Claude through the vendor flag or a Claude-only
+  harness, and any other Claude run waits for the operator's explicit request)
+
+## [2026-10-09 17:54] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-09 18:10] update | Claude runs name the vendor flag
+
+- concepts/verification-surfaces.md (a Claude run's command carries
+  `--vendor claude` even on a Claude-only harness whose default is already
+  Claude, so every Claude run is visible in its command)
+
+## [2026-10-09 18:11] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-09 21:05] ingest | Cursor helper transcript probes
+
+- raw/notes/cursor-helper-transcript-probes-2026-10-09.md (new)
+- entities/cursor.md (a helper's tool calls land in its own chat transcript;
+  the print-mode transcript location per chat with the parent's `session_id`
+  and the helper's `agentId` as chat ids; the extra keys on a stream
+  `tool_call` object)
+- concepts/verification-surfaces.md (a spawned helper's reads count as the
+  worker's, from Claude's stream and from Cursor's chat transcripts)
+- index.md (Cursor one-liner)
+
+## [2026-10-09 21:06] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-09 22:06] ingest | Cursor print-mode shell probes
+
+- raw/notes/cursor-print-mode-shell-probes-2026-10-09.md (new)
+- entities/cursor.md (the print-mode CLI builds a shell command's environment
+  from a login shell under the worker's `HOME`, where a scratch home without a
+  profile resolved the stock bash; the non-login observation scoped to the IDE)
+- concepts/verification-surfaces.md (the login profiles in Cursor's scratch
+  home that put back the worker's launch `PATH`)
+- index.md (Cursor one-liner)
+
+## [2026-10-09 22:06] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

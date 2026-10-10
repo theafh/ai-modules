@@ -38,20 +38,21 @@ for the full picture.
 ## The recorded measurement
 
 ```bash
-python3 tests/language_humanizer/evals/run.py --vendor cursor
+python3 tests/language_humanizer/evals/run.py
 ```
 
 That is the deliverable run: three scenarios × five passes on the Cursor
 worker (`agent -p`, model `auto`), with the judge on `auto` as well, per
-`TESTING.md`. Leave out `--vendor cursor` for a Claude-pinned sample
-(`claude -p` on `sonnet`, judge on the inherited default model); record which
-vendor a result came from, because the two are separate evidence. The fifteen
+`TESTING.md`. Pass `--vendor claude` for a Claude-pinned sample (`claude -p`
+on `sonnet`, judge on the inherited default model), and only after the
+operator explicitly asks for one; record which vendor a result came from,
+because the two are separate evidence. The fifteen
 passes run four at a time (`--workers`, default 4), so budget a few minutes
 rather than the much longer serial path. Each pass is one worker call plus one
 judge call, each from its own isolated root under the system temporary
 directory, which is why they parallelize safely, since nothing is shared but
-the model endpoint. `README.md` explains the isolation contract, including why
-the skill copy is staged as a project skill of that root.
+the model endpoint. `README.md` explains the isolation contract, including how
+the skill is micro-deployed and copied into each pass's record.
 
 `--workers 1` forces the serial path when you want a clean latency reading per
 pass or suspect the concurrency itself is distorting results. Going much above
@@ -64,7 +65,7 @@ Narrower invocations, for debugging rather than for the record:
 ```bash
 # one scenario, one pass: plumbing check, ~2 min; afterwards git status is
 # unchanged and no lh_pass_* or lh_judge_* root is left under $TMPDIR
-python3 tests/language_humanizer/evals/run.py write_path --passes 1 --vendor cursor
+python3 tests/language_humanizer/evals/run.py write_path --passes 1
 
 # prove the plumbing with no model at all: point --worker-bin at a stub that
 # writes a canned delivered.md, and confirm a faithful stub passes while a

@@ -2,7 +2,7 @@
 description: Rewrite six agent_spinner blocks on probing, planning, containment, and user decisions, add the decision packet, rework the tier examples, and add evals and an escape guard.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T15:54:08
-updated: 2026-10-04T17:22:06
+updated: 2026-10-10T00:02:04
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -39,7 +39,7 @@ After this task, a run opens on capabilities it observed, runs on a two-rung lad
   - [The routing task](ai-dev_agent-spinner-routing.md) lands first, because it cuts text from the body and so makes room for this task's growth under the 25,000-byte check.
   - [The run-ledger task](ai-dev_agent-spinner-run-ledger.md) ships the ledger verbs, flags, and roster columns these blocks and evals call: `init --probe`, `snapshot`, `dispatch --model M --effort E`, `accept --observed-model M --observed-effort E`, `close --stopped`, the `brief` flag that keeps only a withheld text's hash, and the roster columns `model_req`, `effort_req`, `model_obs`, `effort_obs`, and spawn route. The `dispatch` and `accept` flags record the requested and the observed model and effort, and `close --stopped` closes a run that stopped early.
   - [The ledger-doctrine task](ai-dev_agent-spinner-ledger-doctrine.md) ships `references/run-protocol.md` and reshapes `references/report-shapes.md`. Its tier table defines the batch delivery `<judgement>` names, in which a batch of spawns returns together inside the turn. Its P1 carries the probe mechanics the rewritten `<capability_probe>` leaves out, and the reasons behind the label rule in `<phase_plan>` and the nested-entry test in `<delegation_depth>`. Its P5 carries the command list `<containment>` cites. Its report-shapes.md gains the provenance-tag format this task extends, the labels that say how each reported claim was established. That task states that run-protocol.md carries the detail these rewrites drop.
-- **Interim state.** Until [the role-definitions task](ai-dev_agent-spinner-role-definitions.md) lands, the probe finds neither role `<degradation>` names, and every spawn is generic.
+- **Interim state.** [The role-definitions task](ai-dev_agent-spinner-role-definitions.md) ships the two role files, `auto_checker_spinner` and `auto_writer_spinner`, together with their eval. Until it lands, the probe finds neither role `<degradation>` names, and every spawn is generic.
 - **Grader rules.** Every new grader follows TESTING.md's `## Test Design Principles`. Shell added to `grade.sh` or `fixtures/_common.sh` stays within the bash 3.2 floor that harness_portability states in its rule beginning "Target bash 3.2 as the interpreter floor".
 
 ## Approach
@@ -123,13 +123,13 @@ Add each eval to `tests/agent_spinner/evals/evals.json`, with a fixture at `fixt
 
 The escape guard proves the run added no ref or object to the sandbox's git repository. Give `fixtures/_common.sh` a helper that records the sandbox repository's `git for-each-ref` and `git count-objects -v` output beside the hash inventories, outside `proj/`. The first command lists every ref, and the second counts the stored objects. `reader_gets_snapshot`'s fixture calls the helper, and its grade.sh case compares both outputs after the run.
 
-Regression: run every existing eval once after the rewrite, since the rewritten probe, ladder, plan, and judgement reach every run. No existing prompt meets a new pre-dispatch gate, so the regression run needs no prompt change. A run that stops at a gate anyway is an ordinary fixture defect under TESTING.md's `## Test Integrity`. Fix it by adding that gate's answer to the eval's prompt, keep every expectation and grade.sh check, and list the changed prompt with the gate it answers in the evals README. judgement_surfaced, charter_conflict, governed_stop, and depth_one_level test a surfaced decision or a stop, so their prompts stay unchanged. probe_definitions_no_spawn, inline_floor, and governed_stop withhold the spawn tool. Under the withheld-tool rule of [the runner-modes task](tests_agent-spinner-runner-modes.md), the spawn tool is a declared absence on both vendors: the prompt tells the model the tool is absent, and the runner records `withheld_by: declared-absence`. Each of the three passes on both vendors.
+Regression: run every existing eval once after the rewrite, since the rewritten probe, ladder, plan, and judgement reach every run. No existing prompt meets a new pre-dispatch gate, so the regression run needs no prompt change. A run that stops at a gate anyway is an ordinary fixture defect under TESTING.md's `## Test Integrity`. Fix it by adding that gate's answer to the eval's prompt, keep every expectation and grade.sh check, and list the changed prompt with the gate it answers in the evals README. judgement_surfaced, charter_conflict, governed_stop, and depth_one_level test a surfaced decision or a stop, so their prompts stay unchanged. probe_definitions_no_spawn, inline_floor, and governed_stop withhold the spawn tool. Under the withheld-tool rule of [the runner-modes task](tests_agent-spinner-runner-modes.md), the spawn tool is a declared absence on both vendors: the prompt tells the model the tool is absent, and the runner records `withheld_by: declared-absence`. Each of the three passes on the default vendor.
 
 Add one row per new eval to the `## Signal per eval` table in `tests/agent_spinner/evals/README.md`. Keep every agent_spinner eval-count statement in `tests/agent_spinner/`, `tests/README.md`, and `tests/CLAUDE.md` equal to `jq '.evals | length' tests/agent_spinner/evals/evals.json`.
 
 **Out of scope:**
 
-- The role files and their eval, which [the role-definitions task](ai-dev_agent-spinner-role-definitions.md) owns.
+- The role files and their eval, which the role-definitions task owns.
 - `references/variants.md`, which [the decision-research recipes task](ai-dev_agent-spinner-decision-research-recipes.md) rewrites with an isolation variant that reports an isolated pass as blind by prompt, the same words this task's report label uses.
 - Decision packets rendered from the ledger's records, which [the ledger phase-2 task](ai-dev_agent-spinner-ledger-phase-2.md) owns.
 
@@ -143,9 +143,9 @@ Add one row per new eval to the `## Signal per eval` table in `tests/agent_spinn
 - `references/degradation-examples.md` works its nine-page drift job in one section each for the inline floor, batch delivery, and notice delivery, plus the rewritten floor and governed-exception sections. `grep -c 'full fan-out'` on it returns 0, and every ledger verb and flag it names appears in the run-protocol command reference.
 - `references/run-protocol.md` names `references/degradation-examples.md` under its tier table, and its P1 carries the cross-model sentence beside its clause on "a model and an effort per role".
 - The twelve evals exist in `evals.json` with their fixtures and grade.sh cases, each checking its named fact before any response marker.
-- Each of the twelve evals passes on both Claude and Cursor under TESTING.md's vendor rule. A failing eval is fixed in the component or the fixture before the commit, never by weakening its check.
+- Each of the twelve evals passes on the default vendor under TESTING.md's vendor rule. A failing eval is fixed in the component or the fixture before the commit, never by weakening its check.
 - `reader_gets_snapshot`'s grade.sh case compares the recorded ref and object outputs. Re-grading a captured run after a ref was added to its sandbox repository fails that comparison.
-- After the rewrite, every existing eval passes on both Claude and Cursor under TESTING.md's vendor rule, with every prior expectation and grade.sh check in place. The prompts of judgement_surfaced, charter_conflict, governed_stop, and depth_one_level are byte-identical to the parent commit's. Any other prompt a fixture fix changed is listed in the evals README with the gate it answers.
-- probe_definitions_no_spawn, inline_floor, and governed_stop pass on both vendors with the spawn tool withheld as a declared absence, and each run records `withheld_by: declared-absence`.
+- After the rewrite, every existing eval passes on the default vendor under TESTING.md's vendor rule, with every prior expectation and grade.sh check in place. The prompts of judgement_surfaced, charter_conflict, governed_stop, and depth_one_level are byte-identical to the parent commit's. Any other prompt a fixture fix changed is listed in the evals README with the gate it answers.
+- probe_definitions_no_spawn, inline_floor, and governed_stop pass on the default vendor with the spawn tool withheld as a declared absence, and each run records `withheld_by: declared-absence`.
 - The `## Signal per eval` table has one row per new eval, and every agent_spinner eval-count statement in the harness docs matches `jq '.evals | length' tests/agent_spinner/evals/evals.json`.
 - Before the commit, a manual read of every changed shipped file and of this task's own diff finds no session, company, or project name, and no denylist is committed.

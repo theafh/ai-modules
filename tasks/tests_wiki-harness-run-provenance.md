@@ -2,7 +2,7 @@
 description: Give wiki-harness runs self-describing provenance, surface a narrowed regression baseline, and retire the docs' frozen run-cost counts.
 scope: "local test harnesses"
 created: 2026-08-22T08:19:15
-updated: 2026-10-03T13:01:20
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -65,9 +65,9 @@ introducing `layer2/evals.json` as "the live inventory" gives the `jq` command
 that lists it and labels its own table as covering only the scenarios the harness
 started with. That is the shape the stale figures converge on.
 
-The layer-2 runner already calls `vendor.preflight_auth` before staging workers,
-so the earlier "skip the shared auth preflight" gap is closed and is not part of
-this task.
+The layer-2 runner already calls `micro_deploy.preflight_auth` before staging
+workers, so the earlier "skip the shared auth preflight" gap is closed and is not
+part of this task.
 
 The `## What "all passing" guarantees` section enumerates what a clean run
 establishes, and its list predates the scenario families the suite now runs: it
@@ -109,7 +109,7 @@ scenarios establish alongside the discovery ones.
 - Migrating this harness to the skill-creator-aligned layout, which the standing
   repo rules defer to the harness's next significant iteration.
 - Re-adding auth preflight, which `tests/wiki/layer2/run.py` already performs
-  through `vendor.preflight_auth`.
+  through `micro_deploy.preflight_auth`.
 - The tree-level harness inventory in the tests tree's own `README.md`, whose
   listing live siblings already co-edit, including
   [tests_wiki-front-end-behavior-evals.md](tests_wiki-front-end-behavior-evals.md).
@@ -140,5 +140,5 @@ scenarios establish alongside the discovery ones.
    section covers the suite as it stands rather than the discovery scenarios
    alone.
 5. A full-suite run still completes green after the changes, so the added
-   provenance leaves the graded outcome unchanged. Run that verification with
-   `--vendor cursor` per `TESTING.md`.
+   provenance leaves the graded outcome unchanged. Run that verification on the
+   default vendor per `TESTING.md`.

@@ -256,7 +256,7 @@ def main() -> int:
     parser.add_argument("fixture_file")
     parser.add_argument("delivered_file")
     parser.add_argument("response_file")
-    vendor.add_vendor_arguments(parser)
+    vendor.add_vendor_arguments(parser, harness_id="natural_language")
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--out")
     args = parser.parse_args()

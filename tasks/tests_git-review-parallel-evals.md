@@ -2,7 +2,7 @@
 description: Run git_review evals at default 4 workers through the shared helper, isolate per-eval temp files, and treat model contention as a timeout-tuning problem rather than a serial requirement.
 scope: tests/git_review/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-04T22:11:10
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -42,7 +42,7 @@ Rewrite `evals/run.py` onto the shared helper: `--workers` default 4, per-job
 Rewrite the sequential comment and the RUNBOOK sentence that forbids concurrent
 review workers.
 
-If a `--vendor cursor --workers 4` `--force` sample of a representative subset
+If a `--workers 4 --force` sample of a representative subset
 shows `duration_s` crowding the 600s default, raise this harness's `--timeout`
 default above the observed ceiling with the same headroom shape
 `task_auto_check` uses, and record the band in the RUNBOOK. `--workers 1`
@@ -55,10 +55,10 @@ Live-testing unshipped editorial plugin harnesses.
 
 - `run.py --help` shows `--workers` defaulting to 4 and still documents
   `--timeout`.
-- `python3 tests/git_review/evals/run.py --vendor cursor` at the default worker
-  count prints a graded summary over every id in `evals.json` (or a named
-  subset plus a second `--force` pair that proves overlap), with no TypeError
-  on a timeout path.
+- `python3 tests/git_review/evals/run.py` at the default worker count prints a
+  graded summary over every id in `evals.json` (or a named subset plus a
+  second `--force` pair that proves overlap), with no TypeError on a timeout
+  path.
 - A `--workers 4 --force` run of at least two uncached evals writes overlapping
   `timing.json` windows, recorded under `tests/git_review/results/`.
 - `RUNBOOK.md` and `evals/run.py` no longer instruct sequential-only runs as

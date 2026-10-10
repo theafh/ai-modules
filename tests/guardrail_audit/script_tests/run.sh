@@ -46,7 +46,11 @@ printf 'guardrail_audit script_tests\n'
 
 check "SKILL.md exists" test -f "$SKILL"
 check "frontmatter name: guardrail_audit" file_has "$SKILL" '^name: guardrail_audit$'
-check "frontmatter version: 1.0.4" file_has "$SKILL" '^version: 1\.0\.4$'
+# Test Integrity: a grader fix. The skill must carry a semantic version, and a
+# literal pin breaks on every commit-time bump (the reason
+# tests/lib/plugin_version.sh gives against literal pins), so the check
+# asserts the shape.
+check "frontmatter version is semver" file_has "$SKILL" '^version: [0-9]+\.[0-9]+\.[0-9]+$'
 check "dual-audience description mentions read-only audit" \
   file_has "$SKILL" '^description:.*[Rr]ead-only audit'
 check "description distinct from hub explain/suggest/create surface" \

@@ -40,7 +40,7 @@ tests/git_commit/script_tests/scratch/<id>/
                                       # transient per-scenario git repos
 <target_dir>/                         # whatever stage.sh was given (or mktemp)
 ├── repo/                              the sandbox git repo
-├── skill_under_test/                  (eval 5 only) per-sandbox stubbed skill
+├── skill_under_test/                  (evals 5 to 7) edited skill copy, overlaid by run.py
 └── .eval_started_at                   staged HEAD SHA marker
 ```
 

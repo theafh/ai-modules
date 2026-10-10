@@ -413,6 +413,128 @@ for gated in jq perl rsync; do
   fi
 done
 
+# ---------------------------------------------------------------------------
+# DEPLOYED_ARTIFACTS_LOG override and --only
+# ---------------------------------------------------------------------------
+only_home="${SCRATCH}/only-home"
+only_log="${SCRATCH}/only-deployed.log"
+mkdir -p "$only_home"
+help_text="$("$DEPLOY_BASH" "$DEPLOY_SCRIPT" --help)"
+printf '%s\n' "$help_text" | grep -Fq -- 'DEPLOYED_ARTIFACTS_LOG' ||
+  fail "help text should name DEPLOYED_ARTIFACTS_LOG"
+printf '%s\n' "$help_text" | grep -Fq -- '--only' ||
+  fail "help text should name --only"
+header_text="$(sed -n '1,60p' "$DEPLOY_SCRIPT")"
+printf '%s\n' "$header_text" | grep -Fq -- 'DEPLOYED_ARTIFACTS_LOG' ||
+  fail "header comment should name DEPLOYED_ARTIFACTS_LOG"
+printf '%s\n' "$header_text" | grep -Fq -- '--only' ||
+  fail "header comment should name --only"
+
+log_before_sha=""
+if [[ -f "$DEPLOY_LOG" ]]; then
+  log_before_sha="$(sha256_of "$DEPLOY_LOG")"
+fi
+# No --type: --only alone must narrow every artefact type to the named set.
+HOME="$only_home" DEPLOYED_ARTIFACTS_LOG="$only_log" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude \
+  --only language_humanizer,format_markdown >/dev/null
+assert_file "$only_home/.claude/skills/language_humanizer/SKILL.md"
+assert_file "$only_home/.claude/skills/format_markdown/SKILL.md"
+# Three levels down covers every skill, agent, style, command, hook, settings
+# file, and backup a global deploy writes, so the listing proves exactness.
+only_listing="$(cd "$only_home" && find . -mindepth 1 -maxdepth 3 | LC_ALL=C sort | tr '\n' ' ')"
+only_expected="./.claude ./.claude/skills ./.claude/skills/format_markdown ./.claude/skills/language_humanizer "
+[[ "$only_listing" == "$only_expected" ]] ||
+  fail "--only should deploy exactly the named skills, got: $only_listing"
+assert_file "$only_log"
+if [[ -n "$log_before_sha" ]]; then
+  [[ "$(sha256_of "$DEPLOY_LOG")" == "$log_before_sha" ]] ||
+    fail "DEPLOYED_ARTIFACTS_LOG override changed deployment/deployed_artefacts.log"
+elif [[ -f "$DEPLOY_LOG" ]]; then
+  fail "DEPLOYED_ARTIFACTS_LOG override created deployment/deployed_artefacts.log"
+fi
+
+# Uninstall reads the log and never --only, so the pair must abort before it
+# removes anything rather than uninstall every logged artefact.
+uninstall_only_rc=0
+uninstall_only_out="$(
+  HOME="$only_home" DEPLOYED_ARTIFACTS_LOG="$only_log" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --target claude \
+    --only format_markdown 2>&1
+)" || uninstall_only_rc=$?
+[[ "$uninstall_only_rc" -ne 0 ]] ||
+  fail "--uninstall with --only should abort, got: $uninstall_only_out"
+printf '%s\n' "$uninstall_only_out" | grep -Fq -- 'cannot be combined with --uninstall' ||
+  fail "--uninstall with --only should name both flags, got: $uninstall_only_out"
+assert_file "$only_home/.claude/skills/language_humanizer/SKILL.md"
+assert_file "$only_home/.claude/skills/format_markdown/SKILL.md"
+
+# An unknown --only name aborts before any backup or copy. A name that --type
+# filters out stays known, which is how tests/lib/micro_deploy.py calls it.
+unknown_home="${SCRATCH}/only-unknown-home"
+unknown_log="${SCRATCH}/only-unknown.log"
+mkdir -p "$unknown_home"
+unknown_rc=0
+unknown_out="$(
+  HOME="$unknown_home" DEPLOYED_ARTIFACTS_LOG="$unknown_log" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude \
+    --only language_humanizer,no_such_artefact 2>&1
+)" || unknown_rc=$?
+[[ "$unknown_rc" -ne 0 ]] ||
+  fail "--only with an unknown name should abort, got: $unknown_out"
+printf '%s\n' "$unknown_out" | grep -Fq -- "Unknown artefact name 'no_such_artefact'" ||
+  fail "--only should name the unknown artefact, got: $unknown_out"
+[[ -z "$(ls -A "$unknown_home")" ]] ||
+  fail "--only with an unknown name should write nothing, got: $(ls -A "$unknown_home")"
+HOME="$unknown_home" DEPLOYED_ARTIFACTS_LOG="$unknown_log" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude --type skill \
+  --only language_humanizer,natural-language >/dev/null ||
+  fail "--only should accept a name that --type filters out"
+assert_file "$unknown_home/.claude/skills/language_humanizer/SKILL.md"
+
+# An empty filter means "no filter" downstream, so an --only value that names
+# nothing has to abort rather than deploy every artefact.
+empty_home="${SCRATCH}/only-empty-home"
+mkdir -p "$empty_home"
+for empty_only in "" " , "; do
+  empty_rc=0
+  empty_out="$(
+    HOME="$empty_home" DEPLOYED_ARTIFACTS_LOG="${SCRATCH}/only-empty.log" \
+      "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude \
+      --only "$empty_only" 2>&1
+  )" || empty_rc=$?
+  [[ "$empty_rc" -ne 0 ]] ||
+    fail "--only '$empty_only' should abort, got: $empty_out"
+  printf '%s\n' "$empty_out" | grep -Fq -- '--only needs at least one artefact name' ||
+    fail "--only '$empty_only' should say it needs a name, got: $empty_out"
+done
+[[ -z "$(ls -A "$empty_home")" ]] ||
+  fail "--only with no name should write nothing, got: $(ls -A "$empty_home")"
+
+# --only is a deploy filter, so a --clear-backups run with no scope stops with
+# the missing-scope error rather than clearing backups and ignoring it. The
+# control run without --only proves cleanup would remove the planted backup.
+cleanup_only_home="${SCRATCH}/only-cleanup-home"
+cleanup_only_backup="${cleanup_only_home}/.claude_20260101_000000"
+mkdir -p "$cleanup_only_backup"
+printf 'backup\n' > "$cleanup_only_backup/marker"
+cleanup_only_rc=0
+cleanup_only_out="$(
+  HOME="$cleanup_only_home" DEPLOYED_ARTIFACTS_LOG="${SCRATCH}/only-cleanup.log" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --clear-backups --target claude \
+    --only language_humanizer 2>&1
+)" || cleanup_only_rc=$?
+[[ "$cleanup_only_rc" -ne 0 ]] ||
+  fail "--clear-backups with --only and no scope should abort, got: $cleanup_only_out"
+printf '%s\n' "$cleanup_only_out" | grep -Fq -- 'requires an explicit scope' ||
+  fail "--clear-backups with --only should name the missing scope, got: $cleanup_only_out"
+assert_file "$cleanup_only_backup/marker"
+HOME="$cleanup_only_home" DEPLOYED_ARTIFACTS_LOG="${SCRATCH}/only-cleanup.log" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --clear-backups --target claude >/dev/null ||
+  fail "cleanup-only --clear-backups without --only should succeed"
+[[ ! -e "$cleanup_only_backup" ]] ||
+  fail "cleanup-only --clear-backups should remove the planted managed backup"
+
 printf 'OpenCode deployment regression passed\n'
 printf 'Antigravity deployment regression passed\n'
 printf 'Python bytecode exclusion regression passed\n'
@@ -420,3 +542,7 @@ printf 'Backup skip of sockets and FIFOs regression passed\n'
 printf 'Backup vanished-file rsync exit handling regression passed\n'
 printf 'Startup gate for jq, perl, and rsync regression passed\n'
 printf 'Cleanup-only --clear-backups skips the jq, perl, and rsync startup gate\n'
+printf 'DEPLOYED_ARTIFACTS_LOG override and --only regression passed\n'
+printf 'Unknown --only name and --only with --uninstall abort regression passed\n'
+printf 'Empty --only value abort regression passed\n'
+printf 'Cleanup-only --clear-backups with --only stops for a missing scope regression passed\n'

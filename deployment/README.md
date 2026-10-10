@@ -26,12 +26,13 @@ Run with no arguments to see help. Pass `--global` to deploy globally, or `--pro
 | `--project-dir DIR` | Deploy into a project directory's local config (`<DIR>/.cursor/`, `<DIR>/.claude/`, …). Backups are disabled in this mode. |
 | `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`, `style`. Requires `--global` or `--project-dir` unless used with `--uninstall`. |
 | `--target TARGETS` | Comma-separated target filter: `vscode`, `cursor`, `claude`, `codex`, `antigravity`, `opencode`. |
+| `--only NAMES` | Deploy exactly the named artefacts. Each name is a skill directory basename, or an agent or style file basename without its extension. An unknown name, or a value that names no artefact, aborts the run, and a name that `--type` filters out stays valid. Requires `--global` or `--project-dir`, so `--uninstall` rejects the flag and a `--clear-backups` run without a scope stops with the missing-scope error. |
 | `--uninstall` | Remove previously deployed artifacts that match the active filters. Can run without `--global` or `--project-dir`; backups still run first unless combined with no-scope `--clear-backups`. |
 | `--clear-backups` | Remove old managed backups for the selected targets before creating a fresh backup. Without `--global` or `--project-dir`, this clears matching global backups and exits before deploy. No effect in `--project-dir` mode. |
 | `--dry-run` | Preview backups, installs, and uninstall actions without writing changes. |
 | `-h`, `--help` | Show built-in help. |
 
-Deploy operations require an explicit scope: pass `--global` or `--project-dir DIR`. `--dry-run`, `--type`, or `--target` alone are deploy/filter requests and abort with a missing-scope error. If `--target` filters out every app, the script aborts. If discovery finds no matching artifacts, it exits cleanly without deploying anything. `jq` is required (used for JSON-merge of Claude hook config). The script exits early if it's missing.
+Deploy operations require an explicit scope: pass `--global` or `--project-dir DIR`. `--dry-run`, `--type`, `--target`, or `--only` alone are deploy/filter requests and abort with a missing-scope error. If `--target` filters out every app, the script aborts. If discovery finds no matching artifacts, it exits cleanly without deploying anything. `jq` is required (used for JSON-merge of Claude hook config). The script exits early if it's missing.
 
 ## Artifact Discovery
 
@@ -125,11 +126,11 @@ Before deploy, and before uninstall outside project-dir mode, the script backs u
 
 Backups land in `$HOME` as `<name>_YYYYMMDD_HHMMSS`, e.g. `~/.cursor_YYYYMMDD_HHMMSS`, `~/.claude_YYYYMMDD_HHMMSS`. `<name>` defaults to the basename of the target directory; it is overridden when the basename isn't tool-distinctive: the VS Code user-prompts dir on macOS (`~/Library/Application Support/Code/User/prompts`) backs up to `~/.vscode-prompts_YYYYMMDD_HHMMSS` rather than the misleading `~/prompts_YYYYMMDD_HHMMSS`, and OpenCode's `~/.config/opencode` backs up to `~/.opencode-config_YYYYMMDD_HHMMSS`. If a selected target dir does not exist yet, the script skips that backup. `--project-dir` mode skips backups entirely.
 
-`--clear-backups` removes only backups that match the script's managed naming scheme before creating the fresh backup for that target. When run without a deployment scope, it is a cleanup-only operation: `--target` narrows the global target roots, `--dry-run` previews removals, and the script exits without creating backups or deploying.
+`--clear-backups` removes only backups that match the script's managed naming scheme before creating the fresh backup for that target. When run without a deployment scope, it is a cleanup-only operation: `--target` narrows the global target roots, `--dry-run` previews removals, and the script exits without creating backups or deploying. `--type` and `--only` stay artifact filters, so adding either one makes the run a deploy request again, which stops with the missing-scope error.
 
 ## Deploy Log and Uninstall
 
-Every real deploy appends one line per deployed artifact to `deployment/deployed_artefacts.log` (tab-separated):
+Every real deploy appends one line per deployed artifact to `deployment/deployed_artefacts.log` (tab-separated). Setting `DEPLOYED_ARTIFACTS_LOG` in the environment points the script at another log, which is how a test deployment keeps its log inside its own scratch tree:
 
 1. deployed path (or `path[key]` for JSON-merge entries)
 2. target id

@@ -45,6 +45,19 @@ Sibling principles that are not part of that four-rule set:
   status is the signal. An escape of those watched names fails the scenario
   that caused it. A parallel edit of some other live file stays outside the
   comparison.
+- **Declare everything a worker may load, once.** A behavioural eval's worker
+  loads only the skills, agents, and styles its runner declares, and that one
+  declaration decides what each pass deploys, what the verdict cache hashes,
+  and what the worker may read: a pass fails when its worker reads a skill,
+  agent, or style file from outside that deployment. Membership follows load
+  reach, so the declaration names every artefact a worker may reach by name or
+  through a path its prompt gives it, such as a hub skill the subject reads.
+  It names a style only where the eval tests that style, because a selected
+  style shapes every reply. A change that extends a component's reach extends
+  the declaration in the same change. A missing entry fails a pass only when
+  the worker reads a copy from outside the deployment. A worker that runs
+  without the artefact passes unnoticed, and the cache then replays verdicts
+  across edits to it.
 
 ## Test Organization
 
@@ -64,12 +77,15 @@ Make plus POSIX shell plus Markdown, with `jq`, `git`, and Python 3 as the
 standing tools the test runners use. Remaining standing tools belong to the
 declared toolchain floor the charter names through `make install`.
 Bundled-script tests are plain shell. Behavioural evals spawn one worker per
-scenario through the runner's vendor switch. Use the Cursor worker for those
-runs: Cursor tests are cheaper and faster. It runs as `agent -p` on model
-`auto`. The Claude worker
-(`claude -p` on `sonnet`) remains available when a run needs a Claude-pinned
-sample. Pin the worker for a run so results stay comparable, and keep grading
-on the model-free grader.
+scenario through the runner's vendor switch. The Cursor worker is the default
+for those runs because Cursor tests are cheaper and faster: development and
+iteration happen on it (`agent -p` on model `auto`), and its results stand on
+their own without a matching Claude run. The Claude worker (`claude -p` on
+`sonnet`) runs where a test exercises a Claude-specific feature, which the test
+names, and otherwise only when the human operator explicitly asks for a Claude
+run, which happens from time to time; an agent never runs Claude tests in the
+background. Pin the worker for a
+run so results stay comparable, and keep grading on the model-free grader.
 
 ## Coverage Expectations
 
@@ -80,7 +96,10 @@ pre-existing untested behaviour or restructuring a harness, belongs in its own
 session. The boundary is scope, not timing.
 
 Where a task's acceptance names an eval, that eval is part of the change rather
-than something to defer.
+than something to defer. An acceptance names a Claude run only for an eval
+that needs a Claude-specific feature, and it names that run through
+`--vendor claude`, also on a Claude-only harness whose default is Claude. That
+run is part of the change like any other.
 
 ## Running Tests
 
@@ -88,21 +107,27 @@ than something to defer.
 make lint                                              # markdown, JSON, shell, repo-wide
 bash tests/<skill>/run_all.sh                          # that skill's deterministic surface
 bash tests/<skill>/script_tests/run.sh                 # the same, where no run_all.sh exists
-python3 tests/<skill>/evals/run.py --vendor cursor     # behavioural evals on Cursor
-python3 tests/<skill>/evals/run.py --vendor cursor <id>    # one eval
-python3 tests/<skill>/evals/run.py --vendor cursor --force # ignore recorded verdicts
+python3 tests/<skill>/evals/run.py                    # behavioural evals, default vendor
+python3 tests/<skill>/evals/run.py <id>               # one eval
+python3 tests/<skill>/evals/run.py --force            # ignore recorded verdicts
 ```
 
-Run behavioural evals with `--vendor cursor`. Cursor tests are cheaper and
-faster than the Claude worker. The Cursor worker is `agent -p` with model
-`auto`. Pass `--vendor claude` when the question is a Claude-pinned sample
-(`claude -p` on `sonnet`). The verdict cache keys on the worker model, so a
-Cursor result and a Claude result stay separate evidence. Grading stays
-model-free on either worker.
+Run behavioural evals without `--vendor`. The default is the Cursor worker
+(`agent -p` with model `auto`), because Cursor tests are cheaper and faster
+than the Claude worker; the Claude-only harnesses default to Claude and stop
+with an error on an explicit `--vendor cursor`. Pass `--vendor claude`
+(`claude -p` on `sonnet`) for an eval that needs a Claude-specific feature,
+which the eval names, and otherwise only when the operator has explicitly
+asked for a Claude run. Pass it on a Claude-only harness too, where it repeats
+the default, so every Claude run shows in its command. The verdict cache keys
+on the worker model, so a Cursor result and a Claude result stay separate
+evidence. Grading stays model-free on either worker.
 
 Trigger evals answer a different question, whether a skill's `description:`
-loads it on a realistic message, and run through
-`python3 tests/trigger_evals/run.py --eval-set <set> --skill <name> --baseline <prior-run>`.
+loads it on a realistic message. The trigger evals are Claude-only (the runner
+defaults to Claude), so they run on Claude where a change needs the
+measurement, through
+`python3 tests/trigger_evals/run.py --vendor claude --eval-set <set> --skill <name> --baseline <prior-run>`.
 
 ## Re-run Economy
 
@@ -114,8 +139,8 @@ standing moment, such as `make lint` before a commit.
 Beyond those, **re-running a check whose inputs did not change is waste, not
 rigour.** It returns what the recorded run already returned, and on a sampling
 surface it also resamples noise. Spend a run on what is genuinely unknown.
-When that run is a behavioural eval, spend it on the Cursor worker
-(`--vendor cursor`): Cursor tests are cheaper and faster, and the cache
+When that run is a behavioural eval, spend it on the Cursor worker (the
+default vendor): Cursor tests are cheaper and faster, and the cache
 records them under their own model key.
 
 Judge "changed" by whether the change can reach the behaviour under test, not

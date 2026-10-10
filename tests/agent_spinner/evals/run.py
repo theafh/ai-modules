@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Vendor-aware worker runner for agent_spinner behavioral evals.
 
-Stages a sandbox, stages the skill into the sandbox's vendor discovery tree,
-runs one vendor-resolved print-mode worker that loads agent_spinner, then
-grades the filesystem, the roster, the briefs, and the response markers with
-grade.sh. By default `--vendor claude` uses worker model `sonnet`,
-`--vendor cursor` uses `auto`, and `--model ''` inherits the vendor CLI
-default.
+Stages a sandbox, micro-deploys agent_spinner (plus the harness_portability
+skill it routes per-harness questions to, and any governing skill the eval
+names in `extra_reads`) through the deploy script into a scratch home,
+runs one vendor-resolved print-mode worker that loads agent_spinner, records
+`artefacts_read_from_micro_deployment`, then grades the filesystem, the roster, the briefs, and the response markers with
+grade.sh. The worker runs on Cursor by default (`agent -p`, model `auto`);
+`--vendor claude` (model `sonnet`) runs where Claude is needed or asked for, and `--model ''` inherits the vendor CLI default.
 
 Two things here are specific to this harness. A fixture that stages "no
 delegation surface" denies the spawn tool on the worker's command line, so
@@ -44,8 +45,15 @@ REPO_ROOT = THIS.parents[2]
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402
+import micro_deploy  # noqa: E402
 import vendor  # noqa: E402
-from worker_io import as_text  # noqa: E402
+
+# Skills agent_spinner itself routes work to by name, so a worker may load them
+# in any eval: every per-harness question goes to harness_portability.
+ROUTED_SKILLS = ["harness_portability"]
+
+# Skills a governing skill reads through its own <authority> step.
+GOVERNING_COMPANIONS = {"task_auto_check": ["task"]}
 
 WORKER_PROMPT = """\
 You are running an automated skill regression eval. Do exactly this:
@@ -76,16 +84,33 @@ def load_evals() -> dict:
     return {e["id"]: e for e in data["evals"]}
 
 
-def source_roots_for(skill_path: str, harness: dict):
-    """The skill under test, plus any governing skill this eval reads.
+def governing_names(harness: dict) -> list[str]:
+    """Artefact names for the governing skills an eval reads."""
+    names: list[str] = []
+    for rel in harness.get("extra_reads", []):
+        name = (REPO_ROOT / rel).parent.name
+        names.append(name)
+        names.extend(GOVERNING_COMPANIONS.get(name, []))
+    return names
+
+
+def artefacts_for(harness: dict) -> list[str]:
+    """agent_spinner, the skills it routes work to, and any governing skill
+    this eval reads."""
+    return list(dict.fromkeys(
+        ["agent_spinner", *ROUTED_SKILLS, *governing_names(harness)]
+    ))
+
+
+def source_roots_for(harness: dict):
+    """The skill under test, the skills it routes work to, plus any governing
+    skill this eval reads.
 
     An eval whose ask falls under a governing skill depends on that skill's
-    contract, so a change there has to move the cache key too.
+    contract, and a per-harness answer depends on harness_portability, so a
+    change to either has to move the cache key too.
     """
-    roots = {pathlib.Path(skill_path).parent}
-    for rel in harness.get("extra_reads", []):
-        roots.add((REPO_ROOT / rel).parent)
-    return sorted(roots)
+    return micro_deploy.source_roots_for(artefacts_for(harness))
 
 
 def host_status() -> str:
@@ -125,17 +150,12 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path,
     staged = stage(eval_id, target)
     workdir = staged["sandbox_proj"]
     harness = spec.get("harness", {})
-    staged_skill = vendor.stage_skill_tree(
-        eval_dir / "artefacts",
-        pathlib.Path(staged["skill_path"]).parent,
-        resolved.vendor,
-    )
     model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
-            source_roots=source_roots_for(staged["skill_path"], harness),
+            source_roots=source_roots_for(harness),
             harness_dir=THIS,
             model=resolved.worker_model,
             eval_id=eval_id,
@@ -152,51 +172,47 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path,
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
-    extra = "".join(
-        EXTRA_READ_LINE.format(path=str(REPO_ROOT / rel))
-        for rel in harness.get("extra_reads", [])
-    )
-    prompt = WORKER_PROMPT.format(
-        skill_path=staged_skill,
-        extra_reads=extra,
-        workdir=workdir,
-        prompt=staged["prompt"],
-    )
-
     denied = harness.get("disallowed_tools") or []
     extra_args: list[str] = []
     if denied and resolved.vendor == "claude":
         extra_args = ["--disallowedTools", *denied]
-    elif denied:
-        prompt += (
-            "\n\nEnvironment note: the following tools are unavailable in this "
-            f"harness run and must not be used: {', '.join(denied)}."
-        )
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(workdir),
-        extra_args=extra_args,
-        prompt_before_flags=bool(extra_args),
-    )
 
     host_before = host_status()
     print(f"  [{eval_id}] running {resolved.config.label} "
           f"(model={model_label}"
           f"{', denied=' + ','.join(denied) if denied else ''}) ...", flush=True)
     start = time.time()
-    try:
-        result = subprocess.run(
-            cmd, cwd=workdir, env=vendor.worker_env(resolved.vendor), capture_output=True,
-            text=True, timeout=timeout
+    with micro_deploy.micro_deploy(
+        resolved.vendor, artefacts_for(harness), pathlib.Path(workdir),
+        preflight=False,
+    ) as md:
+        extra = "".join(
+            EXTRA_READ_LINE.format(
+                path=str(md.path_map[(REPO_ROOT / rel).parent.name])
+            )
+            for rel in harness.get("extra_reads", [])
         )
-        rc, stdout, stderr = result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as e:
-        rc = -1
-        stdout = as_text(e.stdout)
-        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
+        prompt = WORKER_PROMPT.format(
+            skill_path=md.path_map["agent_spinner"],
+            extra_reads=extra,
+            workdir=workdir,
+            prompt=staged["prompt"],
+        )
+        if denied and resolved.vendor != "claude":
+            prompt += (
+                "\n\nEnvironment note: the following tools are unavailable in this "
+                f"harness run and must not be used: {', '.join(denied)}."
+            )
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=timeout, cwd=pathlib.Path(workdir), extra_args=extra_args,
+            prompt_before_flags=bool(extra_args),
+        )
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
     duration_s = time.time() - start
     host_after = host_status()
 
@@ -209,6 +225,7 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path,
         "claude_rc": rc,
         "model": model_label,
         "disallowed_tools": denied,
+        "artefacts_read_from_micro_deployment": integrity,
     }, indent=2))
 
     grade = subprocess.run(
@@ -225,7 +242,7 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path,
               "the run escaped its sandbox\n", flush=True)
 
     completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed and host_clean
+    passed = grade_passed and completed and host_clean and integrity["passed"]
 
     if not completed:
         why = ("timeout" if "[TIMEOUT" in stderr
@@ -233,6 +250,9 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path,
                else f"worker rc={rc}")
         print(f"  [{eval_id}] FAIL — worker did not complete ({why})\n",
               flush=True)
+    elif not integrity["passed"]:
+        print(f"  [{eval_id}] FAIL — worker read artefacts outside the "
+              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
     elif host_clean:
         print(f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n",
               flush=True)
@@ -270,7 +290,7 @@ def main() -> int:
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
-    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = WORKSPACE / f"run-{ts}"

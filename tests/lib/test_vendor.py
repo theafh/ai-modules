@@ -71,10 +71,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(add_help=False)
     vendor.add_vendor_arguments(parser, with_judge=True)
     resolved = vendor.resolve(parser.parse_args([]), with_judge=True)
-    check("resolve default vendor", resolved.vendor == "claude")
-    check("resolve default worker model", resolved.worker_model == "sonnet")
-    check("resolve default judge model", resolved.judge_model == "")
-    check("resolve default worker bin", resolved.bin == "claude")
+    check("resolve default vendor", resolved.vendor == "cursor")
+    check("resolve default worker model", resolved.worker_model == "auto")
+    check("resolve default judge model", resolved.judge_model == "auto")
+    check("resolve default worker bin", resolved.bin == "agent")
+    claude_args = parser.parse_args(["--vendor", "claude"])
+    resolved_claude = vendor.resolve(claude_args, with_judge=True)
+    check("resolve explicit claude vendor", resolved_claude.vendor == "claude")
+    check("resolve claude worker model", resolved_claude.worker_model == "sonnet")
+    check("resolve claude judge model", resolved_claude.judge_model == "")
+    check("resolve claude worker bin", resolved_claude.bin == "claude")
 
     cursor_args = parser.parse_args(
         ["--vendor", "cursor", "--claude-bin", "custom-agent", "--model", ""]
@@ -170,6 +176,24 @@ def main() -> int:
     )
     vendor.require_vendor_allowed("claude", "trigger_evals")
     check("claude allows trigger_evals", True)
+    check_exit(
+        "cursor blocks natural_language",
+        lambda: vendor.require_vendor_allowed("cursor", "natural_language"),
+        "does not support `--vendor cursor`",
+    )
+    check("an ordinary harness defaults to cursor", vendor.default_vendor("task") == "cursor")
+    check("no harness id defaults to cursor", vendor.default_vendor() == "cursor")
+    for harness in ("natural_language", "trigger_evals"):
+        claude_only = argparse.ArgumentParser(add_help=False)
+        vendor.add_vendor_arguments(claude_only, harness_id=harness)
+        check(
+            f"{harness} defaults to claude without --vendor",
+            claude_only.parse_args([]).vendor == "claude",
+        )
+        check(
+            f"{harness} still parses an explicit cursor for the gate to reject",
+            claude_only.parse_args(["--vendor", "cursor"]).vendor == "cursor",
+        )
 
     with tempfile.TemporaryDirectory() as td:
         root = pathlib.Path(td)

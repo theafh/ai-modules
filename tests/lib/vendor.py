@@ -96,16 +96,44 @@ def require_vendor_allowed(vendor: str, harness_id: str) -> None:
     reason = CLAUDE_ONLY.get(harness_id)
     if chosen.name == "cursor" and reason:
         sys.exit(
-            f"`{harness_id}` does not support `--vendor cursor`: {reason}."
+            f"error: `{harness_id}` is Claude-only and does not support "
+            f"`--vendor cursor`: {reason}. Run it with `--vendor claude`, "
+            "which is also its default."
         )
 
 
-def add_vendor_arguments(
-    parser: argparse.ArgumentParser, *, with_judge: bool = False
-) -> None:
-    """Add shared vendor-selection flags to a harness parser."""
+def default_vendor(harness_id: str | None = None) -> str:
+    """The vendor a harness runs on when `--vendor` is not given.
 
-    parser.add_argument("--vendor", choices=VENDORS, default="claude")
+    Cursor is the project's measurement vendor because its runs are cheaper
+    and faster. A Claude-only harness defaults to Claude, the one vendor it
+    supports, and stops with an error on an explicit `--vendor cursor`.
+    """
+
+    return "claude" if harness_id in CLAUDE_ONLY else "cursor"
+
+
+def add_vendor_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    with_judge: bool = False,
+    harness_id: str | None = None,
+) -> None:
+    """Add shared vendor-selection flags to a harness parser.
+
+    Pass ``harness_id`` for a Claude-only harness so its default is Claude.
+    """
+
+    default = default_vendor(harness_id)
+    parser.add_argument(
+        "--vendor",
+        choices=VENDORS,
+        default=default,
+        help=(
+            f"Worker vendor. Default: {default}. Pass claude where an eval needs "
+            "a Claude-specific feature or the operator asks for a Claude run."
+        ),
+    )
     parser.add_argument(
         "--model",
         default=None,
@@ -182,11 +210,18 @@ def build_print_cmd(
     workspace: str | None = None,
     extra_args: list[str] | None = None,
     prompt_before_flags: bool = False,
+    output_format: str | None = None,
 ) -> list[str]:
-    """Build the non-interactive worker command for one vendor."""
+    """Build the non-interactive worker command for one vendor.
+
+    ``output_format`` defaults to plain text on Cursor and to the CLI default
+    on Claude. Pass ``stream-json`` to replace Cursor's ``--output-format text``
+    and to add ``--output-format stream-json --verbose`` on Claude.
+    """
 
     chosen = config(vendor)
     extras = list(extra_args or [])
+    fmt = (output_format or "").strip() or None
     if chosen.name == "claude":
         if prompt_before_flags:
             cmd = [bin, "-p", prompt, "--permission-mode", "bypassPermissions"]
@@ -194,6 +229,10 @@ def build_print_cmd(
             cmd = [bin, "-p", "--permission-mode", "bypassPermissions"]
         if model:
             cmd += ["--model", model]
+        if fmt == "stream-json":
+            cmd += ["--output-format", "stream-json", "--verbose"]
+        elif fmt is not None:
+            cmd += ["--output-format", fmt]
         cmd += extras
         if not prompt_before_flags:
             cmd.append(prompt)
@@ -204,7 +243,7 @@ def build_print_cmd(
         cmd += ["--workspace", workspace]
     if model:
         cmd += ["--model", model]
-    cmd += ["--output-format", "text"]
+    cmd += ["--output-format", fmt or "text"]
     cmd += extras
     cmd.append(prompt)
     return cmd
@@ -287,13 +326,38 @@ def stage_skill_tree(
         shutil.rmtree(staged_skill_dir)
     shutil.copytree(skill_dir, staged_skill_dir)
 
+    stage_agents(sandbox, chosen.name, agent_files or [])
+
+    return staged_skill
+
+
+def stage_agents(
+    workdir: pathlib.Path,
+    vendor: str,
+    agent_files: list[pathlib.Path] | None = None,
+) -> list[pathlib.Path]:
+    """Copy fixture agent files into the sandbox vendor agents directory.
+
+    Discoverable agents that ``discover_artifacts`` names go through the
+    deploy script's rendering instead. This helper is the minimal post
+    micro-deploy path for fixture agents that are not among those names.
+    """
+
+    chosen = config(vendor)
+    workdir = pathlib.Path(workdir)
+    vendor_root = workdir / _VENDOR_ROOTS[chosen.name]
+    agents_root = vendor_root / "agents"
+    vendor_root.mkdir(parents=True, exist_ok=True)
+    agents_root.mkdir(parents=True, exist_ok=True)
+    staged: list[pathlib.Path] = []
     for agent_file in agent_files or []:
         agent_path = pathlib.Path(agent_file)
         if not agent_path.is_file():
             raise FileNotFoundError(f"agent file not found: {agent_path}")
-        shutil.copy2(agent_path, agents_root / agent_path.name)
-
-    return staged_skill
+        dest = agents_root / agent_path.name
+        shutil.copy2(agent_path, dest)
+        staged.append(dest)
+    return staged
 
 
 def _claude_worker_env() -> dict[str, str]:

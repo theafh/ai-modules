@@ -149,7 +149,7 @@ The standalone runner shells out to one vendor worker per pass
 ```bash
 ./tests/wiki/run_all.sh --layer2
 # or directly:
-python3 ./tests/wiki/layer2/run.py --vendor cursor
+python3 ./tests/wiki/layer2/run.py
 ```
 
 `--workers` defaults to 4 (`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`).

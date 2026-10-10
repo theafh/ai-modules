@@ -2,7 +2,7 @@
 description: Point language_humanizer's already-parallel, isolated pool at the shared eval-runner helper without changing the five-pass measurement.
 scope: tests/language_humanizer/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-08T22:56:55
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -47,5 +47,5 @@ shipping. A five-pass live cursor re-measure, which the isolation task owns.
   `ThreadPoolExecutor` construction of its own.
 - `run.py --help` still defaults `--workers` to 4 and `--passes` to 5.
 - `python3 tests/lib/test_eval_runner.py` still passes after this import.
-- A `--passes 1 --workers 1 --vendor cursor` plumbing run of one scenario
-  still writes `verdict.json` under the run dir.
+- A `--passes 1 --workers 1` plumbing run of one scenario still writes
+  `verdict.json` under the run dir.

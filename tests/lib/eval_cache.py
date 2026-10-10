@@ -1,7 +1,8 @@
 """Content-addressed cache for the expensive behavioral eval runners.
 
 The Pattern-A behavioral evals (`tests/<skill>/evals/run.py`) each spawn one
-`claude -p` worker per eval — the slow, token-expensive part of a run. When a
+print-mode worker per eval (`agent -p` on the default Cursor vendor, or
+`claude -p`), the slow, token-expensive part of a run. When a
 runner is invoked again with nothing changed, re-spawning those workers pays
 the full LLM bill to re-derive a verdict already in hand. This module lets a
 runner skip the worker (and the re-grade) for an eval whose inputs have not
@@ -13,10 +14,14 @@ misses, forcing a fresh run — whenever any of them changes:
 - the skill source under test and its family dependencies (`source_roots`),
 - the harness definition (the `evals/` dir: evals.json, stage.sh, grade.sh,
   fixtures, run.py),
+- the shared helpers in `tests/lib` that decide a verdict (`VERDICT_HELPERS`),
 - the worker model, the eval id, and the prompt.
 
 Because every hashed input feeds the key, the cache can never serve a stale
 pass: change anything the worker or the grade depends on and the key moves.
+That holds only while `VERDICT_HELPERS` names every shared helper a verdict
+depends on, so a helper that starts deciding verdicts joins it in the same
+change.
 A hit means the inputs are byte-identical to a run we already graded. This is
 the mechanical backstop for the base `task` skill's verification-economy rule —
 "re-run only when the inputs changed" — applied to the one surface where the
@@ -49,6 +54,15 @@ RESPONSE_EXCERPT_CHARS = 4000
 # Cap entries per eval id so a long-lived cache file cannot grow without bound
 # as skill content and models vary over time.
 _MAX_ENTRIES_PER_EVAL = 12
+
+# The shared helpers beside this module that decide a cached verdict:
+# micro_deploy.py builds each pass's deployment and runs the
+# artefacts_read_from_micro_deployment check, vendor.py builds the worker
+# command and environment, and host_tasks_guard.sh is the host tasks/ guard the
+# task-family stage and grade scripts source. They feed every key, so an edit to
+# one re-runs each cached eval once.
+VERDICT_HELPERS = ("micro_deploy.py", "vendor.py", "host_tasks_guard.sh")
+_HELPER_DIR = pathlib.Path(__file__).resolve().parent
 
 
 def _iter_files(root: pathlib.Path):
@@ -98,7 +112,9 @@ def content_key(
     """Compute the cache key for one eval from everything that determines its
     verdict. `source_roots` is an iterable of skill/agent dirs (or files) the
     worker's behavior depends on; `harness_dir` is the `evals/` dir defining
-    how the eval is staged and graded.
+    how the eval is staged and graded. The shared `VERDICT_HELPERS` join every
+    key, because each runner's deployment, read check, worker command, and host
+    guard come from them.
     """
     digest = hashlib.sha256()
     # Label each source root by basename so moving content between roots, or
@@ -113,6 +129,12 @@ def content_key(
     digest.update(b"harness\0")
     digest.update(_tree_hash(pathlib.Path(harness_dir)).encode())
     digest.update(b"\0")
+    for name in VERDICT_HELPERS:
+        digest.update(b"helper:")
+        digest.update(name.encode())
+        digest.update(b"\0")
+        digest.update(_tree_hash(_HELPER_DIR / name).encode())
+        digest.update(b"\0")
     digest.update(("model=" + (model or "<cli-default>")).encode())
     digest.update(b"\0")
     digest.update(("eval=" + eval_id).encode())
@@ -201,9 +223,9 @@ def write_replay_artifacts(eval_dir, entry: dict) -> None:
     (eval_dir / "cached.json").write_text(json.dumps(entry, indent=2, sort_keys=True))
     (eval_dir / "grading.txt").write_text(entry.get("grading_output", ""))
     banner = (
-        "[CACHED REPLAY — no claude -p worker ran this time because the eval's\n"
-        "inputs were unchanged since the grade below. What follows is an excerpt\n"
-        "of the prior run's response; re-run with --force for a full fresh one.]\n\n"
+        "[CACHED REPLAY: no worker ran this time because the eval's inputs were\n"
+        "unchanged since the grade below. What follows is an excerpt of the prior\n"
+        "run's response; re-run with --force for a full fresh one.]\n\n"
     )
     (eval_dir / "response.txt").write_text(banner + entry.get("response_excerpt", ""))
     (eval_dir / "timing.json").write_text(json.dumps({

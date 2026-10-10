@@ -77,20 +77,22 @@ Once a pass is graded, `run.py` copies the finished sandbox into
 root, so the live sandbox never sits inside the repository while the copy
 stays available to `regrade.py`.
 
-The skill under test is copied into that root as a project skill
-(`<root>/.cursor/skills/language_humanizer/` or the `.claude` twin), beside
-the graded project rather than inside it, and the worker path-reads that copy.
-The root is also the Cursor workspace, which matters: a Cursor worker told to
-path-read a copy staged elsewhere read the deployed `~/.cursor/skills` copy
-instead (traced on 8 October 2026), so a run would have measured the deployed
-skill rather than the one under test. Staged as a project skill and named by
-path, the copy was the one read. That is a mitigation rather than a guarantee,
-because a deployed copy still wins over a project copy when the prompt names no
-path; the backlog carries the shared micro-deployment that takes deployed copies
-out of view on both vendors. Because the copy lands in `pass-<n>/sandbox/`, every
-pass also records exactly which `SKILL.md` it measured. Two Cursor sources stay
-outside the helper's reach: User Rules, which Cursor keeps in its settings, and
-the deployed user-level skills.
+The skill under test reaches the worker through the shared micro-deployment
+in `tests/lib/micro_deploy.py`. `run.py` calls it with the staged project (not
+the root) as the sandbox project, so the deploy script builds the skill into a
+scratch home that hides the user's deployed skills on both vendors, and the
+worker's prompt names the `SKILL.md` path from the returned path map. The
+worker starts with `worker_isolation.isolation_args(vendor)` as its extra
+arguments, so the host-instruction isolation stays in force alongside the
+scratch home. Each pass also records `artefacts_read_from_micro_deployment` in
+`timing.json` and `verdict.json`, and a read of any skill, agent, or style file
+outside the scratch home or the sandbox fails the pass.
+
+Before the scratch home is removed, `run.py` copies the deployed `SKILL.md`
+from the path map into `<root>/language_humanizer/SKILL.md`. That copy
+travels into `pass-<n>/sandbox/language_humanizer/SKILL.md`, so every pass
+records exactly which `SKILL.md` it measured. User Rules, which Cursor keeps in
+its settings, stay outside the helper's reach.
 
 ## How the two graders split the work
 
@@ -127,8 +129,9 @@ survived.
 Model policy follows the tree-wide convention in `tests/CLAUDE.md` /
 `tests/AGENTS.md` via `--vendor`: the skill under test runs on `auto` (Cursor)
 or the latest `sonnet` (Claude). The recorded measurement runs on Cursor, per
-`TESTING.md`, and the Claude worker stays available for a Claude-pinned sample
-under the same isolation contract. The judge uses `auto` on Cursor and inherits
+`TESTING.md`, and it stands without a matching Claude run. A Claude-pinned
+sample runs under the same isolation contract, and only when the operator
+explicitly asks for one. The judge uses `auto` on Cursor and inherits
 the default model on Claude, so it is no longer pinned to the worker model.
 Other harnesses keep their meta level model-free because their grading is
 fully deterministic.

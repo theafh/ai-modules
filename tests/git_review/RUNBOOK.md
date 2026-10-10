@@ -34,10 +34,13 @@ echo "$prompt"         # the user prompt
 echo "$gh_env"         # the stub-gh env file, empty for git-only evals
 ```
 
-Staging places shimmed copies of `git_checkout` and `git_commit` under the
-eval target beside `git_review` (`$target/skill/{git_review,git_checkout,git_commit}`).
-Those shims append to the same `$target/script_calls.log` as `git_review`'s
-bundled scripts.
+Staging prepares the fixture and an empty `$target/script_calls.log`, and it
+stages no skill. During a run, `run.py` micro-deploys `git_review`,
+`git_checkout`, `git_commit`, `git_refresh`, and the `guardrail` hub into a
+per-eval scratch home and wraps every deployed bundled script in a logging
+shim. Each shim appends its call to that
+log and then runs an unshimmed copy of the deployed script kept in the same
+scratch home, so a hand-staged fixture records no script calls.
 
 For a forge eval, put the stub on `PATH` before running anything by hand:
 
@@ -63,8 +66,11 @@ not a pass: read it against `response.txt` before calling the eval green.
 
 Verdicts live in `evals/.eval_cache/` (gitignored, like `workspace/`). The key
 covers the `git_review` skill directory, the `git_checkout` and `git_commit`
-skill directories it hands work to, the whole `evals/` harness, the worker
-model, the eval id, and the prompt. Change any of those and the eval re-runs.
+skill directories it hands work to, the `git_refresh` skill directory whose
+default-branch detection it follows, the `guardrail` skill directory whose
+authority hierarchy it ranks findings by, the whole `evals/` harness, the
+shared verdict helpers under `tests/lib` (`eval_cache.VERDICT_HELPERS`), the
+worker model, the eval id, and the prompt. Change any of those and the eval re-runs.
 
 - `--force` re-runs everything and refreshes the cache. Use it to resample the
   stochastic worker on unchanged inputs.

@@ -8,7 +8,8 @@
 # with printf %q so the lines are safe to `eval`:
 #
 #   sandbox_repo=<absolute path to the git repo the skill should commit in>
-#   skill_path=<absolute path to the SKILL.md the agent should load>
+#   skill_path=<absolute path to this eval's git_commit SKILL.md: the
+#              plugin source, or the fixture's edited copy>
 #   prompt=<the user prompt to feed the agent>
 #
 # Layout: every eval stages under $target as
@@ -30,6 +31,11 @@
 # pre-commit obligation in a sandbox AGENTS.md and observe whether the
 # skill's pre-flight relevance test ran it (see fixtures/obligation_skip,
 # fixtures/obligation_run).
+#
+# run.py micro-deploys git_commit and copies every file an edited copy adds
+# or changes onto the deployed skill (micro_deploy.overlay_fixture_edits), so
+# its worker loads the deployed SKILL.md. An operator-driven run loads
+# skill_path directly.
 
 set -euo pipefail
 

@@ -1,4 +1,4 @@
-"""Shared captured-output decoding for the local `claude -p` eval runners.
+"""Shared captured-output decoding for the local eval runners' print-mode workers.
 
 Every runner spawns its worker through `subprocess.run(..., text=True,
 timeout=...)` and, on the timeout path, reads the partial output back off the
@@ -14,8 +14,9 @@ itself, none for anything queued behind it, and a traceback where the graded
 summary belongs. Routing the timeout path through `as_text` keeps the failure
 local to the eval that earned it.
 
-This module is the single definition every runner imports so the decoding does
-not drift back into nine local copies. Unit test: tests/lib/test_worker_io.py.
+This module is the single definition of that decoding. Runners reach it through
+`micro_deploy.run_worker`, `eval_runner`, or a direct import, so it does not
+drift back into nine local copies. Unit test: tests/lib/test_worker_io.py.
 """
 
 from __future__ import annotations

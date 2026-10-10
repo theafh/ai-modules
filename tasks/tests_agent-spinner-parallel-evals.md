@@ -2,7 +2,7 @@
 description: Run agent_spinner evals at default 4 workers with a per-eval host git-status escape guard that stays attributable under overlap, using the shared helper.
 scope: tests/agent_spinner/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-08T21:47:45
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -55,7 +55,7 @@ Live-testing unshipped editorial plugin harnesses.
 ## Acceptance
 
 - `run.py --help` shows `--workers` defaulting to 4.
-- `python3 tests/agent_spinner/evals/run.py --vendor cursor` at the default
+- `python3 tests/agent_spinner/evals/run.py` at the default worker count
   prints a graded summary over every id in `evals.json`.
 - A `--workers 4 --force` run of at least two uncached evals overlaps in
   `timing.json`, ends with a clean host `git status --porcelain` relative to

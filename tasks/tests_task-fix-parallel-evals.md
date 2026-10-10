@@ -2,7 +2,7 @@
 description: Run task_fix evals at default 4 workers with per-eval host-tasks fail-safes that stay correct under overlap, using the shared Pattern A helper.
 scope: tests/task_fix/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-08T22:06:22
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -46,7 +46,7 @@ Live-testing unshipped editorial plugin harnesses.
 ## Acceptance
 
 - `run.py --help` shows `--workers` defaulting to 4.
-- `python3 tests/task_fix/evals/run.py --vendor cursor` at the default prints a
+- `python3 tests/task_fix/evals/run.py` at the default worker count prints a
   graded summary over every id in `evals.json`.
 - A `--workers 4 --force` run of at least two uncached evals overlaps in
   `timing.json` and leaves host `tasks/` unchanged, recorded under

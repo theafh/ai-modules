@@ -14,6 +14,7 @@ programs; each sibling's *behavior* gets its own eval. `task_create/` and
 | --- | --- | --- | --- |
 | Bundled scripts | `script_tests/run.sh` | `discover_tasks.sh`, `init_tasks.sh`, and the full `lint.py` check set | `./tests/task/run_all.sh` |
 | Family contract | `script_tests/contract_run.sh` | the prose contract across the hub, its siblings, and the family agents: one canonical rule statement per rule, siblings citing rather than copying it, and the standing-doc presence gates | `./tests/task/run_all.sh` |
+| Runner declarations | `evals/test_run.py` | every eval that grades the sandbox's whole `git status` declares no artefact the micro-deployment writes into the sandbox project, and the agent-spawning siblings keep their agents | `./tests/task/run_all.sh` |
 | Skill behavior | `evals/` | a behavioral eval per family member, plus dependency evals for task_implement / task_select (stage → agent → grade) | operator-driven, see `evals/README.md` |
 | Triggering | `../trigger_evals/task.json` | family routing: each sibling wins its phrasings, broad/ambiguous → base `task`, no bleed | `../trigger_evals/run.py` |
 
@@ -23,9 +24,9 @@ programs; each sibling's *behavior* gets its own eval. `task_create/` and
 ./tests/task/run_all.sh
 ```
 
-Drives both script runners in order and aggregates their exit codes, so a
-failure in one still leaves the other's verdict visible. ~1 sec total, no
-LLM cost.
+Drives the two script runners and the runner-declaration test in order and
+aggregates their exit codes, so a failure in one still leaves the others'
+verdicts visible. A few seconds in total, no LLM cost.
 
 ### `script_tests/run.sh`: bundled-script unit tests
 
@@ -55,6 +56,19 @@ live skill prose, so a rule reworded in a skill fails here until the
 needle is refreshed to the new wording. That failure is the drift signal,
 not a false alarm.
 
+### `evals/test_run.py`: runner declarations
+
+Keeps `evals/run.py`'s artefact declarations from breaking the graders. On
+Cursor the micro-deployment writes agents and styles into the sandbox
+project, so an eval whose `grade.sh` case grades the sandbox's whole
+`git status` (`git_tree_clean`, or an unscoped `git status --porcelain`)
+must declare neither. The test reads those evals from `grade.sh`, checks
+each one's `artefacts_for()` declaration, and checks that `task_auto_check`
+and `task_fix` still declare the `auto_*_task` agents they spawn. It then
+stages one such eval and micro-deploys its declaration on each vendor, which
+leaves the sandbox status clean, and once more on Cursor with the agents
+added, which dirties it. It runs the real deploy script with no model call.
+
 ## Behavioral evals
 
 `evals/` holds at least one operator-driven eval per family member (the canonical
@@ -69,13 +83,15 @@ own commit, separate from the skill change it covers.
 ## Trigger evals
 
 `../trigger_evals/task.json` validates family routing. See
-`../trigger_evals/` and `tests/CLAUDE.md`. Run with:
+`../trigger_evals/` and `tests/CLAUDE.md`. Trigger evals are Claude-only, so
+they run on Claude where a change needs the measurement, with `--vendor claude`
+in the command so the Claude run is visible:
 
 ```bash
-python3 tests/trigger_evals/run.py \
+python3 tests/trigger_evals/run.py --vendor claude \
   --eval-set tests/trigger_evals/task.json \
   --skill task --skill-path plugins/ai_dev/skills/task \
-  --model claude-sonnet-4-6 --runs-per-query 3 --timeout 45 --workers 10
+  --runs-per-query 3 --timeout 45 --workers 10
 ```
 
 Pass `--skill-path` as shown: without it the runner finds no source skill

@@ -2,7 +2,7 @@
 description: Prove the two wiki front-end promises the layer-2 scenarios claim but never assert, wiki_fix report fidelity and the pre-approval write boundary, and name the covered skills in the tree inventory.
 scope: "local test harnesses"
 created: 2026-08-11T18:59:52
-updated: 2026-10-03T13:01:20
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -118,6 +118,6 @@ selector as the statement of extent.
    names `wiki_fix`, `wiki_import`, and `wiki_wrapup` as skills its layer-2
    scenarios cover, and keeps the `layer2/evals.json` selector as its statement
    of extent.
-6. A full-suite layer-2 run with `--vendor cursor` passes every assertion after
+6. A full-suite layer-2 run on the default vendor passes every assertion after
    the changes, so the new assertion, the output format change, and the restored
    staging leave the suite green.

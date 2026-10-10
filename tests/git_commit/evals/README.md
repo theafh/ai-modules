@@ -48,7 +48,7 @@ is in the session.
 tests/git_commit/evals/
 ├── README.md              # this file
 ├── evals.json             # canonical eval prompts + expectations
-├── run.py                 # sonnet worker-runner: stage → claude -p → grade
+├── run.py                 # worker runner: stage → vendor worker → grade
 ├── stage.sh               # stage one fixture, return agent-ready inputs
 ├── grade.sh               # grade the post-run sandbox programmatically
 └── fixtures/              # per-eval sandbox setup scripts
@@ -57,7 +57,7 @@ tests/git_commit/evals/
     ├── multi_file/setup.sh
     ├── mixed_state/setup.sh
     ├── large_changeset/setup.sh
-    ├── script_failure/setup.sh     # self-contained — copies a stubbed skill
+    ├── script_failure/setup.sh     # stubbed prepare script, overlaid by run.py
     ├── concurrent_drift/setup.sh   # foreign drift — marker-gated writer, expects a pause
     ├── ambiguous_drift/setup.sh    # same-path drift — marker-gated writer, expects commit-all
     ├── obligation_skip/setup.sh    # pre-flight relevance test — expects a stated skip
@@ -66,18 +66,24 @@ tests/git_commit/evals/
 
 ## One-shot run (the default)
 
-`run.py` drives all three phases for you and pins the skill under test
-to **sonnet**, the worker model the repo's test policy standardizes on
-(see `tests/CLAUDE.md`). The deterministic `grade.sh` it calls uses no
-model; the prose-verdict expectations stay for you to confirm from the
-captured `response.txt` on the inherited session model.
+`run.py` drives all three phases for you, with one vendor-resolved worker
+per eval. By default that is the Cursor worker (`agent -p` on model
+`auto`), the project's measurement vendor. `--vendor claude` runs the
+Claude worker (`claude -p` on the latest `sonnet` alias) where an eval
+needs a Claude-specific feature or the operator asks for a Claude run, and
+`--model` overrides either default (see `tests/CLAUDE.md`). On both
+vendors the worker loads git_commit from the per-pass micro-deployment.
+The deterministic `grade.sh` uses no model, and the prose-verdict
+expectations stay for you to confirm by reading the captured
+`response.txt`.
 
 ```bash
-python3 tests/git_commit/evals/run.py            # all evals (1..9)
-python3 tests/git_commit/evals/run.py 2 5        # just evals 2 and 5
-python3 tests/git_commit/evals/run.py 6 7        # just the drift-guard evals
-python3 tests/git_commit/evals/run.py 8 9        # just the pre-flight relevance evals
-python3 tests/git_commit/evals/run.py --model '' # inherit the CLI default instead
+python3 tests/git_commit/evals/run.py                 # all evals (1..9), Cursor worker
+python3 tests/git_commit/evals/run.py 2 5             # just evals 2 and 5
+python3 tests/git_commit/evals/run.py 6 7             # just the drift-guard evals
+python3 tests/git_commit/evals/run.py 8 9             # just the pre-flight relevance evals
+python3 tests/git_commit/evals/run.py --vendor claude # Claude worker, where a test needs it
+python3 tests/git_commit/evals/run.py --model ''      # inherit the CLI default instead
 ```
 
 Evals 6 and 7 exercise the drift guard with a **marker-gated detached
@@ -85,7 +91,8 @@ writer** that stands in for a concurrent session editing the same tree
 mid-run, with no real second agent. Each fixture stages a
 `skill_under_test/` copy whose `prepare_commit_context.sh` touches
 `.eval/baseline_captured` (outside the repo) after a successful real
-prepare; the writer polls that marker and only then writes. Eval 6
+prepare, and `run.py` copies that wrapper onto the micro-deployed skill
+the worker loads. The writer polls the marker and only then writes. Eval 6
 expects the skill to **pause** on the new outside-baseline file (no
 commit lands); eval 7 expects **commit-all** on an ambiguous same-path
 edit. Optional knobs: `GIT_COMMIT_DRIFT_MARKER_TIMEOUT` (default 240s)
@@ -130,19 +137,27 @@ commit landed.
 
 ### 2. Run the skill against the sandbox (agent step)
 
-`run.py` does this by spawning a sonnet `claude -p` worker (the policy
-default). When driving it by hand instead, point the worker at
-`$skill_path`, `$sandbox_repo`, and `$prompt`:
+`run.py` does this with the worker it resolved, the Cursor `agent -p`
+worker by default or the Claude `claude -p` worker under
+`--vendor claude`, pointed at the micro-deployed skill. When driving it by
+hand instead, point the worker at `$skill_path`, `$sandbox_repo`, and
+`$prompt`. A hand-driven run loads `$skill_path` directly rather than a
+micro-deployment, so the skills deployed on your machine stay in the
+worker's view. That makes it a debugging aid rather than a measurement:
 
-- **`claude -p` (matches `run.py`).** Run `claude -p --model
-  claude-sonnet-4-6 --permission-mode bypassPermissions` from
+- **Cursor `agent -p` (the `run.py` default).** Run `agent -p --force
+  --sandbox disabled --workspace "$sandbox_repo" --model auto` from
   `$sandbox_repo` with a prompt that says to read and follow
-  `$skill_path`. Reproducible and on the pinned worker model.
-- **Subagent.** Launch a `claude` Agent with a self-contained prompt
-  pointing at `$skill_path`, `$sandbox_repo`, and `$prompt`.
-- **In-session.** Tell the current Claude session to read `$skill_path`
+  `$skill_path`.
+- **Claude `claude -p` (`run.py --vendor claude`).** Run `claude -p
+  --model sonnet --permission-mode bypassPermissions` from
+  `$sandbox_repo` with the same prompt.
+- **Subagent.** Launch a subagent from your agent session with a
+  self-contained prompt pointing at `$skill_path`, `$sandbox_repo`, and
+  `$prompt`.
+- **In-session.** Tell the current agent session to read `$skill_path`
   and apply it to `$sandbox_repo`. Convenient for a quick look, but it
-  runs on the inherited session model rather than the pinned sonnet
+  runs on the inherited session model rather than a pinned vendor
   worker, so it's for debugging, not for a measurement run.
 
 Whichever shape you use, the contract is: when this phase ends, the
@@ -208,12 +223,16 @@ the path it's given. Run a fixture standalone for debugging:
 bash tests/git_commit/evals/fixtures/single_file/setup.sh /tmp/sandbox-debug
 ```
 
-Eval 5's fixture (`script_failure/setup.sh`) is self-contained: it
-stages `repo/` and a `skill_under_test/` copy of the git_commit
-plugin skill, overwrites `skill_under_test/scripts/prepare_commit_context.sh`
-with a failing stub, and lets the agent load the stubbed skill
-naturally. No runner-side wiring is required, which is what the
-"skill-creator is read-only" rule above demands.
+Eval 5's fixture (`script_failure/setup.sh`) stages `repo/` and a
+`skill_under_test/` copy of the git_commit plugin skill, then overwrites
+`skill_under_test/scripts/prepare_commit_context.sh` with a failing stub.
+The worker loads the micro-deployed git_commit, so `run.py` passes that
+copy to `micro_deploy.overlay_fixture_edits()`, which copies every file the
+copy adds or changes onto the deployed skill. The worker therefore meets
+the stub at the deployed path, and `timing.json` lists the overlaid files
+under `fixture_overlay`. An operator-driven run can still load
+`skill_under_test/SKILL.md` directly. Only the git_commit plugin skill is
+copied, so the "skill-creator is read-only" rule above still holds.
 
 Evals 8 and 9 (`obligation_skip/`, `obligation_run/`) share the
 `plant_obligation_scaffold` helper in `_common.sh`, which writes and commits
@@ -226,10 +245,11 @@ gate's marker out of both `git status` and the commit.
 Evals 6 and 7 (`concurrent_drift/`, `ambiguous_drift/`) each stage a
 `skill_under_test/` copy with prepare wrapped to touch
 `.eval/baseline_captured`, then launch a **marker-gated detached writer**
-(`nohup ... &`) before returning. Running one standalone spawns a process
-that writes into the sandbox only after you invoke the wrapped prepare
-(or after the marker-wait timeout). Debug them against a throwaway
-sandbox:
+(`nohup ... &`) before returning. `run.py` overlays the wrapper onto the
+deployed skill the same way it overlays eval 5's stub. Running one
+standalone spawns a process that writes into the sandbox only after you
+invoke the wrapped prepare (or after the marker-wait timeout). Debug them
+against a throwaway sandbox:
 
 ```bash
 bash tests/git_commit/evals/fixtures/concurrent_drift/setup.sh /tmp/drift-debug

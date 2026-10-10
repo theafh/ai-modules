@@ -2,7 +2,7 @@
 description: Parallelize isolated task_auto_check evals at default 4 workers through the shared helper, and keep the repair-class nested loops sequential in the same run.
 scope: tests/task_auto_check/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-08T22:06:22
+updated: 2026-10-09T17:46:37
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -24,9 +24,10 @@ each other for the model.
 evals (`repair_to_ready`, `guard_rebaseline_after_gate`,
 `interaction_scan_surfaces`, `immediate_ready_citations_overturn`) to run
 sequentially because two nested loops in parallel both miss even an 1800s
-timeout. `DEFAULT_IDS` is a frozen list. The runner copies `stage_named_agents`
-instead of passing agent files to `vendor.stage_skill_tree`. `WORKSPACE` is
-already `tests/task_auto_check/workspace`. Timing-band measurement is a
+timeout. `DEFAULT_IDS` is a frozen list. Each pass already micro-deploys the
+skill, its sibling skills, and the `auto_*_task` agents through
+`tests/lib/micro_deploy.py`. `WORKSPACE` is already
+`tests/task_auto_check/workspace`. Timing-band measurement is a
 separate remaining thread on the timeout-crash task.
 
 This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
@@ -38,9 +39,8 @@ Rewrite `evals/run.py` onto the shared helper. Derive the default id set from
 `evals.json`. Split the run set by a harness key or a named repair-class set
 in `evals.json` / the RUNBOOK: isolated evals go through the pool at default 4;
 repair-class evals run with effective workers 1 after (or before) that pool,
-never overlapping another repair-class job. Stage auto_* agents only through
-`vendor.stage_skill_tree(..., agent_files=)` and delete the local
-`stage_named_agents`. Keep the fixture-scoped host `tasks/` fail-safe
+never overlapping another repair-class job. Keep each pass's micro-deployment
+inside its job. Keep the fixture-scoped host `tasks/` fail-safe
 (`host_fixture_writes_clean` in `tests/lib/host_tasks_guard.sh`).
 
 Rewrite the RUNBOOK sequential rule in place so it names the repair-class
@@ -56,11 +56,9 @@ Live-testing unshipped editorial plugin harnesses.
 - `run.py --help` shows `--workers` defaulting to 4.
 - Default ids are every id in `evals.json`; the frozen `DEFAULT_IDS` list is
   gone.
-- A `--vendor cursor` default run prints a graded summary covering every id.
+- A default-vendor run (no `--vendor`) prints a graded summary covering every id.
   Isolated evals in that run overlap in `timing.json`; the repair-class evals
   the RUNBOOK names have pairwise non-overlapping windows, recorded under
   `tests/task_auto_check/results/`.
-- `run.py` contains no `stage_named_agents` definition; agents stage through
-  `vendor.stage_skill_tree`.
 - `RUNBOOK.md` no longer forbids concurrency for the whole suite; it forbids
   overlapping repair-class nested loops only.

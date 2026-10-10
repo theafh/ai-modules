@@ -4,9 +4,9 @@
 Phase 2 (the skill actually running) used to be operator-driven in the
 host session, i.e. on whatever model the session inherited. This runner
 instead spawns one vendor-resolved print-mode worker per eval. By default
-that means `--vendor claude` with worker model `sonnet`, or `--vendor
-cursor` with worker model `auto`; pass `--model ''` to inherit the vendor
-CLI default. The meta level on top — the deterministic `grade.sh`, and any
+that means the Cursor worker (`agent -p`, model `auto`); `--vendor claude`
+(model `sonnet`) runs where Claude is needed or asked for, and
+`--model ''` inherits the vendor CLI default. The meta level on top — the deterministic `grade.sh`, and any
 prose-verdict confirmation the operator does by reading `response.txt` —
 stays model-free.
 
@@ -14,12 +14,15 @@ Per eval the runner:
 
 1. Stages a fresh sandbox via `stage.sh <id> <target>` and reads back
    `sandbox_proj`, `skill_name`, `skill_path`, `prompt`.
-2. Stages the loaded skill into the sandbox's vendor discovery tree, then
+2. Micro-deploys the loaded skill, the base `task` skill, and whatever
+   further task-family skills and `auto_*_task` agents the sibling reaches
+   (see `artefacts_for`) through the deploy script into a scratch home, then
    runs a vendor-resolved print-mode worker with the sandbox project as the
    working directory (so the skill's discover_tasks.sh resolves the
    sandbox, never the real repo) and a prompt that tells the worker to load
-   the staged SKILL.md.
-3. Captures `response.txt` / `stderr.txt` / `timing.json` under
+   the deployed SKILL.md.
+3. Captures `response.txt` / `stderr.txt` / `timing.json` (with the
+   `artefacts_read_from_micro_deployment` integrity record) under
    `workspace/run-<ts>/<id>/`.
 4. Grades the post-run sandbox with `grade.sh <id> <sandbox_proj>`.
 
@@ -46,7 +49,6 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
-import os
 import pathlib
 import shlex
 import subprocess
@@ -60,24 +62,50 @@ WORKSPACE = THIS / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
+import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
-from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
+
+AUTO_AGENTS = [
+    "auto_drift_task",
+    "auto_gate_task",
+    "auto_reviewer_task",
+    "auto_shaper_task",
+    "auto_verifier_task",
+]
+
+# The siblings that spawn the auto_*_task agents: task_auto_check drives them,
+# and task_fix escalates to auto_shaper_task.
+AGENT_SPAWNING_SKILLS = {"task_auto_check", "task_fix"}
 
 
-def source_roots_for(skill_path: str):
+def artefacts_for(skill_name: str) -> list[str]:
+    """Names micro-deployed for one eval, following what its sibling reaches.
+
+    Every sibling reads the base `task` hub through its <authority> step. The
+    two agent-spawning siblings also get the five auto_*_task agents and the
+    `task_check` skill, which the auto_gate_task agent wraps, and task_fix gets
+    `task_auto_check`, which its escalated auto_shaper_task may invoke. Every
+    other sibling spawns no agent, so its evals declare none. That keeps their
+    sandbox repository as staged: on Cursor the deploy script writes agents
+    into the sandbox project's `.cursor/agents/`, and the read-only evals
+    grade that repository's `git status` as unchanged."""
+    names = [skill_name, "task"]
+    if skill_name in AGENT_SPAWNING_SKILLS:
+        names.append("task_check")
+        if skill_name == "task_fix":
+            names.append("task_auto_check")
+        names.extend(AUTO_AGENTS)
+    return list(dict.fromkeys(names))
+
+
+def source_roots_for(skill_name: str):
     """A task-family eval loads one sibling skill, which reads the base `task`
-    skill via its <authority> step and (for the auto_* siblings) spawns agents.
-    Hash the loaded sibling, the base hub, and the agents dir together so an edit
-    to the base skill or an agent invalidates the cache too — not just an edit to
-    the loaded sibling. Over-inclusion only forces an occasional extra run; it can
-    never serve a stale pass."""
-    skill_dir = pathlib.Path(skill_path).parent        # .../skills/<skill>
-    skills = skill_dir.parent                          # .../skills
-    roots = {skill_dir, skills / "task"}               # loaded sibling + base hub
-    agents = skills.parent / "agents"                  # .../ai_dev/agents
-    if agents.is_dir():
-        roots.add(agents)
-    return sorted(roots)
+    skill via its <authority> step and (for the agent-spawning siblings)
+    spawns agents. Hash every artefact `artefacts_for` declares, so an edit to
+    the base skill or a reached agent invalidates the cache too, not just an
+    edit to the loaded sibling. Over-inclusion only forces an occasional extra
+    run; it can never serve a stale pass."""
+    return micro_deploy.source_roots_for(artefacts_for(skill_name))
 
 
 def eval_timeout(eval_id: str, default: int) -> int:
@@ -165,17 +193,12 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
 
     staged = stage(eval_id, target)
     workdir = staged["sandbox_proj"]
-    staged_skill = vendor.stage_skill_tree(
-        eval_dir / "artefacts",
-        pathlib.Path(staged["skill_path"]).parent,
-        resolved.vendor,
-    )
     model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
-            source_roots=source_roots_for(staged["skill_path"]),
+            source_roots=source_roots_for(staged["skill_name"]),
             harness_dir=THIS,
             model=resolved.worker_model,
             eval_id=eval_id,
@@ -193,31 +216,26 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
-    prompt = WORKER_PROMPT.format(
-        skill_path=staged_skill, workdir=workdir, prompt=staged["prompt"]
-    )
-
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(workdir),
-    )
-
     print(f"  [{eval_id}] running {resolved.config.label} "
           f"(skill={staged['skill_name']}, model={model_label}) ...", flush=True)
     start = time.time()
-    try:
-        result = subprocess.run(
-            cmd, cwd=workdir, env=vendor.worker_env(resolved.vendor), capture_output=True,
-            text=True, timeout=timeout
+    with micro_deploy.micro_deploy(
+        resolved.vendor, artefacts_for(staged["skill_name"]),
+        pathlib.Path(workdir), preflight=False,
+    ) as md:
+        prompt = WORKER_PROMPT.format(
+            skill_path=md.path_map[staged["skill_name"]], workdir=workdir,
+            prompt=staged["prompt"],
         )
-        rc, stdout, stderr = result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as e:
-        rc = -1
-        stdout = as_text(e.stdout)
-        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=timeout, cwd=pathlib.Path(workdir),
+        )
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
     duration_s = time.time() - start
 
     (eval_dir / "response.txt").write_text(stdout)
@@ -229,6 +247,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         "worker_rc": rc,
         "claude_rc": rc,
         "model": model_label,
+        "artefacts_read_from_micro_deployment": integrity,
     }, indent=2))
 
     grade = subprocess.run(
@@ -238,7 +257,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
     print(grade.stdout, end="", flush=True)
     grade_passed = grade.returncode == 0
     completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed
+    passed = grade_passed and completed and integrity["passed"]
 
     if not completed:
         why = ("timeout" if "[TIMEOUT" in stderr
@@ -248,6 +267,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
               f"grade.sh ran on partial sandbox state and cannot be trusted "
               f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
               flush=True)
+    elif not integrity["passed"]:
+        print(f"  [{eval_id}] FAIL — worker read artefacts outside the "
+              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
     else:
         print(f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n",
               flush=True)
@@ -304,7 +326,7 @@ def main() -> int:
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")
 
-    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     # Sequential on purpose: keeps each worker's sandbox isolation
     # checks unambiguous and the host filesystem quiet.

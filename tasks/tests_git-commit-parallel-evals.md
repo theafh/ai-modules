@@ -1,8 +1,8 @@
 ---
-description: Isolate git_commit eval TMPDIR per job, run the suite at default 4 workers through the shared Pattern A helper, and prove both vendors on that path.
+description: Isolate git_commit eval TMPDIR per job, run the suite at default 4 workers through the shared Pattern A helper, and prove that path on the default vendor.
 scope: tests/git_commit/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-08T22:56:55
+updated: 2026-10-09T17:46:37
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -13,8 +13,8 @@ reported-by: Andreas Hoffmann
 
 `python3 tests/git_commit/evals/run.py` runs isolated evals concurrently with
 `--workers` defaulting to 4. `grade.sh`'s `git_commit_context.*` straggler check
-sees only that eval's `TMPDIR`, so two workers cannot fail each other. A Cursor
-run at the default, and a Claude compatibility run, both grade the suite. The
+sees only that eval's `TMPDIR`, so two workers cannot fail each other. A run on
+the default vendor, Cursor, grades the suite. The
 user-visible outcome: a nine-eval sweep no longer waits in single file for a
 shared `/tmp` scan.
 
@@ -37,8 +37,8 @@ Rewrite `evals/run.py` to import the shared helper, `tests/lib/eval_runner.py`: 
 from `evals.json`, put run output under `tests/git_commit/workspace`, pass
 `--workers` defaulting to `vendor.DEFAULT_PARALLEL_WORKERS`, and give every job
 the helper's per-job `TMPDIR`. Keep the vendor path on `vendor.add_vendor_arguments`
-/ `vendor.resolve` / `vendor.preflight_auth` / `vendor.stage_skill_tree` /
-`vendor.build_print_cmd`. Rewrite the sequential comment rather than leaving it
+/ `vendor.resolve`, the run's `micro_deploy.preflight_auth`, and each pass's
+`micro_deploy.micro_deploy` with `micro_deploy.run_worker`. Rewrite the sequential comment rather than leaving it
 beside the pool.
 
 Rewrite the straggler scan in `evals/grade.sh` so it uses the job's `TMPDIR`
@@ -60,10 +60,9 @@ run the live suite.
   against `$TMPDIR`.
 - Default ids come from `evals.json`, so adding an eval runs it without editing
   a frozen list.
-- `python3 tests/git_commit/evals/run.py --vendor cursor --workers 4` (or the
+- `python3 tests/git_commit/evals/run.py` (the default vendor, `--workers 4` by
   default) and the same command with `--workers 1` both print a graded summary
-  over every id; prefer Cursor per `TESTING.md`. A `--vendor claude` pass at
-  `--workers 1` or 4 remains a compatibility sample.
+  over every id.
 - Two overlapping `timing.json` `duration_s` windows exist in a `--workers 4`
   `--force` run of at least two uncached evals, proving concurrency, recorded
   in the harness `results/` notes this change adds.

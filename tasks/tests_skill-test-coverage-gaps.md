@@ -2,7 +2,7 @@
 description: Add the skill-test coverage the skill_doctor sweep found missing: a script-test surface for ai_instruction_formatting's linter, and a recorded coverage disposition for the behaviour-only skills.
 scope: "local test harnesses"
 created: 2026-09-05T09:47:15
-updated: 2026-10-03T13:01:20
+updated: 2026-10-09T18:10:40
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -27,7 +27,7 @@ The behaviour-only set is derived, not fixed: it is the skills with no `scripts/
 
 The Pattern A shape and where each surface lives are set by the standing repo rules and by the tests-tree operating guide; `tests/git_commit/` is the named reference implementation, and the eval schema is skill-creator's.
 
-`git_refresh` also has behavioural evals with no runner, but a separate open task already owns adding that vendor-aware runner, so this task leaves it there and defers to it under Approach. Script-test surfaces this task adds need no `--vendor` choice; behavioral coverage it elects to add prefers `--vendor cursor` per `TESTING.md`, except where the surface is Claude-only for a product reason.
+`git_refresh` also has behavioural evals with no runner, but a separate open task already owns adding that vendor-aware runner, so this task leaves it there and defers to it under Approach. Script-test surfaces this task adds need no `--vendor` choice; behavioral coverage it elects to add runs on the default vendor per `TESTING.md`, and a surface that is Claude-only for a product reason runs with `--vendor claude`.
 
 ## Approach
 

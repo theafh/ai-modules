@@ -23,11 +23,19 @@ set -euo pipefail
 #   --global         Deploy into global config dirs (explicit mode)
 #   --type TYPES     Filter by artifact type (command,skill,agent,hook,style)
 #   --target TARGETS Filter by deploy target (vscode,claude,cursor,codex,antigravity,opencode)
+#   --only NAMES     Deploy exactly the named artefacts (comma-separated name
+#                    fields from discover_artifacts: skill directory basename,
+#                    or agent/style basename without extension). An unknown
+#                    name, or a value that names none, aborts the run. Needs
+#                    --global or --project-dir, and --uninstall rejects the
+#                    flag.
 #   --project-dir D  Deploy into a project directory instead of global config dirs
 #   --dry-run        Preview changes without applying them
 #   --uninstall      Remove previously deployed artifacts from deployed_artefacts.log
 #   --clear-backups  Remove old selected backups before creating new ones
-#   Logs deployed artifacts to deployed_artefacts.log with target/source metadata
+#   Logs deployed artifacts to deployed_artefacts.log with target/source metadata.
+#   Override the log path with DEPLOYED_ARTIFACTS_LOG so a test deployment can
+#   write inside its own scratch tree and leave the repo log untouched.
 #   Backs up only activated targets (disabled in project-dir mode).
 #   Backups land in $HOME as <name>_<timestamp>, where <name> defaults to
 #   basename(target_dir). The caller can override <name> when the basename
@@ -64,6 +72,7 @@ BACKUP_CLEANUP_ONLY=false
 NO_SCOPE_UNINSTALL=false
 TYPE_FILTER=""
 TARGET_FILTER=""
+ONLY_FILTER=""
 PROJECT_DIR=""
 ORIGINAL_ARGC=$#
 
@@ -80,6 +89,11 @@ Options:
   --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook,style.
                     Requires --global or --project-dir unless used with --uninstall.
   --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,antigravity,opencode
+  --only NAMES      Comma-separated artefact names to deploy. Each NAME matches the
+                    name field of a name|type|rel_path line discover_artifacts emits
+                    (skill directory basename, or agent/style basename without extension).
+                    An unknown name, or a value that names none, aborts the run.
+                    Requires --global or --project-dir; not valid with --uninstall.
   --project-dir DIR Deploy into a project directory instead of global config dirs.
                     Backups are disabled in this mode.
   --uninstall       Uninstall mode; remove matching logged deployed artifacts after backup.
@@ -89,11 +103,16 @@ Options:
   --dry-run         Preview changes without applying them
   -h, --help        Show this help message
 
+Environment:
+  DEPLOYED_ARTIFACTS_LOG  Override the deployed-artefacts log path. When unset,
+                          the script writes deployment/deployed_artefacts.log.
+
 Examples:
   ./deployment/deployment.sh
   ./deployment/deployment.sh --global
   ./deployment/deployment.sh --global --dry-run
   ./deployment/deployment.sh --global --target codex
+  ./deployment/deployment.sh --global --only task,task_create --target claude
   ./deployment/deployment.sh --project-dir /path/to/repo --target claude
   ./deployment/deployment.sh --uninstall
   ./deployment/deployment.sh --clear-backups --target cursor,claude
@@ -127,6 +146,16 @@ while [[ $# -gt 0 ]]; do
       ;;
     --target)
       TARGET_FILTER="$2"
+      shift 2
+      ;;
+    --only)
+      ONLY_FILTER="${2-}"
+      # An empty filter means "no filter" everywhere below, so a value that
+      # names nothing would deploy every artefact instead of none.
+      if [[ -z "${ONLY_FILTER//[[:space:],]/}" ]]; then
+        echo "Error: --only needs at least one artefact name." >&2
+        exit 1
+      fi
       shift 2
       ;;
     --project-dir)
@@ -249,7 +278,7 @@ fi
 # ANTIGRAVITY_RULES_MD="${ANTIGRAVITY_TREE_DIR}/GEMINI.md"
 # MARKER_BEGIN="<!-- BEGIN GLOBAL RULES -->"
 # MARKER_END="<!-- END GLOBAL RULES -->"
-DEPLOYED_ARTIFACTS_LOG="${SCRIPT_DIR}/deployed_artefacts.log"
+DEPLOYED_ARTIFACTS_LOG="${DEPLOYED_ARTIFACTS_LOG:-${SCRIPT_DIR}/deployed_artefacts.log}"
 DEPLOYMENT_CONF="${SCRIPT_DIR}/deployment.conf"
 
 # ---------------------------------------------------------------------------
@@ -578,14 +607,22 @@ if [[ -n "$TARGET_FILTER" ]]; then
   unset _target_items _tgt
 fi
 
+# Uninstall reads the deployment log and never the --only list, so the pair
+# would remove every logged artefact the other filters match.
+if [[ -n "$ONLY_FILTER" && "$UNINSTALL" == true ]]; then
+  err "abort" "--only selects artefacts to deploy and cannot be combined with --uninstall"
+  exit 1
+fi
+
 if [[ "$GLOBAL_MODE" != true && -z "$PROJECT_DIR" ]]; then
   if [[ "$UNINSTALL" == true ]]; then
     # Log-driven uninstall is a maintenance mode: it uses the deployment log
     # plus filters, not a newly selected deployment scope.
     NO_SCOPE_UNINSTALL=true
-  elif [[ "$CLEAR_BACKUPS" == true && -z "$TYPE_FILTER" ]]; then
+  elif [[ "$CLEAR_BACKUPS" == true && -z "$TYPE_FILTER" && -z "$ONLY_FILTER" ]]; then
     # Backup cleanup is the other no-scope maintenance mode. --target narrows
-    # backup roots; --type remains a deploy/uninstall artifact filter.
+    # backup roots; --type and --only stay artifact filters, so either one
+    # makes the run a deploy request that needs a scope.
     BACKUP_CLEANUP_ONLY=true
   else
     echo "Error: deployment requires an explicit scope. Pass --global or --project-dir DIR." >&2
@@ -2211,6 +2248,25 @@ if [[ "${DEPLOYMENT_SH_SKIP_MAIN:-}" == "1" ]]; then
   exit 0
 fi
 
+# Every --only name must be one discover_artifacts emits for some type, so a
+# typo stops the run before any backup or copy instead of deploying nothing
+# for that name. A name that --type filters out is still known.
+if [[ -n "$ONLY_FILTER" ]]; then
+  _known_names="$(TYPE_FILTER="" discover_artifacts | cut -d'|' -f1)"
+  IFS=',' read -ra _only_items <<< "$ONLY_FILTER"
+  if [[ ${#_only_items[@]} -gt 0 ]]; then
+    for _name in "${_only_items[@]}"; do
+      _name="${_name// /}"
+      [[ -n "$_name" ]] || continue
+      if ! grep -Fqx -- "$_name" <<< "$_known_names"; then
+        err "abort" "Unknown artefact name '${_name}' in --only (use a skill directory basename, or an agent or style file basename without its extension)"
+        exit 1
+      fi
+    done
+  fi
+  unset _known_names _only_items _name
+fi
+
 echo ""
 echo "Repo root:     $REPO_ROOT"
 if [[ -n "$PROJECT_DIR" ]]; then
@@ -2225,6 +2281,7 @@ $UNINSTALL && echo "Uninstall:     enabled"
 $CLEAR_BACKUPS && echo "Clear backups: enabled"
 [[ -n "$TYPE_FILTER" ]] && echo "Types:         $TYPE_FILTER"
 [[ -n "$TARGET_FILTER" ]] && echo "Targets:       $TARGET_FILTER"
+[[ -n "$ONLY_FILTER" ]] && echo "Only:          $ONLY_FILTER"
 [[ -f "$DEPLOYMENT_CONF" ]] && echo "Config:        $DEPLOYMENT_CONF"
 echo ""
 
@@ -2304,6 +2361,21 @@ ARTIFACTS=()
 while IFS= read -r line; do
   [[ -n "$line" ]] && ARTIFACTS+=("$line")
 done < <(discover_artifacts)
+
+if [[ -n "$ONLY_FILTER" && ${#ARTIFACTS[@]} -gt 0 ]]; then
+  _only_filtered=()
+  for _entry in "${ARTIFACTS[@]}"; do
+    IFS='|' read -r _only_name _only_type _only_rel <<< "$_entry"
+    if matches_filter "$_only_name" "$ONLY_FILTER"; then
+      _only_filtered+=("$_entry")
+    fi
+  done
+  ARTIFACTS=()
+  if [[ ${#_only_filtered[@]} -gt 0 ]]; then
+    ARTIFACTS=("${_only_filtered[@]}")
+  fi
+  unset _only_filtered _entry _only_name _only_type _only_rel
+fi
 
 if [[ ${#ARTIFACTS[@]} -eq 0 ]]; then
   warn "empty" "No artifacts found matching the given filters"

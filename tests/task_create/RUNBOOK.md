@@ -6,7 +6,7 @@
 python3 tests/task_create/evals/run.py
 ```
 
-Runs every id in `evals/evals.json` on a pinned sonnet worker, one at a time,
+Runs every id in `evals/evals.json` on the default Cursor worker, one at a time,
 and prints a per-eval PASS/FAIL plus a tally. Exit code is 0 only when every
 worker completed cleanly *and* its deterministic grade passed.
 

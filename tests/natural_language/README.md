@@ -2,8 +2,10 @@
 
 Pattern A harness for the `natural-language` output style. The style ships no
 bundled scripts, so there is no `script_tests/` layer. The harness is
-behavioral, and it exercises Claude output-style selection, so it runs on
-`--vendor claude`.
+behavioral, and it exercises Claude output-style selection, so its runner
+defaults to Claude, stops with an error on `--vendor cursor`, and runs on
+Claude wherever a change to the style needs it, in the foreground, with
+`--vendor claude` in the command so the Claude run is visible.
 
 ```text
 tests/natural_language/
@@ -57,7 +59,8 @@ to the default prompt.
 A project `settings.json` with a trailing comma drops `outputStyle` without an
 error, the shape recorded under `### Configuration roots` on
 `wiki/entities/anthropic-claude-code.md`. `python3 tests/natural_language/evals/run.py --preflight malformed`
-writes that shape into a sandbox and aborts before any scenario pass.
+writes that shape into a sandbox and aborts before any scenario pass, without
+starting a worker.
 `python3 tests/natural_language/evals/test_run.py` checks the marker-present
 route and both marker-missing version branches without starting a worker.
 `python3 tests/natural_language/evals/test_grade.py` checks that a hard wrap

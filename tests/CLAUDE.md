@@ -18,9 +18,9 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
 | `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
 | `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper, and the size-profile line counts) + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
-| `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on `--vendor cursor`, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
+| `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on the default Cursor worker, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
 | `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. |
-| `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/` holds a behavioral eval per family member. `run_all.sh` drives both script runners. |
+| `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/test_run.py` checks that no eval grading the sandbox's whole `git status` declares an artefact the micro-deployment writes into the sandbox project; `evals/` holds a behavioral eval per family member. `run_all.sh` drives the two script runners and `evals/test_run.py`. |
 | `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
 | `task_fix/` | `task_fix` | Pattern A (behavioral only) | Four staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and leave the archived body quiet, gather a reference page's current state and its edit into one passage, surface a gathering that would leave an Acceptance item nothing to measure, and name a repeat inside one paragraph again in plain text there. Grades the task file's bytes and the run's per-finding disposition line. |
 | `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks + `evals/` over the autonomous readiness loop (repair-to-ready, gate/verifier/drift stops, mechanical lint cleanup). |
@@ -47,7 +47,17 @@ harness here regardless of pattern.
 ### Model policy: `--vendor` selects the worker; graders stay inherited or model-free
 
 Every harness that runs a skill as a subprocess goes through
-`tests/lib/vendor.py`. Pass `--vendor claude` (default) or `--vendor cursor`.
+`tests/lib/vendor.py`. Run every eval that needs no Claude-specific feature
+without `--vendor`: the default is Cursor, the project's measurement vendor,
+because Cursor runs are cheaper and faster, so develop and iterate on it and
+rely on its results without a matching Claude run. A test that exercises a
+Claude-specific feature names it and runs on Claude with `--vendor claude` in
+its command, which keeps the Claude run visible and is also how a task's
+acceptance asks for such a run. The flag goes on the Claude-only harnesses
+too, although they default to Claude and stop with an error on an explicit
+`--vendor cursor`. Any other Claude run, such as a whole suite on Claude as a
+compatibility sample, happens only after the operator explicitly asks for one
+in the current session. An agent never runs Claude tests in the background.
 Do not pin dated ids such as `claude-sonnet-4-6` — Claude uses the latest
 `sonnet` alias; Cursor uses `auto`.
 
@@ -61,8 +71,10 @@ Do not pin dated ids such as `claude-sonnet-4-6` — Claude uses the latest
 `--model` / `--judge-model` override the vendor default; `--model ''`
 inherits the CLI default. `--worker-bin` overrides the binary;
 `--claude-bin` remains a deprecated alias. Claude-only surfaces
-(`trigger_evals/`, `natural_language/`) reject
-`--vendor cursor` until a Cursor equivalent exists.
+(`trigger_evals/`, `natural_language/`) default to Claude and reject an
+explicit `--vendor cursor` until a Cursor equivalent exists, so they run on
+Claude wherever a change needs them, in the foreground, with `--vendor claude`
+in the command.
 
 The Cursor twin of this file is `tests/AGENTS.md` — keep the vendor
 table, the Claude-only list, and the parallel-workers rule in lockstep
@@ -71,19 +83,55 @@ when either changes.
 The behavioral eval runners automate the old operator-driven Phase 2:
 instead of running the skill yourself in-session, let the runner spawn
 the vendor worker, then read `response.txt` for the prose-verdict
-expectations `grade.sh` can't check. Workers path-read the skill under
-test from a staged copy that sits outside every graded tree: either under
-the eval's `artefacts/` directory beside the sandbox, or inside an isolated
-sandbox root when the harness copies the skill there, as
-`language_humanizer` does. A worker never path-reads the skill from a
-graded tree or from its source in the repository. Named agents that must be
-spawnable land only in `<sandbox>/.{claude,cursor}/agents/`. On Cursor, a
-deployed user-level skill of the same name can win over a path-read copy:
-on 8 October 2026 a traced worker read the deployed `~/.cursor/skills` copy
-instead of the staged one. Staging the copy as a project skill of the
-worker's workspace and naming its path in the prompt made the worker read the
-staged copy, which is how `language_humanizer` stages it, but with no path in
-the prompt a deployed copy still won over the project copy.
+expectations `grade.sh` can't check. Workers load skills, agents, and styles
+only from the per-pass micro-deployment in `tests/lib/micro_deploy.py`: the
+repository's deploy script installs the declared artefacts into a scratch home
+(and the sandbox project for types that load only at project scope), so the
+version under test is what the worker sees and the user's deployed copies stay
+out of each vendor's discovery. On Cursor the scratch home also holds login
+profiles that put back the PATH the worker was launched with. Cursor runs
+shell commands from a login-shell snapshot taken under that home, which would
+otherwise skip the operator's own profile, and on macOS `bash` would then
+resolve to the stock 3.2. Prompts that name a skill, agent, or style path
+take it from that pass's path map. Each pass records
+`artefacts_read_from_micro_deployment` with the paths the worker read, a
+spawned helper's reads included, and a read of any skill, agent, or style file
+outside the scratch home and sandbox project fails the pass, whether it is a
+copy in the user's home or a source under the checkout's `plugins/` or
+`styles/`. Claude's stream carries a helper's tool calls, but Cursor keeps them
+out of the parent's stream, so on Cursor the check also reads the chat
+transcripts the CLI writes under the scratch home. The check expands shell paths
+against the worker's own environment, so `~` is the scratch home on Cursor but
+the real home on Claude, and it reads each command left to right: a variable
+that an earlier statement of the command assigns expands its later paths, and
+a relative path after the command's own `cd` resolves against that directory.
+A prefix assignment such as `HOME=<fake home> bash x.sh` stays with its own
+command, as the shell scopes it. A vendor-layout path that
+keeps a variable the command never assigns fails closed. A `plugins/` or
+`styles/` path behind such a variable stays unchecked, because a sandbox
+fixture tree can share its shape. Each run probes authentication once inside a
+micro-deployment environment before its first pass.
+
+Each runner declares the artefacts its workers may load once, as an
+`ARTEFACTS` list or an `artefacts_for()` function. Those names feed the deploy
+script's `--only` list and, in every runner with a verdict cache,
+`source_roots_for()` through `micro_deploy.source_roots_for()`, so what a pass
+deploys and what its cache key hashes stay one list. TESTING.md's
+`## Test Design Principles` states the rule. When a change makes a skill reach
+another skill, agent, or style, by name or through a path the prompt names,
+add that name to the declaration of every runner whose evals load the skill,
+in the same change. A missing name shows up only when the worker reads a copy
+from outside the deployment, as that path under `out_of_set` in the pass's
+`artefacts_read_from_micro_deployment` record; a worker that runs without the
+artefact passes unnoticed. A declaration names only artefacts the deploy
+script discovers, and `micro_deploy()` stops on any other name. A fixture
+artefact, such as a fixture agent or `natural_language`'s marker style, stays
+out of the declaration, and the runner writes it into the sandbox project
+after the micro-deployment returns. A fixture that edits a declared skill,
+such as `git_commit`'s stubbed prepare script, stages an edited copy of it.
+The runner then passes that copy to `micro_deploy.overlay_fixture_edits()`,
+which copies every file the copy adds or changes onto the deployed skill, so
+the worker still loads the path from the path map.
 
 ### Parallel workers: default 4 only where each job has its own sandbox
 
@@ -148,30 +196,45 @@ restage, or skip the rest. Pattern A runners already take this shape
 
 ### Verdict cache: skip re-running an eval whose inputs haven't changed
 
-The five Pattern-A behavioral runners (`git_commit/evals/run.py`,
-`task/evals/run.py`, `task_create/evals/run.py`,
-`task_auto_check/evals/run.py`, `git_review/evals/run.py`) cache each eval's
-graded verdict and skip re-spawning its `claude -p` worker when nothing that
-determines the verdict has changed. The shared helper is
-`tests/lib/eval_cache.py`; verdicts live per-harness in
-`<evals>/.eval_cache/` (gitignored as run output, like `workspace/`).
+Every Pattern-A behavioral runner that imports the shared helper
+`tests/lib/eval_cache.py` caches each eval's graded verdict and skips
+re-spawning its worker when nothing that determines the verdict has changed.
+Verdicts live per-harness in `<evals>/.eval_cache/` (gitignored as run output,
+like `workspace/`).
 
-The cache key is a content hash of these inputs: the skill source under
-test **and its family dependencies**, the harness definition (the whole
-`evals/` dir: evals.json, stage.sh, grade.sh, fixtures, run.py), the worker
-model, the eval id, and the prompt. Family dependencies means, for the task
-family, the loaded sibling *plus* the base `task` skill *plus*
-`plugins/ai_dev/agents/`, because every sibling reads the base via
-`<authority>` and the `auto_*` siblings spawn those agents; for `git_review`
-it means the `git_checkout` and `git_commit` skill directories it hands work
-to. Change any of those and the key moves, so the cache misses and
-the eval re-runs. It can never serve a stale pass: a hit means byte-identical
-inputs to a run already graded. Over-inclusion (e.g. editing `task_select`
-invalidates a `task_implement` eval) only costs an occasional extra run, the
-safe direction.
+The cache key is a content hash of these inputs: the sources of every
+artefact the runner declares for the eval, under the declaration rule in the
+model policy section above, the harness definition (the whole `evals/` dir:
+evals.json, stage.sh, grade.sh, fixtures, run.py), the shared helpers that
+decide every cached verdict, the worker model, the eval id, and the prompt.
+Those helpers are `eval_cache.VERDICT_HELPERS`: `tests/lib/micro_deploy.py`
+(the deployment and the read check), `tests/lib/vendor.py` (the worker command
+and environment), and `tests/lib/host_tasks_guard.sh` (the host `tasks/`
+guard), so an edit to one re-runs each cached eval once. A helper under
+`tests/lib` that starts deciding verdicts joins that list in the same change,
+the way a newly reached artefact joins a runner's declaration. For a
+task-family eval the declaration names the loaded sibling, the base `task`
+skill it reads through `<authority>`, and the
+`auto_*_task` agents that the `auto_*` siblings and an escalated `task_fix`
+spawn. It also names `task_check` for `task_auto_check` and `task_fix`,
+because both reach the `auto_gate_task` agent that wraps it. For `task_fix`
+it adds `task_auto_check` as well, because the escalated `auto_shaper_task`
+may invoke it. For `git_review` the declaration names the `git_checkout` and
+`git_commit` skills it hands work to, the `git_refresh` skill whose
+default-branch detection it follows, and the `guardrail` skill whose authority
+hierarchy it ranks findings by. For `agent_spinner` it names the
+`harness_portability` skill that agent_spinner routes per-harness questions
+to. Change any of those and the key moves,
+so the cache misses and the eval re-runs. As long as the declaration names
+everything the eval's worker may load and `VERDICT_HELPERS` names every shared
+helper a verdict depends on, the cache never serves a stale pass, because a
+hit means byte-identical inputs to a run already graded.
+Over-inclusion (editing a section of the base `task` skill that a
+`task_create` eval never reaches still invalidates that eval) only costs an
+occasional extra run, the safe direction.
 
-- **Default: on.** A hit prints `CACHED PASS/FAIL … skipped claude -p` and
-  replays the stored verdict, writing `cached.json` plus a clearly-bannered
+- **Default: on.** A hit prints `CACHED PASS/FAIL … skipped agent -p`, or
+  `skipped claude -p` on a Claude run, and replays the stored verdict, writing `cached.json` plus a clearly-bannered
   `response.txt` into the run dir so its shape matches a fresh run.
 - **`--force`:** re-run every eval and refresh the cache. Use it to resample
   the stochastic worker on unchanged inputs when you want a fresh draw.
@@ -226,15 +289,18 @@ It then reads the CLI's own stored OAuth credential (macOS keychain item
 `Claude Code-credentials`) directly, and no separate token is needed
 while that login is present and unexpired. Never pass `--bare`; it
 forces `ANTHROPIC_API_KEY` / `apiKeyHelper` auth and 401s a subscription
-login. The shared helper `tests/lib/worker_auth.py` does this: its
-`worker_env()` pops `CLAUDECODE` and the HAS_*_REFRESH flags, and its
+login. The shared helper `tests/lib/vendor.py` does this
+(`tests/lib/worker_auth.py` keeps Claude-only wrappers for older callers):
+its `worker_env()` pops `CLAUDECODE` and the HAS_*_REFRESH flags, and its
 `preflight_auth()` fails fast on a dead login with one live `claude -p`
-probe (the remediation below) instead of 401-ing every eval. Every
-`claude -p` runner imports the helper: `task/evals/run.py`,
-`task_create/evals/run.py`, `task_auto_check/evals/run.py`,
-`git_commit/evals/run.py`, and `git_review/evals/run.py` use both the
-pre-flight and the worker env; `trigger_evals/run.py` and
-`wiki/layer2/run.py` use `worker_env()`.
+probe (the remediation below) instead of 401-ing every eval. The behavioral
+runners build every worker environment from `worker_env()` through the
+per-pass micro-deployment, and each run probes once through
+`micro_deploy.preflight_auth()`, which runs that check inside a scratch
+micro-deployment environment, so a login the scratch configuration directory
+cannot reach fails fast too. `language_humanizer` and `natural_language` also
+keep the host-environment probe, because their judges run outside the
+micro-deployment. `trigger_evals/run.py` uses `worker_env()` directly.
 
 **Failure signature:** worker rc≠0 with
 `API Error: 401 Invalid authentication credentials` in `response.txt`,
@@ -269,9 +335,10 @@ directory and any git repository.
 
 Cursor is the preferred measurement vendor. The Claude branch of the helper
 serves compatibility runs and Claude-only product surfaces such as
-output-style loading. Two Cursor sources stay outside the helper: User Rules,
-which Cursor keeps in its settings rather than in project files, and deployed
-user-level skills.
+output-style loading. One Cursor source stays outside the helper: User Rules,
+which Cursor keeps in its settings rather than in project files. Deployed
+user-level skills are kept out of view by the per-pass micro-deployment rather
+than by this helper (see the model policy above).
 
 Runners that import the helper take their sandbox roots and their worker
 arguments from it. The unit tests live in `tests/lib/test_worker_isolation.py`.
@@ -576,11 +643,15 @@ set.
 
 ### Run pattern
 
+Trigger evals are Claude-only, so the runner defaults to Claude; run them
+where a change needs the measurement, such as a description edit, in the
+foreground, with `--vendor claude` in the command so the Claude run is
+visible.
+
 ```bash
-python3 tests/trigger_evals/run.py \
+python3 tests/trigger_evals/run.py --vendor claude \
   --eval-set tests/trigger_evals/wiki.json \
   --skill wiki \
-  --model claude-sonnet-4-6 \
   --runs-per-query 3 \
   --timeout 45 \
   --workers 10
@@ -726,10 +797,10 @@ runs after), and nothing compared runs per query.
 So pass the prior run as `--baseline` on every trigger run:
 
 ```bash
-python3 tests/trigger_evals/run.py \
+python3 tests/trigger_evals/run.py --vendor claude \
   --eval-set tests/trigger_evals/task.json \
   --skill task --skill-path plugins/ai_dev/skills/task \
-  --model claude-sonnet-4-6 --runs-per-query 3 --timeout 45 --workers 10 \
+  --runs-per-query 3 --timeout 45 --workers 10 \
   --baseline tests/trigger_evals/results/task/<prior-timestamp>
 ```
 

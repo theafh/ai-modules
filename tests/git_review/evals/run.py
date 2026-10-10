@@ -2,22 +2,26 @@
 """Vendor-aware worker runner for the git_review behavioral evals.
 
 One vendor-resolved print-mode worker runs per eval, so the skill under test
-uses one explicit worker policy each run: `--vendor claude` defaults to
-`sonnet`, `--vendor cursor` defaults to `auto`, and `--model ''` inherits the
-vendor CLI default. The meta level on top stays model-free: the deterministic
+uses one explicit worker policy each run: the worker runs on Cursor by
+default (`auto`), `--vendor claude` (`sonnet`) runs where Claude is needed or asked for, and `--model ''` inherits the vendor CLI default. The meta level on top stays model-free: the deterministic
 `grade.sh`, and the operator's reading of `response.txt` for the prose-verdict
 expectations.
 
 Per eval the runner:
 
 1. Stages a fresh sandbox via `stage.sh <id> <target>` and reads back
-   `sandbox_repo`, `skill_path`, `prompt`, `target`, `gh_env`.
-2. Stages the skill into the sandbox's vendor discovery tree, then runs a
-   vendor-resolved print-mode worker with the sandbox repo as the working
-   directory. When the eval staged a stub `gh`, its `gh_env` file is folded
-   into the worker environment and its `bin` directory goes first on PATH, so
-   the forge layer is served from fixture JSON and every call is recorded.
-3. Captures `response.txt` / `stderr.txt` / `timing.json` under
+   `sandbox_repo`, `prompt`, `target`, `gh_env`.
+2. Micro-deploys git_review, git_checkout, git_commit, git_refresh, and the
+   guardrail hub through the deploy script into a scratch home, wraps each
+   deployed bundled script in a logging shim that appends to the sandbox's
+   `script_calls.log` and then runs an unshimmed copy of the deployed script
+   kept in that scratch home, and runs a vendor-resolved print-mode worker
+   with the sandbox repo as the working directory. When the eval staged a
+   stub `gh`, its `gh_env` file is folded into the worker environment and its
+   `bin` directory goes first on PATH, so the forge layer is served from
+   fixture JSON and every call is recorded.
+3. Captures `response.txt` / `stderr.txt` / `timing.json` (with the
+   `artefacts_read_from_micro_deployment` integrity record) under
    `workspace/run-<ts>/<id>/`.
 4. Grades the post-run sandbox with `grade.sh <id> <sandbox_repo>
    <response.txt>`.
@@ -41,6 +45,7 @@ import json
 import os
 import pathlib
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -53,26 +58,61 @@ WORKSPACE = THIS / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; run output is gitignored)
+import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper)
-from worker_io import as_text  # noqa: E402  (shared; tests/ is gitignored)
+
+ARTEFACTS = ["git_review", "git_checkout", "git_commit", "git_refresh", "guardrail"]
 
 
-SKILL_SRC = THIS.parents[2] / "plugins" / "ai_dev" / "skills" / "git_review"
+def source_roots_for():
+    """Every skill a git_review verdict depends on, taken from the one
+    declaration that also decides what each eval deploys. The git_review
+    directory holds the SKILL.md the worker loads, its scripts/, and its
+    references/. The sibling skills it hands work to (git_checkout, git_commit)
+    join it, because a change to either one changes what a run of this skill
+    does. git_refresh joins them because git_review detects the default branch
+    the way that skill does, so a worker may load it by name. The guardrail hub
+    joins them as well, because git_review ranks its findings by the authority
+    hierarchy that skill defines and keeps no copy of that hierarchy itself.
+
+    This hashes the source trees rather than the deployed copies, which live
+    under a per-run scratch home, so the key stays stable across runs."""
+    return micro_deploy.source_roots_for(ARTEFACTS)
 
 
-def source_roots_for(_skill_path: str):
-    """git_review is self-contained: the SKILL.md the worker loads, its
-    scripts/, and its references/ all live in the one skill directory, so that
-    directory is the whole artifact under test for the cache key. The sibling
-    skills it hands work to (git_checkout, git_commit) join it, because a change
-    to either one changes what a run of this skill does.
+def shim_deployed_scripts(
+    deploy: micro_deploy.MicroDeployHandle, target_root: pathlib.Path
+) -> None:
+    """Wrap each deployed bundled script in a logging shim.
 
-    This hashes the source tree rather than the staged copy `stage.sh` hands the
-    worker: the copy lives under a per-run sandbox path and its shimmed scripts
-    embed that path, so hashing it would move the key on every run and the cache
-    would never hit."""
-    plugin_skills = SKILL_SRC.parent
-    return [SKILL_SRC, plugin_skills / "git_checkout", plugin_skills / "git_commit"]
+    Which bundled script a run invoked is a transcript fact the runner does
+    not keep, so every deployed `scripts/*.sh` becomes a shim that records the
+    invocation in `<target>/script_calls.log` and then runs the deployed
+    script. The untouched deployed skill tree is copied under the scratch home
+    first and the shim execs that copy, so the behaviour under test is the
+    deployed script's and a worker that follows a shim never leaves the
+    micro-deployment for the repository checkout.
+    """
+    log = target_root / "script_calls.log"
+    unshimmed_root = deploy.scratch_home / "unshimmed"
+    for name in ARTEFACTS:
+        deployed_dir = deploy.path_map[name].parent
+        scripts_dir = deployed_dir / "scripts"
+        if not scripts_dir.is_dir():
+            continue
+        unshimmed_dir = unshimmed_root / name
+        shutil.copytree(deployed_dir, unshimmed_dir)
+        for deployed_script in sorted(scripts_dir.glob("*.sh")):
+            real_script = unshimmed_dir / "scripts" / deployed_script.name
+            deployed_script.write_text(
+                "#!/usr/bin/env bash\n"
+                "# Logging shim written by tests/git_review/evals/run.py. Records the\n"
+                "# call, then runs the unshimmed deployed bundled script.\n"
+                f"printf '%s %s\\n' {shlex.quote(deployed_script.name)} \"$*\" "
+                f">> {shlex.quote(str(log))}\n"
+                f"exec {shlex.quote(str(real_script))} \"$@\"\n"
+            )
+            deployed_script.chmod(0o755)
 
 
 def default_ids():
@@ -104,16 +144,15 @@ def stage(eval_id: str, target: pathlib.Path) -> dict:
     emit = (
         f'eval "$({shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
         f'{shlex.quote(str(target))})"; '
-        'printf "%s\\0%s\\0%s\\0%s\\0%s\\0" '
-        '"$sandbox_repo" "$skill_path" "$prompt" "$target" "$gh_env"'
+        'printf "%s\\0%s\\0%s\\0%s\\0" '
+        '"$sandbox_repo" "$prompt" "$target" "$gh_env"'
     )
     out = subprocess.run(
         ["bash", "-c", emit], capture_output=True, text=True, check=True
     ).stdout
-    sandbox_repo, skill_path, prompt, fixture_target, gh_env, _ = out.split("\0")
+    sandbox_repo, prompt, fixture_target, gh_env, _ = out.split("\0")
     return {
         "sandbox_repo": sandbox_repo,
-        "skill_path": skill_path,
         "prompt": prompt,
         "target": fixture_target,
         "gh_env": gh_env,
@@ -138,12 +177,12 @@ def path_without_gh(path_value: str) -> str:
     return os.pathsep.join(kept)
 
 
-def env_for(vendor_name: str, gh_env: str) -> dict:
+def env_for(base_env: dict, gh_env: str) -> dict:
     """The worker environment, with the stub gh folded in when the eval staged
     one. The env file holds plain KEY=VALUE lines; GH_STUB_BIN goes first on
     PATH so the stub outranks a real gh on the operator's machine. An eval that
     staged no stub runs with `gh` stripped from PATH entirely."""
-    env = vendor.worker_env(vendor_name)
+    env = dict(base_env)
     if not gh_env:
         env["PATH"] = path_without_gh(env.get("PATH", ""))
         return env
@@ -174,19 +213,12 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
 
     staged = stage(eval_id, target)
     workdir = staged["sandbox_repo"]
-    # Stage beside the repo under test so review side-effects never see a
-    # copied skill tree as part of the reviewed worktree.
-    skill_path = vendor.stage_skill_tree(
-        eval_dir / "artefacts",
-        pathlib.Path(staged["skill_path"]).parent,
-        resolved.vendor,
-    )
     model_label = resolved.worker_model or "<inherit>"
 
     key = None
     if cache is not None:
         key = eval_cache.content_key(
-            source_roots=source_roots_for(staged["skill_path"]),
+            source_roots=source_roots_for(),
             harness_dir=THIS,
             model=resolved.worker_model,
             eval_id=eval_id,
@@ -203,40 +235,34 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                       "--force to re-run\n", flush=True)
                 return hit["passed"], True
 
-    # Sibling SKILL.md paths stay under stage.sh's $target/skill/ layout (the
-    # shimmed copies that share script_calls.log). Do not derive them from the
-    # artefacts-rebound {skill_path}; stage_skill_tree only copies git_review.
     target_root = pathlib.Path(staged["target"])
-    prompt = WORKER_PROMPT.format(
-        skill_path=skill_path,
-        workdir=workdir,
-        prompt=staged["prompt"],
-        checkout_skill_path=str(target_root / "skill" / "git_checkout" / "SKILL.md"),
-        commit_skill_path=str(target_root / "skill" / "git_commit" / "SKILL.md"),
-    )
-
-    cmd = vendor.build_print_cmd(
-        vendor=resolved.vendor,
-        bin=resolved.bin,
-        model=resolved.worker_model,
-        prompt=prompt,
-        workspace=str(workdir),
-    )
-
     stub = " (stub gh)" if staged["gh_env"] else ""
     print(f"  [eval-{eval_id}] running {resolved.config.label} "
           f"(model={model_label}){stub} ...", flush=True)
     start = time.time()
-    try:
-        result = subprocess.run(
-            cmd, cwd=workdir, env=env_for(resolved.vendor, staged["gh_env"]),
-            capture_output=True, text=True, timeout=timeout,
+    # The skills deploy into a scratch home beside, never inside, the repo
+    # under review, so a review never sees a copied skill tree in its worktree.
+    with micro_deploy.micro_deploy(
+        resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
+    ) as md:
+        shim_deployed_scripts(md, target_root)
+        md.env.update(env_for(md.env, staged["gh_env"]))
+        prompt = WORKER_PROMPT.format(
+            skill_path=md.path_map["git_review"],
+            workdir=workdir,
+            prompt=staged["prompt"],
+            checkout_skill_path=str(md.path_map["git_checkout"]),
+            commit_skill_path=str(md.path_map["git_commit"]),
         )
-        rc, stdout, stderr = result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as e:
-        rc = -1
-        stdout = as_text(e.stdout)
-        stderr = as_text(e.stderr) + f"\n[TIMEOUT after {timeout}s]"
+        worker = micro_deploy.run_worker(
+            vendor_name=resolved.vendor, bin_name=resolved.bin,
+            model=resolved.worker_model, prompt=prompt, deploy=md,
+            timeout=timeout, cwd=pathlib.Path(workdir),
+        )
+        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+        integrity = micro_deploy.integrity_record(
+            worker.read_paths, worker.out_of_set_paths
+        )
     duration_s = time.time() - start
 
     response_path = eval_dir / "response.txt"
@@ -249,6 +275,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         "worker_rc": rc,
         "claude_rc": rc,
         "model": model_label,
+        "artefacts_read_from_micro_deployment": integrity,
     }, indent=2))
 
     # Keep the call logs beside the response: they are half the evidence for
@@ -266,7 +293,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
     print(grade.stdout, end="", flush=True)
     grade_passed = grade.returncode == 0
     completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed
+    passed = grade_passed and completed and integrity["passed"]
 
     if not completed:
         why = ("timeout" if "[TIMEOUT" in stderr
@@ -276,6 +303,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
               f"grade.sh ran on partial sandbox state and cannot be trusted "
               f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
               flush=True)
+    elif not integrity["passed"]:
+        print(f"  [eval-{eval_id}] FAIL, worker read artefacts outside the "
+              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
     else:
         print(f"  [eval-{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n",
               flush=True)
@@ -329,7 +359,7 @@ def main() -> int:
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")
 
-    vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
+    micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
     # Sequential on purpose: two review workers on one machine contend for the
     # model and both slow past the per-eval timeout.

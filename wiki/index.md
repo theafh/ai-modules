@@ -2,14 +2,14 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-08 | Total pages: 35
+> Last updated: 2026-10-09 | Total pages: 35
 
 ## Entities
 
 <!-- Alphabetical within section -->
 
 - [Anthropic Claude Code](entities/anthropic-claude-code.md): configuration roots, the setting sources a headless worker reads, the user's deployed roles and skills that reach that worker unless a scratch configuration directory replaces the user tree, the hardcoded CLAUDE.md / AGENTS.md standing-instruction pair and its walk past the repository root, agent frontmatter tolerance, the file-edit read state, hooks, safe mode, and the retired `claude config` subcommand.
-- [Cursor](entities/cursor.md): rules as the whole instruction mechanism, project always-apply `.mdc` as the print-mode-injecting deploy path, account User Rules versus non-injecting home and local-plugin rule files, agent fields with the tools and roles print mode lists, a deployed user-level skill taking the place of a staged copy outside the workspace, skills attached by hand, helper delegation through the Task tool with batch and notice delivery and what print mode records of it, helper isolation and context load, the goal tools, the non-login agent shell, and the print-mode agent CLI with its permission file, resume, and stream-json events.
+- [Cursor](entities/cursor.md): rules as the whole instruction mechanism, project always-apply `.mdc` as the print-mode-injecting deploy path, account User Rules versus non-injecting home and local-plugin rule files, agent fields with the tools and roles print mode lists, a deployed user-level skill taking the place of a staged copy outside the workspace, skills attached by hand, helper delegation through the Task tool with batch and notice delivery and what print mode records of it, helper isolation, the per-chat transcripts that hold a helper's tool calls, and context load, the goal tools, the IDE's non-login agent shell and the print-mode CLI's login-shell command environment, and the print-mode agent CLI with its permission file, resume, and stream-json events.
 - [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md): one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents, and preview plugins.
 - [Google Antigravity](entities/google-antigravity.md): the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and four open verification gaps.
 - [OpenAI Codex](entities/openai-codex.md): configuration layers and trusting a project for a single run, the CLI binary shipped off `PATH` inside the ChatGPT app bundle, TOML agent roles, the built-in sub-agent and goal tools, headless runs through `codex exec`, the single instructions slot, personalities, profiles, and hook trust.

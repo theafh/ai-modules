@@ -2,7 +2,7 @@
 
 Canonical skill-creator schema in `evals.json`, fixtures under
 `fixtures/<id>/setup.sh`, deterministic grading in `grade.sh`, and a
-sonnet-pinned worker runner in `run.py`.
+vendor worker runner in `run.py` that runs on Cursor by default.
 
 ## stage → agent → grade
 

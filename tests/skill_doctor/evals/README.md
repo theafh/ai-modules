@@ -15,9 +15,10 @@ out of git.
 python3 tests/skill_doctor/evals/run.py
 ```
 
-`run.py` spawns one sonnet-pinned `claude -p` worker per eval, per the
-model policy in `tests/CLAUDE.md`: the skill under test always runs on the
-same cheap, stable model, while `grade.sh` on top uses no model at all. It
+`run.py` spawns one vendor worker per eval, per the model policy in
+`tests/CLAUDE.md`: the skill under test runs on the Cursor worker
+(`agent -p`, model `auto`) by default, or on Claude's `sonnet` under
+`--vendor claude`, while `grade.sh` on top uses no model at all. It
 honors the shared verdict cache (`--force` to resample, `--no-cache` to
 bypass) and writes `summary.json` into the run directory.
 

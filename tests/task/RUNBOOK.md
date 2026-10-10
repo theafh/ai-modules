@@ -14,14 +14,16 @@ other live task does not fail the suite.
 ## Common commands
 
 ```bash
-# Both deterministic runners (fast, ~1 sec, no LLM cost). run_all.sh drives
-# script_tests/run.sh then script_tests/contract_run.sh and aggregates their
-# exit codes, so one failing surface still leaves the other's verdict visible.
+# All three deterministic surfaces (a few seconds, no LLM cost). run_all.sh
+# drives script_tests/run.sh, script_tests/contract_run.sh, then
+# evals/test_run.py and aggregates their exit codes, so one failing surface
+# still leaves the others' verdicts visible.
 ./tests/task/run_all.sh
 
-# Either surface alone while debugging it
+# Any one surface alone while debugging it
 bash tests/task/script_tests/run.sh           # lint.py / discover / init units
 bash tests/task/script_tests/contract_run.sh  # family prose-contract assertions
+python3 tests/task/evals/test_run.py          # eval-runner artefact declarations
 
 # Behavioral evals (LLM cost). Three phases per eval id
 # (create | check | implement | audit_gaps | audit_clean | finish | fix
@@ -37,11 +39,12 @@ eval "$(bash tests/task/evals/stage.sh finish)"
 #   ... agent runs here, in $sandbox_proj ...
 bash tests/task/evals/grade.sh finish "$sandbox_proj"
 
-# Trigger evals (LLM cost) — family routing
-python3 tests/trigger_evals/run.py \
+# Trigger evals (Claude-only, LLM cost): family routing, where a change
+# needs the measurement; --vendor claude keeps the Claude run visible
+python3 tests/trigger_evals/run.py --vendor claude \
   --eval-set tests/trigger_evals/task.json \
   --skill task --skill-path plugins/ai_dev/skills/task \
-  --model claude-sonnet-4-6 --runs-per-query 3 --timeout 45 --workers 10
+  --runs-per-query 3 --timeout 45 --workers 10
 # Keep --skill-path: without it the family degenerates to ['task'] and the
 # family metric stops meaning anything (precise scoring is unaffected).
 ```
