@@ -150,17 +150,205 @@ every_goal_unchanged() {
   return 0
 }
 file_unchanged() { diff <(git -C "$proj" show "HEAD:tasks/$1" 2>/dev/null) "$TASKS/$1" ; }
-# no_status_writes -> every live task's status: is byte-identical to the seed.
-# A coherence pass flags a re-check in its report and never demotes frontmatter,
-# so any status change at all is a finding whichever direction it moves.
-no_status_writes() {
-  local rel o n
+# Reconcile status helpers. The base <status_discipline> rule returns a ready
+# task to checked only when a rewrite changes what it delivers or how that
+# delivery is checked, and the base <backlog_coherence> block maps each repair
+# shape onto that rule: a refreshed anchor, a declared order, a recorded
+# rationale, and an enumeration completed to the task's own rule keep ready,
+# while a changed parameter or a verify-only step replacing the task's own
+# edit returns it to checked. These helpers read what each fix_coherence task
+# should end at from the bytes the run left: whether the body moved, the tier
+# the Acceptance check proves, and which side of the double-owned edit holds
+# the docstring work. They replace the earlier check that returned every
+# rewritten ready task to checked, which the owner's rules supersede.
+seeded_status() { git -C "$proj" show "HEAD:tasks/$1" 2>/dev/null | fm_field /dev/stdin status; }
+ends_status() { [[ "$(fm_field "$TASKS/$1" status)" == "$2" ]]; }
+ends_one_of() {
+  local b="$1" got want; shift
+  got="$(fm_field "$TASKS/$b" status)"
+  for want in "$@"; do [[ "$got" == "$want" ]] && return 0; done
+  return 1
+}
+task_rewritten() { ! body_unchanged "tasks/$1" >/dev/null 2>&1; }
+# acceptance_of -> stdin's ## Acceptance section with its hard wraps collapsed.
+acceptance_of() { awk '$0=="## Acceptance"{f=1;next} /^## /{f=0} f' | tr '\n' ' ' | tr -s ' '; }
+seeded_acceptance() { git -C "$proj" show "HEAD:tasks/$1" 2>/dev/null | acceptance_of; }
+final_acceptance() { acceptance_of < "$TASKS/$1"; }
+# The tier a task's Acceptance proves it emits is the first SEV_ name there.
+acceptance_tier() { grep -oE 'SEV_(BLOCK|WARN|INFO)' | head -1; }
+tier_changed() {
+  [[ "$(seeded_acceptance "$1" | acceptance_tier)" != "$(final_acceptance "$1" | acceptance_tier)" ]]
+}
+acceptance_items() { grep -c '^- ' <(awk '$0=="## Acceptance"{f=1;next} /^## /{f=0} f' "$1") || true; }
+# acceptance_item_lines <file> -> one line per ## Acceptance item, with its
+# wrapped continuation lines joined on and every run of blanks squeezed to one
+# space, so a match reads each whole item with its wraps collapsed.
+acceptance_item_lines() {
+  awk '$0=="## Acceptance"{f=1;next} /^## /{f=0} f' "$1" \
+    | awk '/^- /{if(i!="")print i; i=$0; next}
+           /^[[:space:]]+[^[:space:]]/{i=i" "$0; next}
+           {if(i!="")print i; i=""}
+           END{if(i!="")print i}' \
+    | tr -s '[:blank:]' ' '
+}
+# approach_sentences <file> -> one line per sentence of ## Approach, with its
+# wraps collapsed. A sentence ends at a period followed by whitespace or the
+# end of the text, or at a semicolon. A period or semicolon inside a backtick
+# code span, and a period inside a token such as a file path, stay in their
+# sentence and read as "_".
+approach_sentences() {
+  awk '$0=="## Approach"{f=1;next} /^## /{f=0} f' "$1" | tr -s '[:space:]' ' ' \
+    | awk '{
+        n = length($0); out = ""; code = 0
+        for (i = 1; i <= n; i++) {
+          c = substr($0, i, 1)
+          if (c == "`") {
+            code = !code
+          } else if (c == "." || c == ";") {
+            if (code || (c == "." && i < n && substr($0, i + 1, 1) != " ")) c = "_"
+            else c = "\n"
+          }
+          out = out c
+        }
+        print out
+      }'
+}
+seeded_acceptance_items() {
+  git -C "$proj" show "HEAD:tasks/$1" 2>/dev/null > "$target/.seeded_acc.md"
+  acceptance_items "$target/.seeded_acc.md"
+}
+
+# below_ready_keep_status -> every task seeded below ready, which in this
+# fixture means open, ends at its seeded status. The pass therefore stamps no
+# task ready, and it writes no checked over an open task, which keeps its
+# status through any rewrite.
+below_ready_keep_status() {
+  local f b o
   for f in "$TASKS"/*.md; do
-    rel="tasks/$(basename "$f")"
-    git -C "$proj" cat-file -e "HEAD:$rel" 2>/dev/null || continue
-    o="$(git -C "$proj" show "HEAD:$rel" | grep -m1 '^status:')"
-    n="$(grep -m1 '^status:' "$f")"
-    [[ "$o" == "$n" ]] || return 1
+    b="$(basename "$f")"
+    git -C "$proj" cat-file -e "HEAD:tasks/$b" 2>/dev/null || continue
+    o="$(seeded_status "$b")"
+    [[ "$o" == "ready" ]] && continue
+    ends_status "$b" "$o" || return 1
+  done
+  return 0
+}
+# untouched_ready_stay_ready -> every ready task whose body the pass left as
+# staged ends ready, so no untouched task is demoted to checked or to open.
+untouched_ready_stay_ready() {
+  local f b
+  for f in "$TASKS"/*.md; do
+    b="$(basename "$f")"
+    git -C "$proj" cat-file -e "HEAD:tasks/$b" 2>/dev/null || continue
+    [[ "$(seeded_status "$b")" == "ready" ]] || continue
+    task_rewritten "$b" && continue
+    ends_status "$b" ready || return 1
+  done
+  return 0
+}
+# tier_rewrite_status <file> <status-when-the-tier-held...> -> a changed tier
+# changes what the task delivers, so the task ends checked; a rewrite that
+# keeps the tier, such as a recorded reason, ends at one of the given statuses.
+tier_rewrite_status() {
+  local b="$1"; shift
+  if tier_changed "$b"; then ends_status "$b" checked; else ends_one_of "$b" "$@"; fi
+}
+# (e) both posture tasks: the one whose tier changed ends checked, and one
+# that only records its reason, or that the pass left alone, stays ready.
+posture_status_follows() {
+  tier_rewrite_status tool_path-check-severity.md ready \
+    && tier_rewrite_status tool_glob-check-severity.md ready
+}
+# (c) the license task: a changed tier ends checked. Coupling the change to
+# the sibling that owns its precondition keeps the tier, and whether that
+# coupling adds work the bytes cannot show, so that shape may end either way.
+license_status_follows() { tier_rewrite_status tool_missing-license-finding.md ready checked; }
+# (a) the double-owned edit. A declared order and a refreshed symbol keep the
+# counterpart's docstring work, so both sides stay ready. The verify-only shape
+# moves the docstring work, which the KeyError requirement in Acceptance marks:
+# the side that gained it, and the side that lost it, each end checked. On the
+# side that held the work, a KeyError item holds it unless the item is a verify
+# step. An item is a verify step when it names the rename task as the writer
+# of the docstring it checks, as in "the docstring the rename task writes" or
+# "the docstring under `def display_label(` that the rename task writes", or
+# when it uses verify wording anywhere ("verif", "confirm", "check that",
+# "ensure", "make sure") while the task's own edit is gone. Two reads show
+# that: the rename task's Acceptance carries the KeyError requirement as a
+# plain item, so the work moved, or the docstring task's Approach has stopped
+# asking it to write the docstring. An Approach sentence in which the rename
+# task writes the docstring, as in "the rename task in tool/severity.py writes
+# the docstring", asks nothing of this task. While both the work and the
+# Approach edit stay, verify wording such as "a reader can verify that the
+# docstring states" still states the task's own deliverable. The moved-work
+# read errs toward failing in one shape: when the rename task adds a KeyError
+# item of its own, a docstring task whose own item mentions verification fails
+# even where it correctly stays ready. Items and Approach sentences are read
+# with their wraps collapsed, and an Approach sentence ends only at a period
+# that meets whitespace or the end of the text, or at a semicolon, so a file
+# path or code span never splits it. On the side that never held the work, any
+# item naming KeyError is new to the task, whether it carries the moved work or
+# adds a check on it, and either one returns that side to checked. Where the
+# requirement sits is read before the item count, because work moved into a
+# task arrives as a new Acceptance item. Only a side whose share of the
+# docstring work stayed put and whose Acceptance still gained an item may have
+# added a check the bytes cannot classify, so that side may end either way.
+ownership_side_status() {
+  local b="$1" holds_work="$2" has_work=no
+  if [[ "$holds_work" == yes ]]; then
+    local verify_words='verif|confirm|check +that|ensure|make +sure'
+    # In an item the rename task writes the docstring only when the docstring
+    # is the object of its verb: the docstring comes first, at most a short
+    # phrase and "that" or "which" away, or follows the verb. An order clause
+    # such as "After the rename task rewrites the import, the docstring states"
+    # names no writer of the docstring.
+    local writer_rename='docstring (the )?rename[^ ]* (task )?(writes|rewrites|wrote|delivers)|docstring[^,;]{0,40} (that|which) (the )?rename[^ ]* (task )?(writes|rewrites|wrote|delivers)|rename[^ ]* (task )?(writes|rewrites|wrote|delivers) [^,;]{0,40}docstring|rename task.s docstring|(written|rewritten|delivered) by (the )?[^ ]*rename'
+    # In an Approach sentence the rename task writes the docstring only when
+    # the docstring is the object of its verb, so a clause in which the rename
+    # task writes something else leaves this task's own edit standing. A short
+    # phrase such as "in tool/severity.py" may stand between the two.
+    local approach_writer='rename[^ ]* (task )?((in|from|for|of|on|at|under|inside|within)( [^ ]+){1,3} )?(writes|rewrites|wrote|delivers) [^,;]{0,40}docstring|rename task.s docstring|(written|rewritten|delivered) by (the )?[^ ]*rename'
+    local moved=no own_edit=no item
+    # The docstring work moved when the rename task carries the KeyError
+    # requirement as a plain item rather than as a check.
+    acceptance_item_lines "$TASKS/tool_severity-label-rename.md" | grep -viE "$verify_words" | grep -q KeyError && moved=yes
+    # The task keeps its own edit while an Approach sentence asks it to write
+    # the docstring, without checking it or naming the rename task as writer.
+    approach_sentences "$TASKS/$b" \
+      | grep -iE '(^|[^a-z])(rewrite|write|update|add|document)[a-z]* [^.]{0,60}docstring' \
+      | grep -viE "$verify_words|$approach_writer" | grep -q . && own_edit=yes
+    # A KeyError item is a verify step, and holds no work, when it says the
+    # rename task writes the docstring, or when it uses verify wording while
+    # the work moved or the task's own edit is gone.
+    while IFS= read -r item; do
+      grep -q KeyError <<<"$item" || continue
+      grep -qiE "$writer_rename" <<<"$item" && continue
+      if grep -qiE "$verify_words" <<<"$item" && [[ "$moved" == yes || "$own_edit" == no ]]; then continue; fi
+      has_work=yes
+    done < <(acceptance_item_lines "$TASKS/$b")
+  else
+    final_acceptance "$b" | grep -q KeyError && has_work=yes
+  fi
+  if [[ "$has_work" != "$holds_work" ]]; then ends_status "$b" checked; return; fi
+  if (( $(acceptance_items "$TASKS/$b") > $(seeded_acceptance_items "$b") )); then
+    ends_one_of "$b" ready checked; return
+  fi
+  ends_status "$b" ready
+}
+ownership_status_follows() {
+  ownership_side_status tool_severity-label-docstring.md yes \
+    && ownership_side_status tool_severity-label-rename.md no
+}
+# other_rewritten_ready_not_lowered -> a ready task the pass rewrote outside
+# the planted shapes, such as a back-link or a coupling note on a sibling, ends
+# ready or checked, and never lower.
+other_rewritten_ready_not_lowered() {
+  local f b
+  for f in "$TASKS"/*.md; do
+    b="$(basename "$f")"
+    git -C "$proj" cat-file -e "HEAD:tasks/$b" 2>/dev/null || continue
+    [[ "$(seeded_status "$b")" == "ready" ]] || continue
+    task_rewritten "$b" || continue
+    ends_one_of "$b" ready checked || return 1
   done
   return 0
 }
@@ -467,6 +655,12 @@ case "$eval_id" in
     check "git tracks the move (git mv, not a fresh write)" git_tracks_move
     check "open-sibling inbound link re-pointed to archive/" inbound_link_repointed
     check "archived-task inbound link re-pointed (../ dropped)" archived_inbound_repointed
+    # The base <archive> workflow's link rewrites are mechanical and change no
+    # task's status: the close-out's own move is its only status write.
+    check "the open linker keeps status open through its link rewrite" \
+      ends_status api_throttle-config.md open
+    check "the archived linker keeps status finished through its link rewrite" \
+      ends_status archive/api_legacy-notes.md finished
     check "backlog lints clean after close-out"             lint_no_blocking
     ;;
 
@@ -1112,8 +1306,11 @@ case "$eval_id" in
     # two shapes the ownership lens allows. Which one fits depends on whether the
     # counterpart still owns work of its own (here it owns the docstring), so
     # demanding the verify-only wording alone would fail a correct repair.
+    # An order names its prerequisite in any words ("after the rename lands",
+    # "only after <linked task> lands"), so "after ... lands" within one
+    # sentence counts as well as "after this task lands".
     check "(a) one owner is named and the counterpart verifies or follows in order" \
-      bash -c 'pat="verif(y|ies|ied|ication)|own(s|er|ed|ing)|follows|runs after|depends on|prerequisite|sequence|(must |should |will |has |have )?land(s|ed|ing)? (first|after|before)|after (this|that) task land(s|ed)?";
+      bash -c 'pat="verif(y|ies|ied|ication)|own(s|er|ed|ing)|follows|runs after|depends on|prerequisite|sequence|(must |should |will |has |have )?land(s|ed|ing)? (first|after|before)|after (this|that) task land(s|ed)?|after [^.]{0,160}land(s|ed)([^a-z]|$)";
         unwrapped_file() { tr "\n" " " < "$1" | tr -s " "; };
         unwrapped_file "'"$TASKS"'/tool_severity-label-docstring.md" | grep -qiE "$pat" \
         || unwrapped_file "'"$TASKS"'/tool_severity-label-rename.md" | grep -qiE "$pat"'
@@ -1149,8 +1346,12 @@ case "$eval_id" in
         # A recorded reason names the counterpart and why the answers differ.
         # Match on that substance rather than on one vocabulary: "to match the
         # existing posture of the parallel glob-check task" records it as surely
-        # as the word "because" does.
-        pat="glob-check|path-check|because|reason|deliberate|principled|posture|to match|parallel|counterpart|differs";
+        # as the word "because" does, and so does naming the standing tier each
+        # check already emits, as in "standing emit tier for missing paths". A
+        # bare "matching" stays out of the pattern, because incidental prose
+        # such as "two globs matching the same entry" carries it and records no
+        # reason.
+        pat="glob-check|path-check|because|reason|deliberate|principled|posture|to match|standing [a-z ]{0,20}tier|parallel|counterpart|differs";
         [[ -n "$ta" && "$ta" == "$tb" ]] \
         || unwrapped_file "$a" | grep -qiE "$pat" \
         || unwrapped_file "$b" | grep -qiE "$pat"'
@@ -1161,7 +1362,18 @@ case "$eval_id" in
     check "(l) the Acceptance-altering candidate is not applied" \
       section_unchanged tasks/tool_quiet-flag.md '## Acceptance'
     check "(k) the unaccepted ready task is untouched"   file_unchanged tool_summary-line.md
-    check "no task's status was written by the reconcile pass"        no_status_writes
+    check "the reconcile stamps no task ready: every open task keeps its seeded status" below_ready_keep_status
+    check "every ready task the reconcile left as staged stays ready" untouched_ready_stay_ready
+    check "(b) the refreshed anchor keeps its ready task ready" ends_status tool_clean-bar-note.md ready
+    check "(d) the enumeration completed to the task's own rule keeps its ready task ready" \
+      ends_status tool_check-docstring-sweep.md ready
+    check "(c) a changed license-finding tier returns its ready task to checked" license_status_follows
+    check "(e) a changed posture tier returns its task to checked, and a recorded reason keeps it ready" \
+      posture_status_follows
+    check "(a) the ownership repair keeps each side ready unless it moved the docstring work" \
+      ownership_status_follows
+    check "every other ready task the reconcile rewrote ends ready or checked, never lower" \
+      other_rewritten_ready_not_lowered
     check "every edited task's ## Goal is byte-identical to its pre-reconcile Goal" every_goal_unchanged
     check "an archive-inclusive lint run reports zero blocking findings" lint_archive_no_blocking
     note_agent_attest "the report groups the applied repairs by shape — single owner plus verify-only counterpart, refreshed anchor, recorded-rationale parameter change, completed enumeration, reconciled or recorded posture"
@@ -1184,10 +1396,10 @@ case "$eval_id" in
       bash -c 'tr "\n" " " < "'"$TASKS"'/tool_summary-line.md" | tr -s " " \
         | grep -Fq "**Out of scope:**"'
     check "(k) updated bumped on the note file"          updated_bumped tool_summary-line.md
-    # The change-significance rule: (k) keeps its ready status.
-    check "(k) the ready task stays ready after the additive note" \
-      bash -c '[[ "$(sed -n "/^---$/,/^---$/p" "'"$TASKS"'/tool_summary-line.md" \
-        | grep -m1 "^status:" | sed "s/^status:[[:space:]]*//")" == "ready" ]]'
+    # The status-discipline rule: an additive note is a clarifying note that
+    # changes neither what the task delivers nor how it is checked, so (k)
+    # keeps its ready stamp.
+    check "(k) the additive note keeps the ready task ready" ends_status tool_summary-line.md ready
     check "(k) its ## Goal is byte-identical"            goal_unchanged tasks/tool_summary-line.md
     # (l) flagged for re-check, not applied and not re-stamped.
     check "(l) the Acceptance-altering repair is not applied" file_unchanged tool_quiet-flag.md
@@ -1203,12 +1415,16 @@ case "$eval_id" in
     check "(f) the fork stays unresolved"                     file_unchanged tool_config-format.md
     check "(i) the Goal-altering candidate is not applied" \
       goal_unchanged tasks/tool_drop-legacy-module.md
-    check "no task's status was written by the reconcile pass"        no_status_writes
+    check "the reconcile stamps no task ready: every open task keeps its seeded status" below_ready_keep_status
+    check "every ready task the reconcile left as staged stays ready" untouched_ready_stay_ready
+    check "(b) the refreshed anchor keeps its ready task ready" ends_status tool_clean-bar-note.md ready
+    check "every other ready task the reconcile rewrote ends ready or checked, never lower" \
+      other_rewritten_ready_not_lowered
     check "every edited task's ## Goal is byte-identical to its pre-reconcile Goal" every_goal_unchanged
     check "an archive-inclusive lint run reports zero blocking findings" lint_archive_no_blocking
     note_agent_attest "the report names 'mode used: inline' and states that no escalation ran"
-    note_agent_attest "the report flags tool_quiet-flag.md for re-check under the change-significance rule and states that the repair was NOT applied"
-    note_agent_attest "no status was re-stamped: readiness stamps stay with task_check / task_auto_check"
+    note_agent_attest "the report flags tool_quiet-flag.md for re-check under the status-discipline rule and states that the repair was NOT applied"
+    note_agent_attest "the reconcile stamped no task ready, and the refreshed anchor and the additive note left their ready tasks at ready, since neither changes what the task delivers or how it is checked: the ready stamp stays with task_check / task_auto_check / the user's declaration"
     ;;
 
   fix_coherence_selector_scope)

@@ -133,12 +133,16 @@ response_readable() { [[ -s "$RESPONSE" ]]; }
 # with the Repeated-link disposition filter already applied, so a faithful
 # empty-channel line names the filter ("Surfaced-but-not-fixed (after
 # Repeated-link disposition filter): none"); its label is dropped before the
-# match so the filter's name never reads as a finding. grep reads one line at a
-# time, so `.` keeps the match on the channel line.
+# match so the filter's name never reads as a finding. A line whose channel
+# value is a bare none, with at most one parenthetical note after it
+# ("Surfaced-but-not-fixed: none (repeated-link filtered via disposition
+# filter)"), is an empty channel, so that line is dropped too. grep reads one
+# line at a time, so `.` keeps the match on the channel line.
 surfaced_channel_names_repeated_link() {
   response_readable || return 1
   tr '[:upper:]' '[:lower:]' < "$RESPONSE" \
     | sed 's/repeated-link disposition filter//g' \
+    | sed -E 's/surfaced-but-not-fixed[^a-z0-9]{0,8}(none|nothing|empty)[[:space:]]*(\([^)]*\))?[[:space:].]*$//' \
     | grep -qE 'surfaced-but-not-fixed.{0,160}repeated-link'
 }
 
@@ -201,6 +205,109 @@ disposition_reason() {
     /^[[:space:]]*(#|\||[-*+][[:space:]]|[0-9]+[.)][[:space:]])/ { flush() }
     { rec = (rec == "" ? $0 : rec " " $0) }
     END { flush() }' "$RESPONSE"
+}
+
+# response_records -> the response one record per line. A blank line, a code
+# fence, a heading, a list item, a table row, or a bold label line such as
+# "**Gate 2 (re-gate):**" starts a record, a line ending in a markdown hard
+# break closes one, and a hard-wrapped line joins the record it continues. Prose
+# therefore reads with its wraps collapsed, while one list item never runs into
+# the next, so a negation in one item cannot reach a claim in another.
+response_records() {
+  response_readable || return 1
+  awk '
+    function flush() { if (rec != "") print rec; rec = "" }
+    /^[[:space:]]*$/ || /^[[:space:]]*```/ { flush(); next }
+    /^[[:space:]]*(#|\||[-*+][[:space:]]|[0-9]+[.)][[:space:]])/ { flush() }
+    /^[[:space:]]*\*\*[^*]+(:\*\*|\*\*:)/ { flush() }
+    { rec = (rec == "" ? $0 : rec " " $0) }
+    /  $/ { flush() }
+    END { flush() }' "$RESPONSE"
+}
+
+# split_at <chars> -> stdin split after each of <chars> that ends a sentence,
+# whether a space follows it or a worker's progress notes join the next
+# sentence on without one ("then re-gating.`ready` after repair").
+split_at() {
+  sed -E "s/([$1])[[:space:]]+/\\1\\
+/g; s/([$1])([A-Z\`#*])/\\1\\
+\\2/g"
+}
+
+# The gate-verdict and status-move patterns the report checks below share. A
+# report bolds and backticks status words freely ("`checked` → **`ready`**"), so
+# every pattern lets those markers sit around them.
+#
+# FLIP: a gate verdict that read checked and stamped ready, in the arrow form
+# the output contract makes a report name, the prior/stamped form a per-gate
+# line uses, or a flip to ready.
+FLIP='checked[`*]* *(→|->|to) *[`*]*ready|(^|[^a-z])(prior( status|_status)?|reads?)[^a-z][^.;]{0,8}checked[^.;]{0,40}(stamp(s|ed)?|wr(ote|ites)|status)[^.;]{0,12}ready|ready[`*]*[^.;]{0,16}prior[ _a-z:]{0,10}[`*]*checked|flip(ped|s)?[^.;]{0,20}to [`*]*ready'
+# NEGATED_FLIP: a sentence naming the flip only to deny it: a negation in front
+# of the flip ("No checked → ready flip occurred"), or none after it
+# ("checked → ready flip: none").
+NEGATED_FLIP='(^|[^a-z])(no|not|never|without)( (a|any|the))?[^a-z]{1,4}checked[`*]* *(→|->|to) *[`*]*ready|(^|[^a-z])(no|not|never|without|did not|didn.t)( (a|any|the))?[^a-z]{1,4}flip|flip(ped|s)?[^a-z]{1,6}(none|n/a|did not|didn.t|not )|checked[`*]* *(→|->|to) *[`*]*ready[`*]*[^a-z]{1,6}(none|n/a)([^a-z]|$)'
+# REGATE: the word re-gate, a second or later gate call, or a gate call placed
+# after the regroup.
+REGATE='(^|[^a-z])re-?gat(e|es|ed|ing)([^a-z]|$)|(second|2nd|third) (`?task_check`? )?gate call|gate call[^.]{0,60}after the (regroup|repeated-link|round|edit)'
+# NEGATED_REGATE: a sentence naming the re-gate only to deny it: a negation in
+# front of it, a denial after it, or a label whose value is none ("Re-gate:
+# none", "Gate calls after the round: 0").
+NEGATED_REGATE='(^|[^a-z])(no|not|never|without|skip(s|ped)?)[^a-z][^.]{0,40}(re-?gat|gate call)|(re-?gat(e|ed|ing)?|gate call)[^.]{0,30}(did not|didn.t|was not|wasn.t|not (run|needed|required|applicable|triggered|performed|invoked|owed)|skipped)|(re-?gat(e|es|ed|ing)?|gate calls?( after the [a-z-]+)?|flips?)[*`]*[[:space:]]*:[^a-z0-9]{0,4}(none|n/a|no|0)[*`]*[[:space:]]*([(.;,]|$)'
+# REFUTED: a citation the immediate-ready refutation pass refuted, as a count
+# or a label ("12 refuted", "Refuted (4):", "were refuted"). NEGATED_REFUTED
+# drops a denial ("0 refuted", "none refuted", "no citation was refuted",
+# "Refuted: none").
+REFUTED='(^|[^a-z])refuted([^a-z]|$)'
+NEGATED_REFUTED='(^|[^a-z0-9])(0|no|none|zero|not|never|nothing)[^.;]{0,30}refuted|refuted[^a-z0-9]{0,4}(\(0\)|0|none|n/a|no)([^a-z0-9]|$)'
+
+# regate_reported -> the response records a gate call after the repeated-link
+# round: the word re-gate, a second or later gate call, a gate call placed
+# after the regroup, or a checked -> ready flip, which on a target the first
+# gate stamped ready can only come from a gate after something wrote checked.
+# A sentence that names the re-gate or the flip only to deny it is dropped
+# first, so neither "no re-gate ran" nor "No checked → ready flip occurred"
+# counts as one.
+regate_reported() {
+  response_readable || return 1
+  response_records | split_at '.;!?' \
+    | grep -iE "$REGATE|$FLIP" \
+    | grep -viE "$NEGATED_REGATE|$NEGATED_FLIP" \
+    | grep -q .
+}
+
+# reported_gate_calls -> the gate-call count the output contract makes the
+# report state ("2 gate calls", "Gate calls: **1**", "| Gate calls | 1 |"),
+# read from the plural count first so an ordinal such as "gate call 1" never
+# stands in for it; empty when the report carries no count.
+reported_gate_calls() {
+  local text n
+  response_readable || return 1
+  text="$(tr -d '*`|' < "$RESPONSE" | tr '[:upper:]' '[:lower:]')"
+  n="$(grep -oE '([0-9]+|two|three|four|five) gate calls|gate calls[^a-z0-9]{0,8}[0-9]+' <<<"$text" | head -1 \
+    | sed -E 's/two/2/; s/three/3/; s/four/4/; s/five/5/' | grep -oE '[0-9]+' | head -1)"
+  if [[ -z "$n" ]] && grep -qE '(^|[^0-9a-z])(1|one) gate call([^s]|$)' <<<"$text"; then n=1; fi
+  printf '%s' "$n"
+}
+
+# gate_call_after_round -> the run made a gate call after the repeated-link
+# round: the report names one, or its gate-call count passes one on a path
+# whose only gate call before the round was the first.
+gate_call_after_round() {
+  local n
+  regate_reported && return 0
+  n="$(reported_gate_calls)"
+  [[ -n "$n" ]] && (( n > 1 ))
+}
+
+# approval_stood -> the immediate approval stood: the report records the
+# citations surviving and records no citation refuted. The output contract
+# names each citation `survived` or `refuted`, so a run on the
+# citation-refutation path, and one whose signature never held, reads false.
+approval_stood() {
+  response_readable || return 1
+  grep -qiE 'surviv' "$RESPONSE" || return 1
+  ! response_records | tr -d '*`' | split_at '.;!?' \
+    | grep -iE "$REFUTED" | grep -viE "$NEGATED_REFUTED" | grep -q .
 }
 
 status_is_one_of() {
@@ -819,11 +926,21 @@ case "$eval_id" in
       grep -qiE 'goal|acceptance|contract|concern|split|group|meaning|organi' <<<"$reason" \
         && ! grep -qiE 'earns|each site|carve-out|its own link|distinct role' <<<"$reason"
     }
+    # A surfaced finding leaves the counted target's links at their staged
+    # count, whichever path the run took. Only where the immediate approval
+    # stood must the body also read as staged: on the citation-refutation path
+    # the refuted citations enter ordinary repair rounds that rewrite the body
+    # for their own issues, so a correct surfaced run changes it there.
+    staged_links="$(git -C "$proj" show HEAD:tasks/api_retry-header.md 2>/dev/null \
+      | grep -oF '(api_throttle-window-config.md)' | wc -l | tr -d ' ')"
+    links_at_staged_count() {
+      [[ "$(grep -oF '(api_throttle-window-config.md)' "$f" | wc -l | tr -d ' ')" == "$staged_links" ]]
+    }
     disposition_matches_body() {
       if [[ "$(disposition_of "api_retry-header")" == "regrouped" ]]; then
         warn_cleared && account_in_one_section && updated_changed
       else
-        target_body_untouched
+        links_at_staged_count && { ! approval_stood || target_body_untouched; }
       fi
     }
     # A gathered account carries the link with it, so at least one link to the
@@ -842,7 +959,22 @@ case "$eval_id" in
       fi
       ! surfaced_channel_names_repeated_link
     }
-    check "task ends status: ready, written only by task_check" status_ready
+    # The base <status_discipline> rule: a regroup keeps the meaning of Goal
+    # and the Acceptance contract, so it keeps the ready stamp the first gate
+    # wrote. Where the immediate approval stood, the round therefore writes no
+    # status and no gate call follows it; a run that wrote checked would end
+    # checked, or would need a gate call after the round to end ready, so this
+    # check and the final ready stamp together rule the checked write out. On
+    # the citation-refutation path the regroup rides an ordinary repair round
+    # on a checked task, and the gate calls after it belong to that loop.
+    stood_path_no_gate_after_round() {
+      response_readable || return 1
+      approval_stood || return 0
+      ! gate_call_after_round
+    }
+    check "task ends status: ready" status_ready
+    check "where the immediate approval stood, no gate call follows the repeated-link round" \
+      stood_path_no_gate_after_round
     check "the ready path reports a regrouped or surfaced disposition" disposition_reported
     check "no disposition line for the finding reads kept" no_kept_line
     check "a surfaced line carries an organizational reason" surfaced_reason_organizational
@@ -898,7 +1030,17 @@ case "$eval_id" in
       [[ "$words" == "regrouped" ]]
     }
     not_surfaced_unfixed() { ! surfaced_channel_names_repeated_link; }
-    check "task ends status: ready, written only by task_check" status_ready
+    # The target is staged at ready, so the first gate call reads prior_status
+    # ready, the immediate-approval signature cannot hold, and that gate's ready
+    # verdict stands into the repeated-link round. The plain-text naming there
+    # is a mechanical link change, so under the base <status_discipline> rule
+    # it keeps ready: the round writes no status and no gate call follows it.
+    # A loop that wrote checked would end checked, or would need a gate call
+    # after the round to end ready, so the two checks below together rule the
+    # checked write out.
+    no_gate_after_round() { response_readable && ! gate_call_after_round; }
+    check "task ends status: ready" status_ready
+    check "no gate call follows the repeated-link round" no_gate_after_round
     check "the repeated-link warn is cleared" warn_cleared
     check "the body links the sibling exactly once" one_link
     check "only ## Context names the sibling" named_in_context_only
@@ -909,6 +1051,7 @@ case "$eval_id" in
     check "no line for the finding reads kept or surfaced" every_line_regrouped
     check "the regrouped finding stays out of surfaced-but-not-fixed" not_surfaced_unfixed
     check "tasks tree lints clean after the run" task_lints
+    note_agent_attest "the first gate call read prior_status ready, so the immediate-approval signature did not hold and no citation refutation ran"
     note_agent_attest "the verifier approved the plain-text naming as the protocol's one-paragraph case rather than rejecting it as link stripping"
     note_agent_attest "response points to task_implement as the next step"
     ;;

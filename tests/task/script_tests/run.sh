@@ -987,9 +987,10 @@ EOF
     $ok
 }
 
-# Live-only body-prose checks: size and repeated-link stay quiet on
-# archived pages, keep firing on live pages, and leave mechanical
-# archive-inclusive findings untouched.
+# Status-gated body-prose checks: size and repeated-link fire only on live
+# open, checked, and ready tasks, stay quiet on every archived page and on
+# live implemented or audited tasks, and leave mechanical archive-inclusive
+# findings untouched.
 write_oversized_task() {
     local path=$1 status=$2 now=$3
     {
@@ -1141,6 +1142,84 @@ lo5_live_and_archive_inclusive_body_prose_match() {
     assert_eq "one live repeated-link finding" "$live_rl" "1" || ok=false
     assert_not_contains "archive-inclusive size finding stays on live page" "$archive_out" "arch_big" || ok=false
     assert_not_contains "archive-inclusive repeated-link stays on live page" "$archive_out" "arch_twice" || ok=false
+    $ok
+}
+
+# The size and repeated-link warnings prompt a reorganization before
+# implementation, so they gate on status rather than on location: a live
+# implemented or audited task stays quiet, while a live checked or ready
+# task still warns. Under the earlier location gate every live page warned,
+# so the quiet half of this scenario fails against that gate.
+lo6_status_gate_quiets_completed_live_tasks() {
+    local tasks; tasks=$(fresh_tasks lo6)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    write_task "$tasks" "link_target.md" "$now"
+    local st
+    for st in implemented audited checked ready; do
+        write_oversized_task "$tasks/big_${st}.md" "$st" "$now"
+        write_twice_linker "$tasks/twice_${st}.md" "$st" "$now" "link_target.md"
+    done
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (status-gated warns do not block)" "$rc" "0" || ok=false
+    # The filler lines also draw soft-pointer warns, which stay on every live
+    # page, so each count reads only its own finding category.
+    local size_n rl_n
+    for st in implemented audited checked ready; do
+        size_n=$(grep "split into multiple tasks" <<<"$out" | grep -c "big_${st}\.md" || true)
+        rl_n=$(grep "repeated-link" <<<"$out" | grep -c "twice_${st}\.md" || true)
+        case "$st" in
+            implemented|audited)
+                assert_eq "no size finding on a live $st page" "$size_n" "0" || ok=false
+                assert_eq "no repeated-link finding on a live $st page" "$rl_n" "0" || ok=false
+                ;;
+            *)
+                assert_eq "one size finding on a live $st page" "$size_n" "1" || ok=false
+                assert_eq "one repeated-link finding on a live $st page" "$rl_n" "1" || ok=false
+                ;;
+        esac
+    done
+    $ok
+}
+
+# An archived page that still carries open, checked, or ready has one actual
+# error: a status other than finished or deferred under archive/, which the
+# blocking migration finding reports. The size and repeated-link warnings stay
+# quiet there, because an archived body stays as delivered whatever status it
+# carries. A status-only gate fired both warnings on such a page, so the quiet
+# half of this scenario fails against that gate.
+lo7_archived_live_status_reports_only_migration() {
+    local tasks; tasks=$(fresh_tasks lo7)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    archived_task "$tasks" "link_target.md" "finished"
+    local st
+    for st in open checked ready; do
+        write_oversized_task "$tasks/archive/big_${st}.md" "$st" "$now"
+        write_twice_linker "$tasks/archive/twice_${st}.md" "$st" "$now" "link_target.md"
+    done
+    local ret; ret=$(run_lint "$tasks" --include-archive)
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (the archived live status blocks)" "$rc" "1" || ok=false
+    local page migration_n size_n rl_n
+    for st in open checked ready; do
+        for page in "big_${st}" "twice_${st}"; do
+            migration_n=$(grep "migrate to \`status: finished\`" <<<"$out" | grep -c "archive/${page}\.md" || true)
+            assert_eq "one migration finding on archived $page" "$migration_n" "1" || ok=false
+        done
+        size_n=$(grep "split into multiple tasks" <<<"$out" | grep -c "big_${st}\.md" || true)
+        rl_n=$(grep "repeated-link" <<<"$out" | grep -c "twice_${st}\.md" || true)
+        assert_eq "no size finding on an archived $st page" "$size_n" "0" || ok=false
+        assert_eq "no repeated-link finding on an archived $st page" "$rl_n" "0" || ok=false
+    done
+    # The close-out verifies a just-moved file through --file, so the scoped
+    # run reports the same actual error and stays quiet the same way.
+    ret=$(run_lint "$tasks" --file "archive/twice_ready.md")
+    rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 1 (file-scoped run blocks on the archived live status)" "$rc" "1" || ok=false
+    assert_contains "file-scoped run reports the migration finding" "$out" "migrate to \`status: finished\`" || ok=false
+    assert_not_contains "file-scoped run reports no repeated-link finding" "$out" "repeated-link" || ok=false
     $ok
 }
 
@@ -2077,6 +2156,8 @@ scenario lo2 "lint: live body-prose fixtures still warn"       lo2_live_body_pro
 scenario lo3 "lint: live page linking archive still warns"     lo3_live_linking_archived_target_still_warns
 scenario lo4 "lint: archive mode still reports mechanical"     lo4_archive_mode_still_reports_mechanical
 scenario lo5 "lint: live and archive-inclusive body-prose match" lo5_live_and_archive_inclusive_body_prose_match
+scenario lo6 "lint: status gate quiets completed live tasks"   lo6_status_gate_quiets_completed_live_tasks
+scenario lo7 "lint: archived live status reports only migration" lo7_archived_live_status_reports_only_migration
 scenario c1  "lint: fully valid task is clean"                 c1_fully_valid_task_is_clean
 scenario sp1 "lint: line-number position claims warn"          sp1_position_claims_warn
 scenario sp2 "lint: silent shapes stay quiet (fence-skip)"     sp2_silent_shapes_stay_quiet

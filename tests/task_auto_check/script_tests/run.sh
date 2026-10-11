@@ -124,7 +124,7 @@ s2_gate_is_task_check() {
   local ok=true
   assert_contains "gate uses task_check verbatim" "$SKILL" "Use \`task_check\` verbatim as the gate." || ok=false
   assert_contains "base readiness checklist cited" "$SKILL" "<readiness_checklist>" || ok=false
-  assert_contains "status writer enum keeps task_check as the auto_check-mode writer" "$AGENTS_DIR/auto_gate_task.md" "status writer: <task_check|deferred to the auto_shaper_task writer|none>" || ok=false
+  assert_contains "status writer enum keeps task_check as the only writer of a gate stamp" "$AGENTS_DIR/auto_gate_task.md" "status writer: <task_check|none>" || ok=false
   assert_contains "shaper read-side mode withholds the stamp" "$AGENTS_DIR/auto_gate_task.md" "withhold the stamp" || ok=false
   assert_contains "no second readiness bar" "$AGENTS_DIR/auto_gate_task.md" "do not define a second readiness bar" || ok=false
   assert_contains "task_check remains read-only body gate" "$REPO_ROOT/plugins/ai_dev/skills/task_check/SKILL.md" "it moves no file and changes no body content or other frontmatter" || ok=false
@@ -216,7 +216,9 @@ s8_mechanical_lint_finalization() {
   assert_contains "broken local link fix named" "$base" "**Local markdown links**" || ok=false
   assert_contains "wikilink and footnote conversion named" "$base" "**Standard-markdown conversion**" || ok=false
   assert_contains "task_auto_check finalization tag" "$SKILL" "<finalize_mechanical_lint>" || ok=false
-  assert_contains "immediate ready path routes the repeated-link round before finalize" "$SKILL" "When every citation survives, the \`ready\` stamp stands, the run runs the repeated-link repair round, and it then proceeds to \`<finalize_mechanical_lint>\`." || ok=false
+  assert_contains "immediate ready path routes the repeated-link round before finalize" "$SKILL" "When every citation survives, the \`ready\` stamp stands through the repeated-link repair round, which writes no status and calls no gate, and the run then proceeds to \`<finalize_mechanical_lint>\`." || ok=false
+  assert_contains "a regroup keeps ready, so the round writes no status and no gate call follows it" "$SKILL" "the round writes no status, no gate call follows it, and the run proceeds from the round to \`<finalize_mechanical_lint>\`" || ok=false
+  assert_not_contains_re "the regroup's checked write and re-gate are gone" "$SKILL" "writes .status: checked.|re-gate then runs|proceeds to the re-gate" || ok=false
   assert_not_contains_re "superseded ready-to-finalize wording is gone" "$SKILL" "as on any other .ready. verdict" || ok=false
   assert_contains "mechanical path skips reviewer verifier agents" "$SKILL" "do not spawn \`auto_reviewer_task\` or \`auto_verifier_task\` for mechanical lint findings" || ok=false
   assert_contains "mechanical path does not re-gate readiness" "$SKILL" "do not re-run \`task_check\` after applying them" || ok=false

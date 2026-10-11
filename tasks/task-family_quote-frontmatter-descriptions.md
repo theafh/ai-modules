@@ -2,8 +2,8 @@
 description: Make the task skills write description in double quotes, make the task linter block an unquoted value YAML would misread, and let task_fix repair it by quoting.
 scope: plugins/ai_dev/skills/task
 created: 2026-10-07T08:16:38
-updated: 2026-10-07T08:16:38
-status: open
+updated: 2026-10-10T21:23:44
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -67,8 +67,10 @@ write task files inherit the rule through the base skill, so none carries its ow
 copy.
 
 **Linter check.** In `lint.py`, report a blocking `frontmatter` finding that names
-the key for each unquoted top-level value that starts with a YAML indicator
-character, contains a colon followed by a space or a `#` after whitespace, or ends
+the key for each unquoted top-level value that starts with a character matching
+`YAML_HOSTILE_START_RE` in
+`plugins/ai_dev/skills/skill_doctor/scripts/discovery_safety.py`,
+contains a colon followed by a space or a `#` after whitespace, or ends
 with a colon. Make `parse_frontmatter` and `get_raw_scope` read a quoted value
 whole, so a `#` inside quotes stays part of the value, and strip a trailing
 comment only when its `#` follows whitespace outside quotes.
@@ -84,10 +86,12 @@ new fix to every task file the check flags, live and archived.
 
 **Tests.** Add `lint.py` scenarios to `tests/task/script_tests/run.sh` for each
 flagged case and for the quoted readings, and update the scenario count that the
-task harness entry in `tests/README.md` states. Add a check to the common part of
+task harness entry in `tests/README.md` states. Add a check under the
+`# --- universal ---` heading in
 `tests/task_create/evals/grade.sh` that the created task's `description:` is
-double-quoted. Add a `task_fix` eval whose staged backlog holds a live task with
-an unquoted description containing a colon followed by a space.
+double-quoted. Add a `task_fix` eval in `tests/task/evals/` beside `fix` whose staged
+backlog holds a live task with an unquoted description containing a colon
+followed by a space.
 
 **Out of scope:**
 
@@ -113,10 +117,11 @@ an unquoted description containing a colon followed by a space.
 - The `<lint>` section names the new blocking case and lists its fix in the
   mechanically fixable lint finding set.
 - The `task_create` grader checks that the created description is double-quoted,
-  and all three `task_create` evals pass with that check on the Cursor worker.
-- The new `task_fix` eval passes on the Cursor worker: after the run, the staged
-  description is double-quoted with its text unchanged, the body is
-  byte-identical, and the linter reports no blocking finding.
+  and every eval registered in `tests/task_create/evals/evals.json` passes with
+  that check on the Cursor worker.
+- The new `task_fix` eval in `tests/task/evals/` passes on the Cursor worker:
+  after the run, the staged description is double-quoted with its text unchanged,
+  the body is byte-identical, and the linter reports no blocking finding.
 - The linter's archive-inclusive run over this repository reports no finding from
   the new check.
 - The task harness entry in `tests/README.md` states the scenario count that

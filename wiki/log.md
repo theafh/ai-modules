@@ -1061,3 +1061,32 @@ pre-existing.
 
 The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-10 18:45] ingest | Owner statements on task status rules
+
+- raw/notes/task-status-rules-owner-statements-2026-10-10.md (new)
+- concepts/task-lifecycle-and-status-rules.md (new: the intended lifecycle,
+  which skill writes each status, the substantive-rewrite trigger, forward-only
+  status after implementation, final archived status, link-only archive
+  rewrites, the repeated-link warning as a pre-implementation prompt, and how a
+  divergence shows)
+- concepts/skill-family-architecture.md (related link to the new page)
+- index.md (new Concepts entry, Last updated, Total pages)
+
+## [2026-10-10 18:45] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-ingest lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-10 18:52] update | Owner confirmation of the task status restatements
+
+- raw/notes/task-status-rules-owner-statements-2026-10-10.md (re-ingest with
+  drift: the owner's confirmation of the size test and of the follow-up-task
+  routing for gaps in audited or archived work, hash refreshed)
+- concepts/task-lifecycle-and-status-rules.md (confidence raised to high, the
+  routing rule moved into the forward-only section, open questions settled)
+
+## [2026-10-10 18:52] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

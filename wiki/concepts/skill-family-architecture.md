@@ -1,7 +1,7 @@
 ---
 title: Skill family architecture
 created: 2026-08-08
-updated: 2026-10-01
+updated: 2026-10-10
 type: concept
 tags: [skill, agent, authoring, repo-structure, portability, discovery]
 sources: []
@@ -168,6 +168,9 @@ reading.
 - [Agent-delegated automation](agent-delegated-automation.md), for the runtime
   architecture the spawned agents implement.
 - [Plugin packaging and versioning](plugin-packaging-and-versioning.md).
+- [Task lifecycle and status rules](task-lifecycle-and-status-rules.md), for the
+  lifecycle the `task_*` family's base skill owns and the status rules its
+  siblings cite.
 - [The ai-modules repository](../summaries/ai-modules-repository.md).
 
 ## Derived from

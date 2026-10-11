@@ -18,6 +18,17 @@ mkdir -p "$target/proj/docs" "$target/proj/src/api" "$target/proj/tests"
 # protocol's one-paragraph case: the Grouping advocate names the sibling again
 # in plain text inside that paragraph, and the verifier approves that edit
 # rather than rejecting it as link stripping.
+#
+# The target is staged at status: ready rather than open. The first gate call
+# then reads prior_status ready, so the immediate-approval signature, which
+# needs prior_status open, cannot hold and no citation refutation runs. The
+# first gate's ready verdict stands into the repeated-link round, and the
+# one-paragraph edit there is a mechanical link change, which keeps ready under
+# the base <status_discipline> rule, so the round writes no status and no gate
+# call follows it. Staged at open, a first-call approval fires the signature,
+# and a refuted citation sends the loop through the ordinary repair path
+# instead, where the regroup lands on a checked task and the ready path under
+# test never runs.
 cat > "$target/proj/src/api/throttle.py" <<'EOF'
 """Request throttling. Emits HTTP 429 when a client exceeds its budget."""
 
@@ -97,17 +108,18 @@ default, and leave the module-level name as a thin accessor.
   reports, proven by a pytest case in `tests/test_throttle.py`.
 EOF
 
-# Target task. One Context paragraph carries the whole account of the handoff,
-# that the sibling task is moving the window constant into config, and links
-# the sibling twice. Approach reads the window without naming the sibling, so
-# nothing outside that paragraph needs to move.
+# Target task, staged at ready as explained above. One Context paragraph
+# carries the whole account of the handoff, that the sibling task is moving the
+# window constant into config, and links the sibling twice. Approach reads the
+# window without naming the sibling, so nothing outside that paragraph needs to
+# move.
 cat > "$target/proj/tasks/api_retry-header.md" <<'EOF'
 ---
 description: Add a Retry-After header to API throttling responses so clients know when to retry after HTTP 429.
 scope: src/api
 created: 2026-01-01T00:00:00
 updated: 2026-01-01T00:00:00
-status: open
+status: ready
 reported-by: Harness
 ---
 

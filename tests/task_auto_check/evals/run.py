@@ -71,34 +71,20 @@ def eval_timeout(eval_id: str, default: int) -> int:
     return default
 
 
-DEFAULT_IDS = [
-    "mechanical_lint_ready",
-    "mechanical_lint_link",
-    "mechanical_lint_frontmatter",
-    "mechanical_lint_markdown",
-    "mechanical_lint_oversized_surface",
-    "already_ready",
-    "intent_drift_human_route",
-    "drift_gate_narrowing_clean",
-    "drift_gate_refinement_clean",
-    "drift_gate_broadening_drift",
-    "drift_gate_committed_broadening_clean",
-    "repair_to_ready",
-    "scope_split_stuck",
-    "fidelity_rejects_drift",
-    "no_verified_fix",
-    "cap_override",
-    "gate_failure_user_stop",
-    "drift_failure_user_stop",
-    "verifier_failure_user_stop",
-    "guard_rebaseline_after_gate",
-    "interaction_scan_surfaces",
-    "interaction_scan_no_false_alarm",
-    "immediate_ready_citations_survive",
-    "immediate_ready_citations_overturn",
-    "regroup_via_reviewer",
-    "regroup_immediate_ready",
-]
+def _all_eval_ids():
+    """Every `id` in evals.json, in authoring order.
+
+    Derived rather than hand-listed, as tests/task/evals/run.py does: a
+    hand-maintained default set silently drops any eval added to evals.json
+    without a matching edit here, and a regression suite that skips evals
+    reports a clean tree it never checked. Narrow a run by naming ids on the
+    command line.
+    """
+    with open(THIS / "evals.json", encoding="utf-8") as fh:
+        return [e["id"] for e in json.load(fh)["evals"]]
+
+
+DEFAULT_IDS = _all_eval_ids()
 
 WORKER_PROMPT = """\
 You are running an automated skill regression eval. Do exactly this:

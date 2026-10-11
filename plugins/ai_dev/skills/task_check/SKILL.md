@@ -1,7 +1,7 @@
 ---
 name: task_check
 description: Check one task before implementation. Use when the user asks if a task is ready to build or still valid. Assess structure, scope, focus, complexity, contradictions, and ambiguity, verify the task's premise and described current state against the codebase, surface a stale invalidated task with deferral as the user's option, then stamp ready or checked and report readiness issues.
-version: 1.1.11
+version: 1.1.12
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -44,7 +44,9 @@ When the premise check returns its invalidated outcome, state that plainly in th
 
 When the base checklist's **Interaction scan** lens confirms a contradiction or an unattended interaction, report it as a readiness issue carrying its code evidence, the written juxtaposition of the interacting code against the task's change. Apply the base **Decide or label** rule: recommend the reconciled fix as the issue's resolution when the found code settles it, or surface the interaction with its options and at least one suggested path when it does not. task_check stays read-only either way. It recommends and surfaces and writes no task body content, so the status/`updated` stamp remains its only mutation.
 
-After assessing, stamp the outcome only: `status: ready` for a clean implementation-ready verdict, otherwise `status: checked`, honoring the base skill's `<backward_move_guard>`, and bump `updated`. Preserve the task body, all other frontmatter fields, and the file path.
+Read the task's `status` before assessing. A task at `implemented`, `audited`, `finished`, or `deferred` is past the readiness gate, and the base skill's `<backward_move_guard>` refuses a `ready` or `checked` stamp over it, so stop there with the file unchanged: name the status, and point completed work at `task_audit` and new work at a new follow-up task.
+
+After assessing, stamp the outcome only: `status: ready` for a clean implementation-ready verdict, otherwise `status: checked`, and bump `updated`. Preserve the task body, all other frontmatter fields, and the file path.
 </assessment>
 
 <output_contract>

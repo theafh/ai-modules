@@ -1,7 +1,7 @@
 ---
 name: auto_gate_task
 description: Wraps task_check for task_auto_check by applying the single readiness gate to one task and returning task_check's full report followed by a structured verdict derived from it: final status, prior status, ready boolean, per-item checklist record, issue list, and evidence labels.
-version: 1.0.10
+version: 1.0.11
 model: inherit
 background: false
 effort: max
@@ -32,7 +32,7 @@ Receive a task path, the resolved `task_check` skill path or name, the resolved 
   <rule>Preserve any `CHARTER.md` conflict surfaced by the base readiness checklist as a readiness issue in the structured verdict.</rule>
   <rule>Write `task_check`'s report first (its `# General assessment` paragraph and ranked `## Issues` list, in the same register a direct `task_check` run uses to report to the user), then derive the structured verdict from that report. Writing the report is what runs the hunt: a verdict written first anchors the walk to clean lines and reduces the report to justification. Keep the deliverable to the report plus the verdict so the orchestrating loop stays bounded. The session transcript, tool logs, and file dumps stay out. The verdict condenses prose, never the issue list: its `## Issues` carries the report's list with the same numbering and order, and every verified issue survives condensation with its location, defect, impact, and minimum fix intact.</rule>
   <rule>Keep all readiness claims tied to `task_check`; do not define a second readiness bar, score, rubric, or severity system.</rule>
-  <rule>Edit no files beyond what the invoking mode grants. In a `task_auto_check` run the only file change is `task_check`'s own status/`updated` stamp; in an `auto_shaper_task` run make no file change at all and return evidence, including the intended stamp, for the single serialized writer to consume.</rule>
+  <rule>Edit no files beyond what the invoking mode grants. In a `task_auto_check` run the only file change is `task_check`'s own status/`updated` stamp; in an `auto_shaper_task` run make no file change at all and return evidence, including the intended stamp, for the single serialized writer to read. That writer never applies the intended stamp, since it writes status only as the base `<status_discipline>` rule directs for its own rewrites.</rule>
   <rule>Return `status: unassessable` with `ready: false` when the gate cannot run to a verdict: the task file is unreadable, the `task_check` or base `task` skill cannot be resolved, or the assessment cannot complete. State the blocker in place of the report, name it under the verdict's `## Issues`, and write no stamp; never substitute a self-computed readiness verdict.</rule>
 </policy>
 
@@ -70,9 +70,9 @@ updated: <timestamp-or-unknown>
 ## Evidence
 - task_check: <path-or-name-used>
 - readiness source: base task <readiness_checklist>
-- status writer: <task_check|deferred to the auto_shaper_task writer|none>
+- status writer: <task_check|none>
 ```
 
-The `# General assessment` and first `## Issues` sections are `task_check`'s report in its own output contract; on an `unassessable` verdict they reduce to the blocker statement. `stamp` is `written` for a `task_auto_check` run, `intended-only` for an `auto_shaper_task` read-side run, and `none` for an `unassessable` verdict. `prior_status` paired with `status` makes stamp movement explicit: a verdict that moves a prior `checked` stamp forward to `ready` shows that flip on its face. The `## Checklist` section carries one line per checklist item so a skipped item is visible as a missing line; on an `unassessable` verdict, keep the lines assessed so far and mark the rest `not reached`. The content-lens line's `clean` value carries its citation in the template's two parts (the artifact read and the verbatim span that settled the item), while the charter, structure, premise, approach fitness, and interaction scan lines keep the citation-free form above, and an `issue <n>` value on any line carries no citation, because the issue it points at already carries its location and evidence.
+The `# General assessment` and first `## Issues` sections are `task_check`'s report in its own output contract; on an `unassessable` verdict they reduce to the blocker statement. `stamp` is `written` for a `task_auto_check` run, `intended-only` for an `auto_shaper_task` read-side run, and `none` for an `unassessable` verdict. `status writer` is `task_check` when the stamp is `written` and `none` otherwise, because no writer applies an intended stamp. `prior_status` paired with `status` makes stamp movement explicit: a verdict that moves a prior `checked` stamp forward to `ready` shows that flip on its face. The `## Checklist` section carries one line per checklist item so a skipped item is visible as a missing line; on an `unassessable` verdict, keep the lines assessed so far and mark the rest `not reached`. The content-lens line's `clean` value carries its citation in the template's two parts (the artifact read and the verbatim span that settled the item), while the charter, structure, premise, approach fitness, and interaction scan lines keep the citation-free form above, and an `issue <n>` value on any line carries no citation, because the issue it points at already carries its location and evidence.
 
 </output_contract>

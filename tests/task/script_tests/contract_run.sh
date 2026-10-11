@@ -178,6 +178,150 @@ assert_contains "$task_skill" 'When `ARCHITECTURE.md` exists at the project root
 assert_contains "$task_finish_skill" "Follow the \`task\` skill's \`<archive>\` workflow end to end" \
   "task_finish still delegates archive mechanics to the base skill"
 
+# Status discipline: one family rule for what a body rewrite does to status.
+# Each assert below pins one clause of the owner's status rules and fails on
+# the text it replaced: the any-rewrite trigger, the confirm-and-proceed
+# guard, the location-gated warnings, and the regroup re-gate.
+auto_shaper_agent="$repo_root/plugins/ai_dev/agents/auto_shaper_task.md"
+[ "$(grep -c '^<status_discipline>$' "$task_skill" | tr -d ' ')" = 1 ] \
+  || fail "base task skill opens the status-discipline block once"
+guard_line=$(grep -n '^</backward_move_guard>$' "$task_skill" | cut -d: -f1)
+block_line=$(grep -n '^<status_discipline>$' "$task_skill" | cut -d: -f1)
+[ -n "$guard_line" ] && [ -n "$block_line" ] && [ "$block_line" -gt "$guard_line" ] \
+  || fail "the status-discipline block follows the backward-move guard"
+# Rule 1: only a substantive rewrite sends ready back to checked.
+assert_contains "$task_skill" 'returns to `checked` in the same edit only when the rewrite changes what the task delivers or how that delivery is checked' \
+  "a ready task returns to checked only when the rewrite changes what it delivers or how that is checked"
+assert_contains "$task_skill" 'A change to `## Goal` always returns the task to `checked`.' \
+  "a Goal change always returns a ready task to checked"
+assert_contains "$task_skill" 'it keeps `ready` when it only makes an existing requirement explicit' \
+  "an Approach or Acceptance edit that only makes a requirement explicit keeps ready"
+assert_contains "$task_skill" 'A mechanical change to links never returns the task to `checked`, whether it re-points a link or turns a link into plain text' \
+  "a mechanical link change keeps ready"
+assert_contains "$task_skill" 'a regroup under the `<lint>` **Repeated-link react protocol**, and a clarifying note keep `ready`' \
+  "a regroup and a clarifying note keep ready"
+assert_not_contains "$task_skill" 'whenever the rewrite goes beyond the `<lint>` mechanically fixable lint finding set' \
+  "the any-rewrite trigger is superseded"
+assert_not_contains "$task_skill" 'The trigger is the edit itself rather than its reach' \
+  "the edit-not-reach rationale for the any-rewrite trigger is gone"
+assert_contains "$task_skill" 'rewrote a `ready` task in a way that changes what it delivers or how that delivery is checked' \
+  "the frontmatter checked entry carries the substantive-rewrite trigger"
+assert_contains "$task_skill" 'whose rewrite of a `ready` task changes what the task delivers or how that delivery is checked writes `checked` in that edit' \
+  "the lifecycle writer list carries the substantive-rewrite trigger"
+assert_contains "$task_skill" '**A task file a split creates** starts at `open`' \
+  "a file a split creates starts at open"
+assert_contains "$task_skill" 'Every coherence repair writes `status` as the family `<status_discipline>` rule directs' \
+  "backlog coherence points at the status-discipline block"
+assert_contains "$task_skill" "an enumeration completed to the site set the task's own rule already implies each keep a \`ready\` task at \`ready\`" \
+  "backlog coherence maps its meaning-preserving repair shapes to keeping ready"
+assert_contains "$task_skill" 'write `status` in that edit as `<status_discipline>` directs for a body rewrite' \
+  "the update workflow points at the status-discipline block"
+assert_not_contains "$task_skill" 'A coherence pass writes no `status` value at all, in either direction.' \
+  "the coherence-only status rule is superseded"
+assert_not_contains "$task_skill" "leaves its \`status\` standing, \`ready\` included" \
+  "the coherence-only keep-ready wording is superseded"
+# Rule 2: after implementation, status only moves forward.
+assert_contains "$task_skill" 'routes the finding to `task_audit`, to `task_finish`, or to a new follow-up task, and applies only mechanical link and lint fixes to the file' \
+  "a finding on completed work is routed, and only mechanical link and lint fixes apply"
+assert_contains "$task_skill" "An edit the user explicitly asks for through \`<update>\` stays the user's call, and it leaves the status as it is." \
+  "a user's update of completed work leaves its status as it is"
+assert_contains "$task_skill" 'No skill or agent writes `open`, `checked`, `ready`, or `implemented` over a later status, and user confirmation does not open that path either' \
+  "no writer moves completed work backward, confirmation included"
+assert_contains "$task_skill" 'is a hard stop: the stage writes no status, leaves the file as it is' \
+  "the backward-move guard is a hard stop"
+assert_not_contains "$task_skill" 'ask the user to confirm the move is intended' \
+  "the confirm-and-proceed guard is superseded"
+assert_contains "$task_skill" 'the move from `ready` to `checked` that `<status_discipline>` prescribes for a rewrite' \
+  "the guard lets the rule-one move from ready to checked through"
+# Rule 3: archived status is final.
+assert_contains "$task_skill" '**A `finished` or `deferred` task** keeps its status for good' \
+  "an archived task keeps its status for good"
+assert_contains "$task_skill" 'Its body stays as delivered apart from mechanical link rewrites, so a family repair skill or agent reports a finding about it instead of applying the repair.' \
+  "an archived task's body stays as delivered apart from mechanical link rewrites"
+assert_not_contains "$task_skill" 'reopen the deferred task' \
+  "prior-art no longer offers to reopen a deferred task"
+# Rule 4: archiving rewrites links and changes no other status.
+assert_contains "$task_skill" "These link rewrites are mechanical and change no task's status" \
+  "the archive workflow's link rewrites change no task's status"
+assert_contains "$task_skill" "The close-out's own move in step 1 is the only status this workflow writes." \
+  "the close-out move is the archive workflow's only status write"
+# Rule 5: the repeated-link and size warnings fire before implementation only.
+assert_contains "$task_skill" 'The oversized-page and repeated-link warnings share one gate and fire only on `open`, `checked`, and `ready` tasks' \
+  "the lint warning scope names the pre-implementation statuses"
+assert_not_contains "$task_skill" 'oversized page (>300 lines; live tasks only)' \
+  "the location-gated size scope is superseded"
+assert_contains "$task_skill" 'The repeated-link check fires only on `open`, `checked`, and `ready` tasks' \
+  "the react protocol states the status gate"
+assert_contains "$task_skill" 'so it keeps a `ready` task at `ready` under `<status_discipline>`' \
+  "the react protocol keeps a regrouped ready task ready"
+assert_not_contains "$task_skill" 'surfaced because the task is <status>' \
+  "the completed-work surfaced reason is gone from the hub"
+assert_contains "$task_skill" 'A check whose repair reorganizes or rewrites body prose beyond the mechanically fixable lint finding set, as the oversized-page and repeated-link checks do, runs on `open`, `checked`, and `ready` tasks only.' \
+  "the archive-scope rule gates a reorganizing check on the pre-implementation statuses"
+assert_contains "$task_skill" 'A check whose repair is a mechanical body fix, as the soft-pointer cleanup is, runs on live pages.' \
+  "the archive-scope rule keeps a mechanical body fix on live pages"
+assert_contains "$task_skill" 'A check whose repair is mechanical metadata or a mechanical link rewrite, such as a re-pointed link or a wikilink or footnote converted to a standard markdown link, runs archive-inclusive' \
+  "the archive-scope rule keeps metadata and link rewrites archive-inclusive"
+assert_not_contains "$task_skill" 'runs on live pages only' \
+  "the location-drawn archive-scope line for body prose is superseded"
+# The siblings and agents follow the rules.
+assert_contains "$task_fix_skill" 'write `status` in each repair'"'"'s edit as the base `<status_discipline>` rule directs' \
+  "task_fix's gated coherence reconcile cites the status-discipline block"
+assert_not_contains "$task_fix_skill" "leave a semantics-preserving repair's \`status\` standing" \
+  "task_fix no longer restates the status rule"
+assert_contains "$task_fix_skill" "Each one keeps the meaning of the body, so under the base \`<status_discipline>\` rule it keeps the task's status, \`ready\` included." \
+  "task_fix's advisory repairs keep a ready task ready"
+assert_contains "$task_fix_skill" 'leave the `finished` or `deferred` status of an archived file as it is' \
+  "task_fix leaves archived status as it is"
+assert_contains "$task_fix_skill" 'Every other finding, which the linter reports only on an `open`, `checked`, or `ready` task, is a meaning-preserving reorganization' \
+  "task_fix's inline regroup names the status gate"
+assert_not_contains "$task_fix_skill" 'surfaced because the task is <status>' \
+  "task_fix drops the completed-work surfaced reason"
+assert_not_contains "$task_fix_skill" 'Every other live finding is a meaning-preserving reorganization' \
+  "task_fix no longer regroups every live finding inline"
+assert_not_contains "$auto_shaper_agent" 'leave every `status:` value exactly as found' \
+  "auto_shaper_task no longer leaves every status as found"
+assert_not_contains "$auto_shaper_agent" 'never demoted in its frontmatter' \
+  "auto_shaper_task no longer bans the checked write"
+assert_contains "$auto_shaper_agent" "The base \`<status_discipline>\` block decides whether each fix may change the task's body and what \`status\` the fix's own edit writes." \
+  "auto_shaper_task's remediation cites the status-discipline block for every fix"
+assert_not_contains "$auto_shaper_agent" 'a mechanical or meaning-preserving fix keeps `ready`' \
+  "auto_shaper_task keeps no copy of the status-discipline cases"
+assert_not_contains "$auto_shaper_agent" 'did not already require' \
+  "auto_shaper_task keeps no copy of the substantive-rewrite trigger"
+assert_not_contains "$auto_shaper_agent" 'a rewrite of a `ready` task beyond the base `<lint>` mechanically fixable lint finding set writes `checked`' \
+  "auto_shaper_task drops the any-rewrite trigger"
+assert_contains "$auto_shaper_agent" 'its `<status_discipline>` block defines what every rewrite does to `status`' \
+  "auto_shaper_task's defect-kind rule cites the status-discipline block"
+assert_contains "$auto_shaper_agent" 'create the new task file at `status: open`, as `<status_discipline>` directs for a file a split creates' \
+  "auto_shaper_task's split instruction cites the new-file clause"
+assert_contains "$auto_shaper_agent" 'Flag a task for re-check in the report only where `<status_discipline>` leaves its status standing' \
+  "auto_shaper_task's coherence remediation cites the status-discipline block"
+assert_contains "$auto_shaper_agent" 'every task left flagged for re-check under the base `<status_discipline>` block' \
+  "auto_shaper_task's report format cites the status-discipline block"
+assert_not_contains "$auto_gate_agent" 'deferred to the auto_shaper_task writer' \
+  "no writer applies an intended gate stamp"
+assert_contains "$task_auto_check_skill" '`task_check` owns the ready/checked verdict and status write.' \
+  "task_auto_check leaves every status write to task_check"
+assert_not_contains "$task_auto_check_skill" 'is the one other writer of `checked`' \
+  "task_auto_check no longer writes checked itself"
+assert_contains "$task_auto_check_skill" 'Preserve frontmatter except for the `updated` timestamp; stamp' \
+  "task_auto_check's repair edit writes no status"
+assert_contains "$task_auto_check_skill" 'the round writes no status, no gate call follows it' \
+  "the repeated-link round keeps ready with no re-gate"
+assert_not_contains "$task_auto_check_skill" 'one re-gate then runs before' \
+  "the repeated-link round's re-gate is gone"
+assert_contains "$task_check_skill" "is past the readiness gate, and the base skill's \`<backward_move_guard>\` refuses a \`ready\` or \`checked\` stamp over it" \
+  "task_check stops on completed or archived work"
+assert_contains "$task_implement_skill" "refuses an \`implemented\` stamp over it, so stop before any edit" \
+  "task_implement stops before building on audited or archived work"
+assert_contains "$task_audit_skill" 'Route the gaps on an `implemented` task to `task_implement`, and the gaps on an `audited` task or an archived `finished` task to a new follow-up task' \
+  "task_audit routes gaps on later statuses to a follow-up task"
+assert_not_contains "$task_audit_skill" 'leave `status: implemented` and route the gaps to `task_implement`' \
+  "task_audit no longer sends every gap to task_implement"
+assert_contains "$task_finish_skill" 'keeps that status for good under the base `<status_discipline>` rule' \
+  "task_finish leaves an archived task's status final"
+
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/task-standing-docs.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 

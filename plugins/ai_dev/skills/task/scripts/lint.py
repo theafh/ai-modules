@@ -6,11 +6,12 @@ filename naming convention, frontmatter completeness, provenance,
 status/location consistency, datetime format, title presence, page size,
 and name collisions across live + archive. Pass `--include-archive` to
 extend the mechanical per-file checks across the whole archive: task_fix
-runs it for whole-archive maintenance, while the body-prose checks stay on
-live pages. Pass `--file PATH` to scope the per-file checks
-to one named task file, live or archived: the task archive close-out runs
-it to verify the single file it just moved. The two flags are mutually
-exclusive.
+runs it for whole-archive maintenance. The oversized-page and repeated-link
+warnings fire only on live open, checked, and ready tasks, and the
+soft-pointer check stays on live pages. Pass `--file PATH` to scope the
+per-file checks to one named task file, live or archived: the task archive
+close-out runs it to verify the single file it just moved. The two flags
+are mutually exclusive.
 
 Usage:
     python3 lint.py [TASKS_PATH] [--quiet] [--include-archive | --file PATH]
@@ -57,6 +58,11 @@ VALID_STATUS = {
     "deferred",
 }
 ARCHIVE_STATUS = {"finished", "deferred"}
+# The statuses before implementation. The oversized-page and repeated-link
+# warnings fire only on live tasks at these statuses, because each prompts
+# the author to reorganize or split a task that may have grown organically,
+# and that prompt is moot once the task is implemented, audited, or archived.
+PRE_IMPLEMENTATION_STATUS = {"open", "checked", "ready"}
 IMPLEMENTER_STATUS = {"implemented", "audited", "finished"}
 
 NAME_RE = re.compile(r"^(?P<scope>[a-z0-9]+(?:-[a-z0-9]+)*)_(?P<name>[a-z0-9]+(?:-[a-z0-9]+)*)\.md$")
@@ -454,13 +460,30 @@ def check_archive_migration(tasks: Path, page: Path, fm: dict | None) -> list[Is
     )]
 
 
-def check_size(tasks: Path, page: Path) -> list[Issue]:
-    """Warn when a live task body exceeds the split threshold.
+def is_pre_implementation(fm: dict | None) -> bool:
+    """Return True when the frontmatter status is open, checked, or ready."""
+    return bool(fm) and fm.get("status") in PRE_IMPLEMENTATION_STATUS
 
-    Open tasks only — archived pages are closed records nobody maintains, so
-    checking them would only create permanent noise.
+
+def is_live_pre_implementation(tasks: Path, page: Path, fm: dict | None) -> bool:
+    """Return True for a live task at open, checked, or ready.
+
+    The one gate the oversized-page and repeated-link warnings share. An
+    archived page stays quiet whatever status it carries: a status other than
+    finished or deferred under archive/ is the actual error there, and the
+    blocking migration finding reports it.
     """
-    if is_archived(tasks, page):
+    return is_pre_implementation(fm) and not is_archived(tasks, page)
+
+
+def check_size(tasks: Path, page: Path, fm: dict | None) -> list[Issue]:
+    """Warn when a task body exceeds the split threshold.
+
+    Live open, checked, and ready tasks only: the warning prompts a split
+    before implementation, so an implemented or audited task, a page without
+    a valid status, and every archived page stay quiet.
+    """
+    if not is_live_pre_implementation(tasks, page, fm):
         return []
     text = page.read_text(encoding="utf-8")
     line_count = len(text.splitlines())
@@ -733,7 +756,7 @@ def check_local_links(tasks: Path, page: Path) -> list[Issue]:
     return issues
 
 
-def check_repeated_links(tasks: Path, page: Path) -> list[Issue]:
+def check_repeated_links(tasks: Path, page: Path, fm: dict | None) -> list[Issue]:
     """Warn when one local link target appears more than once in a body.
 
     Counts every non-fenced markdown link whose target is local (skips
@@ -742,10 +765,12 @@ def check_repeated_links(tasks: Path, page: Path) -> list[Issue]:
     file count once. Warn-only and candidate-not-verdict: the count is a
     hint that material about the target may sit in several places, not
     an instruction to drop a link. Leave out of the mechanically fixable
-    finding set. Open tasks only — archived pages are closed records nobody
-    maintains, so checking them would only create permanent noise.
+    finding set. Live open, checked, and ready tasks only: the warning
+    prompts a reorganization before implementation, so an implemented or
+    audited task, a page without a valid status, and every archived page
+    stay quiet.
     """
-    if is_archived(tasks, page):
+    if not is_live_pre_implementation(tasks, page, fm):
         return []
     text = page.read_text(encoding="utf-8")
     _, body = parse_frontmatter(text)
@@ -845,7 +870,8 @@ def main() -> int:
         action="store_true",
         help="Extend the mechanical per-file checks across the whole "
         "tasks/archive/ tree for task_fix whole-archive maintenance (legacy "
-        "retrofit hints included); body-prose checks stay on live pages.",
+        "retrofit hints included); the size and repeated-link warnings stay "
+        "on live open, checked, and ready tasks.",
     )
     scope.add_argument(
         "--file",
@@ -880,11 +906,11 @@ def main() -> int:
         issues.extend(check_scope(tasks, page))
         issues.extend(check_location(tasks, page, fm))
         issues.extend(check_archive_migration(tasks, page, fm))
-        issues.extend(check_size(tasks, page))
+        issues.extend(check_size(tasks, page, fm))
         issues.extend(check_no_footnotes(page))
         issues.extend(check_no_wikilinks(page))
         issues.extend(check_local_links(tasks, page))
-        issues.extend(check_repeated_links(tasks, page))
+        issues.extend(check_repeated_links(tasks, page, fm))
         issues.extend(check_no_position_claims(tasks, page))
 
     print(render_report(tasks, issues, args.quiet))

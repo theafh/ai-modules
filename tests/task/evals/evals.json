@@ -237,6 +237,7 @@
         "The move was done with git mv (git tracks the file at its new path, not as a fresh untracked write).",
         "The inbound link in api_throttle-config.md is re-pointed to archive/api_rate-limit.md.",
         "The inbound link in the already-archived api_legacy-notes.md is re-pointed from ../api_rate-limit.md to the sibling path api_rate-limit.md — the scan covers tasks/archive/ too.",
+        "Both link rewrites are mechanical and change no task's status: api_throttle-config.md stays open and the archived api_legacy-notes.md stays finished.",
         "The backlog lints clean (no blocking findings) after the move.",
         "The response surfaces the finished-vs-deferred decision it made."
       ]
@@ -664,7 +665,7 @@
       "id": "fix_coherence_reconcile_escalated",
       "skill": "task_fix",
       "prompt": "Health-check the tasks backlog in this project and assess whether these tasks stay coherent with each other and with the current code. I accept these five findings up front, so reconcile them in this run: the severity_label edit that two tasks both own, the stale unreachable_clean_bar anchor, the license-check severity that re-blocks the accepted-info clean-bar exception a sibling establishes, the check-module docstring sweep that enumerates fewer modules than its own rule implies, and the opposed path-check and glob-check severity postures. Resolve that accepted set autonomously through the task tree shaper. Leave every finding I have not accepted alone. Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line \"selected: <comma-separated task filenames>\" naming exactly the selected live set, one line per selected task in the form \"verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>\", and a \"## Ship order\" section naming each wave and the tasks in it.",
-      "expected_output": "The accepted five-finding set is reconciled through the existing auto_shaper_task escalation as the single writer: one owner plus a verify-only counterpart for the shared severity_label edit, the anchor refreshed to the shipped helper name, the license-finding severity changed with its rationale recorded once, the check-module enumeration completed, and the severity posture reconciled or its reason recorded. Everything unaccepted stays untouched, every edited task's Goal is byte-identical, and the archive-inclusive lint is clean.",
+      "expected_output": "The accepted five-finding set is reconciled through the existing auto_shaper_task escalation as the single writer: one owner plus a verify-only counterpart for the shared severity_label edit, the anchor refreshed to the shipped helper name, the license-finding severity changed with its rationale recorded once, the check-module enumeration completed, and the severity posture reconciled or its reason recorded. A ready task ends checked only where its repair changed what it delivers or how that is checked, such as the changed severity tier, while the refreshed anchor, the completed enumeration, a declared order, and a recorded reason keep their tasks ready; every untouched task keeps its seeded status, and the pass stamps no task ready. Everything unaccepted stays untouched, every edited task's Goal is byte-identical, and the archive-inclusive lint is clean.",
       "files": [
         "evals/fixtures/fix_coherence/setup.sh"
       ],
@@ -679,6 +680,7 @@
         "auto_reviewer_task proposes and auto_verifier_task approves backlog-coherence repair shapes, not only splits and relocations.",
         "The unaccepted findings are untouched: the TOML/JSON fork stays unresolved, the Goal-altering repair is not applied, the Acceptance-altering repair is not applied, and the ready summary-line task is byte-identical.",
         "Every edited task's ## Goal is byte-identical to its pre-reconcile Goal.",
+        "A `ready` task ends `checked` only where its repair changed what it delivers or how that is checked, such as a changed severity tier or a verify-only step replacing its own edit; the refreshed anchor, the completed enumeration, a declared order, and a recorded reason keep it `ready`. Every untouched task keeps its seeded status, and the pass stamps no task `ready`.",
         "The archive-inclusive linter reports zero blocking findings after the reconcile."
       ]
     },
@@ -686,7 +688,7 @@
       "id": "fix_coherence_reconcile_inline_staleness",
       "skill": "task_fix",
       "prompt": "Health-check the tasks backlog in this project and assess whether these tasks stay coherent with each other and with the current code. I accept only the staleness repairs: refresh the stale unreachable_clean_bar anchor in the clean-bar note task, and add the out-of-scope note the run-summary task needs. Leave the judgement calls unrepaired — the double-owned severity_label edit, the license-check severity, the check-module docstring sweep, and the opposed path and glob postures all stay as they are, and do not escalate to the task tree shaper. For the quiet-flag task, flag it for re-check in the report instead of applying the repair that would change what its Acceptance requires. Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line \"selected: <comma-separated task filenames>\" naming exactly the selected live set, one line per selected task in the form \"verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>\", and a \"## Ship order\" section naming each wave and the tasks in it.",
-      "expected_output": "The staleness-only accepted set is applied inline with no escalation: the stale anchor is refreshed and the additive Out of scope note lands, both files bump `updated`. The ready task stays ready because the note leaves its Goal, Approach, and Acceptance semantics unchanged. The Acceptance-altering candidate is flagged for re-check and not applied. Every judgement call the prompt withheld stays byte-identical, and the archive-inclusive lint is clean.",
+      "expected_output": "The staleness-only accepted set is applied inline with no escalation: the stale anchor is refreshed and the additive Out of scope note lands, both files bump `updated`. Both rewritten tasks started ready and keep ready under the status-discipline rule, since the refreshed anchor and the additive note change neither what the task delivers nor how it is checked, and the pass stamps no task ready. The Acceptance-altering candidate is flagged for re-check and not applied. Every judgement call the prompt withheld stays byte-identical, and the archive-inclusive lint is clean.",
       "files": [
         "evals/fixtures/fix_coherence/setup.sh"
       ],
@@ -694,11 +696,12 @@
         "The report names `mode used: inline` and states that no auto_shaper_task escalation ran.",
         "(b) the anchor refresh lands: unreachable_clean_bar is gone, reachable_clean_bar is in place, `updated` bumped.",
         "(k) the additive **Out of scope:** note lands on the ready task and `updated` is bumped.",
-        "(k) that task stays `status: ready` — the change-significance rule leaves a semantics-preserving repair's status standing.",
+        "(k) that task stays `status: ready`: the status-discipline rule keeps a `ready` task `ready` through a clarifying note that changes neither what it delivers nor how it is checked.",
         "(l) the Acceptance-altering repair is flagged for re-check in the report and not applied; the file is byte-identical and no status is re-stamped.",
         "The withheld judgement calls are all byte-identical: the double-owned edit on both sides, the license-finding severity, the short sweep, and both posture tasks.",
         "(f) the TOML/JSON fork stays unresolved and (i) the Goal-altering repair is not applied.",
         "Every edited task's ## Goal is byte-identical to its pre-reconcile Goal.",
+        "The refreshed anchor and the additive note keep their `ready` tasks `ready`, every untouched task keeps its seeded status, and the pass stamps no task `ready`.",
         "The archive-inclusive linter reports zero blocking findings after the reconcile."
       ]
     },
