@@ -298,7 +298,12 @@ def check(assertion: dict, ctx: dict) -> tuple[bool, str]:
                 if not line.startswith(str(sandbox_root)):
                     offenders.append(line)
         ok = not offenders
-        return ok, "no leak" if ok else f"reported writes outside sandbox: {offenders}"
+        return (
+            ok,
+            f"no leak under {sandbox_root}"
+            if ok
+            else f"reported writes outside sandbox: {offenders}",
+        )
 
     if t == "real_home_wiki_absent":
         ok = not REAL_HOME_WIKI.exists()
@@ -350,9 +355,25 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
         if re.match(r"^[a-z][a-z0-9_]*$", key)
     }
     parsed = parse_report(report_text, extra_field_keys)
-    sandbox_root = LAYER2_ROOT / scenario["sandbox_path"]
-    # Prefer this pass's own snapshot; the live sandbox has been restaged for
-    # the next pass and reflects only the most recent run.
+    # Prefer the recorded outside-checkout root from timing.json; fall back to
+    # the legacy SCRIPT_DIR staging path when an older pass has no record.
+    worker_rc = None
+    integrity = None
+    checkout_unread = None
+    recorded_root = None
+    if timing_file.is_file():
+        try:
+            timing_data = json.loads(timing_file.read_text())
+            worker_rc = timing_data.get("claude_rc")
+            integrity = timing_data.get("artefacts_read_from_micro_deployment")
+            checkout_unread = timing_data.get("checkout_unread")
+            raw_root = timing_data.get("sandbox_root")
+            if raw_root:
+                recorded_root = pathlib.Path(raw_root)
+        except (ValueError, OSError):
+            worker_rc = None
+    sandbox_root = recorded_root or (LAYER2_ROOT / scenario["sandbox_path"])
+    # Prefer this pass's own snapshot; the live root is removed after the pass.
     snapshot = pass_dir / "sandbox-snapshot"
     sandbox = snapshot if snapshot.is_dir() else sandbox_root
 
@@ -370,19 +391,13 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
     # real_home_wiki_absent) would otherwise pass a no-op worker. This tightens the
     # final `passed` without touching per-assertion pass_rate, so the aggregate
     # regression baseline is unperturbed.
-    worker_rc = None
-    # A worker that read artefacts outside its micro-deployment measured
-    # something other than the skill under test, so the record fails the pass
-    # on its own and travels into grading.json with its path list.
-    integrity = None
-    if timing_file.is_file():
-        try:
-            timing_data = json.loads(timing_file.read_text())
-            worker_rc = timing_data.get("claude_rc")
-            integrity = timing_data.get("artefacts_read_from_micro_deployment")
-        except (ValueError, OSError):
-            worker_rc = None
+    # A worker that read artefacts outside its micro-deployment, or any path
+    # inside the checkout, measured something other than the skill under test.
     integrity_ok = not isinstance(integrity, dict) or bool(integrity.get("passed", True))
+    checkout_ok = (
+        not isinstance(checkout_unread, dict)
+        or bool(checkout_unread.get("passed", True))
+    )
     worker_ok = worker_rc == 0 and bool(response_text.strip())
 
     expectations = []
@@ -408,9 +423,10 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
         "worker_ok": worker_ok,
         "worker_rc": worker_rc,
         "artefacts_read_from_micro_deployment": integrity,
+        "checkout_unread": checkout_unread,
         "expectations": expectations,
         "pass_rate": passed_count / len(scenario["assertions"]) if scenario["assertions"] else 0.0,
-        "passed": all_assertions_pass and worker_ok and integrity_ok,
+        "passed": all_assertions_pass and worker_ok and integrity_ok and checkout_ok,
     }
 
 
@@ -448,6 +464,10 @@ def main() -> int:
             if isinstance(record, dict) and not record.get("passed", True):
                 note += ("  [artefacts_read_from_micro_deployment failed: "
                          f"{record.get('out_of_set')}]")
+            checkout = result.get("checkout_unread")
+            if isinstance(checkout, dict) and not checkout.get("passed", True):
+                note += ("  [checkout_unread failed: "
+                         f"{checkout.get('inside_checkout')}]")
             print(f"  [{mark}] {sid} {pass_dir.name}: {result['pass_rate']:.1%}{note}")
 
     (run_dir / "grading_summary.json").write_text(json.dumps(summary, indent=2))

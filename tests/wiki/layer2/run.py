@@ -3,27 +3,27 @@
 
 This is the regression-test entrypoint for the wiki skill. Each invocation:
 
-1. Restages the sandboxes this run will execute via setup_scenarios.sh
-   (every scenario on a full run; only `--scenario` ids on a subset run).
-2. Submits one worker per scenario to a ThreadPoolExecutor (default
+1. Submits one worker per scenario to a ThreadPoolExecutor (default
    `vendor.DEFAULT_PARALLEL_WORKERS`).
    Inside each worker, passes run sequentially:
-     - Build the prompt via build_prompt.py.
+     - Create an outside-checkout sandbox root via
+       `worker_isolation.create_sandbox_root` and stage the scenario into it
+       through `setup_scenarios.sh <id> <root>`.
+     - Build the prompt via build_prompt.py against that root.
      - Micro-deploy the wiki family skills, the `auto_shaper_wiki` agent,
        and the `format_markdown` skill that agent fixes markdown by, through
        the deploy script into a scratch home, and rewrite the prompt's
        source paths to the deployed paths.
      - Run the vendor-resolved print-mode worker; capture stdout/stderr/timing
-       (with `artefacts_read_from_micro_deployment`) into the pass dir.
-     - Between passes within the same scenario, restage just that one
-       sandbox so pass-2 starts from the same initial state as pass-1.
-3. Runs grade.py and aggregate.py.
-4. Compares to the most recent prior benchmark.json (if any) and reports
+       (with `artefacts_read_from_micro_deployment` and `checkout_unread`)
+       into the pass dir, then snapshot the root and remove it.
+2. Runs grade.py and aggregate.py.
+3. Compares to the most recent prior benchmark.json (if any) and reports
    regressions.
 
-Sandbox isolation guarantees concurrent scenarios cannot collide: each scenario
-has its own dir under tests/wiki/layer2/<sid>/ and each pass writes to its own
-workspace/run-<ts>/<sid>/pass-N/ dir.
+Sandbox isolation guarantees concurrent scenarios cannot collide: each pass
+owns a fresh root under the system temporary directory and writes results to
+its own workspace/run-<ts>/<sid>/pass-N/ dir.
 
 Layout:
     workspace/run-<ts>/
@@ -82,6 +82,9 @@ WIKI_SCRIPTS = ["discover_wiki.sh", "init_wiki.sh", "lint.py", "compute_sha256.p
 sys.path.insert(0, str(WIKI_TESTS.parent / "lib"))
 import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
+import worker_isolation  # noqa: E402  (shared sandbox-root helper)
+
+ISOLATION_PREFIX = "wiki_layer2_"
 
 
 def latest_previous_benchmark() -> pathlib.Path | None:
@@ -91,15 +94,19 @@ def latest_previous_benchmark() -> pathlib.Path | None:
     return candidates[-1] if candidates else None
 
 
-def restage_one(scenario_id: str) -> None:
-    """Restage a single scenario's sandbox. Safe to call concurrently from
-    different worker threads only when each call targets a distinct scenario id.
-    Within one scenario, callers must serialize this with that scenario's
-    in-flight worker subprocess."""
-    subprocess.run(
-        [str(SETUP_SCRIPT), scenario_id],
-        check=True, stdout=subprocess.DEVNULL,
-    )
+def restage_one(
+    scenario_id: str, destination: pathlib.Path | None = None
+) -> None:
+    """Restage a single scenario's sandbox.
+
+    When ``destination`` is set, stage into that directory (a
+    ``create_sandbox_root`` path for behavioural runs). When omitted, stage
+    under ``tests/wiki/layer2/<id>/`` as the bare setup script does.
+    """
+    cmd = [str(SETUP_SCRIPT), scenario_id]
+    if destination is not None:
+        cmd.append(str(destination))
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
 
 
 def scenario_workdir(scenario: dict, sandbox_root: pathlib.Path) -> pathlib.Path:
@@ -129,95 +136,100 @@ def rewrite_prompt_paths(
 def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
              resolved: vendor.Resolved, timeout: int) -> dict:
     sid = scenario["id"]
-    sandbox_root = THIS / scenario["sandbox_path"]
-    workdir = scenario_workdir(scenario, sandbox_root)
     pass_dir = run_dir / sid / f"pass-{pass_num}"
     pass_dir.mkdir(parents=True, exist_ok=True)
-
-    report_path = pass_dir / "report.md"
     prompt_path = pass_dir / "prompt.md"
+    report_dest = pass_dir / "report.md"
 
-    # Build prompt
-    prompt = subprocess.run(
-        [
-            sys.executable, str(BUILD_PROMPT),
-            sid, str(pass_num),
-            "--report-path", str(report_path),
-            "--sandbox-root", str(sandbox_root),
-        ],
-        capture_output=True, text=True, check=True,
-    ).stdout
-
-    model_label = resolved.worker_model or "<inherit>"
-    print(
-        f"  [{sid} pass-{pass_num}] running {resolved.config.label} "
-        f"(model={model_label}) ...",
-        flush=True,
+    sandbox_root = worker_isolation.create_sandbox_root(
+        f"{ISOLATION_PREFIX}{sid}_{pass_num}_"
     )
-    start = time.time()
-    with micro_deploy.micro_deploy(
-        resolved.vendor, ARTEFACTS, workdir, preflight=False
-    ) as md:
-        prompt = rewrite_prompt_paths(prompt, scenario, md.path_map)
-        prompt_path.write_text(prompt)
-        worker = micro_deploy.run_worker(
-            vendor_name=resolved.vendor, bin_name=resolved.bin,
-            model=resolved.worker_model, prompt=prompt, deploy=md,
-            timeout=timeout, cwd=workdir,
-        )
-        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
-        integrity = micro_deploy.integrity_record(
-            worker.read_paths, worker.out_of_set_paths
-        )
-    if not integrity["passed"]:
+    try:
+        restage_one(sid, sandbox_root)
+        workdir = scenario_workdir(scenario, sandbox_root)
+        # Keep the report inside the root so the prompt never names a checkout
+        # path; copy it into the pass directory after the worker returns.
+        report_in_root = sandbox_root / "report.md"
+
+        prompt = subprocess.run(
+            [
+                sys.executable, str(BUILD_PROMPT),
+                sid, str(pass_num),
+                "--report-path", str(report_in_root),
+                "--sandbox-root", str(sandbox_root),
+            ],
+            capture_output=True, text=True, check=True,
+        ).stdout
+
+        model_label = resolved.worker_model or "<inherit>"
         print(
-            f"  [{sid} pass-{pass_num}] integrity FAIL: worker read artefacts "
-            f"outside the micro-deployment: {integrity['out_of_set']}",
+            f"  [{sid} pass-{pass_num}] running {resolved.config.label} "
+            f"(model={model_label}) ...",
             flush=True,
         )
-    duration_s = time.time() - start
+        start = time.time()
+        with micro_deploy.micro_deploy(
+            resolved.vendor, ARTEFACTS, workdir, preflight=False
+        ) as md:
+            prompt = rewrite_prompt_paths(prompt, scenario, md.path_map)
+            prompt_path.write_text(prompt)
+            worker = micro_deploy.run_worker(
+                vendor_name=resolved.vendor, bin_name=resolved.bin,
+                model=resolved.worker_model, prompt=prompt, deploy=md,
+                timeout=timeout, cwd=workdir,
+            )
+            rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+            integrity, checkout_unread = micro_deploy.provenance_records(worker)
+        fail = micro_deploy.read_checks_fail_message(
+            integrity, checkout_unread, vendor=resolved.vendor
+        )
+        if fail:
+            print(
+                f"  [{sid} pass-{pass_num}] read-check FAIL: {fail}",
+                flush=True,
+            )
+        duration_s = time.time() - start
 
-    (pass_dir / "response.txt").write_text(stdout)
-    (pass_dir / "stderr.txt").write_text(stderr)
+        (pass_dir / "response.txt").write_text(stdout)
+        (pass_dir / "stderr.txt").write_text(stderr)
 
-    # If the agent didn't Write report.md, fall back to extracting from response.
-    if not report_path.is_file():
-        report_path.write_text(stdout)
+        if report_in_root.is_file():
+            shutil.copy2(report_in_root, report_dest)
+        elif not report_dest.is_file():
+            report_dest.write_text(stdout)
 
-    # micro_deploy.run_worker keeps no token usage from the stream; only duration.
-    timing = {
-        "duration_s": duration_s,
-        "duration_ms": int(duration_s * 1000),
-        "worker_rc": rc,
-        "claude_rc": rc,
-        "total_tokens": None,
-        "model": model_label,
-        "artefacts_read_from_micro_deployment": integrity,
-    }
-    (pass_dir / "timing.json").write_text(json.dumps(timing, indent=2))
+        timing = {
+            "duration_s": duration_s,
+            "duration_ms": int(duration_s * 1000),
+            "worker_rc": rc,
+            "claude_rc": rc,
+            "total_tokens": None,
+            "model": model_label,
+            "sandbox_root": str(sandbox_root),
+            "artefacts_read_from_micro_deployment": integrity,
+            "checkout_unread": checkout_unread,
+        }
+        (pass_dir / "timing.json").write_text(json.dumps(timing, indent=2))
 
-    # Snapshot the sandbox as this pass left it. Sandboxes are restaged between
-    # passes, so without a per-pass copy every filesystem assertion grades
-    # against whatever the LAST pass left behind — each pass reads an identical
-    # verdict and per-pass state is unrecoverable. grade.py prefers this
-    # snapshot and falls back to the live sandbox when it is absent.
-    snapshot = pass_dir / "sandbox-snapshot"
-    if snapshot.exists():
-        shutil.rmtree(snapshot)
-    shutil.copytree(sandbox_root, snapshot, symlinks=True)
+        # Snapshot the sandbox as this pass left it before the root is removed.
+        snapshot = pass_dir / "sandbox-snapshot"
+        if snapshot.exists():
+            shutil.rmtree(snapshot)
+        shutil.copytree(sandbox_root, snapshot, symlinks=True)
 
-    return timing
+        return timing
+    finally:
+        shutil.rmtree(sandbox_root, ignore_errors=True)
 
 
 def run_scenario(s: dict, passes: int, run_dir: pathlib.Path,
                  resolved: vendor.Resolved, timeout: int) -> None:
-    """Run all passes of a single scenario sequentially. Between passes,
-    restage just this scenario's sandbox so pass-2 sees the same initial
-    state as pass-1."""
-    sid = s["id"]
+    """Run all passes of a single scenario sequentially.
+
+    Each pass stages into its own outside-checkout root, so pass-2 starts from
+    the same initial fixture state as pass-1 without sharing a live directory.
+    """
     for p in range(1, passes + 1):
-        if p > 1:
-            restage_one(sid)
         run_pass(s, p, run_dir, resolved, timeout)
 
 
@@ -277,13 +289,8 @@ def main() -> int:
     print(f"Scenarios: {[s['id'] for s in scenarios]}, passes per scenario: {passes}")
     micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
-    # Restage only the scenarios this run will execute. A subset run must not
-    # stage every sandbox just to skip them later.
-    if wanted is None:
-        subprocess.run([str(SETUP_SCRIPT)], check=True)
-    else:
-        for scenario in scenarios:
-            restage_one(scenario["id"])
+    # Each pass stages into its own create_sandbox_root destination; no
+    # pre-staging under tests/wiki/layer2/<scenario>/ is required.
 
     workers = max(1, min(args.workers, len(scenarios)))
     print(f"Running {len(scenarios)} scenario(s) with {workers} parallel worker(s)")

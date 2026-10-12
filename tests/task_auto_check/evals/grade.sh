@@ -34,7 +34,7 @@ TASKS="$proj/tasks"
 
 # Worker transcript written by run.py next to the sandbox; absent when the
 # eval is staged operator-driven. Transcript checks run only when present.
-RESPONSE="$target/../response.txt"
+RESPONSE="${RESPONSE_FILE:-$target/../response.txt}"
 
 pass=0
 fail=0

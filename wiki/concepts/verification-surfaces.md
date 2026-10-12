@@ -113,15 +113,17 @@ deployed roles and skills also reach a sandboxed worker. A worker given a
 scratch configuration directory listed only the built-in ones
 ([Anthropic Claude Code](../entities/anthropic-claude-code.md)). A malformed
 sandbox settings file fails silently, so a run that depends on a staged style
-proves the style loaded before it measures anything. The `language_humanizer`
-and `natural_language` harnesses run this way, through the shared isolation
-helper under `tests/lib/`. On Cursor, a deployed skill can also take the place of
-the copy under test: a print-mode worker read the deployed copy rather than a
-staged copy outside its workspace, and a project copy did not displace the
-deployed one unless the prompt named its path ([Cursor](../entities/cursor.md)).
-A scratch home on Cursor and a scratch configuration directory on Claude each take
-the deployed copies out of view, and a skill deployed into that scratch location
-was the copy loaded by name on both vendors
+proves the style loaded before it measures anything. Every behavioural runner
+that drives a worker through `micro_deploy.run_worker` stages its sandbox under
+`worker_isolation.create_sandbox_root`, outside the checkout, the home
+directory, and any git repository. On Cursor, a deployed skill can also take the
+place of the copy under test: a print-mode worker read the deployed copy rather
+than a staged copy outside its workspace, and a project copy did not displace
+the deployed one unless the prompt named its path
+([Cursor](../entities/cursor.md)). A scratch home on Cursor and a scratch
+configuration directory on Claude each take the deployed copies out of view, and
+a skill deployed into that scratch location was the copy loaded by name on both
+vendors
 ([micro-home probes](../raw/notes/micro-deployed-worker-home-probes-2026-10-08.md)). A skill the harness did not
 stage, such as the hub or base skill the skill under test reaches by name,
 resolved on both vendors to the deployed copy, or to the repository checkout when
@@ -130,9 +132,11 @@ the sandbox sat inside it
 The eval runners therefore deploy each pass's declared skills, agents, and styles
 through the repository's own deploy script into such a scratch home, plus the
 sandbox project for the types a vendor loads only at project scope, and every pass
-checks its worker's reads: a skill, agent, or style file read from anywhere else,
-the user's home and the checkout's own sources included, fails the pass
-(`tests/lib/micro_deploy.py`). A helper the worker spawns counts as the worker.
+checks its worker's reads two ways (`tests/lib/micro_deploy.py`): a skill, agent,
+or style file read from anywhere else, the user's home and the checkout's own
+sources included, fails the pass as `artefacts_read_from_micro_deployment`, and
+any read, glob, or named path that resolves inside the repository checkout fails
+the pass as `checkout_unread`. A helper the worker spawns counts as the worker.
 Claude's stream carries a helper's tool calls
 ([Claude Code delegation surfaces](claude-delegation-surfaces.md)), but Cursor's
 leaves them out, so on Cursor the check also reads each chat transcript the CLI

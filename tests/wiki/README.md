@@ -334,10 +334,12 @@ tests/wiki/
     ├── aggregate.py                # gradings -> benchmark.json + regression list
     ├── render_report.py            # benchmark + grading -> self-contained report.html
     ├── run.py                      # standalone orchestrator (claude -p)
-    ├── L2-1/ ... L2-5/             # restaged on each run; transient
+    ├── L2-1/ ...                   # optional bare setup_scenarios.sh staging
     └── workspace/
         └── run-<ts>/
             ├── L2-*/pass-N/{prompt, response, report, timing, grading, sandbox-snapshot}/
+            │                         # each pass stages under create_sandbox_root,
+            │                         # then keeps sandbox-snapshot/ after teardown
             ├── grading_summary.json
             ├── benchmark.json
             ├── benchmark.md

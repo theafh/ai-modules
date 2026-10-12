@@ -84,19 +84,24 @@ pass's path map. Each pass records
 spawned helper's reads included, and a read of any skill, agent, or style file
 outside the scratch home and sandbox project fails the pass, whether it is a
 copy in the user's home or a source under the checkout's `plugins/` or
-`styles/`. Claude's stream carries a helper's tool calls, but Cursor keeps them
-out of the parent's stream, so on Cursor the check also reads the chat
-transcripts the CLI writes under the scratch home. The check expands shell paths
-against the worker's own environment, so `~` is the scratch home on Cursor but
-the real home on Claude, and it reads each command left to right: a variable
-that an earlier statement of the command assigns expands its later paths, and
-a relative path after the command's own `cd` resolves against that directory.
-A prefix assignment such as `HOME=<fake home> bash x.sh` stays with its own
-command, as the shell scopes it. A vendor-layout path that
-keeps a variable the command never assigns fails closed. A `plugins/` or
-`styles/` path behind such a variable stays unchecked, because a sandbox
-fixture tree can share its shape. Each run probes authentication once inside a
-micro-deployment environment before its first pass.
+`styles/`. Each pass also records `checkout_unread` beside that check: any
+read, glob, or named path that resolves inside the repository checkout fails
+the pass and lists the path under `inside_checkout`. Claude's stream carries a
+helper's tool calls, but Cursor keeps them out of the parent's stream, so on
+Cursor both checks also read the chat transcripts the CLI writes under the
+scratch home. The checks expand shell paths against the worker's own
+environment, so `~` is the scratch home on Cursor but the real home on Claude,
+and they read each command left to right: a variable that an earlier statement
+of the command assigns expands its later paths, and a relative path after the
+command's own `cd` resolves against that directory. A prefix assignment such as
+`HOME=<fake home> bash x.sh` stays with its own command, as the shell scopes
+it. A vendor-layout path that keeps a variable the command never assigns fails
+closed for the artefact check. A `plugins/` or `styles/` path behind such a
+variable stays unchecked for artefacts, because a sandbox fixture tree can
+share its shape; a path that still carries an unexpanded variable also stays
+unflagged for `checkout_unread`, because it cannot be placed. Each run probes
+authentication once inside a micro-deployment environment before its first
+pass.
 
 Each runner declares the artefacts its workers may load once, as an
 `ARTEFACTS` list or an `artefacts_for()` function. Those names feed the deploy
@@ -197,9 +202,10 @@ Do not pin dated model ids such as `claude-sonnet-4-6`.
 
 Same rules as `tests/CLAUDE.md`: content-keyed cache under
 `<evals>/.eval_cache/`, worker completion gates before trusting grade.sh,
-and sandboxes that must not inherit host instructions when the skill under
-test is about prose or standing instructions. Those sandboxes come from
-`tests/lib/worker_isolation.py`.
+and behavioural sandboxes that must not inherit host instructions. Every
+behavioural runner takes its sandbox root from
+`worker_isolation.create_sandbox_root`; `isolation_args` stays with the
+runners that pass it today.
 
 ### Reading results
 

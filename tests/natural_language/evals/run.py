@@ -201,7 +201,7 @@ def run_worker(
     resolved: vendor.Resolved,
     timeout: int,
     extra_args: list[str],
-) -> tuple[int, str, str, float, dict]:
+) -> tuple[int, str, str, float, dict, dict]:
     start = time.time()
     worker = micro_deploy.run_worker(
         vendor_name=resolved.vendor,
@@ -213,15 +213,14 @@ def run_worker(
         cwd=proj,
         extra_args=extra_args,
     )
-    integrity = micro_deploy.integrity_record(
-        worker.read_paths, worker.out_of_set_paths
-    )
+    integrity, checkout_unread = micro_deploy.provenance_records(worker)
     return (
         worker.returncode,
         worker.stdout,
         worker.stderr,
         time.time() - start,
         integrity,
+        checkout_unread,
     )
 
 
@@ -253,7 +252,7 @@ def marker_preflight(resolved: vendor.Resolved, timeout: int) -> dict:
             resolved.vendor, ARTEFACTS, proj, preflight=False
         ) as md:
             stage_marker(proj)
-            code, stdout, stderr, duration, _integrity = run_worker(
+            code, stdout, stderr, duration, _integrity, _checkout = run_worker(
                 md,
                 proj,
                 "Reply.",
@@ -336,8 +335,8 @@ def run_pass(
             extra = worker_isolation.isolation_args(resolved.vendor)
             if use_append:
                 extra = extra + ["--append-system-prompt-file", str(staged_style)]
-            code, stdout, stderr, duration, integrity_record = run_worker(
-                md, proj, prompt, resolved, args.timeout, extra
+            code, stdout, stderr, duration, integrity_record, checkout_unread = (
+                run_worker(md, proj, prompt, resolved, args.timeout, extra)
             )
         stdout, stderr = as_text(stdout), as_text(stderr)
         (pass_dir / "response.txt").write_text(stdout)
@@ -399,6 +398,7 @@ def run_pass(
             key: value["passed"] for key, value in mechanical.get("integrity", {}).items()
         }
         integrity["artefacts_read_from_micro_deployment"] = integrity_record["passed"]
+        integrity["checkout_unread"] = checkout_unread["passed"]
         void = (
             scenario == "connected_rewrite"
             and completed
@@ -434,6 +434,7 @@ def run_pass(
             "mechanical_detail": mechanical.get("mechanical", {}),
             "judge_detail": qualitative,
             "artefacts_read_from_micro_deployment": integrity_record,
+            "checkout_unread": checkout_unread,
         }
         (pass_dir / "verdict.json").write_text(json.dumps(verdict, indent=2))
         diverging = [key for key, ok in {**assertions, **integrity}.items() if not ok]

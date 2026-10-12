@@ -4,8 +4,9 @@
 # stay fully isolated from the operator's real home tree.
 #
 # Usage:
-#   setup_scenarios.sh               # restage ALL sandboxes
-#   setup_scenarios.sh <SCENARIO_ID> # restage only one (e.g. L2-1, WI-2, WU-3)
+#   setup_scenarios.sh                          # restage ALL sandboxes under SCRIPT_DIR
+#   setup_scenarios.sh <SCENARIO_ID>            # restage only one under SCRIPT_DIR/<id>
+#   setup_scenarios.sh <SCENARIO_ID> <DEST_DIR> # restage one scenario into DEST_DIR
 
 set -euo pipefail
 
@@ -14,11 +15,20 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 WIKI_SKILL="$REPO_ROOT/plugins/knowledge_management/skills/wiki"
 INIT="$WIKI_SKILL/scripts/init_wiki.sh"
 
+# Optional override: when set, reset_sandbox stages into this path instead of
+# SCRIPT_DIR/<id>. Behavioural runs pass a create_sandbox_root destination here.
+STAGE_DEST=""
+
 stage() { mkdir -p "$1"; }
 
 reset_sandbox() {
     local id=$1
-    local sandbox="$SCRIPT_DIR/$id"
+    local sandbox
+    if [[ -n "${STAGE_DEST}" ]]; then
+        sandbox="$STAGE_DEST"
+    else
+        sandbox="$SCRIPT_DIR/$id"
+    fi
     rm -rf "$sandbox"
     stage "$sandbox/HOME"
     printf '%s' "$sandbox"
@@ -1446,12 +1456,18 @@ if [[ $# -eq 0 ]]; then
     done
     echo "Layer 2 sandboxes staged under $SCRIPT_DIR"
     ls -1 "$SCRIPT_DIR"
-else
+elif [[ $# -eq 1 || $# -eq 2 ]]; then
     sid=$1
+    if [[ $# -eq 2 ]]; then
+        STAGE_DEST=$2
+    fi
     fn="stage_$sid"
     if ! declare -F "$fn" >/dev/null; then
         echo "ERROR: unknown scenario id '$sid' (known: ${ALL_SCENARIOS[*]})" >&2
         exit 2
     fi
     "$fn"
+else
+    echo "ERROR: usage: setup_scenarios.sh [<SCENARIO_ID> [<DEST_DIR>]]" >&2
+    exit 2
 fi

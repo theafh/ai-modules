@@ -1237,6 +1237,254 @@ def test_auth_preflight_failure_surfaces_cli_message() -> None:
     )
 
 
+def test_checkout_classifier() -> None:
+    """classify_inside_checkout flags harness reads and leaves sandbox paths alone."""
+
+    with tempfile.TemporaryDirectory() as td:
+        sandbox_root = worker_isolation.create_sandbox_root("md_checkout_")
+        try:
+            proj = sandbox_root / "proj"
+            proj.mkdir()
+            (proj / "notes.md").write_text("in sandbox\n")
+            scratch = pathlib.Path(td) / "scratch-home"
+            scratch.mkdir()
+            (scratch / "tmp.txt").write_text("scratch\n")
+
+            harness = REPO_ROOT / "tests" / "task_create" / "evals"
+            # Paths as paths_from_tools would emit them (globs and cd targets
+            # included), matching the 9 October 2026 recorded shapes.
+            shapes = {
+                "evals.json": str(harness / "evals.json"),
+                "grade.sh": str(harness / "grade.sh"),
+                "README.md": str(REPO_ROOT / "tests" / "task_create" / "README.md"),
+                "RUNBOOK.md": str(REPO_ROOT / "tests" / "task_create" / "RUNBOOK.md"),
+                "fixtures": str(
+                    harness / "fixtures" / "reconcile-recorded" / "setup.sh"
+                ),
+                "evals glob": str(harness / "**/*"),
+                "cd target": str(REPO_ROOT / "tests" / "task_create"),
+                "guardrail glob": str(
+                    REPO_ROOT / "tests" / "guardrail_audit" / "*.{json,md,sh}"
+                ),
+                "AS-1 glob": str(
+                    REPO_ROOT / "tests" / "wiki" / "layer2" / "**/AS-1/**/*"
+                ),
+            }
+            flagged = micro_deploy.classify_inside_checkout(
+                list(shapes.values()), cwd=proj
+            )
+            for label, raw in shapes.items():
+                want = str(micro_deploy._resolve_worker_path(raw, proj.resolve()))
+                check(f"checkout classifier flags {label}", want in flagged)
+
+            # Shell `cd` into the checkout: extract paths, then classify.
+            shell_paths = micro_deploy.paths_from_tools(
+                [
+                    micro_deploy.ToolRecord(
+                        name="Bash",
+                        input={
+                            "command": (
+                                f"cd {REPO_ROOT / 'tests' / 'task_create'} && ls"
+                            )
+                        },
+                    )
+                ],
+                cwd=proj,
+            )
+            shell_flagged = micro_deploy.classify_inside_checkout(
+                shell_paths, cwd=proj
+            )
+            check(
+                "checkout classifier flags shell cd into the checkout",
+                any("task_create" in path for path in shell_flagged),
+            )
+
+            clean = [
+                str(proj / "notes.md"),
+                "notes.md",
+                str(scratch / "tmp.txt"),
+                "/dev/null",
+                "$HARNESS/evals/evals.json",
+            ]
+            left = micro_deploy.classify_inside_checkout(clean, cwd=proj)
+            check("clean list leaves nothing flagged", left == [])
+
+            empty = micro_deploy.checkout_unread_record([])
+            check(
+                "checkout_unread empty list passes",
+                empty == {"passed": True, "inside_checkout": []},
+            )
+            nonempty = micro_deploy.checkout_unread_record(
+                [str(harness / "evals.json")]
+            )
+            check(
+                "checkout_unread non-empty list fails",
+                nonempty["passed"] is False
+                and nonempty["inside_checkout"] == [str(harness / "evals.json")],
+            )
+        finally:
+            shutil.rmtree(sandbox_root, ignore_errors=True)
+
+
+def test_run_worker_returns_checkout_reads() -> None:
+    """run_worker surfaces checkout reads from Cursor transcripts and Claude streams."""
+
+    real_run = subprocess.run
+    checkout_file = REPO_ROOT / "tests" / "task_create" / "evals" / "evals.json"
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        sandbox = root / "proj"
+        sandbox.mkdir()
+
+        cursor_handle = micro_deploy.micro_deploy(
+            "cursor", ["language_humanizer"], sandbox, preflight=False
+        )
+        try:
+            helper_transcript = "\n".join(
+                [
+                    json.dumps({"role": "user", "message": {"content": []}}),
+                    json.dumps(
+                        {
+                            "role": "assistant",
+                            "message": {
+                                "content": [
+                                    {
+                                        "type": "tool_use",
+                                        "name": "Read",
+                                        "input": {"path": str(checkout_file)},
+                                    }
+                                ]
+                            },
+                        }
+                    ),
+                    json.dumps({"type": "turn_ended", "status": "success"}),
+                ]
+            )
+            parent_stream = "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "type": "system",
+                            "subtype": "init",
+                            "session_id": "parent-chat",
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "type": "tool_call",
+                            "subtype": "completed",
+                            "tool_call": {
+                                "taskToolCall": {
+                                    "args": {"description": "Read", "prompt": "x"},
+                                    "result": {
+                                        "success": {
+                                            "conversationSteps": [],
+                                            "agentId": "helper-chat",
+                                        }
+                                    },
+                                },
+                                "toolCallId": "call-1",
+                                "startedAtMs": "1",
+                                "completedAtMs": "2",
+                            },
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "type": "result",
+                            "result": "relayed",
+                            "session_id": "parent-chat",
+                        }
+                    ),
+                ]
+            )
+
+            def cursor_run(cmd, **kwargs):
+                transcripts = (
+                    cursor_handle.scratch_home
+                    / ".cursor/projects/proj-slug/agent-transcripts"
+                )
+                path = transcripts / "helper-chat" / "helper-chat.jsonl"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(helper_transcript + "\n")
+                return fake_result(0, parent_stream)
+
+            subprocess.run = cursor_run  # type: ignore[assignment]
+            try:
+                result = micro_deploy.run_worker(
+                    vendor_name="cursor",
+                    bin_name="agent",
+                    model="auto",
+                    prompt="hi",
+                    deploy=cursor_handle,
+                    timeout=5,
+                )
+            finally:
+                subprocess.run = real_run  # type: ignore[assignment]
+
+            check(
+                "cursor helper checkout read reaches inside_checkout_paths",
+                str(checkout_file.resolve()) in result.inside_checkout_paths,
+            )
+            integrity, checkout = micro_deploy.provenance_records(result)
+            check(
+                "provenance_records checkout_unread fails for helper read",
+                checkout["passed"] is False
+                and str(checkout_file.resolve()) in checkout["inside_checkout"],
+            )
+            check(
+                "read_checks_passed is false when checkout is flagged",
+                not micro_deploy.read_checks_passed(integrity, checkout),
+            )
+        finally:
+            cursor_handle.close()
+
+        claude_handle = micro_deploy.micro_deploy(
+            "claude", ["language_humanizer"], sandbox, preflight=False
+        )
+        try:
+            helper_event = json.dumps(
+                {
+                    "type": "assistant",
+                    "parent_tool_use_id": "toolu_helper",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Read",
+                                "input": {"file_path": str(checkout_file)},
+                            }
+                        ]
+                    },
+                }
+            )
+            stream = "\n".join(
+                [helper_event, json.dumps({"type": "result", "result": "ok"})]
+            )
+
+            def claude_run(cmd, **kwargs):
+                return fake_result(0, stream)
+
+            subprocess.run = claude_run  # type: ignore[assignment]
+            try:
+                result = micro_deploy.run_worker(
+                    vendor_name="claude",
+                    bin_name="claude",
+                    model="sonnet",
+                    prompt="hi",
+                    deploy=claude_handle,
+                    timeout=5,
+                )
+            finally:
+                subprocess.run = real_run  # type: ignore[assignment]
+            check(
+                "claude helper checkout read reaches inside_checkout_paths",
+                str(checkout_file.resolve()) in result.inside_checkout_paths,
+            )
+        finally:
+            claude_handle.close()
+
+
 def test_library_unlinked_before_removal() -> None:
     real_rmtree = shutil.rmtree
     observed: dict[str, bool] = {}
@@ -1284,6 +1532,8 @@ def main() -> int:
     test_shell_paths_expand_against_worker_env()
     test_run_worker_command_shape_and_timeout()
     test_helper_reads_reach_provenance()
+    test_checkout_classifier()
+    test_run_worker_returns_checkout_reads()
     test_auth_preflight_failure_surfaces_cli_message()
     test_library_unlinked_before_removal()
     print(f"\n{PASS} passed, {FAIL} failed")

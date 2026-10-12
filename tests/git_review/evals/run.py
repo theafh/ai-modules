@@ -60,8 +60,11 @@ sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; run output is gitignored)
 import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper)
+import worker_isolation  # noqa: E402  (shared sandbox-root helper)
 
 ARTEFACTS = ["git_review", "git_checkout", "git_commit", "git_refresh", "guardrail"]
+
+ISOLATION_PREFIX = "git_review_"
 
 
 def source_roots_for():
@@ -208,123 +211,135 @@ def worker_completed(rc: int, stdout: str) -> bool:
 def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             timeout: int, cache, force: bool):
     eval_dir = run_dir / eval_id
-    target = eval_dir / "sandbox"
-    target.mkdir(parents=True, exist_ok=True)
+    eval_dir.mkdir(parents=True, exist_ok=True)
 
-    staged = stage(eval_id, target)
-    workdir = staged["sandbox_repo"]
-    model_label = resolved.worker_model or "<inherit>"
-
-    key = None
-    if cache is not None:
-        key = eval_cache.content_key(
-            source_roots=source_roots_for(),
-            harness_dir=THIS,
-            model=resolved.worker_model,
-            eval_id=eval_id,
-            prompt=staged["prompt"],
-        )
-        if not force:
-            hit = cache.lookup(eval_id, key)
-            if hit is not None:
-                eval_cache.write_replay_artifacts(eval_dir, hit)
-                verdict = "PASS" if hit["passed"] else "FAIL"
-                print(f"  [eval-{eval_id}] CACHED {verdict} "
-                      f"(graded {hit.get('graded_at', '?')}, "
-                      f"model={hit.get('model', '?')}); skipped {resolved.config.label}, "
-                      "--force to re-run\n", flush=True)
-                return hit["passed"], True
-
-    target_root = pathlib.Path(staged["target"])
-    stub = " (stub gh)" if staged["gh_env"] else ""
-    print(f"  [eval-{eval_id}] running {resolved.config.label} "
-          f"(model={model_label}){stub} ...", flush=True)
-    start = time.time()
-    # The skills deploy into a scratch home beside, never inside, the repo
-    # under review, so a review never sees a copied skill tree in its worktree.
-    with micro_deploy.micro_deploy(
-        resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
-    ) as md:
-        shim_deployed_scripts(md, target_root)
-        md.env.update(env_for(md.env, staged["gh_env"]))
-        prompt = WORKER_PROMPT.format(
-            skill_path=md.path_map["git_review"],
-            workdir=workdir,
-            prompt=staged["prompt"],
-            checkout_skill_path=str(md.path_map["git_checkout"]),
-            commit_skill_path=str(md.path_map["git_commit"]),
-        )
-        worker = micro_deploy.run_worker(
-            vendor_name=resolved.vendor, bin_name=resolved.bin,
-            model=resolved.worker_model, prompt=prompt, deploy=md,
-            timeout=timeout, cwd=pathlib.Path(workdir),
-        )
-        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
-        integrity = micro_deploy.integrity_record(
-            worker.read_paths, worker.out_of_set_paths
-        )
-    duration_s = time.time() - start
-
-    response_path = eval_dir / "response.txt"
-    response_path.write_text(stdout if isinstance(stdout, str) else stdout.decode())
-    (eval_dir / "stderr.txt").write_text(
-        stderr if isinstance(stderr, str) else stderr.decode())
-    (eval_dir / "timing.json").write_text(json.dumps({
-        "eval_id": eval_id,
-        "duration_s": duration_s,
-        "worker_rc": rc,
-        "claude_rc": rc,
-        "model": model_label,
-        "artefacts_read_from_micro_deployment": integrity,
-    }, indent=2))
-
-    # Keep the call logs beside the response: they are half the evidence for
-    # every publishing eval and the sandbox is discarded with the run directory.
-    for log_name in ("gh_calls.log", "script_calls.log"):
-        src_log = pathlib.Path(staged["target"]) / log_name
-        if src_log.exists():
-            (eval_dir / log_name).write_text(src_log.read_text())
-
-    grade = subprocess.run(
-        ["bash", str(GRADE), eval_id, workdir, str(response_path)],
-        capture_output=True, text=True,
+    root = worker_isolation.create_sandbox_root(
+        f"{ISOLATION_PREFIX}{eval_id}_"
     )
-    (eval_dir / "grading.txt").write_text(grade.stdout + grade.stderr)
-    print(grade.stdout, end="", flush=True)
-    grade_passed = grade.returncode == 0
-    completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed and integrity["passed"]
+    try:
+        staged = stage(eval_id, root)
+        workdir = staged["sandbox_repo"]
+        model_label = resolved.worker_model or "<inherit>"
 
-    if not completed:
-        why = ("timeout" if "[TIMEOUT" in stderr
-               else "empty response" if not stdout.strip()
-               else f"worker rc={rc}")
-        print(f"  [eval-{eval_id}] FAIL, worker did not complete ({why}); "
-              f"grade.sh ran on partial sandbox state and cannot be trusted "
-              f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
-              flush=True)
-    elif not integrity["passed"]:
-        print(f"  [eval-{eval_id}] FAIL, worker read artefacts outside the "
-              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
-    else:
-        print(f"  [eval-{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n",
-              flush=True)
+        key = None
+        if cache is not None:
+            key = eval_cache.content_key(
+                source_roots=source_roots_for(),
+                harness_dir=THIS,
+                model=resolved.worker_model,
+                eval_id=eval_id,
+                prompt=staged["prompt"],
+            )
+            if not force:
+                hit = cache.lookup(eval_id, key)
+                if hit is not None:
+                    eval_cache.write_replay_artifacts(eval_dir, hit)
+                    verdict = "PASS" if hit["passed"] else "FAIL"
+                    print(f"  [eval-{eval_id}] CACHED {verdict} "
+                          f"(graded {hit.get('graded_at', '?')}, "
+                          f"model={hit.get('model', '?')}); skipped {resolved.config.label}, "
+                          "--force to re-run\n", flush=True)
+                    return hit["passed"], True
 
-    # Cache only a conclusive verdict from a completed worker: a timeout or
-    # crash is transient rather than a property of the inputs, so caching it
-    # would replay a spurious verdict on a later clean run.
-    if cache is not None and completed:
-        cache.record(
-            eval_id,
-            key,
-            passed=passed,
-            model=model_label,
-            duration_s=duration_s,
-            worker_rc=rc,
-            grading_output=grade.stdout + grade.stderr,
-            response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
+        target_root = pathlib.Path(staged["target"])
+        stub = " (stub gh)" if staged["gh_env"] else ""
+        print(f"  [eval-{eval_id}] running {resolved.config.label} "
+              f"(model={model_label}){stub} ...", flush=True)
+        start = time.time()
+        # The skills deploy into a scratch home beside, never inside, the repo
+        # under review, so a review never sees a copied skill tree in its worktree.
+        with micro_deploy.micro_deploy(
+            resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
+        ) as md:
+            shim_deployed_scripts(md, target_root)
+            md.env.update(env_for(md.env, staged["gh_env"]))
+            prompt = WORKER_PROMPT.format(
+                skill_path=md.path_map["git_review"],
+                workdir=workdir,
+                prompt=staged["prompt"],
+                checkout_skill_path=str(md.path_map["git_checkout"]),
+                commit_skill_path=str(md.path_map["git_commit"]),
+            )
+            worker = micro_deploy.run_worker(
+                vendor_name=resolved.vendor, bin_name=resolved.bin,
+                model=resolved.worker_model, prompt=prompt, deploy=md,
+                timeout=timeout, cwd=pathlib.Path(workdir),
+            )
+            rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+            integrity, checkout_unread = micro_deploy.provenance_records(worker)
+        duration_s = time.time() - start
+
+        response_path = eval_dir / "response.txt"
+        response_path.write_text(stdout if isinstance(stdout, str) else stdout.decode())
+        (eval_dir / "stderr.txt").write_text(
+            stderr if isinstance(stderr, str) else stderr.decode())
+        (eval_dir / "timing.json").write_text(json.dumps({
+            "eval_id": eval_id,
+            "duration_s": duration_s,
+            "worker_rc": rc,
+            "claude_rc": rc,
+            "model": model_label,
+            "artefacts_read_from_micro_deployment": integrity,
+                "checkout_unread": checkout_unread,
+        }, indent=2))
+
+        # Keep the call logs beside the response: they are half the evidence for
+        # every publishing eval and the sandbox is discarded with the run directory.
+        for log_name in ("gh_calls.log", "script_calls.log"):
+            src_log = pathlib.Path(staged["target"]) / log_name
+            if src_log.exists():
+                (eval_dir / log_name).write_text(src_log.read_text())
+
+        grade = subprocess.run(
+            ["bash", str(GRADE), eval_id, workdir, str(response_path)],
+            capture_output=True, text=True,
         )
-    return passed, False
+        (eval_dir / "grading.txt").write_text(grade.stdout + grade.stderr)
+        print(grade.stdout, end="", flush=True)
+        grade_passed = grade.returncode == 0
+        completed = worker_completed(rc, stdout)
+        passed = (
+            grade_passed and completed
+            and micro_deploy.read_checks_passed(integrity, checkout_unread)
+        )
+
+        if not completed:
+            why = ("timeout" if "[TIMEOUT" in stderr
+                   else "empty response" if not stdout.strip()
+                   else f"worker rc={rc}")
+            print(f"  [eval-{eval_id}] FAIL, worker did not complete ({why}); "
+                  f"grade.sh ran on partial sandbox state and cannot be trusted "
+                  f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
+                  flush=True)
+        else:
+            fail = micro_deploy.read_checks_fail_message(
+                integrity, checkout_unread, vendor=resolved.vendor
+            )
+            if fail:
+                print(f"  [{eval_id}] FAIL — {fail}", flush=True)
+            else:
+                print(
+                    f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})",
+                    flush=True,
+                )
+
+        # Cache only a conclusive verdict from a completed worker: a timeout or
+        # crash is transient rather than a property of the inputs, so caching it
+        # would replay a spurious verdict on a later clean run.
+        if cache is not None and completed:
+            cache.record(
+                eval_id,
+                key,
+                passed=passed,
+                model=model_label,
+                duration_s=duration_s,
+                worker_rc=rc,
+                grading_output=grade.stdout + grade.stderr,
+                response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
+            )
+        return passed, False
+    finally:
+        worker_isolation.preserve_sandbox_copy(root, eval_dir / "sandbox")
 
 
 def main() -> int:

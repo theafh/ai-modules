@@ -47,6 +47,9 @@ sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402
 import micro_deploy  # noqa: E402
 import vendor  # noqa: E402
+import worker_isolation  # noqa: E402  (shared sandbox-root helper)
+
+ISOLATION_PREFIX = "agent_spinner_"
 
 # Skills agent_spinner itself routes work to by name, so a worker may load them
 # in any eval: every per-harness question goes to harness_portability.
@@ -144,131 +147,143 @@ def worker_completed(rc: int, stdout: str) -> bool:
 def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path,
             resolved: vendor.Resolved, timeout: int, cache, force: bool):
     eval_dir = run_dir / eval_id
-    target = eval_dir / "sandbox"
-    target.mkdir(parents=True, exist_ok=True)
+    eval_dir.mkdir(parents=True, exist_ok=True)
 
-    staged = stage(eval_id, target)
-    workdir = staged["sandbox_proj"]
-    harness = spec.get("harness", {})
-    model_label = resolved.worker_model or "<inherit>"
-
-    key = None
-    if cache is not None:
-        key = eval_cache.content_key(
-            source_roots=source_roots_for(harness),
-            harness_dir=THIS,
-            model=resolved.worker_model,
-            eval_id=eval_id,
-            prompt=staged["prompt"],
-        )
-        if not force:
-            hit = cache.lookup(eval_id, key)
-            if hit is not None:
-                eval_cache.write_replay_artifacts(eval_dir, hit)
-                verdict = "PASS" if hit["passed"] else "FAIL"
-                print(f"  [{eval_id}] CACHED {verdict} "
-                      f"(graded {hit.get('graded_at', '?')}, "
-                      f"model={hit.get('model', '?')}) — skipped {resolved.config.label}; "
-                      "--force to re-run\n", flush=True)
-                return hit["passed"], True
-
-    denied = harness.get("disallowed_tools") or []
-    extra_args: list[str] = []
-    if denied and resolved.vendor == "claude":
-        extra_args = ["--disallowedTools", *denied]
-
-    host_before = host_status()
-    print(f"  [{eval_id}] running {resolved.config.label} "
-          f"(model={model_label}"
-          f"{', denied=' + ','.join(denied) if denied else ''}) ...", flush=True)
-    start = time.time()
-    with micro_deploy.micro_deploy(
-        resolved.vendor, artefacts_for(harness), pathlib.Path(workdir),
-        preflight=False,
-    ) as md:
-        extra = "".join(
-            EXTRA_READ_LINE.format(
-                path=str(md.path_map[(REPO_ROOT / rel).parent.name])
-            )
-            for rel in harness.get("extra_reads", [])
-        )
-        prompt = WORKER_PROMPT.format(
-            skill_path=md.path_map["agent_spinner"],
-            extra_reads=extra,
-            workdir=workdir,
-            prompt=staged["prompt"],
-        )
-        if denied and resolved.vendor != "claude":
-            prompt += (
-                "\n\nEnvironment note: the following tools are unavailable in this "
-                f"harness run and must not be used: {', '.join(denied)}."
-            )
-        worker = micro_deploy.run_worker(
-            vendor_name=resolved.vendor, bin_name=resolved.bin,
-            model=resolved.worker_model, prompt=prompt, deploy=md,
-            timeout=timeout, cwd=pathlib.Path(workdir), extra_args=extra_args,
-            prompt_before_flags=bool(extra_args),
-        )
-        rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
-        integrity = micro_deploy.integrity_record(
-            worker.read_paths, worker.out_of_set_paths
-        )
-    duration_s = time.time() - start
-    host_after = host_status()
-
-    (eval_dir / "response.txt").write_text(stdout)
-    (eval_dir / "stderr.txt").write_text(stderr)
-    (eval_dir / "timing.json").write_text(json.dumps({
-        "eval_id": eval_id,
-        "duration_s": duration_s,
-        "worker_rc": rc,
-        "claude_rc": rc,
-        "model": model_label,
-        "disallowed_tools": denied,
-        "artefacts_read_from_micro_deployment": integrity,
-    }, indent=2))
-
-    grade = subprocess.run(
-        ["bash", str(GRADE), eval_id, workdir, str(eval_dir / "response.txt")],
-        capture_output=True, text=True
+    root = worker_isolation.create_sandbox_root(
+        f"{ISOLATION_PREFIX}{eval_id}_"
     )
-    (eval_dir / "grading.txt").write_text(grade.stdout + grade.stderr)
-    print(grade.stdout, end="", flush=True)
-    grade_passed = grade.returncode == 0
+    try:
+        staged = stage(eval_id, root)
+        workdir = staged["sandbox_proj"]
+        harness = spec.get("harness", {})
+        model_label = resolved.worker_model or "<inherit>"
 
-    host_clean = host_before == host_after
-    if not host_clean:
-        print(f"  [{eval_id}] FAIL — the host checkout changed during this eval; "
-              "the run escaped its sandbox\n", flush=True)
+        key = None
+        if cache is not None:
+            key = eval_cache.content_key(
+                source_roots=source_roots_for(harness),
+                harness_dir=THIS,
+                model=resolved.worker_model,
+                eval_id=eval_id,
+                prompt=staged["prompt"],
+            )
+            if not force:
+                hit = cache.lookup(eval_id, key)
+                if hit is not None:
+                    eval_cache.write_replay_artifacts(eval_dir, hit)
+                    verdict = "PASS" if hit["passed"] else "FAIL"
+                    print(f"  [{eval_id}] CACHED {verdict} "
+                          f"(graded {hit.get('graded_at', '?')}, "
+                          f"model={hit.get('model', '?')}) — skipped {resolved.config.label}; "
+                          "--force to re-run\n", flush=True)
+                    return hit["passed"], True
 
-    completed = worker_completed(rc, stdout)
-    passed = grade_passed and completed and host_clean and integrity["passed"]
+        denied = harness.get("disallowed_tools") or []
+        extra_args: list[str] = []
+        if denied and resolved.vendor == "claude":
+            extra_args = ["--disallowedTools", *denied]
 
-    if not completed:
-        why = ("timeout" if "[TIMEOUT" in stderr
-               else "empty response" if not stdout.strip()
-               else f"worker rc={rc}")
-        print(f"  [{eval_id}] FAIL — worker did not complete ({why})\n",
-              flush=True)
-    elif not integrity["passed"]:
-        print(f"  [{eval_id}] FAIL — worker read artefacts outside the "
-              f"micro-deployment: {integrity['out_of_set']}\n", flush=True)
-    elif host_clean:
-        print(f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})\n",
-              flush=True)
+        host_before = host_status()
+        print(f"  [{eval_id}] running {resolved.config.label} "
+              f"(model={model_label}"
+              f"{', denied=' + ','.join(denied) if denied else ''}) ...", flush=True)
+        start = time.time()
+        with micro_deploy.micro_deploy(
+            resolved.vendor, artefacts_for(harness), pathlib.Path(workdir),
+            preflight=False,
+        ) as md:
+            extra = "".join(
+                EXTRA_READ_LINE.format(
+                    path=str(md.path_map[(REPO_ROOT / rel).parent.name])
+                )
+                for rel in harness.get("extra_reads", [])
+            )
+            prompt = WORKER_PROMPT.format(
+                skill_path=md.path_map["agent_spinner"],
+                extra_reads=extra,
+                workdir=workdir,
+                prompt=staged["prompt"],
+            )
+            if denied and resolved.vendor != "claude":
+                prompt += (
+                    "\n\nEnvironment note: the following tools are unavailable in this "
+                    f"harness run and must not be used: {', '.join(denied)}."
+                )
+            worker = micro_deploy.run_worker(
+                vendor_name=resolved.vendor, bin_name=resolved.bin,
+                model=resolved.worker_model, prompt=prompt, deploy=md,
+                timeout=timeout, cwd=pathlib.Path(workdir), extra_args=extra_args,
+                prompt_before_flags=bool(extra_args),
+            )
+            rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+            integrity, checkout_unread = micro_deploy.provenance_records(worker)
+        duration_s = time.time() - start
+        host_after = host_status()
 
-    if cache is not None and completed and key is not None:
-        cache.record(
-            eval_id,
-            key,
-            passed=passed,
-            model=model_label,
-            duration_s=duration_s,
-            worker_rc=rc,
-            grading_output=grade.stdout + grade.stderr,
-            response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
+        (eval_dir / "response.txt").write_text(stdout)
+        (eval_dir / "stderr.txt").write_text(stderr)
+        (eval_dir / "timing.json").write_text(json.dumps({
+            "eval_id": eval_id,
+            "duration_s": duration_s,
+            "worker_rc": rc,
+            "claude_rc": rc,
+            "model": model_label,
+            "disallowed_tools": denied,
+            "artefacts_read_from_micro_deployment": integrity,
+            "checkout_unread": checkout_unread,
+        }, indent=2))
+
+        grade = subprocess.run(
+            ["bash", str(GRADE), eval_id, workdir, str(eval_dir / "response.txt")],
+            capture_output=True, text=True
         )
-    return passed, False
+        (eval_dir / "grading.txt").write_text(grade.stdout + grade.stderr)
+        print(grade.stdout, end="", flush=True)
+        grade_passed = grade.returncode == 0
+
+        host_clean = host_before == host_after
+        if not host_clean:
+            print(f"  [{eval_id}] FAIL — the host checkout changed during this eval; "
+                  "the run escaped its sandbox\n", flush=True)
+
+        completed = worker_completed(rc, stdout)
+        passed = (
+            grade_passed and completed and host_clean
+            and micro_deploy.read_checks_passed(integrity, checkout_unread)
+        )
+
+        if not completed:
+            why = ("timeout" if "[TIMEOUT" in stderr
+                   else "empty response" if not stdout.strip()
+                   else f"worker rc={rc}")
+            print(f"  [{eval_id}] FAIL — worker did not complete ({why})\n",
+                  flush=True)
+        else:
+            fail = micro_deploy.read_checks_fail_message(
+                integrity, checkout_unread, vendor=resolved.vendor
+            )
+            if fail:
+                print(f"  [{eval_id}] FAIL — {fail}", flush=True)
+            elif host_clean:
+                print(
+                    f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})",
+                    flush=True,
+                )
+
+        if cache is not None and completed and key is not None:
+            cache.record(
+                eval_id,
+                key,
+                passed=passed,
+                model=model_label,
+                duration_s=duration_s,
+                worker_rc=rc,
+                grading_output=grade.stdout + grade.stderr,
+                response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
+            )
+        return passed, False
+    finally:
+        worker_isolation.preserve_sandbox_copy(root, eval_dir / "sandbox")
 
 
 def main() -> int:

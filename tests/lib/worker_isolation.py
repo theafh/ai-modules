@@ -21,6 +21,8 @@ from __future__ import annotations
 import pathlib
 import shutil
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 
 class CreateRootRefusal(RuntimeError):
@@ -88,4 +90,37 @@ def create_sandbox_root(prefix: str) -> pathlib.Path:
     except CreateRootRefusal:
         shutil.rmtree(root, ignore_errors=True)
         raise
-    return root
+    # macOS temp paths resolve through /private; callers compare against pwd.
+    return root.resolve()
+
+
+def preserve_sandbox_copy(root: pathlib.Path, keep_copy: pathlib.Path) -> None:
+    """Copy a finished sandbox into the run directory, then remove the root.
+
+    Call from a ``finally`` after grading the live root in place. The copy
+    keeps symlinks so the run directory's ``sandbox/`` matches today's layout.
+    """
+
+    try:
+        if root.exists():
+            shutil.copytree(root, keep_copy, symlinks=True, dirs_exist_ok=True)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@contextmanager
+def relocated_sandbox_root(
+    prefix: str, keep_copy: pathlib.Path
+) -> Iterator[pathlib.Path]:
+    """Yield an outside-checkout sandbox root, then keep a copy and remove it.
+
+    The caller stages, runs the worker, and grades against the live root
+    inside the block. On every exit path — success, cache hit, worker or
+    grader failure — ``preserve_sandbox_copy`` runs.
+    """
+
+    root = create_sandbox_root(prefix)
+    try:
+        yield root
+    finally:
+        preserve_sandbox_copy(root, keep_copy)

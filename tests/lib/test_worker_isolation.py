@@ -80,6 +80,10 @@ def main() -> int:
     try:
         check("accepted fresh temporary root exists", created.is_dir())
         check("accepted root uses the caller prefix", created.name.startswith("nl_iso_"))
+        check(
+            "accepted root is the resolved path",
+            created == created.resolve(),
+        )
         try:
             worker_isolation.raise_if_refused(created)
             allowed = True
@@ -88,6 +92,27 @@ def main() -> int:
         check("accepted root is outside home and any git repository", allowed)
     finally:
         shutil.rmtree(created, ignore_errors=True)
+
+    keep = pathlib.Path(tempfile.mkdtemp(prefix="nl_iso_keep_"))
+    keep_copy = keep / "sandbox"
+    try:
+        with worker_isolation.relocated_sandbox_root(
+            "nl_iso_reloc_", keep_copy
+        ) as root:
+            live_root = root
+            (root / "proj").mkdir()
+            (root / "proj" / "ok.txt").write_text("kept\n")
+            check("relocated root exists during the block", root.is_dir())
+        check(
+            "relocated helper copies the tree into keep_copy",
+            (keep_copy / "proj" / "ok.txt").read_text() == "kept\n",
+        )
+        check(
+            "relocated helper removes the temporary root",
+            not live_root.exists(),
+        )
+    finally:
+        shutil.rmtree(keep, ignore_errors=True)
 
     check(
         "claude isolation args",

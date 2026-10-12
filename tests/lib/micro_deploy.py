@@ -135,13 +135,14 @@ class StreamParse:
 
 @dataclass
 class WorkerRunResult:
-    """Exit code, final response text, stderr, and artefact read provenance."""
+    """Exit code, final response text, stderr, and read provenance."""
 
     returncode: int
     stdout: str
     stderr: str
     read_paths: list[str]
     out_of_set_paths: list[str]
+    inside_checkout_paths: list[str] = field(default_factory=list)
     session_id: str | None = None
     tools: list[ToolRecord] = field(default_factory=list)
 
@@ -1051,6 +1052,79 @@ def integrity_record(
     }
 
 
+def classify_inside_checkout(
+    paths: list[str],
+    *,
+    cwd: pathlib.Path | str | None = None,
+    checkout: pathlib.Path | None = None,
+) -> list[str]:
+    """Return every read path that resolves inside the repository checkout.
+
+    Relative paths resolve against the worker's ``cwd`` the way
+    ``classify_out_of_set`` resolves them. A path that still carries an
+    unexpanded ``$NAME`` or a leading ``~`` cannot be placed, so it stays
+    unflagged. There is no in-set exemption: after relocation a pass has no
+    legitimate checkout path.
+    """
+
+    root = (checkout or REPO_ROOT).resolve()
+    base = pathlib.Path(cwd).resolve() if cwd else pathlib.Path.cwd()
+    flagged: list[str] = []
+    for raw in paths:
+        if _is_unresolved(raw):
+            continue
+        resolved = _resolve_worker_path(raw, base)
+        if _is_under(resolved, root):
+            flagged.append(str(resolved))
+    return flagged
+
+
+def checkout_unread_record(inside_checkout_paths: list[str]) -> dict[str, Any]:
+    """Verdict fragment for ``checkout_unread``."""
+
+    return {
+        "passed": not inside_checkout_paths,
+        "inside_checkout": list(inside_checkout_paths),
+    }
+
+
+def provenance_records(worker: WorkerRunResult) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Both read-check records for a worker result, for ``timing.json``."""
+
+    return (
+        integrity_record(worker.read_paths, worker.out_of_set_paths),
+        checkout_unread_record(worker.inside_checkout_paths),
+    )
+
+
+def read_checks_passed(
+    integrity: dict[str, Any], checkout_unread: dict[str, Any]
+) -> bool:
+    """Whether both read checks passed."""
+
+    return bool(integrity.get("passed")) and bool(checkout_unread.get("passed"))
+
+
+def read_checks_fail_message(
+    integrity: dict[str, Any],
+    checkout_unread: dict[str, Any],
+    *,
+    vendor: str | None = None,
+) -> str | None:
+    """One-line fail reason for a read-check failure, or None when both pass."""
+
+    if not integrity.get("passed"):
+        return (
+            "worker read artefacts outside the micro-deployment: "
+            f"{integrity.get('out_of_set')}"
+        )
+    if not checkout_unread.get("passed"):
+        paths = checkout_unread.get("inside_checkout")
+        vendor_note = f" (vendor={vendor})" if vendor else ""
+        return f"worker read paths inside the checkout{vendor_note}: {paths}"
+    return None
+
+
 def run_worker(
     *,
     vendor_name: str,
@@ -1116,12 +1190,14 @@ def run_worker(
         sandbox_project=deploy.sandbox_project,
         cwd=workdir,
     )
+    inside_checkout = classify_inside_checkout(read_paths, cwd=workdir)
     return WorkerRunResult(
         returncode=rc,
         stdout=final,
         stderr=stderr,
         read_paths=read_paths,
         out_of_set_paths=out_of_set,
+        inside_checkout_paths=inside_checkout,
         session_id=parsed.session_id,
         tools=tools,
     )

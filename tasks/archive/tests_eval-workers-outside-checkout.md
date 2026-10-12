@@ -2,9 +2,11 @@
 description: Stage every behavioural eval sandbox outside the checkout via create_sandbox_root, and fail a pass whose worker reads a checkout path such as its harness's evals.json or grade.sh.
 scope: tests
 created: 2026-10-09T21:50:04
-updated: 2026-10-12T12:37:37
-status: ready
+updated: 2026-10-12T21:11:30
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Stage eval sandboxes outside the checkout and fail a pass whose worker reads the checkout
@@ -20,7 +22,7 @@ Every eval runner that drives a worker through `micro_deploy.run_worker` stages 
   - `tests/task_create/evals/workspace/run-20261009-210747/reconcile-recorded/timing.json`: the worker read `tests/task_create/evals/evals.json`, `tests/task_create/evals/grade.sh`, and `tests/task_create/README.md`, named `tests/task_create/evals/fixtures/`, and globbed `tests/task_create/evals/**/*`.
   - `tests/guardrail_audit/evals/workspace/run-20261009-211146/presence_gate/timing.json`: the worker globbed `tests/guardrail_audit/*.{json,md,sh}` and `tests/guardrail_audit/**/presence_gate/**`.
   - `tests/wiki/layer2/workspace/run-20261009-210409/AS-1/pass-1/timing.json`: the worker globbed `tests/wiki/layer2/**/AS-1/**/*`.
-- **The read provenance this task extends.** [The micro-deploy task](archive/tests_micro-deployed-eval-workers.md) built `tests/lib/micro_deploy.py`. Its `run_worker` derives the read list from the worker's tool records, a spawned helper's included, and `classify_out_of_set` with `integrity_record` turns that list into the `artefacts_read_from_micro_deployment` record every runner fails a pass on.
+- **The read provenance this task extends.** [The micro-deploy task](tests_micro-deployed-eval-workers.md) built `tests/lib/micro_deploy.py`. Its `run_worker` derives the read list from the worker's tool records, a spawned helper's included, and `classify_out_of_set` with `integrity_record` turns that list into the `artefacts_read_from_micro_deployment` record every runner fails a pass on.
 - **Instruction files no read check can see.** `wiki/concepts/verification-surfaces.md`, under `### A worker inherits the host's instructions unless it is isolated`, records that a `claude -p` worker whose sandbox sits inside this repository runs under the repository's standing instructions through its ancestor walk. Those files arrive at startup rather than through a tool call, so only relocation keeps them from the worker.
 - **Consumers that find paths through the sandbox's location.** Each Pattern A grader takes the sandbox path as an argument, and the host escape guards locate the checkout from their own script directory, so both work unchanged on a relocated sandbox. Two consumers would break:
   - `tests/task_auto_check/evals/grade.sh` reads `RESPONSE="$target/../response.txt"`, which after relocation points beside the root instead of into the run directory. Its transcript checks run only when that file exists, so they would stop running without failing. The `task_create` and `task_fix` graders fall back to the same path, but their runners export `RESPONSE_FILE`.

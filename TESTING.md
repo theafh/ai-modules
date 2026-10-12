@@ -38,13 +38,16 @@ Sibling principles that are not part of that four-rule set:
   that the hoped-for direction passes. A fixture that cannot fail measures
   nothing.
 - **Stage a sandbox per scenario.** Every harness operates on a fresh temporary
-  tree, never on the working checkout. A harness that runs a component against
-  a real filesystem carries an explicit escape guard: a copy of the watched
-  tree in the eval's temporary directory, compared only for the names the
-  sandbox itself contains, or a `git status` of the host checkout where that
-  status is the signal. An escape of those watched names fails the scenario
-  that caused it. A parallel edit of some other live file stays outside the
-  comparison.
+  tree, never on the working checkout. A behavioural worker's sandbox sits
+  under a root from `worker_isolation.create_sandbox_root`, outside the
+  checkout, the home directory, and any git repository, and a pass fails when
+  its worker reads, globs, or names a path inside the checkout. A harness that
+  runs a component against a real filesystem carries an explicit escape guard:
+  a copy of the watched tree in the eval's temporary directory, compared only
+  for the names the sandbox itself contains, or a `git status` of the host
+  checkout where that status is the signal. An escape of those watched names
+  fails the scenario that caused it. A parallel edit of some other live file
+  stays outside the comparison.
 - **Declare everything a worker may load, once.** A behavioural eval's worker
   loads only the skills, agents, and styles its runner declares, and that one
   declaration decides what each pass deploys, what the verdict cache hashes,
