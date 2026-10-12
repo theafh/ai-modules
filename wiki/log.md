@@ -1101,3 +1101,14 @@ pre-existing.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-12 12:12] update | Frozen commitments and isolated readiness gates
+
+- concepts/agent-delegated-automation.md (deletion and narrowing of frozen
+  commitments route to the user with proof and disposition options; isolated
+  gate evidence and citation refutation on the last permitted ready verdict)
+
+## [2026-10-12 12:12] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

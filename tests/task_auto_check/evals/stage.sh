@@ -9,6 +9,7 @@
 #   mechanical_lint_markdown  mechanical_lint_oversized_surface
 #   already_ready  repair_to_ready  scope_split_stuck
 #   relay_by_path  stray_hunk_reverted
+#   committed_rule_deletion_routed  last_call_ready_refuted  regate_isolated
 #   intent_drift_human_route  fidelity_rejects_drift
 #   drift_gate_narrowing_clean  drift_gate_refinement_clean
 #   drift_gate_broadening_drift  drift_gate_committed_broadening_clean
@@ -80,6 +81,18 @@ case "$eval_id" in
   repair_to_ready)
     "$HERE/fixtures/repair_to_ready/setup.sh" "$target" >/dev/null
     prompt="Run task_auto_check on tasks/api_retry-after.md and stop when task_check reports ready."
+    ;;
+  committed_rule_deletion_routed)
+    "$HERE/fixtures/committed_rule_deletion_routed/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_committed-rules.md."
+    ;;
+  last_call_ready_refuted)
+    "$HERE/fixtures/last_call_ready_refuted/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_last-call.md with max rounds 2."
+    ;;
+  regate_isolated)
+    "$HERE/fixtures/regate_isolated/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_isolated-regate.md."
     ;;
   relay_by_path)
     "$HERE/fixtures/relay_by_path/setup.sh" "$target" >/dev/null

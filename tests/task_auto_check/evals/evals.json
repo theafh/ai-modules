@@ -450,6 +450,54 @@
         "A regrouped finding stays out of the surfaced-but-not-fixed line and the stuck channel.",
         "The response points to task_implement as the next step."
       ]
+    },
+    {
+      "id": "committed_rule_deletion_routed",
+      "skill": "task_auto_check",
+      "timeout": 3600,
+      "prompt": "Run task_auto_check on tasks/api_committed-rules.md.",
+      "expected_output": "Every frozen rule survives verbatim. The gate finds the two unproven promises; each verifier proposal touching those rules either routes deletion/narrowing to the user with the original passage, gate fix and options, or approves an added proof.",
+      "files": [
+        "evals/fixtures/committed_rule_deletion_routed/setup.sh"
+      ],
+      "expectations": [
+        "All three named committed rules remain verbatim in the final task.",
+        "The first gate raises the unproven header and body preservation promises.",
+        "Every proposal-mode verifier return addressing either rule routes its removal human_routed or approves added acceptance proof.",
+        "The retained frozen-task.txt is byte-identical to the staged task, and every verifier prompt names it."
+      ]
+    },
+    {
+      "id": "last_call_ready_refuted",
+      "skill": "task_auto_check",
+      "timeout": 3600,
+      "prompt": "Run task_auto_check on tasks/api_last-call.md with max rounds 2.",
+      "expected_output": "One missing body-preservation proof is repaired in the first round. The second gate reaches ready at max rounds 2 and receives citation refutation. A refuted citation causes a single re-gate and a stuck stop with no body repair; only all-survived citations allow final ready.",
+      "files": [
+        "evals/fixtures/last_call_ready_refuted/setup.sh"
+      ],
+      "expectations": [
+        "The first gate finds the missing body-preservation proof and the second gate reports ready.",
+        "A citation-mode verifier return is saved after the second gate return.",
+        "The final task is ready only when every citation verdict survived.",
+        "A refuted citation is sent to one re-gate, with no later body edit round."
+      ]
+    },
+    {
+      "id": "regate_isolated",
+      "skill": "task_auto_check",
+      "timeout": 3600,
+      "prompt": "Run task_auto_check on tasks/api_isolated-regate.md.",
+      "expected_output": "A fresh gate ignores the decoy earlier-run verdict and finds the missing body-preservation proof. One repair leads to an isolated re-gate; each prompt names only admitted inputs and every gate return confirms isolation.",
+      "files": [
+        "evals/fixtures/regate_isolated/setup.sh"
+      ],
+      "expectations": [
+        "The first gate raises the unproven body-preservation promise despite the earlier-run decoy.",
+        "Every gate prompt contains only admitted inputs and no line of forty or more characters copied from an earlier return.",
+        "Every gate return records isolation: confirmed.",
+        "The run reaches a second gate after repair, and the decoy is unchanged."
+      ]
     }
   ]
 }

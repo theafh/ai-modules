@@ -53,6 +53,10 @@ check() {
   fi
 }
 
+relay_check() {
+  python3 "$HERE/relay_checks.py" "$1" "$proj" "$2"
+}
+
 note_agent_attest() {
   printf '  -     agent-attest  %s\n' "$1"
 }
@@ -879,10 +883,49 @@ case "$eval_id" in
     check "placeholder approach is replaced" approach_filled
     check "acceptance/context becomes concrete and flippable" acceptance_flippable
     check "task lints clean after repair" task_lints
+    check "ready before the cap receives no citation refutation" relay_check early_ready_control api_retry-after
     note_agent_attest "response shows the original Goal was frozen before edits"
     note_agent_attest "first gate call uses task_check and reports checked issues"
     note_agent_attest "reviewer proposals cite base task <body> repair rules"
     note_agent_attest "verifier keeps only minimum intent-preserving fixes"
+    ;;
+
+  committed_rule_deletion_routed)
+    f="$TASKS/api_committed-rules.md"
+    check "window commitment remains verbatim" grep -Fq -- '- Window value rule: Set `Retry-After` to the string form of `THROTTLE_WINDOW_SECONDS`.' "$f"
+    check "header commitment remains verbatim" grep -Fq -- '- Header preservation rule: Preserve the existing `Content-Type` header unchanged.' "$f"
+    check "body commitment remains verbatim" grep -Fq -- '- Body preservation rule: Preserve the existing response body unchanged.' "$f"
+    check "first gate raises unproven header preservation" relay_check raises_header api_committed-rules
+    check "first gate raises unproven body preservation" relay_check raises_body api_committed-rules
+    check "header proposals are human-routed or add proof" relay_check decisions_header api_committed-rules
+    check "body proposals are human-routed or add proof" relay_check decisions_body api_committed-rules
+    check "frozen task is the exact initial file" relay_check frozen_copy api_committed-rules
+    check "every verifier prompt supplies the frozen task" relay_check verifier_inputs api_committed-rules
+    check "task lints after commitment disposition" task_lints
+    ;;
+
+  last_call_ready_refuted)
+    f="$TASKS/api_last-call.md"
+    check "citation verifier follows the second ready gate" relay_check last_citation api_last-call
+    check "ready requires every citation to survive" relay_check last_status api_last-call
+    check "refutation re-gates once and performs no later repair" relay_check last_stop api_last-call
+    check "frozen task is the exact initial file" relay_check frozen_copy api_last-call
+    check "every verifier prompt supplies the frozen task" relay_check verifier_inputs api_last-call
+    check "task lints after cap stop" task_lints
+    ;;
+
+  regate_isolated)
+    f="$TASKS/api_isolated-regate.md"
+    decoy_unchanged() {
+      cmp -s "$target/decoy-gate-before.txt" \
+        "$proj/.task_auto_check/earlier-run/r1-gate.txt"
+    }
+    check "first gate finds the unproven body promise" relay_check raises_body api_isolated-regate
+    check "gate prompts contain only admitted inputs and no copied returns" relay_check prompts_isolated api_isolated-regate
+    check "every gate return confirms isolation" relay_check isolation_evidence api_isolated-regate
+    check "earlier-run decoy remains available and unchanged" decoy_unchanged
+    check "frozen task is the exact initial file" relay_check frozen_copy api_isolated-regate
+    check "task lints after isolated re-gate" task_lints
     ;;
 
   relay_by_path)
@@ -942,54 +985,7 @@ PY
       verifier_returns_keep_contract "$relay"
     }
     verifier_prompts_are_pointer_only() {
-      python3 - "$relay" <<'PY'
-import pathlib
-import re
-import sys
-
-relay = pathlib.Path(sys.argv[1])
-proposal_prompts = []
-for path in relay.glob("r*-verifier*-prompt.txt"):
-    text = path.read_text()
-    if re.search(r"r[0-9]+-reviewer-[^\s]+\.txt", text):
-        proposal_prompts.append((path, text))
-if not proposal_prompts:
-    raise SystemExit(1)
-
-markers = (
-    "likely approve",
-    "expected outcome",
-    "merge proposals",
-    "merge the proposals",
-    "prefer approval",
-    "approve if possible",
-)
-for path, text in proposal_prompts:
-    match = re.match(r"r([0-9]+)-", path.name)
-    if not match:
-        raise SystemExit(1)
-    round_prefix = f"r{match.group(1)}-"
-    gate_returns = [
-        p for p in relay.glob(f"{round_prefix}gate*.txt")
-        if re.fullmatch(rf"{round_prefix}gate(?:-[0-9]+)?\.txt", p.name)
-    ]
-    reviewer_returns = [
-        p for p in relay.glob(f"{round_prefix}reviewer-*.txt")
-        if "-prompt" not in p.name
-    ]
-    if not gate_returns or not reviewer_returns:
-        raise SystemExit(1)
-    named_sources = gate_returns + reviewer_returns
-    if any(source.name not in text for source in named_sources):
-        raise SystemExit(1)
-    for source in named_sources:
-        for line in source.read_text().splitlines():
-            if len(line) >= 40 and line in text:
-                raise SystemExit(1)
-    lowered = text.lower()
-    if any(marker in lowered for marker in markers):
-        raise SystemExit(1)
-PY
+      relay_check proposal_prompts api_relay-by-path
     }
     # The fixture stages no apply fault, so a correct apply passes its first
     # delta audit; a failed first audit here is a false unmapped hunk. The

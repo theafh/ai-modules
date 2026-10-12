@@ -30,6 +30,14 @@ model-mediated behavior that static checks cannot prove:
 - Stray hunk reverted: the first apply plants a Context rewrite; the
   delta audit marks that planted hunk unmapped, the loop restores and
   re-applies, and a later clean delta is required before the next gate.
+- Frozen commitments: missing acceptance proof cannot be repaired by silently
+  deleting or narrowing the rule; the retained verifier decisions show an
+  added proof or a human route.
+- Last-call ready: a two-round run reaches ready on the second gate and
+  challenges its citations; any refutation returns to the gate without
+  another body repair.
+- Isolated re-gate: an earlier-run decoy verdict remains outside the gate's
+  admitted inputs and cannot hide the missing preservation proof.
 - Scope/focus/complexity issue: surfaces a split as stuck instead of
   creating files.
 - Fidelity guard: rejects or narrows a proposal that changes the
@@ -111,8 +119,8 @@ lowered a value.
 ## Per-eval timeouts, and which evals need them
 
 `evals/run.py` takes a per-eval `"timeout"` from `evals.json`, falling back to
-its `--timeout` default. Four evals declare their own budget because they run
-materially longer than the ~700-1000s the loop normally takes:
+its `--timeout` default. These evals declare their own budget to cover deeper
+repair paths and additional verifier or gate calls:
 
 | Eval | Budget | Why |
 | --- | --- | --- |
@@ -120,6 +128,9 @@ materially longer than the ~700-1000s the loop normally takes:
 | `regroup_immediate_ready` | 2700s | Ready verdict plus the repeated-link repair round the `<gate>` rule routes before finalization. |
 | `regroup_same_paragraph_ready` | 2700s | The ready-verdict path on a target staged at `ready`, so no citation refutation runs. Both links sit inside one Context paragraph, so the repair round applies the react protocol's one-paragraph case, the verifier must approve it, and the edit keeps `ready` with no gate call after the round. |
 | `immediate_ready_citations_overturn` | 3600s | Citation refutation returns to the gate for a second full verdict over the largest fixture in the harness. |
+| `committed_rule_deletion_routed` | 3600s | Two unproven promises select several reviewer calls before proposal verification, application, delta audit, and re-gate. |
+| `last_call_ready_refuted` | 3600s | A full repair round and second gate are followed by citation verification and, when refuted, one further gate assessment. |
+| `regate_isolated` | 3600s | The repair and re-gate exercise the read boundary, including time for its one replacement when an assessment reports an isolation failure. |
 
 A timed-out worker fails its eval whatever `grade.sh` says, because the sandbox
 holds partial state. Read `timing.json` before raising a budget: a run killed

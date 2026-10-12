@@ -1,7 +1,7 @@
 ---
 title: Agent-delegated automation
 created: 2026-08-29
-updated: 2026-10-11
+updated: 2026-10-12
 type: concept
 tags: [skill, agent, authoring, repo-structure]
 sources: [raw/notes/agent-spinner-run-evidence-2026-09.md]
@@ -91,15 +91,28 @@ failure. A batch of tasks once stamped ready on the first pass with every line
 clean, and re-checking two of them surfaced several real readiness issues each.
 The fast verdict had confirmed the existence claims and skipped the comparative
 reading. Making the verdict cite its evidence makes it contestable, so the loop
-sends a first-pass ready approval back through the verifier before it trusts the
-stamp.
+challenges both a first-call ready with nothing raised and a ready reached on
+the last permitted gate call. A ready after repairs but before the cap takes no
+citation pass. At the cap, refuted citations get one re-gate and a stuck report,
+with no further body repair. Each gate walks the current task from admitted
+inputs and checklist-reached code; earlier verdicts and helper transcripts stay
+outside its evidence. Its isolation declaration makes an out-of-bounds read
+visible and causes one fresh replacement assessment.
 
 ### Nothing is resolved silently
 
 What makes an agent safe to run unattended is that it fabricates nothing and
-settles no genuine ambiguity on its own. A change that removes most of a body,
-deletes a load-bearing section, picks one side of a real fork, or resolves a
-contradiction is a decision for the user, not an approvable repair. The wiki
+settles no genuine ambiguity on its own. The readiness loop routes one class
+to the user at either scale: removing most of the body or a load-bearing section,
+collapsing either to a summary, and deleting or narrowing any frozen requirement,
+rule, constraint, promise, or Acceptance item. A smaller edit cannot silently
+win by promising less. The complete frozen task supplies the comparison, and
+the route carries the original passages, the gate's fix, and the options to
+prove the commitment, narrow it with an owned deferral or explicit rejection,
+or delete it. Code-moved detail refreshes, required interaction supersessions,
+and edits to text added during the run remain ordinary repairs. Picking one
+side of a real fork or resolving an unsettled contradiction also belongs to the
+user. The wiki
 agent marks a contradiction between pages as contested and reports both sides
 rather than choosing. The task writer reconciles only findings the user already
 accepted and leaves the rest human-owned.
@@ -180,9 +193,9 @@ of those is portable across harnesses. In three `task_auto_check` runs on Cursor
 in September 2026, the way the orchestrator relayed text set that cap.
 Verifiers judged paraphrases or partial reviewer text. One gate finding
 bypassed them. Committed rule clusters were deleted with no user decision ([run
-evidence](../raw/notes/agent-spinner-run-evidence-2026-09.md)). The remaining
-work to route deletions and narrowed commitments to the user belongs to [the
-deletion-and-regate task](../../tasks/task-family_readiness-loop-deletion-and-regate.md).
+evidence](../raw/notes/agent-spinner-run-evidence-2026-09.md)). The frozen-task
+comparison and explicit deletion route make that choice visible, while isolated
+gates keep a fresh readiness assessment from inheriting an earlier conclusion.
 
 ## Related concepts
 

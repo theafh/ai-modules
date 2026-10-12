@@ -272,7 +272,7 @@ s10_failure_policy_and_rebaseline() {
   assert_contains "reviewer proposal carries unassessable" "$reviewer" "proposal_kind: <edit|split_summary|relocation_summary|coherence_repair_summary|no_proposal|unassessable>" || ok=false
   assert_contains "verifier decision carries unassessable" "$verifier" "decision: <rejected|human_routed|unassessable>" || ok=false
   assert_contains "verifier approved edits non-overlapping" "$verifier" "mutually non-overlapping" || ok=false
-  assert_contains "skill human-routes majority-body removal" "$SKILL" "remove the majority of the task body" || ok=false
+  assert_contains "skill human-routes majority-body removal" "$SKILL" "an edit group that removes most of the body" || ok=false
   assert_contains "verifier human-routes majority-body removal" "$verifier" "removes the majority of the task body" || ok=false
   assert_contains "reviewer receives frozen title" "$reviewer" "the frozen \`# Title\` and \`## Goal\`" || ok=false
   assert_contains "verifier fidelity uses frozen title" "$verifier" "judging a title-changing edit against the frozen \`# Title\`" || ok=false
@@ -313,6 +313,10 @@ s11_repeated_link_repair_path() {
   $ok
 }
 
+s12_relay_grader_mutations() {
+  python3 "$REPO_ROOT/tests/task_auto_check/script_tests/test_relay_checks.py"
+}
+
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "task_check remains the single readiness gate" s2_gate_is_task_check
 scenario s3 "reviewer/verifier roles are separated and intent-safe" s3_reviewer_and_verifier_boundaries
@@ -324,6 +328,8 @@ scenario s8 "mechanical lint finalization is single-sourced and wired" s8_mechan
 scenario s9 "freeze-time intent drift is read-only and human-routed" s9_intent_drift_boundary
 scenario s10 "agent failure policy, unassessable states, and guard re-baseline are pinned" s10_failure_policy_and_rebaseline
 scenario s11 "repeated-link findings route through the repair path with named owners" s11_repeated_link_repair_path
+
+scenario s12 "relay graders reject evidence mutations" s12_relay_grader_mutations
 
 log ""
 log "================================================================"

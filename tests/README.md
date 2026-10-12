@@ -157,8 +157,9 @@ don't bring up new harnesses under Pattern B.
   and the run's per-finding disposition line, since the protocol obliges both.
 - **`task_auto_check/`**: Pattern A. `script_tests/` covers the static
   skill contract; `evals/` drives the autonomous readiness loop over staged
-  fixtures (repair-to-ready, the gate / verifier / drift stop conditions,
-  and the mechanical lint cleanup) through `run.py` on the default Cursor
+  fixtures (repair-to-ready, frozen commitments, isolated re-gates, last-call
+  citation refutation, the gate / verifier / drift stop conditions, and
+  mechanical lint cleanup) through `run.py` on the default Cursor
   worker with a deterministic `grade.sh`. The deepest loop here, so `RUNBOOK.md` records
   the cheap-first fixture probe that keeps a fixture bug off the full run.
 - **`guardrail_audit/`**: Pattern A, prose-only skill. `script_tests/`

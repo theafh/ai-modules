@@ -2,8 +2,8 @@
 description: Make task_auto_check hand each helper its inputs as files read by path, apply approved edits exactly by id, and check every applied change before the loop moves on.
 scope: plugins/ai_dev/skills/task_auto_check
 created: 2026-10-03T15:54:08
-updated: 2026-10-12T09:48:50
-status: audited
+updated: 2026-10-12T10:00:52
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
