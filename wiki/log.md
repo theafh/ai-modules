@@ -1090,3 +1090,14 @@ pre-existing.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-11 13:13] update | Readiness-loop relay and delta audit
+
+- concepts/agent-delegated-automation.md (helper inputs now travel by path
+  through exact relay files, each applied edit group receives a delta audit,
+  and the remaining deletion-routing work points to its backlog owner)
+
+## [2026-10-11 14:03] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

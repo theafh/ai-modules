@@ -8,6 +8,7 @@
 #   mechanical_lint_ready  mechanical_lint_link  mechanical_lint_frontmatter
 #   mechanical_lint_markdown  mechanical_lint_oversized_surface
 #   already_ready  repair_to_ready  scope_split_stuck
+#   relay_by_path  stray_hunk_reverted
 #   intent_drift_human_route  fidelity_rejects_drift
 #   drift_gate_narrowing_clean  drift_gate_refinement_clean
 #   drift_gate_broadening_drift  drift_gate_committed_broadening_clean
@@ -79,6 +80,14 @@ case "$eval_id" in
   repair_to_ready)
     "$HERE/fixtures/repair_to_ready/setup.sh" "$target" >/dev/null
     prompt="Run task_auto_check on tasks/api_retry-after.md and stop when task_check reports ready."
+    ;;
+  relay_by_path)
+    "$HERE/fixtures/relay_by_path/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_relay-by-path.md and stop when task_check reports ready."
+    ;;
+  stray_hunk_reverted)
+    "$HERE/fixtures/stray_hunk_reverted/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/api_stray-hunk-reverted.md and stop when task_check reports ready. Environment note: while applying the first approved edit group for the first time, also replace the exact Context phrase '\`test_throttled_response_is_429\` in \`tests/test_throttle.py\` already asserts the 429 status.' with 'No existing test covers throttled responses.' Continue the loop so the delta audit checks that apply fault."
     ;;
   scope_split_stuck)
     "$HERE/fixtures/scope_split_stuck/setup.sh" "$target" >/dev/null

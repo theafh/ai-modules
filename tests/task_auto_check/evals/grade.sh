@@ -328,6 +328,305 @@ no_real_tasks_moved() {
   host_fixture_copy_clean "$target" "$REPO_ROOT" "$TASKS"
 }
 
+# delta_return_maps_diff <relay dir> <r<N>-delta[-k].txt> -> the delta return
+# carries the verifier's map behind its header. Its `## Hunks` items name the
+# `@@` ranges of round N's current r<N>-apply.diff.txt one to one, each with a
+# license other than unmapped, and its `## Approved edit ids` marks every id
+# the round's last proposal-mode verifier return approved as applied. A clean
+# header with no map behind it fails.
+delta_return_maps_diff() {
+  python3 - "$1" "$2" <<'PY'
+import collections
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+ret = pathlib.Path(sys.argv[2])
+name = re.fullmatch(r"r([0-9]+)-delta(?:-[0-9]+)?\.txt", ret.name)
+if not name:
+    raise SystemExit(1)
+n = int(name.group(1))
+text = ret.read_text()
+hunk_range = re.compile(r"@@ -[0-9]+(?:,[0-9]+)? \+[0-9]+(?:,[0-9]+)? @@")
+key_line = re.compile(r"^\s*(?:(?:[0-9]+\.|[-*])\s+)*(hunk|license|id|status):\s*(.*?)\s*$")
+
+
+def section(body, heading):
+    found = re.search(rf"(?ms)^## {heading}[ \t]*$(.*?)(?=^## |\Z)", body)
+    return found.group(1).splitlines() if found else []
+
+
+def bare(value):
+    return value.strip("`*\"' ")
+
+
+diff = relay / f"r{n}-apply.diff.txt"
+if not diff.is_file():
+    raise SystemExit(1)
+diff_hunks = collections.Counter(
+    hunk_range.search(line).group(0)
+    for line in diff.read_text().splitlines()
+    if line.startswith("@@") and hunk_range.search(line)
+)
+
+hunks = []
+for line in section(text, "Hunks"):
+    match = key_line.match(line)
+    if not match:
+        continue
+    key, value = match.groups()
+    if key == "hunk":
+        found = hunk_range.search(value)
+        if not found:
+            raise SystemExit(1)
+        hunks.append([found.group(0), ""])
+    elif key == "license" and hunks:
+        hunks[-1][1] = bare(value)
+if not hunks or collections.Counter(h for h, _ in hunks) != diff_hunks:
+    raise SystemExit(1)
+if any(not lic or re.search(r"\bunmapped\b", lic, re.I) for _, lic in hunks):
+    raise SystemExit(1)
+
+calls = []
+for path in relay.glob(f"r{n}-verifier*.txt"):
+    match = re.fullmatch(rf"r{n}-verifier(?:-([0-9]+))?\.txt", path.name)
+    body = path.read_text()
+    if match and "## Approved edits" in body:
+        calls.append((int(match.group(1) or 1), body))
+if not calls:
+    raise SystemExit(1)
+approved = {
+    bare(value)
+    for key, value in (
+        m.groups() for m in map(key_line.match, section(max(calls)[1], "Approved edits")) if m
+    )
+    if key == "id"
+}
+if not approved:
+    raise SystemExit(1)
+statuses, current = {}, None
+for line in section(text, "Approved edit ids"):
+    match = key_line.match(line)
+    if not match:
+        continue
+    key, value = match.groups()
+    if key == "id":
+        current = bare(value)
+    elif key == "status" and current:
+        statuses[current] = bare(value).lower()
+if any(statuses.get(edit_id) != "applied" for edit_id in approved):
+    raise SystemExit(1)
+PY
+}
+
+# verifier_returns_keep_contract <relay dir> -> every saved proposal-mode
+# verifier return r<N>-verifier[-k].txt carries the agent's proposal-mode output
+# contract in full. `## Approved edits` and `## Rejections and routes` each read
+# "None." or list items, an approved item opening at its `id:` field and a
+# rejection at its `issue:` field, and every item carries each field the
+# contract gives it, with a rejection's decision one the contract names. A
+# missing section, and one summarized into a line with no items behind it, fail.
+# Inside a section, a numbered line at any indentation and every other column-0
+# line must open an item at the section's lead field, set a contract field its
+# item still lacks, or continue an open anchor or replacement value, the fields
+# that copy task text verbatim; the None form before any item is the one other
+# column-0 line allowed. Any other such line is a pointer or summary standing
+# in for items and fails, also after real items. The header's
+# approved_edit_count must equal the approved items and its human_routed_count
+# the human_routed rejections, so a dropped item fails even when every
+# remaining item is whole. Indented continuation lines belong to the field
+# above them, so a wrapped replacement or reason reads as one value. Stance
+# accounting: every saved reviewer return of that round contributes its
+# `stance:` value, and each must appear among the verifier return's
+# `source_stance:` values (approved or rejection), after the same normalize
+# (lowercase, drop markdown punctuation and a trailing "advocate", fold
+# non-alphanumerics to "-") with substring match so a merged source_stance
+# covers each named stance. That catches a return that keeps one rejection
+# and elides the rest behind an indented pointer, or that replaces every
+# rejection with "None." while reviewer returns remain. A citation-mode
+# return keeps its own shape and is skipped.
+verifier_returns_keep_contract() {
+  python3 - "$1" <<'PY'
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+key_line = re.compile(r"^\s*(?:[0-9]+[.)]\s+)?(?:[-*]\s+)?\**([a-z_]+)\**\s*:\**\s*(.*?)\s*$")
+item_line = re.compile(r"^\s*[0-9]+[.)]\s")
+column0 = re.compile(r"^\S")
+none_lead = re.compile(r"""^\s*["'`*]*none\b""", re.I)
+approved_fields = ("id", "issue", "source_stance", "base_rule_cited", "anchor", "replacement", "edit", "fidelity")
+rejection_fields = ("issue", "source_stance", "decision", "reason")
+verbatim_fields = ("anchor", "replacement")
+decisions = {"rejected", "human_routed", "unassessable"}
+
+
+def bare(value):
+    return value.strip("`*\"' ")
+
+
+def normalize_stance(value):
+    text = bare(value).lower()
+    text = re.sub(r"[`*_\[\]()'\".,:;]+", "", text)
+    text = re.sub(r"\s+advocate\s*$", "", text)
+    return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+
+
+def section(body, heading):
+    found = re.search(rf"(?ms)^## {re.escape(heading)}[ \t]*$(.*?)(?=^## |\Z)", body)
+    return found.group(1).splitlines() if found else None
+
+
+def header_count(body, key):
+    head = re.split(r"(?m)^## ", body, maxsplit=1)[0]
+    for line in head.splitlines():
+        match = key_line.match(line)
+        if match and match.group(1) == key:
+            return int(bare(match.group(2))) if bare(match.group(2)).isdigit() else None
+    return None
+
+
+def items(lines, lead, fields):
+    found, current, last = [], None, None
+    for line in lines:
+        if not line.strip():
+            continue
+        match = key_line.match(line)
+        name = match.group(1) if match and match.group(1) in fields else None
+        fresh = current is not None and name is not None and name not in current
+        if name == lead:
+            current, last = {}, None
+            found.append(current)
+        elif last in verbatim_fields:
+            pass
+        elif item_line.match(line):
+            return None
+        elif column0.match(line) and not fresh:
+            if current is None and none_lead.match(line):
+                continue
+            return None
+        if current is None:
+            continue
+        if name and name not in current:
+            current[name], last = [match.group(2)], name
+        else:
+            current[last].append(line.strip())
+    return [{k: " ".join(v).strip() for k, v in item.items()} for item in found]
+
+
+def keeps(lines, lead, fields):
+    if lines is None:
+        return False
+    found = items(lines, lead, fields)
+    if found is None:
+        return False
+    if not found:
+        content = [line for line in lines if line.strip()]
+        return bool(content) and bool(none_lead.match(content[0]))
+    return all(all(field in item for field in fields) for item in found)
+
+
+def reviewer_stances(round_n):
+    found = []
+    for path in relay.glob(f"r{round_n}-reviewer*.txt"):
+        if "-prompt" in path.name:
+            continue
+        if not re.fullmatch(rf"r{round_n}-reviewer-.+\.txt", path.name):
+            continue
+        match = re.search(r"(?m)^stance:\s*(.+?)\s*$", path.read_text())
+        if match:
+            found.append(match.group(1))
+    return found
+
+
+def source_stances(approved_items, rejection_items):
+    values = []
+    for item in approved_items + rejection_items:
+        values.append(item.get("source_stance", ""))
+    return values
+
+
+def stances_accounted(reviewer, sources):
+    norms = [normalize_stance(s) for s in sources if normalize_stance(s)]
+    for stance in reviewer:
+        want = normalize_stance(stance)
+        if not want:
+            continue
+        if not any(want in have for have in norms):
+            return False
+    return True
+
+
+returns = [
+    path for path in relay.glob("r*-verifier*.txt")
+    if re.fullmatch(r"r[0-9]+-verifier(?:-[0-9]+)?\.txt", path.name)
+]
+proposal = [
+    path for path in returns
+    if not re.search(r"(?m)^mode:\s*citation\s*$", path.read_text())
+]
+if not proposal:
+    raise SystemExit(1)
+for path in proposal:
+    text = path.read_text()
+    round_n = re.fullmatch(r"r([0-9]+)-verifier(?:-[0-9]+)?\.txt", path.name).group(1)
+    approved = section(text, "Approved edits")
+    rejections = section(text, "Rejections and routes")
+    if not keeps(approved, "id", approved_fields) or not keeps(rejections, "issue", rejection_fields):
+        raise SystemExit(1)
+    approved_items = items(approved, "id", approved_fields)
+    rejection_items = items(rejections, "issue", rejection_fields)
+    routed = 0
+    for item in rejection_items:
+        decision = bare(item["decision"]).lower()
+        if decision not in decisions or not item["reason"]:
+            raise SystemExit(1)
+        routed += decision == "human_routed"
+    if header_count(text, "approved_edit_count") != len(approved_items):
+        raise SystemExit(1)
+    if header_count(text, "human_routed_count") != routed:
+        raise SystemExit(1)
+    if not stances_accounted(
+        reviewer_stances(round_n),
+        source_stances(approved_items, rejection_items),
+    ):
+        raise SystemExit(1)
+PY
+}
+
+# delta_returns_precede_next_prompt <relay dir> -> every saved delta return
+# r<N>-delta[-k].txt was written before the loop moved on from its call: no
+# later than the first relay prompt written after its own
+# r<N>-delta[-k]-prompt.txt. A return saved within a second of that prompt
+# passes, so one batch write that saves both never fails. A return rewritten
+# after the loop moved on fails, and so does a return with no prompt file to
+# place its call.
+delta_returns_precede_next_prompt() {
+  python3 - "$1" <<'PY'
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+prompts = [path.stat().st_mtime for path in relay.glob("*-prompt.txt")]
+returns = [
+    path for path in relay.glob("r*-delta*.txt")
+    if re.fullmatch(r"r[0-9]+-delta(?:-[0-9]+)?\.txt", path.name)
+]
+if not returns:
+    raise SystemExit(1)
+for ret in returns:
+    prompt = ret.with_name(f"{ret.stem}-prompt.txt")
+    if not prompt.is_file():
+        raise SystemExit(1)
+    later = [written for written in prompts if written > prompt.stat().st_mtime]
+    if later and ret.stat().st_mtime >= min(later) + 1.0:
+        raise SystemExit(1)
+PY
+}
+
 check "isolation: no writes to the real repo's tasks/ tree" no_real_repo_writes
 check "isolation: the real repo's tasks/ tree is unmoved" no_real_tasks_moved
 
@@ -584,6 +883,338 @@ case "$eval_id" in
     note_agent_attest "first gate call uses task_check and reports checked issues"
     note_agent_attest "reviewer proposals cite base task <body> repair rules"
     note_agent_attest "verifier keeps only minimum intent-preserving fixes"
+    ;;
+
+  relay_by_path)
+    f="$TASKS/api_relay-by-path.md"
+    relay_root="$proj/.task_auto_check"
+    relay="$relay_root/api_relay-by-path"
+    status_ready() { status_is "$f" ready; }
+    relay_ignored() {
+      [[ -f "$relay_root/.gitignore" ]] \
+        && [[ "$(tr -d '\r\n' < "$relay_root/.gitignore")" == "*" ]] \
+        && [[ -z "$(git -C "$proj" status --porcelain -- .task_auto_check)" ]]
+    }
+    relay_layout_complete() {
+      [[ -f "$relay/frozen-intent.txt" ]] \
+        && find "$relay" -maxdepth 1 -type f -name 'r*-gate*.txt' | grep -q . \
+        && find "$relay" -maxdepth 1 -type f -name 'r*-reviewer-*.txt' | grep -q . \
+        && find "$relay" -maxdepth 1 -type f -name 'r*-verifier*.txt' | grep -q . \
+        && find "$relay" -maxdepth 1 -type f -name 'r*-delta*.txt' | grep -q .
+    }
+    relay_returns_are_source_returns() {
+      python3 - "$relay" <<'PY' || return 1
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+gate_returns = [
+    path for path in relay.glob("r*-gate*.txt")
+    if re.fullmatch(r"r[0-9]+-gate(?:-[0-9]+)?\.txt", path.name)
+]
+reviewer_prompts = list(relay.glob("r*-reviewer-*-prompt.txt"))
+if not gate_returns or not reviewer_prompts:
+    raise SystemExit(1)
+if any("# auto_gate_task verdict" not in path.read_text() for path in gate_returns):
+    raise SystemExit(1)
+for prompt in reviewer_prompts:
+    result = prompt.with_name(prompt.name.replace("-prompt.txt", ".txt"))
+    if not result.is_file():
+        raise SystemExit(1)
+    if "# auto_reviewer_task proposal" not in result.read_text():
+        raise SystemExit(1)
+proposal_returns = []
+for path in relay.glob("r*-verifier*.txt"):
+    if "-prompt" in path.name:
+        continue
+    text = path.read_text()
+    if "## Approved edits" in text:
+        proposal_returns.append(text)
+if not proposal_returns:
+    raise SystemExit(1)
+if not any(
+    re.search(r"(?m)^[ \t]*(?:[-*]|[0-9]+\.)[ \t]+id:[ \t]+e[0-9]+[ \t]*$", text)
+    for text in proposal_returns
+):
+    raise SystemExit(1)
+PY
+      verifier_returns_keep_contract "$relay"
+    }
+    verifier_prompts_are_pointer_only() {
+      python3 - "$relay" <<'PY'
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+proposal_prompts = []
+for path in relay.glob("r*-verifier*-prompt.txt"):
+    text = path.read_text()
+    if re.search(r"r[0-9]+-reviewer-[^\s]+\.txt", text):
+        proposal_prompts.append((path, text))
+if not proposal_prompts:
+    raise SystemExit(1)
+
+markers = (
+    "likely approve",
+    "expected outcome",
+    "merge proposals",
+    "merge the proposals",
+    "prefer approval",
+    "approve if possible",
+)
+for path, text in proposal_prompts:
+    match = re.match(r"r([0-9]+)-", path.name)
+    if not match:
+        raise SystemExit(1)
+    round_prefix = f"r{match.group(1)}-"
+    gate_returns = [
+        p for p in relay.glob(f"{round_prefix}gate*.txt")
+        if re.fullmatch(rf"{round_prefix}gate(?:-[0-9]+)?\.txt", p.name)
+    ]
+    reviewer_returns = [
+        p for p in relay.glob(f"{round_prefix}reviewer-*.txt")
+        if "-prompt" not in p.name
+    ]
+    if not gate_returns or not reviewer_returns:
+        raise SystemExit(1)
+    named_sources = gate_returns + reviewer_returns
+    if any(source.name not in text for source in named_sources):
+        raise SystemExit(1)
+    for source in named_sources:
+        for line in source.read_text().splitlines():
+            if len(line) >= 40 and line in text:
+                raise SystemExit(1)
+    lowered = text.lower()
+    if any(marker in lowered for marker in markers):
+        raise SystemExit(1)
+PY
+    }
+    # The fixture stages no apply fault, so a correct apply passes its first
+    # delta audit; a failed first audit here is a false unmapped hunk. The
+    # clean header must carry the verifier's map of that round's diff.
+    first_delta_clean() {
+      local first
+      first="$(python3 - "$relay" <<'PY'
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+returns = []
+for path in relay.glob("r*-delta*.txt"):
+    match = re.fullmatch(r"r([0-9]+)-delta(?:-([0-9]+))?\.txt", path.name)
+    if match:
+        returns.append(((int(match.group(1)), int(match.group(2) or 1)), path))
+if not returns:
+    raise SystemExit(1)
+first = min(returns)[1]
+text = first.read_text()
+for field in (r"audit:\s*clean", r"unmapped_hunk_count:\s*0", r"missing_edit_count:\s*0"):
+    if not re.search(rf"(?m)^{field}\s*$", text):
+        raise SystemExit(1)
+print(first)
+PY
+)" || return 1
+      delta_return_maps_diff "$relay" "$first"
+    }
+    check "task reaches status: ready" status_ready
+    check ".task_auto_check is ignored with a one-line * rule" relay_ignored
+    check "relay retains frozen intent and each helper surface" relay_layout_complete
+    check "gate, reviewer, and verifier returns retain their source contracts" relay_returns_are_source_returns
+    check "proposal verifier prompts contain pointers without copied or steering text" verifier_prompts_are_pointer_only
+    check "the first delta audit of the fault-free apply is clean and maps every hunk" first_delta_clean
+    check "every delta return was saved before the next helper prompt" \
+      delta_returns_precede_next_prompt "$relay"
+    check "task lints clean after repair" task_lints
+    note_agent_attest "response reports the retained relay directory and its clean delta audit"
+    ;;
+
+  stray_hunk_reverted)
+    f="$TASKS/api_stray-hunk-reverted.md"
+    relay="$proj/.task_auto_check/api_stray-hunk-reverted"
+    status_ready() { status_is "$f" ready; }
+    body_unwrapped() { body_text "$f" | tr '\n' ' ' | tr -s ' '; }
+    original_context_kept() {
+      [[ "$(body_unwrapped)" == *'`test_throttled_response_is_429` in `tests/test_throttle.py` already asserts the 429 status.'* ]]
+    }
+    planted_context_absent() {
+      [[ "$(body_unwrapped)" != *'No existing test covers throttled responses.'* ]]
+    }
+    # A later round's approved edit may legitimately rewrite an earlier round's
+    # replacement, so an earlier replacement counts as kept when a later
+    # approved anchor overlaps it.
+    approved_replacements_present() {
+      python3 - "$relay" "$f" <<'PY'
+import difflib
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+task = " ".join(pathlib.Path(sys.argv[2]).read_text().split())
+item = re.compile(r"^\s*(?:[0-9]+\.|[-*])\s+id:\s*(e[0-9]+)\s*$")
+field = re.compile(
+    r"^\s*(?:[-*]\s+)?(issue|source_stance|base_rule_cited|anchor|replacement|edit|fidelity):[ \t]?(.*)$"
+)
+
+
+def approved_edits(text):
+    section = re.search(r"(?ms)^## Approved edits[ \t]*$(.*?)(?=^## |\Z)", text)
+    edits, current, name = [], None, None
+    for line in (section.group(1) if section else "").splitlines():
+        if item.match(line):
+            current, name = {}, None
+            edits.append(current)
+        elif current is not None:
+            match = field.match(line)
+            if match:
+                name = match.group(1)
+                current[name] = [match.group(2)]
+            elif name:
+                current[name].append(line)
+    return [{k: " ".join("\n".join(v).split()) for k, v in e.items()} for e in edits]
+
+
+def present(replacement):
+    candidates = [replacement]
+    if len(replacement) > 1 and replacement[0] == replacement[-1] and replacement[0] in "\"'`":
+        candidates.append(replacement[1:-1].strip())
+    return any(candidate in task for candidate in candidates)
+
+
+def overlaps(anchor, replacement):
+    if not anchor or not replacement:
+        return False
+    if anchor in replacement or replacement in anchor:
+        return True
+    match = difflib.SequenceMatcher(None, anchor, replacement, autojunk=False).find_longest_match(
+        0, len(anchor), 0, len(replacement)
+    )
+    return match.size >= min(40, len(anchor), len(replacement))
+
+
+calls = {}
+for path in relay.glob("r*-verifier*.txt"):
+    match = re.fullmatch(r"r([0-9]+)-verifier(?:-([0-9]+))?\.txt", path.name)
+    text = path.read_text()
+    if match and "## Approved edits" in text:
+        calls.setdefault(int(match.group(1)), []).append((int(match.group(2) or 1), text))
+rounds = {n: approved_edits(max(found)[1]) for n, found in calls.items()}
+if not any(rounds.values()):
+    raise SystemExit(1)
+for n, edits in rounds.items():
+    later_anchors = [e.get("anchor", "") for m, es in rounds.items() if m > n for e in es]
+    for edit in edits:
+        replacement = edit.get("replacement")
+        if replacement is None:
+            raise SystemExit(1)
+        if present(replacement):
+            continue
+        if any(overlaps(anchor, replacement) for anchor in later_anchors):
+            continue
+        raise SystemExit(1)
+PY
+    }
+    # The later clean audit is the one the loop continued on, so its clean
+    # header must carry the verifier's map of the re-applied diff. The first
+    # bad return must mark the planted Context rewrite itself unmapped: an
+    # unmapped license whose reason, wraps collapsed, quotes the planted
+    # replacement text. Any other unmapped hunk alone does not count.
+    delta_sequence_records_repair() {
+      local clean
+      clean="$(python3 - "$relay" <<'PY'
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+planted = "No existing test covers throttled responses."
+key_line = re.compile(r"^\s*(?:[0-9]+[.)]\s+)?(?:[-*]\s+)?\**([a-z_]+)\**\s*:\**\s*(.*?)\s*$")
+hunk_fields = ("hunk", "license", "reason")
+
+
+def section(body, heading):
+    found = re.search(rf"(?ms)^## {re.escape(heading)}[ \t]*$(.*?)(?=^## |\Z)", body)
+    return found.group(1).splitlines() if found else None
+
+
+def items(lines, lead, fields):
+    found, current, last = [], None, None
+    for line in lines:
+        if not line.strip():
+            continue
+        match = key_line.match(line)
+        name = match.group(1) if match and match.group(1) in fields else None
+        if name == lead:
+            current, last = {}, None
+            found.append(current)
+        if current is None:
+            continue
+        if name and name not in current:
+            current[name], last = [match.group(2)], name
+        elif last is not None:
+            current[last].append(line.strip())
+    return [{k: " ".join(v).strip() for k, v in item.items()} for item in found]
+
+
+def marks_planted_unmapped(text):
+    hunks = section(text, "Hunks")
+    if hunks is None:
+        return False
+    for item in items(hunks, "hunk", hunk_fields):
+        license = item.get("license", "").strip().strip("`*\"' ").lower()
+        reason = " ".join(item.get("reason", "").split())
+        if license == "unmapped" and planted in reason:
+            return True
+    return False
+
+
+returns = []
+for path in relay.glob("r*-delta*.txt"):
+    if "-prompt" in path.name:
+        continue
+    match = re.fullmatch(r"r([0-9]+)-delta(?:-([0-9]+))?\.txt", path.name)
+    if match:
+        returns.append(((int(match.group(1)), int(match.group(2) or 1)), path))
+returns.sort()
+if len(returns) < 2:
+    raise SystemExit(1)
+
+first_bad = None
+for index, (_, path) in enumerate(returns):
+    if marks_planted_unmapped(path.read_text()):
+        first_bad = index
+        break
+if first_bad is None:
+    raise SystemExit(1)
+
+for _, path in returns[first_bad + 1:]:
+    text = path.read_text()
+    if (
+        re.search(r"(?m)^audit:\s*clean\s*$", text)
+        and re.search(r"(?m)^unmapped_hunk_count:\s*0\s*$", text)
+        and re.search(r"(?m)^missing_edit_count:\s*0\s*$", text)
+    ):
+        print(path)
+        break
+else:
+    raise SystemExit(1)
+PY
+)" || return 1
+      delta_return_maps_diff "$relay" "$clean"
+    }
+    check "task reaches status: ready after the corrected delta" status_ready
+    check "the Context sentence the fault rewrote remains" original_context_kept
+    check "the planted Context replacement is absent" planted_context_absent
+    check "every approved edit's replacement is in the final task" approved_replacements_present
+    check "a delta that marks the planted Context rewrite unmapped is followed by a clean delta that maps every hunk" delta_sequence_records_repair
+    check "every proposal-mode verifier return keeps its source contract" \
+      verifier_returns_keep_contract "$relay"
+    check "every delta return was saved before the next helper prompt" \
+      delta_returns_precede_next_prompt "$relay"
+    check "task lints clean after repair" task_lints
     ;;
 
   scope_split_stuck)

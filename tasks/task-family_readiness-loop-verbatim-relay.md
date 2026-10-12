@@ -2,9 +2,11 @@
 description: Make task_auto_check hand each helper its inputs as files read by path, apply approved edits exactly by id, and check every applied change before the loop moves on.
 scope: plugins/ai_dev/skills/task_auto_check
 created: 2026-10-03T15:54:08
-updated: 2026-10-11T08:12:08
-status: ready
+updated: 2026-10-12T09:48:50
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Pass readiness-loop hand-offs as files and check every applied change
@@ -43,7 +45,7 @@ The rule is written once in `task_auto_check` and its agents.
      r<N>-<helper>.txt           each helper return, byte for byte
      r<N>-pre-apply.txt          the task file before an edit group lands
      r<N>-lint.txt               the linter output the apply step acted on
-     r<N>-apply.diff.txt         diff -u of that snapshot against the result
+     r<N>-apply.diff.txt         diff -U0 of that snapshot against the result
      r<N>-refuted-citations.txt  refuted citation rows for a gate re-invoke, written only when citation mode refutes at least one citation
    ```
 

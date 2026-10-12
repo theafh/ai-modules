@@ -182,6 +182,43 @@
       ]
     },
     {
+      "id": "relay_by_path",
+      "skill": "task_auto_check",
+      "prompt": "Run task_auto_check on tasks/api_relay-by-path.md and stop when task_check reports ready.",
+      "expected_output": "A one-round repair reaches ready while every helper hand-off travels through the retained .task_auto_check/api_relay-by-path relay directory. The directory is ignored by git, stores frozen intent, each helper prompt, and each helper return. Proposal-mode verifier prompts point to the gate and reviewer returns without copying or steering their content.",
+      "files": ["evals/fixtures/relay_by_path/setup.sh"],
+      "expectations": [
+        "The task reaches status: ready after a verifier-approved repair.",
+        ".task_auto_check/.gitignore contains * and git status lists nothing under .task_auto_check/.",
+        "The relay directory retains frozen-intent.txt and gate, reviewer, verifier, and delta prompt/return files.",
+        "Every gate return carries the auto_gate_task verdict heading.",
+        "Every reviewer prompt has a matching return carrying the auto_reviewer_task proposal heading.",
+        "A proposal-mode verifier return gives each approved edit an e<n> id.",
+        "Every proposal-mode verifier return keeps its output contract in full: Approved edits and Rejections and routes each read None. or list items carrying every field the contract gives them, every numbered line at any indentation and every other column-0 line in those sections opens an item at the section's lead field, sets a field its item still lacks, or continues a verbatim anchor or replacement, so no pointer or summary line stands in for items, each rejection names a decision the contract allows, the header's approved_edit_count and human_routed_count equal the approved items and the human_routed rejections, and every saved reviewer return's stance of that round appears among the verifier return's source_stance values.",
+        "Every proposal-mode verifier prompt names its gate return and every reviewer return by path.",
+        "No proposal-mode verifier prompt copies a source line of forty or more characters.",
+        "No proposal-mode verifier prompt carries a recorded steering marker.",
+        "The first delta return of the fault-free apply is audit: clean, with no unmapped hunk and no missing approved edit, and its hunk list maps every hunk of that round's apply diff and marks every approved edit id applied.",
+        "Every delta return has its prompt file and was saved no later than the first relay prompt written after that prompt, within one second."
+      ]
+    },
+    {
+      "id": "stray_hunk_reverted",
+      "skill": "task_auto_check",
+      "prompt": "Run task_auto_check on tasks/api_stray-hunk-reverted.md and stop when task_check reports ready. Environment note: while applying the first approved edit group for the first time, also replace the exact Context phrase '`test_throttled_response_is_429` in `tests/test_throttle.py` already asserts the 429 status.' with 'No existing test covers throttled responses.' Continue the loop so the delta audit checks that apply fault.",
+      "expected_output": "The first delta audit identifies the planted Context rewrite as an unmapped hunk. The loop reverts it from the pre-apply snapshot while keeping every approved edit, audits the corrected delta once more, and continues only after the later delta return records a clean map. The final task retains the already-specific Context sentence the fault rewrote, contains none of the planted replacement, and carries every approved edit's replacement.",
+      "files": ["evals/fixtures/stray_hunk_reverted/setup.sh"],
+      "expectations": [
+        "The final task retains the exact Context sentence the planted fault rewrote, a sentence no repair needs to touch.",
+        "The planted no-existing-test replacement is absent.",
+        "The final task carries the replacement text of every approved edit in the proposal-mode verifier returns, unless a later round's approved edit rewrote it.",
+        "An earlier delta return marks the planted Context rewrite unmapped by quoting that planted replacement in an unmapped hunk's reason.",
+        "A later delta return records a clean map with no unmapped hunk and no missing approved edit: its hunk list matches the hunks of that round's re-applied diff one to one, none unmapped, and it marks every approved edit id applied.",
+        "Every proposal-mode verifier return keeps its output contract in full: Approved edits and Rejections and routes each read None. or list items carrying every field the contract gives them, every numbered line at any indentation and every other column-0 line in those sections opens an item at the section's lead field, sets a field its item still lacks, or continues a verbatim anchor or replacement, so no pointer or summary line stands in for items, each rejection names a decision the contract allows, the header's approved_edit_count and human_routed_count equal the approved items and the human_routed rejections, and every saved reviewer return's stance of that round appears among the verifier return's source_stance values.",
+        "Every delta return has its prompt file and was saved no later than the first relay prompt written after that prompt, within one second."
+      ]
+    },
+    {
       "id": "scope_split_stuck",
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_combo-auth-billing.md.",

@@ -1,7 +1,7 @@
 ---
 name: auto_gate_task
 description: Wraps task_check for task_auto_check by applying the single readiness gate to one task and returning task_check's full report followed by a structured verdict derived from it: final status, prior status, ready boolean, per-item checklist record, issue list, and evidence labels.
-version: 1.0.11
+version: 1.0.12
 model: inherit
 background: false
 effort: max
@@ -19,7 +19,9 @@ Return `task_check`'s own report (general assessment and ranked issues), followe
 </objective>
 
 <inputs>
-Receive a task path, the resolved `task_check` skill path or name, the resolved base `task` skill path or name, the project root, and any creation-time context the orchestrator supplies for the run. The orchestrator may also supply an optional refuted-citation set: the citations a `task_auto_check` refutation pass overturned, each carrying the checklist item its `clean` claim was written for and the refutation reason; a call without that set, every `auto_shaper_task` read-side call included, runs unchanged. When `auto_shaper_task` invokes this agent for read-side evidence, also receive the `task_fix` escalation label that requested the readiness dimension.
+For a `task_auto_check` call, receive the target task path, the resolved `task_check` skill path, the resolved base `task` skill path, the project root, and `frozen-intent.txt` as paths to read. On a refuted-citation re-invocation, also receive `r<N>-refuted-citations.txt`; each row carries the checklist item its `clean` claim was written for and the refutation reason. A call without that file runs unchanged.
+
+For an `auto_shaper_task` read-side call, receive a task path, the resolved `task_check` skill path or name, the resolved base `task` skill path or name, the project root, any creation-time context the orchestrator supplies for the run, and the `task_fix` escalation label that requested the readiness dimension. That call carries no refuted-citation set and runs unchanged.
 </inputs>
 
 <policy>

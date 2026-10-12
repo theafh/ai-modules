@@ -1,7 +1,7 @@
 ---
 title: Agent-delegated automation
 created: 2026-08-29
-updated: 2026-10-04
+updated: 2026-10-11
 type: concept
 tags: [skill, agent, authoring, repo-structure]
 sources: [raw/notes/agent-spinner-run-evidence-2026-09.md]
@@ -69,6 +69,18 @@ The verifier approves a proposal only when the task text and the recorded issue
 prove the edit is needed. It rejects by default and gives a grounded reason for
 each rejection. It keeps an edit only when the edit is real, is the minimum that
 works, resolves the stated issue, and preserves the task's frozen intent.
+
+The readiness loop hands each helper its inputs by path through run-local relay
+files and stores each return byte for byte. The verifier therefore reads the
+gate's verdict and the reviewers' own proposals rather than an orchestrator's
+summary. Approved edits carry ids and exact anchored replacements.
+
+After an approved edit group lands, the loop writes a unified diff and invokes
+the verifier in delta mode. That audit maps every hunk to an approved edit id,
+the timestamp stamp, or a mechanically fixable linter finding, and checks that
+every approved id landed. The loop removes an unlicensed hunk or applies a
+missing edit before continuing, and restores the pre-apply snapshot when the
+delta cannot be verified.
 
 The readiness gate carries the same stance in its evidence. A verdict that marks
 a checklist line clean has to cite what it read. It names the artifact and the
@@ -168,8 +180,9 @@ of those is portable across harnesses. In three `task_auto_check` runs on Cursor
 in September 2026, the way the orchestrator relayed text set that cap.
 Verifiers judged paraphrases or partial reviewer text. One gate finding
 bypassed them. Committed rule clusters were deleted with no user decision ([run
-evidence](../raw/notes/agent-spinner-run-evidence-2026-09.md)). The backlog
-carries the work to relay verbatim and to route such deletions to the user.
+evidence](../raw/notes/agent-spinner-run-evidence-2026-09.md)). The remaining
+work to route deletions and narrowed commitments to the user belongs to [the
+deletion-and-regate task](../../tasks/task-family_readiness-loop-deletion-and-regate.md).
 
 ## Related concepts
 

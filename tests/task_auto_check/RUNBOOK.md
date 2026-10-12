@@ -23,6 +23,13 @@ model-mediated behavior that static checks cannot prove:
   any gate call or repair and leaves the current task unchanged.
 - Not-ready task: proposes and verifies minimum repairs, applies them,
   re-runs `task_check`, and stops at `ready`.
+- Relay by path: a one-round repair reaches ready while every helper
+  hand-off travels through a retained `.task_auto_check/<stem>/` relay
+  directory; proposal-mode verifier prompts point at gate and reviewer
+  returns without copying or steering their content.
+- Stray hunk reverted: the first apply plants a Context rewrite; the
+  delta audit marks that planted hunk unmapped, the loop restores and
+  re-applies, and a later clean delta is required before the next gate.
 - Scope/focus/complexity issue: surfaces a split as stuck instead of
   creating files.
 - Fidelity guard: rejects or narrows a proposal that changes the
@@ -65,6 +72,7 @@ tree to an isolated copy taken in the eval temp dir, and only for basenames
 the sandbox contains, so a concurrent session editing some other real task
 does not trip it. A fixture name that lands in the live tree is a sandbox
 escape. The repair-class scenarios (`repair_to_ready`,
+`relay_by_path`, `stray_hunk_reverted`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
 `immediate_ready_citations_overturn`) run the full
 nested-agent loop and take ~900 to 1500s solo, so pass `--timeout 1800` or

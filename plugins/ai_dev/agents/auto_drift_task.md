@@ -1,7 +1,7 @@
 ---
 name: auto_drift_task
 description: Reconstructs one task's last-commit title/Goal/body baseline for task_auto_check and reports meaning-level Goal/title drift only when the working tree broadens what the task is for; read-only and human-routed.
-version: 1.0.4
+version: 1.0.5
 model: inherit
 background: false
 effort: max
@@ -21,12 +21,7 @@ Return one read-only classification for the target task under exactly the four e
 </objective>
 
 <inputs>
-  <task_path>The task file path supplied to `task_auto_check`.</task_path>
-  <current_frozen_title>The task title captured at `task_auto_check` freeze time.</current_frozen_title>
-  <current_frozen_goal>The task `## Goal` captured at `task_auto_check` freeze time.</current_frozen_goal>
-  <project_root>The resolved project root used for git history commands.</project_root>
-  <base_task_skill>The resolved base `task` skill path or name, used for task body section semantics.</base_task_skill>
-  <attested_intent>Optional. The user's own statement from the run prompt that a change to the title or Goal is deliberate.</attested_intent>
+  <task_auto_check_paths>For a `task_auto_check` call, receive the target task path, `frozen-intent.txt`, the project root, and the resolved base `task` skill path. When the run prompt supplies an attestation, also receive `attested-intent.txt`. Read the frozen title, Goal, and creation-time intent from `frozen-intent.txt`, and read the optional user attestation from `attested-intent.txt`.</task_auto_check_paths>
 </inputs>
 
 <policy>

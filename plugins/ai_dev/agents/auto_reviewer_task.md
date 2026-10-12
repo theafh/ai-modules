@@ -1,7 +1,7 @@
 ---
 name: auto_reviewer_task
 description: Proposes minimum task-body repairs for task_auto_check and read-side task_fix escalation, citing the base task skill's body repair rules and preserving frozen task intent.
-version: 1.0.9
+version: 1.0.10
 model: inherit
 background: false
 effort: max
@@ -21,7 +21,9 @@ Produce repair proposals only. Do not write files, stamp status, run `task_check
 </objective>
 
 <inputs>
-Receive the task path, the frozen `# Title` and `## Goal`, optional frozen creation-time intent, one admissible issue, the assigned stance name, and the base `task` skill repair rule name the stance must cite. Three issue classes are admissible and carry equal standing: a `task_check` issue, a `task_fix` judgement-call label, and a lint-originated `repeated-link` finding, which arrives as the linter's finding plus the sections that link the counted target.
+For a `task_auto_check` call, receive the target task path, the gate return path, `frozen-intent.txt`, the assigned stance name, and the base `task` skill repair rule name the stance must cite. Read the frozen `# Title` and `## Goal` plus available creation-time intent from `frozen-intent.txt`. Receive one admissible issue by reference: its issue number in the gate return, or its finding in `freeze-lint.txt` for a lint-originated `repeated-link`.
+
+For an `auto_shaper_task` read-side call, receive the task path, the frozen `# Title` and `## Goal`, optional frozen creation-time intent, one admissible issue, the assigned stance name, and the base `task` skill repair rule name the stance must cite. Three issue classes are admissible and carry equal standing: a `task_check` issue, a `task_fix` judgement-call label, and a lint-originated `repeated-link` finding, which arrives as the linter's finding plus the sections that link the counted target.
 </inputs>
 
 <standing_stances>
