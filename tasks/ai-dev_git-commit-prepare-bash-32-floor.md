@@ -2,8 +2,8 @@
 description: Fix prepare_commit_context.sh under stock bash 3.2 (empty diff lists, masked abort status) and prove both git_commit scripts under /bin/bash in the script tests.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-10-09T22:18:42
-updated: 2026-10-09T22:18:42
-status: open
+updated: 2026-10-13T14:24:05
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -57,7 +57,7 @@ The same command under a newer package-manager bash (5.3.9) prints the three std
 
 **Guard both copies.** Rewrite the two copies in `load_numstat` so an empty buffer copies as an empty array at the floor, for example `staged_numstat=(${buffer[@]+"${buffer[@]}"})`. Under `/bin/bash` 3.2.57 that form yields an empty array for an empty buffer and keeps an element containing spaces intact, and shellcheck 0.11.0 reports nothing on it (both verified 2026-10-09).
 
-**Exit non-zero on any abort.** Rewrite the EXIT trap so it ends the run with a non-zero status whenever the run stopped before its last statement, using the completion flag the probes verified: initialize the flag before installing the trap, set it as the script's final statement after the three stdout lines, and have the trap exit non-zero whenever the flag is still unset. The `--help` exit 0, the unknown-argument exit 2, and the `git rev-parse` failure outside a repository all happen before the trap is installed, so they keep their statuses. The skill's `<fallback_trigger>` already reads a non-zero exit from this script as a genuine failure, so the fix needs no change to `SKILL.md` or `references/manual_fallback.md`.
+**Exit non-zero on any abort.** Rewrite the EXIT trap so it still runs `rm -rf "$tmp_dir"` on every EXIT and ends the run with a non-zero status whenever the run stopped before its last statement, using the completion flag the probes verified: initialize the flag before installing the trap, set it as the script's final statement after the three stdout lines, and have the trap exit non-zero whenever the flag is still unset. The `--help` exit 0, the unknown-argument exit 2, and the `git rev-parse` failure outside a repository all happen before the trap is installed, so they keep their statuses. The skill's `<fallback_trigger>` already reads a non-zero exit from this script as a genuine failure, so the fix needs no change to `SKILL.md` or `references/manual_fallback.md`.
 
 **Audit the commit script.** Check `commit_with_message.sh` for unguarded array expansions and any other `set -u` hazard at the floor, and change it only where the audit finds one. The scenarios below run it under `/bin/bash` either way.
 
@@ -65,7 +65,7 @@ The same command under a newer package-manager bash (5.3.9) prints the three std
 
 - **Modifications-only tree**, which empties the staged list: run the prepare script, then pipe a commit message into `commit_with_message.sh` with the printed context path.
 - **New-files-only tree**, which empties the unstaged list: run both scripts the same way.
-- **Injected abort**: copy the prepare script into the scenario's scratch directory with one unbound-variable reference inserted after the EXIT trap is installed, and run the copy in a fresh repository.
+- **Injected abort**: copy the prepare script into the scenario's scratch directory with one unbound-variable reference inserted after the EXIT trap is installed, and run that copy in a fresh repository under `/bin/bash`. Ship a durable pre-fix fixture under `tests/git_commit/script_tests/` that keeps only the old `trap 'rm -rf "$tmp_dir"' EXIT` shape (no completion flag). Apply the same injection to that fixture and run it the same way. Gate the comparative check on the host: when the first line of `/bin/bash --version` reports `version 3.2`, assert the injected fixture exits 0 with empty stdout; when it does not, skip that comparative assertion. The injected fixed copy always exits non-zero with empty stdout under `/bin/bash`.
 
 **Versioning.** The skill and plugin version bumps follow the standing repo versioning rules at commit time, so this task carries no bump step.
 
@@ -73,6 +73,8 @@ The same command under a newer package-manager bash (5.3.9) prints the three std
 
 - Under `bash tests/git_commit/run_all.sh`, the modifications-only scenario passes under `/bin/bash`: the prepare script exits 0 and prints the three stdout lines, the printed path names an existing context file that carries `<file_change mode="unstaged" path="seed.txt">`, and `commit_with_message.sh` then exits 0, `HEAD` advances to a commit carrying the piped message, and the context file is gone.
 - Under `bash tests/git_commit/run_all.sh`, the new-files-only scenario passes under `/bin/bash`: the prepare script exits 0 and prints the three stdout lines, the context file's `<staged_new_files>` block lists the new file, and `commit_with_message.sh` then exits 0 with the new file committed in `HEAD` and the context file gone.
-- Under `bash tests/git_commit/run_all.sh`, the injected-abort scenario passes: the injected copy exits non-zero with empty stdout under `/bin/bash`. On a host whose `/bin/bash` is 3.2, the same injection applied to the script as committed before this task (`git show HEAD:plugins/ai_dev/skills/git_commit/scripts/prepare_commit_context.sh`) exits 0, which shows the scenario detects the masked status.
+- Under `bash tests/git_commit/run_all.sh`, the injected-abort scenario passes: the injected copy exits non-zero with empty stdout under `/bin/bash`. On a host whose `/bin/bash` is 3.2, the same injection applied to a checked-in pre-fix stub under `tests/git_commit/script_tests/` that keeps only the old `trap 'rm -rf "$tmp_dir"' EXIT` shape (cleanup with no completion flag) exits 0, which shows the scenario detects the masked status.
+- Under `bash tests/git_commit/run_all.sh`, scenarios `p8` (`--help` exits 0), `p9` (unknown argument exits 2), and `p10` (run outside a git repository exits non-zero) still pass after the EXIT-trap rewrite.
 - The run log `tests/git_commit/results/layer1.log` shows the `/bin/bash --version` line for each of the three new scenarios.
 - Neither `staged_numstat=("${buffer[@]}")` nor `unstaged_numstat=("${buffer[@]}")` remains in `prepare_commit_context.sh`, and the script installs exactly one EXIT trap.
+- `plugins/ai_dev/skills/git_commit/scripts/commit_with_message.sh` installs no `trap`, declares no `local -a` or `declare -a` arrays, and contains no unguarded `"${name[@]}"` array copies.
