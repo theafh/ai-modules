@@ -2,9 +2,11 @@
 description: Re-measure task_auto_check eval band, set default --timeout above it, sync RUNBOOK/run.py/CLAUDE.md band surfaces, keep per-eval ceilings via evals.json and RUNBOOK table.
 scope: "local test harnesses"
 created: 2026-09-05T03:06:08
-updated: 2026-10-12T22:52:11
-status: ready
+updated: 2026-10-13T10:59:58
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Re-measure the task_auto_check eval timing band and lift its default timeout above it
@@ -84,7 +86,7 @@ the default rather than the reverse.
 For each measured repair-class eval, apply the Acceptance rule for that eval's post-change effective worker ceiling.
 
 **Out of scope:** Narrowing the cache key, which
-[the eval-cache granularity task](tests_eval-cache-key-granularity.md) owns;
+[the eval-cache granularity task](../tests_eval-cache-key-granularity.md) owns;
 editing this harness's `run.py` still invalidates its cached verdicts until that
 task lands. Replacing a minutes-site band statement with a vendor-neutral
 full-repair-loop contrast that omits the re-measured figure is rejected; every

@@ -1,0 +1,13 @@
+eval_id,draw,run_dir,duration_s,worker_rc,vendor,model,graded
+repair_to_ready,1,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261012-230730-57365,860.1785697937012,0,cursor,auto,""
+repair_to_ready,2,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261012-232202-97692,774.6307759284973,0,cursor,auto,""
+relay_by_path,1,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261012-233508-33567,1178.114145040512,0,cursor,auto,""
+relay_by_path,2,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261012-235458-85491,575.6773300170898,0,cursor,auto,""
+stray_hunk_reverted,1,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261013-000445-11881,699.36931681633,0,cursor,auto,""
+stray_hunk_reverted,2,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261013-001636-43658,685.1302678585052,0,cursor,auto,""
+guard_rebaseline_after_gate,1,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261013-002812-74895,1417.4450550079346,0,cursor,auto,""
+guard_rebaseline_after_gate,2,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261013-005201-37054,1045.2462968826294,0,cursor,auto,""
+interaction_scan_surfaces,1,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261013-010937-83170,1671.8600211143494,0,cursor,auto,""
+interaction_scan_surfaces,2,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261013-013740-56238,2004.9624121189117,0,cursor,auto,""
+immediate_ready_citations_overturn,1,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261013-021116-42597,,,,,""
+immediate_ready_citations_overturn,2,/Users/andreas.hoffmann/Code/private_repos/ai-modules/tests/task_auto_check/workspace/run-20261013-021127-43171,,,,,""

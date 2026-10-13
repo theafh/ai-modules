@@ -267,16 +267,16 @@ operator's wiki tree. Finish a wiki run before editing that tree.
 ### Cheap-first: probe an LLM-eval fixture before paying for the full loop
 
 For any eval whose worker runs a deep, slow loop (currently the
-`task_auto_check` repair loop, ~15 to 25 min per run, timeout-prone),
+`task_auto_check` repair loop, ~10 to 33 min per run, timeout-prone),
 validate the fixture with the cheapest surface that reveals the same
 verdict *before* running the loop. For a readiness-repair eval that means
 running the gate skill (`task_check`) alone against the staged fixture: a
 single `claude -p` reading that skill, ~1 to 3 min, reporting its verdict and
 issue list. A fixture-design bug (an unintended second readiness gap, an
 inaccurate premise) caught at the gate costs minutes; the same bug caught
-via a full-loop timeout costs 15 to 25. And run these deep loops
+via a full-loop timeout costs 10 to 33. And run these deep loops
 **sequentially**: two in parallel contend for the model and both slow
-past even an 1800s timeout. `task_auto_check/RUNBOOK.md` has the specifics
+past even a 2305s timeout. `task_auto_check/RUNBOOK.md` has the specifics
 and the grade-check pitfall that goes with them.
 
 ### Worker auth: nested `claude -p` reads the stored OAuth login

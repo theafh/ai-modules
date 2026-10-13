@@ -271,9 +271,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("ids", nargs="*", default=None)
     vendor.add_vendor_arguments(parser)
-    parser.add_argument("--timeout", type=int, default=1800,
+    parser.add_argument("--timeout", type=int, default=2305,
                         help="Default per-eval worker timeout in seconds. The repair "
-                             "loop runs ~900-1500s solo, so the default leaves "
+                             "loop runs ~576-2005s solo, so the default leaves "
                              "headroom above that band rather than sitting on its "
                              "floor. An eval carrying its own \"timeout\" in "
                              "evals.json overrides this.")

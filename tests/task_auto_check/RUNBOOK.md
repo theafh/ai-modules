@@ -83,8 +83,9 @@ escape. The repair-class scenarios (`repair_to_ready`,
 `relay_by_path`, `stray_hunk_reverted`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
 `immediate_ready_citations_overturn`) run the full
-nested-agent loop and take ~900 to 1500s solo, so pass `--timeout 1800` or
-more, since the default 900 cuts many of them off. A `worker rc=-1` in
+nested-agent loop and take ~576 to 2005s solo on Cursor (2026-10-13
+re-measure; see the timing-band note below); the harness default
+`--timeout` is 2305. A `worker rc=-1` in
 `timing.json` means the worker was cut off mid-run: its grade reflects an
 unfinished sandbox and is inconclusive, never a behavioral pass or fail
 (though the partial state can still show whether an intended edit landed).
@@ -102,11 +103,11 @@ the iteration cost sharply:
   issue list, ~1 to 3 min. This reveals whether the fixture lands on the
   intended verdict and what side-findings it carries, so a fixture-design
   bug (an unintended second readiness gap, an inaccurate premise) surfaces
-  in minutes rather than via a 15 to 25 min repair-loop timeout. Run the full
+  in minutes rather than via a 10 to 33 min repair-loop timeout. Run the full
   loop only once the gate verdict matches what the eval expects.
 - **Run repair-class evals sequentially, never concurrently.** Two deep
   nested-agent loops in parallel contend for the model and both slow past
-  even an 1800s timeout; solo, each finishes in ~900 to 1500s. Launch one
+  even a 2305s timeout; solo, each finishes in ~576 to 2005s. Launch one
   `run.py` invocation at a time.
 
 When authoring a `grade.sh` check for an edit-supersedes behavior, assert
@@ -136,6 +137,24 @@ A timed-out worker fails its eval whatever `grade.sh` says, because the sandbox
 holds partial state. Read `timing.json` before raising a budget: a run killed
 at its ceiling with the file already edited was close to finishing, while one
 that never touched the file is stuck somewhere else.
+
+## Timing-band re-measurement (2026-10-13)
+
+Cursor vendor (`agent -p` / `auto`), solo sequential `--force`. Measurement
+ceilings were raised to 3600s so no draw was cut off. Completing `duration_s`
+with `worker_rc` 0:
+
+| Eval | Completing `duration_s` (vendor) |
+| --- | --- |
+| `repair_to_ready` | 860.2, 774.6 (Cursor) |
+| `relay_by_path` | 1178.1, 575.7 (Cursor) |
+| `stray_hunk_reverted` | 699.4, 685.1 (Cursor) |
+| `guard_rebaseline_after_gate` | 1417.4, 1045.2 (Cursor) |
+| `interaction_scan_surfaces` | 1671.9, 2005.0 (Cursor) |
+| `immediate_ready_citations_overturn` | 1062.1, 1057.2 (Cursor) |
+
+Band lower end 576s, upper end 2005s. Harness default `--timeout` is
+upper + 300 = **2305**. Full campaign notes: `results/timeout_band_measure.md`.
 
 ## Sandbox escape observed 2026-09-18, and the guard added for it
 

@@ -48,7 +48,7 @@ subset only, and states that the rest of the suite uses the default 4 workers.
 `--workers 1` still serializes everything.
 
 **Out of scope:** Re-measuring the repair-class timing band, which
-[the timeout-crash task](tests_eval-runner-timeout-crash.md) owns. Adding evals.
+[the timeout-crash task](archive/tests_eval-runner-timeout-crash.md) owns. Adding evals.
 Live-testing unshipped editorial plugin harnesses.
 
 ## Acceptance
