@@ -566,6 +566,22 @@ case "$eval_id" in
     note_agent_attest "response contains a 'Gaps:' list naming the missing test"
     ;;
 
+  audit_reopen)
+    f="$TASKS/calc_add-function.md"
+    no_test_added() { [[ -z "$(find "$proj/tests" -name 'test_*.py' 2>/dev/null)" ]]; }
+    status_reopened() { [[ "$(fm_field "$f" status)" == "implemented" ]]; }
+    only_task_file_changed() {
+      [[ "$(git -C "$proj" status --porcelain 2>/dev/null \
+            | grep -Ev '(^|/)(__pycache__/|\.pytest_cache/)|\.pyc$')" == " M tasks/calc_add-function.md" ]]
+    }
+    check "status re-opened from audited to implemented"               status_reopened
+    check "updated bumped to the real wall clock"                      updated_bumped calc_add-function.md
+    check "only the audited task file changed, so no new task was filed" only_task_file_changed
+    check "the task body is unchanged (frontmatter stamp only)"        body_unchanged tasks/calc_add-function.md
+    check "no test file was added (audit reports, it does not fix)"    no_test_added
+    note_agent_attest "response contains a 'Gaps:' list naming the missing test and hands it to task_implement on the same task"
+    ;;
+
   audit_clean)
     f="$TASKS/calc_add-function.md"
     status_audited() { [[ "$(fm_field "$f" status)" == "audited" ]]; }

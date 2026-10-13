@@ -1112,3 +1112,34 @@ pre-existing.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-13 16:31] update | Bash 3.2 empty-array and EXIT-trap behaviours
+
+- concepts/interpreter-and-tool-path-portability.md (the empty-array `set -u`
+  abort with its portable copy form, and the EXIT trap that hides a `set -u`
+  abort's status on the stock build with the completion-flag remedy, both
+  verified under `/bin/bash` 3.2.57 and bash 5.3.9; the skill's substitute list
+  noted as lacking both)
+- index.md (summary of that page, Last updated)
+
+## [2026-10-13 16:32] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.
+
+## [2026-10-13 17:59] update | Re-audit re-open and the bash 3.2 substitutes in the skill
+
+- raw/notes/task-status-rules-owner-statements-2026-10-13.md (new: the owner's
+  statements that a re-audit re-opens an audited task and that follow-up tasks
+  are kept for stalled loops and unrelated issues)
+- concepts/task-lifecycle-and-status-rules.md (the re-audit re-open, the
+  follow-up rule, the implemented row's writers, divergence signs, and the
+  revised routing recorded under open questions)
+- concepts/interpreter-and-tool-path-portability.md (the skill's substitute
+  list now carries both `set -u` behaviours, so the gap note is gone)
+- index.md (summary of the lifecycle page)
+
+## [2026-10-13 17:59] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

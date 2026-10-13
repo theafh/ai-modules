@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-10 | Total pages: 36
+> Last updated: 2026-10-13 | Total pages: 36
 
 ## Entities
 
@@ -29,13 +29,13 @@
 - [Hook delivery design](concepts/hook-delivery-design.md): the shared-script layout, the uneven per-target deploy routing, the foreign hook files Copilot parses, and the decision to deliver Copilot natively.
 - [Hook surface portability](concepts/hook-surface-portability.md): four configuration schemas plus one that is code, four signalling contracts, additive layers, and guarantees that vary with the interception point.
 - [Instruction-defect classes](concepts/instruction-defect-classes.md): three ways an AI-consumed instruction passes review and fails at runtime (reach, disposition, intra-file contradiction), why review misses each, why measurement found them, and the measured limit where instruction repair ends and a mechanism must carry the property.
-- [Interpreter and tool-path portability](concepts/interpreter-and-tool-path-portability.md): stock macOS bash 3.2 as the bundled-script floor, the licence reason it stays, the stock python3, the login-shell PATH trap, the constructs verified to fail on that build, and two zsh constructs that misfire silently in commands an agent runs directly.
+- [Interpreter and tool-path portability](concepts/interpreter-and-tool-path-portability.md): stock macOS bash 3.2 as the bundled-script floor, the licence reason it stays, the stock python3, the login-shell PATH trap, the constructs verified to fail on that build, the empty-array abort and the EXIT trap that hides a `set -u` abort's status there, and two zsh constructs that misfire silently in commands an agent runs directly.
 - [Orchestration failure families](concepts/orchestration-failure-families.md): the run evidence behind the recipes proposed for agent_spinner, with 23 failure families and their counts, the base rates, a register of 16 cases under neutral labels, the mechanisms observed together, the families seen in the cases each recipe rests on, and a map from each run-protocol step and check to the families it answers.
 - [Output style delivery design](concepts/output-style-delivery-design.md): the decision record behind the `styles/` source, the per-target delivery matrix including Cursor's project-only `.mdc` write, the marked-block write, and the scope rejections.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md): why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md): naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.
-- [Task lifecycle and status rules](concepts/task-lifecycle-and-status-rules.md): the intended lifecycle of a task file, which skill writes each status, why only a substantive rewrite sends `ready` back to `checked`, forward-only status after implementation, final archived status, link-only archive rewrites, the repeated-link warning as a pre-implementation prompt, and how a divergence shows in a skill, a run, or a test.
+- [Task lifecycle and status rules](concepts/task-lifecycle-and-status-rules.md): the intended lifecycle of a task file, which skill writes each status, why only a substantive rewrite sends `ready` back to `checked`, forward status after implementation with the re-audit re-open of an audited task, follow-up tasks only for stalled loops, unrelated issues, and archived work, final archived status, link-only archive rewrites, the repeated-link warning as a pre-implementation prompt, and how a divergence shows in a skill, a run, or a test.
 - [The deployment model](concepts/deployment-model.md): two discovery roots, per-tool configuration, generated variants, scope precedence, and the prior-value restore on uninstall.
 - [Verification surfaces for a shipped skill](concepts/verification-surfaces.md): script tests against behavioral evals, harnesses committed but never deployed, the pinned model under test, a worker isolated from the host's instructions, style, and deployed roles and skills, trigger coverage as its own question, and why a grader that tests surface form or hides a conjunction misreports the behaviour.
 

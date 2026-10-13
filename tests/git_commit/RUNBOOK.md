@@ -13,10 +13,14 @@ it. All harness logic lives in this directory. See
 ## Common commands
 
 ```bash
-# Bundled-script unit tests (fast, deterministic, ~1 sec, no LLM cost)
+# Bundled-script unit tests (fast, deterministic, ~15 sec, no LLM cost)
 ./tests/git_commit/run_all.sh
 
-# Behavioral evals (LLM cost). Three phases:
+# Behavioral evals (LLM cost). run.py drives all three phases with a
+# Cursor worker by default; see evals/README.md for its options.
+python3 tests/git_commit/evals/run.py
+
+# The same three phases by hand:
 #   1. stage:  bash evals/stage.sh <id> -> shell-safe name=value output
 #   2. run:    an agent applies $skill_path to $sandbox_repo with $prompt
 #   3. grade:  bash evals/grade.sh <id> "$sandbox_repo"
@@ -38,6 +42,8 @@ tests/git_commit/results/
   layer1.log                          # latest script_tests transcript
 tests/git_commit/script_tests/scratch/<id>/
                                       # transient per-scenario git repos
+tests/git_commit/evals/workspace/run-<ts>/<id>/
+                                      # run.py per-eval records (response, grade)
 <target_dir>/                         # whatever stage.sh was given (or mktemp)
 ├── repo/                              the sandbox git repo
 ├── skill_under_test/                  (evals 5 to 7) edited skill copy, overlaid by run.py

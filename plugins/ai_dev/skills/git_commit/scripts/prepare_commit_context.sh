@@ -46,8 +46,15 @@ esac
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
+# Completion flag for the EXIT trap: bash 3.2 masks $? as 0 inside an EXIT
+# trap after a set -u abort, so a trap that only removes tmp_dir exits 0 and
+# hides the failure from the skill's <fallback_trigger>. Initialize unset,
+# set after the three stdout lines, and have the trap exit non-zero whenever
+# the flag is still unset. Early exits (--help, unknown arg, rev-parse) run
+# before this trap is installed and keep their own statuses.
+_prepare_completed=
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
+trap 'rm -rf "$tmp_dir"; [[ -n "${_prepare_completed:-}" ]] || exit 1' EXIT
 
 # Stage every untracked, non-ignored file using NUL-delimited paths.
 untracked_file_list="$tmp_dir/untracked-files"
@@ -73,12 +80,15 @@ load_numstat() {
     while IFS= read -r -d '' entry; do
       [[ -n "$entry" ]] && buffer+=("$entry")
     done < <(git diff --cached --numstat -z)
-    staged_numstat=("${buffer[@]}")
+    # Bash before 4.4 treats "${name[@]}" on an empty array as unbound under
+    # set -u. The ${name[@]+"..."} form yields an empty array at the floor
+    # and keeps space-bearing elements intact when the buffer is non-empty.
+    staged_numstat=(${buffer[@]+"${buffer[@]}"})
   else
     while IFS= read -r -d '' entry; do
       [[ -n "$entry" ]] && buffer+=("$entry")
     done < <(git diff --numstat -z)
-    unstaged_numstat=("${buffer[@]}")
+    unstaged_numstat=(${buffer[@]+"${buffer[@]}"})
   fi
 }
 
@@ -213,3 +223,4 @@ blob_bytes=$(( $(wc -c < "$ctx_file") ))
 printf '%s\n' "$ctx_file"
 printf '%s\n' "$blob_bytes"
 printf 'Read this entire file — with a Read tool, or with ordered shell slices (wc -l for the line count, then consecutive sed -n spans) on a harness that has no Read tool. Do NOT re-run git diff, git status, or git log — the per-file <file_change> sections inside are authoritative and must be consumed whole to write a coherent message. Pick the path from the byte size above against how much a single read returns: read the file in one call when it fits, otherwise cover every byte with sequential, non-overlapping pages or slices in order, halving the span on overflow, and never sampling by filename.\n'
+_prepare_completed=1

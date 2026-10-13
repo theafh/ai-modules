@@ -15,7 +15,7 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | Subdir | Skill | Pattern | What it covers |
 | --- | --- | --- | --- |
 | `wiki/` | `wiki` | Pattern B (legacy two-layer) | Layer 1 deterministic script unit tests + Layer 2 LLM skill-behavior evals via custom orchestrator. |
-| `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
+| `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade). |
 | `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
 | `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper, and the size-profile line counts) + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
 | `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on the default Cursor worker, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
@@ -565,7 +565,7 @@ Two surfaces, each in its own subdir:
 | Surface | Where | What it tests | Runner |
 | --- | --- | --- | --- |
 | `script_tests/` | `prepare_commit_context.sh`, `commit_with_message.sh` | Stdout / exit-code / git-state on real working trees | `./tests/git_commit/run_all.sh` |
-| `evals/` | Skill agent behavior | Primary workflow + commit-message format + fallback discipline | Operator-driven: `stage.sh` → agent runs → `grade.sh` |
+| `evals/` | Skill agent behavior | Primary workflow + commit-message format + fallback discipline + drift guard + pre-flight obligations | `python3 tests/git_commit/evals/run.py` (stage → vendor worker → grade) |
 
 ### script_tests: fast, deterministic
 
@@ -574,36 +574,44 @@ Two surfaces, each in its own subdir:
 ```
 
 Stages a fresh per-scenario temp git repo under
-`script_tests/scratch/<id>/`. ~1 sec. No LLM cost.
+`script_tests/scratch/<id>/`. ~15 sec. No LLM cost.
 
-### Behavioral evals: three-phase operator workflow
+### Behavioral evals: stage, worker, grade
 
 The installed skill-creator skill is **read-only** for this harness;
 nothing under `tests/git_commit/` copies into or patches it. All
 harness logic stays in this directory.
 
 ```bash
+# Every eval (or name ids, e.g. `6 7`), with the default Cursor worker
+python3 tests/git_commit/evals/run.py
+```
+
+`run.py` stages each fixture, runs the vendor worker against the
+micro-deployed skill, and grades the sandbox with `grade.sh`, as the
+model policy above describes. The same three phases still run by hand
+for debugging:
+
+```bash
 # 1. Stage one fixture; exports shell-safe name=value lines
 eval "$(bash tests/git_commit/evals/stage.sh <eval_id>)"
 
-# 2. Have an agent (in this session) load $skill_path and apply it to
-#    $sandbox_repo with the prompt in $prompt. The agent uses its own
-#    Skill/Read/Bash tools — there's no orchestrator that drives it.
+# 2. Have an agent load $skill_path and apply it to $sandbox_repo
+#    with the prompt in $prompt.
 
 # 3. Grade the post-run sandbox programmatically
 bash tests/git_commit/evals/grade.sh <eval_id> "$sandbox_repo"
 ```
 
 `evals/README.md` has the full recipe and the per-eval expectations.
-Phase 2 is operator-driven; there is no `workspace/iteration-N/`
-tree to inspect (the older README claimed there was; it's been
-corrected).
+There is no `workspace/iteration-N/` tree to inspect.
 
 ### What success looks like
 
 - `run_all.sh` exits 0 with all `script_tests` scenarios PASS.
-- For each behavioral eval: `grade.sh <id> "$sandbox_repo"` exits 0
-  and prints PASS for every expectation.
+- For each behavioral eval: `run.py` grades it PASS, which means
+  `grade.sh <id> "$sandbox_repo"` exits 0 and prints PASS for every
+  expectation.
 
 ### Scope discipline
 

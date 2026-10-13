@@ -2,9 +2,11 @@
 description: Fix prepare_commit_context.sh under stock bash 3.2 (empty diff lists, masked abort status) and prove both git_commit scripts under /bin/bash in the script tests.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-10-09T22:18:42
-updated: 2026-10-13T14:24:05
-status: ready
+updated: 2026-10-13T18:33:15
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make git_commit's bundled scripts run and fail correctly under stock bash 3.2
@@ -61,11 +63,12 @@ The same command under a newer package-manager bash (5.3.9) prints the three std
 
 **Audit the commit script.** Check `commit_with_message.sh` for unguarded array expansions and any other `set -u` hazard at the floor, and change it only where the audit finds one. The scenarios below run it under `/bin/bash` either way.
 
-**Prove both scripts at the floor.** In `tests/git_commit/script_tests/run.sh`, add an interpreter variable pinned to `/bin/bash`, modeled on the deployment tests' `DEPLOY_BASH`, and have the new scenarios run both scripts through it. Each new scenario logs the first line of `/bin/bash --version`, so the run log shows which bash it proved. Add three scenarios:
+**Prove both scripts at the floor.** In `tests/git_commit/script_tests/run.sh`, add an interpreter variable pinned to `/bin/bash`, modeled on the deployment tests' `DEPLOY_BASH`, and have the new scenarios run both scripts through it. Each new scenario logs the first line of `/bin/bash --version`, so the run log shows which bash it proved. Add these scenarios:
 
 - **Modifications-only tree**, which empties the staged list: run the prepare script, then pipe a commit message into `commit_with_message.sh` with the printed context path.
 - **New-files-only tree**, which empties the unstaged list: run both scripts the same way.
 - **Injected abort**: copy the prepare script into the scenario's scratch directory with one unbound-variable reference inserted after the EXIT trap is installed, and run that copy in a fresh repository under `/bin/bash`. Ship a durable pre-fix fixture under `tests/git_commit/script_tests/` that keeps only the old `trap 'rm -rf "$tmp_dir"' EXIT` shape (no completion flag). Apply the same injection to that fixture and run it the same way. Gate the comparative check on the host: when the first line of `/bin/bash --version` reports `version 3.2`, assert the injected fixture exits 0 with empty stdout; when it does not, skip that comparative assertion. The injected fixed copy always exits non-zero with empty stdout under `/bin/bash`.
+- **Late injected abort**: copy the prepare script with one unbound-variable reference inserted directly before its final statement, the completion-flag assignment, and run that copy in a fresh repository under `/bin/bash`. Assert that it exits non-zero and that its stderr names the injected variable. On a host whose `/bin/bash` is 3.2, moving the flag assignment earlier or adding a statement after it makes this copy exit 0, so the scenario pins the flag as the script's final statement. Newer bash keeps a non-zero status after a `set -u` abort whatever the flag holds, so there only the check that the injected reference sits directly before the flag assignment tests the flag's position.
 
 **Versioning.** The skill and plugin version bumps follow the standing repo versioning rules at commit time, so this task carries no bump step.
 
@@ -75,6 +78,7 @@ The same command under a newer package-manager bash (5.3.9) prints the three std
 - Under `bash tests/git_commit/run_all.sh`, the new-files-only scenario passes under `/bin/bash`: the prepare script exits 0 and prints the three stdout lines, the context file's `<staged_new_files>` block lists the new file, and `commit_with_message.sh` then exits 0 with the new file committed in `HEAD` and the context file gone.
 - Under `bash tests/git_commit/run_all.sh`, the injected-abort scenario passes: the injected copy exits non-zero with empty stdout under `/bin/bash`. On a host whose `/bin/bash` is 3.2, the same injection applied to a checked-in pre-fix stub under `tests/git_commit/script_tests/` that keeps only the old `trap 'rm -rf "$tmp_dir"' EXIT` shape (cleanup with no completion flag) exits 0, which shows the scenario detects the masked status.
 - Under `bash tests/git_commit/run_all.sh`, scenarios `p8` (`--help` exits 0), `p9` (unknown argument exits 2), and `p10` (run outside a git repository exits non-zero) still pass after the EXIT-trap rewrite.
-- The run log `tests/git_commit/results/layer1.log` shows the `/bin/bash --version` line for each of the three new scenarios.
+- Under `bash tests/git_commit/run_all.sh`, the late injected-abort scenario passes: its copy carries the injected reference on the line directly before `_prepare_completed=1`, and under `/bin/bash` it exits non-zero with stderr naming the injected variable. On a host whose `/bin/bash` is 3.2, the same scenario fails when run from a scratch mirror whose prepare script sets `_prepare_completed=1` directly after `load_numstat "unstaged"`.
+- The run log `tests/git_commit/results/layer1.log` shows the `/bin/bash --version` line for each new scenario.
 - Neither `staged_numstat=("${buffer[@]}")` nor `unstaged_numstat=("${buffer[@]}")` remains in `prepare_commit_context.sh`, and the script installs exactly one EXIT trap.
 - `plugins/ai_dev/skills/git_commit/scripts/commit_with_message.sh` installs no `trap`, declares no `local -a` or `declare -a` arrays, and contains no unguarded `"${name[@]}"` array copies.

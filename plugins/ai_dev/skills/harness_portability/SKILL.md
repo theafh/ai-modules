@@ -1,7 +1,7 @@
 ---
 name: harness_portability
 description: Cross-agent-harness and cross-OS portability review for runtime artefacts bundled inside skills and plugins. Use when creating, editing, reviewing, or troubleshooting shell scripts, Python or Node helpers, hooks and hook configuration, MCP servers, command wrappers, setup and install flows, plugin wiring, agent and subagent definitions, agent frontmatter, tool allowlists, read-only agent enforcement, output styles and their per-harness rules-file and instructions-file counterparts, skill wording, execution and initialization instructions, path handling, environment variables, permissions, or provider-specific OpenAI Codex, Anthropic Claude, Cursor, Google Antigravity, SST OpenCode, and GitHub Copilot in VS Code behaviour that must work across agent harnesses, macOS, and Linux.
-version: 1.0.15
+version: 1.0.16
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -71,6 +71,8 @@ license: MIT
       - negative array index: compute a non-negative index from `${#arr[@]}` before subscripting
       - `EPOCHSECONDS`: `date +%s`
       - `printf '%(fmt)T'`: `date +fmt` with the matching format string
+      - `"${arr[@]}"` on an array that may be empty under `set -u` (bash before 4.4 aborts with `arr[@]: unbound variable`): `${arr[@]+"${arr[@]}"}`, which expands to nothing for an empty array and keeps every element intact otherwise
+      - an EXIT trap that only cleans up under `set -u` (bash 3.2 reads `$?` as 0 inside the trap after a `set -u` abort, so the script exits 0): initialize a completion flag before installing the trap, set it as the script's final statement, and have the trap exit non-zero while the flag is unset
       Use Python standard-library APIs for path, JSON, subprocess, temporary-file, and filesystem operations when they are more portable than shell pipelines.
     </rule>
     <rule>Treat a package-manager PATH entry that a login-shell profile contributes as unavailable in a non-login shell. Agent harnesses commonly spawn non-login shells, so an interpreter or tool assumption that holds in a developer's login terminal fails in harness-driven runs of the same command. Prefer what the operating system ships, and detect anything else with a clear failure when it is required.</rule>

@@ -18,6 +18,17 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SKILL_DIR="$REPO_ROOT/plugins/ai_dev/skills/git_commit"
 PREPARE="$SKILL_DIR/scripts/prepare_commit_context.sh"
 COMMIT="$SKILL_DIR/scripts/commit_with_message.sh"
+# Pin the bash 3.2 floor the way tests/deployment/script_tests pins DEPLOY_BASH:
+# scenarios that prove floor behaviour invoke both scripts through this path
+# rather than through the shebang's PATH-resolved bash.
+PREPARE_BASH="/bin/bash"
+PRE_FIX_TRAP_FIXTURE="$SCRIPT_DIR/prepare_commit_context_pre_fix_trap.sh"
+# The never-set name p14 and p15 reference to force a set -u abort in an injected copy.
+INJECTED_UNBOUND_NAME="__git_commit_inject_unbound__"
+# The prepare script's final statement, which p15 pins in place: under bash 3.2
+# only a completion flag set as the last statement turns a late set -u abort
+# into a non-zero exit.
+COMPLETION_FLAG_ASSIGNMENT="_prepare_completed=1"
 
 SCRATCH="$SCRIPT_DIR/scratch"
 RESULTS="$SCRIPT_DIR/../results/layer1.log"
@@ -102,6 +113,122 @@ run_commit() {
         out=$(cd "$repo" && printf '%s' "$message" | "$COMMIT" 2>/dev/null) && rc=0 || rc=$?
     fi
     printf '%s|%s' "$rc" "$out"
+}
+
+# run_prepare_bash <repo> [args...] -> same as run_prepare, but through PREPARE_BASH.
+run_prepare_bash() {
+    local repo=$1
+    shift
+    local out rc
+    out=$(cd "$repo" && "$PREPARE_BASH" "$PREPARE" "$@" 2>/dev/null) && rc=0 || rc=$?
+    printf '%s|%s' "$rc" "$out"
+}
+
+# run_commit_bash <repo> <message> [context_file] -> same as run_commit, through PREPARE_BASH.
+run_commit_bash() {
+    local repo=$1
+    local message=$2
+    local ctx=${3:-}
+    local out rc
+    if [[ -n "$ctx" ]]; then
+        out=$(cd "$repo" && printf '%s' "$message" | "$PREPARE_BASH" "$COMMIT" "$ctx" 2>/dev/null) && rc=0 || rc=$?
+    else
+        out=$(cd "$repo" && printf '%s' "$message" | "$PREPARE_BASH" "$COMMIT" 2>/dev/null) && rc=0 || rc=$?
+    fi
+    printf '%s|%s' "$rc" "$out"
+}
+
+# log_bash_version <scenario_id> — first line of /bin/bash --version into the run log.
+log_bash_version() {
+    local id=$1
+    local ver
+    ver=$("$PREPARE_BASH" --version 2>/dev/null | head -n 1)
+    log "  [$id] $PREPARE_BASH --version: $ver"
+}
+
+# inject_unbound_after_trap <src> <dst> — copy src and insert one reference to
+# INJECTED_UNBOUND_NAME on the line after the first line that starts with an
+# EXIT trap command, so set -u aborts the copy while that trap is live. The
+# line-start anchor skips comments that quote the trap, such as the pre-fix
+# fixture's header, which would otherwise take the reference ahead of set -u.
+inject_unbound_after_trap() {
+    local src=$1 dst=$2
+    awk -v name="$INJECTED_UNBOUND_NAME" '
+        { print }
+        /^trap .*EXIT/ && !done {
+            print ": \"${" name "}\""
+            done = 1
+        }
+    ' "$src" >"$dst"
+}
+
+# check_injected_after_trap <label> <copy> — read an injected copy without
+# running it. The copy must hold exactly one EXIT trap command (a line whose
+# first word is trap and whose last word is EXIT, so a comment quoting the trap
+# never counts) and exactly one injected reference, and that reference must sit
+# on the line directly after the trap command.
+check_injected_after_trap() {
+    local label=$1 copy=$2
+    local trap_re='^[[:space:]]*trap[[:space:]].*[[:space:]]EXIT[[:space:]]*$'
+    local trap_count ref_count ref_nr prev
+    trap_count=$(grep -c -E "$trap_re" "$copy")
+    ref_count=$(grep -c -F "$INJECTED_UNBOUND_NAME" "$copy")
+    if [[ "$trap_count" != 1 || "$ref_count" != 1 ]]; then
+        log "    [$label: expected one EXIT trap command and one injected reference, found $trap_count and $ref_count]"
+        return 1
+    fi
+    ref_nr=$(grep -n -F "$INJECTED_UNBOUND_NAME" "$copy" | cut -d: -f1)
+    prev=$(sed -n "$((ref_nr - 1))p" "$copy")
+    if printf '%s\n' "$prev" | grep -q -E "$trap_re"; then
+        return 0
+    fi
+    log "    [$label: injected reference on line $ref_nr does not follow the EXIT trap command]"
+    log "      preceding line: $(printf '%q' "$prev")"
+    return 1
+}
+
+# inject_unbound_before_final_statement <src> <dst> — copy src and insert one
+# reference to INJECTED_UNBOUND_NAME directly before its final statement, the
+# last line that is neither blank nor a comment. The anchor is that position
+# rather than the completion flag's text: when the flag moves earlier or a
+# statement follows it, the reference lands after the flag, where bash 3.2
+# masks the abort as exit 0 and the scenario fails.
+inject_unbound_before_final_statement() {
+    local src=$1 dst=$2
+    awk -v name="$INJECTED_UNBOUND_NAME" '
+        { line[NR] = $0 }
+        /[^[:space:]]/ && !/^[[:space:]]*#/ { last = NR }
+        END {
+            for (i = 1; i <= NR; i++) {
+                if (i == last) print ": \"${" name "}\""
+                print line[i]
+            }
+        }
+    ' "$src" >"$dst"
+}
+
+# check_injected_before_flag <label> <copy> — read a late-injected copy without
+# running it. The copy must hold exactly one COMPLETION_FLAG_ASSIGNMENT line and
+# exactly one injected reference, and that reference must sit on the line
+# directly before the assignment.
+check_injected_before_flag() {
+    local label=$1 copy=$2
+    local flag_re="^[[:space:]]*${COMPLETION_FLAG_ASSIGNMENT}[[:space:]]*\$"
+    local flag_count ref_count ref_nr next
+    flag_count=$(grep -c -E "$flag_re" "$copy")
+    ref_count=$(grep -c -F "$INJECTED_UNBOUND_NAME" "$copy")
+    if [[ "$flag_count" != 1 || "$ref_count" != 1 ]]; then
+        log "    [$label: expected one $COMPLETION_FLAG_ASSIGNMENT line and one injected reference, found $flag_count and $ref_count]"
+        return 1
+    fi
+    ref_nr=$(grep -n -F "$INJECTED_UNBOUND_NAME" "$copy" | cut -d: -f1)
+    next=$(sed -n "$((ref_nr + 1))p" "$copy")
+    if printf '%s\n' "$next" | grep -q -E "$flag_re"; then
+        return 0
+    fi
+    log "    [$label: injected reference on line $ref_nr is not directly before $COMPLETION_FLAG_ASSIGNMENT]"
+    log "      following line: $(printf '%q' "$next")"
+    return 1
 }
 
 # write_ctx <path> [status_line...] -> writes a minimal, hand-built context
@@ -710,6 +837,207 @@ c14_missing_baseline_context_without_block() {
 }
 
 ###############################################################################
+# /bin/bash-pinned floor scenarios (empty-array + EXIT-trap completion flag)
+###############################################################################
+
+p12_modifications_only_under_bin_bash() {
+    local repo; repo=$(fresh_repo p12) || return 1
+    log_bash_version p12
+    # Modifications-only empties the staged numstat list after prepare stages
+    # nothing new — the empty-array copy that aborted under bash 3.2.
+    printf 'changed\n' > "$repo/seed.txt"
+    local ret; ret=$(run_prepare_bash "$repo")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+
+    local path size directive
+    path=$(printf '%s\n' "$out" | sed -n '1p')
+    size=$(printf '%s\n' "$out" | sed -n '2p')
+    directive=$(printf '%s\n' "$out" | sed -n '3p')
+    if [[ -f "$path" ]]; then :; else
+        log "    [line 1 is not a path to an existing context file: $(printf '%q' "$path")]"
+        ok=false
+    fi
+    if [[ "$size" =~ ^[0-9]+$ ]]; then :; else
+        log "    [line 2 is not a bare byte-size integer: $(printf '%q' "$size")]"
+        ok=false
+    fi
+    if [[ -n "$directive" ]]; then :; else
+        log "    [line 3 (consumption directive) is empty]"
+        ok=false
+    fi
+
+    local content=""
+    if [[ -f "$path" ]]; then
+        content=$(cat "$path")
+    fi
+    assert_contains "unstaged seed.txt change" "$content" \
+        '<file_change mode="unstaged" path="seed.txt">' || ok=false
+
+    local head_before; head_before=$(cd "$repo" && git rev-parse HEAD)
+    local cret; cret=$(run_commit_bash "$repo" $'seed.txt -> changed content\n' "$path")
+    local crc=${cret%%|*}
+    assert_eq "commit exit" "$crc" "0" || ok=false
+    local head_after; head_after=$(cd "$repo" && git rev-parse HEAD)
+    if [[ "$head_after" == "$head_before" ]]; then
+        log "    [HEAD did not advance after commit]"
+        ok=false
+    fi
+    local head_msg; head_msg=$(cd "$repo" && git log -1 --format=%B | head -n 1)
+    assert_eq "HEAD subject" "$head_msg" "seed.txt -> changed content" || ok=false
+    if [[ -e "$path" ]]; then
+        log "    [context file still present after successful commit: $path]"
+        rm -f "$path"
+        ok=false
+    fi
+    $ok
+}
+
+p13_new_files_only_under_bin_bash() {
+    local repo; repo=$(fresh_repo p13) || return 1
+    log_bash_version p13
+    # New-files-only empties the unstaged numstat list — the other empty copy.
+    printf 'fresh\n' > "$repo/added.txt"
+    local ret; ret=$(run_prepare_bash "$repo")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+
+    local path size directive
+    path=$(printf '%s\n' "$out" | sed -n '1p')
+    size=$(printf '%s\n' "$out" | sed -n '2p')
+    directive=$(printf '%s\n' "$out" | sed -n '3p')
+    if [[ -f "$path" ]]; then :; else
+        log "    [line 1 is not a path to an existing context file: $(printf '%q' "$path")]"
+        ok=false
+    fi
+    if [[ "$size" =~ ^[0-9]+$ ]]; then :; else
+        log "    [line 2 is not a bare byte-size integer: $(printf '%q' "$size")]"
+        ok=false
+    fi
+    if [[ -n "$directive" ]]; then :; else
+        log "    [line 3 (consumption directive) is empty]"
+        ok=false
+    fi
+
+    local content=""
+    if [[ -f "$path" ]]; then
+        content=$(cat "$path")
+    fi
+    # <staged_new_files> block lists the new file.
+    local new_block
+    new_block=$(printf '%s\n' "$content" | sed -n '/<staged_new_files>/,/<\/staged_new_files>/p')
+    assert_contains "added.txt in staged_new_files" "$new_block" "added.txt" || ok=false
+
+    local head_before; head_before=$(cd "$repo" && git rev-parse HEAD)
+    local cret; cret=$(run_commit_bash "$repo" $'added.txt -> new file\n' "$path")
+    local crc=${cret%%|*}
+    assert_eq "commit exit" "$crc" "0" || ok=false
+    local head_after; head_after=$(cd "$repo" && git rev-parse HEAD)
+    if [[ "$head_after" == "$head_before" ]]; then
+        log "    [HEAD did not advance after commit]"
+        ok=false
+    fi
+    local committed; committed=$(cd "$repo" && git show --name-only --format= HEAD)
+    assert_contains "added.txt in HEAD" "$committed" "added.txt" || ok=false
+    if [[ -e "$path" ]]; then
+        log "    [context file still present after successful commit: $path]"
+        rm -f "$path"
+        ok=false
+    fi
+    $ok
+}
+
+p14_injected_abort_under_bin_bash() {
+    local repo; repo=$(fresh_repo p14) || return 1
+    log_bash_version p14
+    local ok=true
+    local scratch="$SCRATCH/p14"
+    mkdir -p "$scratch"
+
+    # Injected fixed prepare script: must exit non-zero with empty stdout, and
+    # its stderr must name the injected reference, so the abort is the injected one.
+    local fixed_copy="$scratch/prepare_injected.sh"
+    local fixed_err="$scratch/prepare_injected.stderr"
+    inject_unbound_after_trap "$PREPARE" "$fixed_copy"
+    check_injected_after_trap "fixed copy" "$fixed_copy" || ok=false
+    local fixed_out fixed_rc
+    fixed_out=$(cd "$repo" && "$PREPARE_BASH" "$fixed_copy" 2>"$fixed_err") && fixed_rc=0 || fixed_rc=$?
+    if (( fixed_rc == 0 )); then
+        log "    [injected fixed prepare exited 0; expected non-zero]"
+        ok=false
+    fi
+    if [[ -n "$fixed_out" ]]; then
+        log "    [injected fixed prepare printed stdout; expected empty: $(printf '%q' "$fixed_out")]"
+        ok=false
+    fi
+    assert_contains "injected fixed prepare stderr names the injected reference" \
+        "$(cat "$fixed_err" 2>/dev/null)" "$INJECTED_UNBOUND_NAME" || ok=false
+
+    # Injected pre-fix stub: the placement check reads the copy on every host;
+    # the run stays gated, because only bash 3.2 masks the abort as exit 0.
+    local pre_fix_copy="$scratch/pre_fix_injected.sh"
+    local pre_fix_err="$scratch/pre_fix_injected.stderr"
+    inject_unbound_after_trap "$PRE_FIX_TRAP_FIXTURE" "$pre_fix_copy"
+    check_injected_after_trap "pre-fix copy" "$pre_fix_copy" || ok=false
+    local bash_ver
+    bash_ver=$("$PREPARE_BASH" --version 2>/dev/null | head -n 1)
+    if [[ "$bash_ver" == *"version 3.2"* ]]; then
+        local pre_out pre_rc
+        pre_out=$(cd "$repo" && "$PREPARE_BASH" "$pre_fix_copy" 2>"$pre_fix_err") && pre_rc=0 || pre_rc=$?
+        assert_eq "pre-fix injected abort exits 0 under bash 3.2" "$pre_rc" "0" || ok=false
+        if [[ -n "$pre_out" ]]; then
+            log "    [pre-fix injected abort printed stdout; expected empty: $(printf '%q' "$pre_out")]"
+            ok=false
+        fi
+        assert_contains "pre-fix injected abort stderr names the injected reference" \
+            "$(cat "$pre_fix_err" 2>/dev/null)" "$INJECTED_UNBOUND_NAME" || ok=false
+    else
+        log "  [p14] skipping pre-fix masked-status assertion (host $PREPARE_BASH is not 3.2)"
+    fi
+
+    $ok
+}
+
+p15_late_injected_abort_under_bin_bash() {
+    local repo; repo=$(fresh_repo p15) || return 1
+    log_bash_version p15
+    local ok=true
+    local scratch="$SCRATCH/p15"
+    mkdir -p "$scratch"
+
+    # Late-injected prepare script: set -u aborts after the three stdout lines,
+    # with the completion flag still unset, so the copy must exit non-zero and
+    # its stderr must name the injected reference. Under bash 3.2 only the flag
+    # turns this abort into a non-zero exit, so a flag moved earlier or a
+    # statement added after it fails here; newer bash exits non-zero either way,
+    # and there the placement check alone pins the flag.
+    local late_copy="$scratch/prepare_late_injected.sh"
+    local late_err="$scratch/prepare_late_injected.stderr"
+    inject_unbound_before_final_statement "$PREPARE" "$late_copy"
+    check_injected_before_flag "late copy" "$late_copy" || ok=false
+    local late_out late_rc
+    late_out=$(cd "$repo" && "$PREPARE_BASH" "$late_copy" 2>"$late_err") && late_rc=0 || late_rc=$?
+    if (( late_rc == 0 )); then
+        log "    [late injected prepare exited 0; expected non-zero]"
+        ok=false
+    fi
+    assert_contains "late injected prepare stderr names the injected reference" \
+        "$(cat "$late_err" 2>/dev/null)" "$INJECTED_UNBOUND_NAME" || ok=false
+
+    # The copy wrote its context file before the abort; remove it so no
+    # git_commit_context.* straggler stays in TMPDIR.
+    local ctx_path
+    ctx_path=$(printf '%s\n' "$late_out" | sed -n '1p')
+    if [[ -f "$ctx_path" && "$(basename "$ctx_path")" == git_commit_context.* ]]; then
+        rm -f "$ctx_path"
+    fi
+
+    $ok
+}
+
+###############################################################################
 # Run scenarios
 ###############################################################################
 
@@ -724,6 +1052,10 @@ scenario p8  "prepare: --help flag"                           p8_help_flag
 scenario p9  "prepare: unknown flag rejected"                 p9_unknown_flag
 scenario p10 "prepare: run outside a git repo fails"          p10_outside_git_repo
 scenario p11 "prepare: stdout path + size + neutral directive" p11_stdout_shape_path_size_directive
+scenario p12 "prepare+commit: modifications-only under /bin/bash" p12_modifications_only_under_bin_bash
+scenario p13 "prepare+commit: new-files-only under /bin/bash" p13_new_files_only_under_bin_bash
+scenario p14 "prepare: injected abort exits non-zero under /bin/bash" p14_injected_abort_under_bin_bash
+scenario p15 "prepare: late injected abort exits non-zero under /bin/bash" p15_late_injected_abort_under_bin_bash
 
 scenario c1  "commit: staged change with valid message"       c1_staged_change_with_message
 scenario c2  "commit: untracked file gets staged by add -A"   c2_untracked_file_picked_up_by_add_a

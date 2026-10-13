@@ -220,13 +220,22 @@ assert_not_contains "$task_skill" 'A coherence pass writes no `status` value at 
   "the coherence-only status rule is superseded"
 assert_not_contains "$task_skill" "leaves its \`status\` standing, \`ready\` included" \
   "the coherence-only keep-ready wording is superseded"
-# Rule 2: after implementation, status only moves forward.
-assert_contains "$task_skill" 'routes the finding to `task_audit`, to `task_finish`, or to a new follow-up task, and applies only mechanical link and lint fixes to the file' \
-  "a finding on completed work is routed, and only mechanical link and lint fixes apply"
+# Rule 2: after implementation, status moves forward, apart from the re-audit
+# re-open that returns an audited task with gaps to implemented.
+assert_contains "$task_skill" 'routes the finding to `task_audit`, whose gap verdict sends the work back to `task_implement` on the same task, or to `task_finish`, and applies only mechanical link and lint fixes to the file' \
+  "a finding on completed work goes back through task_audit, and only mechanical link and lint fixes apply"
 assert_contains "$task_skill" "An edit the user explicitly asks for through \`<update>\` stays the user's call, and it leaves the status as it is." \
   "a user's update of completed work leaves its status as it is"
-assert_contains "$task_skill" 'No skill or agent writes `open`, `checked`, `ready`, or `implemented` over a later status, and user confirmation does not open that path either' \
-  "no writer moves completed work backward, confirmation included"
+assert_contains "$task_skill" 'No skill or agent writes `open`, `checked`, or `ready` over an implemented or later status, or any status over `finished` or `deferred`' \
+  "no writer moves completed work backward apart from the re-audit re-open"
+assert_contains "$task_skill" 'One backward move stays open: the re-audit re-open, in which an `audited` task returns to `implemented` because a re-audit found gaps for `task_implement`' \
+  "the backward-move guard opens only the re-audit re-open"
+assert_contains "$task_skill" 'User confirmation opens no other backward move.' \
+  "confirmation opens no backward move beyond the re-audit re-open"
+assert_contains "$task_skill" '**Follow-up tasks.** Gaps in delivered work stay on the task that delivered it.' \
+  "the hub states the follow-up rule once"
+assert_not_contains "$task_skill" 'or to a new follow-up task, and applies only mechanical link and lint fixes' \
+  "completed-work findings no longer route to a follow-up task by default"
 assert_contains "$task_skill" 'is a hard stop: the stage writes no status, leaves the file as it is' \
   "the backward-move guard is a hard stop"
 assert_not_contains "$task_skill" 'ask the user to confirm the move is intended' \
@@ -315,8 +324,14 @@ assert_contains "$task_check_skill" "is past the readiness gate, and the base sk
   "task_check stops on completed or archived work"
 assert_contains "$task_implement_skill" "refuses an \`implemented\` stamp over it, so stop before any edit" \
   "task_implement stops before building on audited or archived work"
-assert_contains "$task_audit_skill" 'Route the gaps on an `implemented` task to `task_implement`, and the gaps on an `audited` task or an archived `finished` task to a new follow-up task' \
-  "task_audit routes gaps on later statuses to a follow-up task"
+assert_contains "$task_implement_skill" 'Route a suspected gap on an `audited` task to `task_audit`, whose re-audit re-opens the task to `implemented`' \
+  "task_implement sends a suspected gap on audited work back through task_audit"
+assert_contains "$task_audit_skill" 'write `status: implemented` and bump `updated`, which is the base `<status_discipline>` re-audit re-open' \
+  "task_audit re-opens an audited task on a re-audit gap verdict"
+assert_contains "$task_audit_skill" 'Route gaps on an archived `finished` task, and any finding the base `<status_discipline>` follow-up rule sends to a new task, to a new task under that rule.' \
+  "task_audit routes archived gaps to a new task under the hub's follow-up rule"
+assert_not_contains "$task_audit_skill" 'to a new follow-up task' \
+  "task_audit no longer sends gaps on audited work to a follow-up task"
 assert_not_contains "$task_audit_skill" 'leave `status: implemented` and route the gaps to `task_implement`' \
   "task_audit no longer sends every gap to task_implement"
 assert_contains "$task_finish_skill" 'keeps that status for good under the base `<status_discipline>` rule' \

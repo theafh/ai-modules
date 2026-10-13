@@ -224,6 +224,22 @@
       ]
     },
     {
+      "id": "audit_reopen",
+      "skill": "task_audit",
+      "prompt": "Re-audit tasks/calc_add-function.md — is the work still complete and backed by tests?",
+      "expected_output": "The task is audited, but its acceptance-mandated test is missing. The re-audit emits a 'Gaps:' list with the missing test as a gap, re-opens the task by writing status implemented and bumping updated, hands the gap to task_implement on the same task, and files no new task.",
+      "files": [
+        "evals/fixtures/audit_reopen/setup.sh"
+      ],
+      "expectations": [
+        "The response contains a 'Gaps:' section (not the full-compliance success line).",
+        "The missing test is named as a gap with requirement / expected / actual / minimum-fix detail.",
+        "The task file's status changes from audited to implemented and updated is bumped; its body is unchanged.",
+        "No new task file is created and no test is added.",
+        "On gaps, the response hands the remaining work to task_implement on the same task rather than to a new follow-up task."
+      ]
+    },
+    {
       "id": "finish",
       "skill": "task_finish",
       "prompt": "Mark tasks/api_rate-limit.md implemented and archive it — the work is already merged and verified.",

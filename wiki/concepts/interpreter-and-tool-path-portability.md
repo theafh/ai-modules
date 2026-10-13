@@ -1,7 +1,7 @@
 ---
 title: Interpreter and tool-path portability
 created: 2026-10-03
-updated: 2026-10-04
+updated: 2026-10-13
 checked: 2026-10-03
 type: concept
 tags: [portability, skill, authoring]
@@ -89,9 +89,31 @@ Associative arrays fail in two ways. A bare `declare -A m` reports
 arithmetic subscript, so under `set -u` it aborts with an unbound-variable error
 naming the key, and without `set -u` it silently degrades to an indexed array.
 
-The portable substitutes for each construct live in the `harness_portability`
-skill's shell-features policy rule, where a reviewer applies them at authoring
-time. [Skill family architecture](skill-family-architecture.md) explains why
+An empty array aborts under `set -u`. Bash before 4.4 treats `"${name[@]}"` on
+an empty array as an unbound variable, so on the stock build a copy such as
+`copy=("${name[@]}")` stops the script with `name[@]: unbound variable`
+whenever the array holds nothing, while bash 5.3.9 copies it as an empty array.
+The form `${name[@]+"${name[@]}"}` expands to no words for an empty array and
+keeps every element intact otherwise, including elements that contain spaces or
+tabs, and shellcheck 0.11.0 reports nothing on it. The form `"${name[@]:-}"`
+also avoids the abort, but it yields one empty element that the consuming loop
+has to skip. Verified under `/bin/bash` 3.2.57 on 9 and 13 October 2026.
+
+An EXIT trap hides a `set -u` abort on the stock build. When a `set -u` error
+stops `/bin/bash` 3.2.57 while an EXIT trap is installed, `$?` reads 0 inside
+the trap and the shell exits with the status of the trap's last command. A
+cleanup trap such as `trap 'rm -rf "$tmp_dir"' EXIT` therefore turns the abort
+into exit 0, and a trap that saves `rc=$?` and exits with it still exits 0. The
+same abort exits 1 when no EXIT trap is installed, and a command that fails
+under `set -e` keeps its non-zero status under a trap. Bash 5.3.9 exits 1 in
+each of these cases. A completion flag restores the failure on the stock build:
+the script initializes the flag before it installs the trap and sets it as its
+final statement, and the trap exits non-zero while the flag is still unset.
+Verified on 9 and 13 October 2026.
+
+The portable substitutes for every construct and `set -u` behaviour above live
+in the `harness_portability` skill's shell-features policy rule, where a
+reviewer applies them at authoring time. [Skill family architecture](skill-family-architecture.md) explains why
 that operative content travels with the skill rather than only with this wiki.
 
 ### Two zsh constructs that misfire
@@ -131,3 +153,10 @@ package-manager entry depends on a login profile.
   `/bin/bash` 3.2.57 and zsh 5.9 on macOS, 4 October 2026.
 - The bash licence and vendor-shipping constraint as stated in the macOS stock
   interpreter situation the deployment rewrite already relied on.
+- Direct execution under `/bin/bash` 3.2.57 and bash 5.3.9 on macOS, 9 and
+  13 October 2026: an empty-array copy, a `set -u` abort with and without an
+  EXIT trap, a trap that saves and re-raises `$?`, a `set -e` failure under a
+  trap, and a completion-flag trap.
+- The git_commit skill's bundled `prepare_commit_context.sh`, whose empty-array
+  copies and cleanup trap met both `set -u` behaviours, and its script tests
+  under `tests/git_commit/script_tests/`, which run it under `/bin/bash`.

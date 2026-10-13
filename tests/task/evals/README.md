@@ -28,6 +28,7 @@ The bundled-script surface is covered separately by
 | `implement_dep_gate` | task_implement | pre-flight dependency gate: a forward-reference to a block a live task creates is surfaced as a hard prerequisite; the gate lists it, asks, and stops with no code edit |
 | `audit_gaps` | task_audit | emits `Gaps:` for an acceptance-mandated test that is missing; leaves status `implemented` |
 | `audit_clean` | task_audit | emits `Success: full task compliance confirmed.` when code + test are present; stamps `audited` |
+| `audit_reopen` | task_audit | re-audit of an `audited` task whose acceptance-mandated test is missing: emits `Gaps:`, re-opens the task to `implemented` with a bumped `updated` and an unchanged body, routes the gap to `task_implement`, and files no new task |
 | `finish` | task_finish | status → `finished`, `git mv` to archive/, inbound links re-pointed from open AND archived tasks (both-directories scan) with each linker keeping its status, re-lints clean |
 | `finish_arch_extended` | task_finish | close-out consumes `design-extended: true` and refreshes the project's `ARCHITECTURE.md` in the same pass, superseding the stale design decision; reports the refreshed disposition with what changed; preserves the signal through the move |
 | `finish_arch_declined` | task_finish | `design-extended: false` declines the refresh: `ARCHITECTURE.md` byte-identical to the seed, the decline stated with its reason rather than silently skipped, sibling task untouched |

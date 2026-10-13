@@ -1,10 +1,10 @@
 ---
 title: Task lifecycle and status rules
 created: 2026-10-10
-updated: 2026-10-10
+updated: 2026-10-13
 type: concept
 tags: [skill, frontmatter, repo-structure]
-sources: [raw/notes/task-status-rules-owner-statements-2026-10-10.md]
+sources: [raw/notes/task-status-rules-owner-statements-2026-10-10.md, raw/notes/task-status-rules-owner-statements-2026-10-13.md]
 confidence: high
 ---
 
@@ -16,7 +16,7 @@ This page states how the `task_*` family is meant to move a task through its lif
 
 The task system keeps each unit of upcoming work as one markdown file in `tasks/`, and the file's `status` frontmatter field records how far the work has come. The hub skill `task` owns the file format and the rules, and each sibling skill owns one step of the lifecycle, as [skill family architecture](skill-family-architecture.md) describes.
 
-The task text is a contract. Before implementation the contract may still be shaped, and `task_check`'s readiness verdict covers exactly the text it read. Once the work is built, the text records what was delivered. From then on the text stays as it is, only the status moves forward, and new work on the same subject goes into a new task. The owner's line for completed work is that it is either left alone or was never implemented ([owner statements](../raw/notes/task-status-rules-owner-statements-2026-10-10.md)).
+The task text is a contract. Before implementation the contract may still be shaped, and `task_check`'s readiness verdict covers exactly the text it read. Once the work is built, the text records what was delivered. From then on the text stays as it is and the status moves forward, with one exception: when a re-audit finds gaps in an `audited` task, the task goes back to `implemented` and the gaps are fixed on that same task. The owner's line for completed work is that it is either left alone or was never implemented ([owner statements, 2026-10-10](../raw/notes/task-status-rules-owner-statements-2026-10-10.md)), and gaps a re-audit finds keep the work open rather than spawning new tasks ([owner statements, 2026-10-13](../raw/notes/task-status-rules-owner-statements-2026-10-13.md)).
 
 Each status has one owner, and each stage allows a different kind of edit to the text:
 
@@ -25,7 +25,7 @@ Each status has one owner, and each stage allows a different kind of edit to the
 | `open` | Captured, not yet checked. | `task_create`, and a split for each file it creates. | May change. |
 | `checked` | Checked with blocking findings left, or a `ready` task rewritten substantively. | `task_check`, or the skill or agent that makes the substantive rewrite. | May change. |
 | `ready` | Passed the readiness gate. | `task_check`, also when `task_auto_check` drives it, and the user's readiness declaration. | May change, and a substantive rewrite returns the task to `checked`. |
-| `implemented` | Built. | `task_implement`. | Frozen, apart from mechanical link and lint fixes. |
+| `implemented` | Built, or re-opened for gaps a re-audit found. | `task_implement`, and `task_audit` when a re-audit of an `audited` task finds gaps. | Frozen, apart from mechanical link and lint fixes. |
 | `audited` | Verified against the code. | `task_audit`, on a clean verdict. | Frozen, apart from mechanical link and lint fixes. |
 | `finished` | Closed as done and moved to the archive. | `task_finish`. | Frozen, apart from mechanical link rewrites. |
 | `deferred` | Parked and moved to the archive. | `task_finish`. | Frozen, apart from mechanical link rewrites. |
@@ -45,9 +45,11 @@ This trigger replaced one that sent every rewrite outside the linter's mechanica
 
 Two guards keep the verdict honest. Lowering `ready` to `open` is never the way to signal that a re-check is owed, because it destroys the verdict `task_check` established and leaves no later stage able to tell the demotion from a task that was never checked. And only `task_check`, alone or inside `task_auto_check`, and the user's readiness declaration in the hub's apply-findings flow write `ready`. A file that a split creates starts at `open` whatever its parent carried, because no gate verdict transfers to text the gate never read.
 
-### After implementation, status only moves forward
+### After implementation, status moves forward, and a re-audit can re-open
 
-The forward moves are `implemented` to `audited` to `finished`, plus a move from any status to `deferred`. No skill or agent writes `open`, `checked`, `ready`, or `implemented` over a later status, and the user's confirmation does not open that path either, since an implemented task is never marked `checked`. A repair skill or agent that finds something to change in an `implemented` or `audited` body reports the finding and routes it to `task_audit`, to `task_finish`, or to a new follow-up task, and it applies only mechanical link and lint fixes. Gaps that a re-audit finds in `audited` or archived work go to a new follow-up task, because handing them to `task_implement` would write `implemented` over a later status. An edit the user explicitly asks for through the hub's update workflow stays the user's call, and it leaves the status where it is.
+The forward moves are `implemented` to `audited` to `finished`, plus a move from any status to `deferred`. The one move back is the re-audit re-open. When a re-audit of an `audited` task finds gaps that `task_implement` should fix, `task_audit` writes `implemented` with its gap verdict, `task_implement` fixes the gaps on the same task, and the implement and audit loop repeats until a clean audit stamps `audited` again. The user may ask for the same move through the hub's update workflow. No skill or agent writes `open`, `checked`, or `ready` over an implemented or later status, or any status over `finished` or `deferred`, and a confirmation opens no other backward move, since an implemented task is never marked `checked`.
+
+A new follow-up task is the exception, because filing one for every gap inflates the backlog ([owner statements, 2026-10-13](../raw/notes/task-status-rules-owner-statements-2026-10-13.md)). It is filed only when the implement and audit loop stalls and keeps repeating the same findings, when a finding is a genuinely different issue with no real overlap with the delivered task, or when the gaps sit in an archived `finished` task, whose status is final. A repair skill or agent that finds something to change in an `implemented` or `audited` body reports the finding and routes it to `task_audit` or to `task_finish`, and it applies only mechanical link and lint fixes. An edit the user explicitly asks for through the hub's update workflow stays the user's call, and it leaves the status where it is.
 
 ### Archived status is final, and archiving rewrites only links
 
@@ -61,13 +63,13 @@ The task linter warns when one body links the same local target more than once. 
 
 Each rule above leaves a trace that an agent can look for in a skill, a run, or a test:
 
-- **In a skill's instructions:** a step that writes a status the table does not give that skill, a backward move after implementation that a confirmation can unlock, an archive step that writes any status besides the close-out's own, or a sibling that restates a status rule instead of citing the hub.
-- **In a run:** a `ready` task sent to `checked` after only link or lint edits, a `ready` task left at `ready` after its Goal changed, a split file written at any status but `open`, a status moved backward after implementation, a repair applied to an implemented or audited body, or an archived task whose status changed.
+- **In a skill's instructions:** a step that writes a status the table does not give that skill, a backward move after implementation other than the re-audit re-open, a confirmation that unlocks any other backward move, a route that sends re-audit gaps in an `audited` task to a new task by default, an archive step that writes any status besides the close-out's own, or a sibling that restates a status rule instead of citing the hub.
+- **In a run:** a `ready` task sent to `checked` after only link or lint edits, a `ready` task left at `ready` after its Goal changed, a split file written at any status but `open`, a status moved backward after implementation other than a re-audit re-open, a follow-up task filed for gaps the implement and audit loop could still fix on the same task, a repair applied to an implemented or audited body, or an archived task whose status changed.
 - **In a test:** an eval expectation or grader check that asserts the opposite of a rule, such as a regroup that ends at `checked` or a second readiness check after a regroup, or a check that cannot fail when the rule is broken. [Verification surfaces](verification-surfaces.md) covers what makes a grader trustworthy.
 
 ## Open questions
 
-None remain from the owner's statements. This page first restated two points in its own words: the size test for an Approach or Acceptance change, and the routing of gaps in audited or archived work to a new follow-up task. The owner confirmed both on 2026-10-10 ([owner statements](../raw/notes/task-status-rules-owner-statements-2026-10-10.md)).
+None remain from the owner's statements. This page first restated two points in its own words: the size test for an Approach or Acceptance change, and the routing of gaps in audited or archived work to a new follow-up task. The owner confirmed both on 2026-10-10 ([owner statements](../raw/notes/task-status-rules-owner-statements-2026-10-10.md)). On 2026-10-13 the owner revised the routing for `audited` tasks, which a re-audit now re-opens, and kept the follow-up task for stalled loops, unrelated issues, and archived work ([owner statements, 2026-10-13](../raw/notes/task-status-rules-owner-statements-2026-10-13.md)).
 
 ## Related concepts
 

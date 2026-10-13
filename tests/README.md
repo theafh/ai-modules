@@ -87,8 +87,11 @@ don't bring up new harnesses under Pattern B.
   prints its own scenario tally) + Layer 2 (every scenario in
   `layer2/evals.json`, each over that file's top-level `passes`
   denominator). Mature, working.
-- **`git_commit/`**: Pattern A. `script_tests/` implemented (16
-  bundled-script scenarios). `evals/` holds nine behavioral evals with
+- **`git_commit/`**: Pattern A. `script_tests/` implemented (30
+  bundled-script scenarios, four of which run through an explicit
+  `/bin/bash` to prove both scripts at the bash 3.2 floor: empty staged
+  and unstaged diff lists, and a `set -u` abort that must exit non-zero
+  while the EXIT trap is live). `evals/` holds nine behavioral evals with
   fixtures, run through `evals/run.py` on the default Cursor worker with
   a deterministic `grade.sh`. See `evals/README.md`.
 - **`git_checkout/`**: Pattern A. `script_tests/` implemented (14
