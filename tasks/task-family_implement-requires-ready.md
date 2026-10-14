@@ -2,9 +2,11 @@
 description: Make task_implement require ready (or implemented for audit-gap repair), refuse open or checked, and gate done on Acceptance-named checks plus cheap surfaces.
 scope: plugins/ai_dev/skills/task_implement
 created: 2026-10-12T19:02:54
-updated: 2026-10-13T17:59:50
-status: ready
+updated: 2026-10-14T20:09:48
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Require ready before task_implement builds and align its verification scope
@@ -36,7 +38,7 @@ Its default verification gate is the same scope: every check `## Acceptance` nam
 4. **Align the wiki.** Update `wiki/concepts/task-lifecycle-and-status-rules.md` through the wiki skill family so the before-implementation section states that `task_implement` admits only `ready` (and `implemented` for audit-gap repair), and that its default verification gate is Acceptance-named plus cheap surfaces.
 5. **Pin it.** Extend `tests/task/script_tests/contract_run.sh` (or the implement-skill contract surface that already pins status reads) so a grep fails if the ready-admission stop or the Acceptance-named verification-scope wording disappears from `task_implement`. Add or extend a behavioral eval under `tests/task_implement/` only if that harness already exists; otherwise the script-test pin is enough for this change.
 
-**Out of scope:** building `task_auto_implement`; changing `task_select`'s ranking; auto-running `task_check` inside `task_implement`; changing default timeouts, parallelism, or sandbox relocation for the behavioral harnesses; rewriting the `implement` scenario row in `tests/task/evals/README.md` that still says the run leaves the suite green (that harness-doc wording is separate from this task's skill done-gate realignment, which Approach and Acceptance already pin on `task_implement` and the contract script); proving in Acceptance that the wiki update ran through the wiki skill family (Approach still requires that path; Acceptance only proves the lifecycle wiki page states the admission rule and default verification scope); restating bare `make lint` as an Acceptance check (standing repo instructions already own that gate; Acceptance keeps only the contract-script pin).
+**Out of scope:** building `task_auto_implement`; changing `task_select`'s ranking; auto-running `task_check` inside `task_implement`; changing default timeouts, parallelism, or sandbox relocation for the behavioral harnesses; pinning the eval-harness docs wording, such as the `implement` scenario row in `tests/task/evals/README.md`, in Acceptance or the contract script (this task pins its done-gate realignment on `task_implement` and the contract script only); proving in Acceptance that the wiki update ran through the wiki skill family (Approach still requires that path; Acceptance only proves the lifecycle wiki page states the admission rule and default verification scope); restating bare `make lint` as an Acceptance check (standing repo instructions already own that gate; Acceptance keeps only the contract-script pin).
 
 ## Acceptance
 

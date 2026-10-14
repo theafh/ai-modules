@@ -424,7 +424,7 @@
       "id": "implement_boundary_agree",
       "skill": "task_implement",
       "prompt": "Implement the task tasks/calc_add-function.md.",
-      "expected_output": "The task builds calc.add and defers calc.sub to a live owner task through its `**Out of scope:**` block. The boundary agrees with the body, so task_implement proceeds with no boundary interruption: it implements add, writes a test, runs the suite green, stamps implemented, and correctly SKIPS the deferred subtraction (calc.sub stays a stub, the owner task stays open).",
+      "expected_output": "The task builds calc.add and defers calc.sub to a live owner task through its `**Out of scope:**` block. The boundary agrees with the body, so task_implement proceeds with no boundary interruption: it implements add, writes a test, passes the unittest run its Acceptance names, stamps implemented, and correctly SKIPS the deferred subtraction (calc.sub stays a stub, the owner task stays open).",
       "files": [
         "evals/fixtures/implement_boundary_agree/setup.sh"
       ],

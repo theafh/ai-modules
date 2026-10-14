@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-13 | Total pages: 36
+> Last updated: 2026-10-14 | Total pages: 36
 
 ## Entities
 
@@ -35,7 +35,7 @@
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md): why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md): naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.
-- [Task lifecycle and status rules](concepts/task-lifecycle-and-status-rules.md): the intended lifecycle of a task file, which skill writes each status, why only a substantive rewrite sends `ready` back to `checked`, forward status after implementation with the re-audit re-open of an audited task, follow-up tasks only for stalled loops, unrelated issues, and archived work, final archived status, link-only archive rewrites, the repeated-link warning as a pre-implementation prompt, and how a divergence shows in a skill, a run, or a test.
+- [Task lifecycle and status rules](concepts/task-lifecycle-and-status-rules.md): the intended lifecycle of a task file, which skill writes each status, why only a substantive rewrite sends `ready` back to `checked`, that `task_implement` admits only `ready` (and `implemented` for audit-gap repair) with Acceptance-named plus cheap-surface verification as its default done-gate, forward status after implementation with the re-audit re-open of an audited task, follow-up tasks only for stalled loops, unrelated issues, and archived work, final archived status, link-only archive rewrites, the repeated-link warning as a pre-implementation prompt, and how a divergence shows in a skill, a run, or a test.
 - [The deployment model](concepts/deployment-model.md): two discovery roots, per-tool configuration, generated variants, scope precedence, and the prior-value restore on uninstall.
 - [Verification surfaces for a shipped skill](concepts/verification-surfaces.md): script tests against behavioral evals, harnesses committed but never deployed, the pinned model under test, a worker isolated from the host's instructions, style, and deployed roles and skills, trigger coverage as its own question, and why a grader that tests surface form or hides a conjunction misreports the behaviour.
 

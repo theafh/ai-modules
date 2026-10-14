@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks/. Use when the user asks to list or query existing tasks, to update or expand one, to triage or split backlog items, or to work across several tasks at once, and as the fallback for any tasks, todos, or backlog request naming no single lifecycle step. Not for one named step on one task, which a sibling owns for creation, readiness checking, explanation, next-work selection, implementation, audit, and finish.
-version: 1.3.41
+version: 1.3.42
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -122,7 +122,7 @@ Both `created` (set once, on a fresh task) and `updated` (bumped on every edit, 
 </frontmatter>
 
 <lifecycle_responsibility>
-Each stage records the furthest lifecycle point it establishes: `task_create` writes `open`; `task_check` writes `ready` on a clean verdict and `checked` when blocking findings remain; `task_auto_check` edits the task body and reuses `task_check` for those `ready` / `checked` stamps; any family skill or agent whose rewrite of a `ready` task changes what the task delivers or how that delivery is checked writes `checked` in that edit, under `<status_discipline>`; the apply-findings update flow writes `ready` only when the user declares readiness before implementation; `task_implement` writes `implemented` and records the `design-extended` verdict; `task_audit` writes `audited` only for a clean, complete verdict over a current `implemented`, writes `implemented` over `audited` when a re-audit finds gaps for `task_implement`, and verifies the `design-extended` signal, recorded or absent, against the built change; `task_finish` writes `finished` for done work or `deferred` for parked work.
+Each stage records the furthest lifecycle point it establishes: `task_create` writes `open`; `task_check` writes `ready` on a clean verdict and `checked` when blocking findings remain; `task_auto_check` edits the task body and reuses `task_check` for those `ready` / `checked` stamps; any family skill or agent whose rewrite of a `ready` task changes what the task delivers or how that delivery is checked writes `checked` in that edit, under `<status_discipline>`; the apply-findings update flow writes `ready` only when the user declares readiness before implementation; `task_implement` admits a build only under the ready-before-build rule (status is `ready`, or status is `implemented` and named gaps from a prior `task_audit` report are in context or supplied by the user), then writes `implemented` and records the `design-extended` verdict; `task_audit` writes `audited` only for a clean, complete verdict over a current `implemented`, writes `implemented` over `audited` when a re-audit finds gaps for `task_implement`, and verifies the `design-extended` signal, recorded or absent, against the built change; `task_finish` writes `finished` for done work or `deferred` for parked work.
 </lifecycle_responsibility>
 
 <backward_move_guard>

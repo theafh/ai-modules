@@ -1,7 +1,7 @@
 ---
 title: Task lifecycle and status rules
 created: 2026-10-10
-updated: 2026-10-13
+updated: 2026-10-14
 type: concept
 tags: [skill, frontmatter, repo-structure]
 sources: [raw/notes/task-status-rules-owner-statements-2026-10-10.md, raw/notes/task-status-rules-owner-statements-2026-10-13.md]
@@ -45,6 +45,12 @@ This trigger replaced one that sent every rewrite outside the linter's mechanica
 
 Two guards keep the verdict honest. Lowering `ready` to `open` is never the way to signal that a re-check is owed, because it destroys the verdict `task_check` established and leaves no later stage able to tell the demotion from a task that was never checked. And only `task_check`, alone or inside `task_auto_check`, and the user's readiness declaration in the hub's apply-findings flow write `ready`. A file that a split creates starts at `open` whatever its parent carried, because no gate verdict transfers to text the gate never read.
 
+### Before building, task_implement admits ready
+
+`task_implement` builds only when status is `ready`, or when status is `implemented` and named gaps from a prior `task_audit` report are in context or supplied by the user. That ready-before-build rule lives once in the hub's `<lifecycle_responsibility>`, and the sibling cites it. On `open` or `checked` it stops with no edit, names the status, and routes to `task_check` or `task_auto_check`. On `implemented` without those named gaps it stops and routes per `task_audit`. The past-implementation stop for `audited` and archived `finished` or `deferred` still holds, with a suspected gap on an `audited` task going back through `task_audit`.
+
+Its default verification gate is every check `## Acceptance` names, plus the cheap surfaces the repo always runs (`make lint`, the matching script tests, the bundled task linter when relevant). The full behavioral suite is not the default done-gate; it runs only when Acceptance names it, or as an out-of-band regression the operator asks for.
+
 ### After implementation, status moves forward, and a re-audit can re-open
 
 The forward moves are `implemented` to `audited` to `finished`, plus a move from any status to `deferred`. The one move back is the re-audit re-open. When a re-audit of an `audited` task finds gaps that `task_implement` should fix, `task_audit` writes `implemented` with its gap verdict, `task_implement` fixes the gaps on the same task, and the implement and audit loop repeats until a clean audit stamps `audited` again. The user may ask for the same move through the hub's update workflow. No skill or agent writes `open`, `checked`, or `ready` over an implemented or later status, or any status over `finished` or `deferred`, and a confirmation opens no other backward move, since an implemented task is never marked `checked`.
@@ -63,7 +69,7 @@ The task linter warns when one body links the same local target more than once. 
 
 Each rule above leaves a trace that an agent can look for in a skill, a run, or a test:
 
-- **In a skill's instructions:** a step that writes a status the table does not give that skill, a backward move after implementation other than the re-audit re-open, a confirmation that unlocks any other backward move, a route that sends re-audit gaps in an `audited` task to a new task by default, an archive step that writes any status besides the close-out's own, or a sibling that restates a status rule instead of citing the hub.
+- **In a skill's instructions:** a step that writes a status the table does not give that skill, a `task_implement` build that proceeds on `open` or `checked`, a default done-gate that requires the full behavioral suite when Acceptance did not name it, a backward move after implementation other than the re-audit re-open, a confirmation that unlocks any other backward move, a route that sends re-audit gaps in an `audited` task to a new task by default, an archive step that writes any status besides the close-out's own, or a sibling that restates a status rule instead of citing the hub.
 - **In a run:** a `ready` task sent to `checked` after only link or lint edits, a `ready` task left at `ready` after its Goal changed, a split file written at any status but `open`, a status moved backward after implementation other than a re-audit re-open, a follow-up task filed for gaps the implement and audit loop could still fix on the same task, a repair applied to an implemented or audited body, or an archived task whose status changed.
 - **In a test:** an eval expectation or grader check that asserts the opposite of a rule, such as a regroup that ends at `checked` or a second readiness check after a regroup, or a check that cannot fail when the rule is broken. [Verification surfaces](verification-surfaces.md) covers what makes a grader trustworthy.
 

@@ -326,6 +326,26 @@ assert_contains "$task_implement_skill" "refuses an \`implemented\` stamp over i
   "task_implement stops before building on audited or archived work"
 assert_contains "$task_implement_skill" 'Route a suspected gap on an `audited` task to `task_audit`, whose re-audit re-opens the task to `implemented`' \
   "task_implement sends a suspected gap on audited work back through task_audit"
+assert_contains "$task_skill" 'admits a build only under the ready-before-build rule (status is `ready`, or status is `implemented` and named gaps from a prior `task_audit` report are in context or supplied by the user)' \
+  "the hub carries the ready-before-build admission rule with its admitted statuses"
+assert_contains "$task_implement_skill" "The base skill's \`<lifecycle_responsibility>\` ready-before-build rule is the admission criterion" \
+  "task_implement cites the hub ready-before-build rule"
+assert_contains "$task_implement_skill" 'proceed when status is `ready`, or when status is `implemented` and named gaps from a prior `task_audit` report are in context or supplied by the user.' \
+  "task_implement admits ready, and implemented only with named audit gaps"
+assert_contains "$task_implement_skill" 'Stop before any edit when status is `open` or `checked`: name the status, point to `task_check` / `task_auto_check`, and change nothing.' \
+  "task_implement refuses open and checked and routes to the readiness gate"
+assert_contains "$task_implement_skill" 'Stop before any edit when status is `implemented` and no such named gaps are in context or supplied: name the status, route per `task_audit` (repair via `task_implement` only with those named gaps; other routing as the base `<status_discipline>` follow-up rule directs), and change nothing.' \
+  "task_implement refuses implemented without named audit gaps, routes per task_audit, and changes nothing"
+assert_contains "$task_implement_skill" 'runs every check `## Acceptance` names plus the cheap repo surfaces' \
+  "task_implement role gates done on Acceptance-named checks plus cheap surfaces"
+assert_contains "$task_implement_skill" 'The full behavioral suite is not the default done-gate; it runs only when Acceptance names it, or as an out-of-band regression the operator asks for.' \
+  "task_implement role keeps the full behavioral suite out of the default done-gate"
+assert_not_contains "$task_implement_skill" 'runs the full suite clean' \
+  "task_implement role drops the full-suite done-gate wording"
+assert_contains "$task_implement_skill" 'stops at work done once every Acceptance-named check plus the cheap repo surfaces have passed' \
+  "task_implement boundary gates done on Acceptance-named checks plus cheap surfaces"
+assert_not_contains "$task_implement_skill" 'suite green' \
+  "task_implement boundary drops the suite-green done-gate wording"
 assert_contains "$task_audit_skill" 'write `status: implemented` and bump `updated`, which is the base `<status_discipline>` re-audit re-open' \
   "task_audit re-opens an audited task on a re-audit gap verdict"
 assert_contains "$task_audit_skill" 'Route gaps on an archived `finished` task, and any finding the base `<status_discipline>` follow-up rule sends to a new task, to a new task under that rule.' \

@@ -24,7 +24,7 @@ The bundled-script surface is covered separately by
 | `select` | task_select | read-only next-task recommendation; filters eligible live tasks before ranking, excludes archived and already-implemented work, applies scope narrowing, and explains impact / complexity / friction / bug-fix tradeoffs |
 | `select_inbound_dep` | task_select | honours an INBOUND ordering note authored in a task outside the scope filter: blocks the filtered dependent, names the outside-scope prerequisite, recommends the unblocked candidate |
 | `select_dep_regression` | task_select | the archived dependency-aware behaviours still hold after the base-taxonomy repoint: creator ranked ahead of consumer (forward-reference hard dep), disjoint companions surface soft with no forced order |
-| `implement` | task_implement | writes the code AND a test, leaves the suite green, stamps `implemented` + `implemented-by`, keeps the task live |
+| `implement` | task_implement | builds a `ready` task: writes the code AND a test, passes the test suite its Acceptance names, stamps `implemented` + `implemented-by`, keeps the task live |
 | `implement_dep_gate` | task_implement | pre-flight dependency gate: a forward-reference to a block a live task creates is surfaced as a hard prerequisite; the gate lists it, asks, and stops with no code edit |
 | `audit_gaps` | task_audit | emits `Gaps:` for an acceptance-mandated test that is missing; leaves status `implemented` |
 | `audit_clean` | task_audit | emits `Success: full task compliance confirmed.` when code + test are present; stamps `audited` |

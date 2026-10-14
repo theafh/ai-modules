@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # implement fixture: a tiny runnable Python project with a stubbed
-# function and an open task whose Acceptance is a passing test suite.
-# task_implement must write the code AND a test, leave the suite green,
-# and leave the task open (it implements; it does not archive).
+# function and a ready task whose Acceptance names a passing test suite.
+# task_implement must write the code AND a test, pass the test suite the
+# Acceptance names, and keep the task live (it implements; it does not
+# archive).
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

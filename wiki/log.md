@@ -1143,3 +1143,12 @@ pre-existing.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-14 19:17] update | task_implement ready-before-build admission
+
+- concepts/task-lifecycle-and-status-rules.md (before-building admission for
+  `task_implement`: admits `ready`, and `implemented` for audit-gap repair;
+  default verification gate is Acceptance-named plus cheap surfaces;
+  divergence signs for building on `open`/`checked` or requiring the full
+  behavioral suite by default)
+- index.md (summary of the lifecycle page)
