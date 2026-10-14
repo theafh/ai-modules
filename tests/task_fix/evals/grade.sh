@@ -40,6 +40,8 @@ REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
 LINT="$REPO_ROOT/plugins/ai_dev/skills/task/scripts/lint.py"
 TASKS="$proj/tasks"
 RESPONSE="${RESPONSE_FILE:-$target/../response.txt}"
+# shellcheck source=../../lib/repeated_link_disposition.sh
+. "$HERE/../../lib/repeated_link_disposition.sh"
 
 pass=0
 fail=0
@@ -128,37 +130,6 @@ sections_matching() {
 response_readable() { [[ -s "$RESPONSE" ]]; }
 response_has() { response_readable && grep -qiE -- "$1" "$RESPONSE"; }
 
-# disposition_blocks -> one line per `repeated-link:` lead-in, with that line's
-# own wrapping collapsed. A report hard-wraps a disposition line across several
-# physical lines, often inside a fenced block, so a line-based grep misses a
-# perfectly well-formed line. Splitting on the lead-in keeps one finding's
-# fields from bleeding into the next finding's, and the 400-character cap stops
-# the last block from swallowing whatever prose follows it.
-disposition_blocks() {
-  response_readable || return 1
-  tr '\n' ' ' < "$RESPONSE" | tr -s ' ' \
-    | sed 's/repeated-link:/\n&/g' \
-    | awk 'NR>1 { print substr($0, 1, 400) }'
-}
-
-# disposition_line <needle-for-the-target> <disposition> -> the report carries
-# one shared-shape line naming this target with this disposition. Anchored on
-# the `repeated-link:` lead-in the base block fixes, so a passing report is one
-# that used the shape rather than one that merely mentioned the words.
-disposition_line() {
-  disposition_blocks | grep -qiE -- "repeated-link:.*$1.*$2"
-}
-
-# disposition_of <needle-for-the-target> -> the disposition that finding's line
-# reports, read as the first disposition word on it. The shape puts the
-# disposition after the file, target, and sections, none of which carry one of
-# those words, so the first match is the field itself and a surfaced reason
-# that happens to say "kept" later on cannot be mistaken for a kept line.
-disposition_of() {
-  disposition_blocks | grep -iE -- "repeated-link:.*$1" | head -1 \
-    | grep -oiE 'regrouped|surfaced|kept' | head -1 | tr '[:upper:]' '[:lower:]'
-}
-
 no_real_repo_writes() {
   # Fixture names from this sandbox, compared with the isolated copy taken at
   # stage. A concurrent session editing some other real task stays outside
@@ -200,9 +171,17 @@ case "$eval_id" in
     link_target_untouched() { byte_identical "tasks/api_export-schema.md"; }
     archived_untouched() { byte_identical "tasks/archive/api_legacy-export.md"; }
     archived_pair_untouched() { byte_identical "tasks/archive/api_legacy-columns.md"; }
-    live_line_regrouped() { disposition_line "api_export-gzip" "regrouped"; }
+    live_line_regrouped() {
+      [[ "$(disposition_of "api_export-gzip")" == "regrouped" ]]
+    }
+    # An absence check fails, like every report check, when no report is
+    # readable, so a missing response never reads as a report without the line.
     no_archived_count_line() {
-      ! disposition_blocks | grep -qiE 'repeated-link:[[:space:]]*[0-9]+[[:space:]]+findings on archived tasks'
+      local blocks
+      response_readable || return 1
+      blocks="$(disposition_blocks)" || return 1
+      ! grep -qiE 'repeated-link:[[:space:]]*[0-9]+[[:space:]]+findings on archived tasks' \
+        <<<"$blocks"
     }
     check "the live task's repeated-link warn is cleared"        warn_cleared
     check "the gathered account sits in ## Context only"         account_in_context_only
@@ -294,10 +273,18 @@ case "$eval_id" in
     acceptance_link_intact() {
       [[ "$(grep -c '(api_token-rotation\.md)' "$f")" == "2" ]]
     }
-    surfaced_line() { disposition_line "api_retirement-audit-log" "surfaced"; }
+    surfaced_line() {
+      [[ "$(disposition_of "api_retirement-audit-log")" == "surfaced" ]]
+    }
+    # A reason counts only on a line that reads surfaced. A record runs to its
+    # blank line, so a later sentence's "surfaced because" can sit in a
+    # regrouped line's block and would otherwise lend that line a reason.
     reason_names_acceptance() {
-      disposition_blocks \
-        | grep -qiE 'repeated-link:.*api_retirement-audit-log.*surfaced.*(acceptance|goal|outcome|contract|retention window)'
+      local reason
+      surfaced_line || return 1
+      reason="$(disposition_reason "api_retirement-audit-log")"
+      [[ -n "$reason" ]] && grep -qiE \
+        'acceptance|goal|outcome|contract|retention window' <<<"$reason"
     }
     check "the task file is byte-identical"                        body_unchanged
     check "the link target is byte-identical"                      link_target_untouched
@@ -349,9 +336,7 @@ case "$eval_id" in
     # second line reading kept or surfaced fails even when the first passes.
     every_line_regrouped() {
       local words
-      words="$(disposition_blocks | grep -iE -- 'repeated-link:.*api_export-gzip' \
-        | while IFS= read -r l; do grep -oiE 'regrouped|surfaced|kept' <<<"$l" | head -1; done \
-        | tr '[:upper:]' '[:lower:]' | sort -u)"
+      words="$(disposition_words "api_export-gzip" | sort -u)"
       [[ "$words" == "regrouped" ]]
     }
     check "the repeated-link warn is cleared"                          warn_cleared

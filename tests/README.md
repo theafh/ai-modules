@@ -149,8 +149,10 @@ don't bring up new harnesses under Pattern B.
   `labeled-why-open` (no tier settles it), and `guardrail-bound-surface`
   (every path crosses a boundary). Grades the written task file and the
   worker's captured response, since the rule obliges both.
-- **`task_fix/`**: Pattern A, behavioral only (the skill drives the base
-  `task` skill's scripts, covered under `task/script_tests/`). Four staged
+- **`task_fix/`**: Pattern A. The skill drives the base `task` skill's
+  scripts, covered under `task/script_tests/`, so `script_tests/run.sh` here
+  tests the grader instead, grading staged fixtures against chosen responses
+  (no `run_all.sh`). Four staged
   evals over the base `<lint>` **Repeated-link react protocol** as the inline
   `task_fix` path applies it: `regroup_live_skip_archived` (gather the live
   account, leave the archived body quiet), `regroup_state_and_edit_site` (a reference

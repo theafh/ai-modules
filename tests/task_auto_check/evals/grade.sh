@@ -35,6 +35,8 @@ TASKS="$proj/tasks"
 # Worker transcript written by run.py next to the sandbox; absent when the
 # eval is staged operator-driven. Transcript checks run only when present.
 RESPONSE="${RESPONSE_FILE:-$target/../response.txt}"
+# shellcheck source=../../lib/repeated_link_disposition.sh
+. "$HERE/../../lib/repeated_link_disposition.sh"
 
 pass=0
 fail=0
@@ -148,67 +150,6 @@ surfaced_channel_names_repeated_link() {
     | sed 's/repeated-link disposition filter//g' \
     | sed -E 's/surfaced-but-not-fixed[^a-z0-9]{0,8}(none|nothing|empty)[[:space:]]*(\([^)]*\))?[[:space:].]*$//' \
     | grep -qE 'surfaced-but-not-fixed.{0,160}repeated-link'
-}
-
-# disposition_blocks -> one line per `repeated-link:` lead-in, with that line's
-# own wrapping collapsed. A report hard-wraps a disposition line across several
-# physical lines, often inside a fenced block, so a line-based grep misses a
-# perfectly well-formed line. Splitting on the lead-in keeps one finding's
-# fields from bleeding into the next finding's, and the 400-character cap stops
-# the last block from swallowing whatever prose follows it.
-disposition_blocks() {
-  response_readable || return 1
-  tr '\n' ' ' < "$RESPONSE" | tr -s ' ' \
-    | sed 's/repeated-link:/\n&/g' \
-    | awk 'NR>1 { print substr($0, 1, 400) }'
-}
-
-# disposition_of <needle-for-the-target> -> the disposition that finding's line
-# reports, read as the first disposition word on it. The shape puts the
-# disposition after the file, target, and sections, none of which carry one of
-# those words, so the first match is the field itself and a surfaced reason
-# that happens to say "kept" later on cannot be mistaken for a kept line.
-disposition_of() {
-  disposition_blocks | grep -iE -- "repeated-link:.*$1" | head -1 \
-    | grep -oiE 'regrouped|surfaced|kept' | head -1 | tr '[:upper:]' '[:lower:]'
-}
-
-# disposition_reason <needle-for-the-target> -> the reason on that finding's
-# surfaced line, from `surfaced because` to its first sentence end. The report
-# is read as records with their hard wraps joined, and a blank line, a code
-# fence, a heading, a table row, or a list marker ends a record, so prose that
-# follows the line never lends the reason a word it lacks. A record holding
-# several lines, as a fenced block of disposition lines does, is split on the
-# `repeated-link:` lead-in so each finding keeps its own reason.
-disposition_reason() {
-  response_readable || return 1
-  awk -v needle="$1" '
-    function take(rec,    low, rest, i, seg, j, reason, n) {
-      low = tolower(rec)
-      rest = rec
-      while ((i = index(tolower(rest), "repeated-link:")) > 0) {
-        rest = substr(rest, i + 14)
-        j = index(tolower(rest), "repeated-link:")
-        seg = (j > 0) ? substr(rest, 1, j - 1) : rest
-        if (index(tolower(seg), tolower(needle)) == 0) continue
-        i = index(tolower(seg), "surfaced because")
-        if (i == 0) return 0
-        reason = substr(seg, i + 16)
-        n = match(reason, /[.;!?]([[:space:]]|$)|[[:space:]]\|/)
-        if (n > 0) reason = substr(reason, 1, n - 1)
-        print reason
-        return 1
-      }
-      return 0
-    }
-    function flush() {
-      if (rec != "" && !done) done = take(rec)
-      rec = ""
-    }
-    /^[[:space:]]*$/ || /^[[:space:]]*```/ { flush(); next }
-    /^[[:space:]]*(#|\||[-*+][[:space:]]|[0-9]+[.)][[:space:]])/ { flush() }
-    { rec = (rec == "" ? $0 : rec " " $0) }
-    END { flush() }' "$RESPONSE"
 }
 
 # response_records -> the response one record per line. A blank line, a code
@@ -1482,11 +1423,12 @@ PY
         && cmp -s "$target/.sibling.md" "$sibling"
     }
     updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
-    disposition_line_regrouped() { disposition_blocks | grep -qiE 'repeated-link:.*regrouped'; }
+    disposition_line_regrouped() {
+      [[ "$(disposition_of "api_quota-retry-header")" == "regrouped" ]]
+    }
     # Empty channel ("Surfaced-but-not-fixed: none") is success. Fail only when
-    # a repeated-link finding is named on that channel. Do not grep
-    # disposition_blocks for the channel label: those blocks collapse following
-    # prose and false-fail on a legitimate empty-channel line.
+    # a repeated-link finding is named on that channel. Grade the channel through
+    # surfaced_channel_names_repeated_link, which reads the channel line itself.
     not_surfaced_unfixed() { ! surfaced_channel_names_repeated_link; }
     check "the repeated-link warn is cleared on the target" warn_cleared
     check "the target's account of the sibling sits in one section" account_in_one_section
@@ -1578,8 +1520,7 @@ PY
     # A regrouped finding carries its own disposition line and leaves the
     # surfaced-but-not-fixed channel empty; a surfaced one belongs there, so
     # the filter is asserted only for the regrouped outcome.
-    # Same empty-channel rule as not_surfaced_unfixed (no disposition_blocks
-    # channel-label grep — that helper collapses following prose).
+    # Same empty-channel rule as not_surfaced_unfixed.
     disposition_filter_holds() {
       if [[ "$(disposition_of "api_retry-header")" == "surfaced" ]]; then
         return 0
@@ -1651,9 +1592,7 @@ PY
     # second line reading kept or surfaced fails even when the first passes.
     every_line_regrouped() {
       local words
-      words="$(disposition_blocks | grep -iE -- 'repeated-link:.*api_retry-header' \
-        | while IFS= read -r l; do grep -oiE 'regrouped|surfaced|kept' <<<"$l" | head -1; done \
-        | tr '[:upper:]' '[:lower:]' | sort -u)"
+      words="$(disposition_words "api_retry-header" | sort -u)"
       [[ "$words" == "regrouped" ]]
     }
     not_surfaced_unfixed() { ! surfaced_channel_names_repeated_link; }

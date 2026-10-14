@@ -180,5 +180,11 @@ One distinction matters here, because both look like editing a test. Broadening
 a check that pinned one phrasing of a property the component still satisfies is
 a grader fix, and it is correct: the check was asserting surface form rather
 than substance. Weakening a check so a component that no longer holds the
-property passes is the failure this rule forbids. Say which of the two a change
-is, and name the evidence, whenever an existing check is edited.
+property passes is the failure this rule forbids. Whenever an existing check is
+edited, back the edit with evidence in the tree. A broadening carries a test case
+the old check failed although the property held, and a tightening carries a case
+the old check passed although the property failed. A check whose pinned
+behaviour is superseded points to the decision that superseded it, recorded in
+the tree, such as the task that made it. A commit message or pull-request
+description never counts as that evidence, because it restates the claim
+rather than proving it.

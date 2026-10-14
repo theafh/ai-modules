@@ -1,14 +1,18 @@
 # tests/task_fix: repeated-link disposition harness
 
-Pattern A (skill-creator-aligned), behavioral only. `task_fix` ships no
-scripts of its own. It drives the base `task` skill's `discover_tasks.sh` and
-`lint.py`, which `tests/task/script_tests/` already covers, so there is no
-`script_tests/` and no `run_all.sh` here. The static family contract across
-`task_fix` and its agents is asserted in `tests/task/script_tests/contract_run.sh`
-and `tests/task_auto_check/script_tests/run.sh`.
+Pattern A (skill-creator-aligned). `task_fix` ships no scripts of its own. It
+drives the base `task` skill's `discover_tasks.sh` and `lint.py`, which
+`tests/task/script_tests/` already covers. So `script_tests/run.sh` here tests
+the grader instead: each case stages a fixture, grades it against a chosen
+response, and reads one check's verdict, which keeps the evidence for a grader
+edit in the tree as `TESTING.md` asks. There is no `run_all.sh`, so drive
+`script_tests/run.sh` directly. The static family contract across `task_fix`
+and its agents is asserted in `tests/task/script_tests/contract_run.sh` and
+`tests/task_auto_check/script_tests/run.sh`.
 
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
+| Grader | `script_tests/` | `evals/grade.sh` checks on staged fixtures and chosen responses, such as the archived-count absence check failing when no response is readable | `bash tests/task_fix/script_tests/run.sh` |
 | Skill behavior | `evals/` | the base `<lint>` **Repeated-link react protocol** as the inline `task_fix` path applies it: reorganize live bodies, surface what would change Goal or the Acceptance contract, leave archived bodies quiet (stage → agent → grade) | `python3 tests/task_fix/evals/run.py` |
 
 The whole-family behavioral suite keeps its own `fix`, `fix_coherence`, and

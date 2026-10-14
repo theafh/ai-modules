@@ -58,10 +58,17 @@ _MAX_ENTRIES_PER_EVAL = 12
 # The shared helpers beside this module that decide a cached verdict:
 # micro_deploy.py builds each pass's deployment and runs the
 # artefacts_read_from_micro_deployment check, vendor.py builds the worker
-# command and environment, and host_tasks_guard.sh is the host tasks/ guard the
-# task-family stage and grade scripts source. They feed every key, so an edit to
-# one re-runs each cached eval once.
-VERDICT_HELPERS = ("micro_deploy.py", "vendor.py", "host_tasks_guard.sh")
+# command and environment, host_tasks_guard.sh is the host tasks/ guard the
+# task-family stage and grade scripts source, and repeated_link_disposition.sh
+# is the record-bounded disposition-line reader task_fix and task_auto_check
+# grade through. They feed every key, so an edit to one re-runs each cached
+# eval once.
+VERDICT_HELPERS = (
+    "micro_deploy.py",
+    "vendor.py",
+    "host_tasks_guard.sh",
+    "repeated_link_disposition.sh",
+)
 _HELPER_DIR = pathlib.Path(__file__).resolve().parent
 
 
@@ -113,8 +120,9 @@ def content_key(
     verdict. `source_roots` is an iterable of skill/agent dirs (or files) the
     worker's behavior depends on; `harness_dir` is the `evals/` dir defining
     how the eval is staged and graded. The shared `VERDICT_HELPERS` join every
-    key, because each runner's deployment, read check, worker command, and host
-    guard come from them.
+    key, because the deployment, read check, worker command, host `tasks/`
+    guard, and repeated-link disposition reader that decide a verdict come
+    from them.
     """
     digest = hashlib.sha256()
     # Label each source root by basename so moving content between roots, or

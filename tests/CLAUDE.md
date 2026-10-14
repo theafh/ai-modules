@@ -22,7 +22,7 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. |
 | `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/test_run.py` checks that no eval grading the sandbox's whole `git status` declares an artefact the micro-deployment writes into the sandbox project; `evals/` holds a behavioral eval per family member. `run_all.sh` drives the two script runners and `evals/test_run.py`. |
 | `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
-| `task_fix/` | `task_fix` | Pattern A (behavioral only) | Four staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and leave the archived body quiet, gather a reference page's current state and its edit into one passage, surface a gathering that would leave an Acceptance item nothing to measure, and name a repeat inside one paragraph again in plain text there. Grades the task file's bytes and the run's per-finding disposition line. |
+| `task_fix/` | `task_fix` | Pattern A (skill-creator-aligned) | `script_tests/run.sh` checks `evals/grade.sh` on staged fixtures and chosen responses; no `run_all.sh`. Four staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and leave the archived body quiet, gather a reference page's current state and its edit into one passage, surface a gathering that would leave an Acceptance item nothing to measure, and name a repeat inside one paragraph again in plain text there. Grades the task file's bytes and the run's per-finding disposition line. |
 | `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks + `evals/` over the autonomous readiness loop (repair-to-ready, frozen commitments, isolated re-gates, last-call citation refutation, gate/verifier/drift stops, mechanical lint cleanup). |
 | `guardrail_audit/` | `guardrail_audit` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md and registration contract + `evals/` over five staged fixtures with byte-identity grading. |
 | `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract + `evals/` over three staged fixtures. |
@@ -214,11 +214,12 @@ evals.json, stage.sh, grade.sh, fixtures, run.py), the shared helpers that
 decide every cached verdict, the worker model, the eval id, and the prompt.
 Those helpers are `eval_cache.VERDICT_HELPERS`: `tests/lib/micro_deploy.py`
 (the deployment and the read check), `tests/lib/vendor.py` (the worker command
-and environment), and `tests/lib/host_tasks_guard.sh` (the host `tasks/`
-guard), so an edit to one re-runs each cached eval once. A helper under
-`tests/lib` that starts deciding verdicts joins that list in the same change,
-the way a newly reached artefact joins a runner's declaration. For a
-task-family eval the declaration names the loaded sibling, the base `task`
+and environment), `tests/lib/host_tasks_guard.sh` (the host `tasks/`
+guard), and `tests/lib/repeated_link_disposition.sh` (the record-bounded
+disposition-line reader), so an edit to one re-runs each cached eval once. A
+helper under `tests/lib` that starts deciding verdicts joins that list in the
+same change, the way a newly reached artefact joins a runner's declaration.
+For a task-family eval the declaration names the loaded sibling, the base `task`
 skill it reads through `<authority>`, and the
 `auto_*_task` agents that the `auto_*` siblings and an escalated `task_fix`
 spawn. It also names `task_check` for `task_auto_check` and `task_fix`,
@@ -461,6 +462,17 @@ harness sets those up. Match a marketplace entry by plugin name rather
 than grepping the file for a version string, since a registration lists
 many plugins and a bare grep matches any of them; the helper already
 does this.
+
+### Record-bounded repeated-link disposition helpers
+
+`tests/task_fix/evals/grade.sh` and `tests/task_auto_check/evals/grade.sh`
+source `tests/lib/repeated_link_disposition.sh` after they set `RESPONSE` to
+the worker's `response.txt`. Every helper in that file reads `$RESPONSE` and
+returns non-zero when the path is missing or empty. Unit coverage:
+
+```bash
+bash tests/lib/test_repeated_link_disposition.sh
+```
 
 ## tests/wiki/: Pattern B, two-layer
 
