@@ -2,8 +2,8 @@
 description: Make task_implement require ready (or implemented for audit-gap repair), refuse open or checked, and gate done on Acceptance-named checks plus cheap surfaces.
 scope: plugins/ai_dev/skills/task_implement
 created: 2026-10-12T19:02:54
-updated: 2026-10-14T20:09:48
-status: audited
+updated: 2026-10-14T20:12:22
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
@@ -19,11 +19,11 @@ Its default verification gate is the same scope: every check `## Acceptance` nam
 
 ## Context
 
-- **Observed.** Two implement-and-audit sessions (one on Codex and a later Cursor parent loop) both ran `task_implement` against [the deletion-and-regate task](archive/task-family_readiness-loop-deletion-and-regate.md) while its status was still `open`. Both sessions followed the skill as written: the workflow reads status only to stop on `audited` or archived `finished` / `deferred`, then continues. Neither run hit a hard readiness stop.
+- **Observed.** Two implement-and-audit sessions (one on Codex and a later Cursor parent loop) both ran `task_implement` against [the deletion-and-regate task](task-family_readiness-loop-deletion-and-regate.md) while its status was still `open`. Both sessions followed the skill as written: the workflow reads status only to stop on `audited` or archived `finished` / `deferred`, then continues. Neither run hit a hard readiness stop.
 - **Not a recent removal.** Commit `b011c11` (2026-10-11, "Ship task status discipline…") added the status read to `task_implement` and the past-implementation stop. It did not add, and git history does not show a prior, hard `ready` precondition in `task_implement`. The gap is a missing gate, not a regression that deleted one.
 - **Selector already knows.** `task_select` already maps `ready` → `task_implement` and `open` / `checked` → `task_check` or refinement. The executable implement skill does not enforce that mapping, so a direct "implement this task" request bypasses the spine.
 - **Verification-scope conflict.** The same Codex session stalled before audit because it ran the whole ~32-case `task_auto_check` behavioral suite after the Acceptance-named evals had already passed. `task_implement`'s `<role>` says it "runs the full suite clean", while the `<workflow>` step **Cross-check, then run the verifications the acceptance names.** and the base `<verification_economy>` say to run the verifications Acceptance names (and to treat expensive evals as recorded evidence). That split sent the implementer into hours of unrelated regression work and left the task `open`.
-- **Hub intent.** The base skill's lifecycle spine is create → check → implement → audit → finish. `ready` means implementation-ready. The manual sibling must hold that bar, including beside [the autonomous implement-loop task](task-family_autonomous-implement-loop.md), which already assumes a `ready` precondition for its opt-in loop and stays out of this change's scope.
+- **Hub intent.** The base skill's lifecycle spine is create → check → implement → audit → finish. `ready` means implementation-ready. The manual sibling must hold that bar, including beside [the autonomous implement-loop task](../task-family_autonomous-implement-loop.md), which already assumes a `ready` precondition for its opt-in loop and stays out of this change's scope.
 - **Re-entry that must stay open.** `task_audit` routes gaps on an `implemented` task back to `task_implement`. That repair path stays valid. An explicit user override that skips readiness is out of scope; raising status to `ready` stays owned by `task_check`, `task_auto_check`, or the hub's apply-findings readiness declaration.
 
 ## Approach
