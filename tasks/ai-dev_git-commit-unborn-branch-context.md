@@ -1,9 +1,9 @@
 ---
-description: Make git_commit's prepare context succeed on an unborn branch by guarding recent-commits log and auditing sibling HEAD-dependent calls.
+description: Make git_commit's prepare context succeed on an unborn branch by guarding recent-commits log, auditing sibling HEAD-dependent calls, and adding a durable unborn-branch script-test.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-10-14T16:21:22
-updated: 2026-10-14T16:21:22
-status: open
+updated: 2026-10-15T16:10:46
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -31,12 +31,11 @@ reported-by: Andreas Hoffmann
 
 3. **Prove with a durable script scenario.** In `tests/git_commit/script_tests/run.sh`, add a scenario that builds a throwaway-shaped repository (`git init`, one staged file, no commits), runs `prepare_commit_context.sh`, and asserts exit 0, the three stdout lines, an existing context file, and a `<recent_commits>` body of `(no commits yet)`. Extend that scenario through `commit_with_message.sh` when the audit leaves that script's root-commit path unchanged, asserting the piped message becomes `HEAD`. Register the scenario in the harness's scenario list the same way its neighbors are.
 
-4. **Hand redeploy to the operator.** After the source fix lands, tell the user to redeploy (for example `make deploy`) so harness copies pick up the change; do not run deploy from this task unless the user asks in that session. Version bumps follow the standing repo versioning rules at commit time.
-
 **Out of scope:**
 
 - Changing the skill's commit-message format, drift guard, or pre-flight obligations.
 - Editing only a deployed harness copy under a user's home without updating this repository's source.
+- Operator redeploy messaging and version bumps after the source fix lands — the standing repo deploy and versioning rules own that; this task delivers the source fix and script-test only.
 
 ## Acceptance
 

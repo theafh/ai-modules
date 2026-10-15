@@ -86,7 +86,7 @@ the default rather than the reverse.
 For each measured repair-class eval, apply the Acceptance rule for that eval's post-change effective worker ceiling.
 
 **Out of scope:** Narrowing the cache key, which
-[the eval-cache granularity task](../tests_eval-cache-key-granularity.md) owns;
+[the eval-cache granularity task](tests_eval-cache-key-granularity.md) owns;
 editing this harness's `run.py` still invalidates its cached verdicts until that
 task lands. Replacing a minutes-site band statement with a vendor-neutral
 full-repair-loop contrast that omits the re-measured figure is rejected; every

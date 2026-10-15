@@ -2,8 +2,8 @@
 description: Make git_review's secret scan report each hit's file and line, read every added line, catch the credential and home-path shapes it misses, and match the manual fallback.
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-06T13:25:39
-updated: 2026-10-09T18:10:40
-status: open
+updated: 2026-10-14T22:30:46
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -31,26 +31,37 @@ The skill's `<evidence_set>` names the scan. Eval 20 runs the skill on the `secr
 
 Rewrite `collect_secret_scan` in three parts, keeping the two sections of `secret_scan.txt` and their `none` lines.
 
-**Extraction.** Replace the `^\+` and `^+++` filter pair with one pass over the diff file that emits each added content line with its location. Treat a line that starts with `---` or `+++` as a header only between a file's `diff --git` line and its first content line, so an added line that begins with `++` stays a content line. Take the path from the `+++ b/<path>` header and the starting line number from the `+c` field of each `@@ -a,b +c,d @@` hunk header, then advance the number on every context line and every added line. An untracked file in uncommitted mode has a synthesized header and no hunk header, so its numbering starts at 1. [ai-dev_git-review-size-profile-overcount.md](archive/ai-dev_git-review-size-profile-overcount.md) introduces the same header rule in `collect_size_profile`, so when that pass is already in the collector, factor the shared header handling into one helper both functions use. In uncommitted mode, a path that both sides of an unresolved merge changed arrives as a combined diff instead: a `diff --cc <path>` opener, the same `---` and `+++` header pair, `@@@ -a,b -c,d +e,f @@@` hunk headers whose last range starts the result's numbering, and two prefix columns per line, where the first column compares against `HEAD` and a line holding `-` in either column is absent from the result. [ai-dev_git-review-size-profile-conflicted-headers.md](ai-dev_git-review-size-profile-conflicted-headers.md) rewrites each `diff --cc` opener into the `diff --git` form for the size profile, so whichever task lands second can reuse that rewrite, and git quotes a non-ASCII name in these headers as well, as in `+++ "b/\303\244.txt"`.
+**Extraction.** Replace the `^\+` and `^+++` filter pair with one pass over the diff file that emits each added content line with its location. Treat a line that starts with `---` or `+++` as a header only between a file's `diff --git` or `diff --cc` opener and its first content line, so an added line that begins with `++` stays a content line. Take the path from the `+++ b/<path>` header and the starting line number from the `+c` field of each `@@ -a,b +c,d @@` hunk header, then advance the number on every context line and every added line. An untracked file in uncommitted mode has a synthesized header and no hunk header, so its numbering starts at 1. [ai-dev_git-review-size-profile-overcount.md](archive/ai-dev_git-review-size-profile-overcount.md) already shipped the header-window pass in `collect_size_profile` for `diff --git` openers only (`/^diff --git /` in the awk). Factor that pass into one shared helper that both `collect_secret_scan` and `collect_size_profile` call, and extend the helper so the `---` / `+++` header window opens on both `diff --git` and `diff --cc`. In uncommitted mode, a path that both sides of an unresolved merge changed arrives as a combined diff instead: a `diff --cc <path>` opener, the same `---` and `+++` header pair, `@@@ -a,b -c,d +e,f @@@` hunk headers whose last range starts the result's numbering, and two prefix columns per line, where the first column compares against `HEAD` and a line holding `-` in either column is absent from the result. On a combined-diff file, scan only result-side added lines: those with `+` in the first prefix column and no `-` in either column. Advance the result line number on every result-present line (any line with no `-` in either prefix column). Strip both prefix columns before matching and before writing `<content>`. [ai-dev_git-review-size-profile-conflicted-headers.md](ai-dev_git-review-size-profile-conflicted-headers.md) rewrites each `diff --cc` opener into the `diff --git` form for the size profile, so whichever task lands second can reuse that rewrite, and git quotes a non-ASCII name in these headers as well, as in `+++ "b/\303\244.txt"`.
 
-**Output.** Match both patterns against each added line's content alone, so a file path never draws a hit, and write each hit under its section as `<path>:<line>:<content>`, where `<content>` is the added line without its leading `+`.
+**Output.** Match both patterns against each added line's content alone, so a file path never draws a hit, and write each hit under its section as `<path>:<line>:<content>`, where `<content>` is the added line with its unified-diff leading `+` removed, or with both combined-diff prefix columns removed. When the `+++` header is git-quoted, keep git's quotes in `<path>` after removing the `b/` prefix, so a header `+++ "b/\303\244.txt"` yields `"\303\244.txt"`.
 
-**Patterns.** Define the credential pattern and the home-path pattern once each, in variables beside `GENERATED_PATTERN`. Rewrite them so they keep every shape the current patterns catch, read from the script as it stands before this change, and add these shapes:
+**Patterns.** Define the credential pattern and the home-path pattern once each, in variables beside `GENERATED_PATTERN`, each as one contiguous string assignment whose assigned value is a single greppable span (no shell quote-concatenation fragments such as `["'"'"']`). Rewrite them so they keep every shape the current patterns catch — the keep-set below, one representative per top-level alternation of the pre-change credential and home-path greps in `collect_secret_scan` — and add the shapes that follow.
+
+Keep-set representatives (must still hit after the rewrite):
+
+- Credential: `AKIAIOSFODNN7EXAMPLE`, `ASIAIOSFODNN7EXAMPLE`, `ghp_0123456789abcdef`, `sk-abcdefghijklmnopqrst`, `xoxb-0123456789ab`, `-----BEGIN RSA PRIVATE KEY-----`, and a lowercase quoted assignment such as `password = "hunter2xx"`.
+- Home path: `/home/alice/`, `/Users/bob/`, and the escaped Windows form `C:\\Users\\carol`.
+
+Add these shapes:
 
 - Anthropic `sk-ant-api03-...` and OpenAI `sk-proj-...` keys.
 - GitHub fine-grained `github_pat_...` tokens, Stripe `sk_live_...` keys, and Google `AIza...` keys.
 - A quoted assignment with an uppercase key name such as `PASSWORD="..."`, an unquoted `.env` assignment such as `DB_PASSWORD=hunter2hunter2`, and a JSON member such as `"password": "..."`.
 - A Unix home path that ends a value without a trailing slash, such as `"/Users/alice"`, and a single-backslash Windows path such as `C:\Users\carol\AppData`.
 
+Discriminate those unquoted `.env` hits from the no-hit `$` values as follows: the unquoted form is a no-space `KEY=value` whose value does not start with `$`; spaced assignments keep today's quoted value of eight or more characters, so `password = get_password()` stays a no-hit.
+
 These no-hit shapes must still draw no hit: a variable reference such as `TOKEN=${TOKEN}` or `API_KEY=$API_KEY`, a function call such as `password = get_password()`, and an empty value such as `password: ""`.
 
-**Manual fallback.** Rewrite the scan passage under "The credential and home-path scan over the added lines:" in `references/manual_fallback.md` in place, so it runs the script's extraction and carries both pattern strings verbatim in place of its shorter list and its `grep -v '^\+\+\+'` filter.
+**Manual fallback.** Rewrite the scan passage under "The credential and home-path scan over the added lines:" in `references/manual_fallback.md` in place, so it runs the script's extraction and carries each pattern variable's assigned value as that same contiguous string, identical to the script, in place of its shorter list and its `grep -v '^\+\+\+'` filter.
 
 **Tests.** Add these checks to `tests/git_review/script_tests/run.sh`, giving each new scenario its own sandbox and the next free `s<N>` id:
 
-- A range-mode scenario whose feature branch adds, across at least two files, every shape the current patterns catch, every shape added under **Patterns**, and every no-hit shape, with one added home path on a line that begins with `++` and the no-hit shapes in a file under a `docs/home/dave/` directory, so a match against the path would show as a hit.
+- A range-mode scenario whose feature branch adds, across at least two files, every keep-set representative under **Patterns**, every shape added under **Patterns**, and every no-hit shape, with one added home path on a line that begins with `++`, one credential or home-path shape in a file whose `+++` header is git-quoted as in **Extraction**, and the no-hit shapes in a file under a `docs/home/dave/` directory, so a match against the path would show as a hit.
 - An uncommitted-mode scenario with an added shape in a staged edit and another in an untracked file.
-- A check that fails when `references/manual_fallback.md` lacks either pattern string from the script verbatim.
+- An uncommitted-mode scenario whose sandbox leaves one path in `UU` with a credential or home-path shape on a result-side added line of the combined diff (`diff --cc`, `@@@` hunk, two prefix columns), and another credential or home-path shape on a non-result-side line of that same combined diff (a line that fails the result-side added rule in **Extraction**: `+` in the first prefix column and no `-` in either column), so the hit's path and result-side line are checkable under those rules and the non-result-side shape is available to prove exclusion.
+- A scenario whose collected diff adds no credential-pattern match and no home-path-pattern match, so both sections of `secret_scan.txt` write `none`.
+- A check that greps each pattern variable's assigned contiguous string in both `collect_review_evidence.sh` and `references/manual_fallback.md`, and fails when either string is absent from a copy of `references/manual_fallback.md`.
 
 Add a check to the `20)` case in `grade.sh` that the report names `src/settings.py`, which eval 20's expectations already require. Keep the `git_review/` entries in `tests/README.md` and `tests/CLAUDE.md` current with the added coverage, per the standing testing rules.
 
@@ -58,12 +69,18 @@ Add a check to the `20)` case in `grade.sh` that the report names `src/settings.
 
 ## Acceptance
 
-- A search of `collect_review_evidence.sh` for `grep -v '^+++'` returns no match, and the credential and home-path patterns each appear once, as variables that `collect_secret_scan` reads.
-- In the new range-mode scenario, every shape the pre-change patterns catch and every shape added under **Patterns** appear in `secret_scan.txt`, each as `<path>:<line>:` naming the file and new-side line where the sandbox placed it.
+- A search of `collect_review_evidence.sh` for `grep -v '^+++'` returns no match, and the credential and home-path patterns each appear once, as variables that `collect_secret_scan` reads, each assigned one contiguous greppable string.
+- `collect_review_evidence.sh` defines one shared header-handling helper that opens the `---` / `+++` header window on both `diff --git` and `diff --cc`, that both `collect_secret_scan` and `collect_size_profile` call, and the existing `s24` size-profile line-count scenario in `tests/git_review/script_tests/run.sh` still passes.
+- In the new range-mode scenario, every keep-set representative under **Patterns** and every shape added under **Patterns** appear in `secret_scan.txt` under the section that matches their class (`credential_pattern_hits:` for credential shapes, `hardcoded_home_path_hits:` for home-path shapes), each as `<path>:<line>:` naming the file and new-side line where the sandbox placed it.
+- In the new range-mode scenario, the hits in `secret_scan.txt` name at least two distinct `<path>` values.
+- In the new range-mode scenario, the hit in the file whose `+++` header is git-quoted appears in `secret_scan.txt` as `<path>:<line>:` whose `<path>` is the git-quoted form **Output** names for that header.
 - In the same scenario, the home path on the added line that begins with `++` appears as a hit.
 - In the same scenario, no no-hit shape from **Patterns** appears in `secret_scan.txt`, and no hit names the file under `docs/home/dave/`.
 - In the new uncommitted-mode scenario, the staged shape and the untracked shape appear with their paths and line numbers, the untracked one counted from the first line of its file.
-- The fallback check passes, and it fails when either pattern string is removed from a copy of `references/manual_fallback.md`.
-- The scan passage in `references/manual_fallback.md` runs the header-aware extraction, and a search of that file for `grep -v '^\+\+\+'` and for the prior alternation `AKIA[0-9A-Z]{16}|-----BEGIN` returns no match.
+- In the new conflicted uncommitted-mode scenario, the result-side shape on the `UU` path appears in `secret_scan.txt` as `<path>:<line>:` naming that path and the result-side line under combined-diff numbering (`@@@` last range, two prefix columns), and the non-result-side shape placed in that same scenario does not appear in `secret_scan.txt`.
+- Every hit line written under `credential_pattern_hits:` or `hardcoded_home_path_hits:` in the new range-mode scenario, the new uncommitted-mode scenario, and the new conflicted uncommitted-mode scenario appears in `secret_scan.txt` as `<path>:<line>:<content>`, where `<content>` equals that added line after the prefix stripping **Output** defines for its diff form (unified-diff leading `+` removed, or both combined-diff prefix columns removed).
+- In the new empty-diff scenario, the `credential_pattern_hits:` and `hardcoded_home_path_hits:` sections of `secret_scan.txt` each contain `none`.
+- The fallback check greps each of those assigned strings in both `collect_review_evidence.sh` and `references/manual_fallback.md`; it passes, and it fails when either string is removed from a copy of `references/manual_fallback.md`.
+- The scan passage under "The credential and home-path scan over the added lines:" in `references/manual_fallback.md` runs the header-aware extraction: a search of that passage finds greppable anchors for a `diff --git` opener and a `diff --cc` opener, a `+++` path step, `@@` hunk numbering with the unified-diff line advancement **Extraction** defines, and `@@@` hunk numbering with the result-present line advancement **Extraction** defines, and a search of that file for `grep -v '^\+\+\+'` and for the prior alternation `AKIA[0-9A-Z]{16}|-----BEGIN` returns no match.
 - The `20)` case in `grade.sh` checks that the report names `src/settings.py`, and eval 20 passes on a fresh `python3 tests/git_review/evals/run.py 20` run.
 - The `git_review/` entries in `tests/README.md` and `tests/CLAUDE.md` name the located secret-scan hits among the covered behaviours, and the `tests/README.md` scenario count equals the number of `scenario` registrations in `script_tests/run.sh`.

@@ -166,6 +166,7 @@ def run_one(eval_id: str, spec: dict, run_dir: pathlib.Path,
                 model=resolved.worker_model,
                 eval_id=eval_id,
                 prompt=staged["prompt"],
+                dependencies=spec.get("dependencies"),
             )
             if not force:
                 hit = cache.lookup(eval_id, key)

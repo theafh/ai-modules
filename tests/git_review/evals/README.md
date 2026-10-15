@@ -4,7 +4,20 @@ Forty-eight evals over thirty-six fixtures, driven by `run.py`, which spawns one
 vendor worker per eval, the Cursor `agent -p` worker by default, and grades the
 result with `grade.sh`.
 The schema is skill-creator's canonical `evals.json`
-(`{id, prompt, expected_output, files, expectations[]}`).
+(`{id, prompt, expected_output, files, expectations[]}`) plus an optional
+`dependencies` object for the verdict cache. `dependencies` maps a skill-root
+basename (the same basename `content_key()` labels each `source_roots` entry
+with) to the list of top-level `SKILL.md` stage element names that eval
+exercises under that root — for example
+`"dependencies": { "git_review": ["primary_workflow", "output_contract"] }`.
+List every top-level child of that skill's root wrapper the run can reach;
+when reach is uncertain, include the stage; omit a basename the run does not
+narrow stage-specifically so that root keeps whole-tree hashing. Harness
+narrowing is not a field here: `tests/lib/eval_cache.py` arm-splits `grade.sh`
+by eval id only when bash's own parse confirms the split and the id-binding
+preconditions hold, and hashes the whole file otherwise. An absent or malformed `dependencies` value keeps
+skill-side whole-tree hashing. See `tests/CLAUDE.md` (verdict-cache section)
+for the shared key policy.
 
 ## Running
 

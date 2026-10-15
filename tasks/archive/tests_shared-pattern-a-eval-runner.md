@@ -62,7 +62,7 @@ Live siblings consume this helper rather than inventing a second pool:
 
 Host-instruction isolation for the language_humanizer worker and judge stays
 with [the isolation task](tests_language-humanizer-worker-isolation.md). Cache
-key narrowing stays with [the granularity task](../tests_eval-cache-key-granularity.md).
+key narrowing stays with [the granularity task](tests_eval-cache-key-granularity.md).
 Alignment of trigger-eval `--workers` to `DEFAULT_PARALLEL_WORKERS` stays
 with [the Cursor vendor task](../tests_trigger-evals-cursor-vendor.md).
 

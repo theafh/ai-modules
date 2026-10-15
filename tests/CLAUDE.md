@@ -209,16 +209,29 @@ like `workspace/`).
 
 The cache key is a content hash of these inputs: the sources of every
 artefact the runner declares for the eval, under the declaration rule in the
-model policy section above, the harness definition (the whole `evals/` dir:
-evals.json, stage.sh, grade.sh, fixtures, run.py), the shared helpers that
-decide every cached verdict, the worker model, the eval id, and the prompt.
-Those helpers are `eval_cache.VERDICT_HELPERS`: `tests/lib/micro_deploy.py`
-(the deployment and the read check), `tests/lib/vendor.py` (the worker command
-and environment), `tests/lib/host_tasks_guard.sh` (the host `tasks/`
-guard), and `tests/lib/repeated_link_disposition.sh` (the record-bounded
-disposition-line reader), so an edit to one re-runs each cached eval once. A
-helper under `tests/lib` that starts deciding verdicts joins that list in the
-same change, the way a newly reached artefact joins a runner's declaration.
+model policy section above; the harness definition (the `evals/` dir:
+evals.json, stage.sh, fixtures, run.py, and every sibling path), with
+`grade.sh` contributing through a per-eval `case "$eval_id"` arm-split only
+when bash's own parse confirms the split and the id-binding preconditions hold
+(`eval_id` bound once from `$1` and never rebound, no positional change before
+the binding outside a `-`-literal guard, every sourced file resolved and free
+of rebinding, no `nocasematch`, no re-invocation of the grader), and as the
+whole file otherwise; the shared
+helpers that decide every cached verdict; the worker model; the eval id; and
+the prompt. Skill-tree hashes are whole-tree by default. An eval may carry an
+optional `dependencies` map in `evals.json` (skill-root basename → `SKILL.md`
+stage element names). When a root's basename appears there, the key hashes
+each listed stage body from that root's `SKILL.md` and omits undeclared
+top-level stage bodies under that root; every other file under the root, and
+every non-stage `SKILL.md` byte, still joins the key fail-closed. An absent or
+malformed declaration keeps whole-tree skill contribution. Those helpers are
+`eval_cache.VERDICT_HELPERS`: `tests/lib/micro_deploy.py` (the deployment and
+the read check), `tests/lib/vendor.py` (the worker command and environment),
+`tests/lib/host_tasks_guard.sh` (the host `tasks/` guard), and
+`tests/lib/repeated_link_disposition.sh` (the record-bounded disposition-line
+reader), so an edit to one re-runs each cached eval once. A helper under
+`tests/lib` that starts deciding verdicts joins that list in the same change,
+the way a newly reached artefact joins a runner's declaration.
 For a task-family eval the declaration names the loaded sibling, the base `task`
 skill it reads through `<authority>`, and the
 `auto_*_task` agents that the `auto_*` siblings and an escalated `task_fix`
@@ -231,13 +244,21 @@ default-branch detection it follows, and the `guardrail` skill whose authority
 hierarchy it ranks findings by. For `agent_spinner` it names the
 `harness_portability` skill that agent_spinner routes per-harness questions
 to. Change any of those and the key moves,
-so the cache misses and the eval re-runs. As long as the declaration names
-everything the eval's worker may load and `VERDICT_HELPERS` names every shared
-helper a verdict depends on, the cache never serves a stale pass, because a
-hit means byte-identical inputs to a run already graded.
-Over-inclusion (editing a section of the base `task` skill that a
-`task_create` eval never reaches still invalidates that eval) only costs an
-occasional extra run, the safe direction.
+so the cache misses and the eval re-runs. A hit means byte-identical inputs,
+over everything the key covers, to a run already graded; a stage an eval's
+`dependencies` map leaves out, and a `grade.sh` arm that cannot select the
+eval, may differ. The cache therefore never serves a stale pass as long as the
+declaration names everything the eval's worker may load, `VERDICT_HELPERS`
+names every shared helper a verdict depends on, each `dependencies` map
+names every stage its eval's run can reach, and the grader is written in good
+faith: no program it executes re-enters `grade.sh`, and neither it nor a file
+it sources rebinds `eval_id`, changes positional parameters before the
+binding, or changes how bash parses or matches arms through indirection static
+inspection cannot read. The split's checks fail closed on every such construct
+they recognise, and this condition covers the rest.
+Over-inclusion (editing a section of a skill an eval does not declare, when
+that eval has no `dependencies` map, still invalidates that eval) only costs
+an occasional extra run, the safe direction.
 
 - **Default: on.** A hit prints `CACHED PASS/FAIL … skipped agent -p`, or
   `skipped claude -p` on a Claude run, and replays the stored verdict, writing `cached.json` plus a clearly-bannered

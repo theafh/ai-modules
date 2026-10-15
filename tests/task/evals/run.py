@@ -209,6 +209,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 model=resolved.worker_model,
                 eval_id=eval_id,
                 prompt=staged["prompt"],
+                dependencies=eval_cache.dependencies_for(THIS / "evals.json", eval_id),
             )
             if not force:
                 hit = cache.lookup(eval_id, key)

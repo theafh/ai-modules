@@ -28,7 +28,19 @@
         "The urllib call in src/export.py appears under 'What is critical', citing CHARTER.md by name.",
         "The deleted src/legacy_table.py appears under 'What it retires'.",
         "The changed Makefile test target appears under 'What of the existing workflow changes'."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 2,
@@ -46,7 +58,19 @@
         "The response carries no Location:, Label:, Governing document:, or Decides: field labels and no H3 outline headings for findings or decisions; quoted evidence may contain H3 text.",
         "Suggested default appears only in the decisions section when a fix requires a decision; a clean review invents no decision to fill that section.",
         "The report ends at the closing answer with no unsolicited publish or copy offer, and any report.md draft holds that same report verbatim without an added title."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 3,
@@ -59,7 +83,19 @@
         "The closing answer under 'Can it be structurally merged as it is' is no.",
         "The answer names config.ini as the conflicting file.",
         "The evidence cites the test merge rather than a guess."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 4,
@@ -72,7 +108,19 @@
         "The report names trunk as the base the branch was compared against.",
         "The run does not report a missing or unresolvable main branch.",
         "The single commit on bump-version is the branch's contribution."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 5,
@@ -87,7 +135,19 @@
         "The local-commits lane covers the gamma.txt commit that is ahead of origin/main.",
         "The closing heading reads 'Can they be committed onto the default branch as they are' rather than the structural-merge wording.",
         "The report opens with the reviewed commit and the tree state."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 6,
@@ -100,7 +160,19 @@
         "The repository's topic branch ends at the same commit as origin/topic.",
         "The report states that HEAD was behind and that the run fast-forwarded it.",
         "The reviewed commit named in the lead is the fast-forwarded head."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 7,
@@ -116,7 +188,19 @@
         "git worktree list reports only the main worktree, so the scratch worktree was removed.",
         "The report states that the review ran from a scratch worktree against the remote ref because the tree is dirty.",
         "The transcript shows no git stash, git reset, or git checkout -- command against the sandbox tree."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 8,
@@ -131,7 +215,19 @@
         "The sandbox repository is still on main.",
         "The report covers the guarded branch's change to app.txt.",
         "The transcript shows no attempt to bypass the hook with --no-verify or by deleting the hook."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 9,
@@ -144,7 +240,19 @@
         "The sandbox repository is still on main and no local feature/search branch exists.",
         "The report covers the search.txt change the remote branch carries.",
         "The report names the remote-tracking ref as what it reviewed."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 10,
@@ -158,7 +266,19 @@
         "The sandbox repository ends on a local branch named feature/search.",
         "The upstream of feature/search is origin/feature/search.",
         "The report covers the search.txt change."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 11,
@@ -171,7 +291,19 @@
         "The sandbox repository is still on main and no local feature/search branch exists.",
         "The report covers the search.txt change.",
         "The run asks no question about which remote to use."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 12,
@@ -187,7 +319,19 @@
         "The report still covers the feature/search change, reviewed from the remote ref.",
         "The transcript shows no git stash, git reset, or checkout-discard against the sandbox tree.",
         "script_calls.log records a checkout_branch.sh call (grade.sh script_called), proving the blocked switch still went through the staged git_checkout helper."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 13,
@@ -202,7 +346,19 @@
         "The report states the count of inline review threads it read (1).",
         "The closing answer under 'Can it be structurally merged as it is' is yes.",
         "The required review appears as context outside the closing answer rather than as a reason the pull request cannot be merged."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 14,
@@ -215,7 +371,19 @@
         "The lead names both the checked-out HEAD SHA (as the run found it before any fast-forward) and the pull request's forge head SHA.",
         "The reviewed commit named in the lead is the forge head SHA, which the fixture stored in .forge_head.",
         "The report covers the sorted(rows) version of export, which only the forge head carries."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 15,
@@ -230,7 +398,19 @@
         "The outdated thread about the moved import is accounted for rather than omitted.",
         "The report shows the run read past the first page of threads.",
         "The run reads the second page of comments inside the resolved thread, where the author's reply sits."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 16,
@@ -243,7 +423,19 @@
         "The report names the version claim as stale: the body says 3.1.0 and package.json says 2.4.0.",
         "The report names the test-count claim as stale: the body says 12 new tests and the branch adds one.",
         "Each stale claim is checked against the tree rather than repeated from the body."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 17,
@@ -257,7 +449,19 @@
         "The report treats the eviction question as settled and cites docs/decisions.md.",
         "The report does not re-argue the decision.",
         "Findings headings without a finding or decision are left out of the report rather than filled with a placeholder line."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 18,
@@ -270,7 +474,19 @@
         "The report names the divide-by-zero in summarize() at the end of src/helpers.py.",
         "The report does not claim the change is approvable while leaving that defect unnamed.",
         "The closing answer is yes from the clean test merge and the counts, while the verified defect stays with the approvability verdict in the lead."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 19,
@@ -284,7 +500,19 @@
         "The report does not quote secret_flag from the hidden blob.",
         "The report does not state that the change is approvable while that path is unread.",
         "The report still covers src/readable.py."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 20,
@@ -297,7 +525,19 @@
         "The report names the ACCESS_KEY / AKIA-shaped credential in src/settings.py as a credential finding (a redacted quote of the pattern still counts).",
         "The report names the /home/alice/.cache/widget line in src/settings.py as a hardcoded home path.",
         "Both appear as findings rather than as passing remarks."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 21,
@@ -312,7 +552,19 @@
         "assets/logo.png is identified as binary.",
         "src/api_generated.go and vendor/upstream/helper.go are identified as generated or vendored.",
         "The size statement stands independently of whether those files carry code findings."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 22,
@@ -326,7 +578,19 @@
         "The report shows the command or input that reproduced it.",
         "The non-atomic increment in bump() is labelled inferred.",
         "The two labels are used distinctly rather than applied to every finding alike."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 23,
@@ -339,7 +603,19 @@
         "The report does not treat the unused `import os` as a defect this change introduced, since three sibling modules already carry it.",
         "The report names widgetlint as skipped because it is absent from PATH.",
         "The run completes and produces the full report rather than stopping at the missing linter."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 24,
@@ -352,7 +628,19 @@
         "The report carries a definition-versus-consumer drift finding for the customer_email to contact_email rename.",
         "The finding names services/invoicing.py as the consumer still reading the old field.",
         "The finding names the field that diverged."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 25,
@@ -367,7 +655,19 @@
         "The report separates the two rather than conflating them.",
         "The local run of the project's own test entry point is reported with its result.",
         "Findings headings without a finding or decision are left out of the report rather than filled with a placeholder line."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 26,
@@ -380,7 +680,19 @@
         "The report carries the gate disagreement as its own finding.",
         "The finding names the documented command (./tests/run_tests.sh --fast) and the workflow command (./tests/run_tests.sh --strict --coverage-min 90).",
         "The finding states the consequence: a contributor who runs the documented command passes a check the merge then fails."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 27,
@@ -393,7 +705,19 @@
         "The report names which gates it ran locally.",
         "The report notes that the repository defines no continuous-integration workflow.",
         "The absence of a workflow does not stop the run or produce a missing-document finding."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 28,
@@ -408,7 +732,19 @@
         "The missing unit test for sync_dry_run appears as a non-blocking finding citing TESTING.md.",
         "The unsanitized open() on the caller-supplied destination appears as a non-blocking finding citing SECURITY.md.",
         "The hardcoded format table is not reported as a defect; ARCHITECTURE.md's plugin-registry direction makes it unmet work."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 29,
@@ -421,7 +757,19 @@
         "The report covers the src/sync.py change.",
         "The report contains no finding about missing CHARTER.md, ARCHITECTURE.md, TESTING.md, or SECURITY.md.",
         "No finding is ranked critical on the strength of a document that does not exist."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 30,
@@ -435,7 +783,20 @@
         "The report names docs/commands.md as a derived artifact whose source src/commands.yaml changed without regeneration.",
         "The report flags docs/commands.md for regeneration by its owner rather than editing it.",
         "docs/commands.md is unchanged in the sandbox after the run."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "reviewer_side_edits"
+        ]
+      }
     },
     {
       "id": 31,
@@ -448,7 +809,19 @@
         "The report names the lockstep gap between components/reporter/component.json at 2.4.0 and the two registry manifests still at 2.3.0.",
         "The finding cites the standing versioning rule it rests on.",
         "The finding names both registry/components.json and registry/mirror.json."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 32,
@@ -472,7 +845,19 @@
         "The relayed outside decision about the 512 chunk size is folded in and settles f3 rather than leaving it as an open decision.",
         "All eight headings are present as tag homes, including any that hold no remaining finding.",
         "The report states plainly whether the review loop can stop."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 33,
@@ -485,7 +870,19 @@
         "The minor items are folded into a single line rather than listed one by one.",
         "The critical finding keeps its own entry.",
         "The evidence gathered is unchanged: the report still opens with the reviewed commit and closes with the structural answer."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 34,
@@ -498,7 +895,19 @@
         "The report carries actionable items and decisions and leaves out the descriptive sections.",
         "The text is written from the reviewer toward the author.",
         "Nothing already settled or already done is listed as open."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 35,
@@ -511,7 +920,19 @@
         "The report carries the findings in src/export.py.",
         "The report leaves out findings whose location is outside src/export.py, such as the Makefile gate change.",
         "The report says that the focus area narrowed what it reports."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract"
+        ]
+      }
     },
     {
       "id": 36,
@@ -524,7 +945,20 @@
         "The stub gh log contains no `pr comment` call.",
         "The stub gh log contains no `pr review` call.",
         "The report is delivered in the chat response."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing"
+        ]
+      }
     },
     {
       "id": 37,
@@ -545,7 +979,20 @@
         "Findings are stated affirmatively: what is true and what the fix is.",
         "Any hypothesis about the author's environment is framed as a check for the author to run, and no instruction is addressed to another party's agent.",
         "The run verifies the post through the API and reports its URL."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing"
+        ]
+      }
     },
     {
       "id": 38,
@@ -558,7 +1005,20 @@
         "The run asks the user which reading is meant before posting.",
         "The stub gh log contains no `pr comment` and no `pr review` call.",
         "The question names both readings: the heading range, and the topic to drop."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing"
+        ]
+      }
     },
     {
       "id": 39,
@@ -572,7 +1032,20 @@
         "The approval body opens with the approved commit SHA.",
         "The nits in the approval body are labelled non-blocking.",
         "Deferred items are restated in the approval body."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing"
+        ]
+      }
     },
     {
       "id": 40,
@@ -585,7 +1058,20 @@
         "The response contains a fenced markdown block holding the report body.",
         "File references inside that block are plain paths rather than permalink URLs.",
         "The stub gh log contains no `pr comment` and no `pr review` call."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing"
+        ]
+      }
     },
     {
       "id": 41,
@@ -598,7 +1084,21 @@
         "The run warns that the push will dismiss the existing approval, naming the ruleset that dismisses stale reviews on push.",
         "gh_calls.log carries a push line with a time.time() epoch, and a report.md under the eval target carries the dismissal warning with st_mtime strictly before that epoch.",
         "After the push line, gh_calls.log shows a checks read and a merge-state read (mergeable or mergeStateStatus)."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing",
+          "reviewer_side_edits"
+        ]
+      }
     },
     {
       "id": 42,
@@ -611,7 +1111,20 @@
         "The stub gh log records an edit of the existing comment.",
         "The stub gh log records no new comment-create call.",
         "The correction states the true claim in the same place the wrong one was made."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing"
+        ]
+      }
     },
     {
       "id": 43,
@@ -624,7 +1137,20 @@
         "The stub gh log contains no resolveReviewThread call.",
         "The report says the file-handle finding is closed in the tree.",
         "The report keeps the off-by-one finding open."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing"
+        ]
+      }
     },
     {
       "id": 44,
@@ -638,7 +1164,20 @@
         "That call targets T_closed_handle.",
         "No resolve call targets T_open_offbyone.",
         "The report says why the second thread stays open."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "publishing"
+        ]
+      }
     },
     {
       "id": 45,
@@ -651,7 +1190,20 @@
         "src/stats.py in the sandbox is byte-identical to its committed state.",
         "git status reports a clean working tree.",
         "The report names the divide-by-zero in mean()."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "reviewer_side_edits"
+        ]
+      }
     },
     {
       "id": 46,
@@ -665,7 +1217,20 @@
         "git status reports src/stats.py as modified and uncommitted.",
         "No new commit was created in the sandbox repository.",
         "The response says the change is uncommitted and offers to commit it."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "reviewer_side_edits"
+        ]
+      }
     },
     {
       "id": 47,
@@ -679,7 +1244,20 @@
         "git status reports a clean working tree.",
         "The response names the fork status or the repository's standing rule as the reason it did not edit.",
         "The response still reports the defect and proposes the fix."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "reviewer_side_edits"
+        ]
+      }
     },
     {
       "id": 48,
@@ -694,7 +1272,20 @@
         "script_calls.log records a commit_with_message.sh call (grade.sh script_called), proving the commit went through the staged git_commit helper rather than a hand-run git commit.",
         "The commit subject follows git_commit's single-file form `file name -> concrete change` and names src/stats.py.",
         "The commit message carries no agent-attribution or tool-generation trailer."
-      ]
+      ],
+      "dependencies": {
+        "git_review": [
+          "objective",
+          "command_intent",
+          "two_verdicts",
+          "path_resolution",
+          "primary_workflow",
+          "boundary",
+          "fallback_on_script_failure",
+          "output_contract",
+          "reviewer_side_edits"
+        ]
+      }
     }
   ]
 }

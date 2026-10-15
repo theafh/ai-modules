@@ -65,12 +65,18 @@ not a pass: read it against `response.txt` before calling the eval green.
 ## The verdict cache
 
 Verdicts live in `evals/.eval_cache/` (gitignored, like `workspace/`). The key
-covers the `git_review` skill directory, the `git_checkout` and `git_commit`
-skill directories it hands work to, the `git_refresh` skill directory whose
-default-branch detection it follows, the `guardrail` skill directory whose
-authority hierarchy it ranks findings by, the whole `evals/` harness, the
-shared verdict helpers under `tests/lib` (`eval_cache.VERDICT_HELPERS`), the
-worker model, the eval id, and the prompt. Change any of those and the eval re-runs.
+covers the `git_review` skill directory (narrowed by each eval's
+`dependencies` map in `evals.json` to the `SKILL.md` stages that eval
+reaches, with undeclared files and non-stage bytes still fail-closed), the
+`git_checkout` and `git_commit` skill directories it hands work to, the
+`git_refresh` skill directory whose default-branch detection it follows, the
+`guardrail` skill directory whose authority hierarchy it ranks findings by
+(those sibling roots stay whole-tree until a map names them), the `evals/`
+harness with `grade.sh` arm-split by eval id when bash confirms the split
+and the id-binding preconditions hold (the whole file otherwise), the shared verdict helpers under `tests/lib`
+(`eval_cache.VERDICT_HELPERS`), the worker model, the eval id, and the
+prompt. Change any of those and the eval re-runs. `tests/CLAUDE.md` under
+the verdict-cache section is the shared policy statement.
 
 - `--force` re-runs everything and refreshes the cache. Use it to resample the
   stochastic worker on unchanged inputs.

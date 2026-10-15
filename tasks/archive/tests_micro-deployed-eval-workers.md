@@ -60,7 +60,7 @@ Every eval runner named under Approach **Adopt in every runner.** loads the skil
 - `tests/trigger_evals/`, which measures the deployed skill tree by design and keeps doing so.
 - Changing `tests/lib/worker_isolation.py` or owning host-instruction isolation, since this task controls which artefacts a worker loads, not which host instruction files it reaches.
 - The shared job pool and per-job `TMPDIR`, which [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md) owns.
-- Narrowing cache keys per eval, which [the cache-key granularity task](../tests_eval-cache-key-granularity.md) owns.
+- Narrowing cache keys per eval, which [the cache-key granularity task](tests_eval-cache-key-granularity.md) owns.
 
 ## Acceptance
 
