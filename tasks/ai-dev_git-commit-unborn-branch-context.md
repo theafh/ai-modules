@@ -2,8 +2,8 @@
 description: Make git_commit's prepare context succeed on an unborn branch by guarding recent-commits log, auditing sibling HEAD-dependent calls, and adding a durable unborn-branch script-test.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-10-14T16:21:22
-updated: 2026-10-15T16:10:46
-status: checked
+updated: 2026-10-15T17:59:12
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -29,7 +29,7 @@ reported-by: Andreas Hoffmann
 
 2. **Audit the rest of the skill.** Walk `commit_with_message.sh`, `SKILL.md`, and `references/manual_fallback.md` for every `git log` / `HEAD`-dependent call that would fail on an unborn branch. Change each one that fails, using the same `git rev-parse --verify -q HEAD` gate and the same placeholder where a recent-commits listing is the intent. Leave calls that already succeed without `HEAD` (for example `git rev-parse --show-toplevel`, `git diff --cached`, and a root `git commit`) alone.
 
-3. **Prove with a durable script scenario.** In `tests/git_commit/script_tests/run.sh`, add a scenario that builds a throwaway-shaped repository (`git init`, one staged file, no commits), runs `prepare_commit_context.sh`, and asserts exit 0, the three stdout lines, an existing context file, and a `<recent_commits>` body of `(no commits yet)`. Extend that scenario through `commit_with_message.sh` when the audit leaves that script's root-commit path unchanged, asserting the piped message becomes `HEAD`. Register the scenario in the harness's scenario list the same way its neighbors are.
+3. **Prove with a durable script scenario.** In `tests/git_commit/script_tests/run.sh`, add a scenario that builds a throwaway-shaped repository (`git init`, the same local `user.email` / `user.name` as `fresh_repo` or a helper that sets them, one staged file, no commits), runs `prepare_commit_context.sh`, and asserts exit 0, the three stdout lines, an existing context file whose `<commit_context>` … `</commit_context>` wrapper still includes a `<status_after_staging_new_files>` … `</status_after_staging_new_files>` block, a `<recent_commits>` … `</recent_commits>` block whose body is exactly `(no commits yet)`, and both `<staged_file_diffs>` … `</staged_file_diffs>` and `<unstaged_file_diffs>` … `</unstaged_file_diffs>` wrappers. Extend that scenario through `commit_with_message.sh` when the audit leaves that script's root-commit path unchanged, asserting the piped message becomes `HEAD`. Register the scenario in the harness's scenario list the same way its neighbors are.
 
 **Out of scope:**
 
@@ -39,8 +39,8 @@ reported-by: Andreas Hoffmann
 
 ## Acceptance
 
-- In a temporary directory, `git init`, create and `git add` one file, leave the branch with no commits, and run `plugins/ai_dev/skills/git_commit/scripts/prepare_commit_context.sh` from that tree: the script exits 0, prints three stdout lines (context path, byte size, consumption directive), and the context file at the printed path contains a `<recent_commits>` … `</recent_commits>` block whose body is exactly `(no commits yet)`.
+- In a temporary directory, `git init`, create and `git add` one file, leave the branch with no commits, and run `plugins/ai_dev/skills/git_commit/scripts/prepare_commit_context.sh` from that tree: the script exits 0, prints three stdout lines (context path, byte size, consumption directive), and the context file at the printed path contains a `<commit_context>` … `</commit_context>` wrapper that still includes a `<status_after_staging_new_files>` … `</status_after_staging_new_files>` block, a `<recent_commits>` … `</recent_commits>` block whose body is exactly `(no commits yet)`, and both `<staged_file_diffs>` … `</staged_file_diffs>` and `<unstaged_file_diffs>` … `</unstaged_file_diffs>` wrappers.
 - `grep -n 'git --no-pager log --oneline -8' plugins/ai_dev/skills/git_commit/scripts/prepare_commit_context.sh` either returns no match, or every remaining match sits behind a `git rev-parse --verify -q HEAD` success path so an unborn branch never executes that log.
-- Every `git log` / unguarded `HEAD` call the Approach audit finds in `commit_with_message.sh`, `SKILL.md`, and `references/manual_fallback.md` either already succeeds without `HEAD` or is rewritten behind the same gate; an unborn-branch run of `commit_with_message.sh` with a non-empty piped message and a valid context path from prepare exits 0 and advances `HEAD` to a root commit carrying that message.
-- Under `bash tests/git_commit/run_all.sh`, the new unborn-branch script-test scenario passes with the assertions in Approach step 3.
+- Every `git log` / unguarded `HEAD` call the Approach audit finds in `commit_with_message.sh`, `SKILL.md`, and `references/manual_fallback.md` either already succeeds without `HEAD` or is rewritten behind the same gate; each rewritten recent-commits listing among those surfaces (including `references/manual_fallback.md`) emits or instructs the body `(no commits yet)` when `HEAD` is absent; an unborn-branch run of `commit_with_message.sh` with a non-empty piped message and a valid context path from prepare exits 0 and advances `HEAD` to a root commit carrying that message.
+- Under `bash tests/git_commit/run_all.sh`, the new unborn-branch script-test scenario passes with the assertions under **Prove with a durable script scenario.**
 - Existing `tests/git_commit/script_tests` scenarios that already seed a commit still pass under the same `run_all.sh` invocation.

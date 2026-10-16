@@ -56,7 +56,7 @@ an overlapping eval with other fixture names stays green.
 
 **Out of scope:** The `script_tests/` and `contract_run.sh` surfaces. Deep
 `task_auto_check` repair loops, which
-[the auto_check parallel task](tests_task-auto-check-parallel-evals.md) owns.
+[the auto_check parallel task](archive/tests_task-auto-check-parallel-evals.md) owns.
 Live-testing unshipped editorial plugin harnesses.
 
 ## Acceptance

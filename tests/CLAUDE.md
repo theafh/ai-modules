@@ -144,10 +144,21 @@ Isolated-sandbox evals that use `tests/lib/eval_runner` default to **4**
 concurrent jobs (`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`). Each job
 gets its own `TMPDIR`. Pass `--workers 1` to serialize. A harness keeps a
 sequential subset only when its jobs share a resource the helper cannot
-isolate. Today those are the `task_auto_check` repair-class nested loops and
-an escape guard that reads the whole host checkout, such as `agent_spinner`'s
-`git status`. Raising the default past 4 mostly buys model contention and
-timeouts, not faster wall-clock.
+isolate. Today that subset is the `task_auto_check` serial nested-loop set
+(`repair_to_ready`, `relay_by_path`, `stray_hunk_reverted`,
+`guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
+`immediate_ready_citations_overturn`, `regroup_via_reviewer`,
+`regroup_immediate_ready`, `regroup_same_paragraph_ready`,
+`committed_rule_deletion_routed`, `last_call_ready_refuted`,
+`regate_isolated`), which runs one job at a time after the isolated pool,
+and an escape guard that reads the whole host checkout, such as
+`agent_spinner`'s `git status`. The rest of the `task_auto_check` suite
+uses the default 4 workers. Raising the default past 4 mostly buys model
+contention and timeouts, not faster wall-clock.
+
+`task_auto_check` is the runner on `eval_runner` at that default of 4.
+Its serial nested-loop set is the list above, and that set runs one job
+at a time after the isolated pool.
 
 The helper runs a harness's before and after hooks around each job, one hook
 call at a time, so two escape-guard snapshots never interleave. The hooks
@@ -175,11 +186,10 @@ wire them onto `eval_runner` (plus permanent isolation exceptions):
 - `git_commit` — `grade.sh` scans a shared `TMPDIR` for stragglers until the
   per-job `TMPDIR` conversion lands.
 - `git_review` — two workers contend for the model past the per-eval timeout.
-- `task`, `task_create`, `task_fix`, `task_auto_check` — still serial until
+- `task`, `task_create`, `task_fix` — still serial until
   their parallel-worker tasks land. The host guard compares an isolated temp
   copy and only the sandbox's fixture names, so an unrelated live backlog edit
-  no longer fails them. `task_auto_check` also keeps its deep repair loops
-  serial (a resource the helper cannot isolate).
+  no longer fails them.
 - `agent_spinner` brackets each eval with a host-checkout `git status`, which
   sees every overlapping eval's changes, so it stays serial until its guard
   compares only the names each eval owns.
@@ -296,9 +306,10 @@ running the gate skill (`task_check`) alone against the staged fixture: a
 single `claude -p` reading that skill, ~1 to 3 min, reporting its verdict and
 issue list. A fixture-design bug (an unintended second readiness gap, an
 inaccurate premise) caught at the gate costs minutes; the same bug caught
-via a full-loop timeout costs 10 to 33. And run these deep loops
-**sequentially**: two in parallel contend for the model and both slow
-past even a 2305s timeout. `task_auto_check/RUNBOOK.md` has the specifics
+via a full-loop timeout costs 10 to 33. Run the serial nested-loop set
+named under Parallel workers one eval at a time: two of those jobs at
+once contend for the model and both slow past a 2305s timeout.
+`task_auto_check/RUNBOOK.md` has the specifics
 and the grade-check pitfall that goes with them.
 
 ### Worker auth: nested `claude -p` reads the stored OAuth login

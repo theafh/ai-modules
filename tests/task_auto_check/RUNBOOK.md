@@ -105,10 +105,16 @@ the iteration cost sharply:
   bug (an unintended second readiness gap, an inaccurate premise) surfaces
   in minutes rather than via a 10 to 33 min repair-loop timeout. Run the full
   loop only once the gate verdict matches what the eval expects.
-- **Run repair-class evals sequentially, never concurrently.** Two deep
-  nested-agent loops in parallel contend for the model and both slow past
-  even a 2305s timeout; solo, each finishes in ~576 to 2005s. Launch one
-  `run.py` invocation at a time.
+- **Run the serial nested-loop set one eval at a time.** That set is
+  `repair_to_ready`, `relay_by_path`, `stray_hunk_reverted`,
+  `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
+  `immediate_ready_citations_overturn`, `regroup_via_reviewer`,
+  `regroup_immediate_ready`, `regroup_same_paragraph_ready`,
+  `committed_rule_deletion_routed`, `last_call_ready_refuted`, and
+  `regate_isolated`. Those jobs do not overlap one another: two of them
+  at once contend for the model and both slow past even a 2305s timeout,
+  while solo each finishes in ~576 to 2005s. The rest of the suite uses
+  the default 4 workers. Launch one `run.py` invocation at a time.
 
 When authoring a `grade.sh` check for an edit-supersedes behavior, assert
 that the stale content is **gone** (or that the superseding concept is

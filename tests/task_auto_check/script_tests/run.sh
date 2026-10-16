@@ -317,6 +317,10 @@ s12_relay_grader_mutations() {
   python3 "$REPO_ROOT/tests/task_auto_check/script_tests/test_relay_checks.py"
 }
 
+s13_parallel_runner() {
+  python3 "$REPO_ROOT/tests/task_auto_check/script_tests/test_parallel_runner.py"
+}
+
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "task_check remains the single readiness gate" s2_gate_is_task_check
 scenario s3 "reviewer/verifier roles are separated and intent-safe" s3_reviewer_and_verifier_boundaries
@@ -330,6 +334,7 @@ scenario s10 "agent failure policy, unassessable states, and guard re-baseline a
 scenario s11 "repeated-link findings route through the repair path with named owners" s11_repeated_link_repair_path
 
 scenario s12 "relay graders reject evidence mutations" s12_relay_grader_mutations
+scenario s13 "parallel runner splits the serial nested-loop set" s13_parallel_runner
 
 log ""
 log "================================================================"

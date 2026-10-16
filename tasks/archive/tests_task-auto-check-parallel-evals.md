@@ -2,9 +2,11 @@
 description: Parallelize isolated task_auto_check evals at default 4 workers through the shared helper, and keep the Approach serial nested-loop set sequential in the same run.
 scope: tests/task_auto_check/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-13T18:22:31
-status: ready
+updated: 2026-10-16T20:47:10
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize isolated task_auto_check evals and keep the Approach serial nested-loop set sequential
@@ -28,9 +30,9 @@ adding the timeout-table full-repair peers to the serial nested-loop set it
 names. `DEFAULT_IDS` is already derived from `evals.json` via `_all_eval_ids()`. Each pass already micro-deploys the
 skill, its sibling skills, and the `auto_*_task` agents through
 `tests/lib/micro_deploy.py`. `WORKSPACE` is already
-`tests/task_auto_check/workspace`. Timing-band measurement already closed on the archived [timeout-crash task](archive/tests_eval-runner-timeout-crash.md), which owns re-measuring that band.
+`tests/task_auto_check/workspace`. Timing-band measurement already closed on the archived [timeout-crash task](tests_eval-runner-timeout-crash.md), which owns re-measuring that band.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
 Cheap-first fixture probes in the RUNBOOK stay as operator guidance.
 
 ## Approach

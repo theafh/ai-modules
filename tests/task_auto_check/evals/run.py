@@ -8,13 +8,19 @@ sandbox state an aborted loop left behind. These evals run the slow
 nested-agent loop and are the most timeout-prone in the repo, so the gate
 matters most here.
 
+Isolated evals run through tests/lib/eval_runner.py at --workers
+(default 4). The serial nested-loop set runs afterward at one worker, so
+those jobs do not overlap one another or the isolated pool. Each fresh
+pass micro-deploys inside its own job.
+
 The worker policy comes from `tests/lib/vendor.py`: the worker runs on
-Cursor by default (model `auto`), `--vendor claude` (model `sonnet`) runs where Claude is needed or asked for, and `--model ''` inherits the
-vendor CLI default. The
-harness micro-deploys the skill, the base `task` and `task_check` skills,
-and the five `auto_*_task` agents through the deploy script so named-agent
-runs stay hermetic, and records `artefacts_read_from_micro_deployment` in
-each `timing.json`."""
+Cursor by default (model `auto`), `--vendor claude` (model `sonnet`) runs
+where Claude is needed or asked for, and `--model ''` inherits the
+vendor CLI default. The harness micro-deploys the skill, the base `task`
+and `task_check` skills, and the five `auto_*_task` agents through the
+deploy script so named-agent runs stay hermetic, and records
+`artefacts_read_from_micro_deployment` in each `timing.json`.
+"""
 
 from __future__ import annotations
 
@@ -27,6 +33,7 @@ import shlex
 import subprocess
 import sys
 import time
+from collections.abc import Mapping
 
 THIS = pathlib.Path(__file__).resolve().parent
 STAGE = THIS / "stage.sh"
@@ -34,9 +41,10 @@ GRADE = THIS / "grade.sh"
 WORKSPACE = THIS.parent / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
-import eval_cache  # noqa: E402  (shared local test helper; tests/ is gitignored)
+import eval_cache  # noqa: E402  (shared local test helper)
+import eval_runner  # noqa: E402  (shared Pattern A runner)
 import micro_deploy  # noqa: E402  (shared micro-deployment helper)
-import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
+import vendor  # noqa: E402  (shared vendor helper)
 import worker_isolation  # noqa: E402  (shared sandbox-root helper)
 
 ARTEFACTS = [
@@ -52,42 +60,25 @@ ARTEFACTS = [
 
 ISOLATION_PREFIX = "task_auto_check_"
 
+# Repair-class six plus the timeout-table full-repair peers. File order
+# matches evals.json. These jobs share the model in a way the pool cannot
+# isolate, so they run one at a time after the isolated pool finishes.
+SERIAL_NESTED_LOOP_IDS = (
+    "repair_to_ready",
+    "relay_by_path",
+    "stray_hunk_reverted",
+    "guard_rebaseline_after_gate",
+    "interaction_scan_surfaces",
+    "immediate_ready_citations_overturn",
+    "regroup_via_reviewer",
+    "regroup_immediate_ready",
+    "regroup_same_paragraph_ready",
+    "committed_rule_deletion_routed",
+    "last_call_ready_refuted",
+    "regate_isolated",
+)
 
-def source_roots_for():
-    """task_auto_check loads the task_auto_check skill, which reads the base
-    `task` skill via <authority>, wraps `task_check` through the gate agent, and
-    spawns the auto_*_task helper agents. Hash all of them so an edit to the
-    base skill or any helper agent invalidates the cache, not just an edit to
-    task_auto_check itself. Over-inclusion only forces an occasional extra run;
-    it can never serve a stale pass."""
-    return micro_deploy.source_roots_for(ARTEFACTS)
-
-
-def eval_timeout(eval_id: str, default: int) -> int:
-    """Per-eval worker timeout from evals.json, falling back to the CLI
-    default, so a structurally slower eval declares its own budget instead of
-    forcing the whole suite up to its worst case."""
-    with open(THIS / "evals.json", encoding="utf-8") as fh:
-        for e in json.load(fh)["evals"]:
-            if e["id"] == eval_id:
-                return int(e.get("timeout", default))
-    return default
-
-
-def _all_eval_ids():
-    """Every `id` in evals.json, in authoring order.
-
-    Derived rather than hand-listed, as tests/task/evals/run.py does: a
-    hand-maintained default set silently drops any eval added to evals.json
-    without a matching edit here, and a regression suite that skips evals
-    reports a clean tree it never checked. Narrow a run by naming ids on the
-    command line.
-    """
-    with open(THIS / "evals.json", encoding="utf-8") as fh:
-        return [e["id"] for e in json.load(fh)["evals"]]
-
-
-DEFAULT_IDS = _all_eval_ids()
+DEFAULT_IDS = eval_runner.load_eval_ids(THIS / "evals.json")
 
 WORKER_PROMPT = """\
 You are running an automated skill regression eval. Do exactly this:
@@ -103,15 +94,60 @@ You are running an automated skill regression eval. Do exactly this:
 """
 
 
-def stage(eval_id: str, target: pathlib.Path) -> dict[str, str]:
+def source_roots_for() -> list[pathlib.Path]:
+    """Hash the skill, the base task skill, task_check, and the agents.
+
+    task_auto_check reads the base `task` skill via <authority>, wraps
+    `task_check` through the gate agent, and spawns the auto_*_task helper
+    agents. An edit to any of them invalidates the cache. Over-inclusion
+    only forces an occasional extra run; it can never serve a stale pass.
+    """
+
+    return micro_deploy.source_roots_for(ARTEFACTS)
+
+
+def eval_timeout(eval_id: str, default: int) -> int:
+    """Per-eval worker timeout from evals.json, else the CLI default."""
+
+    with (THIS / "evals.json").open(encoding="utf-8") as handle:
+        for entry in json.load(handle)["evals"]:
+            if entry["id"] == eval_id:
+                return int(entry.get("timeout", default))
+    return default
+
+
+def partition_ids(ids: list[str]) -> tuple[list[str], list[str]]:
+    """Split ids into the isolated pool and the serial nested-loop set.
+
+    Both lists keep evals.json file order. An id outside the serial set
+    is isolated, including one the caller named on the command line.
+    """
+
+    serial_members = set(SERIAL_NESTED_LOOP_IDS)
+    isolated = [eval_id for eval_id in ids if eval_id not in serial_members]
+    serial = [eval_id for eval_id in ids if eval_id in serial_members]
+    return isolated, serial
+
+
+def stage(
+    eval_id: str, target: pathlib.Path, env: Mapping[str, str]
+) -> dict[str, str]:
+    """Stage one eval and return sandbox_proj, skill_name, skill_path, prompt."""
+
     emit = (
         f'eval "$(bash {shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
         f'{shlex.quote(str(target))})"; '
         'printf "%s\\0%s\\0%s\\0%s\\0" '
         '"$sandbox_proj" "$skill_name" "$skill_path" "$prompt"'
     )
-    out = subprocess.run(["bash", "-c", emit], capture_output=True, text=True, check=True).stdout
-    sandbox_proj, skill_name, skill_path, prompt, _ = out.split("\0")
+    out = subprocess.run(
+        ["bash", "-c", emit],
+        capture_output=True,
+        text=True,
+        check=True,
+        env=dict(env),
+    ).stdout
+    sandbox_proj, skill_name, skill_path, prompt, _rest = out.split("\0")
     return {
         "sandbox_proj": sandbox_proj,
         "skill_name": skill_name,
@@ -121,13 +157,24 @@ def stage(eval_id: str, target: pathlib.Path) -> dict[str, str]:
 
 
 def worker_completed(rc: int, stdout: str) -> bool:
-    """Whether a worker run is trustworthy for grading. The CLI must have
-    exited 0 and produced a final response. A non-zero rc (timeout → -1,
-    crash, API error) or an empty response means the loop did not finish,
-    so grade.sh's checks on the resulting sandbox reflect only partial state
-    and must not count as a pass — a timed-out loop that stamped an early
-    status could otherwise masquerade as a clean 'surfaced-stuck' verdict."""
+    """Whether a worker run is trustworthy for grading.
+
+    The CLI must have exited 0 and produced a final response. A non-zero
+    rc (timeout is -1, crash, API error) or an empty response means the
+    loop did not finish, so grade.sh's checks on the resulting sandbox
+    reflect only partial state and must not count as a pass.
+    """
+
     return rc == 0 and bool(stdout.strip())
+
+
+def _apply_job_temp(deploy_env: dict[str, str], job_env: Mapping[str, str]) -> None:
+    """Point the worker at this job's TMPDIR, TEMP, and TMP."""
+
+    for key in ("TMPDIR", "TEMP", "TMP"):
+        value = job_env.get(key)
+        if value:
+            deploy_env[key] = value
 
 
 def run_one(
@@ -135,18 +182,19 @@ def run_one(
     run_dir: pathlib.Path,
     resolved: vendor.Resolved,
     timeout: int,
-    cache,
+    cache: eval_cache.EvalCache | None,
     force: bool,
-):
+    env: Mapping[str, str],
+) -> tuple[bool, bool]:
+    """Run one eval inside the caller's job. Returns (passed, was_cached)."""
+
     timeout = eval_timeout(eval_id, timeout)
     eval_dir = run_dir / eval_id
     eval_dir.mkdir(parents=True, exist_ok=True)
 
-    root = worker_isolation.create_sandbox_root(
-        f"{ISOLATION_PREFIX}{eval_id}_"
-    )
+    root = worker_isolation.create_sandbox_root(f"{ISOLATION_PREFIX}{eval_id}_")
     try:
-        staged = stage(eval_id, root)
+        staged = stage(eval_id, root, env)
         workdir = staged["sandbox_proj"]
         model_label = resolved.worker_model or "<inherit>"
 
@@ -158,62 +206,76 @@ def run_one(
                 model=resolved.worker_model,
                 eval_id=eval_id,
                 prompt=staged["prompt"],
-                dependencies=eval_cache.dependencies_for(THIS / "evals.json", eval_id),
+                dependencies=eval_cache.dependencies_for(
+                    THIS / "evals.json", eval_id
+                ),
             )
-            if not force:
-                hit = cache.lookup(eval_id, key)
-                if hit is not None:
-                    eval_cache.write_replay_artifacts(eval_dir, hit)
-                    verdict = "PASS" if hit["passed"] else "FAIL"
-                    print(f"  [{eval_id}] CACHED {verdict} "
-                          f"(skill={staged['skill_name']}, "
-                          f"graded {hit.get('graded_at', '?')}, "
-                          f"model={hit.get('model', '?')}) — skipped {resolved.config.label}; "
-                          "--force to re-run\n", flush=True)
-                    return hit["passed"], True
+        hit = eval_runner.cache_lookup(
+            cache, eval_id, key, eval_dir, force=force
+        )
+        if hit is not None:
+            verdict = "PASS" if hit["passed"] else "FAIL"
+            print(
+                f"  [{eval_id}] CACHED {verdict} "
+                f"(skill={staged['skill_name']}, "
+                f"graded {hit.get('graded_at', '?')}, "
+                f"model={hit.get('model', '?')}) — skipped "
+                f"{resolved.config.label}; --force to re-run\n",
+                flush=True,
+            )
+            return bool(hit["passed"]), True
 
         print(
             f"  [{eval_id}] running {resolved.config.label} "
             f"(skill={staged['skill_name']}, model={model_label}) ...",
             flush=True,
         )
-        start = time.time()
+        started_at = time.time()
         with micro_deploy.micro_deploy(
-            resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
-        ) as md:
+            resolved.vendor,
+            ARTEFACTS,
+            pathlib.Path(workdir),
+            preflight=False,
+        ) as deploy:
+            _apply_job_temp(deploy.env, env)
             prompt = WORKER_PROMPT.format(
-                skill_path=md.path_map["task_auto_check"],
+                skill_path=deploy.path_map["task_auto_check"],
                 workdir=workdir,
                 prompt=staged["prompt"],
             )
             worker = micro_deploy.run_worker(
-                vendor_name=resolved.vendor, bin_name=resolved.bin,
-                model=resolved.worker_model, prompt=prompt, deploy=md,
-                timeout=timeout, cwd=pathlib.Path(workdir),
+                vendor_name=resolved.vendor,
+                bin_name=resolved.bin,
+                model=resolved.worker_model,
+                prompt=prompt,
+                deploy=deploy,
+                timeout=timeout,
+                cwd=pathlib.Path(workdir),
             )
-            rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
+            rc = worker.returncode
+            stdout = worker.stdout
+            stderr = worker.stderr
             integrity, checkout_unread = micro_deploy.provenance_records(worker)
-        duration_s = time.time() - start
+        ended_at = time.time()
+        duration_s = ended_at - started_at
 
-        (eval_dir / "response.txt").write_text(stdout)
-        (eval_dir / "stderr.txt").write_text(stderr)
-        (eval_dir / "timing.json").write_text(
-            json.dumps(
-                {
-                    "eval_id": eval_id,
-                    "skill_name": staged["skill_name"],
-                    "duration_s": duration_s,
-                    "worker_rc": rc,
-                    "claude_rc": rc,
-                    "model": model_label,
-                    "artefacts_read_from_micro_deployment": integrity,
-                "checkout_unread": checkout_unread,
-                },
-                indent=2,
-            )
+        eval_runner.write_run_artifacts(
+            eval_dir,
+            stdout=stdout,
+            stderr=stderr,
+            eval_id=eval_id,
+            duration_s=duration_s,
+            worker_rc=rc,
+            model=model_label,
+            skill_name=staged["skill_name"],
+            artefacts_read_from_micro_deployment=integrity,
+            checkout_unread=checkout_unread,
+            started_at=started_at,
+            ended_at=ended_at,
         )
 
-        grade_env = dict(os.environ, RESPONSE_FILE=str(eval_dir / "response.txt"))
+        grade_env = dict(env)
+        grade_env["RESPONSE_FILE"] = str(eval_dir / "response.txt")
         grade = subprocess.run(
             ["bash", str(GRADE), eval_id, workdir],
             capture_output=True,
@@ -224,19 +286,24 @@ def run_one(
         print(grade.stdout, end="", flush=True)
         grade_passed = grade.returncode == 0
         completed = worker_completed(rc, stdout)
-        passed = (
-            grade_passed and completed
-            and micro_deploy.read_checks_passed(integrity, checkout_unread)
+        passed = grade_passed and completed and micro_deploy.read_checks_passed(
+            integrity, checkout_unread
         )
 
         if not completed:
-            why = ("timeout" if "[TIMEOUT" in stderr
-                   else "empty response" if not stdout.strip()
-                   else f"worker rc={rc}")
-            print(f"  [{eval_id}] FAIL — worker did not complete ({why}); "
-                  f"grade.sh ran on partial sandbox state and cannot be trusted "
-                  f"(grade alone would have said {'PASS' if grade_passed else 'FAIL'})\n",
-                  flush=True)
+            if "[TIMEOUT" in stderr:
+                why = "timeout"
+            elif not stdout.strip():
+                why = "empty response"
+            else:
+                why = f"worker rc={rc}"
+            grade_word = "PASS" if grade_passed else "FAIL"
+            print(
+                f"  [{eval_id}] FAIL — worker did not complete ({why}); "
+                "grade.sh ran on partial sandbox state and cannot be trusted "
+                f"(grade alone would have said {grade_word})\n",
+                flush=True,
+            )
         else:
             fail = micro_deploy.read_checks_fail_message(
                 integrity, checkout_unread, vendor=resolved.vendor
@@ -244,16 +311,12 @@ def run_one(
             if fail:
                 print(f"  [{eval_id}] FAIL — {fail}", flush=True)
             else:
-                print(
-                    f"  [{eval_id}] {'PASS' if passed else 'FAIL'} (worker rc={rc})",
-                    flush=True,
-                )
+                word = "PASS" if passed else "FAIL"
+                print(f"  [{eval_id}] {word} (worker rc={rc})", flush=True)
 
-        # Cache only a conclusive verdict from a completed worker: a timeout or
-        # crash is transient/environmental, not a property of the inputs, so
-        # caching it would replay a spurious verdict on a later clean run.
-        if cache is not None and completed:
-            cache.record(
+        if completed:
+            eval_runner.cache_record(
+                cache,
                 eval_id,
                 key,
                 passed=passed,
@@ -261,60 +324,139 @@ def run_one(
                 duration_s=duration_s,
                 worker_rc=rc,
                 grading_output=grade.stdout + grade.stderr,
-                response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
+                response_excerpt=stdout[: eval_cache.RESPONSE_EXCERPT_CHARS],
             )
         return passed, False
     finally:
         worker_isolation.preserve_sandbox_copy(root, eval_dir / "sandbox")
 
 
+def _execute(
+    eval_ids: list[str],
+    *,
+    run_dir: pathlib.Path,
+    resolved: vendor.Resolved,
+    timeout: int,
+    cache: eval_cache.EvalCache | None,
+    force: bool,
+    workers: int,
+) -> list[tuple[str, bool, bool]]:
+    """Run eval_ids through the shared pool. Results follow eval_ids."""
+
+    if not eval_ids:
+        return []
+
+    def make_job(eval_id: str) -> eval_runner.JobFn:
+        def job(env: Mapping[str, str]) -> tuple[bool, bool]:
+            return run_one(
+                eval_id, run_dir, resolved, timeout, cache, force, env
+            )
+
+        return job
+
+    jobs = [make_job(eval_id) for eval_id in eval_ids]
+
+    def on_error(_index: int, exc: Exception) -> tuple[bool, bool]:
+        eval_id = eval_ids[_index]
+        print(f"  [{eval_id}] FAIL — {exc}\n", flush=True)
+        return False, False
+
+    raw = eval_runner.run_jobs(jobs, workers=workers, on_error=on_error)
+    rows: list[tuple[str, bool, bool]] = []
+    for index, eval_id in enumerate(eval_ids):
+        passed, was_cached = raw[index]
+        rows.append((eval_id, passed, was_cached))
+    return rows
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("ids", nargs="*", default=None)
     vendor.add_vendor_arguments(parser)
-    parser.add_argument("--timeout", type=int, default=2305,
-                        help="Default per-eval worker timeout in seconds. The repair "
-                             "loop runs ~576-2005s solo, so the default leaves "
-                             "headroom above that band rather than sitting on its "
-                             "floor. An eval carrying its own \"timeout\" in "
-                             "evals.json overrides this.")
-    parser.add_argument("--force", action="store_true",
-                        help="Ignore cached verdicts and re-run every eval, "
-                             "refreshing the cache with the new result.")
-    parser.add_argument("--no-cache", action="store_true",
-                        help="Neither read nor write the verdict cache.")
+    eval_runner.add_workers_argument(parser)
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=2305,
+        help=(
+            "Default per-eval worker timeout in seconds. The repair "
+            "loop runs ~576-2005s solo, so the default leaves headroom "
+            "above that band rather than sitting on its floor. An eval "
+            'carrying its own "timeout" in evals.json overrides this.'
+        ),
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Ignore cached verdicts and re-run every eval, refreshing "
+            "the cache with the new result."
+        ),
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Neither read nor write the verdict cache.",
+    )
     args = parser.parse_args()
 
-    ids = args.ids if args.ids else DEFAULT_IDS
+    ids = list(args.ids) if args.ids else list(DEFAULT_IDS)
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
+    isolated, serial = partition_ids(ids)
 
-    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_dir = WORKSPACE / f"run-{ts}-{os.getpid()}"
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    run_dir = WORKSPACE / f"run-{stamp}-{os.getpid()}"
     run_dir.mkdir(parents=True)
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}; evals: {ids}"
+        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
     )
-    cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
+    print(
+        "Isolated pool: "
+        f"{isolated or '(none)'}; serial nested-loop set at 1 worker after "
+        f"that pool: {serial or '(none)'}"
+    )
+    if cache is None:
+        cache_mode = "off"
+    elif args.force:
+        cache_mode = "force-refresh"
+    else:
+        cache_mode = "on"
     print(f"Verdict cache: {cache_mode}\n")
 
     micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
-    results = {
-        eval_id: run_one(eval_id, run_dir, resolved, args.timeout, cache, args.force)
-        for eval_id in ids
-    }
+    by_id: dict[str, tuple[bool, bool]] = {}
+    for eval_id, passed, was_cached in _execute(
+        isolated,
+        run_dir=run_dir,
+        resolved=resolved,
+        timeout=args.timeout,
+        cache=cache,
+        force=args.force,
+        workers=args.workers,
+    ):
+        by_id[eval_id] = (passed, was_cached)
+    for eval_id, passed, was_cached in _execute(
+        serial,
+        run_dir=run_dir,
+        resolved=resolved,
+        timeout=args.timeout,
+        cache=cache,
+        force=args.force,
+        workers=1,
+    ):
+        by_id[eval_id] = (passed, was_cached)
 
-    ok = sum(1 for passed, _ in results.values() if passed)
-    cached_n = sum(1 for _, was_cached in results.values() if was_cached)
-    print("=" * 56)
-    print(f"graded: {ok}/{len(results)} evals passed ({cached_n} from cache)")
-    for eval_id, (passed, was_cached) in results.items():
-        print(f"  {eval_id}: {'PASS' if passed else 'FAIL'}{' (cached)' if was_cached else ''}")
-    return 0 if ok == len(results) else 1
+    rows = [
+        (eval_id, by_id[eval_id][0], by_id[eval_id][1]) for eval_id in ids
+    ]
+    eval_runner.print_summary(rows)
+    ok = sum(1 for _eval_id, passed, _cached in rows if passed)
+    return 0 if ok == len(rows) else 1
 
 
 if __name__ == "__main__":
