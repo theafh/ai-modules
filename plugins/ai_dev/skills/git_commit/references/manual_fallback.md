@@ -94,7 +94,7 @@ too, delete the file yourself per that section's last step.
    backstop live once you return to the primary commit step. A context file that
    carries the same evidence under any other marker leaves that backstop with
    nothing to compare, which drops the guard back onto this prose step alone.
-3. Inspect recent commits: `git --no-pager log --oneline -8`.
+3. Record recent commits. When `git rev-parse --verify -q HEAD` succeeds, run `git --no-pager log --oneline -8` and keep that listing as the recent-commits body. When `git rev-parse --verify -q HEAD` fails, keep the recent-commits body as the single line `(no commits yet)`.
 4. List staged new files: `git diff --cached --name-only --diff-filter=A`.
 5. List every staged path: `git diff --cached --name-only`.
 6. List every unstaged path: `git diff --name-only`.

@@ -40,15 +40,18 @@ under `scratch/<id>/repo/`, runs one or both of the bundled scripts in
 it, and asserts on stdout + exit code + git-state. Bash + git only, no
 LLM calls.
 
-Thirty scenarios cover:
+Thirty-one scenarios cover:
 
 `prepare_commit_context.sh`: clean tree, one untracked text file,
 one modified tracked file, mixed staged/unstaged/untracked, binary
 file, 50-file changeset with a wall-clock perf bound (proves the
 numstat caching works), path containing space + tab (proves NUL-safe
 parsing works), `--help`, unknown flag → exit 2, run outside any git
-repo → non-zero, and the three stdout lines (the context file's path,
-its byte size, and a harness-neutral consumption directive).
+repo → non-zero, the three stdout lines (the context file's path, its
+byte size, and a harness-neutral consumption directive), and an unborn
+branch with one staged file and no commits, whose context carries
+`(no commits yet)` as the recent-commits body before
+`commit_with_message.sh` makes the root commit.
 
 `commit_with_message.sh` (v3.4.0 stdin contract): staged change +
 valid message via stdin, untracked file picked up by `git add -A`,
@@ -138,7 +141,7 @@ tests/git_commit/
 ├── results/
 │   └── layer1.log                      # latest script_tests transcript
 ├── script_tests/
-│   ├── run.sh                          # 30 deterministic scenarios
+│   ├── run.sh                          # 31 deterministic scenarios
 │   ├── prepare_commit_context_pre_fix_trap.sh  # pre-fix EXIT-trap stub
 │   └── scratch/<id>/                   # transient per-scenario git repos
 └── evals/                              # behavioral eval definitions + tooling

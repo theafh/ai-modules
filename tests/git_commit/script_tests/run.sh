@@ -63,6 +63,24 @@ fresh_repo() {
     printf '%s' "$repo"
 }
 
+# unborn_repo <id> -> echoes the repo path. Same local identity as
+# fresh_repo, one staged file, and no commits, so HEAD does not exist.
+unborn_repo() {
+    local id=$1
+    local repo="$SCRATCH/$id/repo"
+    rm -rf "${SCRATCH:?}/${id:?}"
+    mkdir -p "$repo"
+    (
+        cd "$repo"
+        git init --quiet --initial-branch=main
+        git config user.email "harness@example.com"
+        git config user.name "Harness"
+        printf 'root\n' > root.txt
+        git add root.txt
+    ) || return 1
+    printf '%s' "$repo"
+}
+
 # run_prepare <repo> [args...] -> echoes "<exit>|<stdout>"; stderr suppressed.
 # Use for tests that assert on the script's stdout (path + directive lines,
 # or the --help banner).
@@ -1037,6 +1055,69 @@ p15_late_injected_abort_under_bin_bash() {
     $ok
 }
 
+# Unborn branch: prepare writes the recent-commits placeholder, then the
+# unchanged commit script turns the piped message into the root commit.
+p16_unborn_branch_root_commit() {
+    local repo; repo=$(unborn_repo p16) || return 1
+    local stdout rc
+    stdout=$(cd "$repo" && "$PREPARE" 2>/dev/null) && rc=0 || rc=$?
+    local ok=true
+    assert_eq "prepare exit" "$rc" "0" || ok=false
+
+    local line_count
+    line_count=$(printf '%s\n' "$stdout" | wc -l | tr -d '[:space:]')
+    assert_eq "three stdout lines" "$line_count" "3" || ok=false
+
+    local path size directive
+    path=$(printf '%s\n' "$stdout" | sed -n '1p')
+    size=$(printf '%s\n' "$stdout" | sed -n '2p')
+    directive=$(printf '%s\n' "$stdout" | sed -n '3p')
+    if [[ -f "$path" ]]; then :; else
+        log "    [line 1 is not a path to an existing context file: $(printf '%q' "$path")]"
+        ok=false
+    fi
+    if [[ "$size" =~ ^[0-9]+$ ]]; then
+        local actual; actual=$(wc -c < "$path" | tr -d '[:space:]')
+        assert_eq "size line matches context-file bytes" "$size" "$actual" || ok=false
+    else
+        log "    [line 2 is not a bare byte-size integer: $(printf '%q' "$size")]"
+        ok=false
+    fi
+    assert_contains "consumption directive" "$directive" "Read this entire file" || ok=false
+
+    local content=""
+    if [[ -f "$path" ]]; then
+        content=$(cat "$path")
+    fi
+    assert_contains "commit_context open" "$content" "<commit_context>" || ok=false
+    assert_contains "commit_context close" "$content" "</commit_context>" || ok=false
+    assert_contains "status block open" "$content" "<status_after_staging_new_files>" || ok=false
+    assert_contains "status block close" "$content" "</status_after_staging_new_files>" || ok=false
+    assert_contains "staged diffs open" "$content" "<staged_file_diffs>" || ok=false
+    assert_contains "staged diffs close" "$content" "</staged_file_diffs>" || ok=false
+    assert_contains "unstaged diffs open" "$content" "<unstaged_file_diffs>" || ok=false
+    assert_contains "unstaged diffs close" "$content" "</unstaged_file_diffs>" || ok=false
+
+    local recent_body
+    recent_body=$(printf '%s\n' "$content" | awk '
+        $0 == "<recent_commits>" { capture = 1; next }
+        $0 == "</recent_commits>" { capture = 0; next }
+        capture { lines = lines (lines == "" ? "" : "\n") $0 }
+        END { printf "%s", lines }
+    ')
+    assert_eq "recent_commits body" "$recent_body" "(no commits yet)" || ok=false
+
+    local message='root.txt -> initial file'
+    local cret crc
+    cret=$(run_commit "$repo" "$message" "$path")
+    crc=${cret%%|*}
+    assert_eq "commit exit" "$crc" "0" || ok=false
+    local head_msg
+    head_msg=$(cd "$repo" && git log -1 --format=%B)
+    assert_eq "piped message is HEAD" "$head_msg" "$message" || ok=false
+    $ok
+}
+
 ###############################################################################
 # Run scenarios
 ###############################################################################
@@ -1056,6 +1137,7 @@ scenario p12 "prepare+commit: modifications-only under /bin/bash" p12_modificati
 scenario p13 "prepare+commit: new-files-only under /bin/bash" p13_new_files_only_under_bin_bash
 scenario p14 "prepare: injected abort exits non-zero under /bin/bash" p14_injected_abort_under_bin_bash
 scenario p15 "prepare: late injected abort exits non-zero under /bin/bash" p15_late_injected_abort_under_bin_bash
+scenario p16 "prepare+commit: unborn branch root commit"      p16_unborn_branch_root_commit
 
 scenario c1  "commit: staged change with valid message"       c1_staged_change_with_message
 scenario c2  "commit: untracked file gets staged by add -A"   c2_untracked_file_picked_up_by_add_a

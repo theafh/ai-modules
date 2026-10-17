@@ -2,9 +2,11 @@
 description: Make git_commit's prepare context succeed on an unborn branch by guarding recent-commits log, auditing sibling HEAD-dependent calls, and adding a durable unborn-branch script-test.
 scope: plugins/ai_dev/skills/git_commit
 created: 2026-10-14T16:21:22
-updated: 2026-10-15T17:59:12
-status: ready
+updated: 2026-10-17T16:14:53
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Fix git_commit context on an unborn branch

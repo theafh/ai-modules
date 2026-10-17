@@ -196,8 +196,15 @@ ctx_file="$(mktemp "$tmp_root/git_commit_context.XXXXXX")"
   print_command_output "status_after_staging_new_files" \
     git status --short --untracked-files=all
 
-  print_command_output "recent_commits" \
-    git --no-pager log --oneline -8
+  # An unborn branch has no HEAD, and git log exits non-zero there. Keep the
+  # block either way: the log when HEAD exists, the placeholder before the
+  # root commit. Redirect the verify so its SHA stays out of the context file.
+  if git rev-parse --verify -q HEAD >/dev/null; then
+    print_command_output "recent_commits" \
+      git --no-pager log --oneline -8
+  else
+    printf '<recent_commits>\n(no commits yet)\n</recent_commits>\n'
+  fi
 
   print_new_files
 
