@@ -4,6 +4,8 @@ deployment/.deploy-backup-*/
 /*[Tt][Oo][Dd][Oo]*.md
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
+.cursor/agents/
+.cursor/scratch/
 
 # Python
 __pycache__/
