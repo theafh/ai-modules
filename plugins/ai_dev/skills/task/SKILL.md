@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks/. Use when the user asks to list or query existing tasks, to update or expand one, to triage or split backlog items, or to work across several tasks at once, and as the fallback for any tasks, todos, or backlog request naming no single lifecycle step. Not for one named step on one task, which a sibling owns for creation, readiness checking, explanation, next-work selection, implementation, audit, and finish.
-version: 1.3.42
+version: 1.3.43
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -79,7 +79,7 @@ Every task carries this YAML frontmatter:
 
 ```yaml
 ---
-description: One-line compact summary of what this task delivers.
+description: "One-line compact summary of what this task delivers."
 scope: plugins/ai_dev/skills/task
 created: 2026-05-28T19:49:23
 updated: 2026-05-28T19:49:23
@@ -90,7 +90,7 @@ reported-by: default_user
 
 Fields:
 
-- `description`: compact one-liner. Compose to roughly 180 characters; the linter warns above 200, and that gap is headroom for a later broadening edit rather than length to write at. The body carries the full context.
+- `description`: a compact one-liner written in double quotes. Escape any `"` or `\` inside the value with a backslash. Compose to roughly 180 characters; the linter warns above 200, and that gap is headroom for a later broadening edit rather than length to write at. The body carries the full context.
 - `scope`: either a relative path under the project root pointing at the directory the task targets (unquoted; e.g. `scope: plugins/ai_dev/skills/task`), or a short descriptive label when no single directory fits (quoted; e.g. `scope: "project xyz"`). The linter resolves an unquoted value against the project root and blocks if the path is missing or escapes the root; a quoted value is accepted as text. Paths win when one fits; the filesystem stays the source of truth.
 - `created`: ISO 8601 datetime, set once when the task is created.
 - `updated`: ISO 8601 datetime, bumped on every edit and on every status change. See `<bump_updated>` for the legacy-backfill exception.
@@ -393,7 +393,7 @@ When a task is finished or being dropped, run all six steps:
 </archive>
 
 <lint>
-The linter checks naming, frontmatter completeness, provenance, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across live + archive. By default it iterates live files in `tasks/*.md`, while still resolving links into `archive/` and checking filename collisions across both roots. `--include-archive` is the full-tree maintenance flag, and `task_fix` is its sole owner: it passes the flag to extend the mechanical per-file checks across the whole archive, surface legacy provenance retrofit hints, and migrate non-terminal archived statuses to `finished`. `--file <path>` is the file-scoped mode: it restricts the per-file checks to one named task file, live or archived, so the `<archive>` close-out verifies the single file it just moved and no other. The two flags are mutually exclusive; dual-root collision detection still runs under `--file`, and only the named file's collision finding is emitted.
+The linter checks naming, frontmatter completeness, an unquoted value YAML would misread, provenance, status validity, datetime format, status/location consistency, page size (>300 lines), and filename collisions across live + archive. By default it iterates live files in `tasks/*.md`, while still resolving links into `archive/` and checking filename collisions across both roots. `--include-archive` is the full-tree maintenance flag, and `task_fix` is its sole owner: it passes the flag to extend the mechanical per-file checks across the whole archive, surface legacy provenance retrofit hints, and migrate non-terminal archived statuses to `finished`. `--file <path>` is the file-scoped mode: it restricts the per-file checks to one named task file, live or archived, so the `<archive>` close-out verifies the single file it just moved and no other. The two flags are mutually exclusive; dual-root collision detection still runs under `--file`, and only the named file's collision finding is emitted.
 
 ```bash
 python3 scripts/lint.py              # auto-discover via discover_tasks.sh
@@ -405,7 +405,7 @@ python3 scripts/lint.py --file tasks/archive/<name>.md --quiet  # file-scoped cl
 
 Findings come in three buckets:
 
-- **blocking**: bad filename, missing/malformed frontmatter, missing required provenance, invalid status, status/location mismatch, duplicate filenames, legacy archived status migration. Exit 1; must fix.
+- **blocking**: bad filename, missing/malformed frontmatter, an unquoted value YAML would misread, missing required provenance, invalid status, status/location mismatch, duplicate filenames, legacy archived status migration. Exit 1; must fix.
 - **warn**: non-ISO datetimes, overlong description, missing H1 title, oversized page (>300 lines), line-number position claims in an open task body (the soft-pointer rule; fenced code blocks are skipped, inline code stays checked), and a local target linked more than once in one body (the repeated-link check; fenced blocks and `://` / `mailto:` targets are skipped). The oversized-page and repeated-link warnings share one gate and fire only on `open`, `checked`, and `ready` tasks, because each prompts the author, before implementation, to reorganize or split a task that may have grown organically. The soft-pointer check is recall-biased and names candidates including `path:N`, `path ~N`, capitalized or lowercase `line N` / `line ~N` / `around lines N-M`, and parenthesized `(~N)` / `(~N-M)` shapes, while skipping size extents such as `~16 KB`, `512 bytes`, and `100 MB`. Treat each soft-pointer warn as a candidate, not a verdict: read the hit in surrounding context, rewrite a genuine line anchor to a verbatim greppable label, and leave a false positive such as a size, version, count, or quoted claim-shape untouched. Read each `repeated-link` warn as a sign that the body may need reorganizing, and answer it through the **Repeated-link react protocol** below.
 - **info**: reserved for future style nits.
 
@@ -424,6 +424,7 @@ The disposition reads `regrouped` or `surfaced because <reason>`, the only two t
 The **mechanically fixable lint finding set** is the authoritative type list for task-family siblings that auto-repair linter output. Apply only the entries whose target is determinable in the current scope, and surface the rest:
 
 - **Frontmatter and lifecycle mechanics**: fill missing or malformed required frontmatter when the value is named by the linter, derivable from git history, derivable from `<user_name_chain>`, or already present in the task context; normalise an unambiguous non-ISO `created` or `updated` value; repair status/location mismatches and archived non-terminal statuses through the lifecycle workflow that owns that move.
+- **Unquoted value YAML would misread**: wrap `description`, `reported-by`, and `implemented-by` in double quotes, escaping any `"` or `\` inside the value, and leave the text unchanged. Do the same for `scope` when the value itself is what YAML would misread, so the field becomes a label. When a trailing comment is the whole finding on `scope` or on any other key, remove the comment and leave the value. When the value itself is what YAML would misread on a key outside that quoting set, surface the finding so the author rewrites the value as a plain scalar.
 - **Description budget**: rewrite an over-budget `description` into one compact canonical line within the linter budget while preserving the named scope, important nouns, and user-visible deliverable; remove the stale over-budget wording rather than appending a second summary.
 - **Local markdown links**: re-point a broken relative markdown link when the correct target is determinable from the link text, filename, task title, or existing repository path; surface a broken link when more than one plausible target exists or no target can be found.
 - **Standard-markdown conversion**: convert a linter-blocked wikilink or footnote to standard markdown when the linked target or attribution target is determinable; surface it when the conversion target is unclear.

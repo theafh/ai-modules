@@ -1,8 +1,8 @@
 ---
-description: Give wiki discovery a deterministic exit-2 choice handoff: distinct usage-error exit code, positional path support, agent wording aligned to the script interface, and shell/Python hidden-dir parity.
+description: "Give wiki discovery a deterministic exit-2 choice handoff: distinct usage-error exit code, positional path support, agent wording aligned to the script interface, and shell/Python hidden-dir parity."
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-08-21T17:16:04
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

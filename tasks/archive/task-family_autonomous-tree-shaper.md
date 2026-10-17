@@ -1,8 +1,8 @@
 ---
-description: Refine task_fix to grow the autonomous tree-shaper internally: on opt-in it escalates to a new auto_shaper_task agent that resolves the judgement calls it now only surfaces. No second skill.
+description: "Refine task_fix to grow the autonomous tree-shaper internally: on opt-in it escalates to a new auto_shaper_task agent that resolves the judgement calls it now only surfaces. No second skill."
 scope: plugins/ai_dev
 created: 2026-06-21T15:17:35
-updated: 2026-06-27T18:18:08
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -2,7 +2,7 @@
 description: Deploy the charter_guardrail hook to OpenCode via a bridge plugin, since OpenCode has no declarative hook config. A TS plugin maps tool.execute.before to the shared bash script.
 scope: deployment
 created: 2026-07-23T19:48:14
-updated: 2026-09-05T21:26:04
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -45,7 +45,6 @@ Document the OpenCode hook mechanism in `deployment/README.md` as its own row, a
 
 - This task adds no new guardrail policy and does not modify `charter_guardrail.sh`'s logic; it reuses the script as-is and only bridges it.
 - It does not attempt to close the subagent-bypass gap (OpenCode issue #5894) or work around the inert `permission.ask` hook (issue #7006); both are documented as accepted limitations.
-- The `opencode` target infrastructure (target dirs, `VALID_TARGETS`, file-artefact arms) is owned by [deployment_opencode-target.md](archive/deployment_opencode-target.md).
 
 ## Acceptance
 

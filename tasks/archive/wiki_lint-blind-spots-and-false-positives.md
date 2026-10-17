@@ -1,8 +1,8 @@
 ---
-description: Fix seven wiki linter defects: block-list frontmatter bypass, fenced-link false blockings, live example taxonomy, index blind spots, bad drift hint, absolute links, unchecked raw frontmatter.
+description: "Fix seven wiki linter defects: block-list frontmatter bypass, fenced-link false blockings, live example taxonomy, index blind spots, bad drift hint, absolute links, unchecked raw frontmatter."
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-07-21T13:11:07
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

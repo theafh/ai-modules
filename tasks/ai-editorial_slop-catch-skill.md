@@ -2,7 +2,7 @@
 description: "Build slop_catch in ai_editorial: a ported Python detector plus a structural-tell ruleset that score a draft's AI-tell density and return replacements, run as the humanizer's check pass."
 scope: "ai_editorial plugin"
 created: 2026-06-01T23:31:06
-updated: 2026-10-08T12:43:40
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -39,7 +39,6 @@ The skill delivers that through two detection layers that stay distinct end to e
   - `exoticBackticks` — `U+02CB`, `U+02C8`, `U+2035`, `U+2032`, `U+2033`, `U+2034` (modifier grave accent, modifier vertical line, reversed prime, prime, double prime, triple prime)
   - `exoticPunctuation` — `U+2026`, `U+2022`, `U+2023`, `U+2043`, `U+204C`, `U+204D` (ellipsis, bullet, triangular bullet, hyphen bullet, black leftwards bullet, black rightwards bullet)
 - **Why the port changes context, not content.** The extension highlights live web pages, where every hit is worth a colour and a lone curly quote costs nothing. This skill judges a draft about to reach a reader, where the same curly quote most often came from a word processor and where the author needs to know whether the text is broadly slopped or merely carries one reachable word. The port keeps every pattern and adds the tiering, scoring, and replacement data the Approach defines.
-- **Paired with the writing skills.** [ai-editorial_language-humanizer-skill.md](archive/ai-editorial_language-humanizer-skill.md) and [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md) produce and rewrite prose; this skill checks what they produced. The handoff needs nothing on their side, since the skill takes delivered text as its input, so build this one to be invocable that way rather than reaching into either skill's workflow. Keep the structural-tell ruleset readable as a standalone reference, because `ghost_writer`'s task weighs referencing it directly to keep the two consistent.
 - Write the skill `description:` so it triggers both on checking text a writing skill just delivered and on reviewing any draft for AI tells, and so a router can tell it from the two prose skills beside it: this skill diagnoses, scores, and proposes replacements while leaving the text untouched, and the other two deliver rewritten text.
 - **Authoring authorities.** The `SKILL.md` and the reference ruleset are instructions an AI consumes, so they follow `ai_instruction_writing` for positive, action-oriented carriers and `ai_instruction_formatting` for the pseudo-XML body. A tell entry describes a pattern to recognize and what to write instead, which keeps those entries positive without strain.
 - Follow the standing repo rules for skill authoring and for bundling a skill's helper scripts; this task supplies the `slop_catch`-specific detector workflow, source-port contract, scoring model, tell set, and Python style-guide requirement.
@@ -121,7 +120,7 @@ The output contract leads with the verdict — the band, the density figure, and
 
 **Out of scope:**
 
-- Rewriting the flagged prose. This skill returns replacements for an author or a sibling skill to apply, and the rewriting itself is owned by [ai-editorial_language-humanizer-skill.md](archive/ai-editorial_language-humanizer-skill.md) and [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md).
+- Rewriting the flagged prose. [ai-editorial_language-humanizer-skill.md](archive/ai-editorial_language-humanizer-skill.md) and [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md) produce and rewrite prose; this skill checks what they produced and returns replacements for them to apply. The handoff needs nothing on their side, since the skill takes delivered text as its input, so build this one to be invocable that way rather than reaching into either skill's workflow. Keep the structural-tell ruleset readable as a standalone reference, because `ghost_writer`'s task weighs referencing it directly to keep the two consistent.
 - Wiring this check into either writing skill's own workflow, which changes that skill's contract and belongs to its task; this task delivers `slop_catch` so it can be invoked that way.
 - Changing the `ai_slop_detector` extension, which is read-only input to this port.
 - Scoring whether a text was machine-generated, whether by statistical means such as perplexity and burstiness or by watermark detection. The density score rates how heavily a draft carries known tells, for an author to act on, rather than issuing an authorship verdict.

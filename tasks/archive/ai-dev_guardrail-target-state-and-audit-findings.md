@@ -1,8 +1,8 @@
 ---
-description: Normative guardrail docs: placement, one-statement, enforcement-naming, change-checklist, touch-it-fix-it; drop auto-load claim; audit reads rules normatively with three findings.
+description: "Normative guardrail docs: placement, one-statement, enforcement-naming, change-checklist, touch-it-fix-it; drop auto-load claim; audit reads rules normatively with three findings."
 scope: plugins/ai_dev/skills
 created: 2026-08-09T14:17:31
-updated: 2026-08-09T22:54:12
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

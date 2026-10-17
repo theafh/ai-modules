@@ -1,8 +1,8 @@
 ---
-description: Give harness_portability a concrete shell interpreter floor plus wiki evidence: bash 3.2 why, bash 4+ constructs with substitutes, non-login PATH trap, and dated wiki verification.
+description: "Give harness_portability a concrete shell interpreter floor plus wiki evidence: bash 3.2 why, bash 4+ constructs with substitutes, non-login PATH trap, and dated wiki verification."
 scope: plugins/ai_dev/skills/harness_portability
 created: 2026-09-18T19:48:56
-updated: 2026-10-03T16:02:59
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

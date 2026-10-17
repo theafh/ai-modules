@@ -2,7 +2,7 @@
 description: Move the "changelog is committed-history-derived, never hand-edited" invariant into the update_changelog skill so the artifact owns it, then remove the duplicated standing repo rule.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-21T13:25:38
-updated: 2026-10-04T22:54:31
+updated: 2026-10-17T13:50:32
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -38,8 +38,8 @@ the skill states it.
   This task is the follow-up the "Only committed work counts" bullet in
   [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md)
   points at. That task's run-scope corollary now ships as the skill's
-  `<run_scope>` clause, and this task owns the general invariant the corollary
-  specializes.
+  `<run_scope>` clause, and that task owns the date-enumeration logic. This
+  task owns the general invariant the corollary specializes.
 - Motivating case: an agent hand-wrote entries for uncommitted working-tree
   changes and they had to be reverted, the failure this invariant prevents.
 - The standing repo rule is also the always-in-context guard for an agent doing
@@ -75,8 +75,6 @@ the skill states it.
 
 - Changing the day-section output format.
 - Changing the `prepare_changelog_day.sh` script.
-- Changing the date-enumeration logic; that work belongs to
-  [changelog_incremental-day-boundaries.md](archive/changelog_incremental-day-boundaries.md).
 - Editing existing `CHANGELOG.md` content.
 - Recording a version bump in this change; the standing repo rules leave any
   version bump to commit time rather than recording it here.

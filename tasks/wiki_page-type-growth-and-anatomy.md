@@ -2,7 +2,7 @@
 description: Make the size lint and the prose split thresholds growth-pattern aware (per-type defaults + SCHEMA `## Lint` growth bullet), and make custom-type anatomies name their session-derived-source label.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:37
-updated: 2026-09-05T21:26:04
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -18,7 +18,7 @@ Two adjacent failures around page-type contracts get fixed together:
 
 ## Context
 
-This is one of a family of **generalisable refinements** to the wiki skills + `auto_shaper_wiki` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case. During that audit the auto-shaper either parenthetically annotated a paragraph heading (see [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md)) or silently broadened the definition of "canon" in a page-summary paragraph (see [wiki_meta-prose-in-page-bodies.md](archive/wiki_meta-prose-in-page-bodies.md)). Both are remediation smells driven by an ambiguous custom page-type contract. Separately, lint size findings landed in the page body as sanction prose even though that page type's growth past 200 lines is its expected behaviour.
+This is one of a family of **generalisable refinements** to the wiki skills + `auto_shaper_wiki` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case. During that audit the auto-shaper either parenthetically annotated a paragraph heading or silently broadened the definition of "canon" in a page-summary paragraph. Both are remediation smells driven by an ambiguous custom page-type contract. Separately, lint size findings landed in the page body as sanction prose even though that page type's growth past 200 lines is its expected behaviour.
 
 Two facts about the shipped plugin shape the design:
 
@@ -35,7 +35,6 @@ Files involved:
 
 Related tasks:
 
-- [wiki_meta-prose-in-page-bodies.md](archive/wiki_meta-prose-in-page-bodies.md) owns dropping the "on the page's body or" wording from the auto-shaper and the wider no-meta-in-body prohibition; the matching step here is verify-only.
 - [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md): the parenthetical-attribution failure this task partly causes by leaving the anatomy ambiguous.
 - [wiki_lint-accepted-info-suppression.md](archive/wiki_lint-accepted-info-suppression.md) owns the instance-level accept mechanism; the decided boundary: a declared growth pattern defers size findings type-wide, while the accept mechanism covers an individual reviewed finding. Both tasks add a bullet to the same SCHEMA `## Lint` section and register it in the same agent `<configurable_zones>` list, so coordinate those two edits whichever lands first.
 
@@ -46,7 +45,7 @@ Related tasks:
 3. **Growth-aware `check_page_size`.** Resolve each page's effective pattern (declaration first, then canonical default, then `fixed` for an undeclared custom type): `fixed` keeps today's over-200 info finding; `backlog`, `monotonic-append`, and `unbounded-synthesis` defer to 500 lines, past which the finding recommends split-or-graduate-entries rather than a body sanction.
 4. **Growth-aware prose canon.** Move the split-threshold statements outside the linter together with the check so prose and check tell one story: rewrite the `<write_or_update_pages>` split bullet and the `<pages_stay_scannable>` pitfall in `SKILL.md`, the `**Split a page**` threshold bullet in `template_schema.md`, and the `<topic_separation>` objective in `auto_shaper_wiki.md` to state the threshold per growth pattern: `fixed` types split past ~200 lines; growing types defer to step 3's higher threshold, where the action is split or graduate entries.
 5. **Custom-type anatomy rule in `template_schema.md`.** Beside the existing custom-declaration guidance, state that a wiki declaring a custom type defines that type's section anatomy, including the label its entries use for session-derived sources. The originating wiki's `todo` anatomy, a "What the canon says" paragraph reading awkwardly for entries sourced from recorded sessions, is the motivating illustration.
-6. **`auto_shaper_wiki.md` body-routing wording.** Verify the "note the rationale on the page's body or" wording is already gone: [wiki_meta-prose-in-page-bodies.md](archive/wiki_meta-prose-in-page-bodies.md) owns dropping it (sanction rationale routes to `SCHEMA.md` or `log.md`, never the page body). When this task lands first, leave the wording in place for that task.
+6. **`auto_shaper_wiki.md` body-routing wording.** Verify the "note the rationale on the page's body or" wording is already gone: [wiki_meta-prose-in-page-bodies.md](archive/wiki_meta-prose-in-page-bodies.md) owns dropping it (sanction rationale routes to `SCHEMA.md` or `log.md`, never the page body) and the wider no-meta-in-body prohibition; the matching step here is verify-only. When this task lands first, leave the wording in place for that task.
 
 ## Acceptance
 

@@ -217,6 +217,12 @@ if one_open_task; then
   }
   check "status is open"                                 status_open
   check "created is the real wall clock, not fabricated" created_is_recent
+  description_is_double_quoted() {
+    local line
+    line="$(awk 'BEGIN{n=0} /^---$/{n++; next} n==1 && /^description:/{print; exit}' "$f")"
+    [[ "$line" =~ ^description:[[:space:]]*\".*\"[[:space:]]*$ ]]
+  }
+  check "description is written in double quotes"       description_is_double_quoted
 fi
 
 # --- per-eval ----------------------------------------------------------------

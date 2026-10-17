@@ -1,8 +1,8 @@
 ---
-description: Add a `task_audit` sibling skill (modeled on spec_audit): verify a task's claimed completion against the codebase and report gaps. Read-only gate; closing out is task_finish's job.
+description: "Add a `task_audit` sibling skill (modeled on spec_audit): verify a task's claimed completion against the codebase and report gaps. Read-only gate; closing out is task_finish's job."
 scope: plugins/ai_dev
 created: 2026-05-28T20:25:06
-updated: 2026-05-31T00:20:09
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

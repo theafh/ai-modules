@@ -1,8 +1,8 @@
 ---
-description: Give format_rust an error and panic model: errors versus broken invariants, trust-boundary panic discipline, anyhow/thiserror by consumer, panic ownership, and clippy unwrap_used wiring.
+description: "Give format_rust an error and panic model: errors versus broken invariants, trust-boundary panic discipline, anyhow/thiserror by consumer, panic ownership, and clippy unwrap_used wiring."
 scope: "format_rust skill and ai_dev plugin README"
 created: 2026-08-09T14:17:31
-updated: 2026-08-09T23:19:15
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -2,9 +2,11 @@
 description: Make the task skills write description in double quotes, make the task linter block an unquoted value YAML would misread, and let task_fix repair it by quoting.
 scope: plugins/ai_dev/skills/task
 created: 2026-10-07T08:16:38
-updated: 2026-10-10T21:23:44
-status: ready
+updated: 2026-10-16T23:32:34
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Write task descriptions in double quotes and block values YAML would misread
@@ -45,7 +47,7 @@ malformed frontmatter in the blocking bucket, and an unquoted value that YAML
 misreads is malformed frontmatter. The task skills ship into other repositories,
 where this linter is the only check on task frontmatter.
 
-[The frontmatter gate task](toolchain_frontmatter-yaml-gate.md) makes `make lint`
+[The frontmatter gate task](../toolchain_frontmatter-yaml-gate.md) makes `make lint`
 reject the same values in this repository and repairs the files it finds there.
 Its accepted subset defines which unquoted values are safe, and the linter check
 here flags the same unquoted cases. Whichever of the two tasks lands first

@@ -1,8 +1,8 @@
 ---
-description: Add a lint.py check that surfaces citation-consistency issues on synthesis pages. It flags sources: never cited inline, inline raw missing from sources:, and zero inline links.
+description: "Add a lint.py check that surfaces citation-consistency issues on synthesis pages. It flags sources: never cited inline, inline raw missing from sources:, and zero inline links."
 scope: plugins/knowledge_management
 created: 2026-06-18T00:36:41
-updated: 2026-09-05T21:26:04
+updated: 2026-10-16T22:53:04
 status: ready
 reported-by: Andreas Hoffmann
 ---

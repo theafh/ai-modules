@@ -1,8 +1,8 @@
 ---
-description: Make skill_doctor usable in any skill-shipping repo: discover the layout, gate only on what the harness rejects, report a missing version as info, and run the checks the repo defines.
+description: "Make skill_doctor usable in any skill-shipping repo: discover the layout, gate only on what the harness rejects, report a missing version as info, and run the checks the repo defines."
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-11T18:24:43
-updated: 2026-08-13T22:32:17
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

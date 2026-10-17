@@ -1,8 +1,8 @@
 ---
-description: Reconcile two auto_shaper_wiki self-contradictions: the lint-clean exit criterion its own contested-page protocol makes unreachable, and stale body-Sources anatomy references the linter deprecates.
+description: "Reconcile two auto_shaper_wiki self-contradictions: the lint-clean exit criterion its own contested-page protocol makes unreachable, and stale body-Sources anatomy references the linter deprecates."
 scope: plugins/knowledge_management
 created: 2026-07-19T18:51:20
-updated: 2026-08-06T11:01:19
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

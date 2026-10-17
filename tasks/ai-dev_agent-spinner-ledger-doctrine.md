@@ -1,8 +1,8 @@
 ---
-description: Route every agent_spinner helper run through the run ledger: a new <start_here>, seven rewritten blocks, run-protocol.md, report shapes, new evals, and restaged fixtures.
+description: "Route every agent_spinner helper run through the run ledger: a new <start_here>, seven rewritten blocks, run-protocol.md, report shapes, new evals, and restaged fixtures."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T15:54:08
-updated: 2026-10-10T00:02:04
+updated: 2026-10-16T22:53:04
 status: open
 reported-by: Andreas Hoffmann
 ---

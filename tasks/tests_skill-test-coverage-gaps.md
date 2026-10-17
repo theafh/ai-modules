@@ -1,8 +1,8 @@
 ---
-description: Add the skill-test coverage the skill_doctor sweep found missing: a script-test surface for ai_instruction_formatting's linter, and a recorded coverage disposition for the behaviour-only skills.
+description: "Add the skill-test coverage the skill_doctor sweep found missing: a script-test surface for ai_instruction_formatting's linter, and a recorded coverage disposition for the behaviour-only skills."
 scope: "local test harnesses"
 created: 2026-09-05T09:47:15
-updated: 2026-10-09T18:10:40
+updated: 2026-10-16T22:53:04
 status: open
 reported-by: Andreas Hoffmann
 ---

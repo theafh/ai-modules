@@ -1,8 +1,8 @@
 ---
-description: Make the shipped wiki SCHEMA template domain-neutral and instruction-shaped: fix provenance, redundancy, and script paths; add freshness, fact-ownership, and decision/planned-work routing.
+description: "Make the shipped wiki SCHEMA template domain-neutral and instruction-shaped: fix provenance, redundancy, and script paths; add freshness, fact-ownership, and decision/planned-work routing."
 scope: plugins/knowledge_management/skills/wiki/references
 created: 2026-08-09T14:02:01
-updated: 2026-08-21T08:01:08
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

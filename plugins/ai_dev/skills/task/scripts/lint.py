@@ -2,9 +2,10 @@
 """lint.py — health-check the tasks directory.
 
 Audits live `*.md` task files under the resolved tasks/ tree by default:
-filename naming convention, frontmatter completeness, provenance,
-status/location consistency, datetime format, title presence, page size,
-and name collisions across live + archive. Pass `--include-archive` to
+filename naming convention, frontmatter completeness, unquoted values YAML
+would misread, provenance, status/location consistency, datetime format,
+title presence, page size, and name collisions across live + archive.
+Pass `--include-archive` to
 extend the mechanical per-file checks across the whole archive: task_fix
 runs it for whole-archive maintenance. The oversized-page and repeated-link
 warnings fire only on live open, checked, and ready tasks, and the
@@ -72,6 +73,16 @@ DATETIME_RE = re.compile(
     r"(?:Z|[+-]\d{2}:?\d{2})?)?$"     # optional tz
 )
 H1_RE = re.compile(r"^#\s+\S")
+# First character of an unquoted scalar that YAML reads as an indicator
+# rather than as text. Covers the skill_doctor start class and the flow
+# indicators {, }, and ,. A leading "- " or "? " and a colon followed by
+# a space or a tab are matched on their own, because the marker there is
+# the following whitespace.
+YAML_HOSTILE_START_RE = re.compile(r"^[&*!|>%@`\[\]{},]")
+LEADING_BLOCK_MARK_RE = re.compile(r"^[?-][ \t]")
+COLON_WHITESPACE_RE = re.compile(r":[ \t]")
+# Keys whose misread repair is to quote the value and keep its text.
+FREE_TEXT_QUOTE_KEYS = {"description", "reported-by", "implemented-by"}
 
 # Standard-markdown enforcement: footnotes and wikilinks are surfaced as
 # blocking so the tasks tree stays portable to any CommonMark renderer.
@@ -169,10 +180,228 @@ def discover_tasks(arg: str | None) -> Path:
     return path
 
 
+def _scalar_start(line: str) -> int:
+    """Return the index where the frontmatter value begins.
+
+    On a `key: value` line that is the first character after the key
+    separator. When the text is already just the value, it is the first
+    non-whitespace character. A quote opens a scalar only at that index,
+    so an apostrophe inside a plain value stays a character.
+    """
+    index = 0
+    length = len(line)
+    while index < length and line[index].isspace():
+        index += 1
+    scan = index
+    while scan < length:
+        char = line[scan]
+        if char in "\"'":
+            return index
+        if char == ":":
+            scan += 1
+            while scan < length and line[scan].isspace():
+                scan += 1
+            return scan
+        scan += 1
+    return index
+
+
+def _strip_yaml_comment(line: str) -> str:
+    """Drop a trailing comment whose # follows whitespace outside quotes.
+
+    A # inside a single- or double-quoted scalar stays in the value. A #
+    that is not preceded by whitespace stays in an unquoted value. A quote
+    opens only at the start of the value, and a doubled apostrophe inside
+    a single-quoted scalar is one escaped apostrophe.
+    """
+    scalar_start = _scalar_start(line)
+    in_single = False
+    in_double = False
+    index = 0
+    length = len(line)
+    while index < length:
+        char = line[index]
+        if not in_single and not in_double and index == scalar_start:
+            if char == "'":
+                in_single = True
+                index += 1
+                continue
+            if char == '"':
+                in_double = True
+                index += 1
+                continue
+        if in_double and char == "\\":
+            index += 2
+            continue
+        if in_double and char == '"':
+            in_double = False
+            index += 1
+            continue
+        if in_single and char == "'":
+            if index + 1 < length and line[index + 1] == "'":
+                index += 2
+                continue
+            in_single = False
+            index += 1
+            continue
+        preceded_by_space = index == 0 or line[index - 1].isspace()
+        if char == "#" and not in_single and not in_double and preceded_by_space:
+            return line[:index].rstrip()
+        index += 1
+    return line.rstrip()
+
+
+def _decode_double_quoted(value: str) -> str:
+    """Resolve \\\\ and \\" inside a double-quoted scalar, quotes removed."""
+    parts: list[str] = []
+    index = 0
+    length = len(value)
+    while index < length:
+        char = value[index]
+        if char == "\\" and index + 1 < length and value[index + 1] in '\\"':
+            parts.append(value[index + 1])
+            index += 2
+            continue
+        parts.append(char)
+        index += 1
+    return "".join(parts)
+
+
+def _decode_quoted_scalar(value: str) -> str:
+    """Return the text of a quoted scalar, or value when it is unquoted."""
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        return _decode_double_quoted(value[1:-1])
+    if len(value) >= 2 and value[0] == "'" and value[-1] == "'":
+        return value[1:-1]
+    return value
+
+
+def _quoted_scalar(value: str) -> bool:
+    """Return True when value opens a quoted scalar that also closes."""
+    if len(value) < 2 or value[0] not in "\"'":
+        return False
+    quote = value[0]
+    index = 1
+    length = len(value)
+    while index < length:
+        char = value[index]
+        if quote == '"' and char == "\\":
+            index += 2
+            continue
+        if char == quote:
+            return True
+        index += 1
+    return False
+
+
+def _plain_unquoted_misread(value: str) -> bool:
+    """Return True when the value itself is one YAML would misread."""
+    if not value or _quoted_scalar(value):
+        return False
+    if YAML_HOSTILE_START_RE.match(value):
+        return True
+    if LEADING_BLOCK_MARK_RE.match(value):
+        return True
+    if COLON_WHITESPACE_RE.search(value):
+        return True
+    return value.endswith(":")
+
+
+def _trailing_comment_only(raw_value: str) -> bool:
+    """Return True when a trailing comment is the whole misread.
+
+    raw_value is the text after the key's colon, surrounding whitespace
+    removed, with any trailing comment still attached. The value that
+    remains once that comment is removed is one YAML accepts as plain text.
+    """
+    if not raw_value or _quoted_scalar(raw_value):
+        return False
+    stripped = _strip_yaml_comment(raw_value)
+    if stripped == raw_value.rstrip():
+        return False
+    return not _plain_unquoted_misread(stripped)
+
+
+def _unquoted_yaml_misread(raw_value: str) -> bool:
+    """Return True when an unquoted scalar is one YAML would misread.
+
+    raw_value is the text after the key's colon, surrounding whitespace
+    removed, with any trailing comment still attached.
+    """
+    if not raw_value or _quoted_scalar(raw_value):
+        return False
+    if _plain_unquoted_misread(raw_value):
+        return True
+    return _trailing_comment_only(raw_value)
+
+
+def _quote_misread(key: str, raw_value: str) -> bool:
+    """Return True when the repair is to wrap the value in double quotes."""
+    if key in FREE_TEXT_QUOTE_KEYS:
+        return True
+    return key == "scope" and not _trailing_comment_only(raw_value)
+
+
+def _misread_message(key: str, raw_value: str) -> str:
+    """Return the blocking finding text for one misread value."""
+    if _quote_misread(key, raw_value):
+        return (
+            f"unquoted value for {key} is one YAML would misread; "
+            "wrap it in double quotes, escaping any \" or \\ inside it"
+        )
+    if _trailing_comment_only(raw_value):
+        return (
+            f"unquoted value for {key} has a trailing comment; "
+            "remove the comment and leave the value"
+        )
+    return (
+        f"unquoted value for {key} is one YAML would misread; "
+        "rewrite the value as a plain scalar"
+    )
+
+
+def _frontmatter_entries(block: str) -> list[tuple[str, str, str]]:
+    """Return top-level (key, comment-stripped value, raw value) triples.
+
+    The raw value keeps a trailing comment so the misread check can see a
+    # that YAML would treat as the start of one.
+    """
+    entries: list[tuple[str, str, str]] = []
+    for raw_line in block.splitlines():
+        if not raw_line or raw_line[0].isspace():
+            continue
+        code = _strip_yaml_comment(raw_line)
+        if not code or ":" not in code:
+            continue
+        key, _, parsed = code.partition(":")
+        key = key.strip()
+        if not key:
+            continue
+        _, _, raw_value = raw_line.partition(":")
+        entries.append((key, parsed.strip(), raw_value.strip()))
+    return entries
+
+
+def _frontmatter_block(text: str) -> tuple[str, str] | None:
+    """Return (block, body) when the frontmatter fences close, else None."""
+    if not text.startswith("---\n"):
+        return None
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        end = text.find("\n---", 4)
+        if end == -1 or text[end:].strip() != "---":
+            return None
+    block = text[4:end]
+    body = text[end + 5:] if text[end:end + 5] == "\n---\n" else ""
+    return block, body
+
+
 def get_raw_scope(text: str) -> str | None:
     """Return the raw `scope:` value verbatim — quotes preserved — so the
     scope check can tell quoted text from an unquoted path candidate.
     Returns None when there is no frontmatter or no scope field.
+    A # inside quotes stays in the value; a trailing comment is removed
+    only when its # follows whitespace outside quotes.
     """
     if not text.startswith("---\n"):
         return None
@@ -181,40 +410,44 @@ def get_raw_scope(text: str) -> str | None:
         end = text.find("\n---", 4)
         if end == -1:
             return None
-    for raw_line in text[4:end].splitlines():
-        line = raw_line.split("#", 1)[0].rstrip()
-        if not line or line.startswith(" ") or ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        if key.strip() == "scope":
-            return value.strip()
+    for key, value, _raw in _frontmatter_entries(text[4:end]):
+        if key == "scope":
+            return value
     return None
 
 
 def parse_frontmatter(text: str) -> tuple[dict | None, str]:
-    if not text.startswith("---\n"):
+    found = _frontmatter_block(text)
+    if found is None:
         return None, text
-    end = text.find("\n---\n", 4)
-    if end == -1:
-        end = text.find("\n---", 4)
-        if end == -1 or text[end:].strip() != "---":
-            return None, text
-    block = text[4:end]
-    body = text[end + 5:] if text[end:end + 5] == "\n---\n" else ""
+    block, body = found
     data: dict = {}
-    for raw_line in block.splitlines():
-        line = raw_line.split("#", 1)[0].rstrip()
-        if not line or line.startswith(" ") or ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        key, value = key.strip(), value.strip()
+    for key, value, _raw in _frontmatter_entries(block):
         if not value:
             data[key] = ""
         elif value.lower() in {"true", "false"}:
             data[key] = value.lower() == "true"
         else:
-            data[key] = value.strip("'\"")
+            data[key] = _decode_quoted_scalar(value)
     return data, body
+
+
+def _misread_findings(page: Path, text: str) -> list[Issue]:
+    """Block each unquoted top-level value YAML would misread."""
+    found = _frontmatter_block(text)
+    if found is None:
+        return []
+    block, _body = found
+    issues: list[Issue] = []
+    reported: set[str] = set()
+    for key, _parsed, raw_value in _frontmatter_entries(block):
+        if key in reported or not _unquoted_yaml_misread(raw_value):
+            continue
+        reported.add(key)
+        issues.append(
+            Issue(SEV_BLOCKING, "frontmatter", page, _misread_message(key, raw_value))
+        )
+    return issues
 
 
 def iter_task_files(tasks: Path, include_archive: bool = False) -> Iterator[Path]:
@@ -358,6 +591,8 @@ def check_frontmatter(tasks: Path, page: Path) -> tuple[list[Issue], dict | None
             "and `reported-by` between `---` fences",
         ))
         return issues, None
+
+    issues.extend(_misread_findings(page, text))
 
     for field in REQUIRED_FRONTMATTER:
         if field == "reported-by":

@@ -2,7 +2,7 @@
 description: Gate make lint on frontmatter that a strict YAML checker accepts, run skill_doctor's discovery check in place, and repair the files that fail today.
 scope: "repo toolchain"
 created: 2026-10-07T07:46:48
-updated: 2026-10-07T08:16:38
+updated: 2026-10-16T23:32:34
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -161,7 +161,7 @@ stage every scenario in a temporary directory outside the checkout.
   with this checker; the shipped linters keep their own parsers so they run in
   any repository.
 - How the task skills write and lint a `description:` value, owned by
-  [the description quoting task](task-family_quote-frontmatter-descriptions.md).
+  [the description quoting task](archive/task-family_quote-frontmatter-descriptions.md).
 
 ## Acceptance
 

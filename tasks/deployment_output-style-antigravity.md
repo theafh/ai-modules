@@ -2,7 +2,7 @@
 description: Deploy the output style to Antigravity as an always-on rule, at global scope as a marked block in the single rules file and at project scope as an ordinary workspace rule file.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-09T13:49:35
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -37,7 +37,6 @@ Generate rather than copy. Strip the Claude frontmatter, which this target does 
 
 **Out of scope:**
 
-- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
 - The plugin bundle's rules component, which reaches only the sessions where that plugin is installed rather than every session in the tree the deploy writes.
 
 ## Acceptance

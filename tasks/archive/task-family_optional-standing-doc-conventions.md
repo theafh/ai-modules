@@ -1,8 +1,8 @@
 ---
-description: Establish the task family's standing-doc framework: the tasks-vs-root filing rule, the drift-prevention spectrum, and how skills and agents consult the docs, CHARTER the top guard, presence-gated.
+description: "Establish the task family's standing-doc framework: the tasks-vs-root filing rule, the drift-prevention spectrum, and how skills and agents consult the docs, CHARTER the top guard, presence-gated."
 scope: plugins/ai_dev
 created: 2026-06-21T15:17:35
-updated: 2026-07-02T19:19:51
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

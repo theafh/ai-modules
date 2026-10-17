@@ -2,7 +2,7 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T15:26:15
-updated: 2026-09-05T21:26:04
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -33,7 +33,7 @@ The fix applied manually in that session is the convention this task formalizes:
 
 ### Why this is mostly formalizing an existing convention
 
-The user's wiki **already** uses content-language ASCII slugs (`steinbildhauerei`, `lebensziele`, …). The umlaut slug was the lone off-convention file. The current scaffold half-states the rule at [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md):
+The user's wiki **already** uses content-language ASCII slugs (`steinbildhauerei`, `lebensziele`, …). The umlaut slug was the lone off-convention file. The current scaffold half-states the rule at [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md), in the `## Conventions` "File names:" bullet. Extend that bullet to "pure ASCII; transliterate non-ASCII", with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here:
 
 > File names: lowercase, hyphens, no spaces (e.g., `transformer-architecture.md`)
 
@@ -42,7 +42,6 @@ It says lowercase/hyphens/no-spaces but **never says "ASCII only"**, and every e
 ### Files involved
 
 - [SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md): the `<folder_layout>` section (slug shape) and the authoring-conventions area. Add the non-English-language guidance and the content-vs-slug split.
-- [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md) holds the `## Conventions` "File names:" bullet. Extend to "pure ASCII; transliterate non-ASCII" with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here.
 - In [scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py), add the new check. Findings are `Issue(severity, bucket, page, message)`; severity constants `SEV_BLOCKING / SEV_WARN / SEV_INFO`; existing path-shape logic lives in `check_type_location`. Add a sibling `check_filename_ascii` (bucket `filename`) and register it in the run pipeline.
 - In [references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md), document the new check row in the matrix and add it to the **warn** bucket list.
 - [auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md): the `<remediate>` phase, beside the existing `<fix_wrong_directory_for_declared_type>` move and under the `<use_git_mv>` constraint. Add an ASCII-fold-rename remediation for the new warning.

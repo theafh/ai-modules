@@ -1,8 +1,8 @@
 ---
-description: Give git_commit a git-standard subject/blank/body: rewrite <message_policy> and prepare-context instruction, add status-4 blank-line refusal, rewire consumers, update evals.
+description: "Give git_commit a git-standard subject/blank/body: rewrite <message_policy> and prepare-context instruction, add status-4 blank-line refusal, rewire consumers, update evals."
 scope: plugins/ai_dev/skills
 created: 2026-09-09T13:17:22
-updated: 2026-09-13T18:11:36
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

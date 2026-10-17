@@ -2,7 +2,7 @@
 description: Make `wiki_import` capture implicit mid-conversation sources into a `raw/` sidecar + `sources:` instead of body-prose narration, and have `wiki_fix` route uncaptured ones to `wiki_import`.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:24:54
-updated: 2026-09-05T21:26:04
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -19,7 +19,7 @@ This is one of a family of **generalisable refinements** to the wiki skills + `a
 
 Much of the write-side convention has since shipped; this task adds the missing capture trigger and prohibition on top of it rather than restating what exists:
 
-- The ingest workflow in [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) already routes explicitly provided sources into `raw/` by kind, pasted text included, and defers edge cases to `references/raw_taxonomy.md` as the canonical classification reference.
+- The ingest workflow in [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) already routes explicitly provided sources into `raw/` by kind, pasted text included, and defers edge cases to `references/raw_taxonomy.md` as the canonical classification reference. That same file carries the authoring contract's capture rule and narration prohibition that `wiki_import` and `wiki_wrapup` inherit.
 - The SCHEMA template's **Provenance** convention states that attribution belongs next to the claim and `sources:` is the canonical inventory; the agent enforces it through the `provenance_violation` finding and the `<fix_provenance_violation>` move.
 - The SCHEMA template's `## Derived from` section is the unstructured channel for durable external material the wiki points at but does not own or classify (a doctrine file in another repo, a codebase, a notebook). The agent's `<fix_external_source_pointer>` move migrates external pointers there and explicitly declines to capture external files into `raw/` during an audit pass, deferring capture to `wiki_import`'s triage-first protocol.
 
@@ -36,7 +36,6 @@ A second subtle failure: when extracting raw text containing markdown-sensitive 
 Files involved:
 
 - [plugins/knowledge_management/skills/wiki_import/SKILL.md](../plugins/knowledge_management/skills/wiki_import/SKILL.md): the capture trigger; broadened to the implicit mid-conversation case (primary edit).
-- [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md): authoring contract and ingest workflow; carries the capture rule and narration prohibition that `wiki_import` and `wiki_wrapup` inherit.
 - [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md): `<remediate>` section; the detect-and-route guard.
 - [plugins/knowledge_management/skills/wiki/references/template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md): the **Provenance** convention block.
 

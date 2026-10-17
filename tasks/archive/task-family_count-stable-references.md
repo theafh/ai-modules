@@ -1,8 +1,8 @@
 ---
-description: Extend the durable-reference discipline from position claims to volatile counts: task bodies reference mutable sets by defining property, flagged at readiness and surfaced by task_fix.
+description: "Extend the durable-reference discipline from position claims to volatile counts: task bodies reference mutable sets by defining property, flagged at readiness and surfaced by task_fix."
 scope: plugins/ai_dev
 created: 2026-08-05T19:26:42
-updated: 2026-08-11T18:54:06
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

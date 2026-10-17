@@ -2,7 +2,7 @@
 description: Rewrite agent_spinner's rules for checking helper work in five SKILL.md blocks, add checks.md and edit-mechanics.md, rewrite the role prompts, and add evals for each rule.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T15:54:08
-updated: 2026-10-04T17:22:06
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -26,7 +26,7 @@ Three reference files carry the procedure behind those rules. A new `references/
   - Read snapshots are the file copies that reading passes read, and they live under the run directory, `.agent_spinner/`. The run writes no ref, tree, commit, or object into the user's repository. A checker reads its snapshot copy, and a re-check reads a copy taken before the repair.
 - **Prerequisites.**
   - [The run-ledger task](ai-dev_agent-spinner-run-ledger.md) ships the ledger and the verbs these rules cite. `brief` renders a helper's brief, the prompt file the helper reads. `accept` validates a helper's return, its structured report, with a receipt check and recall tags. The receipt check tests each read receipt, a verbatim line the helper quotes from an input. The recall tags mark each confirmation recall-confirmed or independently surfaced. `diff` measures each file's change against the baseline that `init` recorded at the start of the run. Its approved-edit mapping ties each hunk to an approved-edit id, and its `--count` flag runs counters. `gate --expect` runs a deterministic command, such as a linter, and states the result it expects. `snapshot` makes the read copies. The task also ships `dispatch`'s refusal of a second re-check and `close`'s depth flag, which marks a checker that ran below its producer's depth.
-  - [The ledger-doctrine task](ai-dev_agent-spinner-ledger-doctrine.md) lands first. It ships `references/run-protocol.md` with the P1 to P6 steps that `checks.md` cites, the six stages of a run from opening it to reporting on it. It also ships the closing block every template ends with. It restages the return fixtures in the return contract's format, and three evals here extend those fixtures.
+  - [The ledger-doctrine task](ai-dev_agent-spinner-ledger-doctrine.md) lands first. It ships `references/run-protocol.md` with the P1 to P6 steps that `checks.md` cites, the six stages of a run from opening it to reporting on it. It also ships the closing block every template ends with and the run-state blocks. It restages the return fixtures in the return contract's format, and three evals here extend those fixtures. This task does not write those pieces.
   - [The runner-modes task](tests_agent-spinner-runner-modes.md) withholds the spawn tool by telling the model in its prompt that the tool is absent, and it labels such runs `declared-absence` on both vendors. No eval here needs a real absence.
 - **Work that builds on this task.** The review-repair, rewrite-implement, and decision-research recipe tasks each write recipes, procedure files for one kind of job. They cite C1 to C10 by number and title, `edit-mechanics.md` by name, and the role-prompts templates by role, so each check keeps the number and title this task gives it.
 - **Static checks that reach these files.** `tests/agent_spinner/script_tests/run.sh` is the skill's static test script. It scans the whole skill directory for product names, per-harness keys and tool identifiers, harness agent directory paths, sandbox mode values, and instruction-file names. It scans `references/` for precedence phrases, which claim authority over the conversation around a template. Its `CONTRACTS` array and its four bold elements per shape pin tags the rewrite keeps: every named block must exist, and every shape must state its Trigger, Width, Prompt skeleton, and Return. It pins the four `## … pass` headings of `role-prompts.md`, and it requires every `text` fence there to open with Read, Write, Open, Start, Run, List, Check, or Return. The ledger-doctrine task's bare-path check refuses any `run_ledger.py` path other than `<skill dir>/scripts/run_ledger.py`.
@@ -226,7 +226,6 @@ A comment beside each edited check names its class under TESTING.md's Test Integ
 
 **Out of scope:**
 
-- `references/run-protocol.md`, the run-state blocks, and the restage of the return fixtures, which [the ledger-doctrine task](ai-dev_agent-spinner-ledger-doctrine.md) owns.
 - The cross-model checker rule with its eval, the decision packet, and the judgement, containment, and degradation rewrites, which [the judgement-containment task](ai-dev_agent-spinner-judgement-containment.md) owns. The cross-model rule lets a checker run on a model other than its producer's. That task places the cross-model rule in P1, so C7 carries no cross-model step.
 - The helper-log audit, the markers check, and the checklist-to-acceptance lint as ledger features, which [the ledger phase-2 task](ai-dev_agent-spinner-ledger-phase-2.md) owns, since C2, C8, and C9 state them as checks the orchestrator runs by hand.
 - `references/variants.md`, which [the decision-research recipes task](ai-dev_agent-spinner-decision-research-recipes.md) rewrites.

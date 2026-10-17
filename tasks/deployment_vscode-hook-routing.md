@@ -2,7 +2,7 @@
 description: Filter foreign configs out of the vscode hook route, ship a Copilot-schema hook config, and switch VS Code's Claude hook sources off so native delivery is the only route.
 scope: deployment
 created: 2026-08-09T20:07:35
-updated: 2026-08-09T20:31:12
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -49,7 +49,8 @@ Code and GitHub Copilot CLI, and the CLI reference states that every `*.json`
 there loads at start. The deposit therefore lands where two products parse it,
 which is the contamination
 [foreign directory adoption](../wiki/concepts/foreign-directory-adoption.md)
-argues against, produced here by this repository's own installer.
+argues against, produced here by this repository's own installer. That page
+carries the general form of this position and the per-harness switch inventory.
 
 Nothing executes today, and only because two failures both hold. The three files
 shaped `{"hooks": {"PreToolUse": [...]}}` are structurally valid and then lose
@@ -164,8 +165,6 @@ ignores the keys it has no concept for, maps what it recognises onto its own
 model, and drops the rest without an error, which is a degraded integration in
 the target harness rather than a free one. Relying on the Claude sources would
 have taken that trade in exchange for skipping one file.
-[foreign directory adoption](../wiki/concepts/foreign-directory-adoption.md)
-carries the general form of this position and the per-harness switch inventory.
 
 ## Acceptance
 

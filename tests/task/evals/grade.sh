@@ -717,6 +717,27 @@ case "$eval_id" in
     note_agent_attest "that section reports the clean case plainly: this fixture plants no cross-task or premise defect, so the joint read finds nothing to alter or defer"
     ;;
 
+  fix_quote_description)
+    f="$TASKS/tool_install-floor.md"
+    want='Turn make install into environment preparation: declare the runtime'
+    extract_body() {
+      awk 'BEGIN{n=0} /^---$/{n++; if (n==2) {show=1; next}} show'
+    }
+    description_quoted_unchanged() {
+      local line
+      line="$(awk 'BEGIN{n=0} /^---$/{n++; next} n==1 && /^description:/{print; exit}' "$f")"
+      [[ "$line" == "description: \"$want\"" ]]
+    }
+    body_byte_identical() {
+      diff -q \
+        <(git -C "$proj" show HEAD:tasks/tool_install-floor.md | extract_body) \
+        <(extract_body < "$f") >/dev/null
+    }
+    check "description is double-quoted with its text unchanged" description_quoted_unchanged
+    check "body is byte-identical to the seed"                   body_byte_identical
+    check "archive-inclusive lint reports no blocking finding"   lint_archive_no_blocking
+    ;;
+
   query)
     check "read-only: the sandbox git tree is unchanged" git_tree_clean
     note_agent_attest "response lists the open tasks grouped by scope (api, infra), leading with open work"

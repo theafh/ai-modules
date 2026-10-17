@@ -2,7 +2,7 @@
 description: Let a wiki declare in-repo source roots in SCHEMA `## Lint` so `sources:` can cite live in-repo primary sources beside `raw/`, honoured by linter and auto-shaper; default unchanged.
 scope: plugins/knowledge_management
 created: 2026-09-06T14:24:22
-updated: 2026-09-07T19:44:01
+updated: 2026-10-17T13:50:32
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -42,7 +42,6 @@ The declaration mechanism this task adds follows the pattern [wiki_sanctioned-te
 - A new frontmatter field such as `primary_sources:` for the third object; the declared root carries the distinction with no new key.
 - Widening the `raw/`-only default for a wiki that declares nothing.
 - Migrating any downstream wiki's citations; each wiki declares its own roots.
-- Adopting declared-root paths into the synthesis-citation classifier when that check does not yet exist at implementation time; [wiki_synthesis-citation-consistency-lint.md](wiki_synthesis-citation-consistency-lint.md) owns that widening when it ships.
 
 ## Acceptance
 

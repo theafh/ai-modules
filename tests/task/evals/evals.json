@@ -280,6 +280,20 @@
       ]
     },
     {
+      "id": "fix_quote_description",
+      "skill": "task_fix",
+      "prompt": "Health-check and clean up the tasks backlog in this project. Fix what is mechanical and flag the rest for review.",
+      "expected_output": "task_fix quotes the live task's unquoted description, leaving the description text and the body unchanged, and the archive-inclusive linter reports no blocking finding.",
+      "files": [
+        "evals/fixtures/fix_quote_description/setup.sh"
+      ],
+      "expectations": [
+        "After the run the description is double-quoted and its text is unchanged.",
+        "The body is byte-identical to the seeded body.",
+        "lint.py --include-archive reports no blocking finding."
+      ]
+    },
+    {
       "id": "query",
       "skill": "task",
       "prompt": "List my open tasks, grouped by scope.",

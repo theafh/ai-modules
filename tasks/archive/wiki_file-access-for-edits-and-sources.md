@@ -1,8 +1,8 @@
 ---
-description: Add a file_handling_discipline rule to use Read (not Bash grep/cat/tail) when staging an Edit, and a note that sources: and raw source_path: values resolve against the wiki root when opened.
+description: "Add a file_handling_discipline rule to use Read (not Bash grep/cat/tail) when staging an Edit, and a note that sources: and raw source_path: values resolve against the wiki root when opened."
 scope: plugins/knowledge_management
 created: 2026-05-28T20:05:29
-updated: 2026-08-29T21:11:19
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

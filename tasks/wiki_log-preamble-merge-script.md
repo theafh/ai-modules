@@ -2,7 +2,7 @@
 description: Bundle a wiki-skill log-preamble merge script that converges canonical units, preserves owner lines by construction, and never duplicates a unit; route `<fix_log_preamble_drift>` through it.
 scope: plugins/knowledge_management
 created: 2026-08-26T18:53:13
-updated: 2026-10-01T13:58:39
+updated: 2026-10-17T13:50:32
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -59,7 +59,7 @@ Two sibling tasks bound this one:
 
 8. **Shrink Layer 2 to routing.** Extend the recorded grading of the Layer 2 scenarios that exercise `<fix_log_preamble_drift>` so each pass records the remediation mechanism observed, script or hand edit, then run the measurement in Acceptance.
 
-**Out of scope:** The linter's classification of preamble mismatches, the `boilerplate` warn message, and the acknowledged or declared channels, owned by [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md). The stored-base three-way merge that would auto-resolve the ambiguous local-rewrite case, which needs a per-wiki base marker this task does not add and is named here as the forward path. Relabeling the template's unlabeled units to make every unit label-matched, which changes the rendered preamble and is not needed once identity is declared. A lint auto-fix mode that runs this merge from inside `lint.py`, since remediation stays an agent move the linter only reports on. Any delete or reconcile branch for owner lines, since removing the delete operation is the property this task ships.
+**Out of scope:** The linter's classification of preamble mismatches, the `boilerplate` warn message, and the acknowledged or declared channels. The stored-base three-way merge that would auto-resolve the ambiguous local-rewrite case, which needs a per-wiki base marker this task does not add and is named here as the forward path. Relabeling the template's unlabeled units to make every unit label-matched, which changes the rendered preamble and is not needed once identity is declared. A lint auto-fix mode that runs this merge from inside `lint.py`, since remediation stays an agent move the linter only reports on. Any delete or reconcile branch for owner lines, since removing the delete operation is the property this task ships.
 
 ## Acceptance
 

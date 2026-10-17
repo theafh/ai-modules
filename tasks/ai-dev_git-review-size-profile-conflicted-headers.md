@@ -2,7 +2,7 @@
 description: Make git_review's size profile read diff --cc sections as files in every field, list binary and generated files by their git paths, and skip conflicted ---/+++ pairs, with script-test proof.
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-08T09:29:33
-updated: 2026-10-08T10:00:53
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -47,7 +47,7 @@ As an illustration, a merge that applies one text file cleanly and leaves a text
 
 Each line of a combined hunk carries one prefix column per parent, and the line counter reads only the first column, which compares against `HEAD`. `--cc` also drops every hunk where the merge took one side unchanged. So the corrected count for a conflicted text file equals `git diff --numstat HEAD -- <path>` exactly when its `diff --cc` section drops no hunk, as with a file whose only change is one conflict hunk.
 
-[ai-dev_git-review-secret-scan-gaps.md](ai-dev_git-review-secret-scan-gaps.md) plans to move the line counter's header rule into one helper that `collect_size_profile` and `collect_secret_scan` share.
+[ai-dev_git-review-secret-scan-gaps.md](ai-dev_git-review-secret-scan-gaps.md) plans to move the line counter's header rule into one helper that `collect_size_profile` and `collect_secret_scan` share, and it owns the extraction and patterns in `collect_secret_scan`.
 
 The script tests live in `tests/git_review/script_tests/run.sh` and run through `./tests/git_review/run_all.sh`. Repository scenarios stage a sandbox under `script_tests/scratch/<id>/`, call the collector through `collect`, and are registered with `scenario <id> "<description>" <function>`. The helpers `profile_value` and `sum_numstat_text` read a `size_profile.txt` value and sum a numstat listing while skipping binary rows. `s11_uncommitted_mode_reports_both_lanes` covers the three uncommitted lanes on a tree without a conflict, and `s24_size_profile_line_counts_match_numstat` covers the range-mode line counts with one modified binary.
 
@@ -94,7 +94,6 @@ Keep the `git_review/` entries in `tests/README.md` and `tests/CLAUDE.md` curren
 - Modify/delete conflicts (`UD`, `DU`), which carry no section to read; counting them would mean de-duplicating `* Unmerged path` lines across the two lanes.
 - Equality with `git diff --numstat HEAD` for a conflicted file whose `diff --cc` section drops cleanly merged hunks, since the counts describe the diff the collector wrote.
 - Counting a path once when it carries both a staged and an unstaged change, since `changed_files` keeps counting sections.
-- The extraction and patterns in `collect_secret_scan`, which [ai-dev_git-review-secret-scan-gaps.md](ai-dev_git-review-secret-scan-gaps.md) owns.
 
 ## Acceptance
 

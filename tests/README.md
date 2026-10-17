@@ -134,7 +134,7 @@ don't bring up new harnesses under Pattern B.
   `--vendor claude` in the command.
 - **`task/`**: Pattern A. The `task_*` family hub, holding three
   deterministic surfaces: `script_tests/run.sh` unit-tests the bundled
-  `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (68 scenarios),
+  `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (86 scenarios),
   `script_tests/contract_run.sh` asserts the family contract across the
   hub, its siblings, and the family agents, and `evals/test_run.py` checks
   that no eval grading the sandbox's whole `git status` declares an

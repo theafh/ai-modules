@@ -1,8 +1,8 @@
 ---
-description: Judge every base-task Acceptance item against the pre-commit tree: tree-artifact proof only, never commit/PR; add a readiness finding, a task_fix advisory, and a violation-and-control eval pair.
+description: "Judge every base-task Acceptance item against the pre-commit tree: tree-artifact proof only, never commit/PR; add a readiness finding, a task_fix advisory, and a violation-and-control eval pair."
 scope: plugins/ai_dev/skills
 created: 2026-09-08T09:41:54
-updated: 2026-09-08T21:01:23
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

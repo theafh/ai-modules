@@ -1,8 +1,8 @@
 ---
-description: Harden the base task skill's archive move into a real git rename: a per-file tracked test, git mv as default, named plain-mv fallback, and the copy-then-delete pattern it replaces.
+description: "Harden the base task skill's archive move into a real git rename: a per-file tracked test, git mv as default, named plain-mv fallback, and the copy-then-delete pattern it replaces."
 scope: plugins/ai_dev
 created: 2026-08-18T14:35:37
-updated: 2026-08-19T21:04:21
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

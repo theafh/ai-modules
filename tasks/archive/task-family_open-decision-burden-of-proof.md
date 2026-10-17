@@ -1,8 +1,8 @@
 ---
-description: Tighten Decide-or-label: reconcile every fork the evidence settles; a genuinely open decision is written into the task and surfaced to the user, guardrail conflicts always qualifying.
+description: "Tighten Decide-or-label: reconcile every fork the evidence settles; a genuinely open decision is written into the task and surfaced to the user, guardrail conflicts always qualifying."
 scope: plugins/ai_dev/skills
 created: 2026-08-22T22:08:25
-updated: 2026-08-30T13:03:07
+updated: 2026-10-16T22:53:04
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

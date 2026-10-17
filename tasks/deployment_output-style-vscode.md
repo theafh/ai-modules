@@ -2,7 +2,7 @@
 description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-08-09T20:31:12
+updated: 2026-10-17T13:50:32
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -33,7 +33,6 @@ Close the instructions adoption path in the same pass, so the deployed file is t
 
 **Out of scope:**
 
-- The source directory, the `style` artefact type, and the log restore behaviour, all owned by [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md).
 - Delivering the style through a Copilot agent plugin, which has no instructions component, so its only routes are a selectable agent or an on-demand skill and neither is standing.
 - Writing anything into the Claude configuration tree to reach this target, which the **Context** rejects as adoption rather than delivery.
 

@@ -2109,6 +2109,420 @@ fs7_scoped_path_edge_cases() {
 }
 
 ###############################################################################
+# lint.py — unquoted values YAML would misread, and quoted readings.
+###############################################################################
+
+y1_unquoted_colon_space_blocks() {
+    local tasks; tasks=$(fresh_tasks y1)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/test_colon.md" <<EOF
+---
+description: Turn make install into environment preparation: declare the runtime
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Colon in description
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (colon followed by a space)" "$rc" "1" || ok=false
+    assert_contains "frontmatter category" "$out" "frontmatter" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y2_unquoted_hash_after_whitespace_blocks() {
+    local tasks; tasks=$(fresh_tasks y2)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/test_hash.md" <<EOF
+---
+description: keep the prefix # drop the suffix
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Hash in description
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (# after whitespace)" "$rc" "1" || ok=false
+    assert_contains "frontmatter category" "$out" "frontmatter" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y3_unquoted_backtick_start_blocks() {
+    local tasks; tasks=$(fresh_tasks y3)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/test_tick.md" <<EOF
+---
+description: \`make lint\` runs the checks
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Backtick description
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (value starts with a backtick)" "$rc" "1" || ok=false
+    assert_contains "frontmatter category" "$out" "frontmatter" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y4_unquoted_ending_colon_blocks() {
+    local tasks; tasks=$(fresh_tasks y4)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/test_endcolon.md" <<EOF
+---
+description: environment preparation:
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Trailing colon
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (value ends with a colon)" "$rc" "1" || ok=false
+    assert_contains "frontmatter category" "$out" "frontmatter" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y5_quoted_colon_and_hash_is_clean() {
+    local tasks; tasks=$(fresh_tasks y5)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/test_quoted.md" <<EOF
+---
+description: "preparation: declare the runtime # keep the hash"
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Quoted colon and hash
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (quoted colon and hash)" "$rc" "0" || ok=false
+    assert_not_contains "no misread finding" "$out" "unquoted value for" || ok=false
+    $ok
+}
+
+y6_quoted_hash_keeps_full_description_length() {
+    local tasks; tasks=$(fresh_tasks y6)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local inner
+    inner=$(python3 -c 'print("# " + ("x" * 199))')
+    emit "$tasks/test_longhash.md" <<EOF
+---
+description: "$inner"
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Long quoted description
+
+The hash near the start stays inside the value.
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (length warning is not blocking)" "$rc" "0" || ok=false
+    assert_contains "length uses the whole quoted value" "$out" "description is 201 chars" || ok=false
+    assert_not_contains "no misread finding" "$out" "unquoted value for" || ok=false
+    $ok
+}
+
+y7_quoted_scope_hash_is_text() {
+    local tasks; tasks=$(fresh_tasks y7)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local page="$tasks/test_scopehash.md"
+    emit "$page" <<EOF
+---
+description: valid task harness fixture
+scope: "label # with a hash"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Quoted scope label
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local got
+    got=$(python3 -c '
+import importlib.util
+import pathlib
+import sys
+spec = importlib.util.spec_from_file_location("task_lint", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = mod
+spec.loader.exec_module(mod)
+print(mod.get_raw_scope(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")))
+' "$LINT" "$page")
+    local ok=true
+    assert_eq "exit 0 (quoted scope is text)" "$rc" "0" || ok=false
+    assert_not_contains "scope check does not treat it as a path" "$out" "scope path" || ok=false
+    assert_eq "get_raw_scope returns the quoted label whole" "$got" '"label # with a hash"' || ok=false
+    $ok
+}
+
+# description is the literal scalar text, including a leading marker.
+y_lint_description() {
+    local id=$1 description=$2
+    local tasks; tasks=$(fresh_tasks "$id")
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    python3 -c '
+import sys
+from pathlib import Path
+tasks = Path(sys.argv[1])
+description = sys.argv[2]
+now = sys.argv[3]
+text = (
+    "---\n"
+    "description: " + description + "\n"
+    "scope: \"test\"\n"
+    "created: " + now + "\n"
+    "updated: " + now + "\n"
+    "status: open\n"
+    "reported-by: Test User\n"
+    "---\n"
+    "\n"
+    "# Hostile description\n"
+)
+(tasks / "test_hostile.md").write_text(text, encoding="utf-8")
+' "$tasks" "$description" "$now" || return 1
+    run_lint "$tasks"
+}
+
+y8_unquoted_flow_open_blocks() {
+    local ret; ret=$(y_lint_description y8 "{braces} lead the summary")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (value starts with {)" "$rc" "1" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    assert_contains "prescribes quoting" "$out" "wrap it in double quotes" || ok=false
+    $ok
+}
+
+y9_unquoted_flow_close_blocks() {
+    local ret; ret=$(y_lint_description y9 "}braces lead")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (value starts with })" "$rc" "1" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y10_unquoted_flow_comma_blocks() {
+    local ret; ret=$(y_lint_description y10 ",comma lead")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (value starts with ,)" "$rc" "1" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y11_unquoted_leading_dash_blocks() {
+    local ret; ret=$(y_lint_description y11 "- a leading dash")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (value starts with dash space)" "$rc" "1" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y12_unquoted_leading_question_blocks() {
+    local ret; ret=$(y_lint_description y12 "? explicit key")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (value starts with question space)" "$rc" "1" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y13_unquoted_colon_tab_blocks() {
+    local ret; ret=$(y_lint_description y13 $'key:\tvalue here')
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (colon followed by a tab)" "$rc" "1" || ok=false
+    assert_contains "names the description key" "$out" "unquoted value for description" || ok=false
+    $ok
+}
+
+y14_status_trailing_comment_asks_to_remove_it() {
+    local tasks; tasks=$(fresh_tasks y14)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/test_status_comment.md" <<EOF
+---
+description: valid task harness fixture
+scope: "test"
+created: $now
+updated: $now
+status: open # waiting on review
+reported-by: Test User
+---
+
+# Status comment
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (trailing comment on status)" "$rc" "1" || ok=false
+    assert_contains "names the status key" "$out" "unquoted value for status has a trailing comment" || ok=false
+    assert_contains "prescribes removing the comment" "$out" "remove the comment and leave the value" || ok=false
+    assert_not_contains "quoting is not the status repair" "$out" "wrap it in double quotes" || ok=false
+    assert_not_contains "status stays a known value" "$out" "invalid status" || ok=false
+    $ok
+}
+
+y15_scope_trailing_comment_stays_a_path() {
+    local tasks; tasks=$(fresh_tasks y15)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    emit "$tasks/test_scope_comment.md" <<EOF
+---
+description: valid task harness fixture
+scope: tasks/archive # kept as a path
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Scope comment
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (trailing comment on a path scope)" "$rc" "1" || ok=false
+    assert_contains "names the scope key" "$out" "unquoted value for scope has a trailing comment" || ok=false
+    assert_contains "prescribes removing the comment" "$out" "remove the comment and leave the value" || ok=false
+    assert_not_contains "quoting would turn the path into a label" "$out" "wrap it in double quotes" || ok=false
+    assert_not_contains "the path under the comment still resolves" "$out" "does not exist" || ok=false
+    $ok
+}
+
+y16_double_quoted_escapes_decode() {
+    local tasks; tasks=$(fresh_tasks y16)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local page="$tasks/test_escapes.md"
+    NOW="$now" python3 -c '
+import os
+from pathlib import Path
+import sys
+page = Path(sys.argv[1])
+now = os.environ["NOW"]
+text = (
+    "---\n"
+    "description: \"say \\\"hi\\\"\"\n"
+    "scope: \"test\"\n"
+    f"created: {now}\n"
+    f"updated: {now}\n"
+    "status: open\n"
+    "reported-by: Test User\n"
+    "---\n"
+    "\n"
+    "# Escapes\n"
+)
+page.write_text(text, encoding="utf-8")
+' "$page"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local got
+    got=$(python3 -c '
+import importlib.util
+import pathlib
+import sys
+spec = importlib.util.spec_from_file_location("task_lint", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = mod
+spec.loader.exec_module(mod)
+text = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")
+print(mod.parse_frontmatter(text)[0]["description"])
+print(mod._decode_quoted_scalar("\"a\\\\b\""))
+' "$LINT" "$page")
+    local ok=true
+    assert_eq "exit 0 (escaped quotes are valid)" "$rc" "0" || ok=false
+    assert_eq "description reads the escaped quotes" "$got" $'say "hi"\na\\b' || ok=false
+    $ok
+}
+
+y17_apostrophe_does_not_keep_a_later_comment() {
+    local tasks; tasks=$(fresh_tasks y17)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local page="$tasks/test_apostrophe.md"
+    emit "$page" <<EOF
+---
+description: valid task harness fixture
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: O'Brien # author
+---
+
+# Apostrophe
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local got
+    got=$(python3 -c '
+import importlib.util
+import pathlib
+import sys
+spec = importlib.util.spec_from_file_location("task_lint", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = mod
+spec.loader.exec_module(mod)
+text = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")
+print(mod.parse_frontmatter(text)[0]["reported-by"])
+' "$LINT" "$page")
+    local ok=true
+    assert_eq "exit 1 (hash after the name is still a misread)" "$rc" "1" || ok=false
+    assert_contains "quotes the provenance value" "$out" "unquoted value for reported-by" || ok=false
+    assert_contains "prescribes quoting" "$out" "wrap it in double quotes" || ok=false
+    assert_eq "parsed name drops the comment" "$got" "O'Brien" || ok=false
+    $ok
+}
+
+y18_plain_scalars_yaml_accepts_stay_clean() {
+    local ret; ret=$(y_lint_description y18 "-a no space, ?x no space, ratio 1:1")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (plain scalars YAML accepts)" "$rc" "0" || ok=false
+    assert_not_contains "no misread finding" "$out" "unquoted value for" || ok=false
+    $ok
+}
+
+###############################################################################
 # Run scenarios
 ###############################################################################
 
@@ -2171,6 +2585,25 @@ scenario rl5 "lint: every local target kind counts"             rl5_every_target
 scenario rl6 "lint: nine distinct targets stay quiet"           rl6_nine_distinct_targets_stay_quiet
 scenario rl7 "lint: fenced links do not count"                  rl7_fenced_links_do_not_count
 scenario rl8 "lint: external and mailto targets skipped"        rl8_external_and_mailto_skipped
+
+scenario y1  "lint: unquoted colon-space blocks"            y1_unquoted_colon_space_blocks
+scenario y2  "lint: unquoted hash after whitespace blocks"  y2_unquoted_hash_after_whitespace_blocks
+scenario y3  "lint: unquoted backtick start blocks"         y3_unquoted_backtick_start_blocks
+scenario y4  "lint: unquoted value ending in colon blocks"  y4_unquoted_ending_colon_blocks
+scenario y5  "lint: quoted colon and hash is clean"         y5_quoted_colon_and_hash_is_clean
+scenario y6  "lint: quoted hash keeps description length"   y6_quoted_hash_keeps_full_description_length
+scenario y7  "lint: quoted scope hash is text"              y7_quoted_scope_hash_is_text
+scenario y8  "lint: unquoted value starting with { blocks" y8_unquoted_flow_open_blocks
+scenario y9  "lint: unquoted value starting with } blocks" y9_unquoted_flow_close_blocks
+scenario y10 "lint: unquoted value starting with , blocks" y10_unquoted_flow_comma_blocks
+scenario y11 "lint: unquoted leading dash-space blocks"    y11_unquoted_leading_dash_blocks
+scenario y12 "lint: unquoted leading question-space blocks" y12_unquoted_leading_question_blocks
+scenario y13 "lint: unquoted colon followed by tab blocks" y13_unquoted_colon_tab_blocks
+scenario y14 "lint: status trailing comment is removed"    y14_status_trailing_comment_asks_to_remove_it
+scenario y15 "lint: scope trailing comment stays a path"   y15_scope_trailing_comment_stays_a_path
+scenario y16 "lint: double-quoted escapes decode"          y16_double_quoted_escapes_decode
+scenario y17 "lint: apostrophe does not keep a comment"    y17_apostrophe_does_not_keep_a_later_comment
+scenario y18 "lint: plain scalars YAML accepts stay clean" y18_plain_scalars_yaml_accepts_stay_clean
 
 scenario de1 "lint: absent design-extended is clean"           de1_absent_design_extended_is_clean
 scenario de2 "lint: non-boolean design-extended blocks"        de2_non_boolean_design_extended_blocks
