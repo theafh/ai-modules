@@ -1152,3 +1152,16 @@ pre-existing.
   divergence signs for building on `open`/`checked` or requiring the full
   behavioral suite by default)
 - index.md (summary of the lifecycle page)
+
+## [2026-10-18 22:12] update | zsh special parameters that break agent-run snippets
+
+- concepts/interpreter-and-tool-path-portability.md (zsh's read-only `status`
+  and `PATH`-tied `path` break bash snippets that reuse those names, verified
+  under zsh 5.9 and `/bin/bash`; section heading and definition widened from
+  two constructs to constructs and special parameters)
+- index.md (summary of that page, Last updated)
+
+## [2026-10-18 22:13] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing.

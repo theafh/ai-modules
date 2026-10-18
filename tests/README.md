@@ -100,14 +100,30 @@ don't bring up new harnesses under Pattern B.
   in a session: stage a fixture, let the agent run the skill, inspect
   the repository and transcript against the expectations. See
   `evals/README.md`.
-- **`git_review/`**: Pattern A. `script_tests/` implemented (25
+- **`git_review/`**: Pattern A. `script_tests/` implemented (30
   bundled-script scenarios over staged clones with real remotes, plus the
   plugin-meta lockstep checks): the ordered evidence collection, the two
   commit walks, the base-side versions of deleted files, the test merge, the
   head-against-its-upstream relationship the fast-forward decision rests on,
   the stub-`gh` thread and thread-comment pagination, the heading-range helper,
-  and the size-profile line counts (content-only, numstat-equal in range,
-  uncommitted, and per-path-fallback modes). `evals/` holds 48
+  the size-profile line counts (content-only, numstat-equal in range,
+  uncommitted, and per-path-fallback modes), and the located secret-scan hits
+  (file and new-side line, in range and uncommitted modes, including a
+  conflicted path, an unborn branch, a run started in a subdirectory, a line
+  only the index holds, an untracked file without a final newline, a path
+  whose diff driver carries a textconv and an external command, a binary file
+  read through its textconv driver and cited `(textconv)`, an untracked
+  symlink recorded as its target path, a repository with `color.diff=always`
+  and `diff.external` set, Compose map and list entries, unquoted YAML
+  entries, and Go `:=` declarations located as hits, keyword arguments on
+  lines of their own, route and URL segments, Python type annotations, YAML
+  tags, templated values, and Go expressions that draw no hit, and the
+  per-path diff fallback with a
+  non-ASCII path, with the manual fallback's extraction matched in range,
+  uncommitted, per-path, and subdirectory runs, and its per-path retry keeping
+  `unread_paths.txt` out of the working tree). Each manual-fallback block runs
+  under bash and, when it is on `PATH`, under `zsh -f`, and a copy that names
+  a variable `status` or `path` must fail the zsh run. `evals/` holds 48
   behavioral evals over 36 fixtures, run through `evals/run.py` on the
   default Cursor worker with a deterministic `grade.sh`. Forge fixtures put a stub
   `gh` on `PATH` that serves fixture JSON and logs every call, so a run that

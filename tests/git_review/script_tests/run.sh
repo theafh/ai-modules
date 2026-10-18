@@ -579,14 +579,25 @@ s15_usage_and_argument_handling() {
 
 # The unreadable_path fixture hides one changed blob from git. The collector
 # must keep the readable path in the evidence set and record the locked path as
-# unread rather than emptying the whole-range diff.
+# unread rather than emptying the whole-range diff, and the secret scan must
+# read the readable per-path diffs rather than the whole-range diff that failed.
+# A non-ASCII path, which name_status.txt shows git-quoted, must still be read
+# and scanned by the collector and by both manual-fallback per-path loops.
 s22_unreadable_path_records_unread_remainder() {
     local target repo ret ev ok=true
-    local path status renamed expect_added expect_removed actual_added actual_removed path_sum pa pr
+    local path status expect_added expect_removed actual_added actual_removed path_sum pa pr
+    local fallback collector_labeled fallback_labeled retry_block retry_out unread_file fb_shell
     target="$SCRATCH/s22"
     rm -rf "$target"
     mkdir -p "$target"
     repo=$("$HERE/../evals/fixtures/unreadable_path/setup.sh" "$target") || return 1
+    (
+        cd "$repo" || exit 1
+        printf 'readable = 3\nAWS = "AKIAIOSFODNN7EXAMPLE"\n' > src/readable.py
+        printf 'nonascii_marker = 1\nKEY = "AKIAIOSFODNN7EXAMPLE"\n' > ä.txt
+        git add src/readable.py ä.txt
+        git commit --quiet -m "readable keys"
+    ) || return 1
     ev="$target/ev"
     ret=$(collect "$repo" --base main --head widen --out "$ev" --no-fetch)
     assert_eq "exit" "${ret%%|*}" "0" || ok=false
@@ -602,14 +613,77 @@ s22_unreadable_path_records_unread_remainder() {
         "src/readable.py" || ok=false
     assert_absent "full_diff hides secret_flag" "$(cat "$ev/full_diff.txt" 2>/dev/null)" \
         "secret_flag" || ok=false
+    assert_contains "secret scan reads the readable per-path diff" \
+        "$(cat "$ev/secret_scan.txt" 2>/dev/null)" \
+        'src/readable.py:2:AWS = "AKIAIOSFODNN7EXAMPLE"' || ok=false
+    assert_contains "name_status quotes the non-ascii path" "$(cat "$ev/name_status.txt" 2>/dev/null)" \
+        '"\303\244.txt"' || ok=false
+    assert_contains "full_diff keeps the non-ascii path" "$(cat "$ev/full_diff.txt" 2>/dev/null)" \
+        "nonascii_marker" || ok=false
+    assert_eq "unread_paths lists only locked.py" "$(cat "$ev/unread_paths.txt" 2>/dev/null)" \
+        "src/locked.py" || ok=false
+    assert_contains "secret scan reads the non-ascii per-path diff" \
+        "$(cat "$ev/secret_scan.txt" 2>/dev/null)" \
+        'ä.txt:2:KEY = "AKIAIOSFODNN7EXAMPLE"' || ok=false
+
+    # The manual fallback's per-path scan finds the same hits.
+    fallback="$SKILL_DIR/references/manual_fallback.md"
+    collector_labeled=$(
+        labeled_scan_hits "$ev/secret_scan.txt" "credential_pattern_hits:" credential
+        labeled_scan_hits "$ev/secret_scan.txt" "hardcoded_home_path_hits:" home
+    )
+    collector_labeled=$(printf '%s\n' "$collector_labeled" | sed '/^$/d' | sort)
+    while IFS= read -r fb_shell; do
+        fallback_labeled=$(
+            cd "$repo" && BASE=main HEAD_REF=widen \
+                run_fallback_block "$fb_shell" "$(fallback_scan_block "$fallback")" 2>/dev/null
+        )
+        fallback_labeled=$(printf '%s\n' "$fallback_labeled" | sed '/^$/d' | sort)
+        assert_eq "per-path fallback extraction matches the collector hits under $fb_shell" \
+            "$fallback_labeled" "$collector_labeled" || ok=false
+    done < <(fallback_shells)
+
+    # The manual fallback's per-path evidence retry reads the non-ascii path,
+    # records only the locked path as unread, and writes that record outside
+    # the working tree, also when it runs from a subdirectory.
+    retry_block=$(awk '
+        /^# per-path retry when the whole-range diff fails$/ { on = 1 }
+        on && /^```$/ { exit }
+        on { print }
+    ' "$fallback")
+    while IFS= read -r fb_shell; do
+        retry_out=$(cd "$repo/src" && BASE=main HEAD_REF=widen \
+            run_fallback_block "$fb_shell" "$retry_block" 2>/dev/null)
+        assert_contains "fallback retry reads the non-ascii path under $fb_shell" \
+            "$retry_out" "nonascii_marker" || ok=false
+        unread_file=$(printf '%s\n' "$retry_out" | sed -n 's/^unread_paths\.txt: //p' | tail -1)
+        assert_eq "fallback retry lists only locked.py under $fb_shell" \
+            "$(cat "$unread_file" 2>/dev/null)" "src/locked.py" || ok=false
+        if [[ -e "$repo/unread_paths.txt" || -e "$repo/src/unread_paths.txt" ]]; then
+            log "    [fallback retry under $fb_shell wrote unread_paths.txt into the working tree]"
+            ok=false
+        fi
+        [[ -n "$unread_file" ]] && rm -rf "$(dirname "$unread_file")"
+    done < <(fallback_shells)
+
+    # A retry loop that reads into status, which zsh keeps read-only, must
+    # fail the zsh run, so the check above can catch that name.
+    if command -v zsh >/dev/null 2>&1; then
+        retry_out=$(cd "$repo/src" && BASE=main HEAD_REF=widen \
+            run_fallback_block zsh "${retry_block//name_status/status}" 2>/dev/null)
+        if [[ "$retry_out" == *nonascii_marker* ]]; then
+            log "    [zsh retry check passed with a loop that reads into status]"
+            ok=false
+        fi
+    fi
 
     # Size profile counts only the readable paths the per-path fallback kept.
     expect_added=0
     expect_removed=0
-    while IFS=$'\t' read -r status path renamed; do
-        [[ -z "$status" ]] && continue
+    while IFS= read -r -d '' status; do
+        IFS= read -r -d '' path || break
         case "$status" in
-            R*|C*) path="${renamed:-$path}" ;;
+            R*|C*) IFS= read -r -d '' path || break ;;
         esac
         grep -qxF "$path" "$ev/unread_paths.txt" 2>/dev/null && continue
         path_sum=$(git -C "$repo" diff --numstat -M "main...widen" -- "$path" 2>/dev/null |
@@ -617,7 +691,7 @@ s22_unreadable_path_records_unread_remainder() {
         pa=${path_sum%% *}; pr=${path_sum##* }
         expect_added=$((expect_added + pa))
         expect_removed=$((expect_removed + pr))
-    done < "$ev/name_status.txt"
+    done < <(git -C "$repo" diff --name-status -z -M "main...widen" 2>/dev/null)
     actual_added=$(profile_value "$ev/size_profile.txt" added_lines)
     actual_removed=$(profile_value "$ev/size_profile.txt" removed_lines)
     assert_eq "per-path fallback added_lines match readable numstat" \
@@ -1146,6 +1220,742 @@ PY
     $ok
 }
 
+# Give *.cfg a diff driver whose textconv prepends two lines and whose external
+# command prints nothing, so a scan diff that honours either one cites the
+# wrong line or loses the hit. Give *.bin a textconv driver that drops the
+# control bytes making a file binary, so its credential has a text view only
+# through the driver. Turn on color.diff=always and point diff.external at a
+# command that prints a marker instead of a diff, so an evidence or scan diff
+# that is not pinned loses its unified form. The scripts live beside the repo.
+install_diff_drivers() {
+    local root=$1 repo=$2
+    cat > "$root/prepend.sh" << 'SH'
+#!/bin/sh
+printf 'converted\nheader\n'
+cat "$1"
+SH
+    cat > "$root/silent.sh" << 'SH'
+#!/bin/sh
+exit 0
+SH
+    cat > "$root/strip.sh" << 'SH'
+#!/bin/sh
+LC_ALL=C tr -d '\000\001' < "$1"
+SH
+    cat > "$root/external.sh" << 'SH'
+#!/bin/sh
+printf 'EXTERNAL DIFF %s\n' "$1"
+SH
+    chmod +x "$root/prepend.sh" "$root/silent.sh" "$root/strip.sh" "$root/external.sh"
+    git -C "$repo" config diff.shift.textconv "'$root/prepend.sh'"
+    git -C "$repo" config diff.shift.command "'$root/silent.sh'"
+    git -C "$repo" config diff.strip.textconv "'$root/strip.sh'"
+    git -C "$repo" config color.diff always
+    git -C "$repo" config diff.external "'$root/external.sh'"
+}
+
+# Body of one secret_scan.txt section, including the two-space indent.
+scan_section() {
+    local file=$1 header=$2
+    awk -v h="$header" '
+        $0 == h { on = 1; next }
+        on && $0 !~ /^ / { exit }
+        on { print }
+    ' "$file"
+}
+
+# Each located hit's content is the new-side line of that path in the worktree,
+# or the index line for a hit marked (staged). A hit marked (textconv) counts
+# lines of the path's textconv output, and an untracked symlink's one line is
+# the path it points to.
+assert_hit_contents_match_files() {
+    local repo=$1 section=$2 hit body path line content actual staged textconv blob
+    while IFS= read -r hit; do
+        [[ -z "$hit" ]] && continue
+        body=${hit#  }
+        [[ "$body" == "none" ]] && continue
+        path=${body%%:*}
+        line=${body#*:}
+        line=${line%%:*}
+        content=${body#*:*:}
+        [[ "$path" == \"* ]] && continue
+        staged=no
+        textconv=no
+        if [[ "$line" == *" (staged)" ]]; then
+            staged=yes
+            line=${line% (staged)}
+        fi
+        if [[ "$line" == *" (textconv)" ]]; then
+            textconv=yes
+            line=${line% (textconv)}
+        fi
+        if [[ "$staged" == yes && "$textconv" == yes ]]; then
+            actual=$(git -C "$repo" cat-file --textconv ":$path" 2>/dev/null | sed -n "${line}p")
+        elif [[ "$staged" == yes ]]; then
+            actual=$(git -C "$repo" show ":$path" 2>/dev/null | sed -n "${line}p")
+        elif [[ "$textconv" == yes ]]; then
+            blob=$(git -C "$repo" hash-object -w -- "$path")
+            actual=$(git -C "$repo" cat-file --textconv --path="$path" "$blob" 2>/dev/null | sed -n "${line}p")
+        elif [[ -L "$repo/$path" ]]; then
+            actual=$(readlink "$repo/$path")
+        else
+            actual=$(sed -n "${line}p" "$repo/$path")
+        fi
+        assert_eq "content at $path:$line" "$content" "$actual" || return 1
+    done <<< "$section"
+}
+
+s25_secret_scan_locates_every_shape() {
+    local root repo ev ok=true cred home scan n aws_line blank_line
+    local two_bs one_bs
+    root="$SCRATCH/s25"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --initial-branch=main "$root/repo" || return 1
+    repo="$root/repo"
+    install_diff_drivers "$root" "$repo"
+    (
+        cd "$repo" || exit 1
+        identity
+        git config core.quotepath true
+        printf 'seed\n' > seed.txt
+        printf '*.py diff=python\n*.cfg diff=shift\n*.bin diff=strip\n' > .gitattributes
+        python3 - << 'PY'
+from pathlib import Path
+lines = ["def total():  # base +7"]
+lines.extend(f"    x{i} = {i}" for i in range(20))
+lines.append("    return 1")
+Path("func.py").write_text("\n".join(lines) + "\n")
+Path("blanks.txt").write_text("one\n\ntwo\n\nthree\n\nfour\n")
+PY
+        git add seed.txt .gitattributes func.py blanks.txt
+        git commit --quiet -m "seed"
+        git checkout --quiet -b feature
+        git config diff.mnemonicPrefix true
+        git config diff.noprefix true
+        git config diff.suppressBlankEmpty true
+        python3 - << 'PY'
+from pathlib import Path
+Path("creds.txt").write_text(
+    "\n".join([
+        "AKIAIOSFODNN7EXAMPLE",
+        "ASIAIOSFODNN7EXAMPLE",
+        "ghp_0123456789abcdef",
+        "sk-abcdefghijklmnopqrst",
+        "xoxb-0123456789ab",
+        "-----BEGIN RSA PRIVATE KEY-----",
+        'password = "hunter2xx"',
+        "sk-ant-api03-abcdefghijklmnopqrstuvwxyz",
+        "sk-proj-abcdefghijklmnopqrstuvwxyz",
+        "github_pat_abcdefghijklmnopqrstuvwxyz",
+        # Split so the committed file holds no Stripe-shaped literal, which
+        # GitHub push protection blocks; the sandbox file gets the whole key.
+        "sk_" + "live_abcdefghijklmnopqrstuvwxyz",
+        "AIzaabcdefghijklmnopqrstuvwxyz012345678",
+        'PASSWORD="hunter2hunter2"',
+        "DB_PASSWORD=hunter2hunter2",
+        '"password": "hunter2hunter2"',
+        'password = "my secret passphrase"',
+        "token: 'hunter2 hunter2'",
+        "export DB_PASSWORD=hunter2hunter2",
+        '    API_TOKEN="indentedquoted1"',
+    ]) + "\n"
+)
+Path("kwargs.py").write_text(
+    "\n".join([
+        "client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)",
+        "resp = session.get(url, token=self.access_token)",
+        "login(username=user.name, password=form.password)",
+    ]) + "\n"
+)
+Path("kwargs_multiline.py").write_text(
+    "\n".join([
+        "client = Anthropic(",
+        "    api_key=settings.ANTHROPIC_API_KEY,",
+        ")",
+        "login(",
+        "    username=user.name,",
+        "    password=form.password,",
+        ")",
+        "resp = session.get(",
+        "    url,",
+        "    token=self.access_token,",
+        ")",
+    ]) + "\n"
+)
+Path("compose.yml").write_text(
+    "\n".join([
+        "      POSTGRES_PASSWORD: supersecret123",
+        "      - POSTGRES_PASSWORD=supersecret123",
+        '  - "API_TOKEN=quotedlist123"',
+        "  db_password: hunter2hunter2",
+        "DB_PASSWORD: hunter2hunter2",
+        "  - password: s3cretpass1",
+        "  password: Tr0ub4dor&3 # rotated",
+        "  password: !vault |",
+        "  token: ${{ secrets.DEPLOY_TOKEN }}",
+        "  secret: db-credentials",
+    ]) + "\n"
+)
+Path("main.go").write_text(
+    "\n".join([
+        "package main",
+        "func creds() {",
+        '\tpassword := "hunter2hunter2"',
+        'token := "ghx0123456789abcd"',
+        'token := os.Getenv("API_TOKEN")',
+        "}",
+    ]) + "\n"
+)
+Path("settings.py").write_text(
+    "\n".join([
+        "class Settings:",
+        "    password: Optional[str] = None",
+        "    password: SecretStr",
+        "    token: str",
+    ]) + "\n"
+)
+Path("doc.bin").write_bytes(b"\x00\x01header\nAWS = 'AKIAIOSFODNN7EXAMPLE'\n")
+lines = Path("func.py").read_text().splitlines()
+lines.insert(12, "    AWS = 'AKIAIOSFODNN7EXAMPLE'")
+Path("func.py").write_text("\n".join(lines) + "\n")
+Path("my file.txt").write_text("keep\nkeep\n/home/alice/x\n")
+Path("homes.txt").write_text(
+    "/home/alice/\n"
+    "/Users/bob/\n"
+    "C:\\\\Users\\\\carol\n"
+    "\"/Users/alice\"\n"
+    "C:\\Users\\carol\\AppData\n"
+    "file:///home/erin/notes\n"
+    "HOME=/home/frank\n"
+)
+Path("routes.ts").write_text(
+    "\n".join([
+        'import Page from "@/app/home/page";',
+        'const r = await fetch("/api/Users/42");',
+        "// docs: https://example.com/home/index.html",
+    ]) + "\n"
+)
+Path("plus.txt").write_text("++ /home/bob/.ssh/id_rsa\n")
+Path("app.cfg").write_text("DB_PASSWORD=cfgsecret123\n")
+Path("quoted.txt").write_text("xoxb-quotedpath01\n")
+quoted = Path("quoted.txt")
+target = Path("\u00e4.txt")
+quoted.rename(target)
+notes = Path("docs/home/dave")
+notes.mkdir(parents=True)
+(notes / "notes.txt").write_text(
+    "TOKEN=${TOKEN}\n"
+    "API_KEY=$API_KEY\n"
+    "password = get_password()\n"
+    'password: ""\n'
+    "See tasks/task-family_autonomous-readiness-loop.md for the plan.\n"
+    "A risk-based-rollout-plan-for-regions applies.\n"
+    'export GITHUB_TOKEN="${GITHUB_TOKEN}"\n'
+)
+text = Path("blanks.txt").read_text()
+text = text.replace("three\n\nfour\n", "three\nAKIAIOSFODNN7EXAMPLE\n\nfour\n", 1)
+Path("blanks.txt").write_text(text)
+PY
+        git add -A
+        git commit --quiet -m "add secret-scan shapes"
+    ) || return 1
+    ev="$root/ev"
+    collect "$repo" --base main --head feature --no-fetch --out "$ev" >/dev/null
+    scan=$(cat "$ev/secret_scan.txt" 2>/dev/null)
+    cred=$(scan_section "$ev/secret_scan.txt" "credential_pattern_hits:")
+    home=$(scan_section "$ev/secret_scan.txt" "hardcoded_home_path_hits:")
+    two_bs=$(printf '%b' 'C:\\\\Users\\\\carol')
+    one_bs=$(printf '%b' 'C:\\Users\\carol\\AppData')
+
+    assert_contains "AKIA located" "$cred" "creds.txt:1:AKIAIOSFODNN7EXAMPLE" || ok=false
+    assert_contains "ASIA located" "$cred" "creds.txt:2:ASIAIOSFODNN7EXAMPLE" || ok=false
+    assert_contains "ghp located" "$cred" "creds.txt:3:ghp_0123456789abcdef" || ok=false
+    assert_contains "sk- located" "$cred" "creds.txt:4:sk-abcdefghijklmnopqrst" || ok=false
+    assert_contains "xoxb located" "$cred" "creds.txt:5:xoxb-0123456789ab" || ok=false
+    assert_contains "private key located" "$cred" "creds.txt:6:-----BEGIN RSA PRIVATE KEY-----" || ok=false
+    assert_contains "lowercase assignment located" "$cred" 'creds.txt:7:password = "hunter2xx"' || ok=false
+    assert_contains "anthropic key located" "$cred" "creds.txt:8:sk-ant-api03-abcdefghijklmnopqrstuvwxyz" || ok=false
+    assert_contains "openai project key located" "$cred" "creds.txt:9:sk-proj-abcdefghijklmnopqrstuvwxyz" || ok=false
+    assert_contains "github pat located" "$cred" "creds.txt:10:github_pat_abcdefghijklmnopqrstuvwxyz" || ok=false
+    assert_contains "stripe key located" "$cred" "creds.txt:11:sk_""live_abcdefghijklmnopqrstuvwxyz" || ok=false
+    assert_contains "google key located" "$cred" "creds.txt:12:AIzaabcdefghijklmnopqrstuvwxyz012345678" || ok=false
+    assert_contains "uppercase assignment located" "$cred" 'creds.txt:13:PASSWORD="hunter2hunter2"' || ok=false
+    assert_contains "unquoted env assignment located" "$cred" "creds.txt:14:DB_PASSWORD=hunter2hunter2" || ok=false
+    assert_contains "json member located" "$cred" 'creds.txt:15:"password": "hunter2hunter2"' || ok=false
+    assert_contains "spaced double-quoted passphrase located" "$cred" 'creds.txt:16:password = "my secret passphrase"' || ok=false
+    assert_contains "spaced single-quoted passphrase located" "$cred" "creds.txt:17:token: 'hunter2 hunter2'" || ok=false
+    assert_contains "exported env assignment located" "$cred" "creds.txt:18:export DB_PASSWORD=hunter2hunter2" || ok=false
+    assert_contains "indented quoted assignment located" "$cred" 'creds.txt:19:    API_TOKEN="indentedquoted1"' || ok=false
+    assert_absent "keyword arguments on their own lines draw no hit" "$scan" "kwargs_multiline.py:" || ok=false
+    assert_contains "compose map entry located" "$cred" "compose.yml:1:      POSTGRES_PASSWORD: supersecret123" || ok=false
+    assert_contains "compose list item located" "$cred" "compose.yml:2:      - POSTGRES_PASSWORD=supersecret123" || ok=false
+    assert_contains "quoted compose list item located" "$cred" 'compose.yml:3:  - "API_TOKEN=quotedlist123"' || ok=false
+    assert_contains "indented yaml entry located" "$cred" "compose.yml:4:  db_password: hunter2hunter2" || ok=false
+    assert_contains "first-column yaml entry located" "$cred" "compose.yml:5:DB_PASSWORD: hunter2hunter2" || ok=false
+    assert_contains "yaml list mapping entry located" "$cred" "compose.yml:6:  - password: s3cretpass1" || ok=false
+    assert_contains "yaml entry with a comment located" "$cred" "compose.yml:7:  password: Tr0ub4dor&3 # rotated" || ok=false
+    assert_contains "tab-indented go declaration located" "$cred" $'main.go:3:\tpassword := "hunter2hunter2"' || ok=false
+    assert_contains "go declaration located" "$cred" 'main.go:4:token := "ghx0123456789abcd"' || ok=false
+    assert_absent "python annotations draw no hit" "$scan" "settings.py:" || ok=false
+    assert_absent "yaml tag draws no hit" "$scan" "!vault" || ok=false
+    assert_absent "templated value draws no hit" "$scan" "secrets.DEPLOY_TOKEN" || ok=false
+    assert_absent "resource name draws no hit" "$scan" "db-credentials" || ok=false
+    assert_absent "go expression draws no hit" "$scan" "os.Getenv" || ok=false
+    assert_contains "binary file located through its textconv driver" "$cred" \
+        "doc.bin:2 (textconv):AWS = 'AKIAIOSFODNN7EXAMPLE'" || ok=false
+    assert_absent "binary file cites no raw line" "$cred" "doc.bin:2:" || ok=false
+    assert_eq "size profile reads the pinned diff under color and diff.external" \
+        "$(profile_value "$ev/size_profile.txt" changed_files)" \
+        "$(git -C "$repo" diff --name-only -M main...feature | wc -l | tr -d ' ')" || ok=false
+    assert_absent "evidence diff skips diff.external" "$(cat "$ev/full_diff.txt" 2>/dev/null)" "EXTERNAL DIFF" || ok=false
+    if grep -q $'\033' "$ev/full_diff.txt" "$ev/diff_stat.txt" 2>/dev/null; then
+        log "    [evidence diff or stat carries a color escape]"
+        ok=false
+    fi
+    aws_line=$(grep -n 'AKIAIOSFODNN7EXAMPLE' "$repo/func.py" | head -1 | cut -d: -f1)
+    assert_contains "function-context hunk keeps its start line" "$cred" "func.py:${aws_line}:    AWS = 'AKIAIOSFODNN7EXAMPLE'" || ok=false
+    blank_line=$(grep -n '^AKIAIOSFODNN7EXAMPLE$' "$repo/blanks.txt" | head -1 | cut -d: -f1)
+    assert_contains "blank context keeps the file line" "$cred" "blanks.txt:${blank_line}:AKIAIOSFODNN7EXAMPLE" || ok=false
+    assert_contains "conversion driver leaves the file line" "$cred" "app.cfg:1:DB_PASSWORD=cfgsecret123" || ok=false
+    grep -E -q '^@@ .* def total\(\):  # base \+7$' "$ev/full_diff.txt" || {
+        log "    [function context with +N is absent from the hunk header]"
+        ok=false
+    }
+    assert_contains "spaced filename located" "$home" "my file.txt:3:/home/alice/x" || ok=false
+    if printf '%s\n' "$home" | grep -q $'\t'; then
+        log "    [home hit path still contains a tab]"
+        ok=false
+    fi
+    assert_contains "unix home located" "$home" "homes.txt:1:/home/alice/" || ok=false
+    assert_contains "mac home located" "$home" "homes.txt:2:/Users/bob/" || ok=false
+    assert_contains "escaped windows home located" "$home" "homes.txt:3:${two_bs}" || ok=false
+    assert_contains "home without trailing slash located" "$home" 'homes.txt:4:"/Users/alice"' || ok=false
+    assert_contains "single-backslash windows home located" "$home" "homes.txt:5:${one_bs}" || ok=false
+    assert_contains "file url home located" "$home" "homes.txt:6:file:///home/erin/notes" || ok=false
+    assert_contains "assigned home located" "$home" "homes.txt:7:HOME=/home/frank" || ok=false
+    assert_contains "plus-plus home located" "$home" "plus.txt:1:++ /home/bob/.ssh/id_rsa" || ok=false
+
+    assert_contains "non-ascii path is the name on disk" "$cred" "ä.txt:1:xoxb-quotedpath01" || ok=false
+    grep -F -q '+++ "b/\303\244.txt"' "$ev/full_diff.txt" || {
+        log "    [evidence diff no longer git-quotes the non-ascii path]"
+        ok=false
+    }
+
+    n=$(printf '%s\n%s\n' "$cred" "$home" | sed -n 's/^  \([^:]*\):[0-9][0-9]*:.*/\1/p' | sort -u | wc -l | tr -d ' ')
+    if (( n < 2 )); then
+        log "    [expected at least two paths, got $n]"
+        ok=false
+    fi
+
+    assert_absent "variable reference draws no hit" "$scan" 'TOKEN=${TOKEN}' || ok=false
+    assert_absent "dollar assignment draws no hit" "$scan" 'API_KEY=$API_KEY' || ok=false
+    assert_absent "function call draws no hit" "$scan" "get_password()" || ok=false
+    assert_absent "empty value draws no hit" "$scan" 'password: ""' || ok=false
+    assert_absent "hyphenated task slug draws no hit" "$scan" "task-family_autonomous-readiness-loop" || ok=false
+    assert_absent "hyphenated prose draws no hit" "$scan" "risk-based-rollout-plan-for-regions" || ok=false
+    assert_absent "quoted variable reference draws no hit" "$scan" 'GITHUB_TOKEN="${GITHUB_TOKEN}"' || ok=false
+    assert_absent "docs home path draws no hit" "$scan" "docs/home/dave/" || ok=false
+    assert_absent "keyword api_key draws no hit" "$scan" "api_key=settings.ANTHROPIC_API_KEY" || ok=false
+    assert_absent "keyword token draws no hit" "$scan" "token=self.access_token" || ok=false
+    assert_absent "keyword password draws no hit" "$scan" "password=form.password" || ok=false
+    assert_absent "import alias home segment draws no hit" "$scan" "@/app/home/page" || ok=false
+    assert_absent "api Users segment draws no hit" "$scan" "/api/Users/42" || ok=false
+    assert_absent "url home segment draws no hit" "$scan" "example.com/home/index.html" || ok=false
+
+    assert_hit_contents_match_files "$repo" "$cred" || ok=false
+    assert_hit_contents_match_files "$repo" "$home" || ok=false
+
+    local fallback collector_labeled fallback_labeled stripped stripped_hits fb_shell scan_block
+    fallback="$SKILL_DIR/references/manual_fallback.md"
+    collector_labeled=$(
+        labeled_scan_hits "$ev/secret_scan.txt" "credential_pattern_hits:" credential
+        labeled_scan_hits "$ev/secret_scan.txt" "hardcoded_home_path_hits:" home
+    )
+    collector_labeled=$(printf '%s\n' "$collector_labeled" | sed '/^$/d' | sort)
+    scan_block=$(fallback_scan_block "$fallback")
+    while IFS= read -r fb_shell; do
+        fallback_labeled=$(
+            cd "$repo" && BASE=main HEAD_REF=feature run_fallback_block "$fb_shell" "$scan_block"
+        )
+        fallback_labeled=$(printf '%s\n' "$fallback_labeled" | sed '/^$/d' | sort)
+        assert_eq "fallback extraction matches the collector hits under $fb_shell" \
+            "$fallback_labeled" "$collector_labeled" || ok=false
+    done < <(fallback_shells)
+
+    # A textconv walk that assigns path, which zsh ties to PATH, must lose the
+    # (textconv) hit under zsh, so the check above can catch that name.
+    if command -v zsh >/dev/null 2>&1; then
+        fallback_labeled=$(
+            cd "$repo" && BASE=main HEAD_REF=feature \
+                run_fallback_block zsh "${scan_block//file_path/path}" 2>/dev/null
+        )
+        fallback_labeled=$(printf '%s\n' "$fallback_labeled" | sed '/^$/d' | sort)
+        if [[ "$fallback_labeled" == "$collector_labeled" ]]; then
+            log "    [zsh scan check passed with a textconv walk that assigns path]"
+            ok=false
+        fi
+    fi
+
+    stripped="$root/no-awk.md"
+    python3 - "$fallback" "$stripped" << 'PY'
+import pathlib, sys
+src, dst = sys.argv[1:]
+text = pathlib.Path(src).read_text()
+start = text.find("walk_added() {")
+end = text.find("\n}\n", start)
+if start < 0 or end < 0:
+    raise SystemExit("scan walker not found")
+pathlib.Path(dst).write_text(text[:start] + text[end + 3:])
+PY
+    stripped_hits=$(
+        cd "$repo" && BASE=main HEAD_REF=feature bash -c "$(fallback_scan_block "$stripped")" 2>/dev/null
+    )
+    stripped_hits=$(printf '%s\n' "$stripped_hits" | sed '/^$/d' | sort)
+    if [[ "$stripped_hits" == "$collector_labeled" ]]; then
+        log "    [fallback check passed after the awk walker was removed]"
+        ok=false
+    fi
+    $ok
+}
+
+s26_secret_scan_locates_uncommitted_shapes() {
+    local root repo ev ok=true cred home nul_content nul_locs nul_hits
+    local unborn unborn_ev unborn_cred sub_ev sub_cred sub_home collector_labeled fallback_labeled
+    local fallback_sub_labeled fb_shell scan_block
+    root="$SCRATCH/s26"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --initial-branch=main "$root/repo" || return 1
+    repo="$root/repo"
+    install_diff_drivers "$root" "$repo"
+    (
+        cd "$repo" || exit 1
+        identity
+        printf 'keep\n' > tracked.txt
+        printf 'x = 1\n' > staged_only.py
+        printf '*.cfg diff=shift\n*.bin diff=strip\n' > .gitattributes
+        printf 'keep\n' > app.cfg
+        printf 'keep\n' > staged.cfg
+        printf '\000\001head\n' > doc.bin
+        printf '\000\001keep\n' > staged.bin
+        git add tracked.txt staged_only.py .gitattributes app.cfg staged.cfg doc.bin staged.bin
+        git commit --quiet -m "seed"
+        printf 'a\nb\n' > conf.txt
+        git add conf.txt
+        git commit --quiet -m "conf"
+        printf 'keep\nPASSWORD="hunter2hunter2"\n' > tracked.txt
+        git add tracked.txt
+        printf 'a\nPASSWORD="hunter2hunter2"\nb\n' > conf.txt
+        git add conf.txt
+        printf 'n1\nn2\nn3\nn4\na\nPASSWORD="hunter2hunter2"\nb\n' > conf.txt
+        printf 'x = 1\nAWS = "AKIAIOSFODNN7EXAMPLE"\n' > staged_only.py
+        git add staged_only.py
+        printf 'x = 1\n' > staged_only.py
+        printf 'DB_PASSWORD=cfgworktree1\nkeep\n' > app.cfg
+        printf 'keep\nTOKEN=cfgstagedonly1\n' > staged.cfg
+        git add staged.cfg
+        printf 'keep\n' > staged.cfg
+        printf '\000\001head\nAWS = "AKIAIOSFODNN7EXAMPLE"\n' > doc.bin
+        printf '\000\001keep\nTOKEN=binstagedonly1\n' > staged.bin
+        git add staged.bin
+        printf '\000\001keep\n' > staged.bin
+        mkdir -p "$root/outside"
+        printf 'aws_secret = "outsidevalue123456"\n' > "$root/outside/creds"
+        ln -s "$root/outside/creds" linked_creds
+        ln -s /Users/linkowner/.aws/credentials linked_home
+        printf 'one\ntwo' > eof.txt
+        printf '/Users/bob/\n' > fresh.txt
+        git config core.quotepath true
+        python3 - << 'PY'
+from pathlib import Path
+Path("\u00e4-untracked.txt").write_text("/Users/quoteduntracked/\n")
+PY
+    ) || return 1
+    ev="$root/ev"
+    collect "$repo" --uncommitted --no-fetch --out "$ev" >/dev/null
+    cred=$(scan_section "$ev/secret_scan.txt" "credential_pattern_hits:")
+    home=$(scan_section "$ev/secret_scan.txt" "hardcoded_home_path_hits:")
+    assert_contains "staged shape located" "$cred" 'tracked.txt:2:PASSWORD="hunter2hunter2"' || ok=false
+    assert_contains "partially staged shape uses the worktree line" "$cred" 'conf.txt:6:PASSWORD="hunter2hunter2"' || ok=false
+    assert_contains "untracked shape located from line 1" "$home" "fresh.txt:1:/Users/bob/" || ok=false
+    assert_contains "quoted untracked name located" "$home" "ä-untracked.txt:1:/Users/quoteduntracked/" || ok=false
+    assert_contains "index-only shape cites its index line" "$cred" \
+        'staged_only.py:2 (staged):AWS = "AKIAIOSFODNN7EXAMPLE"' || ok=false
+    assert_absent "a staged line still in the worktree draws no staged hit" "$cred" "tracked.txt:2 (staged)" || ok=false
+    assert_absent "a partially staged line in the worktree draws no staged hit" "$cred" "conf.txt:2 (staged)" || ok=false
+    assert_absent "a file without a final newline keeps the next file's hits" "$home" "eof.txt:" || ok=false
+    assert_contains "conversion driver leaves the worktree line" "$cred" "app.cfg:1:DB_PASSWORD=cfgworktree1" || ok=false
+    assert_contains "conversion driver leaves the index line" "$cred" \
+        "staged.cfg:2 (staged):TOKEN=cfgstagedonly1" || ok=false
+    assert_contains "worktree binary located through its textconv driver" "$cred" \
+        'doc.bin:2 (textconv):AWS = "AKIAIOSFODNN7EXAMPLE"' || ok=false
+    assert_contains "index-only binary located through its textconv driver" "$cred" \
+        "staged.bin:2 (textconv) (staged):TOKEN=binstagedonly1" || ok=false
+    assert_contains "untracked symlink records its target path" "$home" \
+        "linked_home:1:/Users/linkowner/.aws/credentials" || ok=false
+    assert_absent "symlink target content stays out of the scan" "$(cat "$ev/secret_scan.txt" 2>/dev/null)" \
+        "outsidevalue" || ok=false
+    assert_absent "symlink target content stays out of the evidence" "$(cat "$ev/worktree_diff.txt" 2>/dev/null)" \
+        "outsidevalue" || ok=false
+    assert_absent "working-tree evidence skips diff.external" "$(cat "$ev/worktree_diff.txt" 2>/dev/null)" \
+        "EXTERNAL DIFF" || ok=false
+    if grep -q $'\033' "$ev/worktree_diff.txt" 2>/dev/null; then
+        log "    [working-tree evidence carries a color escape]"
+        ok=false
+    fi
+    assert_hit_contents_match_files "$repo" "$cred" || ok=false
+    assert_hit_contents_match_files "$repo" "$home" || ok=false
+    collector_labeled=$(
+        labeled_scan_hits "$ev/secret_scan.txt" "credential_pattern_hits:" credential
+        labeled_scan_hits "$ev/secret_scan.txt" "hardcoded_home_path_hits:" home
+    )
+    collector_labeled=$(printf '%s\n' "$collector_labeled" | sed '/^$/d' | sort)
+    scan_block=$(fallback_scan_block "$SKILL_DIR/references/manual_fallback.md")
+    while IFS= read -r fb_shell; do
+        fallback_labeled=$(
+            cd "$repo" && SCAN_MODE=uncommitted run_fallback_block "$fb_shell" "$scan_block"
+        )
+        fallback_labeled=$(printf '%s\n' "$fallback_labeled" | sed '/^$/d' | sort)
+        assert_eq "uncommitted fallback extraction matches the collector hits under $fb_shell" \
+            "$fallback_labeled" "$collector_labeled" || ok=false
+    done < <(fallback_shells)
+    nul_content="$root/nul_content"
+    nul_locs="$root/nul_locs"
+    printf 'DB_PASSWORD=hunter2hunter2\n' > "$nul_content"
+    printf 'bin\0bin\n' >> "$nul_content"
+    printf 'env.txt:1\nbin.dat:2\n' > "$nul_locs"
+    nul_hits=$(bash -c "$(awk '/^scan_pattern_hits\(\)/,/^}$/' "$COLLECT")
+scan_pattern_hits 'DB_PASSWORD=hunter2hunter2' $(printf '%q' "$nul_content") $(printf '%q' "$nul_locs")")
+    assert_contains "a NUL byte does not hide a text hit" "$nul_hits" "env.txt:1:DB_PASSWORD=hunter2hunter2" || ok=false
+    unborn="$root/unborn"
+    unborn_ev="$root/unborn_ev"
+    git init --quiet --initial-branch=main "$unborn" || return 1
+    (
+        cd "$unborn" || exit 1
+        printf 'AWS = "AKIAIOSFODNN7EXAMPLE"\n' > staged.py
+        git add staged.py
+    ) || return 1
+    collect "$unborn" --uncommitted --no-fetch --out "$unborn_ev" >/dev/null
+    unborn_cred=$(scan_section "$unborn_ev/secret_scan.txt" "credential_pattern_hits:")
+    assert_contains "unborn branch scans staged content" "$unborn_cred" 'staged.py:1:AWS = "AKIAIOSFODNN7EXAMPLE"' || ok=false
+    mkdir -p "$repo/nested"
+    while IFS= read -r fb_shell; do
+        fallback_sub_labeled=$(
+            cd "$repo/nested" && SCAN_MODE=uncommitted run_fallback_block "$fb_shell" "$scan_block"
+        )
+        fallback_sub_labeled=$(printf '%s\n' "$fallback_sub_labeled" | sed '/^$/d' | sort)
+        assert_eq "fallback run from a subdirectory matches the collector hits under $fb_shell" \
+            "$fallback_sub_labeled" "$collector_labeled" || ok=false
+    done < <(fallback_shells)
+    sub_ev="$root/sub_ev"
+    (cd "$repo/nested" && "$COLLECT" --uncommitted --no-fetch --out "$sub_ev") >/dev/null
+    sub_cred=$(scan_section "$sub_ev/secret_scan.txt" "credential_pattern_hits:")
+    sub_home=$(scan_section "$sub_ev/secret_scan.txt" "hardcoded_home_path_hits:")
+    assert_contains "subdirectory run locates a root staged line" "$sub_cred" 'conf.txt:6:PASSWORD="hunter2hunter2"' || ok=false
+    assert_contains "subdirectory run locates a root untracked file" "$sub_home" "fresh.txt:1:/Users/bob/" || ok=false
+    grep -q 'fresh.txt' "$sub_ev/worktree_diff.txt" || {
+        log "    [subdirectory run omitted a root untracked file from the working-tree diff]"
+        ok=false
+    }
+    $ok
+}
+
+s27_secret_scan_reads_conflicted_path_against_head() {
+    local root repo ev ok=true scan diff expect_line
+    root="$SCRATCH/s27"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --initial-branch=main "$root/repo" || return 1
+    repo="$root/repo"
+    (
+        cd "$repo" || exit 1
+        identity
+        printf 'base\n' > both.txt
+        git add both.txt
+        git commit --quiet -m "seed"
+        git checkout --quiet -b left
+        printf 'base\nASIAIOSFODNN7EXAMPLE\n' > both.txt
+        git add both.txt
+        git commit --quiet -m "left"
+        git checkout --quiet main
+        git checkout --quiet -b right
+        printf 'base\nAKIAIOSFODNN7EXAMPLE\n' > both.txt
+        git add both.txt
+        git commit --quiet -m "right"
+        git checkout --quiet left
+        git merge right >/dev/null 2>&1 || true
+        git status --porcelain | grep -q '^UU both.txt$' || exit 1
+    ) || return 1
+    ev="$root/ev"
+    collect "$repo" --uncommitted --no-fetch --out "$ev" >/dev/null
+    scan=$(cat "$ev/secret_scan.txt" 2>/dev/null)
+    diff=$(cat "$ev/worktree_diff.txt" 2>/dev/null)
+    expect_line=$(grep -n 'AKIAIOSFODNN7EXAMPLE' "$repo/both.txt" | head -1 | cut -d: -f1)
+    assert_contains "working-tree evidence keeps the combined diff" "$diff" "diff --cc both.txt" || ok=false
+    assert_contains "working-tree evidence keeps the combined hunk" "$diff" "@@@" || ok=false
+    assert_contains "result-side shape located" "$scan" "both.txt:${expect_line}:AKIAIOSFODNN7EXAMPLE" || ok=false
+    assert_contains "non-result shape is in the diff" "$diff" "ASIAIOSFODNN7EXAMPLE" || ok=false
+    assert_absent "non-result shape draws no hit" "$scan" "ASIAIOSFODNN7EXAMPLE" || ok=false
+    assert_hit_contents_match_files "$repo" "$(scan_section "$ev/secret_scan.txt" "credential_pattern_hits:")" || ok=false
+    assert_hit_contents_match_files "$repo" "$(scan_section "$ev/secret_scan.txt" "hardcoded_home_path_hits:")" || ok=false
+    $ok
+}
+
+s28_secret_scan_writes_none_when_nothing_matches() {
+    local root repo ev scan
+    root="$SCRATCH/s28"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --initial-branch=main "$root/repo" || return 1
+    repo="$root/repo"
+    (
+        cd "$repo" || exit 1
+        identity
+        printf 'seed\n' > readme.txt
+        git add readme.txt
+        git commit --quiet -m "seed"
+        git checkout --quiet -b feature
+        printf 'hello world\n' > readme.txt
+        git add readme.txt
+        git commit --quiet -m "plain edit"
+    ) || return 1
+    ev="$root/ev"
+    collect "$repo" --base main --head feature --no-fetch --out "$ev" >/dev/null
+    scan=$(cat "$ev/secret_scan.txt" 2>/dev/null)
+    assert_eq "both sections are none" "$scan" "$(printf '%s\n' \
+        "credential_pattern_hits:" \
+        "  none" \
+        "hardcoded_home_path_hits:" \
+        "  none")"
+}
+
+assigned_pattern() {
+    local name=$1 quoted
+    quoted=$(sed -n "s/^${name}='\\(.*\\)'\$/\\1/p" "$COLLECT")
+    if [[ -n "$quoted" ]]; then
+        printf '%s' "$quoted"
+        return 0
+    fi
+    awk -v name="$name" '
+        index($0, "read -r " name " << ") == 1 { take = 1; next }
+        take { print; exit }
+    ' "$COLLECT"
+}
+
+patterns_present_in() {
+    local file=$1 cred=$2 home=$3
+    grep -F -q -- "$cred" "$file" && grep -F -q -- "$home" "$file"
+}
+
+fallback_scan_block() {
+    awk '
+        /^The credential and home-path scan over the added lines:/ { want = 1 }
+        want && /^```bash$/ { fence = 1; next }
+        fence && /^```$/ { exit }
+        fence { print }
+    ' "$1"
+}
+
+# The manual fallback's blocks run as written in bash and in zsh, the default
+# macOS shell. A scenario that runs a block runs it once per shell present, so
+# a variable named after a zsh special parameter, such as status or path, fails
+# that scenario. zsh -f skips the operator's startup files.
+fallback_shells() {
+    printf 'bash\n'
+    if command -v zsh >/dev/null 2>&1; then
+        printf 'zsh\n'
+    else
+        log "    [zsh is not on PATH; the fallback blocks ran under bash only]"
+    fi
+}
+
+run_fallback_block() {
+    local fb_shell=$1 block=$2
+    case "$fb_shell" in
+        zsh) zsh -f -c "$block" ;;
+        *) bash -c "$block" ;;
+    esac
+}
+
+labeled_scan_hits() {
+    local file=$1 section=$2 label=$3 body
+    body=$(scan_section "$file" "$section")
+    printf '%s\n' "$body" | awk -v label="$label" '
+        /^  none$/ { next }
+        /^  / { sub(/^  /, label " "); print }
+    '
+}
+
+s29_secret_scan_patterns_match_manual_fallback() {
+    local ok=true cred home fallback copy n_cred n_home passage anchor
+    fallback="$SKILL_DIR/references/manual_fallback.md"
+    cred=$(assigned_pattern CREDENTIAL_PATTERN)
+    home=$(assigned_pattern HOME_PATH_PATTERN)
+    [[ -n "$cred" && -n "$home" ]] || {
+        log "    [pattern assignment missing]"
+        return 1
+    }
+    patterns_present_in "$COLLECT" "$cred" "$home" || {
+        log "    [patterns missing from the collector]"
+        ok=false
+    }
+    patterns_present_in "$fallback" "$cred" "$home" || {
+        log "    [patterns missing from the manual fallback]"
+        ok=false
+    }
+    n_cred=$(grep -F -c -- "$cred" "$COLLECT")
+    n_home=$(grep -F -c -- "$home" "$COLLECT")
+    assert_eq "credential pattern appears once" "$n_cred" "1" || ok=false
+    assert_eq "home-path pattern appears once" "$n_home" "1" || ok=false
+    grep -q 'diff_with_header_window added' "$COLLECT" || {
+        log "    [collect_secret_scan does not call the header helper]"
+        ok=false
+    }
+    grep -q 'diff_with_header_window counts' "$COLLECT" || {
+        log "    [collect_size_profile does not call the header helper]"
+        ok=false
+    }
+    if grep -F -q -- "grep -v '^+++'" "$COLLECT"; then
+        log "    [collector still filters with grep -v '^+++']"
+        ok=false
+    fi
+    if grep -F -q -- "grep -v '^\+\+\+'" "$fallback"; then
+        log "    [manual fallback still filters with grep -v '^+++']"
+        ok=false
+    fi
+    if grep -F -q -- 'AKIA[0-9A-Z]{16}|-----BEGIN' "$fallback"; then
+        log "    [manual fallback still has the short alternation]"
+        ok=false
+    fi
+    passage=$(awk '
+        /^The credential and home-path scan over the added lines:/ { on = 1 }
+        on { print }
+        on && /^The diff size and the binary and generated share:/ { exit }
+    ' "$fallback")
+    for anchor in 'diff --git' '+++' '@@'; do
+        if [[ "$passage" != *"$anchor"* ]]; then
+            log "    [scan passage missing anchor: $anchor]"
+            ok=false
+        fi
+    done
+
+    mkdir -p "$SCRATCH/s29"
+    copy="$SCRATCH/s29/no-credential.md"
+    grep -F -v -- "$cred" "$fallback" > "$copy"
+    if patterns_present_in "$copy" "$cred" "$home"; then
+        log "    [fallback check passed after the credential pattern was removed]"
+        ok=false
+    fi
+    copy="$SCRATCH/s29/no-home.md"
+    grep -F -v -- "$home" "$fallback" > "$copy"
+    if patterns_present_in "$copy" "$cred" "$home"; then
+        log "    [fallback check passed after the home-path pattern was removed]"
+        ok=false
+    fi
+    $ok
+}
+
 # --- run ----------------------------------------------------------------------
 
 scenario s1  "fetch precedes the three-dot diff"                      s1_fetches_before_the_three_dot_diff
@@ -1169,12 +1979,22 @@ scenario s18 "range errors and the heading listing"                   s18_range_
 scenario s19 "the same heading twice is that section alone"           s19_single_heading_range_is_that_section_alone
 scenario s20 "head_sync reports the upstream relationship"            s20_head_sync_reports_the_upstream_relationship
 scenario s21 "delta rereview fixture and tag grader fail branches" s21_delta_rereview_tag_grader
-scenario s22 "unreadable path records unread remainder and keeps readable diffs" \
+scenario s22 "unreadable path records unread remainder and keeps and scans readable diffs" \
     s22_unreadable_path_records_unread_remainder
 scenario s23 "push_approval logs the push, scopes TMPDIR, and grades order fail branches" \
     s23_push_approval_order_proofs
 scenario s24 "size profile line counts match numstat and keep ---/+++ content lines" \
     s24_size_profile_line_counts_match_numstat
+scenario s25 "secret scan locates every keep-set and added shape" \
+    s25_secret_scan_locates_every_shape
+scenario s26 "secret scan locates staged, index-only, and untracked shapes" \
+    s26_secret_scan_locates_uncommitted_shapes
+scenario s27 "secret scan reads a conflicted path against HEAD" \
+    s27_secret_scan_reads_conflicted_path_against_head
+scenario s28 "secret scan writes none when nothing matches" \
+    s28_secret_scan_writes_none_when_nothing_matches
+scenario s29 "secret-scan patterns match the manual fallback" \
+    s29_secret_scan_patterns_match_manual_fallback
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

@@ -642,6 +642,7 @@ case "$eval_id" in
     check "the credential-shaped line is named" \
         says_regex "AKIA|ACCESS_KEY|access.key|credential"
     check "the hardcoded home path is named" says "/home/alice"
+    check "the report names src/settings.py" says "src/settings.py"
     ;;
   21)
     check "the binary file is named" says "logo.png"

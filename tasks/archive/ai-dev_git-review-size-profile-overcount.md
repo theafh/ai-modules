@@ -2,7 +2,7 @@
 description: Make git_review's size profile count content lines only (numstat-equal in range and uncommitted), prove via a new range scenario plus s11/s22, and keep tests/README.md and tests/CLAUDE.md current.
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-06T13:09:42
-updated: 2026-10-08T09:06:13
+updated: 2026-10-18T15:42:34
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -53,7 +53,7 @@ Prove the counts in `tests/git_review/script_tests/run.sh` with three changes:
 
 Each assertion computes its expected values in its own sandbox, so the test pins no count. Keep the `git_review/` entries in `tests/README.md` and `tests/CLAUDE.md` current with the added coverage, per the standing testing rules.
 
-**Out of scope:** the added-line filter and the patterns in `collect_secret_scan`, which [ai-dev_git-review-secret-scan-gaps.md](../ai-dev_git-review-secret-scan-gaps.md) owns.
+**Out of scope:** the added-line filter and the patterns in `collect_secret_scan`, which [ai-dev_git-review-secret-scan-gaps.md](ai-dev_git-review-secret-scan-gaps.md) owns.
 
 ## Acceptance
 

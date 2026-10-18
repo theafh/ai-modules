@@ -1,7 +1,7 @@
 ---
 title: Interpreter and tool-path portability
 created: 2026-10-03
-updated: 2026-10-13
+updated: 2026-10-18
 checked: 2026-10-03
 type: concept
 tags: [portability, skill, authoring]
@@ -20,13 +20,14 @@ portable bundled script must meet: the stock macOS bash and python3, the licence
 reason bash stays at 3.2, the login-shell `PATH` mechanism that hides a newer
 build from non-login shells, and the constructs that fail on the stock bash. A
 bundled script runs under the interpreter its shebang line names. Two zsh
-constructs therefore form a separate case: they misfire in command lines that an
-agent runs directly in its shell tool.
+constructs and two zsh special parameters therefore form a separate case: they
+misfire in command lines and snippets that an agent runs directly in its shell
+tool.
 
 The shipped `harness_portability` skill carries the bash floor, the rule for
 `PATH` in non-login shells, and the list that pairs each failing construct with
 a substitute. It has no rule yet on the stock python3's version or on the zsh
-constructs. The backlog carries the work to record those observations in the
+constructs and special parameters. The backlog carries the work to record those observations in the
 skill's references. This page holds the dated evidence for both the rules and
 the observations.
 [Deciding where knowledge belongs](../procedures/deciding-where-knowledge-belongs.md)
@@ -116,7 +117,7 @@ in the `harness_portability` skill's shell-features policy rule, where a
 reviewer applies them at authoring time. [Skill family architecture](skill-family-architecture.md) explains why
 that operative content travels with the skill rather than only with this wiki.
 
-### Two zsh constructs that misfire
+### zsh constructs and special parameters that misfire
 
 The agent shells observed on macOS run zsh, where two constructs misfire without
 an error. The first is an ANSI-C quoted alternation for grep, such as
@@ -128,6 +129,18 @@ The second is `${PIPESTATUS[0]}`, which expands to nothing under zsh
 Verified on 4 October 2026: under `/bin/bash` 3.2.57 the alternation keeps its
 backslash and grep matches, and `${PIPESTATUS[0]}` holds the first command's
 status. Under zsh 5.9 the backslash drops and `${PIPESTATUS[0]}` stays empty.
+
+Two zsh special parameters break a bash snippet outright when it uses their
+names as ordinary variables. `status` is read-only in zsh, because it mirrors
+`$?`, so `read -r -d '' status` stops the snippet with
+`read-only variable: status`. `path` is the array zsh ties to `PATH`, so
+`local path` or `path=…` inside a function empties `PATH`, and the function's
+next external command fails with `command not found: git`. The second failure
+is quiet when the snippet discards stderr, because the rest of its output still
+looks complete. A snippet meant to run in an agent's shell tool therefore keeps
+its variable names clear of zsh's special parameters. Verified on 18 October
+2026 under zsh 5.9 on macOS, in a Claude Code session whose shell tool ran
+`/bin/zsh`, where the same snippets ran correctly under `/bin/bash`.
 
 ## Open questions
 
@@ -151,6 +164,10 @@ package-manager entry depends on a login profile.
   3 October 2026: version probe plus one invocation per construct above.
 - Direct execution of the ANSI-C quoted alternation and `${PIPESTATUS[0]}` under
   `/bin/bash` 3.2.57 and zsh 5.9 on macOS, 4 October 2026.
+- Direct execution of the git_review skill's `references/manual_fallback.md`
+  blocks under `/bin/bash` and `zsh -f` on macOS, 18 October 2026, before and
+  after their `status` and `path` variables were renamed; its script tests under
+  `tests/git_review/script_tests/` now run those blocks under both shells.
 - The bash licence and vendor-shipping constraint as stated in the macOS stock
   interpreter situation the deployment rewrite already relied on.
 - Direct execution under `/bin/bash` 3.2.57 and bash 5.3.9 on macOS, 9 and

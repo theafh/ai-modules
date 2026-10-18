@@ -24,6 +24,42 @@ DO_FETCH=yes
 # the count and the path listing so the two never disagree.
 GENERATED_PATTERN='(_generated\.|\.generated\.|_pb2\.py|\.pb\.go|/vendor/|/node_modules/|/dist/|\.min\.(js|css)|\.lock|\.snap)'
 
+# One assignment each, identical to the strings in references/manual_fallback.md.
+# A quoted assignment after =, :, or Go's := matches a value of eight or more
+# characters, and that value may contain spaces. A value that starts with $
+# stays a variable reference, quoted or not, and an unquoted Go expression
+# after := stays out. An unquoted KEY=value opens its line, after an optional
+# export or an optional YAML list dash such as a Compose environment item, so
+# a keyword argument stays out of the scan, also one a formatter put on a line
+# of its own. An indented assignment still matches when its value is quoted.
+# An unquoted YAML key: value matches when its bare value runs to the end of
+# the line or to a # comment, opens with a letter or digit, holds eight or
+# more characters free of quotes, $, brackets, braces, parentheses, angle
+# brackets, |, commas, and semicolons, and contains a digit or one of
+# !@%^&*+=~. That keeps a type annotation such as SecretStr or Optional[str],
+# a ${{ }} template, and a !vault tag out of the scan. An sk- key
+# starts at a word boundary. A Unix home path starts the line or follows a
+# character other than a letter, digit, ., _, @, or -, so a route, an import
+# alias, or a URL segment named home or Users stays out. The credential
+# pattern is a heredoc so its quote characters stay one greppable span.
+read -r CREDENTIAL_PATTERN << 'END_CREDENTIAL_PATTERN'
+AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,}|(^|[^A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}|sk_live_[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[A-Za-z0-9_-]{35}|-----BEGIN [A-Z ]*PRIVATE KEY-----|[^[:alnum:][:space:]]?[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|secret|SECRET|password|PASSWORD|passwd|PASSWD|token|TOKEN)[^[:alnum:][:space:]]?[[:space:]]*(:=|[:=])[[:space:]]*[^[:alnum:][:space:]:=$][^$[:space:]][^[:space:]]{7,}|^([[:space:]]*-[[:space:]]+"?|export[[:space:]]+)?[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|secret|SECRET|password|PASSWORD|passwd|PASSWD|token|TOKEN)=[^$"'[:space:]][^[:space:]]{7,}|(api[_-]?key|API[_-]?KEY|secret|SECRET|password|PASSWORD|passwd|PASSWD|token|TOKEN)[[:space:]]*(:=|[:=])[[:space:]]*["'][^"'$][^"']{7,}|^[[:space:]]*(-[[:space:]]+)?[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|secret|SECRET|password|PASSWORD|passwd|PASSWD|token|TOKEN)[[:space:]]*:[[:space:]]+([[:alnum:]][^][:space:]"'$(){}<>|,;#[]{6,}[0-9!@%^&*+=~][^][:space:]"'$(){}<>|,;#[]*|[[:alnum:]][^][:space:]"'$(){}<>|,;#[]*[0-9!@%^&*+=~][^][:space:]"'$(){}<>|,;#[]{6,}|[0-9][^][:space:]"'$(){}<>|,;#[]{7,})([[:space:]]+#.*)?[[:space:]]*$
+END_CREDENTIAL_PATTERN
+HOME_PATH_PATTERN='((^|[^A-Za-z0-9._@-])(/home/[A-Za-z0-9._-]+/?|/Users/[A-Za-z0-9._-]+/?)|C:\\\\Users\\\\[A-Za-z0-9._-]+|C:\\Users\\[A-Za-z0-9._-]+)'
+
+# Pin the patch format of every diff the collector parses or the model reads.
+# a/ and b/ keep diff.mnemonicPrefix and diff.noprefix from changing the
+# headers that b_path and the size-profile path listing read. --no-color keeps
+# color.diff=always from putting an escape sequence before a line's first
+# character, and --no-ext-diff keeps diff.external and a driver's diff command
+# from replacing the unified diff.
+DIFF_FORMAT=(--src-prefix=a/ --dst-prefix=b/ --no-color --no-ext-diff)
+
+# The scan cites each hit at its line in the file, so its main diffs skip
+# textconv drivers, whose output numbers a converted text. A binary file whose
+# only text view is its textconv driver gets a second pass, cited (textconv).
+SCAN_DIFF_FLAGS=(--no-textconv)
+
 usage() {
     cat <<'USAGE'
 collect_review_evidence.sh - collect review evidence into a scratch directory.
@@ -184,17 +220,21 @@ collect_head_sync() {
     } | write_and_record head_sync.txt "the head against its own upstream, which decides the fast-forward"
 }
 
-# Walk name-status rows and emit the head-side path of each change. Renames
-# contribute the new path; every other status contributes its single path.
-changed_paths_from_name_status() {
-    local status path renamed_to
-    while IFS=$'\t' read -r status path renamed_to; do
-        [[ -z "$status" ]] && continue
-        case "$status" in
-            R*|C*) printf '%s\n' "${renamed_to:-$path}" ;;
-            *) printf '%s\n' "$path" ;;
-        esac
-    done < "$OUT/name_status.txt"
+# Emit the head-side path of each change, each ended by a NUL. The walk reads
+# git's -z name-status, which prints every path verbatim, so a path that
+# name_status.txt shows git-quoted, such as a non-ASCII name, still works as a
+# pathspec. Renames and copies contribute the new path; every other status
+# contributes its single path.
+changed_head_paths() {
+    local status path
+    git diff --name-status -z -M --find-renames "$BASE...$HEAD_REF" 2>/dev/null |
+        while IFS= read -r -d '' status; do
+            IFS= read -r -d '' path || break
+            case "$status" in
+                R*|C*) IFS= read -r -d '' path || break ;;
+            esac
+            printf '%s\0' "$path"
+        done
 }
 
 # When the whole-range diff fails because one blob is missing, keep every
@@ -207,20 +247,20 @@ collect_range_diffs_per_path() {
     : > "$OUT/removed_hunks.txt"
     : > "$OUT/unread_paths.txt"
 
-    while IFS= read -r path; do
+    while IFS= read -r -d '' path; do
         [[ -z "$path" ]] && continue
-        if git diff -M --find-renames "$BASE...$HEAD_REF" -- "$path" \
+        if git diff -M --find-renames "${DIFF_FORMAT[@]}" "$BASE...$HEAD_REF" -- "$path" \
                 >> "$OUT/full_diff.txt" 2>/dev/null; then
-            git diff --stat "$BASE...$HEAD_REF" -- "$path" \
+            git diff --stat --no-color "$BASE...$HEAD_REF" -- "$path" \
                 >> "$OUT/diff_stat.txt" 2>/dev/null || true
-            git diff -M "$BASE...$HEAD_REF" -- "$path" 2>/dev/null |
+            git diff -M "${DIFF_FORMAT[@]}" "$BASE...$HEAD_REF" -- "$path" 2>/dev/null |
                 grep -E '^(diff --git |---|\+\+\+|-)' \
                 >> "$OUT/removed_hunks.txt" || true
         else
             printf '%s\n' "$path" >> "$OUT/unread_paths.txt"
             unread=1
         fi
-    done < <(changed_paths_from_name_status)
+    done < <(changed_head_paths)
 
     record "full_diff.txt" "the complete three-dot diff, readable paths kept when one path is unread"
     record "diff_stat.txt" "the three-dot diff stat, readable paths kept when one path is unread"
@@ -260,12 +300,12 @@ collect_range() {
         write_and_record commits_first_parent.txt "the branch commits along the first parent, so in-branch merges from the base stay visible"
 
     step "three-dot diff stat and full diff"
-    if git diff -M --find-renames "$BASE...$HEAD_REF" > "$OUT/full_diff.txt" 2>/dev/null; then
-        git diff --stat "$BASE...$HEAD_REF" 2>/dev/null |
+    if git diff -M --find-renames "${DIFF_FORMAT[@]}" "$BASE...$HEAD_REF" > "$OUT/full_diff.txt" 2>/dev/null; then
+        git diff --stat --no-color "$BASE...$HEAD_REF" 2>/dev/null |
             write_and_record diff_stat.txt "the three-dot diff stat"
         record "full_diff.txt" "the complete three-dot diff"
         step "removed hunks view"
-        git diff -M "$BASE...$HEAD_REF" 2>/dev/null |
+        git diff -M "${DIFF_FORMAT[@]}" "$BASE...$HEAD_REF" 2>/dev/null |
             grep -E '^(diff --git |---|\+\+\+|-)' |
             write_and_record removed_hunks.txt "every removed line, for the retirement heading"
     else
@@ -321,30 +361,272 @@ collect_test_merge() {
     } | write_and_record conflicts.txt "whether the test merge conflicts, and which files do"
 }
 
+# Walk one unified or combined diff.
+# A --- or +++ line is a header only between a diff --git or diff --cc opener
+# and that file's +++ path header, so a later content line that begins with
+# those characters stays content. mode=counts prints "added removed" from the
+# first character of each content line, which is what collect_size_profile
+# matches to numstat, including a combined diff from the working-tree file.
+# mode=added numbers a unified diff: each added line loses its leading +,
+# numbering starts at the + field inside the @ runs of each @@ hunk, and an
+# untracked file with no hunk header starts at 1. A blank context line, which
+# diff.suppressBlankEmpty prints with no leading space, advances that number.
+diff_with_header_window() {
+    local mode=$1 file=$2 content=${3:-} locs=${4:-}
+    awk -v mode="$mode" -v content="$content" -v locs="$locs" '
+        function start_file() {
+            in_header = 1
+            path = ""
+            lineno = 0
+            past_hunk = 0
+        }
+        function b_path(line,   p) {
+            p = line
+            sub(/^\+\+\+ /, "", p)
+            sub(/\t$/, "", p)
+            if (substr(p, 1, 1) == "\"") sub(/^"b\//, "\"", p)
+            else sub(/^b\//, "", p)
+            return p
+        }
+        function hunk_start(line,   span, n, rest) {
+            span = line
+            if (match(line, /^@+ [^@]*@+/)) span = substr(line, RSTART, RLENGTH)
+            rest = span
+            n = 0
+            while (match(rest, /\+[0-9]+/)) {
+                n = substr(rest, RSTART + 1, RLENGTH - 1) + 0
+                rest = substr(rest, RSTART + RLENGTH)
+            }
+            return n
+        }
+        function emit(text) {
+            if (lineno + 0 == 0) lineno = 1
+            if (content != "") {
+                print text > content
+                print path ":" lineno > locs
+            }
+            lineno++
+        }
+        function advance() {
+            if (lineno + 0 == 0) lineno = 1
+            lineno++
+        }
+        /^diff --git / { start_file(); next }
+        /^diff --cc / { start_file(); next }
+        in_header && /^--- / { next }
+        in_header && /^\+\+\+ / {
+            if (mode == "added") path = b_path($0)
+            in_header = 0
+            next
+        }
+        /^@@@/ {
+            in_header = 0
+            past_hunk = 1
+            next
+        }
+        /^@@/ {
+            in_header = 0
+            past_hunk = 1
+            if (mode == "added") lineno = hunk_start($0)
+            next
+        }
+        past_hunk && /^$/ {
+            if (mode == "added") advance()
+            next
+        }
+        mode == "counts" {
+            if ($0 ~ /^\+/) added++
+            else if ($0 ~ /^-/) removed++
+            next
+        }
+        /^\+/ { emit(substr($0, 2)); next }
+        /^ / { advance(); next }
+        END {
+            if (mode == "counts") printf "%d %d\n", added + 0, removed + 0
+        }
+    ' "$file"
+}
+
+# One grep over the added-line file, joined back to path:line by line number.
+scan_pattern_hits() {
+    local pattern=$1 content=$2 locs=$3
+    [[ -s "$content" ]] || return 0
+    grep -anE "$pattern" "$content" | awk -v locs="$locs" -v content="$content" '
+        BEGIN {
+            n = 0
+            while ((getline line < locs) > 0) loc[++n] = line
+            close(locs)
+            n = 0
+            while ((getline line < content) > 0) body[++n] = line
+            close(content)
+        }
+        {
+            num = $0
+            sub(/:.*/, "", num)
+            num += 0
+            if (num > 0 && loc[num] != "") printf "  %s:%s\n", loc[num], body[num]
+        }
+    ' || true
+}
+
+# Append each staged added line that the working-tree walk does not carry for
+# the same path, located at its index line and marked (staged). A line staged
+# and then removed from the working file is what the next commit records, so
+# it stays in the scan although the reader cannot open it in the working tree.
+append_index_only() {
+    local content=$1 locs=$2 index_content=$3 index_locs=$4
+    awk -v content="$content" -v locs="$locs" \
+        -v icontent="$index_content" -v ilocs="$index_locs" '
+        function path_of(loc,   p) {
+            p = loc
+            sub(/ \(textconv\)$/, "", p)
+            sub(/:[0-9]+$/, "", p)
+            return p
+        }
+        BEGIN {
+            while ((getline loc < locs) > 0) {
+                if ((getline text < content) <= 0) text = ""
+                seen[path_of(loc) SUBSEP text] = 1
+            }
+            close(locs)
+            close(content)
+            while ((getline loc < ilocs) > 0) {
+                if ((getline text < icontent) <= 0) text = ""
+                if ((path_of(loc) SUBSEP text) in seen) continue
+                print text >> content
+                print loc " (staged)" >> locs
+            }
+            close(ilocs)
+            close(icontent)
+        }
+    '
+}
+
+# Print the textconv diff of each path that the raw diff with the same
+# arguments shows as binary, so a binary file whose only text view is its
+# textconv driver is still scanned. numstat -z prints a binary path as - - and a
+# rename as an empty path followed by the old and new names. A binary path with
+# no textconv driver stays binary here and adds no line.
+write_textconv_diffs() {
+    local rec added removed path old
+    git diff --numstat -z "${SCAN_DIFF_FLAGS[@]}" "$@" 2>/dev/null |
+        while IFS= read -r -d '' rec; do
+            added=${rec%%$'\t'*}
+            rec=${rec#*$'\t'}
+            removed=${rec%%$'\t'*}
+            path=${rec#*$'\t'}
+            old=""
+            if [[ -z "$path" ]]; then
+                IFS= read -r -d '' old || break
+                IFS= read -r -d '' path || break
+            fi
+            [[ "$added" == "-" && "$removed" == "-" ]] || continue
+            git -c core.quotepath=false diff "${DIFF_FORMAT[@]}" --textconv "$@" \
+                -- ${old:+"$old"} "$path" 2>/dev/null || true
+        done
+}
+
+# Walk one more diff and append its added lines, each location followed by
+# the marker, so a hit says which kind of text its line number counts.
+append_marked_walk() {
+    local diff=$1 content=$2 locs=$3 marker=$4
+    local more_content="$OUT/.scan_more_content" more_locs="$OUT/.scan_more_locs"
+    : > "$more_content"
+    : > "$more_locs"
+    diff_with_header_window added "$diff" "$more_content" "$more_locs"
+    cat "$more_content" >> "$content"
+    sed "s/\$/$marker/" "$more_locs" >> "$locs"
+    rm -f "$more_content" "$more_locs"
+}
+
 # Credential shapes and machine-specific absolute home paths are both cheap to
 # spot in the added lines and expensive to find after a merge.
 collect_secret_scan() {
-    local added="$OUT/.added_lines"
+    local source content locs cred_lines home_lines scan_diff="" scan_base path
+    local index_diff="" index_content="$OUT/.scan_index_content" index_locs="$OUT/.scan_index_locs"
+    local textconv_diff="" index_textconv_diff=""
     step "credential and home-path scan of the added lines"
 
     if [[ -f "$OUT/full_diff.txt" ]]; then
-        grep -E '^\+' "$OUT/full_diff.txt" | grep -v '^+++' > "$added" 2>/dev/null
+        # The evidence diff keeps git's quoting. The scan names each path as
+        # it appears on disk, including a non-ASCII name.
+        scan_diff="$OUT/.scan_diff"
+        if ! git -c core.quotepath=false diff -M --find-renames "${DIFF_FORMAT[@]}" "${SCAN_DIFF_FLAGS[@]}" \
+                "$BASE...$HEAD_REF" > "$scan_diff" 2>/dev/null; then
+            # The whole-range diff failed, so scan the same per-path diffs the
+            # evidence retry kept. A path git cannot produce adds nothing and
+            # stays named in unread_paths.txt.
+            : > "$scan_diff"
+            while IFS= read -r -d '' path; do
+                [[ -z "$path" ]] && continue
+                git -c core.quotepath=false diff -M --find-renames "${DIFF_FORMAT[@]}" "${SCAN_DIFF_FLAGS[@]}" \
+                    "$BASE...$HEAD_REF" -- "$path" >> "$scan_diff" 2>/dev/null || true
+            done < <(changed_head_paths)
+        fi
+        source="$scan_diff"
+        textconv_diff="$OUT/.scan_textconv_diff"
+        write_textconv_diffs -M --find-renames "$BASE...$HEAD_REF" > "$textconv_diff"
     elif [[ -f "$OUT/worktree_diff.txt" ]]; then
-        grep -E '^\+' "$OUT/worktree_diff.txt" | grep -v '^+++' > "$added" 2>/dev/null
+        # Number against the working tree. The staged lane of worktree_diff.txt
+        # is git diff --cached, whose line numbers are the index, so a file
+        # edited again after staging would cite a line the reader does not open.
+        scan_diff="$OUT/.scan_diff"
+        # An unborn branch has no HEAD. Diff that tree against the empty tree
+        # so staged content is still scanned at working-tree lines.
+        scan_base=$(git rev-parse --verify -q HEAD || git hash-object -t tree /dev/null)
+        {
+            git -c core.quotepath=false diff "$scan_base" "${DIFF_FORMAT[@]}" "${SCAN_DIFF_FLAGS[@]}" 2>/dev/null || true
+            write_untracked_diffs
+        } > "$scan_diff"
+        source="$scan_diff"
+        textconv_diff="$OUT/.scan_textconv_diff"
+        write_textconv_diffs "$scan_base" > "$textconv_diff"
+        # The staged lane joins the scan for the lines only the index holds.
+        index_diff="$OUT/.scan_index_diff"
+        git -c core.quotepath=false diff --cached "${DIFF_FORMAT[@]}" "${SCAN_DIFF_FLAGS[@]}" \
+            > "$index_diff" 2>/dev/null || true
+        index_textconv_diff="$OUT/.scan_index_textconv_diff"
+        write_textconv_diffs --cached > "$index_textconv_diff"
     else
-        : > "$added"
+        source=""
     fi
+
+    content="$OUT/.scan_content"
+    locs="$OUT/.scan_locs"
+    : > "$content"
+    : > "$locs"
+    if [[ -n "$source" ]]; then
+        diff_with_header_window added "$source" "$content" "$locs"
+    fi
+    if [[ -n "$textconv_diff" ]]; then
+        append_marked_walk "$textconv_diff" "$content" "$locs" " (textconv)"
+    fi
+    if [[ -n "$index_diff" ]]; then
+        : > "$index_content"
+        : > "$index_locs"
+        diff_with_header_window added "$index_diff" "$index_content" "$index_locs"
+        append_marked_walk "$index_textconv_diff" "$index_content" "$index_locs" " (textconv)"
+        append_index_only "$content" "$locs" "$index_content" "$index_locs"
+    fi
+    cred_lines=$(scan_pattern_hits "$CREDENTIAL_PATTERN" "$content" "$locs")
+    home_lines=$(scan_pattern_hits "$HOME_PATH_PATTERN" "$content" "$locs")
+    rm -f "$content" "$locs" "$scan_diff" "$index_diff" "$index_content" "$index_locs" \
+        "$textconv_diff" "$index_textconv_diff"
 
     {
         printf 'credential_pattern_hits:\n'
-        grep -nE 'AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{16,}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(api[_-]?key|secret|password|passwd|token)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}' \
-            "$added" 2>/dev/null | sed 's/^/  /' || printf '  none\n'
+        if [[ -n "$cred_lines" ]]; then
+            printf '%s\n' "$cred_lines"
+        else
+            printf '  none\n'
+        fi
         printf 'hardcoded_home_path_hits:\n'
-        grep -nE '(/home/[A-Za-z0-9._-]+/|/Users/[A-Za-z0-9._-]+/|C:\\\\Users\\\\[A-Za-z0-9._-]+)' \
-            "$added" 2>/dev/null | sed 's/^/  /' || printf '  none\n'
+        if [[ -n "$home_lines" ]]; then
+            printf '%s\n' "$home_lines"
+        else
+            printf '  none\n'
+        fi
     } | write_and_record secret_scan.txt "credential patterns and hardcoded home paths among the added lines"
-
-    rm -f "$added"
 }
 
 # grep -c prints 0 and exits 1 when nothing matches, so a `|| printf 0` fallback
@@ -375,19 +657,12 @@ collect_size_profile() {
         generated=$(grep -E '^diff --git ' "$source" 2>/dev/null |
             count_matches_piped "$GENERATED_PATTERN")
 
-        # Count content lines only: skip each file's --- / +++ header pair
-        # (and leave content that begins with those characters alone once the
-        # header is past). Matches git diff --numstat on the same changes.
+        # Count content lines only. The shared header window skips each file's
+        # --- / +++ pair for both diff --git and diff --cc, and leaves content
+        # that begins with those characters once the header is past. Matches
+        # git diff --numstat on the same changes.
         local added_lines removed_lines counts
-        counts=$(awk '
-            /^diff --git / { hdr = 1; next }
-            hdr && /^--- / { next }
-            hdr && /^\+\+\+ / { hdr = 0; next }
-            /^@@/ { hdr = 0; next }
-            /^\+/ { added++ }
-            /^-/ { removed++ }
-            END { printf "%d %d\n", added + 0, removed + 0 }
-        ' "$source")
+        counts=$(diff_with_header_window counts "$source")
         added_lines=${counts%% *}
         removed_lines=${counts##* }
 
@@ -412,6 +687,32 @@ collect_size_profile() {
     } | write_and_record size_profile.txt "the diff size and the share of binary and generated files"
 }
 
+# Untracked names come back unquoted, so a name git would quote still names
+# the file on disk. Each file is a new-file diff whose first line is line 1.
+# sed keeps a missing final newline missing, so that file ends the way git ends
+# it, and the next file's header starts a line of its own. A symlink is the
+# path it points to, which is what git records, so the file at the other end
+# is never read into the evidence.
+write_untracked_diffs() {
+    local f
+    while IFS= read -r -d '' f; do
+        [[ -z "$f" ]] && continue
+        printf 'diff --git a/%s b/%s\n--- /dev/null\n+++ b/%s\n' "$f" "$f" "$f"
+        if [[ -L "$f" ]]; then
+            printf '+%s\n\\ No newline at end of file\n' "$(readlink "$f")"
+        elif [[ -f "$f" ]]; then
+            if sed 's/^/+/' "$f" 2>/dev/null; then
+                if [[ -s "$f" && $(tail -c 1 "$f" | wc -l) -eq 0 ]]; then
+                    printf '\n\\ No newline at end of file\n'
+                fi
+            else
+                printf '+<unreadable>\n'
+            fi
+        fi
+    done < <(git -c core.quotepath=false ls-files -z --others --exclude-standard)
+    return 0
+}
+
 collect_uncommitted() {
     step "working-tree lane: status, diff, and untracked content"
     git status --porcelain --untracked-files=all |
@@ -419,17 +720,11 @@ collect_uncommitted() {
 
     {
         printf '### staged\n'
-        git diff --cached 2>/dev/null
+        git diff --cached "${DIFF_FORMAT[@]}" 2>/dev/null
         printf '\n### unstaged\n'
-        git diff 2>/dev/null
+        git diff "${DIFF_FORMAT[@]}" 2>/dev/null
         printf '\n### untracked\n'
-        git ls-files --others --exclude-standard 2>/dev/null | while IFS= read -r f; do
-            [[ -z "$f" ]] && continue
-            printf 'diff --git a/%s b/%s\n--- /dev/null\n+++ b/%s\n' "$f" "$f" "$f"
-            if [[ -f "$f" ]]; then
-                sed 's/^/+/' "$f" 2>/dev/null || printf '+<unreadable>\n'
-            fi
-        done
+        write_untracked_diffs
     } | write_and_record worktree_diff.txt "the working-tree lane as one diff, untracked content included"
 
     step "local-commits lane: commits ahead of the upstream"
@@ -811,7 +1106,8 @@ main() {
     done
 
     command -v git >/dev/null 2>&1 || die_env "git was not found on PATH"
-    git rev-parse --show-toplevel >/dev/null 2>&1 || die_env "not inside a git repository"
+    local repo_root
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || die_env "not inside a git repository"
 
     if [[ "$MODE" == branch ]]; then
         [[ -n "$BASE" ]] || die "--base is required in branch mode"
@@ -830,6 +1126,8 @@ main() {
     : > "$OUT/steps.log"
     record "manifest.txt" "this list of collected evidence files"
     record "steps.log" "the ordered log of collection steps"
+
+    cd "$repo_root" || die_env "not inside a git repository"
 
     fetch_refs
 
