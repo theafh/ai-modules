@@ -643,23 +643,28 @@ count_matches_piped() {
     printf '%s' "${n:-0}"
 }
 
-# Print the path of each generated section and each binary section in a diff
-# whose openers all use the diff --git form. Each path comes from its section's
-# opener, which every section has, and every opener sets the current path, so
-# a Binary files line names the section it belongs to whatever form it takes:
-# modified, added or deleted against /dev/null, or the bare form a conflicted
-# binary gets. The path takes the form git diff --name-only prints. A renamed
-# section names its new path on its rename to line, which git writes in that
-# form, so each section prints its path once at its end, after any rename to
-# line has set it. Every other section keeps the opener's first path. A quoted
+# Print one "<binary> <generated> <path>" record, each flag 0 or 1, for each
+# binary or generated section in a diff whose openers all use the diff --git
+# form. The size profile takes its binary and generated counts and its path
+# listing from these records, so the counts and the listing classify every
+# section the same way. Each path comes from its section's opener, which every
+# section has, and every opener sets the current path, so a Binary files line
+# names the section it belongs to whatever form it takes: modified, added or
+# deleted against /dev/null, or the bare form a conflicted binary gets. The
+# path takes the form git diff --name-only prints. A renamed or copied section
+# names its new path on its rename to or copy to line, which git writes in that
+# form, so each section prints its record once at its end, after any such line
+# has set the path. Every other section keeps the opener's first path. A quoted
 # name keeps git's quotes and its escapes up to the closing quote. An unquoted
 # name loses its a/ prefix and ends where the second path's b/ starts: at the
 # midpoint when both sides name one path, so a name holding spaces or " b/"
 # stays whole, and otherwise at the first " b/" or ' "b/'. The generated match
-# reads the whole opener line, as the generated_files count does.
-# GENERATED_PATTERN reaches awk through the environment, where awk applies no
-# escape processing to it.
-binary_and_generated_paths() {
+# reads the printed path, outside its quotes and behind a leading slash, so a
+# file moved out of a generated directory counts as the file it now is, and a
+# top-level directory entry such as /vendor/ still matches. GENERATED_PATTERN
+# reaches awk through the environment, where awk applies no escape processing
+# to it.
+binary_and_generated_sections() {
     GENERATED_PATTERN="$GENERATED_PATTERN" LC_ALL=C awk '
         function first_path(line,   rest, n, half) {
             rest = line
@@ -677,18 +682,25 @@ binary_and_generated_paths() {
             sub(/ "?b\/.*$/, "", rest)
             return rest
         }
-        function flush() {
-            if (path != "" && (generated || binary)) print path
+        function is_generated(p,   name) {
+            name = p
+            if (substr(name, 1, 1) == "\"") name = substr(name, 2, length(name) - 2)
+            return (("/" name) ~ ENVIRON["GENERATED_PATTERN"])
+        }
+        function flush(   generated) {
+            if (path == "") return
+            generated = is_generated(path)
+            if (binary || generated) print binary " " generated " " path
         }
         /^diff --git / {
             flush()
             path = first_path($0)
-            generated = ($0 ~ ENVIRON["GENERATED_PATTERN"])
             binary = 0
             next
         }
-        /^rename to / {
-            path = substr($0, 11)
+        /^(rename|copy) to / {
+            path = $0
+            sub(/^(rename|copy) to /, "", path)
             next
         }
         /^Binary files |^GIT binary patch/ {
@@ -709,10 +721,10 @@ collect_size_profile() {
     # merge changed with diff --cc and the bare path. Every field below reads
     # one copy of the diff with each such opener rewritten into the diff --git
     # form, quotes kept, and every other line unchanged. A conflicted file then
-    # counts as a section, matches GENERATED_PATTERN through its a/ prefix, and
-    # names its path as an ordinary file does. The collector runs git diff
-    # without -c, so no diff --combined opener appears. LC_ALL=C lets sed pass
-    # a content line that is not valid text in the current locale.
+    # counts as a section, and it matches GENERATED_PATTERN and names its path
+    # as an ordinary file does. The collector runs git diff without -c, so no
+    # diff --combined opener appears. LC_ALL=C lets sed pass a content line
+    # that is not valid text in the current locale.
     local diff="$OUT/.size_profile_diff"
     if ! LC_ALL=C sed -E -e 's#^diff --cc "(.*)"$#diff --git "a/\1" "b/\1"#' -e 't' \
             -e 's#^diff --cc (.*)$#diff --git a/\1 b/\1#' "$source" > "$diff" 2>/dev/null; then
@@ -720,11 +732,11 @@ collect_size_profile() {
     fi
 
     {
-        local total binary generated
+        local total binary generated sections
         total=$(count_matches '^diff --git ' "$diff")
-        binary=$(count_matches '^Binary files |^GIT binary patch' "$diff")
-        generated=$(grep -E '^diff --git ' "$diff" 2>/dev/null |
-            count_matches_piped "$GENERATED_PATTERN")
+        sections=$(binary_and_generated_sections "$diff")
+        binary=$(printf '%s\n' "$sections" | count_matches_piped '^1 ')
+        generated=$(printf '%s\n' "$sections" | count_matches_piped '^[01] 1 ')
 
         # Count content lines only. The shared header window skips each file's
         # --- / +++ pair, a conflicted file's included, and leaves content that
@@ -746,7 +758,9 @@ collect_size_profile() {
             printf 'binary_or_generated_share: 0%%\n'
         fi
         printf 'binary_or_generated_paths:\n'
-        binary_and_generated_paths "$diff" | sort -u | sed 's/^/  /'
+        if [[ -n "$sections" ]]; then
+            printf '%s\n' "$sections" | sed 's/^[01] [01] //' | sort -u | sed 's/^/  /'
+        fi
     } | write_and_record size_profile.txt "the diff size and the share of binary and generated files"
     rm -f "$diff"
 }

@@ -1006,10 +1006,12 @@ s30_size_profile_reads_conflicted_sections() {
 }
 
 # Range-mode size profile over renames. The feature branch renames and modifies
-# a binary to a new name git quotes, which also holds a space, and renames a
-# text file into a top-level vendor/ directory. git diff --name-only prints
-# each by its new path, so the listing must take the rename to line over the
-# opener's first path.
+# a binary to a new name git quotes, which also holds a space, renames a text
+# file into a top-level vendor/ directory, and renames another out of vendor/
+# into src/. git diff --name-only prints each by its new path, so the listing
+# must take the rename to line over the opener's first path, and the generated
+# match must read that new path: the file moved into vendor/ counts as
+# generated, and the file moved out of it does not.
 s31_size_profile_lists_renames_by_new_path() {
     local root repo ev ok=true name_status listed_paths expected_paths
     root="$SCRATCH/s31"
@@ -1021,10 +1023,11 @@ s31_size_profile_lists_renames_by_new_path() {
         cd "$root/repo" || exit 1
         identity
         git config core.quotepath true
-        mkdir -p lib
+        mkdir -p lib vendor
         # Enough content that a small append keeps the binary a rename.
         { printf 'bin\000'; seq 1 40 | sed 's/^/payload line /'; } > old.bin
         printf 'thing\n' > lib/thing.txt
+        printf 'legacy\n' > vendor/legacy.txt
         git add -A
         git commit --quiet -m "seed the rename fixture"
         git push --quiet origin main
@@ -1033,9 +1036,10 @@ s31_size_profile_lists_renames_by_new_path() {
         git checkout --quiet -b feature
         git mv old.bin 'moved ö.bin'
         printf 'tail\n' >> 'moved ö.bin'
-        mkdir -p vendor
         git mv lib/thing.txt vendor/thing.txt
-        git commit --quiet -am "feature: rename a binary and move a file into vendor/"
+        mkdir -p src
+        git mv vendor/legacy.txt src/legacy.txt
+        git commit --quiet -am "feature: rename a binary and move files into and out of vendor/"
         git push --quiet -u origin feature
     ) || return 1
     repo="$root/repo"
@@ -1044,24 +1048,80 @@ s31_size_profile_lists_renames_by_new_path() {
     collect "$repo" --base main --head feature --out "$ev" >/dev/null
     name_status=$(cd "$repo" && git diff --name-status -M --find-renames "main...feature")
 
-    # Guard the fixture shape: both changes are renames, and the binary one
-    # carries a Binary files line.
-    assert_eq "both changes are renames" \
-        "$(printf '%s\n' "$name_status" | grep -c '^R')" "2" || ok=false
+    # Guard the fixture shape: all three changes are renames, and the binary
+    # one carries a Binary files line.
+    assert_eq "all three changes are renames" \
+        "$(printf '%s\n' "$name_status" | grep -c '^R')" "3" || ok=false
+    printf '%s\n' "$name_status" | awk -F '\t' '
+        $1 ~ /^R/ && $2 == "vendor/legacy.txt" && $3 == "src/legacy.txt" { found = 1 }
+        END { exit !found }' || {
+        log "    [name-status does not show vendor/legacy.txt renamed to src/legacy.txt]"
+        ok=false
+    }
     grep -Fqx 'rename to "moved \303\266.bin"' "$ev/full_diff.txt" 2>/dev/null || {
         log "    [full_diff.txt has no quoted rename to line for the binary]"
         ok=false
     }
     assert_eq "binary_files counts the renamed binary" \
         "$(profile_value "$ev/size_profile.txt" binary_files)" "1" || ok=false
-    assert_eq "generated_files counts the file moved into vendor/" \
+    assert_eq "generated_files counts the file moved into vendor/ and not the one moved out" \
         "$(profile_value "$ev/size_profile.txt" generated_files)" "1" || ok=false
 
-    expected_paths=$(cd "$repo" && git diff --name-only "main...feature" | LC_ALL=C sort)
+    # The file moved out of vendor/ is first-party code at its new path, so the
+    # listing names every changed path except that one.
+    expected_paths=$(cd "$repo" && git diff --name-only "main...feature" |
+        grep -Fvx 'src/legacy.txt' | LC_ALL=C sort)
     listed_paths=$(profile_paths "$ev/size_profile.txt")
     assert_eq "listing names each renamed file by its new path as git prints it" \
         "$listed_paths" "$expected_paths" || ok=false
     assert_paths_are_paths "rename listing" "$listed_paths" || ok=false
+    $ok
+}
+
+# Uncommitted size profile over a staged copy. The uncommitted lanes follow the
+# repository's diff.renames setting, and with copies git diff --cached writes a
+# copy section for a binary copied from another binary the same change
+# modifies. git diff --name-only prints the copy by its new path, which git
+# quotes and which holds a space, so the listing must take the copy to line
+# over the opener's first path, which names the source.
+s32_size_profile_lists_copies_by_new_path() {
+    local root repo ev ok=true listed_paths expected_paths
+    root="$SCRATCH/s32"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --initial-branch=main "$root/repo" || return 1
+    repo="$root/repo"
+    (
+        cd "$repo" || exit 1
+        identity
+        git config core.quotepath true
+        git config diff.renames copies
+        # Enough content that a small append keeps the copy similar to its source.
+        { printf 'bin\000'; seq 1 40 | sed 's/^/payload line /'; } > orig.bin
+        git add -A
+        git commit --quiet -m "seed the copy fixture"
+        cp orig.bin 'copy ö.bin'
+        printf 'copy tail\n' >> 'copy ö.bin'
+        printf 'source tail\n' >> orig.bin
+        git add -A
+    ) || return 1
+    ev="$root/ev"
+    collect "$repo" --uncommitted --no-fetch --out "$ev" >/dev/null
+
+    # Guard the fixture shape: the staged lane carries the copy as a copy
+    # section under the quoted name git prints.
+    grep -Fqx 'copy to "copy \303\266.bin"' "$ev/worktree_diff.txt" 2>/dev/null || {
+        log "    [worktree_diff.txt has no quoted copy to line for the copied binary]"
+        ok=false
+    }
+    assert_eq "binary_files counts the copy and its modified source" \
+        "$(profile_value "$ev/size_profile.txt" binary_files)" "2" || ok=false
+
+    expected_paths=$(cd "$repo" && git diff --cached --name-only | LC_ALL=C sort)
+    listed_paths=$(profile_paths "$ev/size_profile.txt")
+    assert_eq "listing names the copy by its new path as git prints it" \
+        "$listed_paths" "$expected_paths" || ok=false
+    assert_paths_are_paths "copy listing" "$listed_paths" || ok=false
     $ok
 }
 
@@ -2266,8 +2326,10 @@ scenario s29 "secret-scan patterns match the manual fallback" \
     s29_secret_scan_patterns_match_manual_fallback
 scenario s30 "size profile reads conflicted sections and lists binaries by their paths" \
     s30_size_profile_reads_conflicted_sections
-scenario s31 "size profile lists renamed binary and generated files by their new paths" \
+scenario s31 "size profile lists and classifies renamed files by their new paths" \
     s31_size_profile_lists_renames_by_new_path
+scenario s32 "size profile lists a copied binary by its new path" \
+    s32_size_profile_lists_copies_by_new_path
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the
