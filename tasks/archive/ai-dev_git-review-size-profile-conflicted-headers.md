@@ -2,9 +2,11 @@
 description: Make git_review's size profile read diff --cc sections as files in every field and list binary and generated files by their git paths, with script-test proof.
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-08T09:29:33
-updated: 2026-10-19T15:09:16
-status: ready
+updated: 2026-10-19T16:14:29
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Read conflicted files as file sections in the git_review size profile and list every binary and generated file by its path
@@ -29,7 +31,7 @@ The user-visible outcome is that a review of a working tree with an unresolved m
 - `binary_files` counts the lines that match `^Binary files |^GIT binary patch`.
 - `binary_or_generated_share` divides the binary and generated sum by `changed_files`.
 - `binary_or_generated_paths` takes each generated path from its `diff --git a/<path> b/...` line with `s/^diff --git a\///; s/ b\/.*$//`, and each binary path from its `Binary files` line with `s/^Binary files a\///; s/ and b\/.*$//`.
-- `added_lines` and `removed_lines` come from `diff_with_header_window counts` on `$source`. That helper treats a line starting with `---` or `+++` as a header between an opener starting with `diff --git` or `diff --cc` followed by a space and the file's first content line, so each conflicted header pair is already out of the line counts. [ai-dev_git-review-size-profile-overcount.md](archive/ai-dev_git-review-size-profile-overcount.md) introduced the header rule and the script tests that prove ordinary sections.
+- `added_lines` and `removed_lines` come from `diff_with_header_window counts` on `$source`. That helper treats a line starting with `---` or `+++` as a header between an opener starting with `diff --git` or `diff --cc` followed by a space and the file's first content line, so each conflicted header pair is already out of the line counts. [ai-dev_git-review-size-profile-overcount.md](ai-dev_git-review-size-profile-overcount.md) introduced the header rule and the script tests that prove ordinary sections.
 
 In uncommitted mode, `collect_uncommitted` writes the staged lane from `git diff --cached "${DIFF_FORMAT[@]}"` and the unstaged lane from `git diff "${DIFF_FORMAT[@]}"`. `DIFF_FORMAT` is `--src-prefix=a/ --dst-prefix=b/ --no-color --no-ext-diff`. Every unmerged path shows in the staged lane only as `* Unmerged path <path>`. For a `UU` path, the unstaged lane holds a combined diff that opens with `diff --cc <path>`, a path with no `a/` or `b/` prefix. A conflicted text file follows with an `index` line, the `--- a/<path>` and `+++ b/<path>` pair, and hunks under `@@@` headers, while a conflicted binary follows with a bare `Binary files differ` line. A modify/delete conflict (`UD` or `DU`) shows as `* Unmerged path <path>` in the unstaged lane too, with no section and no lines. A file the merge applied cleanly lands in the staged lane as an ordinary `diff --git` section. Range mode diffs `git diff -M --find-renames "${DIFF_FORMAT[@]}" "$BASE...$HEAD_REF"`, which never yields a combined diff.
 
@@ -46,7 +48,7 @@ As an illustration, a merge that applies one text file cleanly and leaves a text
 
 Each line of a combined hunk carries one prefix column per parent, and the line counter reads only the first column, which compares against `HEAD`. `--cc` also drops every hunk where the merge took one side unchanged. The count a conflicted text file already contributes equals `git diff --numstat HEAD -- <path>` exactly when its `diff --cc` section drops no hunk, as with a file whose only change is one conflict hunk.
 
-[ai-dev_git-review-secret-scan-gaps.md](archive/ai-dev_git-review-secret-scan-gaps.md) is finished and shipped `diff_with_header_window`. `collect_size_profile` already calls `diff_with_header_window counts`, and `collect_secret_scan` shares that helper. That task owns the extraction and the patterns in `collect_secret_scan`.
+[ai-dev_git-review-secret-scan-gaps.md](ai-dev_git-review-secret-scan-gaps.md) is finished and shipped `diff_with_header_window`. `collect_size_profile` already calls `diff_with_header_window counts`, and `collect_secret_scan` shares that helper. That task owns the extraction and the patterns in `collect_secret_scan`.
 
 The script tests live in `tests/git_review/script_tests/run.sh` and run through `./tests/git_review/run_all.sh`. Repository scenarios stage a sandbox under `script_tests/scratch/<id>/`, call the collector through `collect`, and are registered with `scenario <id> "<description>" <function>`. The helpers `profile_value` and `sum_numstat_text` read a `size_profile.txt` value and sum a numstat listing while skipping binary rows. `s11_uncommitted_mode_reports_both_lanes` covers the three uncommitted lanes on a tree without a conflict, and `s24_size_profile_line_counts_match_numstat` covers the range-mode line counts with one modified binary.
 

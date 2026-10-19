@@ -109,6 +109,28 @@ profile_value() {
     awk -F': ' -v k="$key" '$1 == k { print $2; exit }' "$file"
 }
 
+# Print each binary_or_generated_paths entry of a size_profile.txt, one per
+# line without its indent, in byte order.
+profile_paths() {
+    awk 'listing && /^  / { print substr($0, 3); next }
+         { listing = ($0 == "binary_or_generated_paths:") }' "$1" | LC_ALL=C sort
+}
+
+# A listed path is a path. An entry that is still a Binary files line, or its
+# tail, means the listing parsed that line instead of the section's opener.
+assert_paths_are_paths() {
+    local label=$1 paths=$2 entry ok=true
+    while IFS= read -r entry; do
+        [[ -z "$entry" ]] && continue
+        if [[ "$entry" == "Binary files"* || "$entry" == *differ ]]; then
+            log "    [listed entry is a Binary files line: $label]"
+            log "      entry: $(printf '%q' "$entry")"
+            ok=false
+        fi
+    done <<< "$paths"
+    $ok
+}
+
 # Sum added and removed columns from `git diff --numstat` on stdin, skipping
 # binary rows where either column is `-`. Prints "added removed".
 sum_numstat_text() {
@@ -725,10 +747,13 @@ s22_unreadable_path_records_unread_remainder() {
 
 # Range-mode size profile: content-line counts equal git diff --numstat, and the
 # fixture keeps hunk lines that begin with --- / +++ so a header-inclusive or
-# plain grep -v filter would miscount.
+# plain grep -v filter would miscount. The feature branch also modifies one
+# binary, adds one, and deletes one, so the range diff carries all three
+# Binary files forms and the listing must name each binary by its path.
 s24_size_profile_line_counts_match_numstat() {
     local root repo ev ok=true
     local expect_sum expect_added expect_removed actual_added actual_removed full_diff
+    local name entry expected_paths listed_paths name_only
     root="$SCRATCH/s24"
     rm -rf "$root"
     mkdir -p "$root"
@@ -743,6 +768,7 @@ s24_size_profile_line_counts_match_numstat() {
         printf 'delete me\n' > gone.txt
         # NUL so git treats this as binary (numstat prints -, no ---/+++ pair).
         printf 'bin\000v1' > data.bin
+        printf 'old\000payload the feature branch deletes' > removed.bin
         git add -A
         git commit --quiet -m "seed the size-profile fixture"
         git push --quiet origin main
@@ -757,8 +783,11 @@ s24_size_profile_line_counts_match_numstat() {
         git rm --quiet gone.txt
         git mv old_name.txt new_name.txt
         printf 'bin\000v2-longer' > data.bin
+        # Content unlike removed.bin, so rename detection keeps the two apart.
+        printf 'new\000%s' 'ADDED 0123456789' > added.bin
+        git rm --quiet removed.bin
         git add -A
-        git commit --quiet -m "feature: modify, add, delete, rename, binary, and ---/+++ content"
+        git commit --quiet -m "feature: modify, add, delete, rename, binaries, and ---/+++ content"
         git push --quiet -u origin feature
     ) || return 1
     repo="$root/repo"
@@ -790,9 +819,249 @@ s24_size_profile_line_counts_match_numstat() {
         "$(cat "$ev/name_status.txt" 2>/dev/null)" "gone.txt" || ok=false
     assert_contains "name-status records the addition" \
         "$(cat "$ev/name_status.txt" 2>/dev/null)" "added.txt" || ok=false
-    # binary_files: 1 fails when data.bin is still text; a name-only check cannot.
-    assert_contains "size profile counts the modified binary" \
-        "$(cat "$ev/size_profile.txt" 2>/dev/null)" "binary_files: 1" || ok=false
+    # The feature branch adds one binary and deletes another; numstat prints -
+    # for a binary row.
+    if ! (cd "$repo" && git diff --numstat -M --diff-filter=A "main...feature") |
+            grep -Fqx -e "$(printf -- '-\t-\tadded.bin')"; then
+        log "    [feature branch does not add the binary added.bin]"
+        ok=false
+    fi
+    if ! (cd "$repo" && git diff --numstat -M --diff-filter=D "main...feature") |
+            grep -Fqx -e "$(printf -- '-\t-\tremoved.bin')"; then
+        log "    [feature branch does not delete the binary removed.bin]"
+        ok=false
+    fi
+    # binary_files: 3 fails when any of the three is still text; a name-only
+    # check cannot.
+    assert_eq "size profile counts the modified, added, and deleted binary" \
+        "$(profile_value "$ev/size_profile.txt" binary_files)" "3" || ok=false
+    # Each binary is listed as git diff --name-only prints it, whichever of the
+    # three Binary files forms its section carries.
+    name_only=$(cd "$repo" && git diff --name-only "main...feature")
+    expected_paths=""
+    for name in data.bin added.bin removed.bin; do
+        entry=$(printf '%s\n' "$name_only" | grep -Fx "$name")
+        if [[ -z "$entry" ]]; then
+            log "    [git diff --name-only does not print $name]"
+            ok=false
+            continue
+        fi
+        expected_paths+="$entry"$'\n'
+    done
+    expected_paths=$(printf '%s' "$expected_paths" | LC_ALL=C sort)
+    listed_paths=$(profile_paths "$ev/size_profile.txt")
+    assert_eq "listing names the modified, added, and deleted binary" \
+        "$listed_paths" "$expected_paths" || ok=false
+    assert_paths_are_paths "range listing" "$listed_paths" || ok=false
+    $ok
+}
+
+# Uncommitted size profile over an unresolved merge. One text file merges
+# cleanly into the staged lane, and three paths stay unmerged (UU), so the
+# unstaged lane opens each with diff --cc: a text file, a text file with a
+# non-ASCII name under a top-level vendor/ directory, whose opener git quotes,
+# and a binary whose name holds a space. A staged added binary and the staged
+# deletion of a binary with a non-ASCII name carry the two Binary files forms
+# against /dev/null. Each conflicted text file differs from HEAD by its one
+# conflict hunk alone, so its diff --cc section drops no hunk and its line
+# count equals git diff --numstat HEAD. No path is both staged and unstaged
+# and no file is untracked, so each changed path forms exactly one section.
+s30_size_profile_reads_conflicted_sections() {
+    local root repo ev ok=true profile_file worktree_diff
+    local unmerged staged_added staged_deleted vendor_entry binary_entry entry inner minus plus header
+    local porcelain_count expect_sum total binary generated
+    local expected_paths listed_paths leftover
+    root="$SCRATCH/s30"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --initial-branch=main "$root/repo" || return 1
+    repo="$root/repo"
+    (
+        cd "$repo" || exit 1
+        identity
+        git config core.quotepath true
+        mkdir -p vendor
+        printf 'one\ntwo\nthree\nfour\nfive\n' > conflict.txt
+        printf 'v1\nv2\nv3\n' > vendor/ä.txt
+        printf 'bin\000base' > 'conflict bin.bin'
+        printf 'bin\000the staged deletion' > ö.bin
+        printf 'clean\nfile\n' > clean.txt
+        git add -A
+        git commit --quiet -m "seed the merge fixture"
+
+        git checkout --quiet -b left
+        printf 'one\ntwo\nLEFT\nfour\nfive\n' > conflict.txt
+        printf 'v1\nLEFT\nv3\n' > vendor/ä.txt
+        printf 'bin\000left' > 'conflict bin.bin'
+        git commit --quiet -am "left side"
+
+        git checkout --quiet main
+        git checkout --quiet -b right
+        printf 'one\ntwo\nRIGHT\nfour\nfive\n' > conflict.txt
+        printf 'v1\nRIGHT\nv3\n' > vendor/ä.txt
+        printf 'bin\000right' > 'conflict bin.bin'
+        printf 'clean\nfile\nmerged cleanly\n' > clean.txt
+        git commit --quiet -am "right side"
+
+        git checkout --quiet left
+        git merge right >/dev/null 2>&1 && exit 1
+        printf 'added\000binary' > added.bin
+        git add added.bin
+        git rm --quiet ö.bin
+    ) || return 1
+    ev="$root/ev"
+    collect "$repo" --uncommitted --no-fetch --out "$ev" >/dev/null
+    profile_file="$ev/size_profile.txt"
+    worktree_diff=$(cat "$ev/worktree_diff.txt" 2>/dev/null)
+
+    unmerged=$(cd "$repo" && git diff --name-only --diff-filter=U)
+    staged_added=$(cd "$repo" && git diff --cached --name-only --diff-filter=A)
+    staged_deleted=$(cd "$repo" && git diff --cached --name-only --diff-filter=D)
+    vendor_entry=$(printf '%s\n' "$unmerged" | grep -E '^"?vendor/')
+    binary_entry=$(printf '%s\n' "$unmerged" | grep -E '\.bin"?$')
+
+    # Guard the fixture shape the assertions below rely on.
+    assert_eq "three paths stay unmerged" "$(printf '%s\n' "$unmerged" | grep -c .)" "3" || ok=false
+    assert_eq "no file is untracked" \
+        "$(cd "$repo" && git ls-files --others --exclude-standard)" "" || ok=false
+    assert_eq "one staged added binary" "$staged_added" "added.bin" || ok=false
+    [[ "$vendor_entry" == '"'*'\303\244'*'"' ]] || {
+        log "    [the conflicted vendor/ path is not git-quoted: $vendor_entry]"
+        ok=false
+    }
+    [[ "$binary_entry" == *' '* && "$binary_entry" != '"'* ]] || {
+        log "    [the conflicted binary name holds no space or is quoted: $binary_entry]"
+        ok=false
+    }
+    [[ "$staged_deleted" == '"'*'\303\266'*'"' ]] || {
+        log "    [the staged deletion is not git-quoted: $staged_deleted]"
+        ok=false
+    }
+
+    # Every conflicted path keeps its combined diff in the evidence: a diff --cc
+    # opener, each text file's --- and +++ headers, and the conflicted binary's
+    # bare Binary files line.
+    while IFS= read -r entry; do
+        [[ -z "$entry" ]] && continue
+        printf '%s\n' "$worktree_diff" | grep -Fqx "diff --cc $entry" || {
+            log "    [worktree_diff.txt has no diff --cc line for $entry]"
+            ok=false
+        }
+        [[ "$entry" == "$binary_entry" ]] && continue
+        # git quotes a header path where it quotes the name, a/ or b/ inside.
+        if [[ "$entry" == '"'* ]]; then
+            inner=${entry#\"}
+            minus="--- \"a/$inner"
+            plus="+++ \"b/$inner"
+        else
+            minus="--- a/$entry"
+            plus="+++ b/$entry"
+        fi
+        for header in "$minus" "$plus"; do
+            printf '%s\n' "$worktree_diff" | grep -Fqx -- "$header" || {
+                log "    [worktree_diff.txt lacks the header line $header]"
+                ok=false
+            }
+        done
+    done <<< "$unmerged"
+    printf '%s\n' "$worktree_diff" | grep -Fqx 'Binary files differ' || {
+        log "    [worktree_diff.txt has no bare Binary files differ line]"
+        ok=false
+    }
+
+    # Each changed path is one section, conflicted ones included.
+    porcelain_count=$(cd "$repo" && git status --porcelain | grep -c .)
+    total=$(profile_value "$profile_file" changed_files)
+    assert_eq "changed_files counts every path git status lists" "$total" "$porcelain_count" || ok=false
+
+    expect_sum=$(cd "$repo" && git diff --numstat HEAD | sum_numstat_text)
+    assert_eq "added_lines match numstat against HEAD" \
+        "$(profile_value "$profile_file" added_lines)" "${expect_sum%% *}" || ok=false
+    assert_eq "removed_lines match numstat against HEAD" \
+        "$(profile_value "$profile_file" removed_lines)" "${expect_sum##* }" || ok=false
+
+    binary=$(profile_value "$profile_file" binary_files)
+    generated=$(profile_value "$profile_file" generated_files)
+    assert_eq "generated_files counts the conflicted vendor/ file" "$generated" "1" || ok=false
+    assert_eq "binary_files counts the three binaries" "$binary" "3" || ok=false
+    if [[ "$total" =~ ^[0-9]+$ && "$binary" =~ ^[0-9]+$ && "$generated" =~ ^[0-9]+$ ]] && ((total > 0)); then
+        assert_eq "share divides by every changed file" \
+            "$(profile_value "$profile_file" binary_or_generated_share)" \
+            "$(( (binary + generated) * 100 / total ))%" || ok=false
+    else
+        log "    [size profile counts are not numbers: $total $binary $generated]"
+        ok=false
+    fi
+
+    expected_paths=$(printf '%s\n' "$vendor_entry" "$binary_entry" "$staged_added" "$staged_deleted" |
+        LC_ALL=C sort)
+    listed_paths=$(profile_paths "$profile_file")
+    assert_eq "listing names the vendor/ file and the three binaries as git prints them" \
+        "$listed_paths" "$expected_paths" || ok=false
+    assert_paths_are_paths "uncommitted listing" "$listed_paths" || ok=false
+
+    leftover=$(find "$ev" -mindepth 1 -name '.*' 2>/dev/null)
+    assert_eq "no dot-file is left in the evidence directory" "$leftover" "" || ok=false
+    $ok
+}
+
+# Range-mode size profile over renames. The feature branch renames and modifies
+# a binary to a new name git quotes, which also holds a space, and renames a
+# text file into a top-level vendor/ directory. git diff --name-only prints
+# each by its new path, so the listing must take the rename to line over the
+# opener's first path.
+s31_size_profile_lists_renames_by_new_path() {
+    local root repo ev ok=true name_status listed_paths expected_paths
+    root="$SCRATCH/s31"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --bare --initial-branch=main "$root/origin.git" || return 1
+    git clone --quiet "$root/origin.git" "$root/repo" 2>/dev/null || return 1
+    (
+        cd "$root/repo" || exit 1
+        identity
+        git config core.quotepath true
+        mkdir -p lib
+        # Enough content that a small append keeps the binary a rename.
+        { printf 'bin\000'; seq 1 40 | sed 's/^/payload line /'; } > old.bin
+        printf 'thing\n' > lib/thing.txt
+        git add -A
+        git commit --quiet -m "seed the rename fixture"
+        git push --quiet origin main
+        git remote set-head origin main
+
+        git checkout --quiet -b feature
+        git mv old.bin 'moved ö.bin'
+        printf 'tail\n' >> 'moved ö.bin'
+        mkdir -p vendor
+        git mv lib/thing.txt vendor/thing.txt
+        git commit --quiet -am "feature: rename a binary and move a file into vendor/"
+        git push --quiet -u origin feature
+    ) || return 1
+    repo="$root/repo"
+    ev="$root/ev"
+
+    collect "$repo" --base main --head feature --out "$ev" >/dev/null
+    name_status=$(cd "$repo" && git diff --name-status -M --find-renames "main...feature")
+
+    # Guard the fixture shape: both changes are renames, and the binary one
+    # carries a Binary files line.
+    assert_eq "both changes are renames" \
+        "$(printf '%s\n' "$name_status" | grep -c '^R')" "2" || ok=false
+    grep -Fqx 'rename to "moved \303\266.bin"' "$ev/full_diff.txt" 2>/dev/null || {
+        log "    [full_diff.txt has no quoted rename to line for the binary]"
+        ok=false
+    }
+    assert_eq "binary_files counts the renamed binary" \
+        "$(profile_value "$ev/size_profile.txt" binary_files)" "1" || ok=false
+    assert_eq "generated_files counts the file moved into vendor/" \
+        "$(profile_value "$ev/size_profile.txt" generated_files)" "1" || ok=false
+
+    expected_paths=$(cd "$repo" && git diff --name-only "main...feature" | LC_ALL=C sort)
+    listed_paths=$(profile_paths "$ev/size_profile.txt")
+    assert_eq "listing names each renamed file by its new path as git prints it" \
+        "$listed_paths" "$expected_paths" || ok=false
+    assert_paths_are_paths "rename listing" "$listed_paths" || ok=false
     $ok
 }
 
@@ -1995,6 +2264,10 @@ scenario s28 "secret scan writes none when nothing matches" \
     s28_secret_scan_writes_none_when_nothing_matches
 scenario s29 "secret-scan patterns match the manual fallback" \
     s29_secret_scan_patterns_match_manual_fallback
+scenario s30 "size profile reads conflicted sections and lists binaries by their paths" \
+    s30_size_profile_reads_conflicted_sections
+scenario s31 "size profile lists renamed binary and generated files by their new paths" \
+    s31_size_profile_lists_renames_by_new_path
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

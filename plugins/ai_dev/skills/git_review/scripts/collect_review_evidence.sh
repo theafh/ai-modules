@@ -643,6 +643,61 @@ count_matches_piped() {
     printf '%s' "${n:-0}"
 }
 
+# Print the path of each generated section and each binary section in a diff
+# whose openers all use the diff --git form. Each path comes from its section's
+# opener, which every section has, and every opener sets the current path, so
+# a Binary files line names the section it belongs to whatever form it takes:
+# modified, added or deleted against /dev/null, or the bare form a conflicted
+# binary gets. The path takes the form git diff --name-only prints. A renamed
+# section names its new path on its rename to line, which git writes in that
+# form, so each section prints its path once at its end, after any rename to
+# line has set it. Every other section keeps the opener's first path. A quoted
+# name keeps git's quotes and its escapes up to the closing quote. An unquoted
+# name loses its a/ prefix and ends where the second path's b/ starts: at the
+# midpoint when both sides name one path, so a name holding spaces or " b/"
+# stays whole, and otherwise at the first " b/" or ' "b/'. The generated match
+# reads the whole opener line, as the generated_files count does.
+# GENERATED_PATTERN reaches awk through the environment, where awk applies no
+# escape processing to it.
+binary_and_generated_paths() {
+    GENERATED_PATTERN="$GENERATED_PATTERN" LC_ALL=C awk '
+        function first_path(line,   rest, n, half) {
+            rest = line
+            sub(/^diff --git /, "", rest)
+            if (match(rest, /^"a\/([^"\\]|\\.)*"/)) {
+                return "\"" substr(rest, 4, RLENGTH - 3)
+            }
+            sub(/^a\//, "", rest)
+            n = length(rest)
+            half = (n - 3) / 2
+            if (half > 0 && half == int(half) && substr(rest, half + 1, 3) == " b/" &&
+                substr(rest, 1, half) == substr(rest, half + 4)) {
+                return substr(rest, 1, half)
+            }
+            sub(/ "?b\/.*$/, "", rest)
+            return rest
+        }
+        function flush() {
+            if (path != "" && (generated || binary)) print path
+        }
+        /^diff --git / {
+            flush()
+            path = first_path($0)
+            generated = ($0 ~ ENVIRON["GENERATED_PATTERN"])
+            binary = 0
+            next
+        }
+        /^rename to / {
+            path = substr($0, 11)
+            next
+        }
+        /^Binary files |^GIT binary patch/ {
+            binary = 1
+        }
+        END { flush() }
+    ' "$1"
+}
+
 # Binary and generated files inflate a diff without carrying reviewable intent,
 # so the report states their share whether or not they hold findings.
 collect_size_profile() {
@@ -650,19 +705,33 @@ collect_size_profile() {
     [[ -f "$source" ]] || source="$OUT/worktree_diff.txt"
     step "diff size and the binary and generated share"
 
+    # git diff opens the combined diff of a path both sides of an unresolved
+    # merge changed with diff --cc and the bare path. Every field below reads
+    # one copy of the diff with each such opener rewritten into the diff --git
+    # form, quotes kept, and every other line unchanged. A conflicted file then
+    # counts as a section, matches GENERATED_PATTERN through its a/ prefix, and
+    # names its path as an ordinary file does. The collector runs git diff
+    # without -c, so no diff --combined opener appears. LC_ALL=C lets sed pass
+    # a content line that is not valid text in the current locale.
+    local diff="$OUT/.size_profile_diff"
+    if ! LC_ALL=C sed -E -e 's#^diff --cc "(.*)"$#diff --git "a/\1" "b/\1"#' -e 't' \
+            -e 's#^diff --cc (.*)$#diff --git a/\1 b/\1#' "$source" > "$diff" 2>/dev/null; then
+        : > "$diff"
+    fi
+
     {
         local total binary generated
-        total=$(count_matches '^diff --git ' "$source")
-        binary=$(count_matches '^Binary files |^GIT binary patch' "$source")
-        generated=$(grep -E '^diff --git ' "$source" 2>/dev/null |
+        total=$(count_matches '^diff --git ' "$diff")
+        binary=$(count_matches '^Binary files |^GIT binary patch' "$diff")
+        generated=$(grep -E '^diff --git ' "$diff" 2>/dev/null |
             count_matches_piped "$GENERATED_PATTERN")
 
         # Count content lines only. The shared header window skips each file's
-        # --- / +++ pair for both diff --git and diff --cc, and leaves content
-        # that begins with those characters once the header is past. Matches
-        # git diff --numstat on the same changes.
+        # --- / +++ pair, a conflicted file's included, and leaves content that
+        # begins with those characters once the header is past. Matches git
+        # diff --numstat on the same changes.
         local added_lines removed_lines counts
-        counts=$(diff_with_header_window counts "$source")
+        counts=$(diff_with_header_window counts "$diff")
         added_lines=${counts%% *}
         removed_lines=${counts##* }
 
@@ -677,14 +746,9 @@ collect_size_profile() {
             printf 'binary_or_generated_share: 0%%\n'
         fi
         printf 'binary_or_generated_paths:\n'
-        {
-            grep -E '^diff --git ' "$source" 2>/dev/null |
-                grep -E "$GENERATED_PATTERN" |
-                sed 's/^diff --git a\///; s/ b\/.*$//'
-            grep -E '^Binary files ' "$source" 2>/dev/null |
-                sed 's/^Binary files a\///; s/ and b\/.*$//'
-        } | sort -u | sed 's/^/  /'
+        binary_and_generated_paths "$diff" | sort -u | sed 's/^/  /'
     } | write_and_record size_profile.txt "the diff size and the share of binary and generated files"
+    rm -f "$diff"
 }
 
 # Untracked names come back unquoted, so a name git would quote still names
