@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Bundled-script unit tests for the git_checkout skill.
+# s15 checks that the eval runner's stage() stops on a failed or empty stage.
 # shellcheck disable=SC2329
 
 set -uo pipefail
@@ -8,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SKILL_DIR="$REPO_ROOT/plugins/ai_dev/skills/git_checkout"
 CHECKOUT="$SKILL_DIR/scripts/checkout_branch.sh"
+EVALS_DIR="$REPO_ROOT/tests/git_checkout/evals"
 
 SCRATCH="$SCRIPT_DIR/scratch"
 RESULTS="$SCRIPT_DIR/../results/layer1.log"
@@ -535,6 +537,18 @@ s14_usage_and_argument_handling() {
     $ok
 }
 
+# --- Eval harness ------------------------------------------------------------
+
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox repository, because pathlib.Path("") is the
+# current directory and the worker would otherwise start in the checkout.
+s15_eval_runner_stage_failure_raises() {
+    local out rc
+    out=$(python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" "$EVALS_DIR" 2>&1) && rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "tests/lib/check_stage_guard.py exit" "$rc" "0"
+}
+
 scenario s1  "remote-only branch: create tracking branch with explicit upstream" s1_remote_only_branch_creates_tracking_branch
 scenario s2  "second remote, pushed after clone: fetch covers every remote"      s2_second_remote_branch_pushed_after_clone_resolves
 scenario s3  "successful checkout leaves a stale remote-tracking ref in place"   s3_successful_checkout_leaves_stale_remote_ref_in_place
@@ -549,6 +563,7 @@ scenario s11 "conflicting dirty worktree: block, name paths, run no stash"      
 scenario s12 "non-conflicting dirty worktree: switch with changes intact"        s12_non_conflicting_dirty_worktree_carries_changes_across
 scenario s13 "slashed branch name is not read as a remote-qualified argument"    s13_slashed_branch_name_is_not_read_as_a_remote
 scenario s14 "flags: help, missing argument, and extra argument handling"        s14_usage_and_argument_handling
+scenario s15 "eval runner: a failed or empty stage raises before any worker"     s15_eval_runner_stage_failure_raises
 
 log ""
 log "================================================================"

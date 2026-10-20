@@ -289,18 +289,32 @@ def select_style_route(preflight: dict, version: str) -> tuple[bool, str]:
 
 
 def stage(scenario: str, target: pathlib.Path) -> dict:
+    """Run stage.sh and read back the staged values. The script captures
+    stage.sh's output before evaluating it and exits with stage.sh's status
+    when it fails, so a failed stage raises here. An empty or missing
+    sandbox_proj raises too, because pathlib.Path("") is the current
+    directory and the worker would otherwise start in the checkout."""
     emit_cmd = (
-        f'eval "$({shlex.quote(str(STAGE))} {shlex.quote(scenario)} '
-        f'{shlex.quote(str(target))})"; '
+        f'out="$({shlex.quote(str(STAGE))} {shlex.quote(scenario)} '
+        f'{shlex.quote(str(target))})" || exit $?; eval "$out"; '
         'printf "%s\\0%s\\0%s\\0" "$sandbox_proj" "$source_file" "$prompt"'
     )
-    out = subprocess.run(
+    result = subprocess.run(
         ["bash", "-c", emit_cmd],
         capture_output=True,
         text=True,
-        check=True,
-    ).stdout
-    sandbox_proj, source_file, prompt, _trailing = out.split("\0")
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"stage.sh failed for scenario {scenario} "
+            f"(rc={result.returncode}): {result.stderr.strip()}"
+        )
+    sandbox_proj, source_file, prompt, _trailing = result.stdout.split("\0")
+    if not sandbox_proj or not pathlib.Path(sandbox_proj).is_dir():
+        raise RuntimeError(
+            f"stage.sh staged no sandbox project for scenario {scenario}: "
+            f"{sandbox_proj!r}"
+        )
     return {
         "sandbox_proj": sandbox_proj,
         "source_file": source_file,

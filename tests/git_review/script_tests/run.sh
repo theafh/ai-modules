@@ -6,8 +6,9 @@
 # extract_heading_range.sh, which cuts an inclusive heading range out of a
 # drafted report, plus the grader's report-form discrimination, the eval-32
 # delta-tag fail branches, and the eval-41 push-order proofs (hook log,
-# TMPDIR-scoped report.md, and grader fail branches). Repository scenarios
-# stage their own sandbox under scratch/<id>/; form checks read fixtures.
+# TMPDIR-scoped report.md, and grader fail branches), and the eval runner's
+# stop on a failed or empty stage. Repository scenarios stage their own
+# sandbox under scratch/<id>/; form checks read fixtures.
 # shellcheck disable=SC2329
 
 set -uo pipefail
@@ -1123,6 +1124,72 @@ s32_size_profile_lists_copies_by_new_path() {
         "$listed_paths" "$expected_paths" || ok=false
     assert_paths_are_paths "copy listing" "$listed_paths" || ok=false
     $ok
+}
+
+# Range size profile over binaries under generated paths. A binary file under
+# vendor/ or dist/ is both binary and generated, so it adds to both counts, but
+# the share counts each changed file once: two vendored binaries, a binary
+# outside any generated path, a generated text file, and a plain text file make
+# four of five files binary or generated, which is 80%, where adding the two
+# counts would print 120%.
+s33_size_profile_share_counts_vendored_binary_once() {
+    local root repo ev ok=true
+    root="$SCRATCH/s33"
+    rm -rf "$root"
+    mkdir -p "$root"
+    git init --quiet --bare --initial-branch=main "$root/origin.git" || return 1
+    git clone --quiet "$root/origin.git" "$root/repo" 2>/dev/null || return 1
+    (
+        cd "$root/repo" || exit 1
+        identity
+        printf 'seed\n' > seed.txt
+        git add -A
+        git commit --quiet -m "seed the vendored-binary fixture"
+        git push --quiet origin main
+        git remote set-head origin main
+
+        git checkout --quiet -b feature
+        mkdir -p vendor dist assets src
+        printf 'blob\000payload\n' > vendor/blob.bin
+        printf 'logo\000payload\n' > dist/logo.png
+        printf 'icon\000payload\n' > assets/icon.bin
+        printf 'vendored text\n' > vendor/lib.txt
+        printf 'first-party text\n' > src/app.txt
+        git add -A
+        git commit --quiet -m "feature: add vendored binaries beside plain files"
+        git push --quiet -u origin feature
+    ) || return 1
+    repo="$root/repo"
+    ev="$root/ev"
+
+    collect "$repo" --base main --head feature --out "$ev" >/dev/null
+
+    assert_eq "changed_files counts the five added files" \
+        "$(profile_value "$ev/size_profile.txt" changed_files)" "5" || ok=false
+    assert_eq "binary_files counts the three binaries" \
+        "$(profile_value "$ev/size_profile.txt" binary_files)" "3" || ok=false
+    assert_eq "generated_files counts the three files under vendor/ or dist/" \
+        "$(profile_value "$ev/size_profile.txt" generated_files)" "3" || ok=false
+    assert_eq "the share counts a vendored binary once" \
+        "$(profile_value "$ev/size_profile.txt" binary_or_generated_share)" "80%" || ok=false
+    assert_eq "listing names the four binary or generated files" \
+        "$(profile_paths "$ev/size_profile.txt")" \
+        "$(printf '%s\n' assets/icon.bin dist/logo.png vendor/blob.bin vendor/lib.txt | LC_ALL=C sort)" ||
+        ok=false
+    $ok
+}
+
+# --- eval runner -------------------------------------------------------------
+
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox repository, because pathlib.Path("") is the
+# current directory and the worker would otherwise start in the checkout.
+s34_eval_runner_stage_failure_raises() {
+    local out rc
+    out=$(python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" "$REPO_ROOT/tests/git_review/evals" 2>&1) &&
+        rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "tests/lib/check_stage_guard.py exit" "$rc" "0"
 }
 
 # --- extract_heading_range.sh ------------------------------------------------
@@ -2330,6 +2397,10 @@ scenario s31 "size profile lists and classifies renamed files by their new paths
     s31_size_profile_lists_renames_by_new_path
 scenario s32 "size profile lists a copied binary by its new path" \
     s32_size_profile_lists_copies_by_new_path
+scenario s33 "size profile share counts a vendored binary once" \
+    s33_size_profile_share_counts_vendored_binary_once
+scenario s34 "eval runner: a failed or empty stage raises before any worker" \
+    s34_eval_runner_stage_failure_raises
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

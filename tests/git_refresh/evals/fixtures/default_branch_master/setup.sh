@@ -18,6 +18,9 @@ repo="$(init_remote_repo "$target" master)"
     git commit --quiet -m "merged topic"
     git checkout --quiet master
     git merge --quiet --ff-only merged-topic
+    # Publish the merge so origin's later upstream commit stays a
+    # fast-forward of local master rather than a divergence.
+    git push --quiet origin master
 )
 
 upstream="$target/upstream"

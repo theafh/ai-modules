@@ -12,7 +12,7 @@ and its agents is asserted in `tests/task/script_tests/contract_run.sh` and
 
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
-| Grader | `script_tests/` | `evals/grade.sh` checks on staged fixtures and chosen responses, such as the archived-count absence check failing when no response is readable | `bash tests/task_fix/script_tests/run.sh` |
+| Grader | `script_tests/` | `evals/grade.sh` checks on staged fixtures and chosen responses, such as the archived-count absence check failing when no response is readable, plus the eval runner's stop on a failed or empty stage through `tests/lib/check_stage_guard.py` | `bash tests/task_fix/script_tests/run.sh` |
 | Skill behavior | `evals/` | the base `<lint>` **Repeated-link react protocol** as the inline `task_fix` path applies it: reorganize live bodies, surface what would change Goal or the Acceptance contract, leave archived bodies quiet (stage → agent → grade) | `python3 tests/task_fix/evals/run.py` |
 
 The whole-family behavioral suite keeps its own `fix`, `fix_coherence`, and

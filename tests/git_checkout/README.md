@@ -5,7 +5,7 @@ Two surfaces live under `tests/git_checkout/`:
 | Surface | Where | What it tests | Runner |
 | --- | --- | --- | --- |
 | `script_tests/` | Bundled shell script (`checkout_branch.sh`) | Deterministic stdout, exit-code, and git-state assertions on staged repositories | `./tests/git_checkout/run_all.sh` |
-| `evals/` | Skill agent behavior given `SKILL.md` | Whether the agent invokes the helper, reports the path it took, asks which remote to track instead of guessing, names the cause of a miss, and keeps a dirty worktree intact | Session-level skill-creator workflow |
+| `evals/` | Skill agent behavior given `SKILL.md` | Whether the agent invokes the helper, reports the path it took, asks which remote to track instead of guessing, names the cause of a miss, and keeps a dirty worktree intact | `python3 tests/git_checkout/evals/run.py` |
 
 The authored harness is committed; `tests/.gitignore` keeps run output out.
 
@@ -27,7 +27,9 @@ remote-qualified miss that does not fall through to another remote carrying the
 name, both miss causes (a restricted fetch refspec and a branch that exists
 nowhere), both dirty-worktree branches (a conflicting change that blocks the
 switch and a compatible change that carries across), a slashed branch name that
-is not read as a remote-qualified argument, and argument handling.
+is not read as a remote-qualified argument, and argument handling. A
+fifteenth scenario checks the eval harness: the runner's `stage()` stops on a
+failed or empty stage before any worker runs.
 
 Exit codes carry the outcome, so the scenarios assert them directly: `0` for a
 completed switch, `3` for the ambiguity hold, `4` for a reported miss, `5` for a
@@ -47,6 +49,9 @@ conflicting dirty worktree. Evals 3 and 4 share the `two_remotes_same_name`
 fixture as the hold and its re-entry; eval 6 reuses the `remote_only_branch`
 fixture with a name no remote carries.
 
-The deterministic script tests are the required local check for this harness.
-Behavioral evals require an agent run between staging and grading, so this
-harness keeps those definitions local and ready for an explicit eval session.
+`run_all.sh` drives the deterministic script tests. The behavioral evals run
+through `python3 tests/git_checkout/evals/run.py`, which stages each eval's
+fixture with `evals/stage.sh`, runs one worker per eval on the default Cursor
+vendor, grades the repository with `evals/grade.sh`, and records each verdict
+in the shared verdict cache. `evals/README.md` has the run options and what
+each grade asserts.

@@ -13,7 +13,7 @@ tests/language_humanizer/
 ├── RUNBOOK.md           # how to run it and how to read the result
 ├── run_all.sh           # the deterministic surface: static contract + grader tests
 ├── script_tests/
-│   └── run.sh           # static SKILL.md / README / registration contract
+│   └── run.sh           # static SKILL.md / README / registration contract, runner stage guard
 ├── results/             # one run-<ts>.{json,md} per recorded measurement
 ├── evals/
 │   ├── evals.json       # canonical schema + the full expectation list per scenario

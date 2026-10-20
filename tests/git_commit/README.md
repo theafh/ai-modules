@@ -40,7 +40,7 @@ under `scratch/<id>/repo/`, runs one or both of the bundled scripts in
 it, and asserts on stdout + exit code + git-state. Bash + git only, no
 LLM calls.
 
-Thirty-one scenarios cover:
+Thirty-two scenarios cover:
 
 `prepare_commit_context.sh`: clean tree, one untracked text file,
 one modified tracked file, mixed staged/unstaged/untracked, binary
@@ -64,6 +64,9 @@ commit failure, a body-bearing message without a blank line 2 → exit
 nothing drifted or the same path was re-edited, and commit-all when
 the baseline is missing because there is no context file or the
 context file lacks the baseline block.
+
+The eval runner: `evals/run.py`'s `stage()` stops on a failed or empty
+stage before any worker runs.
 
 The bash 3.2 floor: four scenarios run through an explicit
 `/bin/bash` rather than the bash the scripts' shebang resolves on
@@ -141,7 +144,7 @@ tests/git_commit/
 ├── results/
 │   └── layer1.log                      # latest script_tests transcript
 ├── script_tests/
-│   ├── run.sh                          # 31 deterministic scenarios
+│   ├── run.sh                          # 32 deterministic scenarios
 │   ├── prepare_commit_context_pre_fix_trap.sh  # pre-fix EXIT-trap stub
 │   └── scratch/<id>/                   # transient per-scenario git repos
 └── evals/                              # behavioral eval definitions + tooling

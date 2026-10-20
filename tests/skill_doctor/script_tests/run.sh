@@ -16,7 +16,8 @@
 # one-plugin hubless prefix family, the no-grouping-argument default,
 # walk-omitted given paths, the identical-purpose pair in both readings, and
 # the unaffiliated whole-repo set). Also covers the shared skill_discovery
-# module under both load paths, and the shipped SKILL.md static contract.
+# module under both load paths, the shipped SKILL.md static contract, and the
+# eval runner's stop on a failed or empty stage.
 
 set -uo pipefail
 
@@ -2377,6 +2378,11 @@ SELF_JSON="$("$DISCOVERY" "$SKILL_MD" 2>/dev/null)" && self_rc=0 || self_rc=$?
 check "self_check_exits_zero" test "${self_rc:-0}" -eq 0
 check "self_check_no_blocking" \
   json_has "$SELF_JSON" "data.get('blocking_count') == 0"
+
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox repository, before any worker could start.
+check "eval_runner_stage_guard" \
+  python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" "$REPO_ROOT/tests/skill_doctor/evals"
 
 log ""
 log "Passed: $PASS"

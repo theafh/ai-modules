@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Bundled-script unit tests for the git_refresh skill.
+# s11 and s12 check the eval harness: the runner's stage() stops on a failed
+# or empty stage, and eval 3's grade reads the gated order from the helper log.
 # shellcheck disable=SC2329
 
 set -uo pipefail
@@ -8,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SKILL_DIR="$REPO_ROOT/plugins/ai_dev/skills/git_refresh"
 REFRESH="$SKILL_DIR/scripts/refresh_repo.sh"
+EVALS_DIR="$REPO_ROOT/tests/git_refresh/evals"
 
 SCRATCH="$SCRIPT_DIR/scratch"
 RESULTS="$SCRIPT_DIR/../results/layer1.log"
@@ -380,6 +383,72 @@ s10_help_and_unknown_argument() {
     $ok
 }
 
+# --- Eval harness ------------------------------------------------------------
+
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox repository, because pathlib.Path("") is the
+# current directory and the worker would otherwise start in the checkout.
+s11_eval_runner_stage_failure_raises() {
+    local out rc
+    out=$(python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" "$EVALS_DIR" 2>&1) && rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "tests/lib/check_stage_guard.py exit" "$rc" "0"
+}
+
+# Eval 3's grade proves the gated order from the runner's helper log. The
+# default run alone already deletes gone-merged, so the repository state passes
+# either way, and only the log the shim writes tells the two runs apart: after
+# the default run alone the grade fails, and after the --prune-gone follow-up
+# it passes.
+s12_eval3_grade_reads_order_from_shimmed_helper_log() {
+    local root target repo shim out rc ok=true sandbox_repo
+    # stage.sh's eval below also assigns these; local keeps them out of the
+    # other scenarios.
+    # shellcheck disable=SC2034
+    local skill_path prompt
+    root="$SCRATCH/s12"
+    target="$root/target"
+    rm -rf "$root"
+    mkdir -p "$root"
+    eval "$(bash "$EVALS_DIR/stage.sh" 3 "$target" 2>/dev/null)" || return 1
+    repo="$sandbox_repo"
+    target="$(cd "$repo/.." && pwd -P)"
+    shim=$(python3 - "$EVALS_DIR" "$SKILL_DIR" "$root/home" "$target" 2>&1 <<'PY'
+import pathlib
+import shutil
+import sys
+import types
+
+sys.path.insert(0, sys.argv[1])
+import run  # noqa: E402
+
+skill = pathlib.Path(sys.argv[3]) / "skills" / "git_refresh"
+shutil.copytree(sys.argv[2], skill)
+deploy = types.SimpleNamespace(
+    path_map={"git_refresh": skill / "SKILL.md"},
+    scratch_home=pathlib.Path(sys.argv[3]),
+)
+run.shim_deployed_scripts(deploy, pathlib.Path(sys.argv[4]))
+print(skill / "scripts" / "refresh_repo.sh")
+PY
+) || { log "    [shim setup failed: $shim]"; return 1; }
+
+    (cd "$repo" && bash "$shim" >/dev/null 2>&1)
+    out=$(bash "$EVALS_DIR/grade.sh" 3 "$repo" 2>&1) && rc=0 || rc=$?
+    assert_eq "grade after the default run alone" "$rc" "1" || ok=false
+    assert_contains "the missing follow-up fails" "$out" \
+        "FAIL  the helper log records a refresh_repo.sh --prune-gone call after that default run" || ok=false
+    assert_contains "the default run still passes" "$out" \
+        "PASS  the helper log records a default run of refresh_repo.sh with no arguments" || ok=false
+
+    (cd "$repo" && bash "$shim" --prune-gone >/dev/null 2>&1)
+    out=$(bash "$EVALS_DIR/grade.sh" 3 "$repo" 2>&1) && rc=0 || rc=$?
+    assert_eq "grade after the --prune-gone follow-up" "$rc" "0" || ok=false
+    assert_eq "the shim logged both calls in order" "$(cat "$target/script_calls.log")" \
+        "$(printf 'refresh_repo.sh \nrefresh_repo.sh --prune-gone')" || ok=false
+    $ok
+}
+
 scenario s1  "master default: switch, fast-forward, delete merged branch" s1_master_default_refreshes_and_deletes_merged
 scenario s2  "diverged upstream: report and leave unchanged"              s2_diverged_upstream_left_unchanged
 scenario s3  "default run: delete merged, leave unique gone, offer"       s3_default_leaves_unique_gone_branch_and_offers
@@ -390,6 +459,8 @@ scenario s7  "gated prune: leave gone branch with unique commits"         s7_pru
 scenario s8  "force-delete: require explicit confirmation"                s8_force_delete_requires_confirmation
 scenario s9  "force-delete: delete after exact confirmation"              s9_force_delete_after_explicit_confirmation
 scenario s10 "flags: help and unknown argument handling"                  s10_help_and_unknown_argument
+scenario s11 "eval runner: a failed or empty stage raises before any worker" s11_eval_runner_stage_failure_raises
+scenario s12 "eval 3 grade: the shimmed helper log proves the gated order" s12_eval3_grade_reads_order_from_shimmed_helper_log
 
 log ""
 log "================================================================"

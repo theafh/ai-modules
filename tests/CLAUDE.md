@@ -15,19 +15,19 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | Subdir | Skill | Pattern | What it covers |
 | --- | --- | --- | --- |
 | `wiki/` | `wiki` | Pattern B (legacy two-layer) | Layer 1 deterministic script unit tests + Layer 2 LLM skill-behavior evals via custom orchestrator. |
-| `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade). |
-| `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) + `evals/` behavioral evals run operator-driven (stage → agent runs → grade). |
-| `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper, the size profile with its line counts, its conflicted files, and its binary-path listing with renamed and copied files under their new paths and a renamed file classified by its new path, and the located secret-scan hits, Compose, YAML, and Go `:=` assignments among them, with the manual-fallback blocks run under bash and zsh) + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
-| `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on the default Cursor worker, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
-| `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. |
-| `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/test_run.py` checks that no eval grading the sandbox's whole `git status` declares an artefact the micro-deployment writes into the sandbox project; `evals/` holds a behavioral eval per family member. `run_all.sh` drives the two script runners and `evals/test_run.py`. |
+| `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests plus the eval runner's stop on a failed or empty stage + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade). |
+| `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) plus the eval runner's stop on a failed or empty stage + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade) in the shared `tests/lib/eval_runner` pool. |
+| `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper, the size profile with its line counts, its conflicted files, and its binary-path listing with renamed and copied files under their new paths and a renamed file classified by its new path, and its share counting a vendored binary once, and the located secret-scan hits, Compose, YAML, and Go `:=` assignments among them, with the manual-fallback blocks run under bash and zsh) plus the eval runner's stop on a failed or empty stage + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
+| `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract and the eval runner's stop on a failed or empty stage in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on the default Cursor worker, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
+| `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. `evals/test_run.py` checks the style-route preflight and the runner's stop on a failed or empty stage. |
+| `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/test_run.py` checks that no eval grading the sandbox's whole `git status` declares an artefact the micro-deployment writes into the sandbox project, and that the runner stops on a failed or empty stage; `evals/` holds a behavioral eval per family member. `run_all.sh` drives the two script runners and `evals/test_run.py`. |
 | `task_create/` | `task_create` | Pattern A (behavioral only) | Three staged evals over the base **Decide or label** rule as the create path applies it; the bundled scripts it drives are covered under `task/script_tests/`. |
-| `task_fix/` | `task_fix` | Pattern A (skill-creator-aligned) | `script_tests/run.sh` checks `evals/grade.sh` on staged fixtures and chosen responses; no `run_all.sh`. Four staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and leave the archived body quiet, gather a reference page's current state and its edit into one passage, surface a gathering that would leave an Acceptance item nothing to measure, and name a repeat inside one paragraph again in plain text there. Grades the task file's bytes and the run's per-finding disposition line. |
-| `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks + `evals/` over the autonomous readiness loop (repair-to-ready, frozen commitments, isolated re-gates, last-call citation refutation, gate/verifier/drift stops, mechanical lint cleanup). |
+| `task_fix/` | `task_fix` | Pattern A (skill-creator-aligned) | `script_tests/run.sh` checks `evals/grade.sh` on staged fixtures and chosen responses, and the eval runner's stop on a failed or empty stage; no `run_all.sh`. Four staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and leave the archived body quiet, gather a reference page's current state and its edit into one passage, surface a gathering that would leave an Acceptance item nothing to measure, and name a repeat inside one paragraph again in plain text there. Grades the task file's bytes and the run's per-finding disposition line. |
+| `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks and parallel-runner checks, the runner's stop on a failed or empty stage among them, + `evals/` over the autonomous readiness loop (repair-to-ready, frozen commitments, isolated re-gates, last-call citation refutation, gate/verifier/drift stops, mechanical lint cleanup). |
 | `guardrail_audit/` | `guardrail_audit` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md and registration contract + `evals/` over five staged fixtures with byte-identity grading. |
-| `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract + `evals/` over three staged fixtures. |
+| `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract and the eval runner's stop on a failed or empty stage + `evals/` over three staged fixtures. |
 | `agent_spinner/` | `agent_spinner` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md / references / grep / registration contract + `evals/` over 21 staged fixtures, one per independently staged behavioural acceptance item. The runner denies the spawn tool for no-delegation-surface fixtures and brackets each eval with a host-checkout `git status`. |
-| `git_refresh/` | `git_refresh` | Pattern A (script surface automated) | `script_tests/` over the bundled `refresh_repo.sh` on staged repositories. `evals/` holds four behavioral evals with fixtures but ships no runner, so a sweep does not reach them. |
+| `git_refresh/` | `git_refresh` | Pattern A (skill-creator-aligned) | `script_tests/` over the bundled `refresh_repo.sh` on staged repositories, plus the eval runner's stop on a failed or empty stage and eval 3's grade reading the gated order from the helper log + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker behind a logging shim around the deployed helper → grade) in the shared `tests/lib/eval_runner` pool. |
 | `ai_instruction_writing/` | `ai_instruction_writing` | Pattern A (script-only) | `script_tests/` asserts the static prose contract of a skill that ships no bundled scripts. |
 | `charter_guardrail/` | `guardrail` | Pattern A (script-only) | `script_tests/` exercises the `charter_guardrail.sh` hook that protects `CHARTER.md`: its block and allow decisions for Claude, Codex, and Antigravity tool calls and for shell commands that read or write the charter, the `guardrail/charter-*` branch exception, and its behavior without `jq`. It also checks the hook registrations, the Codex deploy wiring, and how the docs and wiki describe Codex plugin-hook trust; no `run_all.sh`, so drive `script_tests/run.sh` directly. |
 | `format_rust/` | `format_rust` | Pattern A (script-only) | `script_tests/` greps SKILL.md and the plugin README for the error-versus-invariant model, panic discipline, and clippy wiring; no `run_all.sh`. |
@@ -156,9 +156,12 @@ and an escape guard that reads the whole host checkout, such as
 uses the default 4 workers. Raising the default past 4 mostly buys model
 contention and timeouts, not faster wall-clock.
 
-`task_auto_check` is the runner on `eval_runner` at that default of 4.
-Its serial nested-loop set is the list above, and that set runs one job
-at a time after the isolated pool.
+The Pattern A runners that import `tests/lib/eval_runner` and run at that
+default of 4 are `tests/task_auto_check/evals/run.py`,
+`tests/git_checkout/evals/run.py`, and `tests/git_refresh/evals/run.py`.
+`task_auto_check` runs its serial nested-loop set, the list above, one job
+at a time after the isolated pool. Every `git_checkout` and `git_refresh`
+eval stages its own sandbox root, so the whole suite runs in the pool.
 
 The helper runs a harness's before and after hooks around each job, one hook
 call at a time, so two escape-guard snapshots never interleave. The hooks
@@ -382,6 +385,25 @@ Every behavioural runner takes its sandbox root from `create_sandbox_root`.
 `isolation_args` stays with the runners that pass it today
 (`language_humanizer`, `natural_language`). The unit tests live in
 `tests/lib/test_worker_isolation.py`.
+
+### A failed stage stops the eval: `tests/lib/check_stage_guard.py`
+
+Every runner that stages through `bash -c` runs
+`out="$(stage.sh <id> <target>)" || exit $?; eval "$out"; printf ...` and
+raises `RuntimeError` when stage.sh fails or when the sandbox path it prints is
+empty or not a directory. Before that guard, a failed stage left `eval` an
+empty string, the script still reached `printf`, and the runner got an empty
+path. `pathlib.Path("")` is the current directory, so the worker would have
+started in the repository checkout. `agent_spinner` and `guardrail_audit` call
+stage.sh through `subprocess.check_output`, which already raises on a failed
+stage.
+
+`python3 tests/lib/check_stage_guard.py <evals_dir>` imports that runner,
+points its `STAGE` at a stand-in stager that fails and then at one that exits 0
+and prints nothing, and passes only when both calls raise. Each harness's
+deterministic surface runs it on its own runner, so a new runner that stages
+through `bash -c` adds the same guard and the same check. `task_create` has no
+deterministic surface, so its guard is checked by hand.
 
 ### Timed-out worker output: decode it through `tests/lib/worker_io.py`
 

@@ -3,8 +3,9 @@
 
 Proves --workers defaults to 4, default ids come from load_eval_ids, the
 serial nested-loop set is the Approach set and the one list in each guide,
-micro-deploy stays inside the job, and grade.sh fails when a staged fixture
-name in a temporary host copy is newer than the eval marker.
+micro-deploy stays inside the job, grade.sh fails when a staged fixture name
+in a temporary host copy is newer than the eval marker, and stage() raises on
+a failed or empty stage.
 """
 
 from __future__ import annotations
@@ -248,6 +249,19 @@ def test_grade_fails_newer_fixture() -> None:
     check("the checkout tasks tree is unchanged", _tasks_signature(live_tasks) == before)
 
 
+def test_stage_guard() -> None:
+    """stage() raises on a stage.sh that fails, and on one that exits 0
+    without naming a sandbox project, before any worker could start."""
+    result = subprocess.run(
+        [sys.executable, str(LIB / "check_stage_guard.py"), str(RUN_PY.parent)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(result.stdout + result.stderr)
+    check("stage() raises on a failed or empty stage", result.returncode == 0)
+
+
 def main() -> int:
     test_help()
     module = load_run()
@@ -255,6 +269,7 @@ def main() -> int:
     test_docs_name_the_serial_set_once()
     test_micro_deploy_inside_job()
     test_grade_fails_newer_fixture()
+    test_stage_guard()
     print(f"parallel runner checks: {len(FAILURES)} fail")
     return 1 if FAILURES else 0
 

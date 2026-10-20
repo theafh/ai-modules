@@ -6,7 +6,8 @@
 # pseudo-XML body, the description budget and its two router splits, dash-free
 # prose, the named sections and rules, and registration lockstep. The
 # behavioural items live in evals/, driven by evals/run.py, and the grader's own
-# unit tests live in evals/test_grade.py.
+# unit tests live in evals/test_grade.py. One check also covers that runner's
+# stop on a failed or empty stage.
 
 set -euo pipefail
 
@@ -150,6 +151,11 @@ check "root README lists language_humanizer" file_has "$ROOT_README" '\*\*langua
 check "root README ai_editorial section carries no em dash or en dash" root_section_lacks '—|–'
 
 check_plugin_version_lockstep ai_editorial
+
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox project, before any worker could start.
+check "the eval runner's stage() raises on a failed or empty stage" \
+  python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" "$REPO_ROOT/tests/language_humanizer/evals"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 if ((fail > 0)); then

@@ -732,11 +732,14 @@ collect_size_profile() {
     fi
 
     {
-        local total binary generated sections
+        local total binary generated binary_or_generated sections
         total=$(count_matches '^diff --git ' "$diff")
         sections=$(binary_and_generated_sections "$diff")
         binary=$(printf '%s\n' "$sections" | count_matches_piped '^1 ')
         generated=$(printf '%s\n' "$sections" | count_matches_piped '^[01] 1 ')
+        # The share counts records, one per section that is binary, generated,
+        # or both, so a binary file under a generated path counts once.
+        binary_or_generated=$(printf '%s\n' "$sections" | count_matches_piped '^[01] [01] ')
 
         # Count content lines only. The shared header window skips each file's
         # --- / +++ pair, a conflicted file's included, and leaves content that
@@ -753,7 +756,7 @@ collect_size_profile() {
         printf 'binary_files: %s\n' "$binary"
         printf 'generated_files: %s\n' "$generated"
         if ((total > 0)); then
-            printf 'binary_or_generated_share: %s%%\n' "$(( (binary + generated) * 100 / total ))"
+            printf 'binary_or_generated_share: %s%%\n' "$(( binary_or_generated * 100 / total ))"
         else
             printf 'binary_or_generated_share: 0%%\n'
         fi

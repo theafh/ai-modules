@@ -7,7 +7,8 @@ through an unscoped `git status --porcelain`. The micro-deployment writes
 agents and styles into that sandbox project on at least one vendor, so every
 such eval must declare neither. These checks read grade.sh for those evals,
 check each one's declaration, and stage one of them for a real
-micro-deployment per vendor, all without a model call.
+micro-deployment per vendor, all without a model call. One more check proves
+the runner's stage() raises on a failed or empty stage.
 
 Run:
 
@@ -179,6 +180,17 @@ def main() -> int:
                 f"{eval_id} on {vendor_name} {label}: sandbox git status {outcome}",
                 before == "" and (after == "") == expect_clean,
             )
+
+    # stage() raises on a stage.sh that fails, and on one that exits 0 without
+    # naming a sandbox project, before any worker could start.
+    guard = subprocess.run(
+        [sys.executable, str(THIS.parents[1] / "lib" / "check_stage_guard.py"), str(THIS)],
+        capture_output=True,
+        text=True,
+    )
+    if guard.returncode != 0:
+        print(guard.stdout + guard.stderr)
+    check("stage() raises on a failed or empty stage", guard.returncode == 0)
 
     print(f"\n{PASS} passed, {FAIL} failed")
     return 1 if FAIL else 0

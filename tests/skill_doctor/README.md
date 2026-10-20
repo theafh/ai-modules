@@ -104,7 +104,9 @@ tests/skill_doctor/
     severity, the file-type path, or the plural nouns each fails a named
     check;
   - a self-check that `skill_doctor` clears its own gate;
-  - static `SKILL.md` contract anchors from the task acceptance list.
+  - static `SKILL.md` contract anchors from the task acceptance list;
+  - the eval runner's stop on a failed or empty stage, through
+    `tests/lib/check_stage_guard.py`.
 - **evals** are staged prompts for family scope resolution,
   discovery-safety-first ordering, and the two behaviours that come from
   the checked repository rather than from this one: `registration_no_manifest`

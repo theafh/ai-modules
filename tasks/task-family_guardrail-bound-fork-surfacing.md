@@ -2,9 +2,11 @@
 description: Make the task family's Decide or label rule reliably surface a guardrail-bound fork instead of auto-resolving it from the guardrail hierarchy, and re-measure over repeated draws.
 scope: plugins/ai_dev/skills
 created: 2026-09-05T02:35:10
-updated: 2026-09-11T22:20:10
-status: ready
+updated: 2026-10-20T12:47:52
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make a guardrail-bound fork reach the user instead of being auto-resolved
@@ -86,9 +88,9 @@ eval's recorded history reads as flaky because two failure causes were mixed
 under one verdict.
 
 **Out of scope:** Widening the grader's label needles, which
-[the grader-authoring discipline task](archive/tests_grader-authoring-discipline.md)
-owns and which this task depends on only for reading its own re-measurement
-cleanly.
+[the task_create grader task](tests_task-create-grader-label-false-fails.md)
+owns. This task depends on the finished grader-authoring discipline task only
+for reading its own re-measurement cleanly.
 
 ## Acceptance
 
@@ -117,3 +119,74 @@ eval also passes on every draw (five of five), recorded with the same run
 directories and each draw's `response.txt` as evidence. When any of those five
 draws fails `reconcile-recorded`, leave the measurement incomplete, revise the
 wording, and re-run; do not treat a partial pass as done.
+
+## Findings
+
+The measurement is complete. After the **Guardrail-bound ground.** edit, five
+consecutive draws met both halves of `guardrail-bound-surface` in five of five
+and passed `reconcile-recorded` in five of five, against the reshaped
+`reconcile-recorded` fixture described below.
+
+Each draw ran `python3 tests/task_create/evals/run.py --no-cache --timeout 540
+<id>` once per eval id on the default Cursor worker, so each draw has one run
+directory per eval under `tests/task_create/evals/workspace/`, which is
+gitignored output local to the recording machine. The evidence for each verdict
+is that directory's `<id>/response.txt`, read together with the task file under
+`<id>/sandbox/proj/tasks/`.
+
+- Draw 1: `run-20261020-112401` met both halves. The grader failed only its
+  one-label count, because an Acceptance item mentions "the path chosen in the
+  open decision:" beside the single label. `run-20261020-112614` passed
+  `reconcile-recorded`.
+- Draw 2: `run-20261020-112751` met both halves and graded PASS.
+  `run-20261020-112940` passed `reconcile-recorded`.
+- Draw 3: `run-20261020-113142` met both halves and graded PASS.
+  `run-20261020-113352` passed `reconcile-recorded`.
+- Draw 4: `run-20261020-113531` met both halves and graded PASS.
+  `run-20261020-113704` passed `reconcile-recorded`.
+- Draw 5: `run-20261020-113831` met both halves and graded PASS.
+  `run-20261020-113937` passed `reconcile-recorded`.
+
+No `guardrail-bound-surface` draw settled the fork itself. Each label named the
+`rich` path against the charter's dependency boundary and the stock-colour path
+against the architecture document's Presentation rule, either as a raw-ANSI
+crossing or as a rewrite of that section, gave the guardrail-bound ground as
+its why-open clause, and suggested the charter-favoured default, and each
+response asked the user to resolve now or defer. Every `reconcile-recorded`
+draw classified the archived precedent as Novel, took `reported-by` from the
+sandbox's git identity, wrote no labelled open decision, recorded the
+stub-before-import path while citing the standing testing rule, and reported
+in one line that no open decision carried forward, without prompting.
+
+The `reconcile-recorded` fixture changed before this measurement, because the
+earlier fixture stopped draws before **Decide or label** ran. Its archived
+precedent tested `render_chart` in the same `src/report/render.py`, beside a
+shipped `tests/test_render_chart.py`, so the base skill's `<prior_art>` gate
+classified the request as **Partially covered**, asked how to proceed, and
+wrote no file. That stop hit three of five draws in the first post-edit set
+(`run-20261020-104427`, `run-20261020-104828`, `run-20261020-105952`), two of
+three same-day draws against an exported copy of committed HEAD, and the
+pre-change runs `run-20261015-013153` and `run-20261015-062524`, so it predates
+this task's edit. The sandbox also had no `git config user.name`, so those
+workers asked for a `reported-by` name as well. Because both stops sit before
+the rule this task changes, the user chose to refine the fixture rather than
+the wording. The reshaped fixture archives a precedent for `axis_ticks` in
+`src/dashboard/plots.py`, a different module that imports the same `chartkit`
+backend and took the `sys.modules` stubbing path with `tests/test_plots.py` as
+its shipped test, so it stays tier (d) evidence for the pattern while covering
+nothing in `render.py`. The sandbox is now a git repository whose identity
+supplies `reported-by`. Every evidence tier still points at the stubbing path,
+so a run that labels that fork with the evidence's own default still fails the
+no-label check. [The related-precedent prior-art
+task](task-family_prior-art-related-precedent-is-novel.md) owns the gate's
+Novel versus **Partially covered** ambiguity and restores the
+overlapping-precedent case as its own eval.
+
+Two grader-needle defects showed up across both sets and stay with the owner
+named under **Out of scope**: the one-label count also matches an "open
+decision:" mention elsewhere in the body, such as an Acceptance pointer or a
+Context bullet, and the why-open needle missed a clause phrased
+"guardrail-bound: every path crosses a boundary or rewrites a guardrail doc".
+Draw 4's worker also remarked that the eval name suggested a guardrail-bound
+fork, because the sandbox root's directory name carries the eval id; its label
+and surface met both halves on the same substance as the other draws.

@@ -9,16 +9,34 @@
 The command writes the latest script-test transcript to
 `tests/git_checkout/results/layer1.log`.
 
-## Stage a behavioral eval fixture
+## Run the behavioral evals
 
 ```bash
-bash tests/git_checkout/evals/fixtures/two_remotes_same_name/setup.sh /tmp/git-checkout-eval
+python3 tests/git_checkout/evals/run.py            # every eval, default Cursor worker
+python3 tests/git_checkout/evals/run.py 3 4        # a subset by id
+python3 tests/git_checkout/evals/run.py --force    # re-run despite cached verdicts
 ```
 
-Each `setup.sh` prints the path of the staged clone as its last line. Then run
-the `git_checkout` skill against that clone using the prompt from
-`evals/evals.json`, and inspect the repository plus transcript against the
-listed expectations.
+The runner stages each eval into its own sandbox root, runs one worker per eval
+four at a time (`--workers 1` serializes), grades the repository with
+`evals/grade.sh`, and prints a graded summary naming every eval and its
+verdict. An eval whose inputs are unchanged replays its cached verdict without
+a worker; `--no-cache` re-runs without reading or writing the cache.
+`evals/README.md` has the full run options and what each grade asserts.
+
+Each eval's run directory, `tests/git_checkout/workspace/run-<ts>-<pid>/<id>/`,
+holds `response.txt`, `timing.json`, `grading.txt`, and a `sandbox/` copy of
+the staged repositories after the run. Confirm the `response` lines
+`grade.sh` prints against `response.txt`, since they cover what the
+repository cannot show.
+
+To debug one eval by hand, stage it, run the skill yourself, and grade:
+
+```bash
+eval "$(bash tests/git_checkout/evals/stage.sh 3 /tmp/git-checkout-eval)"
+# load $skill_path and apply $prompt inside $sandbox_repo
+bash tests/git_checkout/evals/grade.sh 3 "$sandbox_repo"
+```
 
 ## Read a fixture before blaming the skill
 

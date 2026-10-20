@@ -42,6 +42,9 @@ The load-bearing ones:
   and every check rejects its seeded violation in the field-block fixture.
   `bash tests/git_review/evals/grade.sh --form-only 1 <response-file>` runs
   the checks alone without staging a repository.
+- **s34** runs `tests/lib/check_stage_guard.py` on `evals/run.py`, so a
+  stage that fails or names no sandbox repository stops the eval before any
+  worker starts.
 
 ## evals: skill behavior, one vendor worker per eval
 

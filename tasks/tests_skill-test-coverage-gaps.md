@@ -2,7 +2,7 @@
 description: "Add the skill-test coverage the skill_doctor sweep found missing: a script-test surface for ai_instruction_formatting's linter, and a recorded coverage disposition for the behaviour-only skills."
 scope: "local test harnesses"
 created: 2026-09-05T09:47:15
-updated: 2026-10-16T22:53:04
+updated: 2026-10-19T19:52:34
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -37,7 +37,7 @@ Then take the behaviour-only set one skill at a time. For each, decide against t
 
 Derive the behaviour-only set at implementation time by re-running the skill_doctor sweep, or by listing skills with no `scripts/` directory and no `tests/<skill>/` or `tests/trigger_evals/<skill>.json` coverage, rather than trusting the five names frozen here, since a skill added since could join the set.
 
-**Out of scope:** Adding a runner for the `git_refresh` behavioural evals, which [the git eval-runner parity task](tests_git-eval-runner-parity.md) owns. Adding behavioural evals beyond what closes a named gap, which the standing repo rule on harness growth keeps to its own session.
+**Out of scope:** Adding a runner for the `git_refresh` behavioural evals, which [the git eval-runner parity task](archive/tests_git-eval-runner-parity.md) owns. Adding behavioural evals beyond what closes a named gap, which the standing repo rule on harness growth keeps to its own session.
 
 ## Acceptance
 

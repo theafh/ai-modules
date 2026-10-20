@@ -4,7 +4,8 @@
 # Scope: the two shell scripts shipped with the skill
 # (prepare_commit_context.sh, commit_with_message.sh) — NOT the skill's
 # agent-level behavior. Skill behavior is covered by tests/git_commit/evals/
-# under the skill-creator convention.
+# under the skill-creator convention. One scenario (e1) also checks that eval
+# runner's stage() stops on a failed or empty stage before any worker runs.
 #
 # Each scenario stages a fresh temporary git repo under
 # tests/git_commit/script_tests/scratch/<id>/repo/, manipulates its
@@ -18,6 +19,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SKILL_DIR="$REPO_ROOT/plugins/ai_dev/skills/git_commit"
 PREPARE="$SKILL_DIR/scripts/prepare_commit_context.sh"
 COMMIT="$SKILL_DIR/scripts/commit_with_message.sh"
+EVALS_DIR="$REPO_ROOT/tests/git_commit/evals"
 # Pin the bash 3.2 floor the way tests/deployment/script_tests pins DEPLOY_BASH:
 # scenarios that prove floor behaviour invoke both scripts through this path
 # rather than through the shebang's PATH-resolved bash.
@@ -1119,6 +1121,20 @@ p16_unborn_branch_root_commit() {
 }
 
 ###############################################################################
+# eval runner scenarios
+###############################################################################
+
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox repository, because pathlib.Path("") is the
+# current directory and the worker would otherwise start in the checkout.
+e1_eval_runner_stage_failure_raises() {
+    local out rc
+    out=$(python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" "$EVALS_DIR" 2>&1) && rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "tests/lib/check_stage_guard.py exit" "$rc" "0"
+}
+
+###############################################################################
 # Run scenarios
 ###############################################################################
 
@@ -1154,6 +1170,8 @@ scenario c11 "commit: no-drift pass-through preserved"        c11_no_drift_passt
 scenario c12 "commit: same-path re-edit passes through"       c12_same_path_reedit_passthrough
 scenario c13 "commit: missing baseline (no ctx) -> commit-all" c13_missing_baseline_no_context_file
 scenario c14 "commit: missing baseline (no block) -> commit-all" c14_missing_baseline_context_without_block
+
+scenario e1  "eval runner: a failed or empty stage raises before any worker" e1_eval_runner_stage_failure_raises
 
 ###############################################################################
 # Summary

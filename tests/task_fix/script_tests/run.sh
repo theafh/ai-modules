@@ -6,7 +6,8 @@
 # These cases back grader edits with evidence in the tree, as TESTING.md asks:
 # a tightened check carries a case the old check passed although the property
 # failed, next to controls showing the check still separates a good report
-# from a bad one.
+# from a bad one. One more check covers the eval runner's stop on a failed or
+# empty stage.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,6 +61,11 @@ check "a report without the count line passes the absence check" \
   grader_says regroup_live_skip_archived "$ROOT/live_only.txt" "$NO_COUNT" PASS
 check "a report with the count line fails the absence check" \
   grader_says regroup_live_skip_archived "$ROOT/with_count.txt" "$NO_COUNT" FAIL
+
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox project, before any worker could start.
+check "the eval runner's stage() raises on a failed or empty stage" \
+  python3 "$HERE/../../lib/check_stage_guard.py" "$EVALS"
 
 printf 'task_fix script_tests: %s pass, %s fail\n' "$pass" "$fail"
 [[ "$fail" -eq 0 ]]

@@ -2,7 +2,7 @@
 description: Narrow the shared behavioral-eval verdict cache key with fail-closed per-eval dependency declarations and always-on grade.sh arm-split, so an edit re-runs only the evals that can reach it.
 scope: "local test harnesses"
 created: 2026-09-04T17:54:29
-updated: 2026-10-15T16:00:19
+updated: 2026-10-19T19:52:34
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -62,7 +62,7 @@ runs went to verifying edits that only a minority of evals could reach.
 [The grader-authoring discipline task](tests_grader-authoring-discipline.md)
 governs how grader checks assert and shares the `grade.sh` edit surface. The two
 touch the same file for different reasons and impose no order on each other.
-[The git eval-runner parity task](../tests_git-eval-runner-parity.md) adds runners
+[The git eval-runner parity task](tests_git-eval-runner-parity.md) adds runners
 that will consume the same helper once they exist; this task's fail-closed
 default keeps an undeclared eval correct for any runner that lands later.
 

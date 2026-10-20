@@ -132,22 +132,37 @@ def partition_ids(ids: list[str]) -> tuple[list[str], list[str]]:
 def stage(
     eval_id: str, target: pathlib.Path, env: Mapping[str, str]
 ) -> dict[str, str]:
-    """Stage one eval and return sandbox_proj, skill_name, skill_path, prompt."""
+    """Stage one eval and return sandbox_proj, skill_name, skill_path, prompt.
+
+    The script captures stage.sh's output before evaluating it and exits with
+    stage.sh's status when it fails, so a failed stage raises here. An empty
+    or missing sandbox_proj raises too, because pathlib.Path("") is the
+    current directory and the worker would otherwise start in the checkout.
+    """
 
     emit = (
-        f'eval "$(bash {shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
-        f'{shlex.quote(str(target))})"; '
+        f'out="$(bash {shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
+        f'{shlex.quote(str(target))})" || exit $?; eval "$out"; '
         'printf "%s\\0%s\\0%s\\0%s\\0" '
         '"$sandbox_proj" "$skill_name" "$skill_path" "$prompt"'
     )
-    out = subprocess.run(
+    result = subprocess.run(
         ["bash", "-c", emit],
         capture_output=True,
         text=True,
-        check=True,
         env=dict(env),
-    ).stdout
-    sandbox_proj, skill_name, skill_path, prompt, _rest = out.split("\0")
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"stage.sh failed for eval {eval_id} (rc={result.returncode}): "
+            f"{result.stderr.strip()}"
+        )
+    sandbox_proj, skill_name, skill_path, prompt, _rest = result.stdout.split("\0")
+    if not sandbox_proj or not pathlib.Path(sandbox_proj).is_dir():
+        raise RuntimeError(
+            f"stage.sh staged no sandbox project for eval {eval_id}: "
+            f"{sandbox_proj!r}"
+        )
     return {
         "sandbox_proj": sandbox_proj,
         "skill_name": skill_name,

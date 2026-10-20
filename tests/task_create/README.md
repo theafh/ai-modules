@@ -28,7 +28,10 @@ insufficient or the fork is guardrail-bound. A genuinely open decision is then
   fixture mirrors the observed failure the tightening closes: an authoring
   session that labeled an evidence-settled test-reachability fork as its open
   decision, with a default the evidence had already picked. Permissive
-  behaviour fails this eval; the tightened rule passes it.
+  behaviour fails this eval; the tightened rule passes it. The archived
+  precedent covers a different module that imports the same backend, and the
+  sandbox is a git repository whose identity supplies `reported-by`, so the run
+  reaches drafting without a prior-art or name question.
 - **`labeled-why-open`**: no tier reaches the fork, which rests on the user's
   own risk appetite. Exactly one label, carrying options, a default, and a true
   why-open clause, surfaced to the user.

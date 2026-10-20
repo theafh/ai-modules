@@ -62,7 +62,9 @@ error, the shape recorded under `### Configuration roots` on
 writes that shape into a sandbox and aborts before any scenario pass, without
 starting a worker.
 `python3 tests/natural_language/evals/test_run.py` checks the marker-present
-route and both marker-missing version branches without starting a worker.
+route and both marker-missing version branches without starting a worker, and
+runs `tests/lib/check_stage_guard.py` so a stage that fails or names no
+sandbox project stops a scenario before any worker starts.
 `python3 tests/natural_language/evals/test_grade.py` checks that a hard wrap
 at 72 columns does not change the series or pronoun-run verdicts.
 

@@ -8,7 +8,7 @@ plugin.
 
 | Surface | Where | What it tests |
 | :--- | :--- | :--- |
-| `script_tests/` | Deterministic shell assertions | Published artefact shape, family registration, gate delegation, loop boundaries, agent naming, and metadata wiring |
+| `script_tests/` | Deterministic shell assertions | Published artefact shape, family registration, gate delegation, loop boundaries, agent naming, and metadata wiring, plus the runner checks in `test_parallel_runner.py`, which include the eval runner's stop on a failed or empty stage through `tests/lib/check_stage_guard.py` |
 | `evals/` | Behavioral eval definitions | Staged task scenarios for the autonomous readiness loop: already-ready with mechanical lint cleanup, freeze-time intent drift routing, repair-to-ready, relay-by-path hand-offs and delta audit, frozen-commitment routing, isolated re-gates, last-call citation refutation, stray-hunk revert of an apply fault, split-stuck, fidelity guard, no verified fix, cap override, agent-failure user stops (gate, drift, and verifier helper failures each stop with a clear error, options, and a user decision with zero auto-recovery), and guard re-baselining after the gate's own stamp |
 
 The authored harness is committed; `tests/.gitignore` keeps run output out.

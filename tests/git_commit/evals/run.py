@@ -90,16 +90,30 @@ You are running an automated skill regression eval. Do exactly this:
 def stage(eval_id: str, target: pathlib.Path) -> dict:
     """Run stage.sh and read back the staged values. stage.sh prints
     printf-%q-quoted `name=value` lines meant to be `eval`'d in bash, so
-    we let bash eval them and re-emit the raw values NUL-separated."""
+    we let bash eval them and re-emit the raw values NUL-separated. The
+    script captures stage.sh's output before evaluating it and exits with
+    stage.sh's status when it fails, so a failed stage raises here. An empty
+    or missing sandbox_repo raises too, because pathlib.Path("") is the
+    current directory and the worker would otherwise start in the checkout."""
     emit = (
-        f'eval "$({shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
-        f'{shlex.quote(str(target))})"; '
+        f'out="$({shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
+        f'{shlex.quote(str(target))})" || exit $?; eval "$out"; '
         'printf "%s\\0%s\\0%s\\0" "$sandbox_repo" "$skill_path" "$prompt"'
     )
-    out = subprocess.run(
-        ["bash", "-c", emit], capture_output=True, text=True, check=True
-    ).stdout
-    sandbox_repo, skill_path, prompt, _ = out.split("\0")
+    result = subprocess.run(
+        ["bash", "-c", emit], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"stage.sh failed for eval {eval_id} (rc={result.returncode}): "
+            f"{result.stderr.strip()}"
+        )
+    sandbox_repo, skill_path, prompt, _ = result.stdout.split("\0")
+    if not sandbox_repo or not pathlib.Path(sandbox_repo).is_dir():
+        raise RuntimeError(
+            f"stage.sh staged no sandbox repository for eval {eval_id}: "
+            f"{sandbox_repo!r}"
+        )
     return {"sandbox_repo": sandbox_repo, "skill_path": skill_path, "prompt": prompt}
 
 

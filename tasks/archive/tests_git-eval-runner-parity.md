@@ -2,9 +2,11 @@
 description: Give git_checkout and git_refresh vendor-aware Pattern A eval runners that import the shared eval_runner helper, so an eval sweep reaches their behavioral evals.
 scope: "local test harnesses"
 created: 2026-09-05T02:10:57
-updated: 2026-10-14T22:04:07
-status: ready
+updated: 2026-10-19T19:52:34
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Run the git_checkout and git_refresh behavioral evals from a runner
@@ -47,17 +49,17 @@ behavioral harness ran from a command; these two could not, and their evals went
 unexercised in a run that was meant to cover the repo.
 
 Two skill tasks built these harnesses:
-[the git_checkout skill task](archive/ai-dev_git-checkout-skill.md) and
-[the archived git_refresh skill task](archive/ai-dev_git-refresh-skill.md).
+[the git_checkout skill task](ai-dev_git-checkout-skill.md) and
+[the archived git_refresh skill task](ai-dev_git-refresh-skill.md).
 Each accepted the harness on the evals being *defined*, not on their being
 runnable, so neither owns this work.
 
-[The eval-cache granularity task](archive/tests_eval-cache-key-granularity.md) governs
+[The eval-cache granularity task](tests_eval-cache-key-granularity.md) governs
 how `tests/lib/eval_cache.py` computes a key. This task consumes that helper
 through `source_roots_for()` rather than changing it, so the two impose no order
 on each other.
 
-[The shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
+[The shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md)
 is the helper both new runners import so they do not land as another sequential
 copy of `tests/git_commit/evals/run.py`.
 

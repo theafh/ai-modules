@@ -13,8 +13,9 @@ Usage: $0
 
 Runs the bundled-script unit tests (script_tests/run.sh).
 
-Skill-level eval definitions live under tests/git_checkout/evals/. They are
-executed through the session-level skill-creator workflow, not this entrypoint.
+The behavioral evals under tests/git_checkout/evals/ run through their own
+runner, not this entrypoint:
+  python3 tests/git_checkout/evals/run.py
 USAGE
             exit 0
             ;;
@@ -30,11 +31,12 @@ RC=$?
 cat <<'EOF_NOTE'
 
 ================================================================
-  Skill evals (skill-creator workflow)
+  Skill behavioral evals
 ================================================================
-Skill behavior tests live under tests/git_checkout/evals/. They are
-not run from this entrypoint because they require an agent to execute
-the skill against staged repositories.
+Skill behavior tests live under tests/git_checkout/evals/. Run them with
+  python3 tests/git_checkout/evals/run.py
+which stages each eval, runs one vendor worker per eval on the default
+Cursor worker, and grades the repository with evals/grade.sh.
 EOF_NOTE
 
 exit $RC

@@ -161,9 +161,13 @@ isolate. Today that subset is the `task_auto_check` serial nested-loop set
 `regate_isolated`), which runs one job at a time after the isolated pool,
 and an escape guard that reads the whole host checkout, such as
 `agent_spinner`'s `git status`. The rest of the `task_auto_check` suite
-uses the default 4 workers. `task_auto_check` is the runner on
-`eval_runner` at that default. Its serial nested-loop set is the list
-above, and that set runs one job at a time after the isolated pool.
+uses the default 4 workers. The Pattern A runners that import
+`tests/lib/eval_runner` and run at that default are
+`tests/task_auto_check/evals/run.py`, `tests/git_checkout/evals/run.py`,
+and `tests/git_refresh/evals/run.py`. `task_auto_check` runs its serial
+nested-loop set, the list above, one job at a time after the isolated
+pool. Every `git_checkout` and `git_refresh` eval stages its own sandbox
+root, so the whole suite runs in the pool.
 
 The helper runs before and after hooks one call at a time, but it cannot tell
 which overlapping job changed a shared tree. Each hook receives its job's
@@ -213,7 +217,9 @@ Same rules as `tests/CLAUDE.md`: content-keyed cache under
 and behavioural sandboxes that must not inherit host instructions. Every
 behavioural runner takes its sandbox root from
 `worker_isolation.create_sandbox_root`; `isolation_args` stays with the
-runners that pass it today.
+runners that pass it today. A stage that fails or names no sandbox stops the
+eval before any worker starts, and `tests/lib/check_stage_guard.py` proves
+that for each runner.
 
 ### Reading results
 

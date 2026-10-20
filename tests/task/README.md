@@ -68,6 +68,9 @@ and `task_fix` still declare the `auto_*_task` agents they spawn. It then
 stages one such eval and micro-deploys its declaration on each vendor, which
 leaves the sandbox status clean, and once more on Cursor with the agents
 added, which dirties it. It runs the real deploy script with no model call.
+A last check runs `tests/lib/check_stage_guard.py` on `evals/run.py`, so a
+stage that fails or names no sandbox project stops the eval before any worker
+starts.
 
 ## Behavioral evals
 

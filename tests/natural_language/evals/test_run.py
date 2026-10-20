@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Unit tests for the natural_language runner's preflight route decision."""
+"""Unit tests for the natural_language runner's preflight route decision and
+its stop on a failed or empty stage."""
 
 from __future__ import annotations
 
+import pathlib
+import subprocess
 import sys
 
 import run as runner
+
+THIS = pathlib.Path(__file__).resolve().parent
 
 PASS = 0
 FAIL = 0
@@ -56,6 +61,17 @@ def main() -> int:
         )
         == (True, "append-system-prompt-file"),
     )
+
+    # stage() raises on a stage.sh that fails, and on one that exits 0 without
+    # naming a sandbox project, before any worker could start.
+    guard = subprocess.run(
+        [sys.executable, str(THIS.parents[1] / "lib" / "check_stage_guard.py"), str(THIS)],
+        capture_output=True,
+        text=True,
+    )
+    if guard.returncode != 0:
+        print(guard.stdout + guard.stderr)
+    check("stage() raises on a failed or empty stage", guard.returncode == 0)
 
     print(f"\n{PASS} passed, {FAIL} failed")
     return 1 if FAIL else 0

@@ -3,31 +3,69 @@
 Behavioral evals for the `git_checkout` skill. The mechanical surface
 (bundled-script unit tests) lives next door in `script_tests/`.
 
-This directory holds **eval definitions and fixtures**. Eval *runs* go into
-whatever directory you hand a fixture's `setup.sh`; keep those under
-`tests/git_checkout/workspace/`, which `tests/.gitignore` keeps out of git.
+This directory holds the eval definitions, their fixtures, and the runner that
+drives them. Run output lands under `tests/git_checkout/workspace/`, which
+`tests/.gitignore` keeps out of git.
+
+## Layout
+
+```text
+tests/git_checkout/evals/
+├── README.md        # this file
+├── evals.json       # canonical eval prompts, fixtures, and expectations
+├── run.py           # worker runner: stage → vendor worker → grade
+├── stage.sh         # stage one eval's fixture, print the agent-ready inputs
+├── grade.sh         # grade the post-run repository programmatically
+└── fixtures/        # per-eval repository stagers plus _common.sh
+```
 
 ## How these run
 
-There is no CLI that executes a behavioral eval. The workflow skill-creator
-describes ("spawn with-skill and without-skill subagents per eval, capture
-timing, grade, aggregate") is something a Claude session orchestrates. This
-directory supplies the deterministic pieces, a staged repository per eval and a
-written expectation list, and leaves the model-runs-the-skill step to whoever is
-in the session. Do not confuse this with skill-creator's
-`python -m scripts.run_eval`, which is the *trigger* evaluator for description
-optimization and understands neither this schema nor these fixtures.
+`python3 tests/git_checkout/evals/run.py` runs every eval in `evals.json`;
+name ids (`run.py 3 4`) to run a subset. Each eval is one job in the shared
+pool from `tests/lib/eval_runner.py`, which runs four jobs at once by default
+and gives each its own `TMPDIR`; `--workers 1` serializes them. A job stages
+its fixture with `stage.sh` into a fresh sandbox root outside the checkout,
+micro-deploys the skill into a scratch home, runs one print-mode worker on the
+default Cursor vendor (`agent -p`, model `auto`), and grades the clone with
+`grade.sh`. Each eval leaves `response.txt`, `stderr.txt`, `timing.json`,
+`grading.txt`, and a copy of its sandbox under
+`tests/git_checkout/workspace/run-<ts>-<pid>/<id>/`, and the run closes with a
+graded summary naming every eval and its verdict.
 
-One eval therefore runs like this:
+An eval passes when its worker completed with a response, both read checks in
+`timing.json` (`artefacts_read_from_micro_deployment` and `checkout_unread`)
+passed, and `grade.sh` passed. The verdict cache in `evals/.eval_cache/`
+replays an eval whose inputs are unchanged without spawning a worker, and a run
+that replays every verdict also skips the auth probe. `--force` re-runs every
+eval and refreshes its stored verdict; `--no-cache` re-runs without reading or
+writing the cache. `--vendor claude` (`claude -p`, model `sonnet`) runs only
+where an eval needs a Claude-specific feature or the operator asks for a Claude
+run, as the model policy in `tests/CLAUDE.md` states.
+
+`grade.sh` asserts what the repository shows after the run: the branch `HEAD`
+ends on, the upstream it tracks and the tip it points at, that `HEAD` stays a
+symbolic ref, which local branches exist, whether the worktree was left as
+found, and the uncommitted content eval 7 must keep. It compares against the
+snapshots `stage.sh` takes under `<target>/.eval/` before the run. The
+expectations that speak only about the response or about which helper ran
+print as `response` lines; confirm those by reading `response.txt`.
+
+The three phases also run by hand for debugging:
 
 ```bash
-bash tests/git_checkout/evals/fixtures/<name>/setup.sh /tmp/git-checkout-eval
+# 1. Stage one eval; prints shell-safe sandbox_repo, skill_path, prompt lines
+eval "$(bash tests/git_checkout/evals/stage.sh <eval_id>)"
+
+# 2. Have an agent load $skill_path and apply $prompt inside $sandbox_repo.
+
+# 3. Grade the post-run repository
+bash tests/git_checkout/evals/grade.sh <eval_id> "$sandbox_repo"
 ```
 
-Each `setup.sh` prints the path of the staged clone as its last line. Run the
-`git_checkout` skill against that clone using the eval's `prompt`, then check
-the repository state and the agent's response against the eval's
-`expectations[]`.
+Skill-creator's `python -m scripts.run_eval` is a different tool: the
+*trigger* evaluator for description optimization, which understands neither
+this schema nor these fixtures.
 
 ## Schema
 
@@ -39,7 +77,8 @@ harnesses in this repo:
 ```
 
 `files` names the fixture stager for that eval, relative to
-`tests/git_checkout/`.
+`tests/git_checkout/`. `stage.sh` reads both the stager and the prompt from
+this file, so `evals.json` stays the one source of each eval's inputs.
 
 ## The evals
 
