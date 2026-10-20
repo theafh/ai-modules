@@ -2,8 +2,8 @@
 description: Make the task family's Decide or label rule reliably surface a guardrail-bound fork instead of auto-resolving it from the guardrail hierarchy, and re-measure over repeated draws.
 scope: plugins/ai_dev/skills
 created: 2026-09-05T02:35:10
-updated: 2026-10-20T12:47:52
-status: audited
+updated: 2026-10-20T14:55:30
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -88,7 +88,7 @@ eval's recorded history reads as flaky because two failure causes were mixed
 under one verdict.
 
 **Out of scope:** Widening the grader's label needles, which
-[the task_create grader task](tests_task-create-grader-label-false-fails.md)
+[the task_create grader task](../tests_task-create-grader-label-false-fails.md)
 owns. This task depends on the finished grader-authoring discipline task only
 for reading its own re-measurement cleanly.
 
@@ -104,7 +104,7 @@ label** without copying the full Decide or label procedure, so one canonical
 procedure remains.
 
 After [the grader-authoring discipline
-task](archive/tests_grader-authoring-discipline.md) Acceptance entry whose lead-in is
+task](tests_grader-authoring-discipline.md) Acceptance entry whose lead-in is
 "Each label-structure check in the `task_create` grader" holds, five consecutive
 draws of the `guardrail-bound-surface` eval, run with `--no-cache` so each is an
 independent sample, produce both a labelled open decision naming the guardrail
@@ -178,7 +178,7 @@ nothing in `render.py`. The sandbox is now a git repository whose identity
 supplies `reported-by`. Every evidence tier still points at the stubbing path,
 so a run that labels that fork with the evidence's own default still fails the
 no-label check. [The related-precedent prior-art
-task](task-family_prior-art-related-precedent-is-novel.md) owns the gate's
+task](../task-family_prior-art-related-precedent-is-novel.md) owns the gate's
 Novel versus **Partially covered** ambiguity and restores the
 overlapping-precedent case as its own eval.
 
