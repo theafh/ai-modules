@@ -125,11 +125,14 @@ don't bring up new harnesses under Pattern B.
   read through its textconv driver and cited `(textconv)`, an untracked
   symlink recorded as its target path, a repository with `color.diff=always`
   and `diff.external` set, Compose map and list entries, unquoted YAML
-  entries, and Go `:=` declarations located as hits, keyword arguments on
-  lines of their own, route and URL segments, Python type annotations, YAML
-  tags, templated values, and Go expressions that draw no hit, and the
-  per-path diff fallback with a
-  non-ASCII path, with the manual fallback's extraction matched in range,
+  entries, Go `:=` declarations, and assignments to suffixed and camelCase key
+  names such as `aws_secret_access_key`, `SECRET_KEY`, `apiKey`, and
+  `clientSecret` located as hits, keyword arguments on lines of their own,
+  assignments whose names continue after a credential keyword such as
+  `token_count` and `password_hash`, an English word ending in `key` such as
+  `monkey`, route and URL segments, Python type annotations, YAML tags,
+  templated values, and Go expressions that draw no hit, and the per-path diff
+  fallback with a non-ASCII path, with the manual fallback's extraction matched in range,
   uncommitted, per-path, and subdirectory runs, and its per-path retry keeping
   `unread_paths.txt` out of the working tree). Each manual-fallback block runs
   under bash and, when it is on `PATH`, under `zsh -f`, and a copy that names

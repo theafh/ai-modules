@@ -25,6 +25,13 @@ DO_FETCH=yes
 GENERATED_PATTERN='(_generated\.|\.generated\.|_pb2\.py|\.pb\.go|/vendor/|/node_modules/|/dist/|\.min\.(js|css)|\.lock|\.snap)'
 
 # One assignment each, identical to the strings in references/manual_fallback.md.
+# In every assignment branch a credential keyword is the last token of the key
+# name, and only letters, digits, _, and - come before it, so a name that runs
+# on past its keyword, such as token_count or password_hash, stays out. A
+# lowercase key or an uppercase KEY follows _, -, or the start of the name, so
+# aws_secret_access_key, SECRET_KEY, and a bare key match while an English word
+# such as monkey stays out. The capital-led Key and Secret may also follow a
+# lowercase letter, so camelCase apiKey and clientSecret match.
 # A quoted assignment after =, :, or Go's := matches a value of eight or more
 # characters, and that value may contain spaces. A value that starts with $
 # stays a variable reference, quoted or not, and an unquoted Go expression
@@ -43,7 +50,7 @@ GENERATED_PATTERN='(_generated\.|\.generated\.|_pb2\.py|\.pb\.go|/vendor/|/node_
 # alias, or a URL segment named home or Users stays out. The credential
 # pattern is a heredoc so its quote characters stay one greppable span.
 read -r CREDENTIAL_PATTERN << 'END_CREDENTIAL_PATTERN'
-AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,}|(^|[^A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}|sk_live_[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[A-Za-z0-9_-]{35}|-----BEGIN [A-Z ]*PRIVATE KEY-----|[^[:alnum:][:space:]]?[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|secret|SECRET|password|PASSWORD|passwd|PASSWD|token|TOKEN)[^[:alnum:][:space:]]?[[:space:]]*(:=|[:=])[[:space:]]*[^[:alnum:][:space:]:=$][^$[:space:]][^[:space:]]{7,}|^([[:space:]]*-[[:space:]]+"?|export[[:space:]]+)?[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|secret|SECRET|password|PASSWORD|passwd|PASSWD|token|TOKEN)=[^$"'[:space:]][^[:space:]]{7,}|(api[_-]?key|API[_-]?KEY|secret|SECRET|password|PASSWORD|passwd|PASSWD|token|TOKEN)[[:space:]]*(:=|[:=])[[:space:]]*["'][^"'$][^"']{7,}|^[[:space:]]*(-[[:space:]]+)?[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|secret|SECRET|password|PASSWORD|passwd|PASSWD|token|TOKEN)[[:space:]]*:[[:space:]]+([[:alnum:]][^][:space:]"'$(){}<>|,;#[]{6,}[0-9!@%^&*+=~][^][:space:]"'$(){}<>|,;#[]*|[[:alnum:]][^][:space:]"'$(){}<>|,;#[]*[0-9!@%^&*+=~][^][:space:]"'$(){}<>|,;#[]{6,}|[0-9][^][:space:]"'$(){}<>|,;#[]{7,})([[:space:]]+#.*)?[[:space:]]*$
+AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,}|(^|[^A-Za-z0-9_-])sk-[A-Za-z0-9_-]{20,}|sk_live_[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[A-Za-z0-9_-]{35}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(^|[^A-Za-z0-9_-])(([A-Za-z0-9_-]*[_-])?(key|KEY)|[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|Key|secret|SECRET|Secret|password|PASSWORD|passwd|PASSWD|token|TOKEN))[^[:alnum:][:space:]]?[[:space:]]*(:=|[:=])[[:space:]]*[^[:alnum:][:space:]:=$][^$[:space:]][^[:space:]]{7,}|^([[:space:]]*-[[:space:]]+"?|export[[:space:]]+)?(([A-Za-z0-9_-]*[_-])?(key|KEY)|[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|Key|secret|SECRET|Secret|password|PASSWORD|passwd|PASSWD|token|TOKEN))=[^$"'[:space:]][^[:space:]]{7,}|(^|[^A-Za-z0-9_-])(([A-Za-z0-9_-]*[_-])?(key|KEY)|[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|Key|secret|SECRET|Secret|password|PASSWORD|passwd|PASSWD|token|TOKEN))[[:space:]]*(:=|[:=])[[:space:]]*["'][^"'$][^"']{7,}|^[[:space:]]*(-[[:space:]]+)?(([A-Za-z0-9_-]*[_-])?(key|KEY)|[A-Za-z0-9_-]*(api[_-]?key|API[_-]?KEY|Key|secret|SECRET|Secret|password|PASSWORD|passwd|PASSWD|token|TOKEN))[[:space:]]*:[[:space:]]+([[:alnum:]][^][:space:]"'$(){}<>|,;#[]{6,}[0-9!@%^&*+=~][^][:space:]"'$(){}<>|,;#[]*|[[:alnum:]][^][:space:]"'$(){}<>|,;#[]*[0-9!@%^&*+=~][^][:space:]"'$(){}<>|,;#[]{6,}|[0-9][^][:space:]"'$(){}<>|,;#[]{7,})([[:space:]]+#.*)?[[:space:]]*$
 END_CREDENTIAL_PATTERN
 HOME_PATH_PATTERN='((^|[^A-Za-z0-9._@-])(/home/[A-Za-z0-9._-]+/?|/Users/[A-Za-z0-9._-]+/?)|C:\\\\Users\\\\[A-Za-z0-9._-]+|C:\\Users\\[A-Za-z0-9._-]+)'
 

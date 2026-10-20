@@ -2,9 +2,11 @@
 description: "Make git_review's credential scan match suffixed and camelCase key names, including an AWS secret access key, and reject the named non-secret assignments."
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-18T16:37:59
-updated: 2026-10-20T11:12:05
-status: ready
+updated: 2026-10-20T16:25:42
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Match suffixed and camelCase key names in the git_review credential scan

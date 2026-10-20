@@ -1755,6 +1755,10 @@ Path("creds.txt").write_text(
         "token: 'hunter2 hunter2'",
         "export DB_PASSWORD=hunter2hunter2",
         '    API_TOKEN="indentedquoted1"',
+        "aws_secret_access_key=wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY",
+        'SECRET_KEY = "django-insecure-abcdefghijklmnop"',
+        'apiKey: "abcdefghijklmnop"',
+        'clientSecret = "abcdefghijklmnop"',
     ]) + "\n"
 )
 Path("kwargs.py").write_text(
@@ -1848,6 +1852,9 @@ notes.mkdir(parents=True)
     "See tasks/task-family_autonomous-readiness-loop.md for the plan.\n"
     "A risk-based-rollout-plan-for-regions applies.\n"
     'export GITHUB_TOKEN="${GITHUB_TOKEN}"\n'
+    "token_count=12345678\n"
+    'password_hash = "not-a-secret-value"\n'
+    'monkey = "not-a-secret-value"\n'
 )
 text = Path("blanks.txt").read_text()
 text = text.replace("three\n\nfour\n", "three\nAKIAIOSFODNN7EXAMPLE\n\nfour\n", 1)
@@ -1883,6 +1890,12 @@ PY
     assert_contains "spaced single-quoted passphrase located" "$cred" "creds.txt:17:token: 'hunter2 hunter2'" || ok=false
     assert_contains "exported env assignment located" "$cred" "creds.txt:18:export DB_PASSWORD=hunter2hunter2" || ok=false
     assert_contains "indented quoted assignment located" "$cred" 'creds.txt:19:    API_TOKEN="indentedquoted1"' || ok=false
+    assert_contains "suffixed key name located" "$cred" \
+        "creds.txt:20:aws_secret_access_key=wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY" || ok=false
+    assert_contains "uppercase suffixed KEY located" "$cred" \
+        'creds.txt:21:SECRET_KEY = "django-insecure-abcdefghijklmnop"' || ok=false
+    assert_contains "camelCase Key located" "$cred" 'creds.txt:22:apiKey: "abcdefghijklmnop"' || ok=false
+    assert_contains "camelCase Secret located" "$cred" 'creds.txt:23:clientSecret = "abcdefghijklmnop"' || ok=false
     assert_absent "keyword arguments on their own lines draw no hit" "$scan" "kwargs_multiline.py:" || ok=false
     assert_contains "compose map entry located" "$cred" "compose.yml:1:      POSTGRES_PASSWORD: supersecret123" || ok=false
     assert_contains "compose list item located" "$cred" "compose.yml:2:      - POSTGRES_PASSWORD=supersecret123" || ok=false
@@ -1951,6 +1964,9 @@ PY
     assert_absent "hyphenated task slug draws no hit" "$scan" "task-family_autonomous-readiness-loop" || ok=false
     assert_absent "hyphenated prose draws no hit" "$scan" "risk-based-rollout-plan-for-regions" || ok=false
     assert_absent "quoted variable reference draws no hit" "$scan" 'GITHUB_TOKEN="${GITHUB_TOKEN}"' || ok=false
+    assert_absent "name that continues past token draws no hit" "$scan" "token_count=12345678" || ok=false
+    assert_absent "name that continues past password draws no hit" "$scan" 'password_hash = "not-a-secret-value"' || ok=false
+    assert_absent "english word ending in key draws no hit" "$scan" 'monkey = "not-a-secret-value"' || ok=false
     assert_absent "docs home path draws no hit" "$scan" "docs/home/dave/" || ok=false
     assert_absent "keyword api_key draws no hit" "$scan" "api_key=settings.ANTHROPIC_API_KEY" || ok=false
     assert_absent "keyword token draws no hit" "$scan" "token=self.access_token" || ok=false
