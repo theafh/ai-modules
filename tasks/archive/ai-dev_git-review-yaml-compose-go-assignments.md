@@ -55,7 +55,7 @@ Every line the scan reports today stays reported, and every no-hit line it carri
 
 The range-mode scenario `s25_secret_scan_locates_every_shape` in `tests/git_review/script_tests/run.sh` places the scan's hit lines in `creds.txt` and its no-hit lines in files such as `kwargs.py`, `kwargs_multiline.py`, `routes.ts`, and `docs/home/dave/notes.txt`. It asserts each hit as `path:line:content` with `assert_contains` and each no-hit with `assert_absent`, and it runs the manual fallback's scan block under bash and zsh against the collector's hits. Its no-hit lines (keyword arguments, task slugs, hyphenated prose) set the scan's precedent of rejecting noisy non-secret shapes even where a looser pattern would report more, and this task's value rules follow that precedent.
 
-[ai-dev_git-review-assignment-key-names.md](../ai-dev_git-review-assignment-key-names.md) edits the same assignment branches and the same scenario so suffixed and camelCase key names match. Whichever task lands second applies its key-name or operator edit to every assignment branch the first one left, including the colon branch this task adds, and keeps the other task's hit and no-hit lines in `s25`.
+[ai-dev_git-review-assignment-key-names.md](ai-dev_git-review-assignment-key-names.md) edits the same assignment branches and the same scenario so suffixed and camelCase key names match. Whichever task lands second applies its key-name or operator edit to every assignment branch the first one left, including the colon branch this task adds, and keeps the other task's hit and no-hit lines in `s25`.
 
 ## Approach
 

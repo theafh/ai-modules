@@ -2,8 +2,8 @@
 description: "Make task_create eval verdicts match what conformant runs do: fix four grader checks, give every fixture a git identity, and pin the grader fixes with script tests built from recorded forms."
 scope: tests/task_create/evals
 created: 2026-10-20T12:13:15
-updated: 2026-10-20T16:41:44
-status: checked
+updated: 2026-10-20T17:28:01
+status: ready
 reported-by: Andreas Hoffmann
 ---
 

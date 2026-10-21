@@ -2,12 +2,12 @@
 description: "Name every eval sandbox root by its harness prefix alone, so a worker cannot read the eval id or scenario name, and the expected answer it often encodes, from its own working directory."
 scope: "local test harnesses"
 created: 2026-10-20T11:45:48
-updated: 2026-10-20T15:58:37
-status: checked
+updated: 2026-10-21T16:01:33
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
-# Keep the eval id out of the sandbox path a worker can see
+# Keep the eval id, scenario id, and pass number out of the sandbox path a worker can see
 
 ## Goal
 
@@ -30,9 +30,10 @@ Add one sentence to the `### Worker isolation` section of `tests/CLAUDE.md` and 
 **Out of scope:**
 
 - Amending `TESTING.md` `## Test Design Principles` item **Stage a sandbox per scenario.** This task leaves that item's create-sandbox-root placement and checkout-unread account unchanged; Goal homes the harness-prefix-only naming rule in the tests tree's worker-isolation documentation (`tests/CLAUDE.md` `### Worker isolation`, `tests/AGENTS.md` `### Verdict cache, timeouts, isolation`) and its wiki record, so this task does not widen that home into `TESTING.md`.
+- Banning every worker-recorded path substring that names the eval id (fixture paths under the checkout, or the run directory itself). Acceptance proves only that the sandbox-root leak prefix is gone from those paths; identity may still appear in checkout-side paths the Approach keeps.
 
 ## Acceptance
 
 - `python3 tests/lib/test_worker_isolation.py` passes, including the new static case. That case scans every `*.py` file under `tests` while skipping the gitignored run-output subtrees named by `tests/.gitignore` and the Makefile `EXCLUDE` prune list—`workspace/`, `scratch/`, `.eval_cache/`, `.vendor_probe/`, and the staged `wiki/layer2` scenario trees (`AS-*`, `L2-*`, `WI-*`, `WU-*`, `MP-*`). It fails when a `create_sandbox_root` argument embeds eval, scenario, or pass identity (or is otherwise not harness-prefix-only), and accepts bare `ISOLATION_PREFIX`, harness-only string literals that carry no eval, scenario, or pass identity, and the `prefix` forward in `relocated_sandbox_root`. Today that case fails on every call whose prefix embeds an eval id, scenario id, or pass number: the Pattern A per-eval runners, `tests/language_humanizer/evals/run.py`, `tests/wiki/layer2/run.py`, and `tests/natural_language/evals/run.py`'s `f"nl_{scenario}_{number}_"` call.
 - `tests/CLAUDE.md` `### Worker isolation`, `tests/AGENTS.md` `### Verdict cache, timeouts, isolation`, and `wiki/concepts/verification-surfaces.md` `### A worker inherits the host's instructions unless it is isolated` each state the harness-prefix-only rule once. The wiki section also cites the 2026-10-20 observation as the dated source for that rule.
-- One run of `python3 tests/task_create/evals/run.py --no-cache guardrail-bound-surface` on the default vendor writes `workspace/run-*/guardrail-bound-surface/timing.json` with `"eval_id": "guardrail-bound-surface"`. No entry in that file's `artefacts_read_from_micro_deployment.paths` list contains the string `guardrail-bound-surface`. Done is those artefacts and paths; the gate does not require grade PASS or exit 0. Today those paths run through a root named `task_create_guardrail-bound-surface_<random>`.
+- One run of `python3 tests/task_create/evals/run.py --no-cache guardrail-bound-surface` on the default vendor writes `workspace/run-*/guardrail-bound-surface/timing.json` with `"eval_id": "guardrail-bound-surface"`. That file's `artefacts_read_from_micro_deployment.paths` list contains at least one path whose sandbox-root segment matches the bare harness prefix `task_create_` and does not equal or start with `task_create_guardrail-bound-surface_`, and no entry in that list contains the string `task_create_guardrail-bound-surface_`. Done is those artefacts and paths; the gate does not require grade PASS or exit 0. Today those paths run through a root named `task_create_guardrail-bound-surface_<random>`, and a pathless or empty-`paths` timing.json would satisfy the absence check alone.

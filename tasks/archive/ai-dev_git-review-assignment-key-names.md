@@ -2,8 +2,8 @@
 description: "Make git_review's credential scan match suffixed and camelCase key names, including an AWS secret access key, and reject the named non-secret assignments."
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-18T16:37:59
-updated: 2026-10-20T16:25:42
-status: audited
+updated: 2026-10-20T17:22:37
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -19,7 +19,7 @@ The credential assignment scan reports a hit when the key name ends with a crede
 
 `CREDENTIAL_PATTERN` in `plugins/ai_dev/skills/git_review/scripts/collect_review_evidence.sh` is one heredoc, copied as the same string in `references/manual_fallback.md`. Each assignment branch already treats the keyword as the end of the key name, but it matches only the all-lowercase and all-uppercase keyword forms and omits bare `key`/`KEY`/`Key`, so `aws_secret_access_key`, `SECRET_KEY`, `apiKey`, and `clientSecret` fall through. The AWS secret access key is the half of an AWS credential pair that the `AKIA` rule does not see.
 
-[ai-dev_git-review-secret-scan-gaps.md](archive/ai-dev_git-review-secret-scan-gaps.md) shipped the current branches and their enumerated shapes. The range-mode scenario `s25_secret_scan_locates_every_shape` in `tests/git_review/script_tests/run.sh` places those shapes and the no-hit lines, and `s29_secret_scan_patterns_match_manual_fallback` checks that the collector and the fallback carry the same pattern string.
+[ai-dev_git-review-secret-scan-gaps.md](ai-dev_git-review-secret-scan-gaps.md) shipped the current branches and their enumerated shapes. The range-mode scenario `s25_secret_scan_locates_every_shape` in `tests/git_review/script_tests/run.sh` places those shapes and the no-hit lines, and `s29_secret_scan_patterns_match_manual_fallback` checks that the collector and the fallback carry the same pattern string.
 
 ## Approach
 
