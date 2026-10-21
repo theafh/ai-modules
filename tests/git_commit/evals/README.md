@@ -5,8 +5,9 @@ Behavioral evals for the git_commit skill. The mechanical surface
 
 This directory holds **eval definitions and tooling**. Eval *runs*
 (staged sandboxes, post-run artifacts) go under
-`tests/git_commit/workspace/` or any other dir you point `stage.sh`
-at, which `tests/.gitignore` keeps out of git.
+`tests/git_commit/workspace/`, the only run root `run.py` writes, or
+under any other dir you point `stage.sh` at by hand. `tests/.gitignore`
+keeps them out of git.
 
 ## Harness rule: skill-creator is read-only
 
@@ -78,7 +79,8 @@ expectations stay for you to confirm by reading the captured
 `response.txt`.
 
 ```bash
-python3 tests/git_commit/evals/run.py                 # all evals (1..9), Cursor worker
+python3 tests/git_commit/evals/run.py                 # every id in evals.json, Cursor worker, 4 at a time
+python3 tests/git_commit/evals/run.py --workers 1     # the same, one eval at a time
 python3 tests/git_commit/evals/run.py 2 5             # just evals 2 and 5
 python3 tests/git_commit/evals/run.py 6 7             # just the drift-guard evals
 python3 tests/git_commit/evals/run.py 8 9             # just the pre-flight relevance evals
@@ -108,10 +110,22 @@ that same change, so the skill must **run** it before the commit lands. Run them
 together, because eval 9 is eval 8's control, and a skip that came from ignoring
 `AGENTS.md` altogether shows up as an eval 9 failure.
 
-Per eval it writes `workspace/run-<ts>/<id>/{response.txt, stderr.txt,
-timing.json, grading.txt}` and exits 0 only if every eval's grade
-passed. The manual three-phase workflow below is what `run.py`
-automates. Reach for it when debugging a single eval by hand.
+The default ids are every id in `evals.json`, in file order, so a new
+eval runs without editing a list in `run.py`. Each eval is one job in
+the shared pool from `tests/lib/eval_runner.py`, which runs
+`--workers` jobs at once (default 4, `vendor.DEFAULT_PARALLEL_WORKERS`)
+and gives every job its own `TMPDIR`, `TEMP`, and `TMP`. `run.py`
+passes that directory to the worker, so the skill writes its
+`git_commit_context.*` file there, and to `grade.sh`, whose straggler
+`find` runs against `$TMPDIR`. A concurrent eval's context file stays
+in its own job's directory, out of every other eval's scan. Every eval
+also stages its own sandbox root.
+
+Per eval it writes `tests/git_commit/workspace/run-<ts>/<id>/{response.txt, stderr.txt, timing.json, grading.txt}`
+and exits 0 only if every eval's grade passed. `timing.json` records the
+worker's `started_at` and `ended_at` beside `duration_s`. The manual
+three-phase workflow below is what `run.py` automates. Reach for it when
+debugging a single eval by hand.
 
 ## The manual workflow
 
@@ -185,7 +199,7 @@ manually from the agent's transcript.
 | New commit landed, HEAD^ is the staged baseline, working tree clean | `git rev-parse`, `git status` |
 | Commit message shape (subject line, blank line 2, "file -> change" body lines) | `git log -1 --format=%B HEAD` |
 | HEAD diff covers the expected file set | `git show --name-only HEAD` |
-| No `git_commit_context.*` straggler in TMPDIR | `find $TMPDIR -newer <marker>` |
+| No `git_commit_context.*` straggler in the eval's own `TMPDIR` (every eval but 6) | `find "$TMPDIR" -maxdepth 1 -name 'git_commit_context.*' -newer "$marker"`, with `marker` at `$target/.eval_started_at`; `/tmp` when `TMPDIR` is unset |
 | Pre-flight gate ran or skipped an obligation | presence and epoch second of `.eval/markers/<gate>` |
 
 And these are marked `agent-attest` (not auto-checked):

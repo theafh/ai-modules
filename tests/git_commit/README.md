@@ -5,7 +5,7 @@ Two surfaces, each in its own directory under
 
 | Surface | Where | What it tests | Runner |
 | --- | --- | --- | --- |
-| `script_tests/` | Bundled shell scripts (`prepare_commit_context.sh`, `commit_with_message.sh`) | Deterministic stdout / exit-code / git-state assertions on real working trees | `./tests/git_commit/run_all.sh` |
+| `script_tests/` | Bundled shell scripts (`prepare_commit_context.sh`, `commit_with_message.sh`) and the straggler-scan isolation scenario for `evals/grade.sh` | Deterministic stdout / exit-code / git-state assertions on real working trees, and that one eval job's TMPDIR scan never sees another job's `git_commit_context.*` file | `./tests/git_commit/run_all.sh` |
 | `evals/` | Skill agent behavior given `SKILL.md` | Whether the agent runs the primary workflow correctly, composes a policy-conformant commit message, and obeys fallback discipline | `python3 tests/git_commit/evals/run.py` (stage, Cursor worker by default, grade; see `evals/README.md`) |
 
 The authored harness is committed; `tests/.gitignore` keeps run output out.
@@ -40,7 +40,7 @@ under `scratch/<id>/repo/`, runs one or both of the bundled scripts in
 it, and asserts on stdout + exit code + git-state. Bash + git only, no
 LLM calls.
 
-Thirty-two scenarios cover:
+Thirty-three scenarios cover:
 
 `prepare_commit_context.sh`: clean tree, one untracked text file,
 one modified tracked file, mixed staged/unstaged/untracked, binary
@@ -67,6 +67,13 @@ context file lacks the baseline block.
 
 The eval runner: `evals/run.py`'s `stage()` stops on a failed or empty
 stage before any worker runs.
+
+The straggler-scan isolation scenario: two eval jobs with overlapping
+windows each get a sibling `TMPDIR`, the way `tests/lib/eval_runner`
+hands them out, and one job's tree holds a `git_commit_context.*` file
+newer than both jobs' `.eval_started_at` markers. `evals/grade.sh`'s
+scan of the other job's `TMPDIR` passes without naming that file, and
+its scan of the job's own `TMPDIR` fails and names it.
 
 The bash 3.2 floor: four scenarios run through an explicit
 `/bin/bash` rather than the bash the scripts' shebang resolves on
@@ -142,9 +149,10 @@ tests/git_commit/
 ├── RUNBOOK.md
 ├── run_all.sh                          # bundled-script unit tests entrypoint
 ├── results/
-│   └── layer1.log                      # latest script_tests transcript
+│   ├── layer1.log                      # latest script_tests transcript
+│   └── parallel-tmpdir-windows.md      # recorded overlap of a --workers 4 run
 ├── script_tests/
-│   ├── run.sh                          # 32 deterministic scenarios
+│   ├── run.sh                          # 33 deterministic scenarios
 │   ├── prepare_commit_context_pre_fix_trap.sh  # pre-fix EXIT-trap stub
 │   └── scratch/<id>/                   # transient per-scenario git repos
 └── evals/                              # behavioral eval definitions + tooling

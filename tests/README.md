@@ -92,8 +92,10 @@ don't bring up new harnesses under Pattern B.
   `/bin/bash` to prove both scripts at the bash 3.2 floor: empty staged
   and unstaged diff lists, and a `set -u` abort that must exit non-zero
   while the EXIT trap is live, plus one scenario proving the eval
-  runner's `stage()` stops on a failed or empty stage). `evals/` holds nine behavioral evals with
-  fixtures, run through `evals/run.py` on the default Cursor worker with
+  runner's `stage()` stops on a failed or empty stage and one proving
+  `grade.sh`'s straggler scan reads only its own job's `TMPDIR`). `evals/`
+  holds nine behavioral evals with fixtures, run through `evals/run.py` on
+  the default Cursor worker in the shared `tests/lib/eval_runner` pool with
   a deterministic `grade.sh`. See `evals/README.md`.
 - **`git_checkout/`**: Pattern A. `script_tests/` implemented (14
   bundled-script scenarios over staged clones with real remotes, plus one

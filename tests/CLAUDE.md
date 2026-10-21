@@ -15,7 +15,7 @@ Per-harness design docs live in each subdirectory's `README.md` and
 | Subdir | Skill | Pattern | What it covers |
 | --- | --- | --- | --- |
 | `wiki/` | `wiki` | Pattern B (legacy two-layer) | Layer 1 deterministic script unit tests + Layer 2 LLM skill-behavior evals via custom orchestrator. |
-| `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests plus the eval runner's stop on a failed or empty stage + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade). |
+| `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests plus the eval runner's stop on a failed or empty stage and the grader's per-job `TMPDIR` straggler scan + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade) in the shared `tests/lib/eval_runner` pool. |
 | `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) plus the eval runner's stop on a failed or empty stage + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade) in the shared `tests/lib/eval_runner` pool. |
 | `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper, the size profile with its line counts, its conflicted files, and its binary-path listing with renamed and copied files under their new paths and a renamed file classified by its new path, and its share counting a vendored binary once, and the located secret-scan hits, Compose, YAML, Go `:=`, and suffixed and camelCase key-name assignments among them, with the manual-fallback blocks run under bash and zsh) plus the eval runner's stop on a failed or empty stage + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
 | `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract and the eval runner's stop on a failed or empty stage in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on the default Cursor worker, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
@@ -156,12 +156,14 @@ and an escape guard that reads the whole host checkout, such as
 uses the default 4 workers. Raising the default past 4 mostly buys model
 contention and timeouts, not faster wall-clock.
 
-The Pattern A runners that import `tests/lib/eval_runner` and run at that
-default of 4 are `tests/task_auto_check/evals/run.py`,
-`tests/git_checkout/evals/run.py`, and `tests/git_refresh/evals/run.py`.
+The Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS`
+are `tests/task_auto_check/evals/run.py`, `tests/git_checkout/evals/run.py`,
+`tests/git_refresh/evals/run.py`, and `tests/git_commit/evals/run.py`.
 `task_auto_check` runs its serial nested-loop set, the list above, one job
-at a time after the isolated pool. Every `git_checkout` and `git_refresh`
-eval stages its own sandbox root, so the whole suite runs in the pool.
+at a time after the isolated pool. Every `git_checkout`, `git_refresh`, and
+`git_commit` eval stages its own sandbox root, so the whole suite runs in the
+pool. `git_commit`'s worker and `grade.sh` both receive the job's `TMPDIR`, so
+the grader's straggler scan reads only that job's context files.
 
 The helper runs a harness's before and after hooks around each job, one hook
 call at a time, so two escape-guard snapshots never interleave. The hooks
@@ -186,8 +188,6 @@ helper (private pools, not yet on `eval_runner`):
 Pattern A runners that stay sequential until their sibling conversion tasks
 wire them onto `eval_runner` (plus permanent isolation exceptions):
 
-- `git_commit` — `grade.sh` scans a shared `TMPDIR` for stragglers until the
-  per-job `TMPDIR` conversion lands.
 - `git_review` — two workers contend for the model past the per-eval timeout.
 - `task`, `task_create`, `task_fix` — still serial until
   their parallel-worker tasks land. The host guard compares an isolated temp
@@ -630,7 +630,7 @@ Two surfaces, each in its own subdir:
 
 | Surface | Where | What it tests | Runner |
 | --- | --- | --- | --- |
-| `script_tests/` | `prepare_commit_context.sh`, `commit_with_message.sh` | Stdout / exit-code / git-state on real working trees | `./tests/git_commit/run_all.sh` |
+| `script_tests/` | `prepare_commit_context.sh`, `commit_with_message.sh`, and the straggler-scan isolation scenario for `evals/grade.sh` | Stdout / exit-code / git-state on real working trees, and that one eval job's `TMPDIR` scan never sees another job's `git_commit_context.*` file | `./tests/git_commit/run_all.sh` |
 | `evals/` | Skill agent behavior | Primary workflow + commit-message format + fallback discipline + drift guard + pre-flight obligations | `python3 tests/git_commit/evals/run.py` (stage → vendor worker → grade) |
 
 ### script_tests: fast, deterministic
@@ -649,7 +649,8 @@ nothing under `tests/git_commit/` copies into or patches it. All
 harness logic stays in this directory.
 
 ```bash
-# Every eval (or name ids, e.g. `6 7`), with the default Cursor worker
+# Every eval (or name ids, e.g. `6 7`), with the default Cursor worker,
+# four at a time (--workers 1 serializes)
 python3 tests/git_commit/evals/run.py
 ```
 

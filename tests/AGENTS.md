@@ -161,13 +161,15 @@ isolate. Today that subset is the `task_auto_check` serial nested-loop set
 `regate_isolated`), which runs one job at a time after the isolated pool,
 and an escape guard that reads the whole host checkout, such as
 `agent_spinner`'s `git status`. The rest of the `task_auto_check` suite
-uses the default 4 workers. The Pattern A runners that import
-`tests/lib/eval_runner` and run at that default are
-`tests/task_auto_check/evals/run.py`, `tests/git_checkout/evals/run.py`,
-and `tests/git_refresh/evals/run.py`. `task_auto_check` runs its serial
+uses the default 4 workers. The Pattern A runners on `eval_runner` at
+`vendor.DEFAULT_PARALLEL_WORKERS` are `tests/task_auto_check/evals/run.py`,
+`tests/git_checkout/evals/run.py`, `tests/git_refresh/evals/run.py`, and
+`tests/git_commit/evals/run.py`. `task_auto_check` runs its serial
 nested-loop set, the list above, one job at a time after the isolated
-pool. Every `git_checkout` and `git_refresh` eval stages its own sandbox
-root, so the whole suite runs in the pool.
+pool. Every `git_checkout`, `git_refresh`, and `git_commit` eval stages its
+own sandbox root, so the whole suite runs in the pool. `git_commit`'s worker
+and `grade.sh` both receive the job's `TMPDIR`, so the grader's straggler
+scan reads only that job's context files.
 
 The helper runs before and after hooks one call at a time, but it cannot tell
 which overlapping job changed a shared tree. Each hook receives its job's
@@ -180,8 +182,8 @@ for the helper's unit tests.
 Runners that already default to `DEFAULT_PARALLEL_WORKERS` outside this
 helper: wiki layer 2, `language_humanizer`, and `natural_language`. Pattern A
 runners that stay sequential until sibling conversion tasks wire them onto
-`eval_runner` (plus permanent isolation exceptions): `git_commit` (shared
-TMPDIR), `git_review` (timeout), `task`, `task_create`, and `task_fix`
+`eval_runner` (plus permanent isolation exceptions): `git_review`
+(timeout), `task`, `task_create`, and `task_fix`
 (serial until their parallel-worker tasks land; the host guard ignores
 unrelated live backlog edits), `agent_spinner` (unscoped host `git status`,
 until its guard compares only the names each eval owns), and

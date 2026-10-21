@@ -215,19 +215,24 @@ case "$eval_id" in
 esac
 
 # --- v3.4.0 contract check: no stale TMPDIR context file ---------------------
+#
+# The scan reads this eval's own TMPDIR. run.py gives every job its own
+# directory through tests/lib/eval_runner and passes that same TMPDIR to the
+# worker and to this grader, so a concurrent eval's git_commit_context.* file
+# sits in that eval's directory and never reaches this scan. A hand-run grade
+# with TMPDIR unset scans /tmp, where prepare_commit_context.sh writes then.
 
-tmpdir="${TMPDIR:-/tmp}"
-tmpdir="${tmpdir%/}"
+TMPDIR="${TMPDIR:-/tmp}"
 stragglers=()
 while IFS= read -r line || [[ -n "${line:-}" ]]; do
   stragglers+=("$line")
-done < <(find "$tmpdir" -maxdepth 1 -name 'git_commit_context.*' -newer "$marker" 2>/dev/null)
+done < <(find "$TMPDIR" -maxdepth 1 -name 'git_commit_context.*' -newer "$marker" 2>/dev/null)
 if (( ${#stragglers[@]} == 0 )); then
   pass=$((pass+1))
-  printf '  PASS  no git_commit_context.* stragglers in %s (post-commit cleanup ran)\n' "$tmpdir"
+  printf '  PASS  no git_commit_context.* stragglers in %s (post-commit cleanup ran)\n' "$TMPDIR"
 else
   fail=$((fail+1))
-  printf '  FAIL  git_commit_context.* file(s) left behind in %s:\n' "$tmpdir"
+  printf '  FAIL  git_commit_context.* file(s) left behind in %s:\n' "$TMPDIR"
   for s in "${stragglers[@]}"; do printf '          %s\n' "$s"; done
   failures+=("context file cleanup")
 fi

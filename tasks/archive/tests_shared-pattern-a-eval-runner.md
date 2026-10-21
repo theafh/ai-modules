@@ -47,7 +47,7 @@ list the Pattern A runners as sequential.
 
 Live siblings consume this helper rather than inventing a second pool:
 
-- [git_commit parallel evals](../tests_git-commit-parallel-evals.md)
+- [git_commit parallel evals](tests_git-commit-parallel-evals.md)
 - [git_review parallel evals](../tests_git-review-parallel-evals.md)
 - [task hub parallel evals](../tests_task-hub-parallel-evals.md)
 - [task_create parallel evals](../tests_task-create-parallel-evals.md)

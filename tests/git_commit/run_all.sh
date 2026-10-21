@@ -4,7 +4,10 @@
 # Two surfaces:
 #   - script_tests/  — deterministic bash unit tests for the bundled
 #                      scripts (prepare_commit_context.sh,
-#                      commit_with_message.sh). Runs in this shell.
+#                      commit_with_message.sh) and the straggler-scan
+#                      isolation scenario (evals/grade.sh's TMPDIR scan of
+#                      one eval job never sees another job's context file).
+#                      Runs in this shell.
 #   - evals/         — skill-creator-aligned skill evals. Run via
 #                      skill-creator's runner (out-of-band).
 #

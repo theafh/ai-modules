@@ -2,15 +2,18 @@
 # Bundled-script unit tests for the git_commit skill.
 #
 # Scope: the two shell scripts shipped with the skill
-# (prepare_commit_context.sh, commit_with_message.sh) — NOT the skill's
-# agent-level behavior. Skill behavior is covered by tests/git_commit/evals/
-# under the skill-creator convention. One scenario (e1) also checks that eval
-# runner's stage() stops on a failed or empty stage before any worker runs.
+# (prepare_commit_context.sh, commit_with_message.sh) and the eval grader's
+# straggler-scan isolation scenario (g1: evals/grade.sh's TMPDIR scan of one
+# job never sees a git_commit_context.* file in another job's TMPDIR, and
+# still fails on one in its own) — NOT the skill's agent-level behavior. Skill
+# behavior is covered by tests/git_commit/evals/ under the skill-creator
+# convention. One scenario (e1) also checks that eval runner's stage() stops
+# on a failed or empty stage before any worker runs.
 #
 # Each scenario stages a fresh temporary git repo under
-# tests/git_commit/script_tests/scratch/<id>/repo/, manipulates its
-# working tree, runs one of the bundled scripts, and asserts on stdout +
-# exit code + post-run repo state.
+# tests/git_commit/script_tests/scratch/<id>/, manipulates its working tree,
+# runs one of the bundled scripts (or grade.sh, for g1), and asserts on
+# stdout + exit code + post-run repo state.
 
 set -uo pipefail
 
@@ -1135,6 +1138,90 @@ e1_eval_runner_stage_failure_raises() {
 }
 
 ###############################################################################
+# evals/grade.sh straggler-scan isolation scenario
+###############################################################################
+
+# graded_target <dir> -> lays out <dir> the way stage.sh lays out one eval:
+# <dir>/repo with a seed commit, <dir>/.eval_started_at naming that staged HEAD,
+# and one further commit on top, so grade.sh's universal checks for eval 5 pass
+# and its exit status reflects the TMPDIR straggler scan alone. The marker's
+# mtime is pinned in the past so every context file the scenario writes is
+# newer than it.
+graded_target() {
+    local dir=$1
+    rm -rf "${dir:?}"
+    mkdir -p "$dir/repo"
+    (
+        cd "$dir/repo"
+        git init --quiet --initial-branch=main
+        git config user.email "harness@example.com"
+        git config user.name "Harness"
+        printf 'seed\n' > seed.txt
+        git add seed.txt
+        git commit --quiet -m "seed"
+        git rev-parse HEAD > "$dir/.eval_started_at"
+        printf 'more\n' >> seed.txt
+        git commit --quiet -am "seed.txt -> extend"
+    ) || return 1
+    touch -t 202001010000 "$dir/.eval_started_at"
+}
+
+# run_grade_scan <tmpdir> <repo> -> echoes "<exit>|<grade.sh output>" for
+# eval 5, run with TMPDIR set to <tmpdir> the way run.py passes a job's TMPDIR.
+run_grade_scan() {
+    local tmpdir=$1 repo=$2
+    local out rc
+    out=$(TMPDIR="$tmpdir" bash "$EVALS_DIR/grade.sh" 5 "$repo" 2>&1) && rc=0 || rc=$?
+    printf '%s|%s' "$rc" "$out"
+}
+
+# Two eval jobs whose windows overlap, each with its own TMPDIR as
+# tests/lib/eval_runner hands out: sibling directories under one parent. Job A's
+# worker leaves a git_commit_context.* file in A's TMPDIR while both jobs run, so
+# the file is newer than both jobs' .eval_started_at markers. grade.sh's scan of
+# job B's TMPDIR must stay clean and never name A's file, and its scan of job A's
+# TMPDIR must fail and name it.
+g1_straggler_scan_reads_own_tmpdir() {
+    local base="$SCRATCH/g1"
+    rm -rf "${base:?}"
+    local job_a="$base/job_a" job_b="$base/job_b"
+    local tmp_a="$base/tmp/eval_runner_a" tmp_b="$base/tmp/eval_runner_b"
+    graded_target "$job_a" || return 1
+    graded_target "$job_b" || return 1
+    mkdir -p "$tmp_a" "$tmp_b"
+    local leaked="$tmp_a/git_commit_context.leaked"
+    printf '<commit_context>\n</commit_context>\n' > "$leaked"
+
+    local ok=true
+    # Precondition: the leaked file is newer than both markers, so only the
+    # TMPDIR split keeps it out of job B's scan.
+    if [[ ! "$leaked" -nt "$job_a/.eval_started_at" || ! "$leaked" -nt "$job_b/.eval_started_at" ]]; then
+        log "    [precondition: leaked context file is not newer than both markers]"
+        ok=false
+    fi
+
+    local ret rc out
+    ret=$(run_grade_scan "$tmp_b" "$job_b/repo")
+    rc=${ret%%|*} out=${ret#*|}
+    assert_eq "cross-tree: job B grade exit" "$rc" "0" || ok=false
+    assert_contains "cross-tree: job B scan reports no straggler in its own TMPDIR" "$out" \
+        "PASS  no git_commit_context.* stragglers in $tmp_b" || ok=false
+    assert_not_contains "cross-tree: job B scan never names job A's context file" "$out" \
+        "git_commit_context.leaked" || ok=false
+    [[ "$ok" == true ]] || printf '%s\n' "$out" | indent
+
+    ret=$(run_grade_scan "$tmp_a" "$job_a/repo")
+    rc=${ret%%|*} out=${ret#*|}
+    assert_eq "own-tree: job A grade exit" "$rc" "1" || ok=false
+    assert_contains "own-tree: job A scan fails on its own TMPDIR" "$out" \
+        "FAIL  git_commit_context.* file(s) left behind in $tmp_a" || ok=false
+    assert_contains "own-tree: job A scan names the leaked context file" "$out" \
+        "$leaked" || ok=false
+    [[ "$ok" == true ]] || printf '%s\n' "$out" | indent
+    $ok
+}
+
+###############################################################################
 # Run scenarios
 ###############################################################################
 
@@ -1172,6 +1259,7 @@ scenario c13 "commit: missing baseline (no ctx) -> commit-all" c13_missing_basel
 scenario c14 "commit: missing baseline (no block) -> commit-all" c14_missing_baseline_context_without_block
 
 scenario e1  "eval runner: a failed or empty stage raises before any worker" e1_eval_runner_stage_failure_raises
+scenario g1  "eval grader: straggler scan reads only its own job's TMPDIR" g1_straggler_scan_reads_own_tmpdir
 
 ###############################################################################
 # Summary

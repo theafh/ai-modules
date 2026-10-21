@@ -2,9 +2,11 @@
 description: Isolate git_commit eval TMPDIR per job, run the suite at default 4 workers through the shared Pattern A helper, and prove that path on the default vendor.
 scope: tests/git_commit/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-19T17:27:36
-status: ready
+updated: 2026-10-21T18:04:41
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize the git_commit behavioral evals behind a per-job TMPDIR
@@ -27,9 +29,9 @@ shared `TMPDIR` cross-talk. `DEFAULT_IDS` is a frozen `"1"`..`"9"` list.
 `WORKSPACE` is `tests/git_commit/evals/workspace`, unlike harnesses that write
 `tests/<skill>/workspace`.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md)
 and follows it. Host-instruction isolation stays with
-[the language_humanizer isolation task](archive/tests_language-humanizer-worker-isolation.md).
+[the language_humanizer isolation task](tests_language-humanizer-worker-isolation.md).
 
 ## Approach
 
