@@ -2,9 +2,11 @@
 description: "Make task_create eval verdicts match what conformant runs do: fix four grader checks, give every fixture a git identity, and pin the grader fixes with script tests built from recorded forms."
 scope: tests/task_create/evals
 created: 2026-10-20T12:13:15
-updated: 2026-10-20T17:28:01
-status: ready
+updated: 2026-10-22T07:47:29
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make task_create eval verdicts match what conformant runs do
@@ -15,7 +17,7 @@ The `task_create` grader at `tests/task_create/evals/grade.sh` gives the same ve
 
 ## Context
 
-This task extends [the grader-authoring discipline task](archive/tests_grader-authoring-discipline.md), whose Acceptance entry beginning "Each label-structure check in `tests/task_create/evals/grade.sh`" made the label checks match a qualified lead-in, an evidence-phrased why-open clause, and several option-enumeration forms. Draws recorded on 2026-10-15, 2026-10-16, and 2026-10-20 show four forms that entry did not reach. The guardrail-bound fork task's findings record two of them.
+This task extends [the grader-authoring discipline task](tests_grader-authoring-discipline.md), whose Acceptance entry beginning "Each label-structure check in `tests/task_create/evals/grade.sh`" made the label checks match a qualified lead-in, an evidence-phrased why-open clause, and several option-enumeration forms. Draws recorded on 2026-10-15, 2026-10-16, and 2026-10-20 show four forms that entry did not reach. The guardrail-bound fork task's findings record two of them.
 
 - **Label count.** `open_decision_count` counts every line matching `OPEN_DECISION_LEAD_IN_PLAIN`, case-insensitively and anywhere in a line, and `label_lines` starts its window on the same unanchored pattern. A body with one real label and a later pointer to it, such as the Acceptance line "The tree matches the path chosen in the open decision: either …" or a Context bullet naming the Approach label, counts two and fails "exactly one labeled open-decision lead-in in the body". Across every recorded `task_create` sandbox task file, each real label starts a line after optional list markers and emphasis, and each mid-line match is a pointer such as "the path chosen in the open decision: either".
 - **Why-open clause.** `why_open_clause` matches a fixed alternation of fork, decision, evidence, and user's-call phrasings. A label whose reason reads "(guardrail-bound: every path crosses a boundary or rewrites a guardrail doc)" matches none of them and fails "the label carries a guardrail-bound why-open clause", although it states the ground the base **Decide or label** rule names.
@@ -23,7 +25,7 @@ This task extends [the grader-authoring discipline task](archive/tests_grader-au
 - **Empty sandbox.** The universal block builds `open_files=( "$TASKS"/*.md )` without `nullglob`, so a sandbox with no task file keeps the unexpanded pattern as one element and prints "exactly one task file created under tasks/ (got 1)". The verdict is right, but the count misleads anyone reading a failure.
 - **Fixture identity.** The `labeled-why-open` and `guardrail-bound-surface` fixtures call `new_project "$target"` without `--git`, so the sandbox is not a git repo and the create path's name chain finds no sandbox identity under the worker environment. In every recorded draw of those two evals since 2026-10-14, the worker asked the user which name to record as `reported-by` and wrote `default_user`. The `reconcile-recorded` fixture already uses `new_project "$target" --git` and `git_commit_all` from `tests/task_create/evals/fixtures/_common.sh`, which sets the identity `Evals`.
 
-`tests/task_create/` has no `script_tests/` today. `tests/task_fix/script_tests/run.sh` checks its `evals/grade.sh` on staged fixtures and chosen responses, and serves as the model. [The prior-art related-precedent task](task-family_prior-art-related-precedent-is-novel.md) adds a new eval's checks to the same `grade.sh`, and the live `tests_task-create-parallel-evals` task edits its host-guard marker checks, so whichever lands second rebases on the other.
+`tests/task_create/` has no `script_tests/` today. `tests/task_fix/script_tests/run.sh` checks its `evals/grade.sh` on staged fixtures and chosen responses, and serves as the model. [The prior-art related-precedent task](../task-family_prior-art-related-precedent-is-novel.md) adds a new eval's checks to the same `grade.sh`, and the live `tests_task-create-parallel-evals` task edits its host-guard marker checks, so whichever lands second rebases on the other.
 
 ## Approach
 

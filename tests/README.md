@@ -176,8 +176,13 @@ don't bring up new harnesses under Pattern B.
   `run_all.sh` drives all three and aggregates their exit codes. `evals/`
   holds a behavioral eval per family member, run out-of-band via
   `evals/run.py`.
-- **`task_create/`**: Pattern A, behavioral only (the skill drives the
-  base `task` skill's scripts, covered under `task/script_tests/`). Three
+- **`task_create/`**: Pattern A. The skill drives the base `task` skill's
+  scripts, covered under `task/script_tests/`, so `script_tests/run.sh` here
+  tests the grader instead: each case stages an eval, installs a chosen task
+  body, and reads one `evals/grade.sh` check's verdict. It also checks every
+  fixture's git identity and the eval runner's stop on a failed or empty
+  stage. There is no `run_all.sh`, so run
+  `bash tests/task_create/script_tests/run.sh` directly. Three
   staged evals over the base **Decide or label** rule as the create path
   applies it: `reconcile-recorded` (evidence-settled fork, no label),
   `labeled-why-open` (no tier settles it), and `guardrail-bound-surface`

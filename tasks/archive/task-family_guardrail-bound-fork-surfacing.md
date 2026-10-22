@@ -88,7 +88,7 @@ eval's recorded history reads as flaky because two failure causes were mixed
 under one verdict.
 
 **Out of scope:** Widening the grader's label needles, which
-[the task_create grader task](../tests_task-create-grader-label-false-fails.md)
+[the task_create grader task](tests_task-create-grader-label-false-fails.md)
 owns. This task depends on the finished grader-authoring discipline task only
 for reading its own re-measurement cleanly.
 

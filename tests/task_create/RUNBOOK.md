@@ -1,5 +1,16 @@
 # RUNBOOK: tests/task_create
 
+## Grader script tests
+
+```bash
+bash tests/task_create/script_tests/run.sh
+```
+
+Stages each case outside the checkout, grades a chosen task body, and prints
+one PASS/FAIL line per asserted grader verdict plus a tally. It starts no
+worker, so run it after every `evals/grade.sh` or fixture edit. Exit code is 0
+only when every case passed.
+
 ## Full suite
 
 ```bash

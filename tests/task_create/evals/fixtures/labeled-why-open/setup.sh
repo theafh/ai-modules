@@ -12,6 +12,10 @@
 # why the evidence leaves it open, and the create path must surface it to the
 # user in its **Offer open-decision reconciliation** step rather than leaving
 # it to rest in the file alone.
+#
+# The sandbox is a git repository with its own identity, so `git config
+# user.name` supplies `reported-by` and the worker's reply carries only the
+# decision under test, with no question about which name to record.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,7 +23,7 @@ THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$THIS_DIR/../_common.sh"
 
 target="${1:?target dir required}"
-proj="$(new_project "$target")"
+proj="$(new_project "$target" --git)"
 
 cat > "$proj/CLAUDE.md" <<'EOF'
 # CLAUDE.md
@@ -82,5 +86,7 @@ def register(name, url):
 def unregister(name):
     REGISTERED.pop(name, None)
 EOF
+
+git_commit_all "$proj" "seed: webhook sender with no retry"
 
 echo "labeled-why-open sandbox staged at $proj"
