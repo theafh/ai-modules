@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# stage.sh — stage one task_create open-decision eval and print the
-# agent-ready inputs.
+# stage.sh — stage one task_create Decide-or-label / prior-art Novel eval and
+# print the agent-ready inputs.
 #
 # Usage:
 #   stage.sh <eval_id> [target_dir]
@@ -16,6 +16,9 @@
 #   guardrail-bound-surface   the fork whose every path crosses a guardrail
 #                             boundary: labeled and surfaced the same way,
 #                             never auto-resolved
+#   related-precedent-novel   related prior-art that shares context but covers
+#                             none of the requested work: classify as Novel,
+#                             write the task, and cross-link the precedent
 #
 # Prints name=value lines on stdout, each value already quoted with printf %q
 # so the block is safe to `eval`:
@@ -32,7 +35,7 @@
 
 set -euo pipefail
 
-eval_id="${1:?eval id required (reconcile-recorded|labeled-why-open|guardrail-bound-surface)}"
+eval_id="${1:?eval id required (reconcile-recorded|labeled-why-open|guardrail-bound-surface|related-precedent-novel)}"
 target="${2:-$(mktemp -d "${TMPDIR:-/tmp}/task_create_eval.XXXXXX")}"
 mkdir -p "$target"
 target="$(cd "$target" && pwd)"
@@ -57,6 +60,10 @@ case "$eval_id" in
   guardrail-bound-surface)
     "$HERE/fixtures/guardrail-bound-surface/setup.sh" "$target" >/dev/null
     prompt="Make a task to add coloured severity markers to the report command's output in src/report/cli.py, so warnings and errors stand out from the ordinary rows."
+    ;;
+  related-precedent-novel)
+    "$HERE/fixtures/related-precedent-novel/setup.sh" "$target" >/dev/null
+    prompt="Make a task for adding a unit test to truncate_cell in src/report/render.py. That module imports the chartkit backend at module scope, so the test needs some way to get at the helper."
     ;;
   *)
     echo "unknown eval id: $eval_id" >&2

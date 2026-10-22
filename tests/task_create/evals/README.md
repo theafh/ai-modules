@@ -1,4 +1,4 @@
-# evals: task_create open-decision behaviour
+# evals: task_create Decide-or-label and prior-art Novel behaviour
 
 Canonical skill-creator schema in `evals.json`, fixtures under
 `fixtures/<id>/setup.sh`, deterministic grading in `grade.sh`, and a
@@ -13,19 +13,19 @@ vendor worker runner in `run.py` that runs on Cursor by default.
    `printf %q`-quoted lines safe to `eval` in bash. It also writes
    `<target>/.eval_started_at`, the run-start epoch the grader uses for
    timestamp tolerance and isolation checks.
-2. `run.py` spawns one `claude -p` worker per eval with `sandbox_proj` as the
-   working directory, so the skill's `discover_tasks.sh` resolves the sandbox
-   and never the real repo. The worker prompt tells it to load the `SKILL.md`
-   at `skill_path`, which is the repo copy. Edits under `plugins/` are what
-   gets tested, not whatever is deployed.
+2. `run.py` spawns one vendor print-mode worker per eval with `sandbox_proj` as
+   the working directory, so the skill's `discover_tasks.sh` resolves the
+   sandbox and never the real repo. The worker prompt tells it to load the
+   `SKILL.md` at `skill_path`, which is the micro-deployed copy. Edits under
+   `plugins/` are what gets tested, not whatever is deployed.
 3. `grade.sh <id> <sandbox_proj>` checks the post-run state and exits 0 only
    when every check passed.
 
 ## Two graded surfaces
 
-The rule under test imposes a dual obligation: a genuinely open decision is
-written into the task body *and* surfaced to the user. Neither half proves the
-other, so the grader reads both.
+The **Decide or label** evals impose a dual obligation: a genuinely open
+decision is written into the task body *and* surfaced to the user. Neither half
+proves the other, so the grader reads both.
 
 - The **written** half comes from the sandbox: the task file, its frontmatter,
   its labeled open-decision lead-in (bare or qualified) and the paragraph
@@ -34,7 +34,12 @@ other, so the grader reads both.
   `run.py` exports `RESPONSE_FILE` when it calls the grader; a hand-run grade
   should export it too. When no response is readable, the surface checks FAIL
   rather than pass vacuously. A label the user never saw is exactly the
-  failure mode this harness exists to catch.
+  failure mode those three evals exist to catch.
+
+The **`related-precedent-novel`** eval grades the written half only: one open
+task whose `## Context` links the archived related precedent. Stopping at a
+Partially covered ask leaves zero task files and fails the universal one-file
+check.
 
 ## What stays prose
 

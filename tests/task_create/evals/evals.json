@@ -1,5 +1,5 @@
 {
-  "skill_name": "task_create (open-decision burden of proof; base rule: task's **Decide or label**)",
+  "skill_name": "task_create (Decide or label + prior-art Novel; four evals)",
   "evals": [
     {
       "id": "reconcile-recorded",
@@ -51,6 +51,21 @@
         "The fork was not auto-resolved by applying the guardrail hierarchy: CHARTER.md outranking ARCHITECTURE.md is not treated as settling which implementation path the task takes.",
         "The agent's response surfaces the decision to the user with a suggested path and a resolve-now-or-defer ask.",
         "Neither CHARTER.md nor ARCHITECTURE.md was modified to clear the conflict."
+      ]
+    },
+    {
+      "id": "related-precedent-novel",
+      "skill": "task_create",
+      "prompt": "Make a task for adding a unit test to truncate_cell in src/report/render.py. That module imports the chartkit backend at module scope, so the test needs some way to get at the helper.",
+      "expected_output": "An archived finished task already covered format_severity, a sibling helper in the same src/report/render.py module, and settled the sys.modules stubbing pattern the new work will reuse. That hit shares real context — same module, same dependency, same settled pattern — while covering none of the requested truncate_cell work, so the prior-art gate's Novel class applies: creation continues to drafting and the body cross-links the precedent in ## Context. The sandbox's git identity supplies reported-by, so the run drafts without asking for a name. task_create writes exactly one open task that lints clean and whose ## Context links archive/report_format-severity-test.md. Stopping at a Partially covered ask with no file is the failure this eval catches.",
+      "files": [
+        "evals/fixtures/related-precedent-novel/setup.sh"
+      ],
+      "expectations": [
+        "Exactly one new task file exists under tasks/, it lints clean, and status is open.",
+        "The body's ## Context section carries a markdown link to the archived related precedent (report_format-severity-test.md).",
+        "Neither TESTING.md nor src/report/render.py was modified — task_create writes the task file only.",
+        "The agent classified the prior-art hit as Novel and wrote the task rather than stopping with a Partially covered ask."
       ]
     }
   ]

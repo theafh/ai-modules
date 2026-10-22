@@ -1,7 +1,7 @@
 ---
 name: task
 description: Manage the project task backlog as plain markdown files in tasks/. Use when the user asks to list or query existing tasks, to update or expand one, to triage or split backlog items, or to work across several tasks at once, and as the fallback for any tasks, todos, or backlog request naming no single lifecycle step. Not for one named step on one task, which a sibling owns for creation, readiness checking, explanation, next-work selection, implementation, audit, and finish.
-version: 1.3.44
+version: 1.3.45
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -333,9 +333,9 @@ Before naming and writing, confirm the request is not already captured or alread
 
 **Tier 2: in-depth analysis, only when Tier 1 hits.** Investigate whether the requested work is genuinely new, partly done, or fully done. Read each matched task file in full, and inspect the project itself (the code, modules, and docs the request would touch) to judge the real implementation state rather than trusting a task's stated status. Classify the request as one of:
 
-- **Novel**: the hits were incidental keyword overlap; nothing actually covers this work. Continue to `<scope>`.
+- **Novel**: nothing covers the requested work. That includes incidental keyword overlap, and related precedent that shares context (the same module, dependency, or a settled pattern) while covering none of the requested work. Continue to `<scope>`. For related precedent, cross-link it in `## Context` when the `<markdown_policy>` cross-link discipline keeps the link.
 - **Already an open task**: an open task in `tasks/` already captures this work.
-- **Partially covered**: some of the requested work already exists (in a live task, in an archived `finished`/`deferred` task, or already in the codebase) and some is genuinely new. When a hit lands on archived `finished` work or code already in place, re-derive the genuinely-new delta before recommending any file write: identify what is redundant, what extends shipped work, and what remains unrelated and new.
+- **Partially covered**: part of the requested work itself already exists (in a live task, in an archived `finished`/`deferred` task, or already in the codebase) and some is genuinely new. When a hit lands on archived `finished` work or code already in place, re-derive the genuinely-new delta before recommending any file write: identify what is redundant, what extends shipped work, and what remains unrelated and new.
 - **Already implemented**: the codebase or archived `finished` work already covers the full request.
 - **Already deferred**: an archived `deferred` task already weighed this and parked it.
 

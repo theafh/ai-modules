@@ -1,4 +1,4 @@
-# tests/task_create: open-decision burden-of-proof harness
+# tests/task_create: Decide-or-label and prior-art Novel harness
 
 Pattern A (skill-creator-aligned). `task_create` ships no scripts of its own.
 It drives the base `task` skill's `discover_tasks.sh`, `init_tasks.sh`, and
@@ -12,22 +12,26 @@ produced covered after their workspace runs are gone. There is no
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
 | Grader | `script_tests/` | `evals/grade.sh` verdicts on chosen task bodies: the one-label count reading only block-start lead-ins (heading-form labels included) and skipping a Context pointer to the Approach label, wrapped or not, the guardrail-bound why-open ground, both options named by uppercase markers or an either-or sentence, a non-`rich` styling path named by its substance, and an empty sandbox reporting zero files, each beside a control that still fails; plus every fixture's git identity and the eval runner's stop on a failed or empty stage through `tests/lib/check_stage_guard.py` | `bash tests/task_create/script_tests/run.sh` |
-| Skill behavior | `evals/` | the base **Decide or label** rule as the create path applies it: reconcile silently, else label *and* surface (stage → agent → grade) | `python3 tests/task_create/evals/run.py` |
+| Skill behavior | `evals/` | the base **Decide or label** rule and the `<prior_art>` Novel class as the create path applies them: reconcile silently, else label *and* surface; classify related-but-uncovering precedent as Novel and write the task (stage → agent → grade) | `python3 tests/task_create/evals/run.py` |
 
 The whole-family behavioral suite lives in `tests/task/evals/` and keeps its
 own `create`, `create_scope_trim`, `create_regroup_owner_account`,
 `standing_rules_create`, and `lossless_single` evals for the rest of the create
-path. This harness is the
-one that exercises the open-decision half of it.
+path. This harness is the one that exercises the open-decision half of it and
+the prior-art Novel case.
 
-## What the three evals prove
+## What the four evals prove
 
-The rule under test says: settle silently every fork the ordered evidence base
-can settle, and treat a decision as genuinely open only when that evidence is
-insufficient or the fork is guardrail-bound. A genuinely open decision is then
-  handled twice over: written into the task as a labeled open-decision lead-in
-  (bare or qualified) carrying its options, a suggested default, and the
-  why-open clause, *and* surfaced to the user.
+Two rule surfaces share this harness. **Decide or label** says: settle silently
+every fork the ordered evidence base can settle, and treat a decision as
+genuinely open only when that evidence is insufficient or the fork is
+guardrail-bound. A genuinely open decision is then handled twice over: written
+into the task as a labeled open-decision lead-in (bare or qualified) carrying
+its options, a suggested default, and the why-open clause, *and* surfaced to
+the user. `<prior_art>` Novel says: a matched task that shares context
+(module, dependency, or a settled pattern) while covering none of the requested
+work is Novel, so creation continues and the precedent is cross-linked in
+`## Context` when the cross-link discipline keeps the link.
 
 Every fixture stages its sandbox as a committed git repository whose identity,
 `Evals`, supplies `reported-by`, so no run stops to ask which name to record
@@ -47,6 +51,10 @@ and the worker's reply carries only the decision under test.
   boundary (`CHARTER.md` forbids the dependency, `ARCHITECTURE.md` forbids the
   hand-rolled alternative), which the standing hierarchy never auto-resolves.
   Same labeled-and-surfaced handling.
+- **`related-precedent-novel`**: an archived finished task covered a sibling
+  function in the same module and settled a pattern the new work reuses, while
+  covering none of the requested work. The prior-art gate classifies that hit
+  as Novel, writes the task, and links the precedent in `## Context`.
 
 ## Running
 

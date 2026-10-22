@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Vendor-aware worker runner for the task_create open-decision evals.
+"""Vendor-aware worker runner for the task_create Decide-or-label and
+prior-art Novel evals.
 
 Same stage -> agent -> grade shape as the task-family harness runner: one
 vendor-resolved print-mode worker per eval, so the skill *under test* uses one

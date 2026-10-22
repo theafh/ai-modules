@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# grade.sh — programmatic grader for the task_create open-decision evals.
+# grade.sh — programmatic grader for the task_create Decide-or-label and
+# prior-art Novel evals.
 #
 # Usage:
 #   grade.sh <eval_id> <sandbox_proj>
@@ -483,6 +484,29 @@ case "$eval_id" in
     check "the response hands the choice back to the user"       response_invites_the_user
     note_agent_attest "the fork was surfaced rather than auto-resolved — the agent did not silently pick a side on the strength of CHARTER.md outranking ARCHITECTURE.md"
     note_agent_attest "no guardrail doc was edited to clear the conflict; the decision is handed to the user with the boundary named"
+    ;;
+
+  related-precedent-novel)
+    check "the seeded archived precedent still lints clean" lint_archive_no_blocking
+    check "TESTING.md untouched"    file_untouched "$proj/TESTING.md"
+    check "render.py untouched"     file_untouched "$proj/src/report/render.py"
+    if one_open_task; then
+      f="${open_files[0]:-}"
+      # ## Context must carry a markdown link to the archived precedent. Match
+      # the link target by the archived filename so any link text that points
+      # at that file passes, and read only the Context section so a mention
+      # elsewhere does not satisfy the cross-link obligation.
+      context_links_precedent() {
+        awk '
+          /^## / { in_ctx = ($0 ~ /^##[[:space:]]+Context[[:space:]]*$/) }
+          in_ctx { print }
+        ' "$f" | tr '\n' ' ' | tr -s ' ' \
+          | grep -qE '\[[^]]+\]\([^)]*report_format-severity-test\.md\)'
+      }
+      check "Context links the archived related precedent" context_links_precedent
+    fi
+    note_agent_attest "the prior-art gate classified the hit as Novel and wrote the task rather than stopping with a Partially covered ask"
+    note_agent_attest "the Context link is to the archived format_severity precedent, not a relatedness-only plain-text mention"
     ;;
 
   *)

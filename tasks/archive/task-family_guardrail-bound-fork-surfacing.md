@@ -2,7 +2,7 @@
 description: Make the task family's Decide or label rule reliably surface a guardrail-bound fork instead of auto-resolving it from the guardrail hierarchy, and re-measure over repeated draws.
 scope: plugins/ai_dev/skills
 created: 2026-09-05T02:35:10
-updated: 2026-10-20T14:55:30
+updated: 2026-10-22T13:47:18
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -178,7 +178,7 @@ nothing in `render.py`. The sandbox is now a git repository whose identity
 supplies `reported-by`. Every evidence tier still points at the stubbing path,
 so a run that labels that fork with the evidence's own default still fails the
 no-label check. [The related-precedent prior-art
-task](../task-family_prior-art-related-precedent-is-novel.md) owns the gate's
+task](task-family_prior-art-related-precedent-is-novel.md) owns the gate's
 Novel versus **Partially covered** ambiguity and restores the
 overlapping-precedent case as its own eval.
 

@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one new task file for one upcoming work item. Use when the user asks to make, add, file, write, or capture a single task or todo. Use task for listing, querying, updating, archiving, linting, or multi task backlog work.
-version: 1.1.10
+version: 1.1.11
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -60,7 +60,7 @@ Keep this to one atomic task file. When the request actually carries several ind
 </workflow>
 
 <output_contract>
-Report the relative path of the one task file created, confirm the linter came back clean, and surface any assumption you made about scope, name, or body so the user can correct it. Report each `repeated-link` finding the **Lint.** step answered with one line in the base `<lint>` **Repeated-link disposition line** shape. Report the surfaced open decision, the user's resolve-now or defer choice, and the clean re-lint when a resolve-now fix was applied; when the draft carried no open decision, report that one-line result. When the prior-art gate found a match, report the classification and evidence and reflect the user's decision instead of silently creating a duplicate.
+Report the relative path of the one task file created, confirm the linter came back clean, and surface any assumption you made about scope, name, or body so the user can correct it. Report each `repeated-link` finding the **Lint.** step answered with one line in the base `<lint>` **Repeated-link disposition line** shape. Report the surfaced open decision, the user's resolve-now or defer choice, and the clean re-lint when a resolve-now fix was applied; when the draft carried no open decision, report that one-line result. When the prior-art gate surfaces an overlap class (already an open task, partially covered, already implemented, or already deferred), report the classification and evidence and reflect the user's decision instead of silently creating a duplicate.
 </output_contract>
 
 <family>

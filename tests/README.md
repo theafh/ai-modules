@@ -182,12 +182,15 @@ don't bring up new harnesses under Pattern B.
   body, and reads one `evals/grade.sh` check's verdict. It also checks every
   fixture's git identity and the eval runner's stop on a failed or empty
   stage. There is no `run_all.sh`, so run
-  `bash tests/task_create/script_tests/run.sh` directly. Three
-  staged evals over the base **Decide or label** rule as the create path
-  applies it: `reconcile-recorded` (evidence-settled fork, no label),
-  `labeled-why-open` (no tier settles it), and `guardrail-bound-surface`
-  (every path crosses a boundary). Grades the written task file and the
-  worker's captured response, since the rule obliges both.
+  `bash tests/task_create/script_tests/run.sh` directly. Four
+  staged evals over the base **Decide or label** rule and the `<prior_art>`
+  Novel class as the create path applies them: `reconcile-recorded`
+  (evidence-settled fork, no label), `labeled-why-open` (no tier settles it),
+  `guardrail-bound-surface` (every path crosses a boundary), and
+  `related-precedent-novel` (related prior-art covering none of the requested
+  work classifies as Novel and writes the task with a Context cross-link).
+  Grades the written task file and, for the Decide-or-label evals, the
+  worker's captured response, since that rule obliges both.
 - **`task_fix/`**: Pattern A. The skill drives the base `task` skill's
   scripts, covered under `task/script_tests/`, so `script_tests/run.sh` here
   tests the grader instead, grading staged fixtures against chosen responses,
