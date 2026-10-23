@@ -141,9 +141,7 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
     prompt_path = pass_dir / "prompt.md"
     report_dest = pass_dir / "report.md"
 
-    sandbox_root = worker_isolation.create_sandbox_root(
-        f"{ISOLATION_PREFIX}{sid}_{pass_num}_"
-    )
+    sandbox_root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
         restage_one(sid, sandbox_root)
         workdir = scenario_workdir(scenario, sandbox_root)

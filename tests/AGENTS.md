@@ -218,8 +218,12 @@ Same rules as `tests/CLAUDE.md`: content-keyed cache under
 `<evals>/.eval_cache/`, worker completion gates before trusting grade.sh,
 and behavioural sandboxes that must not inherit host instructions. Every
 behavioural runner takes its sandbox root from
-`worker_isolation.create_sandbox_root`; `isolation_args` stays with the
-runners that pass it today. A stage that fails or names no sandbox stops the
+`worker_isolation.create_sandbox_root`; a sandbox root's name carries only
+the harness prefix, because a worker reads its working directory and an eval
+id there leaks the expected behaviour. A new harness prefix must be added to
+`ALLOWED_ISOLATION_PREFIXES` in `tests/lib/test_worker_isolation.py` in the
+same change that introduces it. `isolation_args` stays with the runners that
+pass it today. A stage that fails or names no sandbox stops the
 eval before any worker starts, and `tests/lib/check_stage_guard.py` proves
 that for each runner.
 

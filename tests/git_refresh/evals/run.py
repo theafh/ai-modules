@@ -267,7 +267,7 @@ def run_one(
         )
         return bool(hit["passed"]), True
 
-    root = worker_isolation.create_sandbox_root(f"{ISOLATION_PREFIX}{eval_id}_")
+    root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
         staged = stage(eval_id, root, env)
         workdir = staged["sandbox_repo"]

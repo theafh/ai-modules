@@ -151,9 +151,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
     eval_dir = run_dir / eval_id
     eval_dir.mkdir(parents=True, exist_ok=True)
 
-    root = worker_isolation.create_sandbox_root(
-        f"{ISOLATION_PREFIX}{eval_id}_"
-    )
+    root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
         staged = stage(eval_id, root, env)
         workdir = staged["sandbox_repo"]

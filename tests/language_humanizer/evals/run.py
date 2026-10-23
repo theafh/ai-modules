@@ -179,8 +179,7 @@ def run_pass(scenario: str, n: int, run_dir: pathlib.Path,
     """
     pass_dir = run_dir / scenario / f"pass-{n}"
     pass_dir.mkdir(parents=True, exist_ok=True)
-    root = worker_isolation.create_sandbox_root(
-        f"{ISOLATION_PREFIX}{scenario}_{n}_")
+    root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
         return run_isolated_pass(scenario, n, pass_dir, root, args, resolved)
     finally:

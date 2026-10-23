@@ -71,6 +71,7 @@ import judge as judge_mod  # noqa: E402
 
 SCENARIOS = ["connected_rewrite", "chat_brevity"]
 ARTEFACTS = ["natural-language"]
+ISOLATION_PREFIX = "nl_"
 PRINT_LOCK = threading.Lock()
 
 REWRITE_PROMPT = """\
@@ -333,7 +334,7 @@ def run_pass(
 ) -> dict:
     pass_dir = run_dir / scenario / f"pass-{number}"
     pass_dir.mkdir(parents=True, exist_ok=True)
-    root = worker_isolation.create_sandbox_root(f"nl_{scenario}_{number}_")
+    root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
         staged = stage(scenario, root)
         proj = pathlib.Path(staged["sandbox_proj"])

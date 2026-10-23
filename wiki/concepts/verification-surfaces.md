@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-10-09
+updated: 2026-10-22
 type: concept
 tags: [skill, repo-structure, authoring, claude, cursor, verification-gap]
 sources: [raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
@@ -116,7 +116,11 @@ sandbox settings file fails silently, so a run that depends on a staged style
 proves the style loaded before it measures anything. Every behavioural runner
 that drives a worker through `micro_deploy.run_worker` stages its sandbox under
 `worker_isolation.create_sandbox_root`, outside the checkout, the home
-directory, and any git repository. On Cursor, a deployed skill can also take the
+directory, and any git repository. That root's name carries only the harness
+prefix: a worker reads its working directory, and an eval id, scenario id, or
+pass number in the path leaks the expected behaviour (observed 2026-10-20 when
+a `task_create` worker under a `guardrail-bound-surface` root wrote that "the
+eval name suggests a guardrail-bound fork"). On Cursor, a deployed skill can also take the
 place of the copy under test: a print-mode worker read the deployed copy rather
 than a staged copy outside its workspace, and a project copy did not displace
 the deployed one unless the prompt named its path

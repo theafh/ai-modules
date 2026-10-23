@@ -1165,3 +1165,9 @@ pre-existing.
 
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing.
+
+## [2026-10-22 23:09] update | harness-prefix-only sandbox root names
+
+- concepts/verification-surfaces.md (sandbox root names carry only the harness
+  prefix; cites the 2026-10-20 guardrail-bound-surface worker observation)
+- index.md (Last updated)

@@ -382,6 +382,10 @@ user-level skills are kept out of view by the per-pass micro-deployment rather
 than by this helper (see the model policy above).
 
 Every behavioural runner takes its sandbox root from `create_sandbox_root`.
+A sandbox root's name carries only the harness prefix, because a worker reads
+its working directory and an eval id there leaks the expected behaviour.
+A new harness prefix must be added to `ALLOWED_ISOLATION_PREFIXES` in
+`tests/lib/test_worker_isolation.py` in the same change that introduces it.
 `isolation_args` stays with the runners that pass it today
 (`language_humanizer`, `natural_language`). The unit tests live in
 `tests/lib/test_worker_isolation.py`.

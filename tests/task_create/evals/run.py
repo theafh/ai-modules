@@ -161,9 +161,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
     response_path = eval_dir / "response.txt"
     model_label = resolved.worker_model or "<inherit>"
 
-    root = worker_isolation.create_sandbox_root(
-        f"{ISOLATION_PREFIX}{eval_id}_"
-    )
+    root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
         staged = stage(eval_id, root)
         workdir = staged["sandbox_proj"]
