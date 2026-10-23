@@ -2,8 +2,8 @@
 description: "Make git_review's credential scan skip subscripts, unquoted code values, and bare lowercase key names, and match camelCase Token and Password key names."
 scope: plugins/ai_dev/skills/git_review
 created: 2026-10-20T17:01:49
-updated: 2026-10-23T15:40:19
-status: implemented
+updated: 2026-10-23T15:57:54
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -37,7 +37,7 @@ A lowercase `key` counts as a credential key name only after `_` or `-`, while a
 
 The false positives come from the first unanchored assignment branch, the one whose key name is followed by `[^[:alnum:][:space:]]?` and whose value opens with `[^[:alnum:][:space:]:=$]`. The optional character after the name exists for the closing quote of a JSON member such as `"password": "hunter2xx"`, and the value's first character exists for its opening quote. Both classes accept any non-alphanumeric character, so the `]` of a subscript passes after the name, and `_`, `{`, and a backtick pass as the value's first character. The comment block's sentence "A quoted assignment after =, :, or Go's := matches a value of eight or more characters, and that value may contain spaces" describes the spaced quoted branch (`["'][^"'$][^"']{7,}`), which already accepts only `["']` before its value. The first unanchored branch has no dedicated comment sentence of its own today. On 2026-10-20 every tracked-file hit that a quote-only form of this branch removes was ordinary code or prose, and the range-mode scenario still passed with that form in a scratch copy.
 
-[ai-dev_git-review-assignment-key-names.md](archive/ai-dev_git-review-assignment-key-names.md) ships the key-name rule this task builds on: suffixed names, bare `key`/`KEY`/`Key`, and camelCase `Key` and `Secret` after a lowercase letter, written as `Key|secret|SECRET|Secret` in the keyword alternation of every assignment branch. Its bare `key` and camelCase `Key` multiplied the subscript false positives, which is what surfaced this task. Implement this task on top of that one, and keep the hit and no-hit lines it added.
+[ai-dev_git-review-assignment-key-names.md](ai-dev_git-review-assignment-key-names.md) ships the key-name rule this task builds on: suffixed names, bare `key`/`KEY`/`Key`, and camelCase `Key` and `Secret` after a lowercase letter, written as `Key|secret|SECRET|Secret` in the keyword alternation of every assignment branch. Its bare `key` and camelCase `Key` multiplied the subscript false positives, which is what surfaced this task. Implement this task on top of that one, and keep the hit and no-hit lines it added.
 
 The range-mode scenario `s25_secret_scan_locates_every_shape` in `tests/git_review/script_tests/run.sh` places hit lines in `creds.txt` and no-hit lines in other files, asserts each hit with `assert_contains` as `path:line:content` and each no-hit with `assert_absent`, and runs the manual fallback's scan block under bash and zsh against the collector's hits. `s29_secret_scan_patterns_match_manual_fallback` checks that the collector holds the pattern once and the fallback holds the same string. The `git_review/` coverage passage in `tests/README.md` enumerates the scan's located shapes and its no-hit shapes. The `git_review/` row in `tests/CLAUDE.md` names "suffixed and camelCase key-name assignments", which already covers the new hits.
 
