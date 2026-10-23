@@ -2,8 +2,8 @@
 description: "Name every eval sandbox root by its harness prefix alone, so a worker cannot read the eval id or scenario name, and the expected answer it often encodes, from its own working directory."
 scope: "local test harnesses"
 created: 2026-10-20T11:45:48
-updated: 2026-10-23T12:55:48
-status: audited
+updated: 2026-10-23T13:31:23
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -19,7 +19,7 @@ Every behavioural eval runner creates its sandbox root from its harness prefix a
 
 `create_sandbox_root` in `tests/lib/worker_isolation.py` builds each root with `tempfile.mkdtemp(prefix=prefix)`, and most runners pass a prefix that appends the eval identity to the harness prefix, as `f"{ISOLATION_PREFIX}{eval_id}_"` does. The worker's working directory is the sandbox project under that root, so the id is in every path it sees. Many ids name the behaviour the eval expects, such as `guardrail-bound-surface` or `reconcile-recorded`. On 2026-10-20 a `task_create` worker in a `guardrail-bound-surface` draw wrote that "the eval name suggests a guardrail-bound fork", which shows workers do read it.
 
-The affected set is every caller whose `create_sandbox_root` prefix carries more than its harness's `ISOLATION_PREFIX`, derived by searching `tests` for `create_sandbox_root(` and reading each call's prefix argument (the call often spans lines). It includes the per-eval form in the Pattern A runners, the `{scenario}_{n}_` form in `tests/language_humanizer/evals/run.py`, the `{sid}_{pass_num}_` form in `tests/wiki/layer2/run.py`, and the `f"nl_{scenario}_{number}_"` form in `tests/natural_language/evals/run.py`. [The eval-workers-outside-checkout task](archive/tests_eval-workers-outside-checkout.md) introduced this adoption set and the isolation documentation this task extends. The live `tests_*-parallel-evals` tasks also edit these runners, so whichever lands second rebases its runner edits on the other.
+The affected set is every caller whose `create_sandbox_root` prefix carries more than its harness's `ISOLATION_PREFIX`, derived by searching `tests` for `create_sandbox_root(` and reading each call's prefix argument (the call often spans lines). It includes the per-eval form in the Pattern A runners, the `{scenario}_{n}_` form in `tests/language_humanizer/evals/run.py`, the `{sid}_{pass_num}_` form in `tests/wiki/layer2/run.py`, and the `f"nl_{scenario}_{number}_"` form in `tests/natural_language/evals/run.py`. [The eval-workers-outside-checkout task](tests_eval-workers-outside-checkout.md) introduced this adoption set and the isolation documentation this task extends. The live `tests_*-parallel-evals` tasks also edit these runners, so whichever lands second rebases its runner edits on the other.
 
 ## Approach
 

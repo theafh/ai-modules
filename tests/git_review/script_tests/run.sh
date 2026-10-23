@@ -1759,7 +1759,28 @@ Path("creds.txt").write_text(
         'SECRET_KEY = "django-insecure-abcdefghijklmnop"',
         'apiKey: "abcdefghijklmnop"',
         'clientSecret = "abcdefghijklmnop"',
+        'KEY = "abcdefghijklmnop"',
+        'Key = "abcdefghijklmnop"',
+        'accessToken = "abcdefghijklmnop"',
+        'dbPassword = "abcdefghijklmnop"',
     ]) + "\n"
+)
+Path("noise.py").write_text(
+    "\n".join([
+        '    fields[key] = "\\n".join(block)',
+        "        data[key] = _decode_quoted_scalar(value)",
+        '    fields[token] = "abcdefghijk"',
+        "password = _secret_value_here",
+        'token = {"access": "abcdef"}',
+        "<li key={item.id}>",
+        '    raise ValueError(f"no parent key: {line!r}")',
+    ]) + "\n"
+)
+Path("noise.md").write_text(
+    "A spawned agent ends with its family token: `auto_<role>_<family>`.\n"
+)
+Path("noise.json").write_text(
+    '  "key": "first-contentful-paint",\n'
 )
 Path("kwargs.py").write_text(
     "\n".join([
@@ -1896,6 +1917,19 @@ PY
         'creds.txt:21:SECRET_KEY = "django-insecure-abcdefghijklmnop"' || ok=false
     assert_contains "camelCase Key located" "$cred" 'creds.txt:22:apiKey: "abcdefghijklmnop"' || ok=false
     assert_contains "camelCase Secret located" "$cred" 'creds.txt:23:clientSecret = "abcdefghijklmnop"' || ok=false
+    assert_contains "bare uppercase KEY located" "$cred" 'creds.txt:24:KEY = "abcdefghijklmnop"' || ok=false
+    assert_contains "bare Key located" "$cred" 'creds.txt:25:Key = "abcdefghijklmnop"' || ok=false
+    assert_contains "camelCase Token located" "$cred" 'creds.txt:26:accessToken = "abcdefghijklmnop"' || ok=false
+    assert_contains "camelCase Password located" "$cred" 'creds.txt:27:dbPassword = "abcdefghijklmnop"' || ok=false
+    assert_absent "subscript fields[key] draws no hit" "$scan" 'fields[key] = "\n".join(block)' || ok=false
+    assert_absent "subscript data[key] draws no hit" "$scan" "data[key] = _decode_quoted_scalar(value)" || ok=false
+    assert_absent "subscript fields[token] draws no hit" "$scan" 'fields[token] = "abcdefghijk"' || ok=false
+    assert_absent "underscore value start draws no hit" "$scan" "password = _secret_value_here" || ok=false
+    assert_absent "brace value start draws no hit" "$scan" 'token = {"access": "abcdef"}' || ok=false
+    assert_absent "jsx key attribute draws no hit" "$scan" "<li key={item.id}>" || ok=false
+    assert_absent "f-string key prose draws no hit" "$scan" 'raise ValueError(f"no parent key: {line!r}")' || ok=false
+    assert_absent "markdown inline code token draws no hit" "$scan" "auto_<role>_<family>" || ok=false
+    assert_absent "json member named key draws no hit" "$scan" '"key": "first-contentful-paint"' || ok=false
     assert_absent "keyword arguments on their own lines draw no hit" "$scan" "kwargs_multiline.py:" || ok=false
     assert_contains "compose map entry located" "$cred" "compose.yml:1:      POSTGRES_PASSWORD: supersecret123" || ok=false
     assert_contains "compose list item located" "$cred" "compose.yml:2:      - POSTGRES_PASSWORD=supersecret123" || ok=false

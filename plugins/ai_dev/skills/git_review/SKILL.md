@@ -1,7 +1,7 @@
 ---
 name: git_review
 description: "Review the changes the user names and answer two questions kept apart: could they be approved in general, and can they be structurally merged as they are. The target is a pull request by URL or number, a branch by name or already checked out, or the default branch's uncommitted changes and unpushed commits. The report opens with the reviewed commit, tree state, and approvability verdict, works through fixed headings, and closes with a yes or no on structural mergeability. Use when the user asks to review this branch, assess the pull request, give a full assessment, say whether this can be merged, review my uncommitted changes, re-review the delta since last time, or post the review as a comment on the PR. Publishing to the pull request, resolving a review thread, and editing the branch each wait for an explicit request in the current turn. Checkout, commit, and branch cleanup stay with git_checkout, git_commit, and git_refresh, and approving or merging stays with the PR's owners."
-version: 1.0.13
+version: 1.0.14
 author: Andreas F. Hoffmann
 license: MIT
 ---

@@ -128,12 +128,14 @@ don't bring up new harnesses under Pattern B.
   symlink recorded as its target path, a repository with `color.diff=always`
   and `diff.external` set, Compose map and list entries, unquoted YAML
   entries, Go `:=` declarations, and assignments to suffixed and camelCase key
-  names such as `aws_secret_access_key`, `SECRET_KEY`, `apiKey`, and
-  `clientSecret` located as hits, keyword arguments on lines of their own,
-  assignments whose names continue after a credential keyword such as
-  `token_count` and `password_hash`, an English word ending in `key` such as
-  `monkey`, route and URL segments, Python type annotations, YAML tags,
-  templated values, and Go expressions that draw no hit, and the per-path diff
+  names such as `aws_secret_access_key`, `SECRET_KEY`, `apiKey`,
+  `clientSecret`, `accessToken`, and `dbPassword` located as hits, keyword
+  arguments on lines of their own, assignments whose names continue after a
+  credential keyword such as `token_count` and `password_hash`, an English word
+  ending in `key` such as `monkey`, subscript writes, values that open with
+  `_`, `{`, or a backtick, JSON members named `key`, route and URL segments,
+  Python type annotations, YAML tags, templated values, and Go expressions that
+  draw no hit, and the per-path diff
   fallback with a non-ASCII path, with the manual fallback's extraction matched in range,
   uncommitted, per-path, and subdirectory runs, and its per-path retry keeping
   `unread_paths.txt` out of the working tree). Each manual-fallback block runs
