@@ -18,14 +18,16 @@
 #      refusal on a non-directory target, arg/exit handling, --help.
 #   l* lint.py body link resolution (check_local_links): on a default /
 #      --include-archive run the walk covers every repo markdown file
-#      (git ls-files --exclude-standard when project_root is the git
-#      toplevel; Makefile prune-shaped EXCLUDE layered on top or used
+#      (git ls-files -z --exclude-standard when project_root is the git
+#      toplevel or a subdirectory git does not ignore, so non-ASCII names
+#      stay in; Makefile prune-shaped EXCLUDE layered on top or used
 #      alone outside git, and ignored whole when it carries a find action
 #      such as -exec or -delete; else rglob skipping .git/); any in-repo
 #      target (file or directory) is checked; :// / mailto: / outside-repo
 #      targets stay silent; a leading-/ miss is repo-root-relative;
-#      fences, inline code, autolinks, and raw HTML are scrubbed, while
-#      four-column-indented list content keeps its links; under --file, link checks
+#      fences, list-nested fences included, inline code, autolinks, and
+#      raw HTML are scrubbed, while four-column-indented list content
+#      keeps its links; under --file, link checks
 #      stay scoped to the named task. A `.md` link still resolves against
 #      the linking file's directory and, as a fallback, against the
 #      project root.
@@ -1026,6 +1028,102 @@ EOF
     assert_eq "exit 1 (indented list links block)" "$rc" "1" || ok=false
     assert_contains "nested bullet link reported" "$out" "missing-nested-bullet.md" || ok=false
     assert_contains "continuation link reported" "$out" "missing-continuation.md" || ok=false
+    $ok
+}
+
+l30_list_nested_fences_scrubbed() {
+    # A fence sits zero to three columns right of its list item's content
+    # column, so four-space-indented fences under `1.` are fences. Once the
+    # list ends, a four-space-indented tilde line is no fence and its link
+    # stays live.
+    local tasks; tasks=$(fresh_tasks l30)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_list-nested-fences.md" <<EOF
+---
+description: list-nested fence controls
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# List-nested fences
+
+1. Tilde fence inside the list item:
+
+    ~~~markdown
+    See [tilde](missing-in-nested-tilde.md) for the citation form.
+    ~~~
+
+2. Backtick fence whose sample holds an unpaired backtick run:
+
+    \`\`\`\`markdown
+    Run \`\`\`make lint, then see [backtick](missing-in-nested-backtick.md).
+    \`\`\`\`
+
+    - Deeper item:
+
+        ~~~
+        [deep](missing-in-deep-fence.md)
+        ~~~
+
+After the list.
+
+    ~~~
+    [live](missing-after-list.md)
+    ~~~
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    local ok=true
+    assert_eq "exit 1 (only the post-list link blocks)" "$rc" "1" || ok=false
+    assert_eq "exactly one broken-link outside list fences" "$count" "1" || ok=false
+    assert_contains "indented tilde after the list stays live" "$out" "missing-after-list.md" || ok=false
+    assert_not_contains "nested tilde fence is ignored" "$out" "missing-in-nested-tilde.md" || ok=false
+    assert_not_contains "nested backtick fence is ignored" "$out" "missing-in-nested-backtick.md" || ok=false
+    assert_not_contains "fence in a deeper item is ignored" "$out" "missing-in-deep-fence.md" || ok=false
+    $ok
+}
+
+l31_non_ascii_markdown_name_checked() {
+    # git quotes non-ASCII paths unless -z is used; a non-ASCII markdown
+    # file must stay in the git inventory and report its dangling link.
+    local root; root=$(ext_tmp)
+    git -C "$root" init -q
+    mkdir -p "$root/tasks/archive" "$root/wiki"
+    write_task "$root/tasks" "test_non-ascii.md" "2026-01-01T00:00:00"
+    printf '# Overview\n\nSee [gone](missing-from-umlaut-page.md).\n' > "$root/wiki/übersicht.md"
+    local ret; ret=$(run_lint "$root/tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (non-ASCII page link blocks)" "$rc" "1" || ok=false
+    assert_contains "finding names the non-ASCII page" "$out" "wiki/übersicht.md" || ok=false
+    assert_contains "dangling target reported" "$out" "missing-from-umlaut-page.md" || ok=false
+    $ok
+}
+
+l32_subdirectory_root_uses_git_inventory() {
+    # A tasks/ tree below the git toplevel still takes the git inventory,
+    # so a gitignored node_modules under it stays silent while an
+    # unignored dangling link under the same root still blocks.
+    local top; top=$(ext_tmp)
+    git -C "$top" init -q
+    printf '%s\n' 'node_modules/' > "$top/.gitignore"
+    local root="$top/packages/app"
+    mkdir -p "$root/tasks/archive" "$root/node_modules/pkg" "$root/docs"
+    write_task "$root/tasks" "test_subdir-walk.md" "2026-01-01T00:00:00"
+    printf '# Vendored\n\nSee [docs](docs/api.md).\n' > "$root/node_modules/pkg/README.md"
+    printf '# Guide\n\nSee [gone](missing-from-guide.md).\n' > "$root/docs/guide.md"
+    local ret; ret=$(run_lint "$root/tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    local ok=true
+    assert_eq "exit 1 (unignored dangling link blocks)" "$rc" "1" || ok=false
+    assert_eq "exactly one broken-link below the subdirectory root" "$count" "1" || ok=false
+    assert_contains "unignored guide link reported" "$out" "missing-from-guide.md" || ok=false
+    assert_not_contains "gitignored node_modules stays silent" "$out" "node_modules" || ok=false
     $ok
 }
 
@@ -3308,6 +3406,9 @@ scenario l26 "lint: leading-slash is repo-root-relative"       l26_leading_slash
 scenario l27 "lint: EXCLUDE with find actions is rejected"     l27_exclude_with_find_action_rejected
 scenario l28 "lint: leading inline code keeps line links"      l28_leading_inline_code_keeps_link
 scenario l29 "lint: indented list content keeps links"         l29_indented_list_content_keeps_links
+scenario l30 "lint: list-nested fences are scrubbed"           l30_list_nested_fences_scrubbed
+scenario l31 "lint: non-ASCII markdown name stays checked"     l31_non_ascii_markdown_name_checked
+scenario l32 "lint: subdirectory root uses git inventory"      l32_subdirectory_root_uses_git_inventory
 
 scenario d1 "discover: git toplevel resolution"                d1_git_toplevel_resolves
 scenario d2 "discover: missing tasks/ signals exit 1"          d2_missing_tasks_exits_one

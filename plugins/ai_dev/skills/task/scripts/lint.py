@@ -11,11 +11,13 @@ stays on live pages.
 
 On a default or ``--include-archive`` run, the link check walks every
 markdown file under the project root (the parent of tasks/) and reports
-broken in-repo targets of any kind (files or directories). Inside a git
-work tree whose toplevel is that project root, the inventory is
-``git ls-files --cached --others --exclude-standard -- '*.md'`` so
-gitignored trees such as ``node_modules/`` stay out. Outside git, the
-walk is an ``*.md`` rglob that skips only ``.git/``. When the repo-root
+broken in-repo targets of any kind (files or directories). When that
+project root sits in a git work tree, as the toplevel or a subdirectory
+git does not ignore, the inventory is
+``git ls-files -z --cached --others --exclude-standard -- '*.md'`` run
+from the root, so gitignored trees such as ``node_modules/`` stay out.
+Outside git, or in a root git ignores, the walk is an ``*.md`` rglob
+that skips only ``.git/``. When the repo-root
 Makefile defines an ``EXCLUDE`` whose tokens are ``find`` prune clauses
 ending in ``-o``, that prune set further filters the inventory (and is
 the sole inventory outside git); any other ``EXCLUDE`` spelling is
@@ -107,6 +109,7 @@ FOOTNOTE_REF_RE = re.compile(r"\[\^([^\]\s]+)\]")
 FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^([^\]\s]+)\]:")
 WIKILINK_RE = re.compile(r"\[\[([^\[\]\n]+)\]\]")
 FENCE_RE = re.compile(r"^( {0,3})(`{3,}|~{3,})(.*)$")
+LIST_ITEM_RE = re.compile(r"^( *)([-+*]|[0-9]{1,9}[.)])( +|$)")
 ENTITY_RE = re.compile(
     r"&(?:#[xX][0-9A-Fa-f]{1,6}|#[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});"
 )
@@ -584,14 +587,34 @@ def _git_toplevel(root: Path) -> Path | None:
     return Path(top).resolve()
 
 
+def _git_ignores(toplevel: Path, root: Path) -> bool:
+    """True when git ignores ``root``, a directory below ``toplevel``."""
+    try:
+        relative = root.relative_to(toplevel).as_posix()
+    except ValueError:
+        return True
+    result = subprocess.run(
+        ["git", "-C", str(toplevel), "check-ignore", "-q", "--", f"{relative}/"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
 def _list_git_markdown_files(root: Path) -> list[Path]:
-    """Markdown paths tracked or untracked-but-not-ignored under ``root``."""
+    """Markdown paths tracked or untracked-but-not-ignored under ``root``.
+
+    ``git ls-files`` run from ``root`` lists only paths below it, relative
+    to it. ``-z`` keeps a non-ASCII name unquoted, so it still resolves.
+    """
     result = subprocess.run(
         [
             "git",
             "-C",
             str(root),
             "ls-files",
+            "-z",
             "--cached",
             "--others",
             "--exclude-standard",
@@ -600,6 +623,8 @@ def _list_git_markdown_files(root: Path) -> list[Path]:
         ],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="surrogateescape",
         check=False,
     )
     if result.returncode != 0:
@@ -608,11 +633,10 @@ def _list_git_markdown_files(root: Path) -> list[Path]:
             f"{result.stderr.strip() or result.stdout.strip() or result.returncode}"
         )
     paths: list[Path] = []
-    for line in result.stdout.splitlines():
-        line = line.strip()
-        if not line:
+    for entry in result.stdout.split("\0"):
+        if not entry:
             continue
-        candidate = (root / line).resolve()
+        candidate = (root / entry).resolve()
         if candidate.is_file():
             paths.append(candidate)
     return paths
@@ -658,9 +682,12 @@ def _list_find_markdown_files(root: Path, exclude: list[str]) -> list[Path]:
 def iter_repo_markdown_files(project_root: Path) -> Iterator[Path]:
     """Yield every ``*.md`` file under ``project_root`` for link checks.
 
-    Prefer a git-aware inventory when ``project_root`` is itself the git
-    toplevel (so a nested scratch under another checkout does not inherit
-    that checkout's file list). Layer a Makefile ``EXCLUDE`` on top only
+    Prefer a git-aware inventory when ``project_root`` sits in a git work
+    tree, whether it is the toplevel or a subdirectory such as a monorepo
+    package, so gitignored trees like ``node_modules/`` stay out. A root
+    that git itself ignores, such as a scratch fixture inside another
+    checkout, takes the non-git path instead, because ``git ls-files``
+    would list nothing there. Layer a Makefile ``EXCLUDE`` on top only
     when it parses as ``find`` prune clauses ending in ``-o``. Outside
     git, that prune ``EXCLUDE`` is the sole inventory; otherwise fall
     back to an ``*.md`` rglob that skips ``.git/``. Resolved paths are
@@ -670,7 +697,10 @@ def iter_repo_markdown_files(project_root: Path) -> Iterator[Path]:
     exclude = parse_makefile_exclude(root / "Makefile")
     prune = exclude if exclude is not None and is_find_prune_exclude(exclude) else None
     toplevel = _git_toplevel(root)
-    if toplevel is not None and toplevel == root:
+    use_git = toplevel is not None and (
+        toplevel == root or not _git_ignores(toplevel, root)
+    )
+    if use_git:
         paths = _list_git_markdown_files(root)
         if prune is not None:
             allowed = set(_list_find_markdown_files(root, prune))
@@ -1050,29 +1080,86 @@ def _scrub_inline_code(text: str) -> str:
     return "".join(chars)
 
 
+def _list_item_content_column(line: str) -> int | None:
+    """Return the content column a list-item marker line opens, or None."""
+    match = LIST_ITEM_RE.match(line)
+    if match is None:
+        return None
+    marker_end = len(match.group(1)) + len(match.group(2))
+    spaces = len(match.group(3))
+    if not line[match.end():].strip() or spaces > 4:
+        # An empty item or one opening with indented code starts its
+        # content one column past the marker.
+        return marker_end + 1
+    return marker_end + spaces
+
+
 def _scrub_fenced_blocks(text: str) -> str:
-    """Blank CommonMark fenced blocks while preserving line structure."""
+    """Blank CommonMark fenced blocks while preserving line structure.
+
+    A fence counts when it sits zero to three columns right of its
+    container: the document, or the content column of the innermost open
+    list item. Open list items are tracked as a stack of content columns,
+    so a fence nested under ``1.`` at four spaces is a fence. A list item
+    ends at the first non-blank line indented left of its content column
+    that follows a blank line, interrupts with a fence, or opens a sibling
+    item; a lazy paragraph continuation keeps it open. A fence inside a
+    list item also closes when that item ends.
+    """
     out: list[str] = []
-    fence: tuple[str, int] | None = None
+    containers: list[int] = []
+    fence: tuple[str, int, int] | None = None
+    previous_blank = True
     for line in text.splitlines(keepends=True):
         content = line.rstrip("\r\n")
         line_ending = line[len(content):]
-        marker = _fence_marker(content)
-        if fence is None:
-            if marker is not None:
-                fence = marker
+        expanded = content.expandtabs(4)
+        blank = not expanded.strip()
+        indent = len(expanded) - len(expanded.lstrip(" "))
+        if fence is not None:
+            fence_char, fence_length, fence_column = fence
+            if blank or indent >= fence_column:
+                marker = _fence_marker(expanded[fence_column:])
+                if (
+                    marker is not None
+                    and marker[0] == fence_char
+                    and marker[1] >= fence_length
+                    and not expanded[fence_column:].lstrip(" ").lstrip(fence_char).strip()
+                ):
+                    fence = None
                 out.append(line_ending)
-            else:
-                out.append(line)
-            continue
-        if (
-            marker is not None
-            and marker[0] == fence[0]
-            and marker[1] >= fence[1]
-            and not content.lstrip(" ").lstrip(marker[0]).strip()
-        ):
+                previous_blank = False
+                continue
+            # The list item holding the fence ended, and the fence with it.
             fence = None
-        out.append(line_ending)
+        if blank:
+            out.append(line)
+            previous_blank = True
+            continue
+        item_column = _list_item_content_column(expanded)
+        if item_column is not None:
+            while containers and containers[-1] > indent:
+                containers.pop()
+            containers.append(item_column)
+            candidate_column = item_column
+        else:
+            if containers and indent < containers[-1]:
+                interrupts = _fence_marker(expanded) is not None
+                if previous_blank or interrupts:
+                    while containers and containers[-1] > indent:
+                        containers.pop()
+            candidate_column = containers[-1] if containers else 0
+        marker = (
+            _fence_marker(expanded[candidate_column:])
+            if indent >= candidate_column or item_column is not None
+            else None
+        )
+        if marker is not None:
+            fence = (marker[0], marker[1], candidate_column)
+            out.append(line_ending)
+        else:
+            out.append(line)
+        previous_blank = False
     return "".join(out)
 
 
