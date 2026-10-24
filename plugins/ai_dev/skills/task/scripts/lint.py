@@ -1,18 +1,32 @@
 #!/usr/bin/env python3
-"""lint.py — health-check the tasks directory.
+"""lint.py — health-check the tasks directory, plus repo-wide link integrity.
 
-Audits live `*.md` task files under the resolved tasks/ tree by default:
-filename naming convention, frontmatter completeness, unquoted values YAML
-would misread, provenance, status/location consistency, datetime format,
-title presence, page size, and name collisions across live + archive.
-Pass `--include-archive` to
-extend the mechanical per-file checks across the whole archive: task_fix
-runs it for whole-archive maintenance. The oversized-page and repeated-link
-warnings fire only on live open, checked, and ready tasks, and the
-soft-pointer check stays on live pages. Pass `--file PATH` to scope the
-per-file checks to one named task file, live or archived: the task archive
-close-out runs it to verify the single file it just moved. The two flags
-are mutually exclusive.
+Per-file task checks (naming, frontmatter, provenance, status/location,
+datetime, title, size, footnotes, wikilinks, soft-pointer, repeated-link,
+collisions) stay scoped to task files under the resolved tasks/ tree: live
+``*.md`` by default, the whole archive under ``--include-archive``, or one
+named task under ``--file``. The oversized-page and repeated-link warnings
+fire only on live open, checked, and ready tasks; the soft-pointer check
+stays on live pages.
+
+On a default or ``--include-archive`` run, the link check walks every
+markdown file under the project root (the parent of tasks/) and reports
+broken in-repo targets of any kind (files or directories). Inside a git
+work tree whose toplevel is that project root, the inventory is
+``git ls-files --cached --others --exclude-standard -- '*.md'`` so
+gitignored trees such as ``node_modules/`` stay out. Outside git, the
+walk is an ``*.md`` rglob that skips only ``.git/``. When the repo-root
+Makefile defines an ``EXCLUDE`` whose tokens are ``find`` prune clauses
+ending in ``-o``, that prune set further filters the inventory (and is
+the sole inventory outside git); any other ``EXCLUDE`` spelling is
+ignored so a non-prune assignment cannot silence the check. Targets that
+leave the repository (``://``, ``mailto:``, empty or fragment-only, or a
+path that resolves outside the project root) draw no finding. A
+destination that starts with ``/`` and does not exist as an absolute
+filesystem path is treated as repository-root-relative before the
+silence rule runs. Under ``--file``, link checks stay scoped to the
+named task file alone so archive close-out still sees findings only for
+that file. The two flags are mutually exclusive.
 
 Usage:
     python3 lint.py [TASKS_PATH] [--quiet] [--include-archive | --file PATH]
@@ -29,13 +43,16 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import html
 import re
+import shlex
 import subprocess
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
+from urllib.parse import unquote
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -89,9 +106,20 @@ FREE_TEXT_QUOTE_KEYS = {"description", "reported-by", "implemented-by"}
 FOOTNOTE_REF_RE = re.compile(r"\[\^([^\]\s]+)\]")
 FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^([^\]\s]+)\]:")
 WIKILINK_RE = re.compile(r"\[\[([^\[\]\n]+)\]\]")
-FENCE_RE = re.compile(r"^```")
-INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
-LINK_RE = re.compile(r"(?<!\!)\[([^\^\]][^\]]*)\]\(([^)]+)\)")
+FENCE_RE = re.compile(r"^( {0,3})(`{3,}|~{3,})(.*)$")
+ENTITY_RE = re.compile(
+    r"&(?:#[xX][0-9A-Fa-f]{1,6}|#[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});"
+)
+MARKDOWN_ESCAPABLE = frozenset(r"!\"#$%&'()*+,-./:;<=>?@[\]^_`{|}~")
+
+# The only `find` tokens a Makefile EXCLUDE may carry before the linter
+# passes it to `find`: tests that take one operand, and bare operators.
+FIND_PRUNE_TESTS = frozenset({
+    "-path", "-ipath", "-name", "-iname", "-wholename", "-iwholename", "-type",
+})
+FIND_PRUNE_OPERATORS = frozenset({
+    "-prune", "-o", "-or", "-a", "-and", "!", "-not", "(", ")",
+})
 
 # Soft-pointer rule: a task reference anchors on a verbatim greppable
 # label, never a line-number position claim that goes stale silently.
@@ -147,7 +175,10 @@ class Issue:
         try:
             rel = self.path.relative_to(tasks)
         except ValueError:
-            rel = self.path
+            try:
+                rel = self.path.relative_to(tasks.parent)
+            except ValueError:
+                rel = self.path
         loc = f":{self.line}" if self.line else ""
         label = SEVERITY_LABEL[self.severity]
         return f"  [{label:8}] {self.category:14} {rel}{loc}  {self.message}"
@@ -469,6 +500,202 @@ def iter_task_files(tasks: Path, include_archive: bool = False) -> Iterator[Path
                 yield path
 
 
+def parse_makefile_exclude(makefile: Path) -> list[str] | None:
+    """Return the tokenized ``EXCLUDE`` value from a Makefile, or None.
+
+    Reads a ``EXCLUDE := …`` / ``EXCLUDE = …`` / ``EXCLUDE ?= …`` /
+    ``EXCLUDE += …`` assignment (optional ``override`` prefix), including
+    backslash-continued lines, and splits it the way ``find`` would see
+    ``$(EXCLUDE)``. A missing Makefile or a Makefile with no ``EXCLUDE``
+    assignment yields None.
+    """
+    if not makefile.is_file():
+        return None
+    chunks: list[str] = []
+    collecting = False
+    for line in makefile.read_text(encoding="utf-8").splitlines():
+        if not collecting:
+            match = re.match(
+                r"^(?:override\s+)?EXCLUDE\s*(?:\?|\+|:)?=\s*(.*)$",
+                line,
+            )
+            if not match:
+                continue
+            collecting = True
+            rest = match.group(1)
+        else:
+            rest = line
+        stripped = rest.rstrip()
+        continued = stripped.endswith("\\")
+        piece = stripped[:-1].rstrip() if continued else stripped
+        piece = piece.strip()
+        if piece:
+            chunks.append(piece)
+        if not continued:
+            break
+    if not collecting:
+        return None
+    return shlex.split(" ".join(chunks))
+
+
+def is_find_prune_exclude(tokens: list[str]) -> bool:
+    """True when ``tokens`` look like ``find`` prune clauses ending in ``-o``.
+
+    This repository's Makefile uses that shape for ``MD_FILES``. A bare
+    path, a lone ``-name`` filter, or any other non-prune spelling must
+    not drive the inventory, because ``find . $(EXCLUDE) …`` then either
+    matches nothing or treats the value as a second start path.
+
+    Every token must be a test from ``FIND_PRUNE_TESTS`` followed by its
+    operand, or an operator from ``FIND_PRUNE_OPERATORS``. The tokens come
+    from the linted repository's Makefile and are handed to ``find``, so
+    an action such as ``-exec`` or ``-delete`` rejects the whole value and
+    linting never runs a command the repository chose.
+    """
+    if not tokens or tokens[-1] != "-o" or "-prune" not in tokens:
+        return False
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token in FIND_PRUNE_TESTS:
+            if index + 1 >= len(tokens):
+                return False
+            index += 2
+        elif token in FIND_PRUNE_OPERATORS:
+            index += 1
+        else:
+            return False
+    return True
+
+
+def _git_toplevel(root: Path) -> Path | None:
+    """Return the git toplevel for ``root``, or None when not in a work tree."""
+    result = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    top = result.stdout.strip()
+    if not top:
+        return None
+    return Path(top).resolve()
+
+
+def _list_git_markdown_files(root: Path) -> list[Path]:
+    """Markdown paths tracked or untracked-but-not-ignored under ``root``."""
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            "*.md",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        sys.exit(
+            f"git ls-files for markdown inventory failed under {root}: "
+            f"{result.stderr.strip() or result.stdout.strip() or result.returncode}"
+        )
+    paths: list[Path] = []
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        candidate = (root / line).resolve()
+        if candidate.is_file():
+            paths.append(candidate)
+    return paths
+
+
+def _list_rglob_markdown_files(root: Path) -> list[Path]:
+    """Every ``*.md`` under ``root``, skipping only ``.git/``."""
+    paths: list[Path] = []
+    for path in root.rglob("*.md"):
+        if not path.is_file():
+            continue
+        if ".git" in path.relative_to(root).parts:
+            continue
+        paths.append(path.resolve())
+    return paths
+
+
+def _list_find_markdown_files(root: Path, exclude: list[str]) -> list[Path]:
+    """``find . $(EXCLUDE) -type f -name '*.md' -print`` under ``root``."""
+    result = subprocess.run(
+        ["find", ".", *exclude, "-type", "f", "-name", "*.md", "-print"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode not in (0, 1):
+        sys.exit(
+            f"find for markdown inventory failed under {root}: "
+            f"{result.stderr.strip() or result.stdout.strip() or result.returncode}"
+        )
+    paths: list[Path] = []
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        candidate = (root / line).resolve()
+        if candidate.is_file():
+            paths.append(candidate)
+    return paths
+
+
+def iter_repo_markdown_files(project_root: Path) -> Iterator[Path]:
+    """Yield every ``*.md`` file under ``project_root`` for link checks.
+
+    Prefer a git-aware inventory when ``project_root`` is itself the git
+    toplevel (so a nested scratch under another checkout does not inherit
+    that checkout's file list). Layer a Makefile ``EXCLUDE`` on top only
+    when it parses as ``find`` prune clauses ending in ``-o``. Outside
+    git, that prune ``EXCLUDE`` is the sole inventory; otherwise fall
+    back to an ``*.md`` rglob that skips ``.git/``. Resolved paths are
+    deduplicated.
+    """
+    root = project_root.resolve()
+    exclude = parse_makefile_exclude(root / "Makefile")
+    prune = exclude if exclude is not None and is_find_prune_exclude(exclude) else None
+    toplevel = _git_toplevel(root)
+    if toplevel is not None and toplevel == root:
+        paths = _list_git_markdown_files(root)
+        if prune is not None:
+            allowed = set(_list_find_markdown_files(root, prune))
+            paths = [path for path in paths if path in allowed]
+    elif prune is not None:
+        paths = _list_find_markdown_files(root, prune)
+    else:
+        paths = _list_rglob_markdown_files(root)
+    seen: set[Path] = set()
+    for path in sorted(paths):
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        yield resolved
+
+
+def _path_inside_root(candidate: Path, project_root: Path) -> bool:
+    try:
+        candidate.resolve().relative_to(project_root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
 def is_archived(tasks: Path, page: Path) -> bool:
     try:
         rel = page.relative_to(tasks)
@@ -779,23 +1006,214 @@ def check_scope(tasks: Path, page: Path) -> list[Issue]:
     return []
 
 
+def _fence_marker(line: str) -> tuple[str, int] | None:
+    """Return a valid CommonMark fence marker and its run length."""
+    match = FENCE_RE.match(line)
+    if match is None:
+        return None
+    run = match.group(2)
+    if run[0] == "`" and "`" in match.group(3):
+        return None
+    return run[0], len(run)
+
+
+def _scrub_inline_code(text: str) -> str:
+    """Blank code spans closed by a matching-length backtick run."""
+    chars = list(text)
+    index = 0
+    while index < len(text):
+        if text[index] != "`":
+            index += 1
+            continue
+        opener = index
+        while index < len(text) and text[index] == "`":
+            index += 1
+        run_length = index - opener
+        search = index
+        closing_end = None
+        while search < len(text):
+            if text[search] != "`":
+                search += 1
+                continue
+            closing_start = search
+            while search < len(text) and text[search] == "`":
+                search += 1
+            if search - closing_start == run_length:
+                closing_end = search
+                break
+        if closing_end is None:
+            continue
+        for scrub_index in range(opener, closing_end):
+            if chars[scrub_index] not in "\r\n":
+                chars[scrub_index] = " "
+        index = closing_end
+    return "".join(chars)
+
+
+def _scrub_fenced_blocks(text: str) -> str:
+    """Blank CommonMark fenced blocks while preserving line structure."""
+    out: list[str] = []
+    fence: tuple[str, int] | None = None
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        line_ending = line[len(content):]
+        marker = _fence_marker(content)
+        if fence is None:
+            if marker is not None:
+                fence = marker
+                out.append(line_ending)
+            else:
+                out.append(line)
+            continue
+        if (
+            marker is not None
+            and marker[0] == fence[0]
+            and marker[1] >= fence[1]
+            and not content.lstrip(" ").lstrip(marker[0]).strip()
+        ):
+            fence = None
+        out.append(line_ending)
+    return "".join(out)
+
+
+def _autolink_end(text: str, start: int) -> int | None:
+    """Return the index after a CommonMark URI or email autolink at start."""
+    if start >= len(text) or text[start] != "<":
+        return None
+    index = start + 1
+    if index >= len(text):
+        return None
+    if text[index].isalpha():
+        scheme_start = index
+        index += 1
+        while index < len(text) and (
+            text[index].isalnum() or text[index] in "+.-"
+        ):
+            index += 1
+        scheme_length = index - scheme_start
+        if (
+            2 <= scheme_length <= 32
+            and index < len(text)
+            and text[index] == ":"
+        ):
+            index += 1
+            while index < len(text) and text[index] not in "<> \t\r\n":
+                index += 1
+            if index < len(text) and text[index] == ">":
+                return index + 1
+            return None
+    # Email autolink: <local@domain>
+    index = start + 1
+    at_index = -1
+    while index < len(text) and text[index] not in "<> \t\r\n":
+        if text[index] == "@":
+            if at_index != -1:
+                return None
+            at_index = index
+        index += 1
+    if (
+        at_index > start + 1
+        and at_index + 1 < index
+        and index < len(text)
+        and text[index] == ">"
+    ):
+        return index + 1
+    return None
+
+
+def _raw_html_end(text: str, start: int) -> int | None:
+    """Return the index after a raw HTML tag, comment, or declaration."""
+    if start >= len(text) or text[start] != "<":
+        return None
+    index = start + 1
+    if index >= len(text):
+        return None
+    if text.startswith("!--", index):
+        close = text.find("-->", index + 3)
+        return None if close < 0 else close + 3
+    if text[index] in "?!":
+        close = text.find(">", index + 1)
+        return None if close < 0 else close + 1
+    if text[index] == "/":
+        index += 1
+    if index >= len(text) or not text[index].isalpha():
+        return None
+    index += 1
+    while index < len(text) and (
+        text[index].isalnum() or text[index] in "-:"
+    ):
+        index += 1
+    in_quote: str | None = None
+    while index < len(text):
+        char = text[index]
+        if in_quote is not None:
+            if char == in_quote:
+                in_quote = None
+            index += 1
+            continue
+        if char in "\"'":
+            in_quote = char
+            index += 1
+            continue
+        if char == ">":
+            return index + 1
+        if char == "<":
+            return None
+        index += 1
+    return None
+
+
+def _angle_opens_link_destination(text: str, angle_index: int) -> bool:
+    """Return whether ``<`` at angle_index opens a markdown link destination.
+
+    Inline destinations sit after ``](``; reference destinations sit after
+    ``]:``. Those angle brackets are path spelling, not autolinks or HTML,
+    and must survive scrubbing so spaced destinations keep working.
+    """
+    index = angle_index - 1
+    while index >= 0 and text[index] in " \t":
+        index -= 1
+    if index >= 0 and text[index] == ":":
+        index -= 1
+        return index >= 0 and text[index] == "]"
+    while index >= 0 and text[index] in " \t\n\r":
+        index -= 1
+    if index < 0 or text[index] != "(":
+        return False
+    index -= 1
+    while index >= 0 and text[index] in " \t\n\r":
+        index -= 1
+    return index >= 0 and text[index] == "]"
+
+
+def _scrub_angle_constructs(text: str) -> str:
+    """Blank CommonMark autolinks and raw HTML while preserving newlines."""
+    chars = list(text)
+    index = 0
+    while index < len(text):
+        if text[index] != "<" or _is_escaped(text, index):
+            index += 1
+            continue
+        if _angle_opens_link_destination(text, index):
+            index += 1
+            continue
+        end = _autolink_end(text, index) or _raw_html_end(text, index)
+        if end is None:
+            index += 1
+            continue
+        for scrub_index in range(index, end):
+            if chars[scrub_index] not in "\r\n":
+                chars[scrub_index] = " "
+        index = end
+    return "".join(chars)
+
+
 def _scrub_code(text: str) -> list[str]:
     """Return body lines with fenced code blocks and inline code stripped
     out so test syntax and code samples don't false-positive the
     standard-markdown checks.
     """
-    out: list[str] = []
-    in_fence = False
-    for line in text.splitlines():
-        if FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
-            out.append("")
-            continue
-        if in_fence:
-            out.append("")
-            continue
-        out.append(INLINE_CODE_RE.sub("", line))
-    return out
+    return _scrub_inline_code(_scrub_fenced_blocks(text)).splitlines()
 
 
 def _scrub_fences(text: str) -> list[str]:
@@ -809,18 +1227,326 @@ def _scrub_fences(text: str) -> list[str]:
     checked. The companion writing convention is outputs-in-fences,
     references-in-inline-code.
     """
-    out: list[str] = []
-    in_fence = False
-    for line in text.splitlines():
-        if FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
-            out.append("")
+    return _scrub_fenced_blocks(text).splitlines()
+
+
+def _is_escaped(text: str, index: int) -> bool:
+    """Return whether punctuation at index has an odd backslash prefix."""
+    backslashes = 0
+    index -= 1
+    while index >= 0 and text[index] == "\\":
+        backslashes += 1
+        index -= 1
+    return backslashes % 2 == 1
+
+
+def _decode_markdown(value: str) -> str:
+    """Decode CommonMark backslash escapes and character references."""
+    decoded: list[str] = []
+    index = 0
+    while index < len(value):
+        if (
+            value[index] == "\\"
+            and index + 1 < len(value)
+            and value[index + 1] in MARKDOWN_ESCAPABLE
+            and not _is_escaped(value, index)
+        ):
+            index += 1
+        decoded.append(value[index])
+        index += 1
+    return ENTITY_RE.sub(lambda match: html.unescape(match.group(0)), "".join(decoded))
+
+
+def _parse_link_label(text: str, start: int) -> tuple[str, int] | None:
+    """Return a possibly nested bracket label and the index after it."""
+    if start >= len(text) or text[start] != "[":
+        return None
+    depth = 1
+    index = start + 1
+    while index < len(text):
+        char = text[index]
+        if char == "\\" and index + 1 < len(text) and not _is_escaped(text, index):
+            index += 2
             continue
-        if in_fence:
-            out.append("")
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1:index], index + 1
+        index += 1
+    return None
+
+
+def _parse_bare_destination(text: str, start: int) -> tuple[str, int] | None:
+    """Return a non-angle destination with balanced parentheses."""
+    depth = 0
+    index = start
+    while index < len(text):
+        char = text[index]
+        if char == "\\" and index + 1 < len(text) and not _is_escaped(text, index):
+            index += 2
             continue
-        out.append(line)
-    return out
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            if depth == 0:
+                break
+            depth -= 1
+        elif char.isspace() and depth == 0:
+            break
+        index += 1
+    if depth != 0:
+        return None
+    return _decode_markdown(text[start:index]), index
+
+
+def _skip_link_title(text: str, start: int) -> int | None:
+    """Return the closing inline-link parenthesis after an optional title."""
+    index = start
+    had_whitespace = False
+    while index < len(text) and text[index].isspace():
+        had_whitespace = True
+        index += 1
+    if index < len(text) and text[index] == ")":
+        return index + 1
+    if not had_whitespace or index >= len(text) or text[index] not in "\"'(":
+        return None
+    opener = text[index]
+    closer = ")" if opener == "(" else opener
+    index += 1
+    while index < len(text):
+        if (
+            text[index] == "\\"
+            and index + 1 < len(text)
+            and not _is_escaped(text, index)
+        ):
+            index += 2
+            continue
+        if text[index] == closer:
+            index += 1
+            break
+        if text[index] == "\n":
+            return None
+        index += 1
+    else:
+        return None
+    while index < len(text) and text[index].isspace():
+        index += 1
+    return index + 1 if index < len(text) and text[index] == ")" else None
+
+
+def _parse_reference_title(text: str, start: int) -> int | None:
+    """Return the index after one complete reference-definition title."""
+    if start >= len(text) or text[start] not in "\"'(":
+        return None
+    opener = text[start]
+    closer = ")" if opener == "(" else opener
+    index = start + 1
+    while index < len(text):
+        if (
+            text[index] == "\\"
+            and index + 1 < len(text)
+            and not _is_escaped(text, index)
+        ):
+            index += 2
+            continue
+        if text[index] == closer:
+            return index + 1
+        index += 1
+    return None
+
+
+def _parse_inline_destination(text: str, start: int) -> tuple[str, int] | None:
+    """Return a decoded inline destination and the index after its link."""
+    index = start
+    while index < len(text) and text[index].isspace():
+        index += 1
+    if index < len(text) and text[index] == "<":
+        index += 1
+        destination_start = index
+        while index < len(text) and text[index] not in ">\n":
+            index += (
+                2
+                if text[index] == "\\"
+                and index + 1 < len(text)
+                and not _is_escaped(text, index)
+                else 1
+            )
+        if index >= len(text) or text[index] != ">":
+            return None
+        destination = _decode_markdown(text[destination_start:index])
+        end = _skip_link_title(text, index + 1)
+    else:
+        parsed = _parse_bare_destination(text, index)
+        if parsed is None:
+            return None
+        destination, index = parsed
+        end = _skip_link_title(text, index)
+    return (destination, end) if end is not None else None
+
+
+def _normalize_reference_label(label: str) -> str:
+    """Return CommonMark's case-insensitive, whitespace-collapsed label key."""
+    return " ".join(_decode_markdown(label).split()).casefold()
+
+
+def _reference_definitions(text: str) -> tuple[dict[str, str], list[tuple[int, int]]]:
+    """Collect link reference definitions and their source spans."""
+    definitions: dict[str, str] = {}
+    spans: list[tuple[int, int]] = []
+    lines = text.splitlines(keepends=True)
+    offsets: list[int] = []
+    offset = 0
+    for line in lines:
+        offsets.append(offset)
+        offset += len(line)
+    for line_index, line in enumerate(lines):
+        offset = offsets[line_index]
+        content = line.rstrip("\r\n")
+        indent = len(content) - len(content.lstrip(" "))
+        start = offset + indent
+        parsed_label = _parse_link_label(text, start) if indent <= 3 else None
+        if parsed_label is not None:
+            label, after_label = parsed_label
+            if after_label < len(text) and text[after_label] == ":":
+                destination_start = after_label + 1
+                while destination_start < len(text) and text[destination_start] in " \t":
+                    destination_start += 1
+                line_end = offset + len(content)
+                if destination_start < line_end and text[destination_start] == "<":
+                    destination_start += 1
+                    destination_end = destination_start
+                    while destination_end < line_end and text[destination_end] != ">":
+                        if (
+                            text[destination_end] == "<"
+                            and not _is_escaped(text, destination_end)
+                        ):
+                            break
+                        destination_end += 1
+                    valid = (
+                        destination_end < line_end
+                        and text[destination_end] == ">"
+                        and not _is_escaped(text, destination_end)
+                    )
+                    after_destination = destination_end + 1
+                else:
+                    parsed_destination = _parse_bare_destination(
+                        text[:line_end], destination_start
+                    )
+                    valid = parsed_destination is not None
+                    if valid:
+                        _destination, after_destination = parsed_destination
+                        destination_end = after_destination
+                span_end = line_end
+                remainder = text[after_destination:line_end] if valid else ""
+                if remainder.strip():
+                    title_start = after_destination
+                    while title_start < line_end and text[title_start] in " \t":
+                        title_start += 1
+                    title_end = _parse_reference_title(text[:line_end], title_start)
+                    valid = (
+                        title_end is not None
+                        and not text[title_end:line_end].strip()
+                    )
+                elif valid and line_index + 1 < len(lines):
+                    next_offset = offsets[line_index + 1]
+                    next_content = lines[line_index + 1].rstrip("\r\n")
+                    next_indent = len(next_content) - len(next_content.lstrip(" "))
+                    next_end = next_offset + len(next_content)
+                    if next_indent <= 3:
+                        title_start = next_offset + next_indent
+                        title_end = _parse_reference_title(
+                            text[:next_end], title_start
+                        )
+                        if (
+                            title_end is not None
+                            and not text[title_end:next_end].strip()
+                        ):
+                            span_end = next_end
+                if valid and destination_end > destination_start and label:
+                    if not label.startswith("^"):
+                        definitions.setdefault(
+                            _normalize_reference_label(label),
+                            _decode_markdown(
+                                text[destination_start:destination_end],
+                            ),
+                        )
+                    spans.append((start, span_end))
+    return definitions, spans
+
+
+def iter_markdown_links(text: str) -> Iterator[tuple[str, str]]:
+    """Yield link labels and decoded destinations from CommonMark links.
+
+    URI/email autolinks and raw HTML take precedence over link parsing in
+    CommonMark, so they are scrubbed first and link-shaped text inside them
+    yields no destination. Indented code blocks stay unscrubbed on purpose:
+    list-item content indented four columns is ordinary content with live
+    links, and a caller's blanked inline code span at the start of a line
+    would otherwise read as indentation. Samples belong in fences.
+    """
+    text = _scrub_angle_constructs(text)
+    definitions, definition_spans = _reference_definitions(text)
+    index = 0
+    span_index = 0
+    while index < len(text):
+        while span_index < len(definition_spans) and index >= definition_spans[span_index][1]:
+            span_index += 1
+        if (
+            span_index < len(definition_spans)
+            and definition_spans[span_index][0] <= index < definition_spans[span_index][1]
+        ):
+            index = definition_spans[span_index][1]
+            continue
+        escaped_bracket = _is_escaped(text, index)
+        if text[index] != "[" or escaped_bracket:
+            index += 1
+            continue
+        parsed_label = _parse_link_label(text, index)
+        if parsed_label is None:
+            index += 1
+            continue
+        label, after_label = parsed_label
+        image_opener = (
+            index > 0
+            and text[index - 1] == "!"
+            and not _is_escaped(text, index - 1)
+        )
+        if image_opener:
+            if after_label < len(text) and text[after_label] == "(":
+                parsed_destination = _parse_inline_destination(text, after_label + 1)
+                if parsed_destination is not None:
+                    _destination, index = parsed_destination
+                    continue
+            if after_label < len(text) and text[after_label] == "[":
+                parsed_reference = _parse_link_label(text, after_label)
+                if parsed_reference is not None:
+                    _reference, index = parsed_reference
+                    continue
+            index = after_label
+            continue
+        if after_label < len(text) and text[after_label] == "(":
+            parsed_destination = _parse_inline_destination(text, after_label + 1)
+            if parsed_destination is not None:
+                destination, index = parsed_destination
+                yield label, destination
+                continue
+        if after_label < len(text) and text[after_label] == "[":
+            parsed_reference = _parse_link_label(text, after_label)
+            if parsed_reference is not None:
+                reference, reference_end = parsed_reference
+                key = _normalize_reference_label(reference or label)
+                if key in definitions:
+                    yield label, definitions[key]
+                    index = reference_end
+                    continue
+        key = _normalize_reference_label(label)
+        if key in definitions:
+            yield label, definitions[key]
+            index = after_label
+            continue
+        index = after_label
 
 
 def _has_size_suffix(line: str, end: int) -> bool:
@@ -922,6 +1648,29 @@ def check_no_wikilinks(page: Path) -> list[Issue]:
     return issues
 
 
+def _normalize_local_link_destination(raw_target: str) -> str | None:
+    """Return a local filesystem path spelling, or None when silent.
+
+    Strips fragment and query components, then percent-decodes escaped
+    path characters so URL-spelled destinations such as
+    ``existing%20file.md`` and ``existing.md?view=1`` resolve to the
+    same filesystem names readers follow. Returns None when the
+    destination is empty, fragment-only, carries ``://``, or starts with
+    ``mailto:``. A leading ``/`` that does not name an existing absolute
+    filesystem path is rewritten without the slash so callers resolve it
+    as repository-root-relative (renderer convention); an existing
+    absolute path is left intact for the silence rule.
+    """
+    target = raw_target.split("#", 1)[0]
+    target = target.split("?", 1)[0].strip()
+    if not target or "://" in target or target.startswith("mailto:"):
+        return None
+    target = unquote(target)
+    if target.startswith("/") and not Path(target).exists():
+        return target.lstrip("/") or None
+    return target
+
+
 def _resolve_local_link_target(
     tasks: Path, page: Path, raw_target: str,
 ) -> Path | None:
@@ -934,53 +1683,91 @@ def _resolve_local_link_target(
     is still returned so distinct written prefixes that name the same
     missing path can still collapse.
     """
-    target = raw_target.split("#", 1)[0].split(" ", 1)[0].strip()
-    if not target or "://" in target or target.startswith("mailto:"):
+    target = _normalize_local_link_destination(raw_target)
+    if target is None:
         return None
+    project_root = tasks.parent.resolve()
+    if target.startswith("/"):
+        absolute = Path(target).resolve()
+        if absolute.exists():
+            return absolute
+        # Defensive: normalize already strips a non-existing leading slash.
+        target = target.lstrip("/")
+        if not target:
+            return None
     from_page = (page.parent / target).resolve()
     if from_page.exists():
         return from_page
-    from_root = (tasks.parent.resolve() / target).resolve()
+    from_root = (project_root / target).resolve()
     if from_root.exists():
         return from_root
     return from_page
 
 
 def check_local_links(tasks: Path, page: Path) -> list[Issue]:
-    """Block on broken relative `.md` links from this task to others.
+    """Block on broken in-repo markdown link targets from this page.
 
-    External links (`https://…`, `mailto:`) are ignored. Anchor and
-    query-string fragments are stripped before resolving. A target is
-    resolved against two roots before it is called broken: the task file's
-    own directory (so sibling-task and `./`/`../` links keep working) and
-    the project root (`tasks.parent`, the same root `scope:` resolves
-    against — so a repo-root-relative path to a source file lints clean
-    without a `../` prefix). Only a target that exists under neither root
-    is a broken link.
+    Silence rule: a target draws no finding when it carries ``://``,
+    starts with ``mailto:``, is empty or fragment-only, or resolves
+    outside the repo root once normalised (an absolute path elsewhere on
+    the machine, or a relative path that climbs past the root). A
+    leading-``/`` destination that does not exist as an absolute
+    filesystem path is treated as repository-root-relative before that
+    rule runs.
+
+    Anchor fragments, query components, and trailing titles are stripped
+    and percent-escaped path characters are decoded before resolving.
+    A target is resolved against two roots before it is called broken:
+    the linking file's own directory (so sibling and ``./``/``../`` links
+    keep working) and the project root (``tasks.parent``, the same root
+    ``scope:`` resolves against). Existence under either root is enough,
+    and a target that resolves to a directory counts as present. Any
+    in-repo path is checked, not only ``.md`` targets. Fenced code blocks
+    and inline code are scrubbed via ``_scrub_code`` before links are
+    collected, and ``iter_markdown_links`` also blanks autolinks and raw
+    HTML, so link-shaped text in those constructs stays silent. A link in
+    four-space-indented text is checked, because that text is usually
+    list-item content; indented samples belong in fences.
     """
     text = page.read_text(encoding="utf-8")
     _, body = parse_frontmatter(text)
     project_root = tasks.parent.resolve()
+    scrubbed = "\n".join(_scrub_code(body))
 
     def display(candidate: Path) -> Path:
         try:
-            return candidate.relative_to(tasks)
+            return candidate.relative_to(project_root)
         except ValueError:
-            return candidate
+            try:
+                return candidate.relative_to(tasks)
+            except ValueError:
+                return candidate
 
     issues: list[Issue] = []
-    for match in LINK_RE.finditer(body):
-        link_text, raw_target = match.group(1), match.group(2)
-        target = raw_target.split("#", 1)[0].split(" ", 1)[0].strip()
-        if not target or "://" in target or target.startswith("mailto:"):
+    for link_text, raw_target in iter_markdown_links(scrubbed):
+        target = _normalize_local_link_destination(raw_target)
+        if target is None:
             continue
-        if not target.endswith(".md"):
-            continue
+        if target.startswith("/"):
+            absolute = Path(target).resolve()
+            if absolute.exists():
+                # Present absolute path: silence whether in-repo or not.
+                continue
+            target = target.lstrip("/")
+            if not target:
+                continue
         from_page = (page.parent / target).resolve()
         if from_page.exists():
+            # Present in-repo → clean; present outside → silence.
             continue
         from_root = (project_root / target).resolve()
         if from_root.exists():
+            continue
+        # Missing under both roots: silence when the page-relative
+        # candidate sits outside the repo (absolute path elsewhere, or
+        # climb past root). A project-root-relative miss that still lands
+        # inside the root stays a broken-link finding.
+        if not _path_inside_root(from_page, project_root):
             continue
         issues.append(Issue(
             SEV_BLOCKING, "broken-link", page,
@@ -1011,8 +1798,8 @@ def check_repeated_links(tasks: Path, page: Path, fm: dict | None) -> list[Issue
     _, body = parse_frontmatter(text)
     scrubbed = "\n".join(_scrub_fences(body))
     counts: dict[Path, int] = defaultdict(int)
-    for match in LINK_RE.finditer(scrubbed):
-        resolved = _resolve_local_link_target(tasks, page, match.group(2))
+    for _link_text, raw_target in iter_markdown_links(scrubbed):
+        resolved = _resolve_local_link_target(tasks, page, raw_target)
         if resolved is None:
             continue
         counts[resolved] += 1
@@ -1092,7 +1879,15 @@ def render_report(tasks: Path, issues: list[Issue], quiet: bool) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Health-check the tasks directory: naming, frontmatter, status/location, size, collisions.",
+        description=(
+            "Health-check the tasks directory (naming, frontmatter, "
+            "status/location, size, collisions, and related per-file "
+            "checks on task files) and, on a default or "
+            "--include-archive run, check every in-repo markdown link "
+            "from every markdown file under the project root (any in-repo "
+            "target; silence outside). Under --file, link checks stay "
+            "scoped to the named task file alone."
+        ),
     )
     parser.add_argument(
         "tasks_path",
@@ -1106,14 +1901,16 @@ def main() -> int:
         help="Extend the mechanical per-file checks across the whole "
         "tasks/archive/ tree for task_fix whole-archive maintenance (legacy "
         "retrofit hints included); the size and repeated-link warnings stay "
-        "on live open, checked, and ready tasks.",
+        "on live open, checked, and ready tasks. Link checks already cover "
+        "every repo markdown file on a default run.",
     )
     scope.add_argument(
         "--file",
         metavar="PATH",
-        help="Scope the per-file checks to one named task file, live or "
-        "archived — the archive close-out verifies the single file it just "
-        "moved. Mutually exclusive with --include-archive.",
+        help="Scope the per-file checks and the link check to one named "
+        "task file, live or archived — the archive close-out verifies the "
+        "single file it just moved. Mutually exclusive with "
+        "--include-archive.",
     )
     parser.add_argument("--quiet", action="store_true", help="Suppress info-level findings.")
     args = parser.parse_args()
@@ -1124,9 +1921,11 @@ def main() -> int:
     if args.file is not None:
         scoped_file = resolve_scoped_file(tasks, args.file, collision_pages)
         pages = [scoped_file]
+        link_pages = [scoped_file]
     else:
         scoped_file = None
         pages = list(iter_task_files(tasks, include_archive=args.include_archive))
+        link_pages = list(iter_repo_markdown_files(tasks.parent))
 
     issues: list[Issue] = []
     collision_issues = check_name_collisions(collision_pages)
@@ -1144,9 +1943,11 @@ def main() -> int:
         issues.extend(check_size(tasks, page, fm))
         issues.extend(check_no_footnotes(page))
         issues.extend(check_no_wikilinks(page))
-        issues.extend(check_local_links(tasks, page))
         issues.extend(check_repeated_links(tasks, page, fm))
         issues.extend(check_no_position_claims(tasks, page))
+
+    for page in link_pages:
+        issues.extend(check_local_links(tasks, page))
 
     print(render_report(tasks, issues, args.quiet))
     return 1 if any(i.severity == SEV_BLOCKING for i in issues) else 0

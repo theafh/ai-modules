@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.8
+version: 1.24.9
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -716,8 +716,10 @@ When the user asks a question about the wiki's domain:
 2. **For wikis with 100+ pages**, also run a recursive search across all
    `.md` files for key terms, because the index alone may miss relevant content.
 3. **Read the relevant pages.**
-4. **Synthesize an answer** with citations: "Based on
-   [page-a](concepts/page-a.md) and [page-b](entities/page-b.md)…"
+4. **Synthesize an answer** with citations: name each source page in
+   standard markdown link form (label plus relative path under the wiki
+   root, for example a concepts page and an entities page), then state
+   the synthesis.
 5. **File the answer back on the three-page-or-novel-reasoning trigger.**
    Filing is the default action for an answer that draws on three or more
    wiki pages, or that carries cross-page reasoning present on no single

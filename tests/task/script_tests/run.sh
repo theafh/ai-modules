@@ -16,10 +16,19 @@
 #      codes (0 when tasks/ exists, 1 when not, 2 on bad arg), --help.
 #   i* init_tasks.sh     — scaffold tasks/+archive/, idempotency,
 #      refusal on a non-directory target, arg/exit handling, --help.
-#   l* lint.py body link resolution (check_local_links): a `.md` link
-#      resolves against the task's own directory and, as a fallback,
-#      against the project root (tasks.parent); a target missing under
-#      both blocks.
+#   l* lint.py body link resolution (check_local_links): on a default /
+#      --include-archive run the walk covers every repo markdown file
+#      (git ls-files --exclude-standard when project_root is the git
+#      toplevel; Makefile prune-shaped EXCLUDE layered on top or used
+#      alone outside git, and ignored whole when it carries a find action
+#      such as -exec or -delete; else rglob skipping .git/); any in-repo
+#      target (file or directory) is checked; :// / mailto: / outside-repo
+#      targets stay silent; a leading-/ miss is repo-root-relative;
+#      fences, inline code, autolinks, and raw HTML are scrubbed, while
+#      four-column-indented list content keeps its links; under --file, link checks
+#      stay scoped to the named task. A `.md` link still resolves against
+#      the linking file's directory and, as a fallback, against the
+#      project root.
 #   am* the base skill's <archive> step 3 move instruction, executed as
 #      the shell sequence it names: one `git ls-files --error-unmatch`
 #      probe, `git mv` on a tracked file, plain `mv` on a non-zero probe.
@@ -273,6 +282,750 @@ l3_sibling_task_link_resolves() {
     local ok=true
     assert_eq "exit 0 (sibling-task link resolves)" "$rc" "0" || ok=false
     assert_not_contains "no broken-link for sibling task" "$out" "broken-link" || ok=false
+    $ok
+}
+
+l4_wiki_dangling_task_link_blocks() {
+    # A wiki page linking a missing tasks/ path produces a broken-link
+    # finding naming that wiki page on a default run.
+    local tasks; tasks=$(fresh_tasks l4)
+    local root; root=$(dirname "$tasks")
+    mkdir -p "$root/wiki"
+    cat > "$root/wiki/page.md" <<'EOF'
+# Wiki page
+
+See [the task](../tasks/missing_task.md).
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (wiki dangling task link blocks)" "$rc" "1" || ok=false
+    assert_contains "broken-link finding fires" "$out" "broken-link" || ok=false
+    assert_contains "finding names the wiki page" "$out" "wiki/page.md" || ok=false
+    $ok
+}
+
+l5_non_task_md_skips_other_checks() {
+    # A non-task .md under the repo root with no task frontmatter must
+    # not fire footnote / wikilink / soft-pointer / repeated-link checks;
+    # only the link check runs on it.
+    local tasks; tasks=$(fresh_tasks l5)
+    local root; root=$(dirname "$tasks")
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    write_task "$tasks" "test_anchor.md" "$now"
+    cat > "$root/notes.md" <<'EOF'
+# Notes
+
+A footnote[^1] and a [[wikilink]] and path.py:12 and line 9.
+
+See [one](tasks/test_anchor.md) and [two](tasks/test_anchor.md) again.
+
+[^1]: attribution
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (non-task md only runs link check)" "$rc" "0" || ok=false
+    assert_not_contains "no footnote finding on non-task md" "$out" "footnote" || ok=false
+    assert_not_contains "no wikilink finding on non-task md" "$out" "wikilink" || ok=false
+    assert_not_contains "no soft-pointer finding on non-task md" "$out" "soft-pointer" || ok=false
+    assert_not_contains "no repeated-link finding on non-task md" "$out" "repeated-link" || ok=false
+    assert_not_contains "no broken-link when targets exist" "$out" "broken-link" || ok=false
+    $ok
+}
+
+l6_non_md_target_existence() {
+    # Existing non-.md in-repo target is clean; missing non-.md blocks.
+    local tasks; tasks=$(fresh_tasks l6)
+    local root; root=$(dirname "$tasks")
+    mkdir -p "$root/scripts"
+    : > "$root/scripts/helper.sh"
+    write_linking_task "$tasks" "test_ok-script.md" "scripts/helper.sh"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (existing non-.md target resolves)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link for existing script" "$out" "broken-link" || ok=false
+
+    write_linking_task "$tasks" "test_missing-script.md" "scripts/missing.sh"
+    ret=$(run_lint "$tasks")
+    rc=${ret%%|*}; out=${ret#*|}
+    assert_eq "exit 1 (missing non-.md target blocks)" "$rc" "1" || ok=false
+    assert_contains "broken-link for missing script" "$out" "broken-link" || ok=false
+    $ok
+}
+
+l7_outbound_targets_silent() {
+    # https://, mailto:, an existing absolute path outside the repo, and
+    # climb-past-root stay silent. A non-existing leading-/ path is
+    # repo-root-relative (see l26) and is not this silence case.
+    local tasks; tasks=$(fresh_tasks l7)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local abs_existing=/tmp
+    [[ -e "$abs_existing" ]] || abs_existing=/
+    cat > "$tasks/test_outbound.md" <<EOF
+---
+description: outbound-link silence fixture
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Outbound silence fixture
+
+- [web](https://example.com/path)
+- [mail](mailto:user@example.com)
+- [abs]($abs_existing)
+- [climb](../../../../tmp/task_lint_outside_climb_$$/nope.md)
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (outbound targets silent)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link for outbound targets" "$out" "broken-link" || ok=false
+    $ok
+}
+
+l8_directory_target_resolves() {
+    local tasks; tasks=$(fresh_tasks l8)
+    local root; root=$(dirname "$tasks")
+    mkdir -p "$root/docs/chapter"
+    write_linking_task "$tasks" "test_dir-link.md" "docs/chapter"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (directory target resolves)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link for directory" "$out" "broken-link" || ok=false
+    $ok
+}
+
+l9_makefile_exclude_prunes_dangling() {
+    # A uniquely named directory pruned by Makefile EXCLUDE contributes
+    # no finding for a dangling in-repo link under it.
+    local tasks; tasks=$(fresh_tasks l9)
+    local root; root=$(dirname "$tasks")
+    mkdir -p "$root/zz_lint_exclude_unique_l9"
+    cat > "$root/zz_lint_exclude_unique_l9/dangling.md" <<'EOF'
+# Excluded dangling
+
+See [missing](nope_missing_target.md).
+EOF
+    cat > "$root/Makefile" <<'EOF'
+EXCLUDE     := -path ./.git -prune -o \
+               -path './zz_lint_exclude_unique_l9' -prune -o
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (EXCLUDE prunes dangling tree)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link from excluded tree" "$out" "broken-link" || ok=false
+
+    ret=$(run_lint "$tasks" --include-archive)
+    rc=${ret%%|*}; out=${ret#*|}
+    assert_eq "exit 0 (--include-archive also respects EXCLUDE)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link under --include-archive" "$out" "broken-link" || ok=false
+    $ok
+}
+
+l10_no_exclude_reports_dangling() {
+    # No Makefile EXCLUDE (and no git toplevel here): a dangling in-repo
+    # link outside .git/ blocks via the rglob fallback.
+    local tasks; tasks=$(fresh_tasks l10)
+    local root; root=$(dirname "$tasks")
+    # Explicitly no Makefile (fresh_tasks already leaves the root empty).
+    rm -f "$root/Makefile"
+    mkdir -p "$root/extra"
+    cat > "$root/extra/notes.md" <<'EOF'
+# Extra notes
+
+See [missing](does_not_exist.md).
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (no EXCLUDE: dangling blocks)" "$rc" "1" || ok=false
+    assert_contains "broken-link finding fires" "$out" "broken-link" || ok=false
+    assert_contains "finding names the extra page" "$out" "extra/notes.md" || ok=false
+
+    ret=$(run_lint "$tasks" --include-archive)
+    rc=${ret%%|*}; out=${ret#*|}
+    assert_eq "exit 1 (--include-archive same without EXCLUDE)" "$rc" "1" || ok=false
+    assert_contains "broken-link under --include-archive" "$out" "broken-link" || ok=false
+    $ok
+}
+
+l24_gitignore_skips_node_modules() {
+    # Inside a real git toplevel, a gitignored node_modules README with a
+    # dangling relative link contributes no finding. Stage outside the
+    # surrounding ai-modules checkout so project_root is the git toplevel.
+    local root; root=$(ext_tmp)
+    git -C "$root" init -q
+    printf '%s\n' 'node_modules/' > "$root/.gitignore"
+    mkdir -p "$root/tasks/archive" "$root/node_modules/pkg"
+    write_task "$root/tasks" "test_gitignore-walk.md" "2026-01-01T00:00:00"
+    cat > "$root/node_modules/pkg/README.md" <<'EOF'
+# Vendored package
+
+See [docs](docs/api.md).
+EOF
+    local ret; ret=$(run_lint "$root/tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (gitignored node_modules silent)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link from node_modules" "$out" "node_modules" || ok=false
+    assert_not_contains "no broken-link finding at all" "$out" "broken-link" || ok=false
+    $ok
+}
+
+l25_non_prune_exclude_keeps_check() {
+    # A Makefile EXCLUDE that is not prune-shaped must not silence the
+    # link check. Outside git, the rglob fallback still sees README.md.
+    local tasks; tasks=$(fresh_tasks l25)
+    local root; root=$(dirname "$tasks")
+    cat > "$root/Makefile" <<'EOF'
+EXCLUDE := -name '*.tmp'
+EOF
+    cat > "$root/README.md" <<'EOF'
+# Root readme
+
+See [missing](does_not_exist.md).
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (non-prune EXCLUDE still checks)" "$rc" "1" || ok=false
+    assert_contains "broken-link still fires" "$out" "broken-link" || ok=false
+    assert_contains "finding names README" "$out" "README.md" || ok=false
+    $ok
+}
+
+l26_leading_slash_repo_root_relative() {
+    # A leading-/ destination that is not an existing absolute path is
+    # checked as repository-root-relative.
+    local tasks; tasks=$(fresh_tasks l26)
+    local root; root=$(dirname "$tasks")
+    cat > "$root/README.md" <<'EOF'
+# Root readme
+
+See [abs](/docs/missing.md) and [rel](docs/missing.md).
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (leading-slash miss blocks)" "$rc" "1" || ok=false
+    assert_contains "abs label in finding" "$out" "'abs'" || ok=false
+    assert_contains "rel label in finding" "$out" "'rel'" || ok=false
+    $ok
+}
+
+l11_file_scope_ignores_other_md() {
+    # Under --file, a dangling link in a different repo markdown file is
+    # ignored; a dangling link in the named task still reports.
+    local tasks; tasks=$(fresh_tasks l11)
+    local root; root=$(dirname "$tasks")
+    mkdir -p "$root/wiki"
+    cat > "$root/wiki/other.md" <<'EOF'
+# Other
+
+See [missing](../tasks/ghost.md).
+EOF
+    write_linking_task "$tasks" "test_named.md" "ghost_named.md"
+    local ret; ret=$(run_lint "$tasks" --file "$tasks/test_named.md")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (named task dangling still blocks)" "$rc" "1" || ok=false
+    assert_contains "broken-link for named task" "$out" "broken-link" || ok=false
+    assert_contains "finding names the scoped task" "$out" "test_named.md" || ok=false
+    assert_not_contains "wiki other.md stays out of --file report" "$out" "other.md" || ok=false
+    $ok
+}
+
+l12_fenced_link_ignored() {
+    local tasks; tasks=$(fresh_tasks l12)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_fence.md" <<EOF
+---
+description: fenced-link silence fixture
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Fenced link fixture
+
+~~~text
+See [tilde missing](nope_in_tilde_fence.md).
+~~~
+
+\`\`\`\`text
+See [long missing](nope_in_long_fence.md).
+\`\`\`
+Still fenced [after short run](nope_after_short_run.md).
+\`\`\`\`
+
+~~
+See [live after invalid fence](missing_after_invalid_fence.md).
+~~
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    assert_eq "exit 1 (only link outside valid fences blocks)" "$rc" "1" || ok=false
+    assert_eq "exactly one broken-link outside fences" "$count" "1" || ok=false
+    assert_contains "invalid two-tilde run is ordinary text" "$out" "missing_after_invalid_fence.md" || ok=false
+    assert_not_contains "tilde-fenced link is ignored" "$out" "nope_in_tilde_fence.md" || ok=false
+    assert_not_contains "long backtick fence is ignored" "$out" "nope_in_long_fence.md" || ok=false
+    assert_not_contains "shorter run does not close long fence" "$out" "nope_after_short_run.md" || ok=false
+    $ok
+}
+
+l13_inline_code_link_ignored() {
+    local tasks; tasks=$(fresh_tasks l13)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_inline.md" <<EOF
+---
+description: inline-code-link silence fixture
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Inline code link fixture
+
+Use \`\`[missing](nope_in_double_inline.md)\`\` as an example.
+
+An unmatched \`\` opener leaves [live](missing_after_unmatched_span.md) visible.
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    assert_eq "exit 1 (only link after unmatched code run blocks)" "$rc" "1" || ok=false
+    assert_eq "exactly one broken-link outside code span" "$count" "1" || ok=false
+    assert_contains "unmatched opener leaves following link live" "$out" "missing_after_unmatched_span.md" || ok=false
+    assert_not_contains "matching double-backtick span is ignored" "$out" "nope_in_double_inline.md" || ok=false
+    $ok
+}
+
+l14_empty_labels_existing_and_missing() {
+    local tasks; tasks=$(fresh_tasks l14)
+    local root; root=$(dirname "$tasks")
+    : > "$root/existing-empty.md"
+    write_linking_task "$tasks" "test_empty-label.md" "missing-ordinary-control.md"
+    printf '\n[](../existing-empty.md)\n[](missing-empty.md)\n' >> "$tasks/test_empty-label.md"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (empty-label missing target blocks)" "$rc" "1" || ok=false
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    assert_eq "exactly empty and ordinary missing links reported" "$count" "2" || ok=false
+    assert_contains "empty-label missing target reported" "$out" "missing-empty.md" || ok=false
+    assert_contains "ordinary control remains live" "$out" "missing-ordinary-control.md" || ok=false
+    assert_not_contains "empty-label existing target stays clean" "$out" "link target missing: existing-empty.md" || ok=false
+    $ok
+}
+
+l15_nested_labels_existing_and_missing() {
+    local tasks; tasks=$(fresh_tasks l15)
+    local root; root=$(dirname "$tasks")
+    : > "$root/existing-nested.md"
+    write_linking_task "$tasks" "test_nested-label.md" "missing-ordinary-control.md"
+    printf '\n[outer [inner]](../existing-nested.md)\n[outer [inner]](missing-nested.md)\n' >> "$tasks/test_nested-label.md"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (nested-label missing target blocks)" "$rc" "1" || ok=false
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    assert_eq "exactly nested and ordinary missing links reported" "$count" "2" || ok=false
+    assert_contains "nested-label missing target reported" "$out" "missing-nested.md" || ok=false
+    assert_contains "ordinary control remains live" "$out" "missing-ordinary-control.md" || ok=false
+    assert_not_contains "nested-label existing target stays clean" "$out" "link target missing: existing-nested.md" || ok=false
+    $ok
+}
+
+l16_angle_destinations_existing_and_missing() {
+    local tasks; tasks=$(fresh_tasks l16)
+    local root; root=$(dirname "$tasks")
+    : > "$root/existing angle.md"
+    write_linking_task "$tasks" "test_angle-destination.md" "<existing angle.md>"
+    printf '\n[missing](<missing angle.md>)\n' >> "$tasks/test_angle-destination.md"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (angle missing target blocks)" "$rc" "1" || ok=false
+    assert_contains "complete angle destination reported" "$out" "missing angle.md" || ok=false
+    assert_not_contains "angle existing target stays clean" "$out" "link target missing: tasks/existing angle.md" || ok=false
+    $ok
+}
+
+l17_balanced_destinations_existing_and_missing() {
+    local tasks; tasks=$(fresh_tasks l17)
+    local root; root=$(dirname "$tasks")
+    : > "$root/existing_(v1).md"
+    write_linking_task "$tasks" "test_balanced-destination.md" "existing_(v1).md"
+    printf '\n[missing](missing_(v1).md)\n' >> "$tasks/test_balanced-destination.md"
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (balanced missing target blocks)" "$rc" "1" || ok=false
+    assert_contains "complete balanced destination reported" "$out" "missing_(v1).md" || ok=false
+    assert_not_contains "balanced existing target stays clean" "$out" "link target missing: tasks/existing_(v1).md" || ok=false
+    $ok
+}
+
+l18_reference_links_existing_and_missing() {
+    local tasks; tasks=$(fresh_tasks l18)
+    local root; root=$(dirname "$tasks")
+    : > "$root/existing-reference.md"
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_reference-links.md" <<EOF
+---
+description: reference-link extraction fixture
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Reference links
+
+[existing full][exists] [existing collapsed][] [existing shortcut]
+[missing full][missing] [missing collapsed][] [missing shortcut]
+
+[exists]: ../existing-reference.md
+[existing collapsed]: ../existing-reference.md
+[existing shortcut]: ../existing-reference.md
+[missing]: ../missing-reference.md
+[missing collapsed]: ../missing-reference.md
+[missing shortcut]: ../missing-reference.md
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (missing reference targets block)" "$rc" "1" || ok=false
+    assert_contains "reference missing target reported" "$out" "missing-reference.md" || ok=false
+    assert_not_contains "reference existing target stays clean" "$out" "link target missing: existing-reference.md" || ok=false
+    $ok
+}
+
+l19_reference_syntax_escapes_and_entities() {
+    local tasks; tasks=$(fresh_tasks l19)
+    local root; root=$(dirname "$tasks")
+    : > "$root/existing&entity.md"
+    : > "$root/existing[escape].md"
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_reference-controls.md" <<EOF
+---
+description: reference syntax and escape controls
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Reference controls
+
+[valid title][valid] [entity&amp;label] [escaped\[label] \\![escaped bang](missing-escaped-bang.md)
+![image](missing-image.md) \\[escaped bracket](missing-escaped-bracket.md)
+\\\\[even bracket](missing-even-bracket.md) \\\\![even bang image](missing-even-bang.md)
+[junk][junk] [unterminated][unterminated]
+
+[valid]: missing-valid-title.md "a valid title"
+[entity&label]: ../existing&amp;entity.md
+[escaped\[label]: ../existing\[escape\].md
+[junk]: missing-junk.md trailing junk
+[unterminated]: missing-unterminated.md "title
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    local ok=true
+    assert_eq "exit 1 (valid live links block)" "$rc" "1" || ok=false
+    assert_eq "exactly valid title, escaped bang, and even bracket links report" "$count" "3" || ok=false
+    assert_contains "valid titled definition resolves" "$out" "missing-valid-title.md" || ok=false
+    assert_contains "escaped literal bang precedes a real link" "$out" "missing-escaped-bang.md" || ok=false
+    assert_contains "even backslashes leave bracket unescaped" "$out" "missing-even-bracket.md" || ok=false
+    assert_not_contains "real image opener stays ignored" "$out" "missing-image.md" || ok=false
+    assert_not_contains "odd escaped bracket stays ignored" "$out" "missing-escaped-bracket.md" || ok=false
+    assert_not_contains "even backslashes leave real image opener" "$out" "missing-even-bang.md" || ok=false
+    assert_not_contains "trailing junk invalidates definition" "$out" "missing-junk.md" || ok=false
+    assert_not_contains "unterminated title invalidates definition" "$out" "missing-unterminated.md" || ok=false
+    assert_not_contains "entities decode in labels and destinations" "$out" "existing&entity.md" || ok=false
+    assert_not_contains "escapes decode in labels and destinations" "$out" "existing[escape].md" || ok=false
+    $ok
+}
+
+l20_nested_image_descriptions_are_excluded() {
+    local tasks; tasks=$(fresh_tasks l20)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_nested-images.md" <<EOF
+---
+description: nested image description exclusion controls
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Nested image controls
+
+![inline [hidden](missing-inline-inner.md)](missing-inline-image.png)
+![full [hidden](missing-full-inner.md)][full-image]
+![collapsed [hidden](missing-collapsed-inner.md)][]
+![shortcut [hidden](missing-shortcut-inner.md)]
+\![escaped [hidden](missing-escaped-inner.md)](missing-escaped-outer.md)
+\\\\![even [hidden](missing-even-inner.md)](missing-even-image.png)
+[live control](missing-live-control.md)
+
+[full-image]: missing-full-image.png
+[collapsed [hidden](missing-collapsed-definition.md)]: missing-collapsed-image.png
+[shortcut [hidden](missing-shortcut-definition.md)]: missing-shortcut-image.png
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    local ok=true
+    assert_eq "exit 1 (escaped image opener and live control block)" "$rc" "1" || ok=false
+    assert_eq "exactly escaped outer link and live control report" "$count" "2" || ok=false
+    assert_contains "escaped bang preserves a real outer link" "$out" "missing-escaped-outer.md" || ok=false
+    assert_contains "ordinary live-link control remains visible" "$out" "missing-live-control.md" || ok=false
+    assert_not_contains "inline image destination stays excluded" "$out" "missing-inline-image.png" || ok=false
+    assert_not_contains "nested inline image description stays excluded" "$out" "missing-inline-inner.md" || ok=false
+    assert_not_contains "nested full-reference image description stays excluded" "$out" "missing-full-inner.md" || ok=false
+    assert_not_contains "full-reference image destination stays excluded" "$out" "missing-full-image.png" || ok=false
+    assert_not_contains "nested collapsed image description stays excluded" "$out" "missing-collapsed-inner.md" || ok=false
+    assert_not_contains "collapsed image destination stays excluded" "$out" "missing-collapsed-image.png" || ok=false
+    assert_not_contains "nested shortcut image description stays excluded" "$out" "missing-shortcut-inner.md" || ok=false
+    assert_not_contains "shortcut image destination stays excluded" "$out" "missing-shortcut-image.png" || ok=false
+    assert_not_contains "even backslashes preserve image exclusion" "$out" "missing-even-inner.md" || ok=false
+    assert_not_contains "even-backslash image destination stays excluded" "$out" "missing-even-image.png" || ok=false
+    $ok
+}
+
+l21_reference_definition_title_lines_are_excluded() {
+    local tasks; tasks=$(fresh_tasks l21)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_reference-title-lines.md" <<EOF
+---
+description: reference definition title line controls
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Reference title line controls
+
+[same-line use][same-line]
+[continued use][continued]
+[continued single use][continued-single]
+[continued paren use][continued-paren]
+[malformed use][malformed]
+[live control](missing-live-control.md)
+
+[same-line]: missing-same-line.md "title [hidden](missing-same-title-link.md)"
+[continued]: missing-continued.md
+  "title [hidden](missing-continued-title-link.md)"
+[continued-single]: missing-continued-single.md
+ 'title [hidden](missing-single-title-link.md)'
+[continued-paren]: missing-continued-paren.md
+   (title [hidden][paren-title-link])
+[malformed]: missing-malformed.md
+  "unterminated [live](missing-malformed-title-link.md)
+[paren-title-link]: missing-paren-title-link.md
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    local ok=true
+    assert_eq "exit 1 (reference targets and malformed control block)" "$rc" "1" || ok=false
+    assert_eq "exactly five definitions, malformed live link, and control report" "$count" "7" || ok=false
+    assert_contains "same-line titled definition resolves" "$out" "missing-same-line.md" || ok=false
+    assert_contains "continued double-quoted definition resolves" "$out" "missing-continued.md" || ok=false
+    assert_contains "continued single-quoted definition resolves" "$out" "missing-continued-single.md" || ok=false
+    assert_contains "continued parenthesized definition resolves" "$out" "missing-continued-paren.md" || ok=false
+    assert_contains "malformed continuation leaves definition valid" "$out" "missing-malformed.md" || ok=false
+    assert_contains "malformed continuation remains live content" "$out" "missing-malformed-title-link.md" || ok=false
+    assert_contains "ordinary live-link control remains visible" "$out" "missing-live-control.md" || ok=false
+    assert_not_contains "same-line title content stays excluded" "$out" "missing-same-title-link.md" || ok=false
+    assert_not_contains "continued double-quoted title stays excluded" "$out" "missing-continued-title-link.md" || ok=false
+    assert_not_contains "continued single-quoted title stays excluded" "$out" "missing-single-title-link.md" || ok=false
+    assert_not_contains "continued parenthesized title stays excluded" "$out" "missing-paren-title-link.md" || ok=false
+    $ok
+}
+
+l22_url_spelled_destinations_normalize() {
+    local tasks; tasks=$(fresh_tasks l22)
+    local root; root=$(dirname "$tasks")
+    : > "$root/existing file.md"
+    : > "$root/existing.md"
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_url-spelled.md" <<EOF
+---
+description: percent-encoded and query destination controls
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# URL-spelled destinations
+
+[encoded existing](../existing%20file.md)
+[query existing](../existing.md?view=1)
+[encoded missing](../missing%20file.md)
+[query missing](../missing.md?view=1)
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    local ok=true
+    assert_eq "exit 1 (missing URL-spelled targets block)" "$rc" "1" || ok=false
+    assert_eq "exactly two missing URL-spelled targets report" "$count" "2" || ok=false
+    assert_contains "percent-decoded missing path reported" "$out" "missing file.md" || ok=false
+    assert_contains "query-stripped missing path reported" "$out" "missing.md" || ok=false
+    assert_not_contains "percent-encoded existing target stays clean" "$out" "existing%20file.md" || ok=false
+    assert_not_contains "query existing target stays clean" "$out" "existing.md?view=1" || ok=false
+    assert_not_contains "decoded existing target not reported missing" "$out" "link target missing: existing file.md" || ok=false
+    assert_not_contains "query-stripped existing target not reported missing" "$out" "link target missing: existing.md " || ok=false
+    $ok
+}
+
+l23_literal_raw_constructs_ignored() {
+    local tasks; tasks=$(fresh_tasks l23)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_literal-raw.md" <<EOF
+---
+description: autolink and raw HTML controls
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Literal and raw constructs
+
+Autolink: <https://example.com/[label](missing-autolink.md)>
+
+HTML: <span title="[label](missing-html.md)">text</span>
+
+Real control: [live](missing-live-control.md)
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    local ok=true
+    assert_eq "exit 1 (live control blocks)" "$rc" "1" || ok=false
+    assert_eq "exactly one live-control broken-link" "$count" "1" || ok=false
+    assert_contains "ordinary live-link control remains visible" "$out" "missing-live-control.md" || ok=false
+    assert_not_contains "autolink-embedded link stays ignored" "$out" "missing-autolink.md" || ok=false
+    assert_not_contains "raw-html attribute link stays ignored" "$out" "missing-html.md" || ok=false
+    $ok
+}
+
+l27_exclude_with_find_action_rejected() {
+    # A prune-shaped EXCLUDE that also carries find actions is rejected as
+    # a whole: no action runs, and the link check falls back to the rglob
+    # walk, so a dangling README link still blocks.
+    local tasks; tasks=$(fresh_tasks l27)
+    local root; root=$(dirname "$tasks")
+    printf '# Victim\n' > "$root/victim.md"
+    cat > "$root/Makefile" <<'EOF'
+EXCLUDE := -path ./.git -prune -o \
+           -name README.md -exec touch l27_exec_sentinel ';' -o \
+           -name victim.md -delete -o
+EOF
+    cat > "$root/README.md" <<'EOF'
+# Root readme
+
+See [missing](does_not_exist.md).
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (rejected EXCLUDE keeps link check)" "$rc" "1" || ok=false
+    assert_contains "broken-link still fires" "$out" "broken-link" || ok=false
+    assert_contains "finding names README" "$out" "README.md" || ok=false
+    if [[ -e "$root/l27_exec_sentinel" ]]; then
+        echo "  FAIL: -exec from EXCLUDE ran (sentinel created)"; ok=false
+    fi
+    if [[ ! -e "$root/victim.md" ]]; then
+        echo "  FAIL: -delete from EXCLUDE ran (victim.md removed)"; ok=false
+    fi
+    $ok
+}
+
+l28_leading_inline_code_keeps_link() {
+    # A paragraph line that opens with an inline code span still has its
+    # links checked: the blanked span must not read as indented code.
+    local tasks; tasks=$(fresh_tasks l28)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_leading-code-span.md" <<EOF
+---
+description: leading inline code span control
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Leading code span
+
+\`lint.py\` gains a check described in [the sibling](missing-after-code-span.md).
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (link after leading code span blocks)" "$rc" "1" || ok=false
+    assert_contains "link after leading code span reported" "$out" "missing-after-code-span.md" || ok=false
+    $ok
+}
+
+l29_indented_list_content_keeps_links() {
+    # Four-column-indented list content after a blank line is list
+    # content, not an indented code block, so its links are checked.
+    local tasks; tasks=$(fresh_tasks l29)
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    cat > "$tasks/test_indented-list-links.md" <<EOF
+---
+description: indented list content controls
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Indented list content
+
+- Parent bullet
+
+    - Nested bullet linking [nested](missing-nested-bullet.md).
+
+1. First step.
+
+    Continuation linking [continued](missing-continuation.md).
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (indented list links block)" "$rc" "1" || ok=false
+    assert_contains "nested bullet link reported" "$out" "missing-nested-bullet.md" || ok=false
+    assert_contains "continuation link reported" "$out" "missing-continuation.md" || ok=false
     $ok
 }
 
@@ -2529,6 +3282,32 @@ y18_plain_scalars_yaml_accepts_stay_clean() {
 scenario l1 "lint: project-root-relative body link resolves"   l1_project_root_fallback_resolves
 scenario l2 "lint: link missing under both roots blocks"       l2_missing_under_both_roots_blocks
 scenario l3 "lint: sibling-task link still resolves"           l3_sibling_task_link_resolves
+scenario l4 "lint: wiki dangling task link blocks on default"  l4_wiki_dangling_task_link_blocks
+scenario l5 "lint: non-task md skips non-link per-file checks" l5_non_task_md_skips_other_checks
+scenario l6 "lint: non-.md target existence check"             l6_non_md_target_existence
+scenario l7 "lint: outbound and outside-repo targets silent"   l7_outbound_targets_silent
+scenario l8 "lint: directory target resolves"                  l8_directory_target_resolves
+scenario l9 "lint: Makefile EXCLUDE prunes dangling tree"      l9_makefile_exclude_prunes_dangling
+scenario l10 "lint: no EXCLUDE reports dangling outside .git"  l10_no_exclude_reports_dangling
+scenario l11 "lint: --file scopes link checks to named task"   l11_file_scope_ignores_other_md
+scenario l12 "lint: fenced markdown link ignored"              l12_fenced_link_ignored
+scenario l13 "lint: inline-code markdown link ignored"         l13_inline_code_link_ignored
+scenario l14 "lint: empty labels resolve existing and missing" l14_empty_labels_existing_and_missing
+scenario l15 "lint: nested labels resolve existing and missing" l15_nested_labels_existing_and_missing
+scenario l16 "lint: angle destinations retain spaces"          l16_angle_destinations_existing_and_missing
+scenario l17 "lint: balanced-parenthesis destinations parse"   l17_balanced_destinations_existing_and_missing
+scenario l18 "lint: reference links resolve definitions"       l18_reference_links_existing_and_missing
+scenario l19 "lint: references, escapes, images, and entities" l19_reference_syntax_escapes_and_entities
+scenario l20 "lint: nested image descriptions stay excluded"  l20_nested_image_descriptions_are_excluded
+scenario l21 "lint: reference title lines stay excluded"       l21_reference_definition_title_lines_are_excluded
+scenario l22 "lint: URL-spelled destinations normalize"        l22_url_spelled_destinations_normalize
+scenario l23 "lint: autolink and raw HTML ignored"             l23_literal_raw_constructs_ignored
+scenario l24 "lint: gitignored node_modules stay silent"       l24_gitignore_skips_node_modules
+scenario l25 "lint: non-prune EXCLUDE keeps link check"        l25_non_prune_exclude_keeps_check
+scenario l26 "lint: leading-slash is repo-root-relative"       l26_leading_slash_repo_root_relative
+scenario l27 "lint: EXCLUDE with find actions is rejected"     l27_exclude_with_find_action_rejected
+scenario l28 "lint: leading inline code keeps line links"      l28_leading_inline_code_keeps_link
+scenario l29 "lint: indented list content keeps links"         l29_indented_list_content_keeps_links
 
 scenario d1 "discover: git toplevel resolution"                d1_git_toplevel_resolves
 scenario d2 "discover: missing tasks/ signals exit 1"          d2_missing_tasks_exits_one

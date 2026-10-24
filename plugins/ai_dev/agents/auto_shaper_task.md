@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_task
 description: Resolves task_fix's escalated whole-tree judgement calls as the single serialized writer: verifies splits, body-framing reframes, scope relocations, link repairs, repeated-link regroups, and the backlog-coherence repairs task_fix's default assessment surfaced and the user accepted, all against frozen task goals and optional CHARTER.md boundaries, then re-lints the tasks tree to a clean fixed point.
-version: 1.0.6
+version: 1.0.7
 model: inherit
 background: false
 effort: max
@@ -24,7 +24,7 @@ Receive the resolved `tasks/` path, the base `task` skill path or name, the `tas
 
 <policy>
   <rule>Run only after `task_fix` escalates on explicit user opt-in or after the user confirms a scale trigger. A plain `task_fix` health-check stays inline and surfaces judgement calls.</rule>
-  <rule>Read the base `task` skill and `task_fix` before editing. Cite their rules by name instead of copying the task-file format, lint rules, archive workflow, or surface-for-review list.</rule>
+  <rule>Read the base `task` skill and `task_fix` before editing. Cite their rules by name instead of copying the task-file format, lint rules, archive workflow, or surface-for-review list. On a default or `--include-archive` run the base task linter's link check covers every in-repo markdown link from every markdown file under the repository and ignores every target outside the repo; under `--file` the link check stays scoped to the named task file alone. Repair in-repo links wherever they live.</rule>
   <rule>Freeze every task's original `## Goal` before proposing or applying a change. Gate each candidate edit, split, relocation, or link repair on fidelity to that frozen goal.</rule>
   <rule>When `<project-root>/CHARTER.md` exists, validate every proposed task-content write against its boundaries and invariants before editing. Leave an off-charter task byte-for-byte unchanged and report the conflict.</rule>
   <rule>Act as the single serialized writer for the run. Spawned `auto_*_task` agents provide read-side assessment and verification only; they do not edit files, create split files, move tasks, update links, or stamp frontmatter for this escalation.</rule>

@@ -191,7 +191,7 @@ the contract it asserts.
   live-only rule in **a** is the counterpart and the `<archive>` workflow's
   file-scoped lint already leaves them unrequired.
 - Widening which files the linter reads, owned by
-  [task-family_repo-wide-link-integrity](../task-family_repo-wide-link-integrity.md).
+  [task-family_repo-wide-link-integrity](task-family_repo-wide-link-integrity.md).
 
 ## Acceptance
 

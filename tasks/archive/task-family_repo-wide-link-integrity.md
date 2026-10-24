@@ -2,9 +2,11 @@
 description: Widen the task linter to every in-repo markdown link in any repo markdown file, silence outbound links, wire the remit, and land this repository blocking-clean.
 scope: plugins/ai_dev/skills/task
 created: 2026-09-12T17:31:37
-updated: 2026-10-08T21:56:59
-status: ready
+updated: 2026-10-24T09:40:38
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Lint every in-repo link from every markdown file, ignore every link that leaves it, wire the remit into the artefacts that state it, and land this repository blocking-clean
@@ -39,7 +41,7 @@ The worked case that prompted this. In a consuming repo, a wiki page carried
 `](../../tasks/elcp-intro_stress-test-epoch-boundaries.md)`. `task_finish`
 archived that task and re-pointed the inbound links it could see, which is the
 tasks tree alone, exactly as
-[task-family_archive-inbound-link-scan](archive/task-family_archive-inbound-link-scan.md)
+[task-family_archive-inbound-link-scan](task-family_archive-inbound-link-scan.md)
 specified. The wiki link dangled for several commits and surfaced only because
 that repo also runs a wiki linter with its own broken-link check. A repo
 carrying tasks and no wiki linter would keep the dangling link indefinitely.
@@ -52,11 +54,11 @@ tooling script, a `.tex` chapter, a `.bib` bibliography.
 
 What is already settled and stays. Resolution tries the linking file's own
 directory and then the project root, which
-[task-family_link-resolution-project-root-fallback](archive/task-family_link-resolution-project-root-fallback.md)
+[task-family_link-resolution-project-root-fallback](task-family_link-resolution-project-root-fallback.md)
 established; `://` and `mailto:` targets are already skipped; `#` fragments and
 trailing titles are already stripped before resolving. The repeated-link warn
 from
-[task-family_cross-link-hygiene](archive/task-family_cross-link-hygiene.md)
+[task-family_cross-link-hygiene](task-family_cross-link-hygiene.md)
 keeps its current per-file behaviour.
 
 The artefacts that state the linter's remit in prose are the base `task` skill
@@ -78,12 +80,17 @@ Change the linter first, then the prose that describes it.
 **Widen the walk to the repository.** Keep every per-file check other than the
 link check on task files alone via `iter_task_files`. On the default invocation
 and under `--include-archive`, run link resolution over every markdown file
-under the repo root. When the repo-root Makefile defines `EXCLUDE`, the
-markdown inventory matches `find . $(EXCLUDE) -type f -name '*.md' -print` (the
-same derivation `MD_FILES` uses). When the root has no Makefile or that
-Makefile defines no `EXCLUDE`, skip only `.git/`. Under `--file`, keep link
-checks scoped to the named task file so the archive close-out contract still
-sees findings only for that file.
+under the repo root. When that root is itself a git toplevel, take the
+inventory from
+`git ls-files --cached --others --exclude-standard -- '*.md'` so gitignored
+trees such as `node_modules/` stay out. When the repo-root Makefile defines an
+`EXCLUDE` whose tokens are `find` prune clauses ending in `-o`, layer that
+prune set on the inventory (and use it as the sole inventory outside git),
+matching the `MD_FILES` derivation this repository's Makefile uses. Any other
+`EXCLUDE` spelling is ignored so a non-prune assignment cannot silence the
+check. Outside git with no prune-shaped `EXCLUDE`, skip only `.git/`. Under
+`--file`, keep link checks scoped to the named task file so the archive
+close-out contract still sees findings only for that file.
 Report a finding against the file that carries the link, so the report says
 where to edit. Markdown under `wiki/` stays in that walk.
 
@@ -93,8 +100,11 @@ resolves to a directory counts as present.
 
 **Make leaving the repo the silence rule.** A target draws no finding when it
 carries `://`, starts with `mailto:`, is empty or fragment-only, or resolves
-outside the repo root once normalised, which covers an absolute path elsewhere
-on the machine and a relative path climbing past the root. State the rule once
+outside the repo root once normalised, which covers an absolute path that
+exists elsewhere on the machine and a relative path climbing past the root. A
+destination that starts with `/` and does not exist as an absolute filesystem
+path is treated as repository-root-relative before that rule runs (renderer
+convention), so a missing `/docs/…` path can still block. State the rule once
 in the function's docstring so the exclusion is readable next to the check.
 
 **Rewrite the linter's own remit prose.** Rewrite in place `lint.py`'s module
@@ -176,16 +186,26 @@ markdown inventory so they contribute no finding. A default or
   produces one blocking `broken-link` finding, where the current linter reports
   nothing in both cases.
 - A staged fixture carrying an `https://` URL, a `mailto:` target, an absolute
-  path outside the repo root, and a relative path climbing above the root
-  produces no finding of any severity for those four links.
+  path that exists outside the repo root, and a relative path climbing above
+  the root produces no finding of any severity for those four links.
 - A staged fixture where a link resolves to an existing directory produces no
   finding.
-- A staged fixture where the root Makefile's `EXCLUDE` prunes a uniquely named
-  directory and a dangling in-repo link sits under that directory produces no
-  finding for that link on a default or `--include-archive` run.
+- A staged fixture where the root Makefile's prune-shaped `EXCLUDE` prunes a
+  uniquely named directory and a dangling in-repo link sits under that
+  directory produces no finding for that link on a default or
+  `--include-archive` run.
 - A staged fixture whose project root has no Makefile `EXCLUDE` and that
   carries a dangling in-repo link outside `.git/` produces one blocking
   `broken-link` finding for that link on a default or `--include-archive` run.
+- A staged git toplevel that gitignores `node_modules/` and carries a dangling
+  in-repo link under that tree produces no finding for that link on a default
+  run.
+- A staged fixture whose Makefile `EXCLUDE` is not prune-shaped and that
+  carries a dangling in-repo link in a repo-root markdown file still produces
+  one blocking `broken-link` finding for that link.
+- A staged fixture carrying a leading-`/` destination that does not exist as an
+  absolute filesystem path produces one blocking `broken-link` finding when the
+  repository-root-relative path is missing.
 - Under `--file` naming one task, a dangling in-repo link in a different repo
   markdown file produces no finding, while a dangling in-repo link in the named
   file still produces its finding.
@@ -195,7 +215,9 @@ markdown inventory so they contribute no finding. A default or
   missing in-repo path produces no finding.
 - `check_local_links`'s docstring states the silence rule: a target that carries
   `://`, starts with `mailto:`, is empty or fragment-only, or resolves outside
-  the repo root draws no finding.
+  the repo root draws no finding, and a leading-`/` destination that does not
+  exist as an absolute filesystem path is treated as repository-root-relative
+  before that rule runs.
 - `lint.py`'s module docstring and argparse description supersede the
   tasks-directory-only remit wording: each states the widened link-check remit
   above while still describing the task-scoped per-file checks.
@@ -207,8 +229,9 @@ markdown inventory so they contribute no finding. A default or
   exists, or the markdown link is removed or confined to a fenced/inline-code
   surface the widened check already ignores).
 - Every deliberate dangling-link tree in this repository is pruned from the
-  markdown inventory via the root Makefile `EXCLUDE` (or removed from the tree)
-  so it contributes no finding on a default or `--include-archive` run.
+  markdown inventory via the root Makefile's prune-shaped `EXCLUDE` and/or
+  `.gitignore` (or removed from the tree) so it contributes no finding on a
+  default or `--include-archive` run.
 - Running the linter over this repository (default or `--include-archive`)
   produces zero blocking `broken-link` findings.
 - The base `task` skill, `task_fix`, and `auto_shaper_task` each state that, on

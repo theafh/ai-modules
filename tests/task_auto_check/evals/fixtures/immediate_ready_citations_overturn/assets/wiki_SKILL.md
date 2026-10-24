@@ -612,8 +612,10 @@ When the user asks a question about the wiki's domain:
 2. **For wikis with 100+ pages**, also run a recursive search across all
    `.md` files for key terms — the index alone may miss relevant content.
 3. **Read the relevant pages.**
-4. **Synthesize an answer** with citations: "Based on
-   [page-a](concepts/page-a.md) and [page-b](entities/page-b.md)…"
+4. **Synthesize an answer** with citations: name each source page in
+   standard markdown link form (label plus relative path under the wiki
+   root, for example a concepts page and an entities page), then state
+   the synthesis.
 5. **File the answer back on the three-page-or-novel-reasoning trigger** —
    filing is the default action for an answer that draws on three or more
    wiki pages, or that carries cross-page reasoning present on no single
