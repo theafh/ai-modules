@@ -1622,6 +1622,124 @@ PY
     note_agent_attest "response points to task_implement as the next step"
     ;;
 
+  dryrun_gap_confirmed)
+    f="$TASKS/notes_pinned-order.md"
+    relay="$proj/.task_auto_check/notes_pinned-order"
+    status_ready() { status_is "$f" ready; }
+    one_task() { task_count_is 1; }
+    skill_rules_unchanged() {
+      git -C "$proj" show HEAD:skills/release_notes/SKILL.md >"$target/.staged-skill.md" \
+        && cmp -s "$target/.staged-skill.md" "$proj/skills/release_notes/SKILL.md"
+    }
+    # The dry-run relay wiring, graded from the saved prompts and returns with
+    # wraps collapsed: every ordinary-round gate of round N has r<N>-dryrun.txt
+    # beside it; a citation-refutation or repeated-link re-gate (no new dry run)
+    # names that ordinary round's r<M>-dryrun.txt in its prompt. The first
+    # dry-run return declares kind: instruction prose and its findings name
+    # the planted conflict; that round's gate return confirms the finding on
+    # its dryrun: evidence line with the issue number it became, and its
+    # issue list titles the confirmed finding with the (dry run dr<k>) marker.
+    dryrun_relay_confirms_gap() {
+      python3 - "$relay" <<'PY' || return 1
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+
+
+def collapsed(path):
+    return " ".join(path.read_text().splitlines())
+
+
+def between(text, start, end):
+    parts = text.split(start, 1)
+    if len(parts) < 2:
+        return ""
+    if not end:
+        return parts[1]
+    return parts[1].split(end, 1)[0]
+
+
+gates = [
+    (int(m.group(1)), int(m.group(2) or 1), p)
+    for p in relay.glob("r*-gate*.txt")
+    if (m := re.fullmatch(r"r(\d+)-gate(?:-(\d+))?\.txt", p.name))
+]
+if not gates:
+    raise SystemExit(1)
+dryrun_rounds = {
+    int(m.group(1))
+    for p in relay.glob("r*-dryrun.txt")
+    if (m := re.fullmatch(r"r(\d+)-dryrun\.txt", p.name))
+}
+if not dryrun_rounds:
+    raise SystemExit(1)
+rounds = {n for n, _, _ in gates}
+for n in sorted(rounds):
+    if (relay / f"r{n}-dryrun.txt").is_file():
+        continue
+    # Special-round carve-out: citation-refutation / repeated-link re-gate
+    # reuses an ordinary round's dry-run return named in the gate prompt.
+    prompt = relay / f"r{n}-gate-prompt.txt"
+    if not prompt.is_file():
+        raise SystemExit(1)
+    named = re.findall(r"r(\d+)-dryrun\.txt", prompt.read_text())
+    if not named or not any(
+        (relay / f"r{int(m)}-dryrun.txt").is_file() for m in named
+    ):
+        raise SystemExit(1)
+
+first_n = min(dryrun_rounds)
+dryrun = collapsed(relay / f"r{first_n}-dryrun.txt")
+if not re.search(r"(?i)\bkind:\s*.{0,60}instruction prose", dryrun):
+    raise SystemExit(1)
+findings = between(dryrun, "## Findings", "## Questions")
+if not findings:
+    raise SystemExit(1)
+if not (re.search(r"(?i)oldest[\s-]*first", findings)
+        and re.search(r"(?i)newest[\s-]*first", findings)):
+    raise SystemExit(1)
+
+# The gate return of the dry run's round: the last physical call of that
+# round is the accepted verdict, an isolation replacement included.
+_, _, gate_path = max((n, k, p) for n, k, p in gates if n == first_n)
+gate = collapsed(gate_path)
+evidence = between(gate, "## Evidence", "")
+if not evidence:
+    raise SystemExit(1)
+if not re.search(
+    r"(?i)dryrun:[^|]{0,200}?\bdr\s*\d+\b[^|]{0,120}?\bconfirmed\b[^|]{0,120}?\bissue\s*#?\s*\d+\b",
+    evidence,
+):
+    raise SystemExit(1)
+issues = between(gate, "# auto_gate_task verdict", "## Evidence")
+if not re.search(r"(?i)\(dry run dr\s*\d+\)", issues):
+    raise SystemExit(1)
+PY
+    }
+    conflict_resolved() {
+      # The stale state is the task directing oldest-first for pinned entries
+      # while silent about the skill's newest-first ordering rule; the repair
+      # resolves it by keeping the oldest-first deliverable and accounting for
+      # the existing rule — naming it, or scoping the new rule against it.
+      # Any of those reconciliations reads as resolved; the staged body
+      # carries none of them.
+      local body
+      body="$(body_text "$f" | tr '\n' ' ' | tr -s ' ')"
+      grep -qiE 'oldest[ -]?first' <<<"$body" \
+        && grep -qiE 'newest[ -]?first|ordering rule|supersed|override|except' <<<"$body"
+    }
+    check "task reaches status: ready" status_ready
+    check "every ordinary gate has a dry-run return; special re-gates reuse one" dryrun_relay_confirms_gap
+    check "final task names the existing rule and keeps the oldest-first deliverable" conflict_resolved
+    check "fixture skill file keeps both staged rules unchanged" skill_rules_unchanged
+    check "no extra task files created" one_task
+    check "task lints clean after repair" task_lints
+    note_agent_attest "response reports, per round, the dry run's kind, finding count, and each confirmed finding with its issue number"
+    note_agent_attest "response points to task_implement as the next step"
+    ;;
+
   *)
     echo "unknown eval id: $eval_id" >&2
     exit 2

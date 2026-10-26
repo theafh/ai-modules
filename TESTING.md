@@ -92,11 +92,28 @@ run so results stay comparable, and keep grading on the model-free grader.
 
 ## Coverage Expectations
 
-A change to a shipped component lands with the tight scenarios that prove its
-own new behaviour, plus the existing suite re-run to confirm no regression.
-Unbounded harness growth beyond the change, such as backfilling coverage of
-pre-existing untested behaviour or restructuring a harness, belongs in its own
-session. The boundary is scope, not timing.
+A change to a shipped component lands with the **deterministic** surfaces that
+prove it: `make lint` when markdown or shell moved, and the matching
+`script_tests/` (or `run_all.sh`) when the change touches scripts, registration,
+pins, or harness wiring those scripts assert. Script tests are the default
+post-implementation check and the default reading of "run the tests" unless the
+operator narrows or widens scope.
+
+Behavioral (LLM-worker) evals are opt-in proof for behaviour scripts cannot pin.
+Run them only when at least one of these holds:
+
+- the task's Acceptance names the eval or eval set;
+- the change edits loop, relay, orchestration, or other agent-prose behaviour
+  that only a nested-worker scenario can show, and a named scenario buys that
+  signal;
+- the operator explicitly asks for those evals or for a full-suite measurement.
+
+A full re-run of an existing behavioral suite is not a default ship gate and not
+an ordinary task Acceptance item. It is an optional operator measurement pass.
+An incomplete eval (timeout, empty response, kill) is inconclusive, not a fail
+to chase inside the change. Unbounded harness growth beyond the change, such as
+backfilling coverage of pre-existing untested behaviour or restructuring a
+harness, belongs in its own session. The boundary is scope, not timing.
 
 Where a task's acceptance names an eval, that eval is part of the change rather
 than something to defer. An acceptance names a Claude run only for an eval

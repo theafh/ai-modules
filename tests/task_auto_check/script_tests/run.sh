@@ -104,7 +104,7 @@ s1_files_and_frontmatter() {
   assert_contains "auto_drift_task name" "$AGENTS_DIR/auto_drift_task.md" "name: auto_drift_task" || ok=false
   assert_contains_re "auto_drift_task semver version" "$AGENTS_DIR/auto_drift_task.md" '^version: [0-9]+\.[0-9]+\.[0-9]+$' || ok=false
   assert_contains "auto_drift_task model inherits" "$AGENTS_DIR/auto_drift_task.md" "model: inherit" || ok=false
-  for agent in auto_gate_task auto_reviewer_task auto_verifier_task; do
+  for agent in auto_dryrun_task auto_gate_task auto_reviewer_task auto_verifier_task; do
     local path="$AGENTS_DIR/$agent.md"
     assert_file "$agent agent" "$path" || ok=false
     assert_contains "$agent name" "$path" "name: $agent" || ok=false
@@ -112,6 +112,7 @@ s1_files_and_frontmatter() {
     assert_contains "$agent model inherits" "$path" "model: inherit" || ok=false
   done
   assert_contains "auto_drift_task H1" "$AGENTS_DIR/auto_drift_task.md" "# Auto Drift Task" || ok=false
+  assert_contains "auto_dryrun_task H1" "$AGENTS_DIR/auto_dryrun_task.md" "# Auto Dryrun Task" || ok=false
   assert_contains "auto_gate_task H1" "$AGENTS_DIR/auto_gate_task.md" "# Auto Gate Task" || ok=false
   assert_contains "auto_reviewer_task H1" "$AGENTS_DIR/auto_reviewer_task.md" "# Auto Reviewer Task" || ok=false
   assert_contains "auto_verifier_task H1" "$AGENTS_DIR/auto_verifier_task.md" "# Auto Verifier Task" || ok=false
@@ -157,6 +158,7 @@ s4_loop_controls_and_boundaries() {
   assert_contains "foreign stance off by default" "$SKILL" "The default is single-model operation with no foreign-model stance." || ok=false
   assert_only_model_inherit "no pinned agent model" "$AGENTS_DIR/auto_gate_task.md" || ok=false
   assert_only_model_inherit "no pinned drift model" "$AGENTS_DIR/auto_drift_task.md" || ok=false
+  assert_only_model_inherit "no pinned dryrun model" "$AGENTS_DIR/auto_dryrun_task.md" || ok=false
   assert_only_model_inherit "no pinned reviewer model" "$AGENTS_DIR/auto_reviewer_task.md" || ok=false
   assert_only_model_inherit "no pinned verifier model" "$AGENTS_DIR/auto_verifier_task.md" || ok=false
   $ok
@@ -190,15 +192,18 @@ s6_docs_and_metadata_registered() {
   assert_jq_eq "claude marketplace version lockstep" "$REPO_ROOT/.claude-plugin/marketplace.json" '.plugins[] | select(.name=="ai_dev") | .version' "$canon" || ok=false
   assert_contains "plugin README skill" "$REPO_ROOT/plugins/ai_dev/README.md" "**task_auto_check**" || ok=false
   assert_contains "plugin README drift agent" "$REPO_ROOT/plugins/ai_dev/README.md" "**auto_drift_task**" || ok=false
+  assert_contains "plugin README dryrun agent" "$REPO_ROOT/plugins/ai_dev/README.md" "**auto_dryrun_task**" || ok=false
   assert_contains "plugin README gate agent" "$REPO_ROOT/plugins/ai_dev/README.md" "**auto_gate_task**" || ok=false
   assert_contains "root README skill" "$REPO_ROOT/README.md" "task_auto_check/" || ok=false
   assert_contains "root README drift agent" "$REPO_ROOT/README.md" "auto_drift_task.md" || ok=false
+  assert_contains "root README dryrun agent" "$REPO_ROOT/README.md" "auto_dryrun_task.md" || ok=false
   assert_contains "root README agents" "$REPO_ROOT/README.md" "auto_verifier_task.md" || ok=false
   $ok
 }
 
 s7_pseudo_xml_lints() {
   python3 "$PXML" --quiet "$SKILL" "$AGENTS_DIR/auto_drift_task.md" \
+    "$AGENTS_DIR/auto_dryrun_task.md" \
     "$AGENTS_DIR/auto_gate_task.md" \
     "$AGENTS_DIR/auto_reviewer_task.md" "$AGENTS_DIR/auto_verifier_task.md" \
     >>"$RESULTS" 2>&1
@@ -262,7 +267,7 @@ s10_failure_policy_and_rebaseline() {
   assert_contains "no automatic recovery" "$SKILL" "no degraded alternative, retry loop, or recovery runs automatically" || ok=false
   assert_contains "alternatives presented never taken unprompted" "$SKILL" "A degraded alternative is presented, never taken unprompted" || ok=false
   assert_contains "headless stop is the final output" "$SKILL" "the error report ending in the question is the run's final output" || ok=false
-  assert_contains "no helper result is improvised" "$SKILL" "never role-plays a missing gate, drift, reviewer, or verifier result" || ok=false
+  assert_contains "no helper result is improvised" "$SKILL" "never role-plays a missing dry-run, gate, drift, reviewer, or verifier result" || ok=false
   assert_contains "no-spawn harness stops before freeze" "$SKILL" "no agent-spawn mechanism" || ok=false
   assert_contains "no inline helper roles" "$SKILL" "instead of executing helper roles inline" || ok=false
   assert_contains "guard re-baselines after each gate verdict" "$SKILL" "adopt the post-gate content as the new baseline" || ok=false
@@ -321,6 +326,33 @@ s13_parallel_runner() {
   python3 "$REPO_ROOT/tests/task_auto_check/script_tests/test_parallel_runner.py"
 }
 
+s14_dryrun_round_wiring() {
+  local ok=true gate="$AGENTS_DIR/auto_gate_task.md"
+  dryrun_block_precedes_gate_block() {
+    local d g
+    d="$(grep -n '^<dry_run>$' "$SKILL" | head -1 | cut -d: -f1)"
+    g="$(grep -n '^<gate>$' "$SKILL" | head -1 | cut -d: -f1)"
+    [[ -n "$d" && -n "$g" && "$d" -lt "$g" ]]
+  }
+  assert_contains "dry run invokes auto_dryrun_task on the task as it stands" "$SKILL" "Invoke \`auto_dryrun_task\` through the dry-run path set in \`<relay>\`, on the task as it stands" || ok=false
+  assert_contains "dry run failure routes through the failure policy" "$SKILL" "Treat a failed invocation or an \`unassessable\` return per \`<agent_failure_policy>\`. The round's gate call then receives that \`r<N>-dryrun.txt\`" || ok=false
+  dryrun_block_precedes_gate_block || { log "    <dry_run> does not precede <gate>"; ok=false; }
+  assert_contains "freeze continues to the dry run" "$SKILL" "continue to \`<dry_run>\` without surfacing an intention check" || ok=false
+  assert_contains "iterate returns to the dry run" "$SKILL" "Return to \`<dry_run>\` until the loop stops" || ok=false
+  assert_contains "ordinary round definition names the dry run" "$SKILL" "An ordinary repair round is one dry run, gate call, reviewer pass, verifier pass, edit application, and next loop decision." || ok=false
+  assert_contains "special-round carve-out names the ordinary round's dry run" "$SKILL" "they name the \`r<M>-dryrun.txt\` from the ordinary round whose gate return is under citation check, or the one that produced the \`ready\` entering the repeated-link path, with no new dry run." || ok=false
+  assert_not_contains_re "old round definition is gone" "$SKILL" "A round is one gate call, reviewer pass" || ok=false
+  assert_contains "dry-run prompt names its four inputs" "$SKILL" "A dry-run prompt names the task path, the base \`task\` skill path, the project root, and \`frozen-intent.txt\`." || ok=false
+  assert_contains "every gate prompt names the round's dry-run return" "$SKILL" "that round's \`r<N>-dryrun.txt\`" || ok=false
+  assert_contains "gate agent admits the dry-run return" "$gate" "that round's \`r<N>-dryrun.txt\` as paths to read" || ok=false
+  assert_contains "gate agent carries the dryrun evidence line" "$gate" "- dryrun: <each finding dr<k> confirmed with its issue number, or not confirmed with its reason | no findings | none supplied>" || ok=false
+  assert_contains "gate agent grounds each dry-run finding" "$gate" "Ground each finding of a supplied dry-run return the way \`task_check\` grounds any issue" || ok=false
+  assert_contains "self-sufficiency stance selects on the cited rule" "$SKILL" "Select this stance only when the issue text itself names that rule, whether by the bar's name or by the stance's cited rule name." || ok=false
+  assert_contains "admissible issues include confirmed dry-run findings" "$SKILL" "confirmed dry-run findings included once they are gate issues" || ok=false
+  assert_contains "report carries the per-round dry-run line" "$SKILL" "Per round: the dry run's \`kind:\`, its finding count, and each finding the gate confirmed with the issue number it became." || ok=false
+  $ok
+}
+
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "task_check remains the single readiness gate" s2_gate_is_task_check
 scenario s3 "reviewer/verifier roles are separated and intent-safe" s3_reviewer_and_verifier_boundaries
@@ -335,6 +367,7 @@ scenario s11 "repeated-link findings route through the repair path with named ow
 
 scenario s12 "relay graders reject evidence mutations" s12_relay_grader_mutations
 scenario s13 "parallel runner splits the serial nested-loop set" s13_parallel_runner
+scenario s14 "dry-run round is wired before the gate with gate confirmation" s14_dryrun_round_wiring
 
 log ""
 log "================================================================"

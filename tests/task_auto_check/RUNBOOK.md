@@ -63,6 +63,11 @@ model-mediated behavior that static checks cannot prove:
   zero-issue verdict occurred, whether its citations were refuted, and
   whether the run reached `ready`. A `ready` from an unchallenged
   first-call zero-issue verdict is a trigger-condition defect.
+- Dry-run gap confirmed: every ordinary repair round runs the pre-gate
+  implementer dry run on an instruction-prose fixture whose task plants a
+  rule conflict with an existing rule it never mentions; the dry run must
+  find the conflict, the gate must confirm it with its issue number, and
+  the repair must resolve it in the final task text.
 
 ```bash
 python3 tests/task_auto_check/evals/run.py
@@ -92,9 +97,18 @@ unfinished sandbox and is inconclusive, never a behavioral pass or fail
 
 ## Cost discipline
 
-These behavioral evals are the most expensive surface in the repo. Two
-habits, learned from a session that burned hours re-running them, cut
-the iteration cost sharply:
+These behavioral evals are the most expensive surface in the repo. The
+standing coverage rule in `TESTING.md` `## Coverage Expectations` (and the
+matching bullets in the repo-root `AGENTS.md` / `CLAUDE.md`) treats them as
+opt-in proof, not as a default ship gate: after an ordinary
+`task_auto_check` change, run `script_tests/run.sh` (and any Acceptance-named
+eval); do not open a full-suite re-run, fixture-retune loop, or
+timeout-ceiling campaign inside the task. A full suite is an optional
+operator measurement pass. An incomplete eval (timeout, empty response, kill)
+is inconclusive per the worker-completion gate above, not a fail to chase
+inside the change.
+
+When a named behavioral eval *does* run, three habits cut iteration cost:
 
 - **Validate a fixture with a single `task_check` gate before running the
   full loop.** Stage the fixture (`evals/stage.sh <id> <dir>`), then run
@@ -110,11 +124,15 @@ the iteration cost sharply:
   `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
   `immediate_ready_citations_overturn`, `regroup_via_reviewer`,
   `regroup_immediate_ready`, `regroup_same_paragraph_ready`,
-  `committed_rule_deletion_routed`, `last_call_ready_refuted`, and
-  `regate_isolated`. Those jobs do not overlap one another: two of them
+  `committed_rule_deletion_routed`, `last_call_ready_refuted`,
+  `regate_isolated`, and `dryrun_gap_confirmed`. Those jobs do not overlap one another: two of them
   at once contend for the model and both slow past even a 2305s timeout,
   while solo each finishes in ~576 to 2005s. The rest of the suite uses
   the default 4 workers. Launch one `run.py` invocation at a time.
+- **Reuse a prior PASS under Re-run Economy.** When the graded record
+  postdates every artefact under test, treat it as evidence; re-run that
+  eval only when the skill, agent, gate, fixture, grader, or runner changed
+  since that record.
 
 When authoring a `grade.sh` check for an edit-supersedes behavior, assert
 that the stale content is **gone** (or that the superseding concept is
@@ -131,6 +149,18 @@ repair paths and additional verifier or gate calls:
 
 | Eval | Budget | Why |
 | --- | --- | --- |
+| `mechanical_lint_ready` | 3600s | Pre-gate dry run on an already-ready task plus mechanical description cleanup; raised from the 2305s default after the dry-run rollout hit that ceiling. |
+| `mechanical_lint_markdown` | 3600s | Same dry-run-per-round overhead on a mechanical-lint path; raised from the 2305s default after a dry-run rollout timeout. |
+| `mechanical_lint_oversized_surface` | 3600s | Same dry-run-per-round overhead on a large mechanical-lint surface; raised from the 2305s default after a dry-run rollout timeout. |
+| `drift_gate_narrowing_clean` | 3600s | Drift check plus gate with a dry run each ordinary round; raised from the 2305s default after a dry-run rollout timeout. |
+| `repair_to_ready` | 3600s | Full nested repair loop with a dry run before every gate; raised from the 2305s default for dry-run wall-clock headroom. |
+| `relay_by_path` | 3600s | Full nested repair loop with relay grading and a dry run each round; raised from the 2305s default for dry-run wall-clock headroom. |
+| `stray_hunk_reverted` | 3600s | Fault-injected apply plus corrected delta under a dry run each round; raised from the 2305s default after a dry-run rollout timeout. |
+| `fidelity_rejects_drift` | 3600s | Fidelity-checked repair under a dry run each round; raised from the 2305s default after a dry-run rollout timeout. |
+| `guard_rebaseline_after_gate` | 3600s | Post-gate re-baseline under a dry run each round; raised from the 2305s default after a dry-run rollout timeout. |
+| `interaction_scan_surfaces` | 3600s | Interaction-scan repair under a dry run each round; raised from the 2305s default after a dry-run rollout timeout. |
+| `immediate_ready_citations_survive` | 3600s | Immediate-ready citation path with a pre-gate dry run; raised from the 2305s default for dry-run wall-clock headroom. |
+| `interaction_scan_no_false_alarm` | 3600s | No-false-alarm ready path with a pre-gate dry run; raised from the 2305s default for dry-run wall-clock headroom. |
 | `regroup_via_reviewer` | 3600s | Full repair path: the target carries both a gate-visible Acceptance gap and a `repeated-link` finding, so the reviewer fires several stances before one verifier pass and one apply. |
 | `regroup_immediate_ready` | 2700s | Ready verdict plus the repeated-link repair round the `<gate>` rule routes before finalization. |
 | `regroup_same_paragraph_ready` | 2700s | The ready-verdict path on a target staged at `ready`, so no citation refutation runs. Both links sit inside one Context paragraph, so the repair round applies the react protocol's one-paragraph case, the verifier must approve it, and the edit keeps `ready` with no gate call after the round. |
@@ -138,6 +168,7 @@ repair paths and additional verifier or gate calls:
 | `committed_rule_deletion_routed` | 3600s | Two unproven promises select several reviewer calls before proposal verification, application, delta audit, and re-gate. |
 | `last_call_ready_refuted` | 3600s | A full repair round and second gate are followed by citation verification and, when refuted, one further gate assessment. |
 | `regate_isolated` | 3600s | The repair and re-gate exercise the read boundary, including time for its one replacement when an assessment reports an isolation failure. |
+| `dryrun_gap_confirmed` | 3600s | A pre-gate dry run and gate confirmation in every round, plus the repair round and re-gate that resolve the planted rule conflict in the final task text. |
 
 A timed-out worker fails its eval whatever `grade.sh` says, because the sandbox
 holds partial state. Read `timing.json` before raising a budget: a run killed

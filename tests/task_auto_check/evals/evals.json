@@ -6,7 +6,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_lint-ready.md.",
       "expected_output": "The loop gates through task_check, then mechanical lint finalization rewrites the overlong description within budget, preserves the API retry-header scope, leaves the body unchanged, and updates the timestamp once for the mechanical edit. The gate may stamp ready, or checked when it reads the over-budget description as a gate-visible finding; either way the description repair happens in finalization and readiness is never recomputed outside task_check.",
-      "files": ["evals/fixtures/mechanical_lint_ready/setup.sh"],
+      "files": [
+        "evals/fixtures/mechanical_lint_ready/setup.sh"
+      ],
       "expectations": [
         "The task ends status: ready or status: checked, written only by task_check.",
         "The overlong description is replaced by one canonical description within the task linter budget.",
@@ -23,7 +25,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_pagination-ready.md.",
       "expected_output": "The loop gates through task_check, then mechanical lint finalization re-points the broken api_cursor.md link to the single determinable on-disk match api_cursor-contract.md, leaves the rest of the body intact, and bumps updated once. The gate may stamp ready, or checked when it reads the broken link as a readiness issue; either way the link repair happens in finalization and readiness is never recomputed outside task_check.",
-      "files": ["evals/fixtures/mechanical_lint_link/setup.sh"],
+      "files": [
+        "evals/fixtures/mechanical_lint_link/setup.sh"
+      ],
       "expectations": [
         "The task ends status: ready or status: checked, written only by task_check.",
         "The broken link target api_cursor.md is re-pointed to api_cursor-contract.md.",
@@ -39,7 +43,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_timeout-ready.md.",
       "expected_output": "The loop gates through task_check, then mechanical lint finalization normalises the non-ISO created value to 2026-01-01 and leaves the body unchanged, bumping updated once. The gate may stamp ready, or checked when it reads the malformed created as a frontmatter-validity issue; either way the datetime repair happens in finalization and readiness is never recomputed outside task_check.",
-      "files": ["evals/fixtures/mechanical_lint_frontmatter/setup.sh"],
+      "files": [
+        "evals/fixtures/mechanical_lint_frontmatter/setup.sh"
+      ],
       "expectations": [
         "The task ends status: ready or status: checked, written only by task_check.",
         "The created field is normalised to ISO 8601 (2026-01-01).",
@@ -55,7 +61,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_errors-ready.md.",
       "expected_output": "The loop gates through task_check, then mechanical lint finalization converts the Obsidian wikilink [[api_error-codes]] the task linter blocks to a standard markdown link targeting the determinable sibling api_error-codes.md, and bumps updated once. The gate may stamp ready, or checked when it holds body findings beyond the wikilink; either way the conversion happens in finalization and readiness is never recomputed outside task_check.",
-      "files": ["evals/fixtures/mechanical_lint_markdown/setup.sh"],
+      "files": [
+        "evals/fixtures/mechanical_lint_markdown/setup.sh"
+      ],
       "expectations": [
         "The task ends status: ready or status: checked, written only by task_check.",
         "The wikilink [[api_error-codes]] is converted to a standard markdown link.",
@@ -72,7 +80,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_audit-log-ready.md.",
       "expected_output": "The target is a single cohesive doc task that exceeds the 300-line linter ceiling. Oversize is a judgement-call split, not a mechanically fixable finding, so the loop surfaces it for human or auto_shaper_task routing and never truncates, guts, auto-splits, or collapses the 320-field enumeration into a summary or code pointer. Small verified repairs of unrelated nits and the gate's status/updated stamp are permitted; the enumeration and the oversize remain.",
-      "files": ["evals/fixtures/mechanical_lint_oversized_surface/setup.sh"],
+      "files": [
+        "evals/fixtures/mechanical_lint_oversized_surface/setup.sh"
+      ],
       "expectations": [
         "No new task file is created and nothing is moved to archive.",
         "All 320 field bullets remain — not truncated, gutted, split, or collapsed into a summary or code pointer.",
@@ -86,7 +96,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_ready-task.md.",
       "expected_output": "The loop invokes task_check once, sees the task is already ready, applies zero edits, leaves the task status ready, and reports task_implement as the next step.",
-      "files": ["evals/fixtures/already_ready/setup.sh"],
+      "files": [
+        "evals/fixtures/already_ready/setup.sh"
+      ],
       "expectations": [
         "The task remains status: ready.",
         "No task body edit is applied.",
@@ -100,7 +112,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_search-pagination.md.",
       "expected_output": "The task's last-commit Goal is API search cursor pagination, while the current working-tree Goal is API search filter documentation — a subject replacement. The freeze-time auto_drift_task check classifies this as drift, surfaces one human intention check with recovered-versus-current evidence, stops before task_check and repair, leaves the current body unchanged, leaves status and updated unchanged, and does not restore the committed Goal.",
-      "files": ["evals/fixtures/intent_drift_human_route/setup.sh"],
+      "files": [
+        "evals/fixtures/intent_drift_human_route/setup.sh"
+      ],
       "expectations": [
         "The response invokes auto_drift_task exactly once at freeze time before any task_check gate call.",
         "The response surfaces the human intention check: this Goal appears to have already drifted from its original intent.",
@@ -117,7 +131,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_search-results.md.",
       "expected_output": "The uncommitted rewrite drops CSV export into Out of scope and renames the title to the narrower pagination scope. auto_drift_task classifies clean, the gate runs, and no intention check is surfaced.",
-      "files": ["evals/fixtures/drift_gate_narrowing_clean/setup.sh"],
+      "files": [
+        "evals/fixtures/drift_gate_narrowing_clean/setup.sh"
+      ],
       "expectations": [
         "The response invokes auto_drift_task exactly once at freeze time and classifies clean.",
         "The response reports no human intention check.",
@@ -130,7 +146,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_timeout-headers.md.",
       "expected_output": "The uncommitted rewrite rewords the Goal, corrects the wrong docs path, and widens the title to name the unit-test deliverable the body already carried. auto_drift_task classifies clean, the gate runs, and no intention check is surfaced.",
-      "files": ["evals/fixtures/drift_gate_refinement_clean/setup.sh"],
+      "files": [
+        "evals/fixtures/drift_gate_refinement_clean/setup.sh"
+      ],
       "expectations": [
         "The response invokes auto_drift_task exactly once at freeze time and classifies clean.",
         "The response reports no human intention check.",
@@ -143,7 +161,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_search-pagination.md.",
       "expected_output": "The uncommitted rewrite adds a webhook delivery deliverable on a new surface to the Goal. auto_drift_task classifies drift with drifted_fields: goal, surfaces the Goal intention check, halts before the gate, and leaves the body unchanged.",
-      "files": ["evals/fixtures/drift_gate_broadening_drift/setup.sh"],
+      "files": [
+        "evals/fixtures/drift_gate_broadening_drift/setup.sh"
+      ],
       "expectations": [
         "The response invokes auto_drift_task exactly once at freeze time before any task_check gate call.",
         "The response reports classification drift with drifted_fields: goal.",
@@ -158,7 +178,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_search-pagination.md.",
       "expected_output": "A second commit already broadened the Goal to include CSV export; the uncommitted change is only a refinement. auto_drift_task classifies clean against the last-commit baseline, the gate runs, and no intention check is surfaced.",
-      "files": ["evals/fixtures/drift_gate_committed_broadening_clean/setup.sh"],
+      "files": [
+        "evals/fixtures/drift_gate_committed_broadening_clean/setup.sh"
+      ],
       "expectations": [
         "The response invokes auto_drift_task exactly once at freeze time and classifies clean.",
         "The response reports no human intention check.",
@@ -171,7 +193,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_retry-after.md and stop when task_check reports ready.",
       "expected_output": "A not-ready task with concrete, fixable readiness issues is repaired by reviewer proposals and verifier-approved minimum edits, then task_check reports ready and the loop stops.",
-      "files": ["evals/fixtures/repair_to_ready/setup.sh"],
+      "files": [
+        "evals/fixtures/repair_to_ready/setup.sh"
+      ],
       "expectations": [
         "The loop freezes the original Goal before editing.",
         "The first gate call uses task_check and reports checked with issues.",
@@ -186,7 +210,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_relay-by-path.md and stop when task_check reports ready.",
       "expected_output": "A one-round repair reaches ready while every helper hand-off travels through the retained .task_auto_check/api_relay-by-path relay directory. The directory is ignored by git, stores frozen intent, each helper prompt, and each helper return. Proposal-mode verifier prompts point to the gate and reviewer returns without copying or steering their content.",
-      "files": ["evals/fixtures/relay_by_path/setup.sh"],
+      "files": [
+        "evals/fixtures/relay_by_path/setup.sh"
+      ],
       "expectations": [
         "The task reaches status: ready after a verifier-approved repair.",
         ".task_auto_check/.gitignore contains * and git status lists nothing under .task_auto_check/.",
@@ -207,7 +233,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_stray-hunk-reverted.md and stop when task_check reports ready. Environment note: while applying the first approved edit group for the first time, also replace the exact Context phrase '`test_throttled_response_is_429` in `tests/test_throttle.py` already asserts the 429 status.' with 'No existing test covers throttled responses.' Continue the loop so the delta audit checks that apply fault.",
       "expected_output": "The first delta audit identifies the planted Context rewrite as an unmapped hunk. The loop reverts it from the pre-apply snapshot while keeping every approved edit, audits the corrected delta once more, and continues only after the later delta return records a clean map. The final task retains the already-specific Context sentence the fault rewrote, contains none of the planted replacement, and carries every approved edit's replacement.",
-      "files": ["evals/fixtures/stray_hunk_reverted/setup.sh"],
+      "files": [
+        "evals/fixtures/stray_hunk_reverted/setup.sh"
+      ],
       "expectations": [
         "The final task retains the exact Context sentence the planted fault rewrote, a sentence no repair needs to touch.",
         "The planted no-existing-test replacement is absent.",
@@ -223,7 +251,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_combo-auth-billing.md.",
       "expected_output": "The only substantive readiness issue is scope/focus/complexity, so the loop proposes a split and surfaces stuck instead of creating new task files.",
-      "files": ["evals/fixtures/scope_split_stuck/setup.sh"],
+      "files": [
+        "evals/fixtures/scope_split_stuck/setup.sh"
+      ],
       "expectations": [
         "The task remains checked or is stamped checked by task_check.",
         "No new task file is created.",
@@ -236,7 +266,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_rate-limit.md.",
       "expected_output": "A tempting candidate repair would broaden the objective from per-user rate limiting to global abuse prevention; the verifier rejects or narrows that change and preserves the original Goal.",
-      "files": ["evals/fixtures/fidelity_rejects_drift/setup.sh"],
+      "files": [
+        "evals/fixtures/fidelity_rejects_drift/setup.sh"
+      ],
       "expectations": [
         "The original Goal remains about per-user rate limiting.",
         "The verifier report includes a frozen-intent or fidelity decision.",
@@ -249,7 +281,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_product-decision.md.",
       "expected_output": "The remaining issue requires unavailable product input, so no verifier-approved fix remains; the loop stops as checked and surfaces stuck for a human.",
-      "files": ["evals/fixtures/no_verified_fix/setup.sh"],
+      "files": [
+        "evals/fixtures/no_verified_fix/setup.sh"
+      ],
       "expectations": [
         "The task remains checked.",
         "No speculative product decision is written into the task.",
@@ -262,7 +296,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_pathological.md with max rounds 2.",
       "expected_output": "The pathological task does not converge within the user-supplied cap; the loop stops after honoring max rounds 2 and surfaces stuck.",
-      "files": ["evals/fixtures/cap_override/setup.sh"],
+      "files": [
+        "evals/fixtures/cap_override/setup.sh"
+      ],
       "expectations": [
         "The response reports max rounds 2 rather than the default cap of 5.",
         "The loop stops at the cap instead of continuing.",
@@ -275,7 +311,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_healthcheck.md. Environment note: the auto_gate_task helper agent is broken in this harness. Do not invoke auto_gate_task at all; treat its invocation and the single retry as already failed with a spawn error, and follow the skill's agent-failure policy from there. All other helper agents work normally.",
       "expected_output": "The gate helper fails to spawn on both attempts, so the loop stops as a helper-failure stop before any status write: it surfaces one clear error naming auto_gate_task and the observed spawn failure, names the step it stopped at, lists the options it sees (fix the agent deployment and re-run, explicitly approve a direct task_check run, or abandon), and asks the user how to proceed. No readiness verdict is computed, no recovery runs automatically, and the task file is untouched.",
-      "files": ["evals/fixtures/gate_failure_user_stop/setup.sh"],
+      "files": [
+        "evals/fixtures/gate_failure_user_stop/setup.sh"
+      ],
       "expectations": [
         "The task remains status: open with its updated timestamp unchanged — no write happened.",
         "The task file is byte-for-byte unchanged.",
@@ -289,7 +327,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_metrics.md. Environment note: the auto_drift_task helper agent is broken in this harness. Do not invoke auto_drift_task at all; treat its invocation and the single retry as already failed with a spawn error, and follow the skill's agent-failure policy from there. All other helper agents work normally.",
       "expected_output": "The drift helper fails to spawn on both attempts at freeze time, so the loop stops as a helper-failure stop before the first gate call: it surfaces one clear error naming auto_drift_task and the observed spawn failure, lists the options it sees (fix the agent deployment and re-run, explicitly approve proceeding without the committed-intent check, or abandon), and asks the user how to proceed. No drift verdict is improvised, task_check is not invoked, and the task file is untouched.",
-      "files": ["evals/fixtures/drift_failure_user_stop/setup.sh"],
+      "files": [
+        "evals/fixtures/drift_failure_user_stop/setup.sh"
+      ],
       "expectations": [
         "The task remains status: open with its updated timestamp unchanged — task_check never ran.",
         "The task file is byte-for-byte unchanged.",
@@ -303,7 +343,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_quota-headers.md. Environment note: the auto_verifier_task helper is broken in this harness. Do not invoke auto_verifier_task at all; treat its invocation and the single retry as already failed with a spawn error, so no verifier result can be produced this run, and follow the skill's agent-failure policy from there. All other helper agents work normally.",
       "expected_output": "task_check runs as a completed step and stamps checked; reviewers may propose repairs, but the verifier fails on both attempts, so the loop stops as a helper-failure stop: it surfaces one clear error naming auto_verifier_task, lists the options it sees, and asks the user how to proceed. Zero body edits are applied because nothing was verified, and no verifier verdict is improvised.",
-      "files": ["evals/fixtures/verifier_failure_user_stop/setup.sh"],
+      "files": [
+        "evals/fixtures/verifier_failure_user_stop/setup.sh"
+      ],
       "expectations": [
         "The task remains status: checked from the completed task_check gate call.",
         "Zero body edits are applied: the TBD approach placeholder and the vague acceptance line remain verbatim.",
@@ -317,7 +359,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_idempotency.md and stop when task_check reports ready.",
       "expected_output": "The first gate call stamps checked and bumps updated, diverging the file from the freeze-time snapshot; the loop adopts that post-gate content as the new concurrent-modification baseline instead of misreading the gate's own stamp as a concurrent edit, applies verified repairs, and reaches ready through a later gate call without ever reporting a concurrent-modification stop.",
-      "files": ["evals/fixtures/guard_rebaseline_after_gate/setup.sh"],
+      "files": [
+        "evals/fixtures/guard_rebaseline_after_gate/setup.sh"
+      ],
       "expectations": [
         "The task reaches status: ready.",
         "The TBD approach placeholder is replaced by applied repairs.",
@@ -331,7 +375,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_page-size-config.md and stop when task_check reports ready.",
       "expected_output": "The task adds a page_size config key for the default API page size but is silent about src/api/limits.py, where the shipped MAX_PAGE_SIZE = 100 hard cap silently clamps any effective page_size — directly contradicting the task's acceptance promise of 500-item pages. The base <readiness_checklist> Interaction scan lens derives the page_size touch-point, searches the repo over it, reaches the unlinked limits.py through that reference (never needing the decoy src/api/auth.py), and classifies the cap as an unattended interaction. task_check surfaces it as a readiness issue with a code-versus-change juxtaposition; the loop reconciles against the documented hard cap through a verifier-approved, intent-preserving body edit that refreshes the task to respect MAX_PAGE_SIZE and adds an edit-supersedes Acceptance item proving a configured value above the cap is handled rather than silently clamped, then reaches ready.",
-      "files": ["evals/fixtures/interaction_scan_surfaces/setup.sh"],
+      "files": [
+        "evals/fixtures/interaction_scan_surfaces/setup.sh"
+      ],
       "expectations": [
         "The task reaches status: ready.",
         "The refreshed body accounts for the shipped cap, naming MAX_PAGE_SIZE or src/api/limits.py.",
@@ -348,7 +394,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_retry-header.md.",
       "expected_output": "The task starts at status: open and gates clean on the first task_check call: the gate stamps ready with an empty issue list, every checklist line clean, and a citation on each content-lens line. That first-call zero-issue approval matches the immediate-ready refutation signature, so the loop sends the verdict's citations through auto_verifier_task framed as whether each citation supports the clean claim it was written for. Every citation survives because each cited span, read in place in the staged artifacts, settles its checklist item. The ready stamp stands, the run proceeds to mechanical lint finalization with zero body edits, and the report names the trigger firing, the citations surviving, the stamp standing, and task_implement as the next step.",
-      "files": ["evals/fixtures/immediate_ready_citations_survive/setup.sh"],
+      "files": [
+        "evals/fixtures/immediate_ready_citations_survive/setup.sh"
+      ],
       "expectations": [
         "The task ends status: ready, written only by task_check.",
         "The task body is unchanged (zero body edit rounds).",
@@ -364,7 +412,9 @@
       "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/wiki_base-skill-output-contract.md.",
       "expected_output": "The task is a frozen snapshot of a historical false first-call approval body carrying five planted readiness gaps, staged beside frozen copies of every artifact it cites so all existence checks pass and only the comparative reading surfaces the gaps. Two routes are valid per run. Either the first gate call reads deeply enough to surface issues, and the run takes the ordinary repair path with no refutation trigger; or the first gate call approves with zero issues, the trigger fires, auto_verifier_task refutes citations that rest on existence facts or misread spans, the loop re-invokes the gate with the refuted-citation set, the gate surfaces each entry as a readiness issue, and repair proceeds from task_check's own re-assessment. The defective route is a ready reached from a first-call zero-issue verdict whose citations were never challenged. This eval runs three times sequentially, and the operator records per run whether a first-call zero-issue verdict occurred, whether its citations were refuted, and whether the run reached ready, into the harness results location.",
-      "files": ["evals/fixtures/immediate_ready_citations_overturn/setup.sh"],
+      "files": [
+        "evals/fixtures/immediate_ready_citations_overturn/setup.sh"
+      ],
       "expectations": [
         "The task ends status: ready or status: checked, written only by task_check.",
         "No new task file is created and nothing is moved to archive.",
@@ -378,7 +428,9 @@
       "skill": "task_auto_check",
       "prompt": "Run task_auto_check on tasks/api_request-id.md.",
       "expected_output": "The task adds a self-contained new_request_id() UUID4 helper in a new module src/api/request_id.py. Its interaction surface — request_id, new_request_id, uuid, tracing — shares no touch-point with any surrounding code (pagination.py, limits.py, auth.py, tests/test_auth.py, docs/api.md), and the task explicitly scopes out docs and call-site wiring. The base Interaction scan lens derives that surface, searches the populated repo over it, finds no interacting caller, consumer, alternate definition, or invariant, and raises no contradiction or unattended-interaction finding. The task is otherwise ready-quality, so the loop makes one gate call, applies no interaction-driven repair, and leaves the task ready.",
-      "files": ["evals/fixtures/interaction_scan_no_false_alarm/setup.sh"],
+      "files": [
+        "evals/fixtures/interaction_scan_no_false_alarm/setup.sh"
+      ],
       "expectations": [
         "The task remains status: ready.",
         "No interaction-driven body edit is applied; the body is unchanged.",
@@ -393,7 +445,9 @@
       "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_quota-retry-header.md.",
       "expected_output": "The freeze step records the repeated-link finding on api_quota-reset-config.md, plan_repairs maps it to the Grouping advocate beside the gate's own issues, and the verifier-approved regroup lands in the same edit group: the body's account of that handoff ends up in one section with one link, the other site left a plain pointer or nothing. The report carries the finding's disposition line as regrouped and lists no repeated-link finding as surfaced-but-not-fixed.",
-      "files": ["evals/fixtures/regroup_via_reviewer/setup.sh"],
+      "files": [
+        "evals/fixtures/regroup_via_reviewer/setup.sh"
+      ],
       "expectations": [
         "The linter reports no repeated-link finding on the target after the run.",
         "The body still carries the handoff account: the sibling task is moving the reset constant into the service config.",
@@ -412,7 +466,9 @@
       "timeout": 2700,
       "prompt": "Run task_auto_check on tasks/api_retry-header.md.",
       "expected_output": "task_check reports ready on the first gate call, since a repeated-link warn is a lint finding rather than a readiness issue. The ready verdict stands and the run still runs one repair round for the freeze-recorded repeated-link findings before finalization, because every path from a ready verdict to finalization runs that round first. Context and Approach narrate one handoff, the sibling task moving the window constant into the service config, so that material belongs in one passage and the Grouping advocate proposes the reorganization the react protocol defines. The report carries the finding's disposition line in the shared shape, reading regrouped, or surfaced with an organizational reason from the protocol; kept is no longer a disposition. A regroup keeps the meaning of Goal and the Acceptance contract, so under the status-discipline rule it keeps the ready stamp: where the immediate approval stood, the round writes no status and no gate call follows it, and a surfaced finding also leaves the body as staged. On the citation-refutation path the refuted citations enter ordinary repair rounds that rewrite the body for their own issues, so there a surfaced finding shows in the sibling's links staying at their staged count.",
-      "files": ["evals/fixtures/regroup_immediate_ready/setup.sh"],
+      "files": [
+        "evals/fixtures/regroup_immediate_ready/setup.sh"
+      ],
       "expectations": [
         "The task ends status: ready. Where the immediate approval stood, the repeated-link round writes no status and no gate call follows it, whether the finding is regrouped or surfaced, and a sentence that names a gate call only to deny it does not count as one.",
         "One repair round runs for the repeated-link finding despite the ready verdict.",
@@ -434,7 +490,9 @@
       "timeout": 2700,
       "prompt": "Run task_auto_check on tasks/api_retry-header.md.",
       "expected_output": "The target is staged at status: ready, so the first gate call reads prior_status ready and the immediate-approval signature cannot hold. task_check reports ready on that first gate call, no citation refutation runs, and the run still runs one repair round for the freeze-recorded repeated-link finding before finalization. Both links to the sibling sit inside one ## Context paragraph that carries the whole handoff account, so the material is already gathered and the react protocol's one-paragraph case applies: the Grouping advocate proposes naming the sibling again in plain text inside that paragraph, the verifier approves it as that case rather than rejecting it as link stripping, and the edit clears the warn. That plain-text naming is a mechanical link change, so under the status-discipline rule the task keeps ready: the round writes no status and no gate call follows it. The report carries the finding's disposition line reading regrouped.",
-      "files": ["evals/fixtures/regroup_same_paragraph_ready/setup.sh"],
+      "files": [
+        "evals/fixtures/regroup_same_paragraph_ready/setup.sh"
+      ],
       "expectations": [
         "The first gate call reads prior_status ready and stamps ready, so the immediate-approval signature does not hold and no citation refutation runs.",
         "The task ends status: ready.",
@@ -497,6 +555,26 @@
         "Every gate prompt contains only admitted inputs and no line of forty or more characters copied from an earlier return.",
         "Every gate return records isolation: confirmed.",
         "The run reaches a second gate after repair, and the decoy is unchanged."
+      ]
+    },
+    {
+      "id": "dryrun_gap_confirmed",
+      "skill": "task_auto_check",
+      "timeout": 3600,
+      "prompt": "Run task_auto_check on tasks/notes_pinned-order.md with max rounds 8 and stop when task_check reports ready.",
+      "expected_output": "The fixture task adds an oldest-first pinned-entries rule to a fixture skill file whose existing ordering rule already directs newest-first for every section including pinned entries, and the task never mentions that rule. Every ordinary repair round runs the pre-gate dry run: the first dry-run return records kind: instruction prose and a finding that names the planted newest-first versus oldest-first conflict, that round's gate grounds the finding, confirms it as a readiness issue titled with (dry run dr<k>), and records the confirmation with its issue number on its dryrun: evidence line. A citation-refutation or repeated-link re-gate reuses that ordinary round's dry-run return with no new dry run. The loop repairs the task so the final text resolves the conflict, naming the existing rule while keeping the oldest-first deliverable, and reaches ready.",
+      "files": [
+        "evals/fixtures/dryrun_gap_confirmed/setup.sh"
+      ],
+      "expectations": [
+        "The task ends status: ready, written only by task_check.",
+        "Every ordinary-round gate return has a matching r<N>-dryrun.txt; a citation-refutation or repeated-link re-gate names that ordinary round's dry-run file in its prompt.",
+        "The first dry-run return carries a kind: line naming instruction prose.",
+        "The first dry-run return's findings name the planted conflict between the skill's newest-first ordering rule and the task's oldest-first rule.",
+        "The first round's gate return carries a dryrun: evidence line marking the finding confirmed with the issue number it became, and its issue list titles the confirmed finding with (dry run dr<k>).",
+        "The final task text resolves the conflict: it names the existing newest-first rule while keeping the oldest-first deliverable.",
+        "The fixture skill file keeps both staged rules with their wording unchanged.",
+        "The response reports, per round, the dry run's kind, its finding count, and each confirmed finding with the issue number it became."
       ]
     }
   ]

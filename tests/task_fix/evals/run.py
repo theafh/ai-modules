@@ -51,6 +51,7 @@ ARTEFACTS = [
     "task_check",
     "task_auto_check",
     "auto_drift_task",
+    "auto_dryrun_task",
     "auto_gate_task",
     "auto_reviewer_task",
     "auto_shaper_task",

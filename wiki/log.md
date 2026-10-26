@@ -1171,3 +1171,16 @@ pre-existing.
 - concepts/verification-surfaces.md (sandbox root names carry only the harness
   prefix; cites the 2026-10-20 guardrail-bound-surface worker observation)
 - index.md (Last updated)
+
+## [2026-10-26 08:13] update | script-default vs opt-in behavioral coverage
+
+- concepts/verification-surfaces.md (default "run the tests" is script
+  surface; full behavioral suite is opt-in measurement; dated 2026-10-25/26
+  dry-run campaign evidence; open question narrowed)
+- index.md (summary of that page, Last updated)
+
+## [2026-10-26 08:14] lint | 0 blocking, 1 warn, 0 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing. The `size` info on `concepts/verification-surfaces.md` rose
+with this update and stays advisory.

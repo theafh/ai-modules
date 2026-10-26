@@ -70,6 +70,7 @@ ISOLATION_PREFIX = "task_"
 
 AUTO_AGENTS = [
     "auto_drift_task",
+    "auto_dryrun_task",
     "auto_gate_task",
     "auto_reviewer_task",
     "auto_shaper_task",
@@ -85,7 +86,7 @@ def artefacts_for(skill_name: str) -> list[str]:
     """Names micro-deployed for one eval, following what its sibling reaches.
 
     Every sibling reads the base `task` hub through its <authority> step. The
-    two agent-spawning siblings also get the five auto_*_task agents and the
+    two agent-spawning siblings also get the six auto_*_task agents and the
     `task_check` skill, which the auto_gate_task agent wraps, and task_fix gets
     `task_auto_check`, which its escalated auto_shaper_task may invoke. Every
     other sibling spawns no agent, so its evals declare none. That keeps their

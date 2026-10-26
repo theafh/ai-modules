@@ -8,7 +8,25 @@ matching `make lint` prunes.
 Per-harness design docs live in each subdirectory's `README.md` and
 `RUNBOOK.md`. Use those for *what* the tests cover; use this file for
 *how* to run them correctly from inside a Claude Code session and
-*how* to read the results without misleading yourself.
+*how* to read the results without misleading yourself. Keep this file in
+lockstep with `tests/AGENTS.md` when operator policy changes.
+
+## Which surface to run
+
+Standing coverage lives in repo-root `TESTING.md` `## Coverage Expectations`
+and the matching bullets in repo-root `CLAUDE.md`. Short form for this
+tree:
+
+- **Default / "run the tests":** the skill's `script_tests/run.sh` or
+  `run_all.sh` (deterministic). Do not start LLM-worker evals from that ask
+  alone.
+- **Behavioral evals:** only when Acceptance names them, when the change
+  edits loop/relay/orchestration that scripts cannot pin and a named
+  scenario buys the signal, or when the operator explicitly asks (including
+  an optional full-suite measurement). Never treat a full existing-suite
+  re-run as an ordinary task ship gate.
+- **Incomplete eval** (timeout, empty response, kill): inconclusive; do not
+  chase it inside the change as if it were a behavioral fail.
 
 ## What's here
 
@@ -150,7 +168,7 @@ isolate. Today that subset is the `task_auto_check` serial nested-loop set
 `immediate_ready_citations_overturn`, `regroup_via_reviewer`,
 `regroup_immediate_ready`, `regroup_same_paragraph_ready`,
 `committed_rule_deletion_routed`, `last_call_ready_refuted`,
-`regate_isolated`), which runs one job at a time after the isolated pool,
+`regate_isolated`, `dryrun_gap_confirmed`), which runs one job at a time after the isolated pool,
 and an escape guard that reads the whole host checkout, such as
 `agent_spinner`'s `git status`. The rest of the `task_auto_check` suite
 uses the default 4 workers. Raising the default past 4 mostly buys model

@@ -89,7 +89,7 @@ three-phase workflow below is what `run.py` automates. Reach for it when
 debugging a single eval by hand.
 
 > **`auto_check_boundary` is slow and time-variable.** It runs the full
-> task_auto_check nested-agent loop (drift → gate → reviewer → verifier)
+> task_auto_check nested-agent loop (drift → dry run → gate → reviewer → verifier)
 > and has measured at 405 to 676s. It carries its own `"timeout": 3000` in
 > `evals.json`, so it needs no flag. See the fixture header for why no
 > `report` codebase is seeded (a valid premise pushes the loop past the

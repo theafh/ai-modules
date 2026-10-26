@@ -2,9 +2,11 @@
 description: "Add auto_dryrun_task to every task_auto_check round: before the gate it asks how implementing would go wrong (any work); gate confirms findings; Self-sufficiency only under the cite rule."
 scope: plugins/ai_dev
 created: 2026-10-24T20:48:07
-updated: 2026-10-25T17:38:21
-status: ready
+updated: 2026-10-26T08:06:37
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Add an implementer dry run to every round of the task_auto_check loop
@@ -89,7 +91,7 @@ Shape models for the new agent: `plugins/ai_dev/agents/auto_drift_task.md` for t
    | `wiki/concepts/agent-delegated-automation.md` | "four task agents" | Five agents, with the dry-run role named; the implementer rewrites that concept page in place as this task's deliverable under the Acceptance item that begins "The plugin README, the root README tree". |
 
 3. **Add the eval `dryrun_gap_confirmed`** under `tests/task_auto_check/evals/`, run without `--vendor` per the standing repo rules. Ship these surfaces together: an `evals.json` entry with a peer-aligned `"timeout"` (3600s, matching other full nested-loop serials), a fixture `setup.sh`, a `grade.sh` case, and a `stage.sh` header-id and `case` arm that prove the Acceptance item that begins `dryrun_gap_confirmed` is registered. Add the matching timeout row to `tests/task_auto_check/RUNBOOK.md`'s per-eval timeout table. Its fixture is instruction prose: a task that adds a rule to a fixture skill file where, for one case, the new rule directs the opposite of a rule already in that file, and the task never mentions it. Validate the fixture cheap-first, as the harness guide in `tests/CLAUDE.md` describes, before running the loop.
-4. **Re-run the existing `task_auto_check` evals** as the standing repo rules require after a skill change, since every eval now runs a dry run each round. Where a confirmed dry-run finding changes a verdict the eval does not test, adjust that eval's fixture or grader so it tests its own behaviour again. Where a re-run hits the prior declared timeout ceiling, raise that eval's `evals.json` `"timeout"` and its RUNBOOK timeout-table row as a named adjustment class beside fixture or grader changes.
+4. **Prove the dry-run wiring on the cheap surfaces and the one new eval.** Run `tests/task_auto_check/script_tests/run.sh`. After cheap-first fixture validation, run `dryrun_gap_confirmed` once without `--vendor`. Treat a prior PASS whose graded record postdates every artefact under test as evidence; re-run that eval only when the agent, skill, gate, fixture, grader, or runner changed since that record. Do not open a full-suite `task_auto_check` re-run, fixture-retune loop, or timeout-ceiling campaign inside this task. Standing full-suite regression after a skill change stays for a separate operator pass (see Out of scope).
 
 **Out of scope:**
 
@@ -98,6 +100,8 @@ Shape models for the new agent: `plugins/ai_dev/agents/auto_drift_task.md` for t
 - The `auto_shaper_task` read-side gate call that `task_fix` escalation makes, which runs without a dry-run return.
 - A dedicated `dryrun_failure_user_stop` eval; the failure-policy pin and the existing helper-failure evals cover the stop path.
 - Rewriting every other agent-set enumeration on `wiki/concepts/agent-delegated-automation.md` beyond the `"four task agents"` loop-count wording this task already names (Definition role list, `"four agents feeding a writer"`, Derived-from roster); those stay for a later wiki pass.
+- A full re-run of the existing `task_auto_check` eval suite, a `dryrun-rollout.md` verdict table for every eval, and fixture, grader, or timeout-ceiling retuning across peers that only fail because the new dry run changes a verdict they were not written to absorb.
+- Raising peer eval `"timeout"` values or RUNBOOK timeout-table rows beyond the single `dryrun_gap_confirmed` row this task already ships.
 
 ## Acceptance
 
@@ -108,7 +112,7 @@ Shape models for the new agent: `plugins/ai_dev/agents/auto_drift_task.md` for t
 5. The Self-sufficiency advocate bullet and the admissible-issues sentence match the table's cite rule, and the unrestricted Self-sufficiency bullet is gone.
 6. `auto_gate_task.md` rewrites its `<objective>` per the table, admits `r<N>-dryrun.txt` in `<inputs>` and in its isolation sentence, carries the grounding-and-feed-in rule for dry-run findings, and has the `dryrun:` line in its `## Evidence` template with the confirmed, not-confirmed, `no findings`, and `none supplied` forms.
 7. `prompts_isolated` in `relay_checks.py` admits the dry-run return path, and `tests/task_auto_check/script_tests/run.sh` passes with the updated rosters, the s10 pin, and the new pins the table lists.
-8. `dryrun_gap_confirmed` is registered in `evals.json` with a 3600s `"timeout"`, has a fixture `setup.sh`, a `grade.sh` case, and a `stage.sh` header-id and `case` arm, the RUNBOOK per-eval timeout table names it, and it passes: every gate return in its relay has a matching `r<N>-dryrun.txt`; the first dry-run return has a `kind:` line naming instruction prose and a finding that names the planted conflict; that round's gate return has a `dryrun:` line marking the finding confirmed with an issue number; and the final task text resolves the conflict.
+8. `dryrun_gap_confirmed` is registered in `evals.json` with a 3600s `"timeout"`, has a fixture `setup.sh`, a `grade.sh` case, and a `stage.sh` header-id and `case` arm, the RUNBOOK per-eval timeout table names it, and it has a passing graded record (this session or an earlier one whose artefacts under test are unchanged): every ordinary gate return in its relay has a matching `r<N>-dryrun.txt`; the first dry-run return has a `kind:` line naming instruction prose and a finding that names the planted conflict; that round's gate return has a `dryrun:` line marking the finding confirmed with an issue number; and the final task text resolves the conflict. Do not start further nested-loop evals to chase that PASS once one clean record exists.
 9. `SERIAL_NESTED_LOOP_IDS`, the `SERIAL` tuple in `test_parallel_runner.py`, and the serial enumerations in `tests/CLAUDE.md`, `tests/AGENTS.md`, and `tests/task_auto_check/RUNBOOK.md` list `dryrun_gap_confirmed` in the same order; `tests/task_auto_check/evals/run.py` `ARTEFACTS`, `tests/task/evals/run.py` `AUTO_AGENTS`, and `tests/task_fix/evals/run.py` `ARTEFACTS` each name `auto_dryrun_task`; and the task runner's docstring that said five auto_*_task agents now says six.
-10. `tests/task_auto_check/results/dryrun-rollout.md` records the re-run of the existing `task_auto_check` evals on the changed skill with each eval's verdict, and names every fixture, grader, or timeout-ceiling adjustment (`evals.json` `"timeout"` and RUNBOOK timeout-table row) made because of a confirmed dry-run finding or a hit on the prior timeout, with the reason. An eval that still fails for that reason is named there, and the decision on it goes to the user.
+10. Verification for this task stops at the script pins in item 7 and the single eval in item 8. No Acceptance item requires re-running the rest of the `task_auto_check` suite, writing `tests/task_auto_check/results/dryrun-rollout.md`, or adjusting peer fixtures, graders, or timeouts so those peers pass under the dry-run skill.
 11. The plugin README, the root README tree, both plugin manifests, and both marketplace registrations name `auto_dryrun_task`; each plugin and root README `**task_auto_check**` skill blurb names the pre-gate dry run in the loop sequence; `tests/task/evals/README.md` and `tests/task/evals/fixtures/check_boundary_contradiction/setup.sh` rewrite their `drift → gate` / `drift -> gate` loop narrations to include the pre-gate dry-run step; and `wiki/concepts/agent-delegated-automation.md` rewrites the `"four task agents"` loop-count wording so that passage names five agents including the dry-run role, with that four-count phrase gone.

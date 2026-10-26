@@ -8,8 +8,8 @@
 # same fixture drives the task_auto_check boundary eval.
 #
 # No `report` codebase is seeded on purpose. The shared task_auto_check eval
-# runs the full nested-agent loop (drift -> gate -> reviewer -> verifier ->
-# re-gate), which cannot finish headlessly within the runner timeout. Leaving
+# runs the full nested-agent loop (drift -> dry run -> gate -> reviewer ->
+# verifier -> re-gate), which cannot finish headlessly within the runner timeout. Leaving
 # the premise unbacked lets that loop stop fast at the invalidated-premise
 # boundary while STILL surfacing the --yaml boundary contradiction with
 # disposition options — never crossing or dropping it silently, which is the

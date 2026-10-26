@@ -19,6 +19,7 @@
 #   interaction_scan_surfaces  interaction_scan_no_false_alarm
 #   immediate_ready_citations_survive  immediate_ready_citations_overturn
 #   regroup_via_reviewer  regroup_immediate_ready  regroup_same_paragraph_ready
+#   dryrun_gap_confirmed
 
 set -euo pipefail
 
@@ -161,6 +162,10 @@ case "$eval_id" in
   regroup_same_paragraph_ready)
     "$HERE/fixtures/regroup_same_paragraph_ready/setup.sh" "$target" >/dev/null
     prompt="Run task_auto_check on tasks/api_retry-header.md."
+    ;;
+  dryrun_gap_confirmed)
+    "$HERE/fixtures/dryrun_gap_confirmed/setup.sh" "$target" >/dev/null
+    prompt="Run task_auto_check on tasks/notes_pinned-order.md with max rounds 8 and stop when task_check reports ready."
     ;;
   *)
     echo "unknown eval id: $eval_id" >&2

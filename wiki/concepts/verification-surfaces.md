@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-10-22
+updated: 2026-10-26
 type: concept
 tags: [skill, repo-structure, authoring, claude, cursor, verification-gap]
 sources: [raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
@@ -19,11 +19,16 @@ what the skill does is what an agent does after reading it, which only a run
 against a model can show. The first surface is a script test, the second is a
 behavioral eval, and neither substitutes for the other.
 
-The rule that follows is that "run the tests" means both surfaces unless someone
-narrows the scope, and that reporting one as though it covered both is the
-standing failure mode. A skill whose scripts all pass can still route a request
-to the wrong sibling, and a skill that behaves well under eval can still ship a
-script that breaks on a path with a space in it.
+The rule that follows is that neither surface substitutes for the other, and
+that the **default** reading of "run the tests" is the deterministic script
+surface unless the operator widens scope. Behavioral evals run only when they
+buy a named signal (Acceptance names them, the change edits agent-prose
+behaviour scripts cannot pin and a named scenario proves it, or the operator
+asks). Reporting a script pass as if it covered orchestration is still a
+failure mode; so is opening a full nested-loop suite as an ordinary ship gate.
+A skill whose scripts all pass can still route a request to the wrong sibling,
+and a skill that behaves well under eval can still ship a script that breaks on
+a path with a space in it.
 
 ## Current state of knowledge
 
@@ -168,15 +173,29 @@ the cost that comes with it, are on
 
 ### A change ships with the tests that prove it
 
-The scope rule is that a skill change lands together with the tight scenarios and
-fixtures proving its own new behavior, and with the existing suite re-run to show
-nothing regressed. Where a task's acceptance names an eval, that eval is part of
-the change rather than a follow-up. What belongs in its own session is unbounded
-growth beyond the change: backfilling coverage of behavior that was already
-untested, adding scenarios well past what the change needs, or restructuring a
-harness. The boundary is scope rather than timing, which is what keeps an
-unrelated coverage sweep from consuming the session that was meant to prove one
-edit.
+The scope rule is that a skill change lands together with the script pins and
+the tight scenarios that prove its own new behavior. Where a task's acceptance
+names an eval, that eval is part of the change rather than a follow-up. A full
+re-run of the existing behavioral suite is not part of that default: it is an
+optional operator measurement pass, never an ordinary task Acceptance item or
+ship gate. What belongs in its own session is unbounded growth beyond the
+change: backfilling coverage of behavior that was already untested, adding
+scenarios well past what the change needs, restructuring a harness, or that
+operator-asked full-suite measurement. The boundary is scope rather than
+timing, which is what keeps an unrelated coverage sweep from consuming the
+session that was meant to prove one edit.
+
+The standing text of that rule is `TESTING.md` `## Coverage Expectations` and
+the matching bullets in the repo-root instruction files. It was tightened on
+2026-10-26 after a dry-run agent add to `task_auto_check` made a mandatory
+full-suite re-run the Definition of Done: one overnight Cursor suite consumed
+on the order of ten agent-hours with a large share of outcomes inconclusive
+(timeout, checkout-read isolation fails) rather than behavioral, while
+ready-path fixtures that expected "no body edit" failed because the new
+implementer-seat agent correctly surfaced readiness gaps those fixtures had
+never been written to absorb. That is expected coupling when a new lens lands,
+not a reason to treat every peer eval as a ship blocker inside the same change.
+An incomplete eval remains inconclusive.
 
 ### A grader that tests surface form reports working behaviour as broken
 
@@ -222,13 +241,10 @@ correctness.
 
 ## Open questions
 
-The weight a behavioral eval should carry is open. A result drawn from a
-model is a distribution rather than a value, and nothing here records how many
-passes make a verdict, or what a partial pass rate should block. The
-per-behaviour reporting rule above sharpens the framing without settling it:
-reading a distribution behind a single conjoined bit is the wrong measurement, so
-a verdict has to be read per behaviour across runs, but how many passing runs
-make one behaviour's verdict stays unrecorded.
+How many passing runs make one behaviour's verdict on a sampling surface stays
+unrecorded. The standing rule now settles *when* a behavioral eval runs (named
+signal only, never as the default ship gate); it does not settle how many
+clean draws a named eval needs before the change trusts it.
 
 How far the host's instructions and style moved the results the prose harness
 has already recorded is unmeasured.
@@ -251,7 +267,11 @@ has already recorded is unmeasured.
 ## Derived from
 
 - The repo-root instruction files, sections on regression test harnesses and on
-  shipping the tests a change needs.
+  shipping the tests a change needs, including the 2026-10-26 coverage rewrite
+  that made script tests the default and behavioral suites opt-in.
+- The 2026-10-25 to 2026-10-26 `task_auto_check` dry-run rollout campaign
+  (workspace timings and `results/existing_evals_rerun.run.log` under that
+  harness): cost and inconclusive-outcome shape that motivated the rewrite.
 - The repository's `tests/.gitignore` and `Makefile` lint targets for what is
   committed versus regenerated.
 - The `tests/` tree, read 10 August 2026 for the two patterns and the model

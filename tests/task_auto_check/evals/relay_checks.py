@@ -233,6 +233,7 @@ def prompts_isolated(proj: pathlib.Path, relay: pathlib.Path, stem: str) -> bool
                     or token.endswith("/task/SKILL.md")
                     or token.endswith(f"/{stem}/frozen-intent.txt")
                     or re.search(rf"/{re.escape(stem)}/r\d+-refuted-citations\.txt$", token)
+                    or re.search(rf"/{re.escape(stem)}/r\d+-dryrun\.txt$", token)
                 )
                 if not allowed:
                     return False

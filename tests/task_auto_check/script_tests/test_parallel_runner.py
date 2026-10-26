@@ -38,6 +38,7 @@ SERIAL = (
     "committed_rule_deletion_routed",
     "last_call_ready_refuted",
     "regate_isolated",
+    "dryrun_gap_confirmed",
 )
 
 DOC_LISTS = (

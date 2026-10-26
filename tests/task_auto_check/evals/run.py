@@ -17,7 +17,7 @@ The worker policy comes from `tests/lib/vendor.py`: the worker runs on
 Cursor by default (model `auto`), `--vendor claude` (model `sonnet`) runs
 where Claude is needed or asked for, and `--model ''` inherits the
 vendor CLI default. The harness micro-deploys the skill, the base `task`
-and `task_check` skills, and the five `auto_*_task` agents through the
+and `task_check` skills, and the six `auto_*_task` agents through the
 deploy script so named-agent runs stay hermetic, and records
 `artefacts_read_from_micro_deployment` in each `timing.json`.
 """
@@ -52,6 +52,7 @@ ARTEFACTS = [
     "task",
     "task_check",
     "auto_drift_task",
+    "auto_dryrun_task",
     "auto_gate_task",
     "auto_reviewer_task",
     "auto_shaper_task",
@@ -60,9 +61,10 @@ ARTEFACTS = [
 
 ISOLATION_PREFIX = "task_auto_check_"
 
-# Repair-class six plus the timeout-table full-repair peers. File order
-# matches evals.json. These jobs share the model in a way the pool cannot
-# isolate, so they run one at a time after the isolated pool finishes.
+# Repair-class six plus the timeout-table full-repair peers, ending with the
+# dry-run gap serial. File order matches evals.json. These jobs share the
+# model in a way the pool cannot isolate, so they run one at a time after
+# the isolated pool finishes.
 SERIAL_NESTED_LOOP_IDS = (
     "repair_to_ready",
     "relay_by_path",
@@ -76,6 +78,7 @@ SERIAL_NESTED_LOOP_IDS = (
     "committed_rule_deletion_routed",
     "last_call_ready_refuted",
     "regate_isolated",
+    "dryrun_gap_confirmed",
 )
 
 DEFAULT_IDS = eval_runner.load_eval_ids(THIS / "evals.json")
