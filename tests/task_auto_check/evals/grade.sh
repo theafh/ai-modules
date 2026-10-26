@@ -1207,7 +1207,7 @@ PY
     check "task remains status: checked at the cap" status_checked
     check "pathological objective is not silently rewritten" vague_goal_kept
     check "task lints clean" task_lints
-    note_agent_attest "response reports max rounds 2 rather than default cap 5"
+    note_agent_attest "response reports max rounds 2 rather than default cap 8"
     note_agent_attest "response stops at the cap and surfaces remaining issues as stuck"
     ;;
 

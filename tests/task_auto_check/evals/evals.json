@@ -300,7 +300,7 @@
         "evals/fixtures/cap_override/setup.sh"
       ],
       "expectations": [
-        "The response reports max rounds 2 rather than the default cap of 5.",
+        "The response reports max rounds 2 rather than the default cap of 8.",
         "The loop stops at the cap instead of continuing.",
         "The task remains checked if task_check still reports issues.",
         "The response surfaces the remaining issues as stuck."

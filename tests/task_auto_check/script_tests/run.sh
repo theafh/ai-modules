@@ -149,7 +149,7 @@ s3_reviewer_and_verifier_boundaries() {
 
 s4_loop_controls_and_boundaries() {
   local ok=true
-  assert_contains "default hard cap 5" "$SKILL" "Use a hard cap of 5 rounds" || ok=false
+  assert_contains "default hard cap 8" "$SKILL" "Use a hard cap of 8 rounds" || ok=false
   assert_contains "cap override" "$SKILL" "positive integer override" || ok=false
   assert_contains "scope/focus/complexity split boundary" "$SKILL" "scope-sizing, focus, or complexity defects" || ok=false
   assert_contains "split routed not applied" "$AGENTS_DIR/auto_verifier_task.md" "For \`task_auto_check\`, keep structural split proposals as human-routed summaries" || ok=false
