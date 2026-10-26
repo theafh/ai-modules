@@ -2,8 +2,8 @@
 description: "Add auto_dryrun_task to every task_auto_check round: before the gate it asks how implementing would go wrong (any work); gate confirms findings; Self-sufficiency only under the cite rule."
 scope: plugins/ai_dev
 created: 2026-10-24T20:48:07
-updated: 2026-10-26T08:06:37
-status: audited
+updated: 2026-10-26T09:27:51
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
