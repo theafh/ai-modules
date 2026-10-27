@@ -2,8 +2,8 @@
 description: "Narrow the Cursor scratch home's Library link to Library/Keychains so worker searches stop reaching other apps' data, and record the wiki passage rewrite and keychain-login evidence note."
 scope: tests/lib
 created: 2026-10-26T12:37:52
-updated: 2026-10-27T13:37:11
-status: audited
+updated: 2026-10-27T15:23:26
+status: finished
 implemented-by: Andreas Hoffmann
 design-extended: false
 reported-by: Andreas Hoffmann
@@ -17,7 +17,7 @@ Every Cursor eval worker that `tests/lib/micro_deploy.py` prepares gets a scratc
 
 ## Context
 
-- **Current mechanism.** `_link_library` in `tests/lib/micro_deploy.py` symlinks the scratch home's `Library` to the whole real `~/Library`, and `micro_deploy()` calls it for the Cursor vendor so the worker can reuse the stored login. The mechanism shipped with [the micro-deploy task](archive/tests_micro-deployed-eval-workers.md), whose verified finding was that an empty scratch `HOME` leaves the Cursor CLI logged out while a linked `Library` restores the login.
+- **Current mechanism.** `_link_library` in `tests/lib/micro_deploy.py` symlinks the scratch home's `Library` to the whole real `~/Library`, and `micro_deploy()` calls it for the Cursor vendor so the worker can reuse the stored login. The mechanism shipped with [the micro-deploy task](tests_micro-deployed-eval-workers.md), whose verified finding was that an empty scratch `HOME` leaves the Cursor CLI logged out while a linked `Library` restores the login.
 - **Why the whole link causes harm.** A worker that globs its own home (observed: a Glob rooted at the scratch home while resolving the `auto_drift_task` helper-agent name the harness declares, in the `mechanical_lint_ready` and `mechanical_lint_markdown` scenarios of `tests/task_auto_check/evals/run.py`) follows the link into the real `Library`. The Cursor CLI's bundled `rg` then touches every app container, and macOS raises one privacy check per container and process, attributed to the app at the top of the process chain. The link also exposes the user's Cursor app state (`Library/Application Support/Cursor/User/globalStorage/state.vscdb`, workspace storage) to workers, which weakens the isolation the micro-deploy exists for.
 - **What the login actually needs (verified 2026-10-26).** The Cursor CLI stores its credentials in the macOS login keychain (account `cursor-user`, services such as `cursor-access-token`) and reads them through `/usr/bin/security`. With `HOME` set to an empty directory, `security find-generic-password -a cursor-user -s cursor-access-token` exits 44 and `agent status` reports "Not logged in". With `HOME` set to a directory whose `Library/Keychains` links to the real one, both succeed (`agent status` reports logged in).
 - **Other Library reads in the CLI.** The CLI also looks for `Library/Application Support/Cursor/AgentStores`, falling back to a temporary store when it is absent, and for IDE workspace storage under `Library/Application Support/Cursor/User`, which is optional state. Neither is needed for login, per the CLI bundle's code; the live preflight in Acceptance confirms the fallback works.
