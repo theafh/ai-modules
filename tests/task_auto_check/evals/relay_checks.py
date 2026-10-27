@@ -202,20 +202,25 @@ def last_call(relay: pathlib.Path, task: pathlib.Path, check: str) -> bool:
 
 def scoped_inputs(relay: pathlib.Path, prompt: pathlib.Path) -> set[str]:
     # From round 2 a gate prompt also names the scoped re-check inputs: the
-    # last accepted gate return of an earlier round and that round's diff.
+    # accepted gate return the last applied repairs answered (the immediately
+    # preceding round's last accepted return) and that round's single diff.
     # A discarded isolation return stays out, like every other relay file.
     match = re.match(r"r(\d+)-gate", prompt.name)
     if not match:
         return set()
     current = int(match.group(1))
-    latest: dict[int, tuple[int, str]] = {}
+    prev = current - 1
+    if prev < 1:
+        return set()
+    latest: tuple[int, str] | None = None
     for gate in accepted_gates(relay):
         name = re.fullmatch(r"r(\d+)-gate(?:-(\d+))?\.txt", gate.name)
-        if name and int(name.group(1)) < current:
+        if name and int(name.group(1)) == prev:
             key = (int(name.group(2) or 1), gate.name)
-            latest[int(name.group(1))] = max(latest.get(int(name.group(1)), key), key)
-    allowed = {name for _, name in latest.values()}
-    allowed |= {f"r{n}-apply.diff.txt" for n in range(1, current)}
+            latest = key if latest is None else max(latest, key)
+    allowed = {f"r{prev}-apply.diff.txt"}
+    if latest is not None:
+        allowed.add(latest[1])
     return allowed
 
 

@@ -171,6 +171,48 @@ status: checked
         self.write("r2-gate-prompt.txt", scoped)
         self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
 
+    def test_scoped_gate_prompt_rejects_an_earlier_than_immediate_prior_return(self):
+        # A three-round relay: each of rounds 1 and 2 keeps an isolation
+        # replacement as its accepted return. Round 3 may name only round 2's
+        # accepted return and diff, not round 1's.
+        base = (f"task: tasks/{self.stem}.md\nbase: /skills/task/SKILL.md\n"
+                "task_check: /skills/task_check/SKILL.md\n"
+                f"intent: {self.relay}/frozen-intent.txt\n"
+                f"root: {self.proj}\n")
+        self.write("r1-gate-prompt.txt", base + f"dryrun: {self.relay}/r1-dryrun.txt\n")
+        self.write("r1-gate.txt", """# auto_gate_task verdict
+status: checked
+## Evidence
+- isolation: listed relay paths
+""")
+        self.gate("r1-gate-2.txt", "checked", "1. Body preservation has no proof.")
+        self.write("r1-apply.diff.txt", "@@ -1 +1 @@\n")
+        self.write("r2-gate-prompt.txt", base + (
+            f"dryrun: {self.relay}/r2-dryrun.txt\n"
+            f"prior: {self.relay}/r1-gate-2.txt\n"
+            f"diff: {self.relay}/r1-apply.diff.txt\n"
+        ))
+        self.write("r2-gate.txt", """# auto_gate_task verdict
+status: checked
+## Evidence
+- isolation: listed relay paths
+""")
+        self.gate("r2-gate-2.txt", "checked", "1. Header preservation has no proof.")
+        self.write("r2-apply.diff.txt", "@@ -2 +2 @@\n")
+        immediate = base + (
+            f"dryrun: {self.relay}/r3-dryrun.txt\n"
+            f"prior: {self.relay}/r2-gate-2.txt\n"
+            f"diff: {self.relay}/r2-apply.diff.txt\n"
+        )
+        self.write("r3-gate-prompt.txt", immediate)
+        self.assertTrue(checks.prompts_isolated(self.proj, self.relay, self.stem))
+        both_priors = immediate + f"earlier: {self.relay}/r1-gate-2.txt\n"
+        self.write("r3-gate-prompt.txt", both_priors)
+        self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
+        old_diff = immediate + f"old_diff: {self.relay}/r1-apply.diff.txt\n"
+        self.write("r3-gate-prompt.txt", old_diff)
+        self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
+
     def test_rule_approval_needs_proof_for_its_own_subject(self):
         self.gate("r1-gate.txt", "checked", "1. Body preservation has no proof.")
         text = """## Approved edits

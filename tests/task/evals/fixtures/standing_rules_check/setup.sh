@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # standing_rules_check fixture: root harness rule files only, with one
 # otherwise-ready task that copies the toolchain convention verbatim.
-# task_check must flag the copied rule as Restated standing rules and
-# withhold ready.
+# task_check must flag the copied rule as Restated standing rules under
+# ## Notes and stamp ready.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
