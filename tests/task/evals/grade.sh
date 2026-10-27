@@ -1110,8 +1110,8 @@ case "$eval_id" in
     check "read-only stamp: the body is byte-identical to the seed"          body_unchanged "$rel"
     check "the task still lints clean"                                      lint_no_blocking
     note_agent_attest "a numbered issue names the guardrail entry ('never passes a manifest that lacks a required field') as an in-scope requirement miscategorized into the **Out of scope:** block, with the fix relocating it to Goal, Approach, or Acceptance"
-    note_agent_attest "a numbered issue names the 'is not an exclusion' line as a meta note that belongs out of the block, with the fix dropping it"
-    note_agent_attest "both findings are contradiction-rank and route disposition through the base Decide or label rule rather than a newly invented one"
+    note_agent_attest "the '## Notes' section, not a numbered issue, names the 'is not an exclusion' line as a meta note that belongs out of the block, with the fix dropping it"
+    note_agent_attest "the guardrail finding is contradiction-rank and routes disposition through the base Decide or label rule rather than a newly invented one"
     note_agent_attest "the findings cite the base **Declare exclusions as an Out of scope boundary** rule as the source, not a sibling copy"
     ;;
 

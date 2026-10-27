@@ -10,9 +10,11 @@
 #   2. a meta note asserting that something is NOT excluded — noise in a block
 #      that records work-not-done.
 #
-# The extended <readiness_checklist> Contradictions lens must surface both as
-# contradiction-rank findings routed through Decide or label, and task_check
-# must withhold ready (stamp checked) while leaving the body untouched.
+# The extended <readiness_checklist> Contradictions lens must surface entry 1
+# as a contradiction-rank issue routed through Decide or label and record
+# entry 2 under ## Notes (the Blocking bar finds no wrong result in it), and
+# task_check must withhold ready (stamp checked) on entry 1 while leaving the
+# body untouched.
 #
 # The task is deliberately additive — it creates a script, a Make target, and
 # fixtures that do not exist yet — so the premise check verifies against an

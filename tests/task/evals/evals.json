@@ -34,7 +34,7 @@
         "The response leads with a '# General assessment' heading and one short readiness paragraph.",
         "The response has a '## Issues' section.",
         "Because the task is under-specified, the Issues section is NOT 'No issues found.' — it lists concrete problems (empty Approach/Acceptance, vague goal), ranked most-problematic-first.",
-        "Each issue follows the '**[short title]** — where it sits, what is wrong, the implementation impact, and the minimum fix' shape, locating the issue by label or unambiguous description (heading, tag, quoted phrase) per the soft-pointer rule.",
+        "Each issue follows the '**[short title]**: where it sits, what is wrong, the wrong result a literal implementer would produce, and the minimum fix' shape, locating the issue by label or unambiguous description (heading, tag, quoted phrase) per the soft-pointer rule.",
         "Issues are grounded against the repo (the checked file was actually read); an unverifiable suspicion appears only as a question in the general assessment, never as a numbered issue.",
         "Findings below the base Blocking bar, if any, sit in a '## Notes' section after the list — the numbered list carries blocking implementation-divergence risks exclusively.",
         "The task file is changed only to stamp status: checked and bump updated."
@@ -504,15 +504,15 @@
       "id": "check_exclusion_requirement",
       "skill": "task_check",
       "prompt": "Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it.",
-      "expected_output": "An otherwise-ready task files two entries in its `**Out of scope:**` block that the clarified rule keeps out: a guardrail the task itself builds (the script never passes a manifest lacking a required field) and a meta note asserting something is not excluded. The extended Contradictions lens surfaces both as contradiction-rank findings routed through Decide or label — relocate the requirement, drop the meta note — and task_check withholds ready (stamps checked) while leaving the body byte-identical.",
+      "expected_output": "An otherwise-ready task files two entries in its `**Out of scope:**` block that the clarified rule keeps out: a guardrail the task itself builds (the script never passes a manifest lacking a required field) and a meta note asserting something is not excluded. The extended Contradictions lens surfaces the guardrail entry as a blocking contradiction routed through Decide or label (relocate the requirement) and records the meta note under '## Notes' (drop it), because the base Blocking bar finds no wrong result in it. task_check withholds ready (stamps checked) on the guardrail issue while leaving the body byte-identical.",
       "files": [
         "evals/fixtures/check_exclusion_requirement/setup.sh"
       ],
       "expectations": [
         "A numbered issue names the guardrail entry ('never passes a manifest that lacks a required field') as an in-scope requirement miscategorized into the **Out of scope:** block, because the task does work to make that statement true.",
         "That issue's fix relocates the requirement to '## Goal', '## Approach', or '## Acceptance' rather than rewording it in place.",
-        "A numbered issue names the 'is not an exclusion' line as a meta note that a work-not-done block does not carry, with the fix dropping it.",
-        "Both findings are contradiction-rank and route disposition through the base Decide or label reconcile-or-surface rule rather than a newly invented one.",
+        "The '## Notes' section names the 'is not an exclusion' line as a meta note that a work-not-done block does not carry, with the fix dropping it, and no numbered issue carries it.",
+        "The guardrail finding is contradiction-rank and routes disposition through the base Decide or label reconcile-or-surface rule rather than a newly invented one.",
         "The findings cite the base **Declare exclusions as an Out of scope boundary** rule (its requirement test) as the source.",
         "The task is stamped status: checked and the body is preserved byte-for-byte — task_check reports, it does not repair.",
         "Issues are grounded in a written juxtaposition of each entry against the work the task actually does, not a prose impression."
