@@ -1220,3 +1220,16 @@ pre-existing, and the `size` infos on the grown entity pages stay advisory.
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing, and the new `size` info on `entities/sst-opencode.md` stays
 advisory.
+
+## [2026-10-27 13:18] ingest | Cursor keychain login probes 2026-10-26
+
+- raw/notes/cursor-keychain-login-probes-2026-10-26.md (new: the keychain
+  credential store, the empty-home and linked-`Library/Keychains` probe pair,
+  the optional AgentStores and IDE-state reads, and the live
+  `micro_deploy(..., preflight=True)` measurement with its open-handle
+  `Library` shape)
+- entities/cursor.md (the scratch-home passage states that a scratch `HOME`
+  authenticates with only Library/Keychains linked; the 2026-10-08 whole-
+  `Library` login claim is recorded as superseded, keeping that note's citation
+  for the scratch-home-state fact)
+- index.md (Last updated)

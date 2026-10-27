@@ -11,6 +11,7 @@ sources:
   - raw/notes/cursor-skill-shadowing-probes-2026-10-08.md
   - raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md
   - raw/notes/micro-deployed-worker-home-probes-2026-10-08.md
+  - raw/notes/cursor-keychain-login-probes-2026-10-26.md
   - raw/notes/cursor-helper-transcript-probes-2026-10-09.md
   - raw/notes/cursor-print-mode-shell-probes-2026-10-09.md
   - raw/notes/auto-check-open-weight-run-observations-2026-10-27.md
@@ -69,10 +70,13 @@ skill in the workspace's `.cursor/skills/` and no path in the prompt, the worker
 read the deployed copies. `CURSOR_CONFIG_DIR`, which the CLI reads before
 `XDG_CONFIG_HOME` for its configuration directory, kept authentication but left
 skill discovery on the home directory, where the CLI looks under `.cursor`,
-`.claude`, `.codex`, `.grok`, and `.agents`. A scratch `HOME` authenticated once
-its `Library` linked back to the real one, and a skill copied into that scratch
-home's `.cursor/skills/` was then the copy read when the prompt named it
+`.claude`, `.codex`, `.grok`, and `.agents`. A scratch `HOME` authenticates with only Library/Keychains linked, because the CLI reads its login keychain through `/usr/bin/security` and needs nothing else from the real `Library` ([keychain probes](../raw/notes/cursor-keychain-login-probes-2026-10-26.md)).
+The 2026-10-08 probes linked the whole `Library` instead, which established
+that a scratch `HOME` logs in and that a skill copied into that scratch home's
+`.cursor/skills/` was then the copy read when the prompt named it
 ([micro-home probes](../raw/notes/micro-deployed-worker-home-probes-2026-10-08.md)).
+The 2026-10-26 probes narrow the login mechanism to Library/Keychains alone and
+supersede that whole-`Library` claim.
 A skill the
 harness had not staged at all, such as a base skill the staged one reaches by
 name, resolved to its deployed copy as well

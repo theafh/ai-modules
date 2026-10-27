@@ -25,6 +25,77 @@ FAIL = 0
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 DEPLOY_LOG = REPO_ROOT / "deployment" / "deployed_artefacts.log"
 REAL_HOME = pathlib.Path.home()
+REAL_KEYCHAINS = REAL_HOME / "Library" / "Keychains"
+
+# The literal top-level ``Library`` entry set the helper's permanent shape
+# gives the Cursor scratch home. It mirrors micro_deploy._LIBRARY_LINK_NAMES,
+# and each expected name is asserted only when its own real target exists.
+LIBRARY_LINKS = ["Keychains"]
+# The real-``Library`` subtrees that hold other apps' state. No scratch-home
+# entry may resolve into one of them.
+APP_STATE_TREES = ("Application Support", "Containers", "Group Containers")
+
+
+def real_target_exists(name: str) -> bool:
+    """Whether this host's real ``~/Library/<name>`` exists.
+
+    ``Keychains`` reads through the module-level ``REAL_KEYCHAINS`` carrier, and
+    any other enrolled name through its own real-target path.
+    """
+
+    if name == "Keychains":
+        return REAL_KEYCHAINS.exists()
+    return (REAL_HOME / "Library" / name).exists()
+
+
+def enrolled_library_links() -> list[str]:
+    """The expected ``Library`` entries whose real target exists on this host."""
+
+    return [name for name in LIBRARY_LINKS if real_target_exists(name)]
+
+
+def entry_stays_out_of_app_state(
+    path: pathlib.Path, real_library: pathlib.Path
+) -> bool:
+    """A top-level ``Library`` entry links into the real tree, outside app state."""
+
+    if path.name in APP_STATE_TREES or not path.is_symlink():
+        return False
+    resolved = path.resolve()
+    try:
+        relative = resolved.relative_to(real_library)
+    except ValueError:
+        return False
+    return bool(relative.parts) and relative.parts[0] not in APP_STATE_TREES
+
+
+def check_library_shape(library: pathlib.Path, prefix: str) -> None:
+    """Assert the narrowed scratch-home ``Library`` shape and its entry set."""
+
+    expected = enrolled_library_links()
+    real_library = REAL_HOME / "Library"
+    is_real_dir = library.is_dir() and not library.is_symlink()
+    check(f"{prefix} Library is a real directory", is_real_dir)
+    if not is_real_dir:
+        return
+    entries = {path.name for path in library.iterdir()}
+    check(f"{prefix} Library entry set is {expected}", entries == set(expected))
+    for name in expected:
+        link = library / name
+        check(
+            f"{prefix} {name} links to the real {name}",
+            link.is_symlink()
+            and link.resolve() == (real_library / name).resolve(),
+        )
+    check(
+        f"{prefix} no Library entry lands in an app-state tree",
+        all(
+            entry_stays_out_of_app_state(path, real_library)
+            # The CLI may add its own state directory: it keeps no link out.
+            or not path.is_symlink()
+            for path in library.iterdir()
+        ),
+    )
 
 
 def check(label: str, cond: bool) -> None:
@@ -423,11 +494,9 @@ def test_worker_env_overlays() -> None:
                         "cursor HOME overlay",
                         handle.env.get("HOME") == str(handle.scratch_home),
                     )
-                    library = handle.scratch_home / "Library"
-                    check(
-                        "cursor Library linked when present",
-                        (not (REAL_HOME / "Library").exists())
-                        or library.is_symlink(),
+                    check_library_shape(
+                        handle.scratch_home / "Library",
+                        "Keychains linked when present (cursor)",
                     )
                 else:
                     check(
@@ -1144,6 +1213,7 @@ def test_helper_reads_reach_provenance() -> None:
 def test_auth_preflight_failure_surfaces_cli_message() -> None:
     real_run = subprocess.run
     real_mkdtemp = tempfile.mkdtemp
+    real_rmtree = shutil.rmtree
     created: list[pathlib.Path] = []
 
     def recording_mkdtemp(*args, **kwargs):
@@ -1156,12 +1226,38 @@ def test_auth_preflight_failure_surfaces_cli_message() -> None:
             return fake_result(1, "", "CLI says: please run agent login")
         return real_run(cmd, **kwargs)
 
+    real_home = micro_deploy._real_home
     with tempfile.TemporaryDirectory() as td:
         sandbox = pathlib.Path(td) / "proj"
         sandbox.mkdir()
+        # The seam points at a home holding no Library/Keychains entry, so the
+        # absent path's cleanup runs on every host.
+        absent_home = pathlib.Path(td) / "absent_home"
+        absent_home.mkdir()
+
+        # The present path's links, checked before the failing preflight reaches
+        # its scratch-home removal.
+        link_observed: dict[str, object] = {}
+
+        def watching_rmtree(path, *args, **kwargs):
+            if pathlib.Path(path) == link_observed.get("scratch"):
+                library = pathlib.Path(path) / "Library"
+                link_observed["links_present"] = [
+                    name
+                    for name in enrolled_library_links()
+                    if (library / name).is_symlink()
+                ]
+            return real_rmtree(path, *args, **kwargs)
+
+        def watching_mkdtemp(*args, **kwargs):
+            path = recording_mkdtemp(*args, **kwargs)
+            if "cursor" in pathlib.Path(path).name:
+                link_observed["scratch"] = pathlib.Path(path)
+            return path
 
         subprocess.run = selective_run  # type: ignore[assignment]
-        tempfile.mkdtemp = recording_mkdtemp  # type: ignore[assignment]
+        tempfile.mkdtemp = watching_mkdtemp  # type: ignore[assignment]
+        shutil.rmtree = watching_rmtree  # type: ignore[assignment]
         raised = None
         try:
             try:
@@ -1178,6 +1274,7 @@ def test_auth_preflight_failure_surfaces_cli_message() -> None:
         finally:
             subprocess.run = real_run  # type: ignore[assignment]
             tempfile.mkdtemp = real_mkdtemp  # type: ignore[assignment]
+            shutil.rmtree = real_rmtree  # type: ignore[assignment]
         scratch = [p for p in created if p.name.startswith("micro_deploy_cursor_")]
         check(
             "auth preflight surfaces CLI message",
@@ -1186,6 +1283,43 @@ def test_auth_preflight_failure_surfaces_cli_message() -> None:
         check(
             "failed preflight removes the scratch home",
             len(scratch) == 1 and not scratch[0].exists() and not scratch[0].is_symlink(),
+        )
+        check(
+            "failed preflight unlinks every enrolled Library link first",
+            link_observed.get("links_present") == [],
+        )
+
+        created.clear()
+        subprocess.run = selective_run  # type: ignore[assignment]
+        tempfile.mkdtemp = recording_mkdtemp  # type: ignore[assignment]
+        micro_deploy._real_home = lambda: absent_home  # type: ignore[assignment]
+        raised = None
+        try:
+            try:
+                micro_deploy.micro_deploy(
+                    "cursor",
+                    ["language_humanizer"],
+                    sandbox,
+                    preflight=True,
+                    bin_name="agent",
+                    model="auto",
+                )
+            except SystemExit as exc:
+                raised = str(exc)
+        finally:
+            micro_deploy._real_home = real_home  # type: ignore[assignment]
+            subprocess.run = real_run  # type: ignore[assignment]
+            tempfile.mkdtemp = real_mkdtemp  # type: ignore[assignment]
+        absent_scratch = [
+            p for p in created if p.name.startswith("micro_deploy_cursor_")
+        ]
+        check(
+            "absent Keychains preflight failure still surfaces the CLI message",
+            raised is not None and "please run agent login" in raised,
+        )
+        check(
+            "absent Keychains preflight failure removes the scratch home",
+            len(absent_scratch) == 1 and not absent_scratch[0].exists(),
         )
 
     created.clear()
@@ -1486,7 +1620,15 @@ def test_run_worker_returns_checkout_reads() -> None:
 
 
 def test_library_unlinked_before_removal() -> None:
+    """Every enrolled Library link is gone when the scratch tree is removed.
+
+    The present path runs against the real home, and the second deployment
+    points the ``_real_home()`` seam at a temporary directory with no
+    ``Library/Keychains`` entry, so the absent path is proven on every host.
+    """
+
     real_rmtree = shutil.rmtree
+    real_home = micro_deploy._real_home
     observed: dict[str, bool] = {}
     with tempfile.TemporaryDirectory() as td:
         sandbox = pathlib.Path(td) / "proj"
@@ -1496,13 +1638,17 @@ def test_library_unlinked_before_removal() -> None:
         )
         scratch = handle.scratch_home
         library = scratch / "Library"
-        real_library_present = (REAL_HOME / "Library").exists()
-        if real_library_present:
-            check("Library linked before close", library.is_symlink())
+        check_library_shape(
+            library, "Keychains linked before close (present)"
+        )
 
         def watching_rmtree(path, *args, **kwargs):
             if pathlib.Path(path) == scratch:
-                observed["link_present"] = library.is_symlink() or library.exists()
+                observed["links_present"] = [
+                    name
+                    for name in enrolled_library_links()
+                    if (library / name).is_symlink()
+                ]
             return real_rmtree(path, *args, **kwargs)
 
         shutil.rmtree = watching_rmtree  # type: ignore[assignment]
@@ -1511,12 +1657,45 @@ def test_library_unlinked_before_removal() -> None:
         finally:
             shutil.rmtree = real_rmtree  # type: ignore[assignment]
         check(
-            "Library unlinked before the scratch tree is removed",
-            observed.get("link_present") is False,
+            "Keychains unlinked before the scratch tree is removed",
+            observed.get("links_present") == [],
         )
         check("scratch gone after close", not scratch.exists())
-        if real_library_present:
-            check("real Library untouched by close", (REAL_HOME / "Library").is_dir())
+        if REAL_KEYCHAINS.exists():
+            check("real Keychains untouched by close", REAL_KEYCHAINS.is_dir())
+
+        # Absent path: a temporary real home holds no Library/Keychains entry.
+        absent_home = pathlib.Path(td) / "absent_home"
+        absent_home.mkdir()
+        micro_deploy._real_home = lambda: absent_home  # type: ignore[assignment]
+        absent_handle = None
+        try:
+            absent_handle = micro_deploy.micro_deploy(
+                "cursor", ["language_humanizer"], sandbox, preflight=False
+            )
+        except Exception as exc:  # noqa: BLE001 - report as a failed check
+            print(f"       {type(exc).__name__}: {exc}")
+        finally:
+            micro_deploy._real_home = real_home  # type: ignore[assignment]
+        check("absent Keychains deployment succeeds", absent_handle is not None)
+        if absent_handle is None:
+            return
+        absent_scratch = absent_handle.scratch_home
+        absent_library = absent_scratch / "Library"
+        check(
+            "absent Keychains leaves a real Library directory",
+            absent_library.is_dir() and not absent_library.is_symlink(),
+        )
+        check(
+            "absent Keychains leaves no top-level Library entry",
+            absent_library.is_dir() and not any(absent_library.iterdir()),
+        )
+
+        absent_handle.close()
+        check(
+            "absent Keychains close removes the scratch home without raising",
+            not absent_scratch.exists(),
+        )
 
 
 def main() -> int:

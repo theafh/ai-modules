@@ -163,14 +163,7 @@ class MicroDeployHandle:
         if self._closed:
             return
         self._closed = True
-        library = self.scratch_home / "Library"
-        if library.is_symlink() or library.exists():
-            try:
-                library.unlink()
-            except IsADirectoryError:
-                shutil.rmtree(library, ignore_errors=True)
-            except OSError:
-                pass
+        _unlink_library_links(self.scratch_home)
         shutil.rmtree(self.scratch_home, ignore_errors=True)
 
     def __enter__(self) -> MicroDeployHandle:
@@ -292,12 +285,50 @@ def _write_login_profiles(scratch_home: pathlib.Path) -> None:
         (scratch_home / name).write_text(_LOGIN_PROFILE_BODY)
 
 
-def _link_library(scratch_home: pathlib.Path) -> None:
-    real_library = pathlib.Path.home() / "Library"
-    link = scratch_home / "Library"
-    if not real_library.exists() or link.exists() or link.is_symlink():
-        return
-    link.symlink_to(real_library, target_is_directory=True)
+# The top-level ``Library`` entries the scratch home links into the real
+# ``~/Library``. ``Keychains`` carries the Cursor login and is always enrolled;
+# a sub-path a hardened acceptance measurement adds outside the app-state trees
+# joins this same set. Every enrolled name follows one when-present rule: its
+# link is created only when the real ``~/Library/<name>`` exists.
+_LIBRARY_LINK_NAMES: list[str] = ["Keychains"]
+
+
+def _real_home() -> pathlib.Path:
+    """The real home directory the scratch home links its login state from."""
+
+    return pathlib.Path.home()
+
+
+def _link_keychains(scratch_home: pathlib.Path) -> None:
+    """Give the scratch home a real ``Library`` holding the enrolled links.
+
+    The Cursor CLI reads its login through ``/usr/bin/security``, which looks
+    in ``Library/Keychains``, so linking that one entry restores the login
+    without exposing any other app's data under the real ``Library``.
+    """
+
+    library = scratch_home / "Library"
+    library.mkdir(parents=True, exist_ok=True)
+    for name in _LIBRARY_LINK_NAMES:
+        target = _real_home() / "Library" / name
+        link = library / name
+        if not target.exists() or link.exists() or link.is_symlink():
+            continue
+        link.symlink_to(target, target_is_directory=True)
+
+
+def _unlink_library_links(scratch_home: pathlib.Path) -> None:
+    """Remove every enrolled top-level ``Library`` link before the tree goes."""
+
+    library = scratch_home / "Library"
+    for name in _LIBRARY_LINK_NAMES:
+        link = library / name
+        if not link.is_symlink():
+            continue
+        try:
+            link.unlink()
+        except OSError:
+            pass
 
 
 def _preflight_auth(
@@ -329,9 +360,10 @@ def _preflight_auth(
     blob = (result.stdout + result.stderr).strip()
     if vendor.config(vendor_name).name == "cursor":
         remedy = (
-            "The scratch home borrows the Cursor login through its `Library` "
-            "link, so run `agent login` in an interactive terminal, or export "
-            "CURSOR_API_KEY where the login lives elsewhere on this platform."
+            "The scratch home borrows the Cursor login through its "
+            "`Library/Keychains` link, so run `agent login` in an interactive "
+            "terminal, or export CURSOR_API_KEY where the login lives "
+            "elsewhere on this platform."
         )
     else:
         remedy = (
@@ -383,7 +415,7 @@ def micro_deploy(
     log_path = scratch_home / "deployed_artefacts.log"
     try:
         if chosen.name == "cursor":
-            _link_library(scratch_home)
+            _link_keychains(scratch_home)
             _write_login_profiles(scratch_home)
 
         path_map: dict[str, pathlib.Path] = {}
@@ -442,13 +474,8 @@ def micro_deploy(
         return handle
     except BaseException:
         # BaseException, because a failed preflight leaves through sys.exit and
-        # the scratch home (with its Library link) must not outlive it.
-        library = scratch_home / "Library"
-        if library.is_symlink():
-            try:
-                library.unlink()
-            except OSError:
-                pass
+        # the scratch home (with its Keychains link) must not outlive it.
+        _unlink_library_links(scratch_home)
         shutil.rmtree(scratch_home, ignore_errors=True)
         raise
 

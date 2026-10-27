@@ -2,8 +2,8 @@
 description: Make a scoped `--uninstall` remove only the logged artefacts of the scope `--global` or `--project-dir DIR` names, deriving each entry's scope from its deployed path.
 scope: deployment
 created: 2026-10-07T08:53:36
-updated: 2026-10-27T10:43:49
-status: checked
+updated: 2026-10-27T13:44:35
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
