@@ -2,8 +2,8 @@
 description: Add `make update`, a log-driven deploy mode that redeploys each global or project scope the deploy log records, with its recorded targets and types, from this checkout.
 scope: deployment
 created: 2026-10-07T08:38:14
-updated: 2026-10-09T18:48:19
-status: open
+updated: 2026-10-27T16:21:32
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -19,7 +19,7 @@ Every deployed artefact is a copy, so it goes stale when its source changes. `de
 
 The Cursor output style makes project scopes routine. The `cursor)` case of the style branch in `install_for_app` writes the rule file that `generate_cursor_style_rule` builds only under `--project-dir`, and under `--global` it reports that Cursor has no machine-wide rule file that injects. So each repository that should carry the style holds its own copy, and a global deploy never refreshes it.
 
-The deploy log is the file `DEPLOYED_ARTIFACTS_LOG` names in `deployment/deployment.sh`. `append_deployed_artifact_log` writes one tab-separated line per deployed artefact: the deployed path (or `path[key]` for a JSON-merge entry), the target id, the type, the source path, and an optional prior value. `dedupe_deployed_artifact_log` sorts the file unique on exit. No field names the scope, but the deployed path implies it. [Limiting a scoped uninstall to its scope](deployment_uninstall-respects-scope.md) adds the helper that derives an entry's scope from that path, returning the global scope, a project directory, or no scope. This task follows that task and reuses its helper.
+The deploy log is the file `DEPLOYED_ARTIFACTS_LOG` names in `deployment/deployment.sh`. `append_deployed_artifact_log` writes one tab-separated line per deployed artefact: the deployed path (or `path[key]` for a JSON-merge entry), the target id, the type, the source path, and an optional prior value. `dedupe_deployed_artifact_log` sorts the file unique on exit. No field names the scope, but the deployed path implies it. [Limiting a scoped uninstall to its scope](archive/deployment_uninstall-respects-scope.md) adds the helper that derives an entry's scope from that path, returning the global scope, a project directory, or no scope. This task follows that task and reuses its helper.
 
 `uninstall_logged_artifacts` is the existing log-driven mode and the precedent for this one. It runs without a scope flag through the `NO_SCOPE_UNINSTALL` branch of the explicit-scope check, narrows by `--target` and `--type` through `logged_path_matches_active_targets` and `logged_type_matches_filter`, previews under `--dry-run`, and drops the entry of a logged path that is already gone. A log also outlives the scopes it names: a test run that deploys into a sandbox project and then deletes it leaves that project's entries behind.
 

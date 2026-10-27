@@ -31,7 +31,8 @@ set -euo pipefail
 #                    flag.
 #   --project-dir D  Deploy into a project directory instead of global config dirs
 #   --dry-run        Preview changes without applying them
-#   --uninstall      Remove previously deployed artifacts from deployed_artefacts.log
+#   --uninstall      Remove previously deployed artifacts from deployed_artefacts.log.
+#                    A scope flag limits removal to that scope; without one it covers every scope.
 #   --clear-backups  Remove old selected backups before creating new ones
 #   Logs deployed artifacts to deployed_artefacts.log with target/source metadata.
 #   Override the log path with DEPLOYED_ARTIFACTS_LOG so a test deployment can
@@ -97,7 +98,10 @@ Options:
   --project-dir DIR Deploy into a project directory instead of global config dirs.
                     Backups are disabled in this mode.
   --uninstall       Uninstall mode; remove matching logged deployed artifacts after backup.
-                    Can run without --global or --project-dir.
+                    A scope flag limits removal to that scope: --global removes only
+                    entries deployed into the global scope and --project-dir DIR only
+                    entries deployed into that project; a scopeless run covers every
+                    scope. Can run without --global or --project-dir.
   --clear-backups   Remove old backups for selected targets before creating new backups.
                     Without --global or --project-dir, clears backups and exits.
   --dry-run         Preview changes without applying them
@@ -2077,6 +2081,110 @@ logged_type_matches_filter() {
   matches_filter "$artifact_type" "$TYPE_FILTER"
 }
 
+# Derive the deployment scope of one logged entry from its deployed path and
+# target id. A path[key] JSON-merge entry is read from the settings file it
+# merges into.
+#
+# Prints the literal "global" when the path lies under one of the target's
+# global-form roots, the recovered absolute project directory when the path
+# lies under "<project>/<suffix>" for one of the target's project-relative
+# suffixes, and the empty string when it fits neither form. Always returns 0;
+# the outcome rides on the printed string alone, so the empty string means
+# "no derivable scope".
+#
+# The global-form roots are recomputed from HOME_DIR and the OS branch rather
+# than read from the scope-dependent *_DIR variables the project branch
+# reassigns, so the helper reads any logged line whichever scope wrote it.
+logged_path_scope() {
+  local raw_path="${1:-}"
+  local target_id="${2:-}"
+
+  local path="$raw_path"
+  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
+    path="${BASH_REMATCH[1]}"
+  fi
+
+  if [[ -z "$path" || -z "$target_id" ]]; then
+    printf ''
+    return 0
+  fi
+
+  # The OS branch picks the VS Code prompts root; the settings directory that
+  # holds it is the prompts root's parent. That root is a forward provision:
+  # no vscode merge writes a path[key] entry today, and the settings merges
+  # that will write one land in that same user settings file.
+  local vscode_prompts_root=""
+  if [[ "$OSTYPE" == darwin* ]]; then
+    vscode_prompts_root="${HOME_DIR}/Library/Application Support/Code/User/prompts"
+  else
+    vscode_prompts_root="${HOME_DIR}/.config/Code/User/prompts"
+  fi
+
+  # Per-target sets, laid out in the ASSET_FOLDERS "id|value" style. Bash 3.2
+  # has no associative arrays, so each entry carries its own target id. An
+  # unknown target id simply matches none of them.
+  local global_roots=(
+    "claude|${HOME_DIR}/.claude"
+    "cursor|${HOME_DIR}/.cursor"
+    "codex|${HOME_DIR}/.codex"
+    "antigravity|${HOME_DIR}/.gemini"
+    "opencode|${HOME_DIR}/.config/opencode"
+    "vscode|${HOME_DIR}/.copilot"
+    "vscode|${vscode_prompts_root}"
+    "vscode|${vscode_prompts_root%/*}"
+  )
+  local project_suffixes=(
+    "claude|.claude"
+    "cursor|.cursor"
+    "codex|.codex"
+    "codex|.agents/skills"
+    "antigravity|.agents"
+    "opencode|.opencode"
+    "vscode|.github"
+    "vscode|.github/prompts"
+  )
+
+  # Global form is tested before project form, so a path that fits both — as
+  # --project-dir "$HOME" produces — derives global.
+  local entry entry_id entry_root
+  for entry in "${global_roots[@]}"; do
+    entry_id="${entry%%|*}"
+    entry_root="${entry#*|}"
+    [[ "$entry_id" == "$target_id" ]] || continue
+    if [[ "$path" == "$entry_root" || "$path" == "$entry_root"/* ]]; then
+      printf 'global'
+      return 0
+    fi
+  done
+
+  # Project form: match the suffix at its LAST whole-component occurrence and
+  # return the prefix before it, so a project directory that itself ends in
+  # the suffix recovers at that directory rather than one level above it.
+  local suffix prefix path_len suffix_len i
+  for entry in "${project_suffixes[@]}"; do
+    entry_id="${entry%%|*}"
+    suffix="${entry#*|}"
+    [[ "$entry_id" == "$target_id" ]] || continue
+    path_len="${#path}"
+    suffix_len="${#suffix}"
+    for (( i = path_len - suffix_len; i >= 0; i-- )); do
+      [[ "${path:i:suffix_len}" == "$suffix" ]] || continue
+      prefix="${path:0:i}"
+      if [[ -z "$prefix" || "$prefix" != */ ]]; then
+        continue
+      fi
+      if [[ $((i + suffix_len)) -lt "$path_len" && "${path:i+suffix_len:1}" != "/" ]]; then
+        continue
+      fi
+      printf '%s' "${prefix%/}"
+      return 0
+    done
+  done
+
+  printf ''
+  return 0
+}
+
 remove_logged_path() {
   local path="$1"
   local prior_value="${2:-}"
@@ -2176,6 +2284,25 @@ uninstall_logged_artifacts() {
     if ! logged_type_matches_filter "$logged_type"; then
       remaining_entries+=("$logged_entry")
       continue
+    fi
+
+    # A scope flag limits the run to its own scope: an entry whose deployed
+    # path derives another scope, or no scope at all, stays deployed and in
+    # the log. A scopeless run keeps today's selection and reaches every
+    # scope, empty-string derived scopes included.
+    if [[ "$GLOBAL_MODE" == true || -n "$PROJECT_DIR" ]]; then
+      local logged_scope scope_selected=false
+      logged_scope="$(logged_path_scope "$logged_path" "$logged_target_id")"
+      if [[ "$GLOBAL_MODE" == true ]]; then
+        [[ "$logged_scope" == "global" ]] && scope_selected=true
+      elif [[ "$logged_scope" == "$PROJECT_DIR" ]]; then
+        scope_selected=true
+      fi
+      if ! $scope_selected; then
+        info "skip" "out-of-scope for this uninstall: $logged_path"
+        remaining_entries+=("$logged_entry")
+        continue
+      fi
     fi
 
     if $DRY_RUN; then

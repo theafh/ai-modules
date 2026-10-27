@@ -267,8 +267,11 @@ don't bring up new harnesses under Pattern B.
   execute the real deploy script, so they inherit its `jq`, `perl`, and
   `rsync` PATH gate. `script_tests/run.sh` covers the OpenCode, Antigravity,
   and bytecode-exclusion paths, the socket and FIFO backup copy, openrsync
-  vanished-file versus permission exit 23, the startup gate, and cleanup-only
-  `--clear-backups` skipping that gate;
+  vanished-file versus permission exit 23, the startup gate, cleanup-only
+  `--clear-backups` skipping that gate, scope-limited uninstall through a
+  shared three-scope fixture (a scope flag limits removal to that scope, a
+  scopeless run covers every scope, out-of-scope entries are reported and
+  kept), and the `logged_path_scope` helper's per-target derivation;
   `script_tests/style_run.sh` covers output-style deployment and uninstall.
 - **`trigger_evals/`**: a different axis from the rest, namely whether a
   skill's `description:` makes Claude load it on a realistic user message. Driven

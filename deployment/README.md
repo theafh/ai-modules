@@ -27,7 +27,7 @@ Run with no arguments to see help. Pass `--global` to deploy globally, or `--pro
 | `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`, `style`. Requires `--global` or `--project-dir` unless used with `--uninstall`. |
 | `--target TARGETS` | Comma-separated target filter: `vscode`, `cursor`, `claude`, `codex`, `antigravity`, `opencode`. |
 | `--only NAMES` | Deploy exactly the named artefacts. Each name is a skill directory basename, or an agent or style file basename without its extension. An unknown name, or a value that names no artefact, aborts the run, and a name that `--type` filters out stays valid. Requires `--global` or `--project-dir`, so `--uninstall` rejects the flag and a `--clear-backups` run without a scope stops with the missing-scope error. |
-| `--uninstall` | Remove previously deployed artifacts that match the active filters. Can run without `--global` or `--project-dir`; backups still run first unless combined with no-scope `--clear-backups`. |
+| `--uninstall` | Remove previously deployed artifacts that match the active filters. A scope flag limits removal to that scope: `--global` removes only entries deployed into the global scope, and `--project-dir DIR` only entries deployed into that project, while a scopeless run covers every scope. Can run without `--global` or `--project-dir`; backups still run first unless combined with no-scope `--clear-backups`. |
 | `--clear-backups` | Remove old managed backups for the selected targets before creating a fresh backup. Without `--global` or `--project-dir`, this clears matching global backups and exits before deploy. No effect in `--project-dir` mode. |
 | `--dry-run` | Preview backups, installs, and uninstall actions without writing changes. |
 | `-h`, `--help` | Show built-in help. |
@@ -142,7 +142,7 @@ The log is deduplicated on script exit. Dry runs do not modify it. Four-field li
 
 On the first write of a JSON key through `merge_json_key`, the previous value is recorded in that fifth field. A later redeploy of the same key reuses the first-recorded prior and does not re-sample the live settings value, so `sort -u` still collapses identical lines.
 
-`--uninstall` removes only log entries that match the active filters. Unmatched entries stay in the log. If a logged path is already gone, uninstall treats it as cleaned up and removes the log entry anyway. JSON-merge entries with a recorded prior restore that value (or delete the key when `@absent` was recorded). Legacy four-field `path[key]` lines still uninstall by stripping the key.
+A scope flag limits `--uninstall` to that scope — `--global` removes only entries deployed into the global scope and `--project-dir DIR` only entries deployed into that project — while a scopeless run covers every scope. Within the selected scope, uninstall removes the log entries that match the active filters; unmatched and out-of-scope entries stay in the log. If a logged path is already gone, uninstall treats it as cleaned up and removes the log entry anyway. JSON-merge entries with a recorded prior restore that value (or delete the key when `@absent` was recorded). Legacy four-field `path[key]` lines still uninstall by stripping the key.
 
 ## Write Behavior
 

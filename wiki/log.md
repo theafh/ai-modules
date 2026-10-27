@@ -1233,3 +1233,9 @@ advisory.
   `Library` login claim is recorded as superseded, keeping that note's citation
   for the scratch-home-state fact)
 - index.md (Last updated)
+
+## [2026-10-27 15:51] update | scope-limited uninstall on the deployment model page
+
+- concepts/deployment-model.md (overview and the uninstall section now state
+  that a scope flag limits uninstall to the scope it names while a scopeless
+  run covers every scope)

@@ -2,8 +2,8 @@
 description: Make the deploy script add or update only ai-modules' own hook entries in Codex, Claude Code and Cursor hook files, keep every foreign entry in place, and uninstall only its own.
 scope: deployment
 created: 2026-10-17T00:45:44
-updated: 2026-10-17T00:45:44
-status: open
+updated: 2026-10-27T16:21:32
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -62,7 +62,7 @@ Related tasks:
   built the first-write prior capture inside `merge_json_key` and the deploy
   log's fifth field. This task keeps that contract for scalar keys and gives
   hook keys an entry manifest instead.
-- [Uninstall respects scope](deployment_uninstall-respects-scope.md) derives each
+- [Uninstall respects scope](archive/deployment_uninstall-respects-scope.md) derives each
   log entry's scope from its deployed path, the `path[key]` form included, and
   edits `uninstall_logged_artifacts`, which this task edits too. Keeping hook
   entries in the `path[key]` form keeps that derivation valid, and whichever

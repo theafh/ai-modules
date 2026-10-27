@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-10-07
+updated: 2026-10-27
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -18,7 +18,8 @@ OpenAI Codex, Google Antigravity, and OpenCode. It runs in one of two scopes.
 Global mode writes into the user configuration directories, and project mode
 writes into a single project's own local configuration instead. The script
 records every path it wrote into `deployment/deployed_artefacts.log`, and
-uninstall works by replaying that log.
+uninstall replays that log: a scope flag limits removal to the scope it names,
+while a scopeless run covers every scope.
 
 The script exists because a marketplace install cannot reach everything. A
 plugin manifest delivers components, but it never writes a settings key and it
@@ -111,6 +112,11 @@ claim across repositories, and only an unconditional statement of the override r
 holds for the repositories a run cannot open.
 
 ### Uninstall restores the value it replaced
+
+Uninstall replays the deployed artefacts log, and a scope flag limits removal to
+the scope it names: `--global` removes only entries deployed into the global
+scope and `--project-dir DIR` only entries deployed into that project, while a
+run without either flag covers every scope.
 
 The deployed artefacts log is tab separated: destination, target, type, source,
 and an optional fifth field holding what the destination held before, with a

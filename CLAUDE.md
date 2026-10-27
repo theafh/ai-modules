@@ -48,7 +48,7 @@ Makefile                          # task entry point
 - `make help`: list every target.
 - `make lint` / `make fix`: runs `markdownlint`, `jq` syntax check, `shellcheck`. `fix` auto-fixes markdown only.
 - `make deploy`: copy components into vendor config dirs. Aliases: `global`, `install`. **Run only when the user asks for it.**
-- `make uninstall`: remove deployed artefacts via the deployment log.
+- `make uninstall`: remove deployed artefacts via the deployment log. A scope flag limits it to that scope (pass `--global` or `--project-dir DIR` to the script); a scopeless run covers every scope.
 
 `CHANGELOG.md` is git-history-derived. Update it only through the `update_changelog` skill, run on demand. Don't hand-edit CHANGELOG entries as part of other work. Committing the skill's output is fine.
 

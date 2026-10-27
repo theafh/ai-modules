@@ -2,7 +2,7 @@
 #
 # Targets:
 #   make deploy / global / install   deploy artefacts to global config dirs
-#   make uninstall                   remove previously deployed artefacts
+#   make uninstall                   remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 #   make clean                       remove managed deployment backups
 #   make lint                        report lint issues across md/json/sh
 #   make fix                         auto-fix lint issues where possible
@@ -49,7 +49,7 @@ deploy: ## Deploy artefacts to global config dirs (--global).
 global: deploy   ## Alias for `make deploy`.
 install: deploy  ## Alias for `make deploy`.
 
-uninstall: ## Remove previously deployed artefacts (--uninstall).
+uninstall: ## Remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope (--uninstall).
 	./deployment/deployment.sh --uninstall
 
 clean: ## Remove managed deployment backups (--clear-backups).

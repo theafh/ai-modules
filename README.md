@@ -206,7 +206,7 @@ Common workflows are wrapped in the [Makefile](Makefile):
 ```bash
 make help        # list targets
 make deploy      # deploy artefacts to global config dirs (aliases: global, install)
-make uninstall   # remove previously deployed artefacts
+make uninstall   # remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 make clean       # remove managed deployment backups
 make lint        # report lint issues across md / json / sh
 make fix         # auto-fix lint issues where possible (markdown only)

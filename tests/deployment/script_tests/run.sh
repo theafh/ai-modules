@@ -535,6 +535,357 @@ HOME="$cleanup_only_home" DEPLOYED_ARTIFACTS_LOG="${SCRATCH}/only-cleanup.log" \
 [[ ! -e "$cleanup_only_backup" ]] ||
   fail "cleanup-only --clear-backups should remove the planted managed backup"
 
+# ---------------------------------------------------------------------------
+# Scoped --uninstall limits removal to the scope it names.
+#
+# The shared fixture deploys the language_humanizer skill for the claude
+# target into the scratch home (global scope) and into two scratch projects,
+# staged afresh before each consuming scenario, so every scenario observes the
+# copies and log entries it asserts on. A dry run reports what it would remove
+# on the would-rm, would-strip, and would-restore labels; an entry the run
+# leaves unselected stays out of that listing and is reported on the skip
+# label as "out-of-scope for this uninstall: <logged path>".
+# ---------------------------------------------------------------------------
+SCOPE_HOME="${SCRATCH}/scope-home"
+SCOPE_P1="${SCRATCH}/scope-p1"
+SCOPE_P2="${SCRATCH}/scope-p2"
+SCOPE_LOG="${SCRATCH}/scope-deployed.log"
+SCOPE_SKILL="language_humanizer"
+SCOPE_HOME_DEST="${SCOPE_HOME}/.claude/skills/${SCOPE_SKILL}"
+SCOPE_P1_DEST="${SCOPE_P1}/.claude/skills/${SCOPE_SKILL}"
+SCOPE_P2_DEST="${SCOPE_P2}/.claude/skills/${SCOPE_SKILL}"
+SCOPE_HOME_KEY="${SCOPE_HOME}/.claude/settings.json[outputStyle]"
+SCOPE_P1_KEY="${SCOPE_P1}/.claude/settings.json[outputStyle]"
+SCOPE_P2_KEY="${SCOPE_P2}/.claude/settings.json[outputStyle]"
+
+scope_deploy() {
+  HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" "$@" \
+    --target claude --type skill --only "$SCOPE_SKILL" >/dev/null
+}
+
+scope_stage_all() {
+  mkdir -p "$SCOPE_HOME" "$SCOPE_P1" "$SCOPE_P2"
+  rm -f "$SCOPE_LOG"
+  rm -rf "$SCOPE_HOME/.claude" "$SCOPE_P1/.claude" "$SCOPE_P2/.claude"
+  scope_deploy --global
+  scope_deploy --project-dir "$SCOPE_P1"
+  scope_deploy --project-dir "$SCOPE_P2"
+  assert_file "$SCOPE_HOME_DEST/SKILL.md"
+  assert_file "$SCOPE_P1_DEST/SKILL.md"
+  assert_file "$SCOPE_P2_DEST/SKILL.md"
+}
+
+scope_uninstall() {
+  HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" "$@" \
+    --target claude --type skill --uninstall
+}
+
+scope_uninstall_dry() {
+  HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" "$@" \
+    --target claude --type skill --uninstall --dry-run
+}
+
+assert_scope_reported() {
+  local output="$1" path="$2"
+  printf '%s\n' "$output" | grep -Fq "out-of-scope for this uninstall: $path" ||
+    fail "expected out-of-scope report for $path, got: $output"
+}
+
+assert_unlisted() {
+  local output="$1" path="$2"
+  if printf '%s\n' "$output" | grep -E 'would-(rm|strip|restore)' | grep -Fq -- "$path"; then
+    fail "expected $path to stay out of the removal listing, got: $output"
+  fi
+}
+
+assert_log_has() {
+  grep -Fq -- "$1" "$SCOPE_LOG" || fail "expected the deploy log to keep $1"
+}
+
+assert_log_lacks() {
+  if grep -Fq -- "$1" "$SCOPE_LOG"; then
+    fail "expected the deploy log to drop $1"
+  fi
+}
+
+# --project-dir <first project> removes only that project.
+scope_stage_all
+scope_uninstall --project-dir "$SCOPE_P1" >/dev/null
+[[ ! -e "$SCOPE_P1_DEST" ]] || fail "project uninstall should remove the first project's copy"
+assert_file "$SCOPE_HOME_DEST/SKILL.md"
+assert_file "$SCOPE_P2_DEST/SKILL.md"
+assert_log_lacks "$SCOPE_P1_DEST"
+assert_log_has "$SCOPE_HOME_DEST"
+assert_log_has "$SCOPE_P2_DEST"
+
+# --global removes only the global scope and reports the mismatched entry.
+scope_stage_all
+global_out="$(scope_uninstall --global)"
+[[ ! -e "$SCOPE_HOME_DEST" ]] || fail "global uninstall should remove the global copy"
+assert_file "$SCOPE_P1_DEST/SKILL.md"
+assert_file "$SCOPE_P2_DEST/SKILL.md"
+assert_log_lacks "$SCOPE_HOME_DEST"
+assert_log_has "$SCOPE_P1_DEST"
+assert_log_has "$SCOPE_P2_DEST"
+assert_scope_reported "$global_out" "$SCOPE_P1_DEST"
+
+# --project-dir dry run lists exactly the first project's copy.
+scope_stage_all
+p1_dry="$(scope_uninstall_dry --project-dir "$SCOPE_P1")"
+[[ "$(printf '%s\n' "$p1_dry" | grep -c 'would-rm' || true)" -eq 1 ]] ||
+  fail "project dry run should list exactly one would-rm, got: $p1_dry"
+printf '%s\n' "$p1_dry" | grep 'would-rm' | grep -Fq -- "$SCOPE_P1_DEST" ||
+  fail "project dry run should name the first project's copy, got: $p1_dry"
+assert_unlisted "$p1_dry" "$SCOPE_HOME_DEST"
+assert_unlisted "$p1_dry" "$SCOPE_P2_DEST"
+
+# --global dry run lists exactly the global copy.
+scope_stage_all
+global_dry="$(scope_uninstall_dry --global)"
+[[ "$(printf '%s\n' "$global_dry" | grep -c 'would-rm' || true)" -eq 1 ]] ||
+  fail "global dry run should list exactly one would-rm, got: $global_dry"
+printf '%s\n' "$global_dry" | grep 'would-rm' | grep -Fq -- "$SCOPE_HOME_DEST" ||
+  fail "global dry run should name the global copy, got: $global_dry"
+assert_unlisted "$global_dry" "$SCOPE_P1_DEST"
+assert_unlisted "$global_dry" "$SCOPE_P2_DEST"
+
+# Its own fixture: a four-field style path[key] entry for the global settings
+# file and for each project's settings file.
+scope_stage_settings() {
+  mkdir -p "$SCOPE_HOME/.claude" "$SCOPE_P1/.claude" "$SCOPE_P2/.claude"
+  rm -f "$SCOPE_LOG"
+  printf '%s\n' '{"outputStyle":"home-prior"}' > "$SCOPE_HOME/.claude/settings.json"
+  printf '%s\n' '{"outputStyle":"p1-prior"}' > "$SCOPE_P1/.claude/settings.json"
+  printf '%s\n' '{"outputStyle":"p2-prior"}' > "$SCOPE_P2/.claude/settings.json"
+}
+
+scope_stage_settings
+{
+  printf '%s\t%s\t%s\t%s\n' "$SCOPE_HOME_KEY" claude style styles/natural-language.md
+  printf '%s\t%s\t%s\t%s\n' "$SCOPE_P1_KEY" claude style styles/natural-language.md
+  printf '%s\t%s\t%s\t%s\n' "$SCOPE_P2_KEY" claude style styles/natural-language.md
+} >> "$SCOPE_LOG"
+style_dry="$(
+  HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$SCOPE_P1" \
+    --target claude --type style --uninstall --dry-run
+)"
+[[ "$(printf '%s\n' "$style_dry" | grep -c 'would-strip' || true)" -eq 1 ]] ||
+  fail "four-field style dry run should list exactly one would-strip, got: $style_dry"
+printf '%s\n' "$style_dry" | grep 'would-strip' | grep -Fq -- "$SCOPE_P1_KEY" ||
+  fail "four-field style dry run should name the first project's key, got: $style_dry"
+assert_unlisted "$style_dry" "$SCOPE_HOME_KEY"
+assert_unlisted "$style_dry" "$SCOPE_P2_KEY"
+assert_log_has "$SCOPE_HOME_KEY"
+assert_log_has "$SCOPE_P2_KEY"
+
+# Its own fixture: two five-field style path[key] entries, one per scope.
+scope_stage_settings
+{
+  printf '%s\t%s\t%s\t%s\t%s\n' "$SCOPE_HOME_KEY" claude style styles/natural-language.md '"home-prior"'
+  printf '%s\t%s\t%s\t%s\t%s\n' "$SCOPE_P1_KEY" claude style styles/natural-language.md '"p1-prior"'
+} >> "$SCOPE_LOG"
+restore_dry="$(
+  HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$SCOPE_P1" \
+    --target claude --type style --uninstall --dry-run
+)"
+[[ "$(printf '%s\n' "$restore_dry" | grep -c 'would-restore' || true)" -eq 1 ]] ||
+  fail "five-field style dry run should list exactly one would-restore, got: $restore_dry"
+printf '%s\n' "$restore_dry" | grep 'would-restore' | grep -Fq -- "$SCOPE_P1_KEY" ||
+  fail "five-field style dry run should name the first project's key, got: $restore_dry"
+assert_unlisted "$restore_dry" "$SCOPE_HOME_KEY"
+
+# Same five-field fixture, real run: the first project's entry leaves the log
+# and the global line survives verbatim with its prior.
+scope_stage_settings
+{
+  printf '%s\t%s\t%s\t%s\t%s\n' "$SCOPE_HOME_KEY" claude style styles/natural-language.md '"home-prior"'
+  printf '%s\t%s\t%s\t%s\t%s\n' "$SCOPE_P1_KEY" claude style styles/natural-language.md '"p1-prior"'
+} >> "$SCOPE_LOG"
+HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$SCOPE_P1" \
+  --target claude --type style --uninstall >/dev/null
+assert_log_lacks "$SCOPE_P1_KEY"
+global_line="$(printf '%s\t%s\t%s\t%s\t%s' "$SCOPE_HOME_KEY" claude style styles/natural-language.md '"home-prior"')"
+grep -Fxq -- "$global_line" "$SCOPE_LOG" ||
+  fail "the unselected global five-field line must survive verbatim"
+
+# A scopeless --uninstall still reaches every scope.
+scope_stage_all
+scope_uninstall >/dev/null
+[[ ! -e "$SCOPE_HOME_DEST" ]] || fail "scopeless uninstall should remove the global copy"
+[[ ! -e "$SCOPE_P1_DEST" ]] || fail "scopeless uninstall should remove the first project's copy"
+[[ ! -e "$SCOPE_P2_DEST" ]] || fail "scopeless uninstall should remove the second project's copy"
+assert_log_lacks "$SCOPE_HOME_DEST"
+assert_log_lacks "$SCOPE_P1_DEST"
+assert_log_lacks "$SCOPE_P2_DEST"
+
+# A neither-form entry under --global is reported and kept.
+SCOPE_NEITHER="${SCRATCH}/scope-neither/outside/${SCOPE_SKILL}"
+mkdir -p "$SCOPE_NEITHER"
+rm -f "$SCOPE_LOG"
+printf '%s\t%s\t%s\t%s\n' "$SCOPE_NEITHER" claude skill styles/natural-language.md > "$SCOPE_LOG"
+neither_global_out="$(scope_uninstall --global)"
+assert_scope_reported "$neither_global_out" "$SCOPE_NEITHER"
+[[ -e "$SCOPE_NEITHER" ]] || fail "a neither-form path should stay in place under --global uninstall"
+assert_log_has "$SCOPE_NEITHER"
+
+# A retired-target, neither-form entry under --global with no --target filter
+# prints its stale line and the scope report, and stays.
+SCOPE_RETIRED="${SCRATCH}/scope-neither/retired/${SCOPE_SKILL}"
+mkdir -p "$SCOPE_RETIRED"
+rm -f "$SCOPE_LOG"
+printf '%s\t%s\t%s\t%s\n' "$SCOPE_RETIRED" retiredtool skill styles/natural-language.md > "$SCOPE_LOG"
+retired_global_out="$(
+  HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type skill --uninstall
+)"
+printf '%s\n' "$retired_global_out" | grep -Fq "targets removed app 'retiredtool'" ||
+  fail "retired-target global run should print the stale line, got: $retired_global_out"
+assert_scope_reported "$retired_global_out" "$SCOPE_RETIRED"
+[[ -e "$SCOPE_RETIRED" ]] || fail "a retired-target neither-form path should stay under --global"
+assert_log_has "$SCOPE_RETIRED"
+
+# A scopeless --uninstall still removes that retired-target entry.
+rm -f "$SCOPE_LOG"
+printf '%s\t%s\t%s\t%s\n' "$SCOPE_RETIRED" retiredtool skill styles/natural-language.md > "$SCOPE_LOG"
+retired_dry="$(
+  HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --type skill --uninstall --dry-run
+)"
+printf '%s\n' "$retired_dry" | grep -E 'would-(rm|strip|restore)' | grep -Fq -- "$SCOPE_RETIRED" ||
+  fail "scopeless dry run should list the retired-target entry, got: $retired_dry"
+HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --type skill --uninstall >/dev/null
+[[ ! -e "$SCOPE_RETIRED" ]] || fail "scopeless uninstall should remove the retired-target path"
+assert_log_lacks "$SCOPE_RETIRED"
+
+# A neither-form entry under --project-dir is reported and kept.
+mkdir -p "$SCOPE_NEITHER"
+rm -f "$SCOPE_LOG"
+printf '%s\t%s\t%s\t%s\n' "$SCOPE_NEITHER" claude skill styles/natural-language.md > "$SCOPE_LOG"
+neither_project_out="$(scope_uninstall --project-dir "$SCOPE_P1")"
+assert_scope_reported "$neither_project_out" "$SCOPE_NEITHER"
+[[ -e "$SCOPE_NEITHER" ]] || fail "a neither-form path should stay in place under --project-dir uninstall"
+assert_log_has "$SCOPE_NEITHER"
+
+# Under --project-dir the global copy and the second project's copy are each
+# reported and kept.
+scope_stage_all
+project_out="$(scope_uninstall --project-dir "$SCOPE_P1")"
+assert_scope_reported "$project_out" "$SCOPE_HOME_DEST"
+assert_scope_reported "$project_out" "$SCOPE_P2_DEST"
+assert_file "$SCOPE_HOME_DEST/SKILL.md"
+assert_file "$SCOPE_P2_DEST/SKILL.md"
+assert_log_has "$SCOPE_HOME_DEST"
+assert_log_has "$SCOPE_P2_DEST"
+
+# A scopeless --uninstall still removes a neither-form entry for a live target.
+mkdir -p "$SCOPE_NEITHER"
+rm -f "$SCOPE_LOG"
+printf '%s\t%s\t%s\t%s\n' "$SCOPE_NEITHER" claude skill styles/natural-language.md > "$SCOPE_LOG"
+live_dry="$(
+  HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --target claude --type skill --uninstall --dry-run
+)"
+printf '%s\n' "$live_dry" | grep -E 'would-(rm|strip|restore)' | grep -Fq -- "$SCOPE_NEITHER" ||
+  fail "scopeless dry run should list the neither-form entry, got: $live_dry"
+HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --target claude --type skill --uninstall >/dev/null
+[[ ! -e "$SCOPE_NEITHER" ]] || fail "scopeless uninstall should remove the neither-form path"
+assert_log_lacks "$SCOPE_NEITHER"
+
+# ---------------------------------------------------------------------------
+# logged_path_scope derives a logged entry's scope from its deployed path and
+# target id, through the style_run.sh sourcing pattern (argv + scratch HOME).
+# ---------------------------------------------------------------------------
+SCOPE_HELPER_LOG="${SCRATCH}/scope-helper.log"
+
+scope_helper_result() {  # path target argv...
+  local path="$1" target_id="$2"
+  shift 2
+  (
+    # shellcheck disable=SC2034
+    DEPLOYMENT_SH_SKIP_MAIN=1
+    # shellcheck disable=SC2034
+    HOME="$SCOPE_HOME"
+    # shellcheck disable=SC2034
+    DEPLOYED_ARTIFACTS_LOG="$SCOPE_HELPER_LOG"
+    # shellcheck source=/dev/null
+    source "$DEPLOY_SCRIPT"
+    local value rc
+    value="$(logged_path_scope "$path" "$target_id")"
+    rc=$?
+    printf '%s\t%s' "$rc" "$value"
+  )
+}
+
+scope_helper_assert() {  # label want path target argv...
+  local label="$1" want="$2" path="$3" target_id="$4"
+  shift 4
+  local rc value
+  IFS=$'\t' read -r rc value <<< "$(scope_helper_result "$path" "$target_id" "$@")" || true
+  [[ "$rc" == "0" ]] || fail "logged_path_scope [$label] returned status $rc"
+  [[ "$value" == "$want" ]] || fail "logged_path_scope [$label]: got '$value' want '$want'"
+}
+
+mkdir -p "$SCOPE_HOME/.claude" "$SCOPE_P1/.claude" "$SCOPE_P2/.claude"
+
+SCOPE_VSCODE_PROMPTS="$SCOPE_HOME/Library/Application Support/Code/User/prompts"
+case "$OSTYPE" in
+  darwin*) ;;
+  *) SCOPE_VSCODE_PROMPTS="$SCOPE_HOME/.config/Code/User/prompts" ;;
+esac
+SCOPE_VSCODE_SETTINGS_DIR="${SCOPE_VSCODE_PROMPTS%/*}"
+
+# Project form: every project-relative suffix the # Target directories block
+# appends for each target.
+scope_helper_assert "claude project root" "$SCOPE_P1" "$SCOPE_P1/.claude/skills/$SCOPE_SKILL" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "claude second project" "$SCOPE_P2" "$SCOPE_P2/.claude/skills/$SCOPE_SKILL" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "cursor project" "$SCOPE_P1" "$SCOPE_P1/.cursor/rules/x" cursor --project-dir "$SCOPE_P1"
+scope_helper_assert "codex project .codex" "$SCOPE_P1" "$SCOPE_P1/.codex/x" codex --project-dir "$SCOPE_P1"
+scope_helper_assert "codex project agents skills" "$SCOPE_P1" "$SCOPE_P1/.agents/skills/x" codex --project-dir "$SCOPE_P1"
+scope_helper_assert "antigravity project" "$SCOPE_P1" "$SCOPE_P1/.agents/skills/x" antigravity --project-dir "$SCOPE_P1"
+scope_helper_assert "opencode project" "$SCOPE_P1" "$SCOPE_P1/.opencode/x" opencode --project-dir "$SCOPE_P1"
+scope_helper_assert "vscode project github" "$SCOPE_P1" "$SCOPE_P1/.github/x" vscode --project-dir "$SCOPE_P1"
+scope_helper_assert "vscode project prompts" "$SCOPE_P1" "$SCOPE_P1/.github/prompts/x" vscode --project-dir "$SCOPE_P1"
+
+# Global form: every global-form root per target.
+scope_helper_assert "claude global root" global "$SCOPE_HOME/.claude/skills/$SCOPE_SKILL" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "cursor global root" global "$SCOPE_HOME/.cursor/x" cursor --project-dir "$SCOPE_P1"
+scope_helper_assert "codex global root" global "$SCOPE_HOME/.codex/x" codex --project-dir "$SCOPE_P1"
+scope_helper_assert "antigravity global root" global "$SCOPE_HOME/.gemini/x" antigravity --project-dir "$SCOPE_P1"
+scope_helper_assert "opencode global root" global "$SCOPE_HOME/.config/opencode/x" opencode --project-dir "$SCOPE_P1"
+scope_helper_assert "vscode copilot root" global "$SCOPE_HOME/.copilot/x" vscode --project-dir "$SCOPE_P1"
+scope_helper_assert "vscode prompts root" global "$SCOPE_VSCODE_PROMPTS/x" vscode --project-dir "$SCOPE_P1"
+scope_helper_assert "vscode settings key" global "$SCOPE_VSCODE_SETTINGS_DIR/settings.json[outputStyle]" vscode --project-dir "$SCOPE_P1"
+
+# Neither form, and an unknown target id, derive the empty string.
+scope_helper_assert "claude neither form" "" "${SCRATCH}/scope-helper/elsewhere/$SCOPE_SKILL" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "unknown target" "" "$SCOPE_HOME/.claude/x" retiredtool --project-dir "$SCOPE_P1"
+
+# The helper ignores the scope flags: --global argv derives the same scopes.
+scope_helper_assert "global argv first project" "$SCOPE_P1" "$SCOPE_P1/.claude/skills/$SCOPE_SKILL" claude --global
+scope_helper_assert "global argv global root" global "$SCOPE_HOME/.claude/skills/$SCOPE_SKILL" claude --global
+
+# A path equal to a root, a suffixed path, the HOME-sibling beside a root, and
+# --project-dir "$HOME" (which fits both forms, so the global test wins).
+scope_helper_assert "claude root equal" global "$SCOPE_HOME/.claude" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "claude root key" global "$SCOPE_HOME/.claude/settings.json[outputStyle]" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "project root equal" "$SCOPE_P1" "$SCOPE_P1/.claude" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "project root key" "$SCOPE_P1" "$SCOPE_P1/.claude/settings.json[outputStyle]" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "home sibling beside root" "" "$SCOPE_HOME/.claudex/x" claude --project-dir "$SCOPE_P1"
+scope_helper_assert "HOME as project dir" global "$SCOPE_HOME/.claude" claude --project-dir "$SCOPE_HOME"
+
+# A project directory that itself ends in the suffix recovers at that
+# directory, not one level above it.
+scope_helper_assert "repeated suffix" "$SCOPE_P1/.claude" \
+  "$SCOPE_P1/.claude/.claude/skills/$SCOPE_SKILL" claude --project-dir "$SCOPE_P1/.claude"
+
 printf 'OpenCode deployment regression passed\n'
 printf 'Antigravity deployment regression passed\n'
 printf 'Python bytecode exclusion regression passed\n'
@@ -546,3 +897,5 @@ printf 'DEPLOYED_ARTIFACTS_LOG override and --only regression passed\n'
 printf 'Unknown --only name and --only with --uninstall abort regression passed\n'
 printf 'Empty --only value abort regression passed\n'
 printf 'Cleanup-only --clear-backups with --only stops for a missing scope regression passed\n'
+printf 'Scoped --uninstall limits removal to the scope it names regression passed\n'
+printf 'logged_path_scope derives a logged entry scope regression passed\n'
