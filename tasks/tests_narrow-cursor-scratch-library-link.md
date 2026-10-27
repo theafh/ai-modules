@@ -2,8 +2,8 @@
 description: "Narrow the Cursor scratch home's Library link to Library/Keychains so worker searches stop reaching other apps' data, and record the wiki passage rewrite and keychain-login evidence note."
 scope: tests/lib
 created: 2026-10-26T12:37:52
-updated: 2026-10-27T11:12:25
-status: checked
+updated: 2026-10-27T12:43:44
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
