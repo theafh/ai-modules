@@ -1184,3 +1184,39 @@ pre-existing.
 The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
 pre-existing. The `size` info on `concepts/verification-surfaces.md` rose
 with this update and stays advisory.
+
+## [2026-10-27 11:37] update | helper returns, compaction trace, and effort levers per harness
+
+- raw/notes/auto-check-open-weight-run-observations-2026-10-27.md (new: Cursor
+  final-message returns and compaction re-delivery, OpenCode variant
+  inheritance and the 32,000-token `length` finishes, Copilot's global effort
+  settings)
+- entities/cursor.md (a helper's final message is its whole return in the IDE;
+  a compaction re-delivers the original user turn)
+- entities/sst-opencode.md (subagents inherit the session's model and variant;
+  a definition's `variant` needs a `model`; the empty `length` returns)
+- entities/github-copilot-vs-code.md (no per-agent effort field; the two global
+  settings)
+- concepts/agent-definition-portability.md (the effort union reaches only Claude
+  and Codex; the session or user setting is the lever elsewhere)
+- index.md (summaries of the four pages, Last updated)
+
+## [2026-10-27 11:38] lint | 0 blocking, 1 warn, 7 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing, and the `size` infos on the grown entity pages stay advisory.
+
+## [2026-10-27 11:49] update | corrected retry count and OpenCode variant scope
+
+- raw/notes/auto-check-open-weight-run-observations-2026-10-27.md (six
+  summarized returns retried, five accepted on the closing note's summary;
+  hash refreshed)
+- entities/cursor.md (the same retry split)
+- entities/sst-opencode.md (the ignored unknown variant is the desktop
+  client's resolver behaviour)
+
+## [2026-10-27 11:50] lint | 0 blocking, 1 warn, 8 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing, and the new `size` info on `entities/sst-opencode.md` stays
+advisory.

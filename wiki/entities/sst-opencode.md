@@ -1,10 +1,10 @@
 ---
 title: SST OpenCode
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-10-27
 type: entity
 tags: [opencode, skill, agent, hook, system-prompt, frontmatter, discovery]
-sources: []
+sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]
 confidence: high
 ---
 
@@ -97,6 +97,26 @@ documentation states that any unrecognised option is passed through directly to
 the provider as a model option, so a stray `version:` or `effort:` arrives in the
 provider call as a bogus model parameter. That is why OpenCode always needs a
 generated variant rather than a shared multi-harness file.
+
+A subagent's reasoning level follows its model. The task tool runs a spawned
+subagent on its definition's `model` when one is set and otherwise on the
+parent message's model, and it passes the parent's `variant` only in the second
+case, so a subagent without a model of its own inherits both the parent's model
+and its variant. A definition's own `variant` takes effect only beside a
+`model`, and the desktop client's resolver ignores a variant name the model does
+not offer. Both read off
+the installed desktop bundle's task tool and configuration loader on
+27 October 2026, and the session store of a 26 October run showed every helper
+on the parent's `max` variant
+([run observations](../raw/notes/auto-check-open-weight-run-observations-2026-10-27.md)).
+A model-agnostic helper therefore runs at whatever level the operator starts the
+session with.
+
+That level can starve a helper's answer. On 26 October 2026, five helper calls
+on `deepseek/deepseek-v4.1-flash` at `max` each ended with finish reason
+`length` after 32,000 reasoning tokens and no output tokens, so the parent
+received an empty return
+([run observations](../raw/notes/auto-check-open-weight-run-observations-2026-10-27.md)).
 
 ### Prompt assembly
 

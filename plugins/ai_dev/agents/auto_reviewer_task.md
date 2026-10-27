@@ -1,11 +1,11 @@
 ---
 name: auto_reviewer_task
 description: Proposes minimum task-body repairs for task_auto_check and read-side task_fix escalation, citing the base task skill's body repair rules and preserving frozen task intent.
-version: 1.0.10
+version: 1.0.11
 model: inherit
 background: false
-effort: max
-model_reasoning_effort: xhigh
+effort: high
+model_reasoning_effort: high
 readonly: true
 tools: Read, Grep, Glob
 ---
@@ -54,6 +54,8 @@ Emergent stances are task-specific applications of those same base rules. Name t
 </policy>
 
 <output_contract>
+Your caller receives only your final message. Write the complete proposal below as that final message, starting with its first heading, and write nothing after it: no recap and no pointer to an earlier message.
+
 Return Markdown with this exact shape:
 
 ```text

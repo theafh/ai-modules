@@ -1,0 +1,43 @@
+---
+description: "Make task_auto_check converge: a blocking bar, notes never repaired, diff-scoped rounds, an implementable dry-run verdict, a stall stop, and selector-found sets in place of frozen counts."
+scope: plugins/ai_dev
+created: 2026-10-27T11:39:05
+updated: 2026-10-27T12:19:16
+status: finished
+reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
+---
+
+# Give task_auto_check a blocking bar, diff-scoped rounds, and a stall stop
+
+## Goal
+
+`task_auto_check` reaches a final result instead of finding more issues every round. Done means zero blocking issues under one bar that the dry run and the gate both apply, notes are reported but never repaired and never block `ready`, every round after the first checks only the open blocking issues and the text the last repair changed, and a run whose blocking count stops falling hands the remaining issues to the operator.
+
+## Context
+
+Before this change `task_check` stamped `ready` only when its issue list was empty, listed every verified checklist finding as an issue whatever its weight, and every loop round re-ran that full sweep over a task the previous repair had just made longer. Loop runs on 26 October 2026 never converged: the gate's issue count per round rose and fell without trending down (one run read 9, 15, 20, 15, 15, 10), one task body grew roughly sevenfold across auto-check runs, and late-round issues were mostly about text the loop itself had added. Higher reasoning effort found more possible divergences, so a frontier model at its deepest setting did not converge either.
+
+The edit surface is the base `task` skill (`plugins/ai_dev/skills/task/SKILL.md`: its `<readiness_checklist>`, the `<markdown_policy>` count-stable rule, and the `<body>` Acceptance contract), `plugins/ai_dev/skills/task_check/SKILL.md`, the `auto_gate_task`, `auto_dryrun_task`, and `auto_verifier_task` agents under `plugins/ai_dev/agents/`, `plugins/ai_dev/skills/task_auto_check/SKILL.md`, the `task_auto_check` harness (`tests/task_auto_check/script_tests/run.sh`, `tests/task_auto_check/evals/relay_checks.py`, and its unit tests in `tests/task_auto_check/script_tests/test_relay_checks.py`), and the `task` eval harness under `tests/task/evals/`. The rule lives once in the base checklist per the standing repo rule that a family rule is authored in its base skill.
+
+## Approach
+
+1. **Blocking bar.** Add a **Blocking bar.** paragraph at the head of the base `<readiness_checklist>`: a finding blocks `ready` only when an implementer who follows the task literally, drawing on the codebase and the standing repo rules, would violate the Goal or an Acceptance item, hit a contradiction, face an open choice whose reasonable options lead to materially different results, or introduce a new bug. A charter conflict, a structural gap, an invalidated premise, and a mutable set referenced by a frozen count block by definition, and the `<markdown_policy>` count-stable rule gives work and proof over such a set one shape: find every member by its selector at implementation time, change each one, and check that the selector leaves none unhandled. A **Sets by selector.** item in the `<body>` Acceptance contract points authors at that shape, so new tasks prove a set by re-running its selector rather than by an arbitrary count. Every other finding (redundancy, length, wording, ordering, an unproven minor promise) is a note, reported beside the blocking findings, kept out of every repair loop, and never blocking. Rewrite in place the two checklist sentences that forced minor findings to block: the **Acceptance coverage** sentence keeps an unpaired promise blocking only when it carries a deliverable or Goal outcome, and **Restated standing rules** blocks only a copy that already diverges from its source.
+2. **task_check classing.** In `task_check`, class every finding by the bar, stamp `ready` when `## Issues` holds no blocking issue, and replace the style-notes tail with a `## Notes` section. Add a **Scoped re-check.** paragraph: given a prior verdict and the diff applied since it, judge each prior blocking issue as resolved or open and judge only the changed text, contradictions with the rest of the task included, for new blocking findings.
+3. **Gate verdict.** In `auto_gate_task`, replace the "full strictness" rule with classing under the base bar, admit the prior accepted gate return and `r<M>-apply.diff.txt` from round 2 on, value an untouched checklist item `carried`, and add `scope`, `blocking_count`, and `## Notes` to the verdict, plus the dry run's `implementable:` verdict on the `dryrun:` evidence line.
+4. **Dry-run verdict.** In `auto_dryrun_task`, class each finding `blocking` or `note` by the base bar, return `implementable: yes` when none blocks, and walk in scoped mode when a prior gate return and diff are supplied. Add a check for a set named by a frozen count or a snapshot list, and add the count-stable rule to the rules a finding may cite.
+5. **Loop convergence.** In `task_auto_check`, add a `<convergence>` block stating that done means zero blocking issues, that notes are never repaired, that rounds after the first are diff-scoped through the scoped re-check inputs `<relay>` names, and the stall stop: when `blocking_count` fails to fall for three rounds in a row, stop as `not converging` after the third such verdict, run `<finalize_mechanical_lint>`, and hand the remaining blocking issues and per-round counts to the operator. Keep notes out of `<plan_repairs>`, have a scoped re-check cite the span that resolves each prior blocking issue as a `resolved:` line in the gate verdict's `## Evidence`, have citation mode in `task_auto_check` and `auto_verifier_task` check those `resolved:` citations beside the cited `clean` lines so the last-call refutation still has evidence to refute on a scoped `ready`, keep a refuted-citation entry blocking by definition in `auto_gate_task`, and list the new stop in `<loop_bounds>`, `<iterate>`, and the output contract.
+6. **Align the graders and evals.** In `relay_checks.py`, let `prompts_isolated` admit in a round-N gate prompt the last accepted gate return of an earlier round and that round's `r<M>-apply.diff.txt`, while still rejecting a discarded isolation return and every other relay file, and add a unit test for those three cases. In the `task` evals, move `standing_rules_check` to the new verdict for a verbatim standing-rule copy (a Restated standing rules note under `## Notes`, `No issues found.`, and a `ready` stamp) across `evals.json`, `grade.sh`, and `tests/task/evals/README.md`, and replace the `check` eval's "Style notes" expectation with the `## Notes` section.
+
+**Out of scope:** behavioral nested-loop evals that prove convergence, which this change does not author or run; and re-running the existing `task_auto_check` behavioral suite, whose fixtures may now reach a different outcome under the bar.
+
+## Acceptance
+
+- `bash tests/task_auto_check/script_tests/run.sh` passes scenario `s15`, whose blocking-bar, scoped re-check, `implementable`, `blocking_count`, convergence, and stall-stop assertions fail on the files as they stood before this change, and passes `s14` with the `dryrun:` line pin updated to carry the `implementable` verdict.
+- `grep -c "\*\*Blocking bar\.\*\*" plugins/ai_dev/skills/task/SKILL.md` reports 1, so the bar is stated once in the base checklist.
+- `task_check`'s `<output_contract>` carries a `## Notes` section, and `grep -c "Style notes" plugins/ai_dev/skills/task_check/SKILL.md` reports 0.
+- `auto_gate_task` no longer carries the phrase "full strictness", and its verdict template carries `scope: <full|scoped>`, `blocking_count: <integer>`, and a `resolved:` evidence line.
+- Scenario `s15` also pins the four by-definition blocking classes, the refuted-citation rule, the `resolved:` citations in `task_check`, `auto_gate_task`, `task_auto_check`, and `auto_verifier_task`, the count-stable find-all-then-check shape, the **Sets by selector.** item, and the dry run's frozen-count check.
+- `python3 tests/task_auto_check/script_tests/test_relay_checks.py` passes, and its `test_scoped_gate_prompt_admits_only_the_prior_accepted_return_and_diff` fails against the grader as it stood before this change.
+- The `standing_rules_check` arm of `tests/task/evals/grade.sh` asserts `status: ready`, and `grep -c "Style notes" tests/task/evals/evals.json` reports 0.

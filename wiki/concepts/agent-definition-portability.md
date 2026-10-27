@@ -1,7 +1,7 @@
 ---
 title: Agent definition portability
 created: 2026-08-08
-updated: 2026-10-04
+updated: 2026-10-27
 type: concept
 tags: [agent, frontmatter, portability, claude, codex, cursor, opencode, antigravity, verification-gap]
 sources: [raw/notes/agent-delegation-host-observations-2026-09.md, raw/notes/delegation-probes-2026-10-04.md]
@@ -154,6 +154,17 @@ Where a role must run at a fixed depth, the pin is expressed as a union of nativ
 keys: Claude reads frontmatter `effort`, the Codex TOML key is
 `model_reasoning_effort`, and the two names are disjoint, so both sit side by
 side in one Markdown file while a generated OpenCode variant strips both.
+
+That union reaches only those two harnesses. OpenCode's per-agent `variant`
+takes effect only beside a pinned `model`, so a model-agnostic role there runs at
+the level of the session that spawned it, as the
+[OpenCode page](../entities/sst-opencode.md) records with its 27 October 2026
+evidence. [Cursor](../entities/cursor.md) showed no effect from effort keys,
+[Google Antigravity](../entities/google-antigravity.md) documents no effort key,
+and [Copilot in VS Code](../entities/github-copilot-vs-code.md) sets effort only
+through global user settings. On those four harnesses the operator's session or
+user setting is the only lever, so a role that must not run at the deepest level
+needs that setting named in its operating guidance rather than in its frontmatter.
 
 ### Registration is verified, not inferred
 

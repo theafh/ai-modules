@@ -18,7 +18,7 @@ The bundled-script surface is covered separately by
 | `create` | task_create | one lint-clean task, `created`/`updated` stamped from the real wall clock (trustworthy timestamps), description in the ~180-char budget, acceptance carries task-specific checks only (no generic gates), no second task |
 | `check` | task_check | readiness verdict plus a status-only `checked` stamp: `# General assessment` + a non-empty `## Issues` on an under-specified task, entries located by label per the soft-pointer rule, issues grounded against the repo |
 | `standing_rules_create` | task_create | root CLAUDE.md / AGENTS.md only, no family guardrail docs: a copied repo automation rule in a source draft becomes a citation to standing repo rules, not copied task text |
-| `standing_rules_check` | task_check | root CLAUDE.md / AGENTS.md only: an otherwise-ready task that copies a standing rule is stamped `checked` with a Restated standing rules finding |
+| `standing_rules_check` | task_check | root CLAUDE.md / AGENTS.md only: an otherwise-ready task that copies a standing rule verbatim is stamped `ready` with a Restated standing rules note under `## Notes` |
 | `standing_rules_check_control` | task_check | the cited-rule control stays clean: a task that cites standing repo rules is stamped `ready` and no restated-rule finding is raised |
 | `explain` | task_explain | read-only orientation on one archived task: bottom-line frame plus What / Why / How synthesis, status and scope included, task file unchanged |
 | `select` | task_select | read-only next-task recommendation; filters eligible live tasks before ranking, excludes archived and already-implemented work, applies scope narrowing, and explains impact / complexity / friction / bug-fix tradeoffs |

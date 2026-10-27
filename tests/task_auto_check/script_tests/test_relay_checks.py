@@ -145,6 +145,32 @@ status: ready
         self.write("r2-gate-prompt.txt", text + copied_line + "\n")
         self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
 
+    def test_scoped_gate_prompt_admits_only_the_prior_accepted_return_and_diff(self):
+        base = (f"task: tasks/{self.stem}.md\nbase: /skills/task/SKILL.md\n"
+                "task_check: /skills/task_check/SKILL.md\n"
+                f"intent: {self.relay}/frozen-intent.txt\n"
+                f"root: {self.proj}\n")
+        self.write("r1-gate-prompt.txt", base + f"dryrun: {self.relay}/r1-dryrun.txt\n")
+        self.write("r1-gate.txt", """# auto_gate_task verdict
+status: checked
+## Evidence
+- isolation: listed relay paths
+""")
+        self.gate("r1-gate-2.txt", "checked", "1. Body preservation has no proof.")
+        self.write("r1-apply.diff.txt", "@@ -1 +1 @@\n")
+        scoped = base + (f"dryrun: {self.relay}/r2-dryrun.txt\n"
+                         f"prior: {self.relay}/r1-gate-2.txt\n"
+                         f"diff: {self.relay}/r1-apply.diff.txt\n")
+        self.write("r2-gate-prompt.txt", scoped)
+        self.assertTrue(checks.prompts_isolated(self.proj, self.relay, self.stem))
+        # The discarded isolation return is not the accepted verdict.
+        self.write("r2-gate-prompt.txt", scoped.replace("r1-gate-2.txt", "r1-gate.txt"))
+        self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
+        # Round 1 has no earlier round, so a diff path there is not admitted.
+        self.write("r1-gate-prompt.txt", base + f"diff: {self.relay}/r1-apply.diff.txt\n")
+        self.write("r2-gate-prompt.txt", scoped)
+        self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
+
     def test_rule_approval_needs_proof_for_its_own_subject(self):
         self.gate("r1-gate.txt", "checked", "1. Body preservation has no proof.")
         text = """## Approved edits

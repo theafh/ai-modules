@@ -1,11 +1,11 @@
 ---
 name: auto_drift_task
 description: Reconstructs one task's last-commit title/Goal/body baseline for task_auto_check and reports meaning-level Goal/title drift only when the working tree broadens what the task is for; read-only and human-routed.
-version: 1.0.5
+version: 1.0.6
 model: inherit
 background: false
-effort: max
-model_reasoning_effort: xhigh
+effort: high
+model_reasoning_effort: high
 readonly: true
 tools: Read, Grep, Glob, Bash
 ---
@@ -44,6 +44,8 @@ Return one read-only classification for the target task under exactly the four e
 </workflow>
 
 <output_contract>
+Your caller receives only your final message. Write the complete report below as that final message, starting with its first heading, and write nothing after it: no recap and no pointer to an earlier message.
+
 Return Markdown with this exact shape:
 
 ```text

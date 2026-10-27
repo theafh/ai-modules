@@ -464,14 +464,14 @@ case "$eval_id" in
 
   standing_rules_check)
     f="$TASKS/build_packaging-smoke.md"
-    status_checked() { [[ "$(fm_field "$f" status)" == "checked" ]]; }
+    status_ready() { [[ "$(fm_field "$f" status)" == "ready" ]]; }
     copied_rule_still_present() {
       unwrapped_file "$f" | grep -Fq 'Use Make plus POSIX shell for repo automation.'
     }
-    check "status stamped checked for the restated-rule finding" status_checked
+    check "status stamped ready because a faithful copy is a note" status_ready
     check "task_check preserved body content while reporting"     copied_rule_still_present
-    note_agent_attest "response has a Restated standing rules issue that cites the base <body> corollary as the rule source"
-    note_agent_attest "response withholds ready because the task copies a CLAUDE.md rule instead of citing it"
+    note_agent_attest "response has a Restated standing rules note under '## Notes' that cites the base <body> corollary as the rule source"
+    note_agent_attest "response's '## Issues' reads 'No issues found.', because the verbatim copy is a note under the base Blocking bar"
     ;;
 
   standing_rules_check_control)

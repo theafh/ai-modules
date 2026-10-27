@@ -2,22 +2,22 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-26 | Total pages: 36
+> Last updated: 2026-10-27 | Total pages: 36
 
 ## Entities
 
 <!-- Alphabetical within section -->
 
 - [Anthropic Claude Code](entities/anthropic-claude-code.md): configuration roots, the setting sources a headless worker reads, the user's deployed roles and skills that reach that worker unless a scratch configuration directory replaces the user tree, the hardcoded CLAUDE.md / AGENTS.md standing-instruction pair and its walk past the repository root, agent frontmatter tolerance, the file-edit read state, hooks, safe mode, and the retired `claude config` subcommand.
-- [Cursor](entities/cursor.md): rules as the whole instruction mechanism, project always-apply `.mdc` as the print-mode-injecting deploy path, account User Rules versus non-injecting home and local-plugin rule files, agent fields with the tools and roles print mode lists, a deployed user-level skill taking the place of a staged copy outside the workspace, skills attached by hand, helper delegation through the Task tool with batch and notice delivery and what print mode records of it, helper isolation, the per-chat transcripts that hold a helper's tool calls, and context load, the goal tools, the IDE's non-login agent shell and the print-mode CLI's login-shell command environment, and the print-mode agent CLI with its permission file, resume, and stream-json events.
-- [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md): one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents, and preview plugins.
+- [Cursor](entities/cursor.md): rules as the whole instruction mechanism, project always-apply `.mdc` as the print-mode-injecting deploy path, account User Rules versus non-injecting home and local-plugin rule files, agent fields with the tools and roles print mode lists, a deployed user-level skill taking the place of a staged copy outside the workspace, skills attached by hand, helper delegation through the Task tool with batch and notice delivery, the final message as a helper's whole return, the compaction trace in a transcript, and what print mode records of it, helper isolation, the per-chat transcripts that hold a helper's tool calls, and context load, the goal tools, the IDE's non-login agent shell and the print-mode CLI's login-shell command environment, and the print-mode agent CLI with its permission file, resume, and stream-json events.
+- [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md): one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents with effort only as a global setting, and preview plugins.
 - [Google Antigravity](entities/google-antigravity.md): the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and four open verification gaps.
 - [OpenAI Codex](entities/openai-codex.md): configuration layers and trusting a project for a single run, the CLI binary shipped off `PATH` inside the ChatGPT app bundle, TOML agent roles, the built-in sub-agent and goal tools, headless runs through `codex exec`, the single instructions slot, personalities, profiles, and hook trust.
-- [SST OpenCode](entities/sst-opencode.md): its own config tree, foreign-directory discovery, pass-through frontmatter, prompt assembly, and code-only hooks.
+- [SST OpenCode](entities/sst-opencode.md): its own config tree, foreign-directory discovery, pass-through frontmatter, helpers inheriting the session's model and variant, prompt assembly, and code-only hooks.
 
 ## Concepts
 
-- [Agent definition portability](concepts/agent-definition-portability.md): three tolerance categories, disjoint tool vocabularies, the read-only levers that confine one role or a whole session and how far each held by host and mode, and when a generated variant is required.
+- [Agent definition portability](concepts/agent-definition-portability.md): three tolerance categories, disjoint tool vocabularies, the read-only levers that confine one role or a whole session and how far each held by host and mode, the two harnesses an effort pin reaches, and when a generated variant is required.
 - [Agent-delegated automation](concepts/agent-delegated-automation.md): how a thin front-end skill delegates a whole-artifact audit-and-repair job to spawned agents, with read fan-out for coverage, one serialized writer for integrity, refute-by-default verification, frozen intent, judgement calls routed to the human, and where the general, harness-independent form of the rule now ships as a skill.
 - [Antigravity global configuration roots](concepts/antigravity-global-roots.md): the two artefact classes that split across its three products, what that costs a global deploy, and the output tree that is not a root.
 - [Antigravity tool vocabulary](concepts/antigravity-tool-vocabulary.md): the two incomplete name lists, the missing canonical registry, and why a wrong name hangs instead of failing.

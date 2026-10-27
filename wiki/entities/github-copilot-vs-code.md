@@ -1,10 +1,10 @@
 ---
 title: GitHub Copilot in VS Code
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-10-27
 type: entity
 tags: [copilot, agent, skill, plugin, hook, discovery]
-sources: []
+sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]
 confidence: high
 ---
 
@@ -146,6 +146,15 @@ Its body is prepended to the user chat prompt rather than merged into the system
 prompt. That is a third injection position, beside a Claude style's system-prompt
 placement and OpenCode's appended system section, and prose written to read as
 standing system instruction arrives inside the user turn instead.
+
+Reasoning effort has no per-agent field. The Copilot extension built into
+Visual Studio Code 0.70.0 contributes two effort settings, both global:
+`github.copilot.chat.claudeDefaultReasoningEffort` (`low`, `medium`, `high`, or
+`max`) and the debugging setting `github.copilot.chat.reasoningEffortOverride`
+(read 27 October 2026 from the extension's contributed configuration,
+[run observations](../raw/notes/auto-check-open-weight-run-observations-2026-10-27.md)).
+An effort key in an agent file therefore sets nothing here, and the level is a
+user setting.
 
 ### Plugins
 

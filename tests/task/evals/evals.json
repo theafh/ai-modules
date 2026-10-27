@@ -36,7 +36,7 @@
         "Because the task is under-specified, the Issues section is NOT 'No issues found.' — it lists concrete problems (empty Approach/Acceptance, vague goal), ranked most-problematic-first.",
         "Each issue follows the '**[short title]** — where it sits, what is wrong, the implementation impact, and the minimum fix' shape, locating the issue by label or unambiguous description (heading, tag, quoted phrase) per the soft-pointer rule.",
         "Issues are grounded against the repo (the checked file was actually read); an unverifiable suspicion appears only as a question in the general assessment, never as a numbered issue.",
-        "Style-level findings, if any, sit in an unnumbered 'Style notes' tail after the list — the numbered list carries implementation-divergence risks exclusively.",
+        "Findings below the base Blocking bar, if any, sit in a '## Notes' section after the list — the numbered list carries blocking implementation-divergence risks exclusively.",
         "The task file is changed only to stamp status: checked and bump updated."
       ]
     },
@@ -62,17 +62,17 @@
       "id": "standing_rules_check",
       "skill": "task_check",
       "prompt": "Is the task tasks/build_packaging-smoke.md ready to hand to an implementer? Check it.",
-      "expected_output": "In a fixture whose root holds CLAUDE.md and AGENTS.md but no family guardrail docs, task_check reads an otherwise-ready task that copies a CLAUDE.md automation rule verbatim, raises a Restated standing rules finding that cites the base <body> corollary as the rule source, stamps status checked, and preserves the task body.",
+      "expected_output": "In a fixture whose root holds CLAUDE.md and AGENTS.md but no family guardrail docs, task_check reads an otherwise-ready task that copies a CLAUDE.md automation rule verbatim, records a Restated standing rules note under '## Notes' that cites the base <body> corollary as the rule source, stamps status ready because a faithful copy is a note under the base Blocking bar, and preserves the task body.",
       "files": [
         "evals/fixtures/standing_rules_check/setup.sh"
       ],
       "expectations": [
-        "The task file is changed only to stamp status: checked and bump updated.",
+        "The task file is changed only to stamp status: ready and bump updated.",
         "The copied standing rule text remains in the body because task_check reports only; it does not repair the body.",
-        "The response has a '## Issues' section with a Restated standing rules finding.",
+        "The response has a '## Notes' section with a Restated standing rules note, and its '## Issues' section reads 'No issues found.'",
         "The finding says the copied rule should be replaced with a citation to the standing repo rules, or dropped if the surrounding text carries nothing else.",
         "The finding cites the base <body> cite-don't-restate corollary as the rule source.",
-        "The response withholds ready because the task copies the standing rule instead of citing it."
+        "The response stamps ready because the copy matches its source verbatim, which the base Blocking bar classes as a note rather than a blocking issue."
       ]
     },
     {

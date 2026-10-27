@@ -1,7 +1,7 @@
 ---
 name: task_check
 description: Check one task before implementation. Use when the user asks if a task is ready to build or still valid. Assess structure, scope, focus, complexity, contradictions, and ambiguity, verify the task's premise and described current state against the codebase, surface a stale invalidated task with deferral as the user's option, then stamp ready or checked and report readiness issues.
-version: 1.1.13
+version: 1.1.14
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 <task_check_skill>
 
 <role>
-task_check assesses whether a single task file is ready to hand to `task_implement`. It reads one task and produces a direct readiness verdict against a checklist covering structure, scope sizing, focus, complexity, and freedom from contradiction and ambiguity, surfacing every issue that would lead a one-shot implementer to a wrong or divergent result. It is the pre-implementation gate the base skill's single-shot-ready body design implies. It changes only the lifecycle stamp: `ready` on a clean verdict, `checked` when blocking issues remain, plus `updated`; it moves no file and changes no body content or other frontmatter.
+task_check assesses whether a single task file is ready to hand to `task_implement`. It reads one task and produces a direct readiness verdict against a checklist covering structure, scope sizing, focus, complexity, and freedom from contradiction and ambiguity, surfacing every issue that would lead a one-shot implementer to a wrong or divergent result. It is the pre-implementation gate the base skill's single-shot-ready body design implies. It changes only the lifecycle stamp: `ready` when no blocking issue remains under the base **Blocking bar**, `checked` when one does, plus `updated`; it moves no file and changes no body content or other frontmatter.
 </role>
 
 <when_to_activate>
@@ -34,7 +34,9 @@ The base `task` skill's `discover_tasks.sh` ships in `scripts/` next to that ski
 <assessment>
 The bar is the base skill's self-sufficiency concept: the task file on its own is enough to produce a full implementation in a single pass, and the implementer draws on everything actually available, including the codebase, the project's standing instructions (`CLAUDE.md` / `AGENTS.md` and equivalents), and the user. Judge the task the way it is consumed: a task that leans on a standing project instruction is correctly authored when it cites the rule, and flagging the absence of content a standing instruction already owns is a false positive. Evaluate every issue against that bar.
 
-Assess against the base `task` skill's `<readiness_checklist>`, in its order: the charter and structural checks, then the premise, approach-fitness, and **Interaction scan** checks against the codebase, then the content lens item by item. The checklist lives once in the base skill as the family's single source; apply it from there rather than from a copy here. Every verified checklist finding is a readiness issue and belongs in `## Issues`; do not demote a checklist finding to style notes because the implementation could still proceed around it.
+Assess against the base `task` skill's `<readiness_checklist>`, in its order: the charter and structural checks, then the premise, approach-fitness, and **Interaction scan** checks against the codebase, then the content lens item by item. The checklist lives once in the base skill as the family's single source; apply it from there rather than from a copy here. Class every verified finding with the checklist's **Blocking bar**: a blocking finding is a readiness issue and belongs in `## Issues`, and a note belongs in `## Notes`. Class by the bar's test alone: a finding whose literal reading produces one of the bar's four wrong results blocks however small its fix, and a finding with no nameable wrong result is a note however easy its fix.
+
+**Scoped re-check.** When the caller supplies a prior verdict for this task together with the diff applied to the task since that verdict, as `task_auto_check` does from its second round on, run a scoped re-check instead of the full walk. Judge each blocking issue in the prior verdict as resolved or still open against the current text, citing for each resolved one the current-text span that resolves it, then judge only the diff's changed text against the checklist for new blocking findings, including a contradiction between the changed text and the rest of the task and a premise or interaction claim the changed text introduces. Leave unchanged text unjudged, carry the prior notes forward, and stamp `ready` when every prior blocking issue is resolved and the diff introduced none. The scoped re-check shrinks the search to what the last repair touched, which is what lets a repair loop converge.
 
 Ground every issue before reporting it: an issue enters the report only after you have confirmed it against the repository by reading the file it implicates, running the command the acceptance names, and checking the policy the task cites. An unverifiable suspicion is voiced as a question in the general assessment, never as a numbered issue.
 
@@ -46,17 +48,17 @@ When the base checklist's **Interaction scan** lens confirms a contradiction or 
 
 Read the task's `status` before assessing. A task at `implemented`, `audited`, `finished`, or `deferred` is past the readiness gate, and the base skill's `<backward_move_guard>` refuses a `ready` or `checked` stamp over it, so stop there with the file unchanged: name the status, and point completed work at `task_audit` and other new work at the base `<status_discipline>` follow-up rule.
 
-After assessing, stamp the outcome only: `status: ready` for a clean implementation-ready verdict, otherwise `status: checked`, and bump `updated`. Preserve the task body, all other frontmatter fields, and the file path.
+After assessing, stamp the outcome only: `status: ready` when `## Issues` holds no blocking issue, otherwise `status: checked`, and bump `updated`. Notes never affect the stamp. Preserve the task body, all other frontmatter fields, and the file path.
 </assessment>
 
 <output_contract>
 Structure the report in exactly this shape:
 
 - Lead with a `# General assessment` paragraph: one short paragraph stating whether the task is ready to build and why.
-- Then a `## Issues` section carrying verified implementation-divergence issues exclusively. When clean, output exactly `No issues found.` Otherwise list every verified issue as a single ordered list, ranked by how likely each is to cause a wrong or divergent one-shot implementation, most problematic first. Each entry: `**[short title]**: where it sits, what is wrong, the implementation impact, and the minimum fix.` Locate each issue by label or unambiguous description, such as the section heading, the pseudo-XML tag, or a quoted phrase, per the base skill's soft-pointer rule.
-- After the list, add a short unnumbered **Style notes** tail only for non-checklist wording polish; omit the tail when there are none.
+- Then a `## Issues` section carrying verified blocking issues exclusively. When none remains, output exactly `No issues found.` Otherwise list every verified blocking issue as a single ordered list, ranked by how likely each is to cause a wrong or divergent one-shot implementation, most problematic first. Each entry: `**[short title]**: where it sits, what is wrong, the wrong result a literal implementer would produce, and the minimum fix.` Locate each issue by label or unambiguous description, such as the section heading, the pseudo-XML tag, or a quoted phrase, per the base skill's soft-pointer rule. On a scoped re-check, list the prior blocking issues still open first, then the new ones the diff introduced, and add one line naming the prior issues the current text resolved.
+- Then a `## Notes` section listing each note in one line with its location and suggested fix, wording polish included; omit the section when there are none.
 
-Include every verified issue regardless of size. Make only the status/`updated` stamp and move no file, because acting on the findings is `task_create`/editing, and building is `task_implement`.
+Include every verified blocking issue regardless of the size of its fix. Make only the status/`updated` stamp and move no file, because acting on the findings is `task_create`/editing, and building is `task_implement`.
 </output_contract>
 
 <family>

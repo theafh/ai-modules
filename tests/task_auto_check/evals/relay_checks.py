@@ -200,6 +200,25 @@ def last_call(relay: pathlib.Path, task: pathlib.Path, check: str) -> bool:
             field(verdict(later[0]), "status") == "checked")
 
 
+def scoped_inputs(relay: pathlib.Path, prompt: pathlib.Path) -> set[str]:
+    # From round 2 a gate prompt also names the scoped re-check inputs: the
+    # last accepted gate return of an earlier round and that round's diff.
+    # A discarded isolation return stays out, like every other relay file.
+    match = re.match(r"r(\d+)-gate", prompt.name)
+    if not match:
+        return set()
+    current = int(match.group(1))
+    latest: dict[int, tuple[int, str]] = {}
+    for gate in accepted_gates(relay):
+        name = re.fullmatch(r"r(\d+)-gate(?:-(\d+))?\.txt", gate.name)
+        if name and int(name.group(1)) < current:
+            key = (int(name.group(2) or 1), gate.name)
+            latest[int(name.group(1))] = max(latest.get(int(name.group(1)), key), key)
+    allowed = {name for _, name in latest.values()}
+    allowed |= {f"r{n}-apply.diff.txt" for n in range(1, current)}
+    return allowed
+
+
 def prompts_isolated(proj: pathlib.Path, relay: pathlib.Path, stem: str) -> bool:
     prompts = sorted(relay.glob("r*-gate*-prompt.txt"))
     all_returns = [p for p in (proj / ".task_auto_check").rglob("r*.txt")
@@ -208,6 +227,7 @@ def prompts_isolated(proj: pathlib.Path, relay: pathlib.Path, stem: str) -> bool
         return False
     for prompt in prompts:
         text = prompt.read_text()
+        scoped = scoped_inputs(relay, prompt)
         residual = []
         for line in text.splitlines():
             if not line.strip() or line.strip().startswith("```"):
@@ -234,6 +254,7 @@ def prompts_isolated(proj: pathlib.Path, relay: pathlib.Path, stem: str) -> bool
                     or token.endswith(f"/{stem}/frozen-intent.txt")
                     or re.search(rf"/{re.escape(stem)}/r\d+-refuted-citations\.txt$", token)
                     or re.search(rf"/{re.escape(stem)}/r\d+-dryrun\.txt$", token)
+                    or (f"/{stem}/" in token and token.rsplit("/", 1)[-1] in scoped)
                 )
                 if not allowed:
                     return False

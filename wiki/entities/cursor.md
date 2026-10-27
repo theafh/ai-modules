@@ -1,7 +1,7 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-10-09
+updated: 2026-10-27
 type: entity
 tags: [cursor, agent, skill, frontmatter, discovery, verification-gap]
 sources:
@@ -13,8 +13,9 @@ sources:
   - raw/notes/micro-deployed-worker-home-probes-2026-10-08.md
   - raw/notes/cursor-helper-transcript-probes-2026-10-09.md
   - raw/notes/cursor-print-mode-shell-probes-2026-10-09.md
+  - raw/notes/auto-check-open-weight-run-observations-2026-10-27.md
 confidence: high
-checked: 2026-10-09
+checked: 2026-10-27
 ---
 
 # Cursor
@@ -133,6 +134,23 @@ mode a helper's result reaches the parent as its final text inside the `Task`
 result (`conversationSteps`), and the helper's own tool calls stay out of the
 parent's stream (4 October 2026). They land in the helper's own chat transcript
 instead, whose print-mode location the next section records (9 October 2026).
+
+The IDE hands the parent only the helper's final assistant message as well. In
+four loop runs on 26 October 2026, eleven helpers wrote their full output
+contract in an earlier message and ended with a short closing note such as
+"Decision delivered above.", and each parent saw only that note. The parents
+retried six of those returns as summarized and accepted the other five on the
+note's own summary
+([run observations](../raw/notes/auto-check-open-weight-run-observations-2026-10-27.md)).
+A helper prompt that needs a structured return therefore has to place the whole
+return in the helper's last message.
+
+A context compaction leaves a visible trace in the parent transcript: the
+original user turn appears again with its original timestamp and any manually
+attached skill re-inlined. One run on 26 October 2026 carried four such
+re-deliveries of a turn typed once, and right after the second the parent wrote
+helper returns itself instead of spawning the helpers
+([run observations](../raw/notes/auto-check-open-weight-run-observations-2026-10-27.md)).
 
 Nested spawning, where a subagent spawns helpers of its own, worked on
 2 July 2026. That day a subagent dispatched background reviewers and polled

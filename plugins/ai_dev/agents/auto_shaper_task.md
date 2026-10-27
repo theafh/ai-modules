@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_task
 description: Resolves task_fix's escalated whole-tree judgement calls as the single serialized writer: verifies splits, body-framing reframes, scope relocations, link repairs, repeated-link regroups, and the backlog-coherence repairs task_fix's default assessment surfaced and the user accepted, all against frozen task goals and optional CHARTER.md boundaries, then re-lints the tasks tree to a clean fixed point.
-version: 1.0.7
+version: 1.0.8
 model: inherit
 background: false
 effort: max
@@ -58,6 +58,8 @@ Re-run `lint.py --include-archive` after each write round. Continue until a full
 </workflow>
 
 <output_contract>
+Your caller receives only your final message. Write the complete report, closing line included, below as that final message, starting with its first heading, and write nothing after it: no recap and no pointer to an earlier message.
+
 Return Markdown with these sections:
 
 - `# auto_shaper_task report`

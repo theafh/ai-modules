@@ -345,11 +345,69 @@ s14_dryrun_round_wiring() {
   assert_contains "dry-run prompt names its four inputs" "$SKILL" "A dry-run prompt names the task path, the base \`task\` skill path, the project root, and \`frozen-intent.txt\`." || ok=false
   assert_contains "every gate prompt names the round's dry-run return" "$SKILL" "that round's \`r<N>-dryrun.txt\`" || ok=false
   assert_contains "gate agent admits the dry-run return" "$gate" "that round's \`r<N>-dryrun.txt\` as paths to read" || ok=false
-  assert_contains "gate agent carries the dryrun evidence line" "$gate" "- dryrun: <each finding dr<k> confirmed with its issue number, or not confirmed with its reason | no findings | none supplied>" || ok=false
+  assert_contains "gate agent carries the dryrun evidence line" "$gate" "- dryrun: <implementable yes|no as the dry run returned it; then each finding dr<k> confirmed with its issue number, recorded as a note, or not confirmed with its reason | no findings | none supplied>" || ok=false
   assert_contains "gate agent grounds each dry-run finding" "$gate" "Ground each finding of a supplied dry-run return the way \`task_check\` grounds any issue" || ok=false
   assert_contains "self-sufficiency stance selects on the cited rule" "$SKILL" "Select this stance only when the issue text itself names that rule, whether by the bar's name or by the stance's cited rule name." || ok=false
   assert_contains "admissible issues include confirmed dry-run findings" "$SKILL" "confirmed dry-run findings included once they are gate issues" || ok=false
   assert_contains "report carries the per-round dry-run line" "$SKILL" "Per round: the dry run's \`kind:\`, its finding count, and each finding the gate confirmed with the issue number it became." || ok=false
+  $ok
+}
+
+s15_convergence_and_robust_returns() {
+  local ok=true agent path
+  local base="$REPO_ROOT/plugins/ai_dev/skills/task/SKILL.md"
+  local check="$REPO_ROOT/plugins/ai_dev/skills/task_check/SKILL.md"
+  local gate="$AGENTS_DIR/auto_gate_task.md"
+  local dryrun="$AGENTS_DIR/auto_dryrun_task.md"
+  # Blocking bar: one definition in the base checklist, applied by task_check, the gate, and the dry run.
+  assert_contains "base defines the blocking bar" "$base" "**Blocking bar.** Class every finding this checklist surfaces as blocking or as a note; only a blocking finding keeps a task from \`ready\`." || ok=false
+  assert_contains "blocking bar names the new-bug condition" "$base" "face an open choice whose reasonable options lead to materially different results, or introduce a new bug" || ok=false
+  assert_contains "notes never block or enter a repair loop" "$base" "keep them out of every repair loop, and never let them block \`ready\`" || ok=false
+  assert_contains "charter, structure, invalidated premise, and frozen counts block by definition" "$base" "Four classes block by definition: a **Charter check** conflict, a **Structural check** gap, and an invalidated **Premise check** outcome, as their own items below state, and a mutable set referenced by a frozen count or an enumeration snapshot" || ok=false
+  assert_contains "count-stable rule sets the find-all-then-check shape" "$base" "the Acceptance item runs the selector again and checks that no member is left unhandled" || ok=false
+  assert_contains "Acceptance contract points at the selector shape" "$base" "**Sets by selector.** An item over a set whose membership can change re-finds the members by their selector" || ok=false
+  assert_contains "dry run looks for frozen counts" "$dryrun" "a set named by a frozen count or a snapshot list of its current members" || ok=false
+  assert_contains "a refuted citation blocks by definition" "$gate" "A supplied refuted-citation entry blocks by definition under the refuted-citation rule below" || ok=false
+  # A scoped ready keeps a checkable claim for every prior blocking issue it clears.
+  assert_contains "scoped re-check cites each resolution" "$check" "citing for each resolved one the current-text span that resolves it" || ok=false
+  assert_contains "gate verdict carries resolution citations" "$gate" "- resolved: <on a scoped verdict, one line per prior blocking issue judged resolved" || ok=false
+  assert_contains "citation mode checks resolution citations" "$SKILL" "citation mode checks the \`clean\` lines the verdict cites and each \`resolved:\` citation under its \`## Evidence\`" || ok=false
+  assert_contains "verifier judges resolution claims" "$AGENTS_DIR/auto_verifier_task.md" "Judge a \`resolved:\` claim the same way" || ok=false
+  assert_contains "dry run counts other relay content as out of bounds" "$dryrun" "the relay directory beyond the admitted files or any store outside the project" || ok=false
+  assert_contains "task_check stamps ready on zero blocking issues" "$check" "\`status: ready\` when \`## Issues\` holds no blocking issue" || ok=false
+  assert_contains "task_check reports notes in their own section" "$check" "Then a \`## Notes\` section listing each note" || ok=false
+  assert_contains "task_check defines the scoped re-check" "$check" "**Scoped re-check.**" || ok=false
+  assert_contains "gate classes by the base bar" "$gate" "Report with \`task_check\`'s classing under the base \`<readiness_checklist>\` **Blocking bar**" || ok=false
+  assert_contains "gate verdict carries the blocking count" "$gate" "blocking_count: <integer>" || ok=false
+  assert_contains "gate verdict carries its scope" "$gate" "scope: <full|scoped>" || ok=false
+  assert_contains "dry run returns its implementable verdict" "$dryrun" "implementable: <yes | no>" || ok=false
+  assert_contains "dry run classes findings by the base bar" "$dryrun" "Class each finding \`blocking\` or \`note\` with the base \`<readiness_checklist>\` **Blocking bar**" || ok=false
+  # Diff-scoped rounds, stall stop, and the compaction stop live in the loop.
+  assert_contains "loop defines convergence" "$SKILL" "<convergence>" || ok=false
+  assert_contains "later rounds are diff-scoped" "$SKILL" "From round 2 on, every dry-run and gate prompt also names the scoped re-check inputs" || ok=false
+  assert_contains "stall stop after three non-falling rounds" "$SKILL" "When the count fails to fall for three rounds in a row" || ok=false
+  assert_contains "stall stop is a listed stop" "$SKILL" "when the \`<convergence>\` stall stop fires" || ok=false
+  assert_contains "loop defines the compaction stop" "$SKILL" "<context_compaction_stop>" || ok=false
+  assert_contains "compaction stop reads state from disk" "$SKILL" "Read the step reached from the relay directory on disk rather than from the summary" || ok=false
+  assert_contains "compaction stop skips finalize" "$SKILL" "a helper-failure stop or a context-compaction stop exits before this step" || ok=false
+  # Robust returns: final-message rule, output-budget failure, pointer returns.
+  for agent in auto_drift_task auto_dryrun_task auto_gate_task auto_reviewer_task auto_verifier_task auto_shaper_task; do
+    path="$AGENTS_DIR/$agent.md"
+    assert_contains "$agent states the final-message rule" "$path" "Your caller receives only your final message." || ok=false
+  done
+  assert_contains "empty or length-cut return is an output-budget failure" "$SKILL" "is an output-budget failure" || ok=false
+  assert_contains "output-budget failure is not the spawn-echo glitch" "$SKILL" "never the spawn-echo glitch, and it earns one identical-prompt retry" || ok=false
+  assert_contains "pointer return violates the contract" "$SKILL" "points at an earlier message (\"delivered above\") instead of carrying the contract" || ok=false
+  # Isolation counts reads only, and recursive searches skip the relay.
+  assert_contains "gate excludes the relay from recursive searches" "$gate" "grep -r --exclude-dir=.task_auto_check" || ok=false
+  assert_contains "dry run excludes the relay from recursive searches" "$dryrun" "grep -r --exclude-dir=.task_auto_check" || ok=false
+  assert_contains "an empty traversal is not an out-of-bounds read" "$SKILL" "a recursive search that crossed \`.task_auto_check/\` and returned nothing from it is not one" || ok=false
+  # Loop helpers run at high effort on Claude and Codex.
+  for agent in auto_drift_task auto_dryrun_task auto_gate_task auto_reviewer_task auto_verifier_task; do
+    path="$AGENTS_DIR/$agent.md"
+    assert_contains_re "$agent pins Claude effort high" "$path" '^effort: high$' || ok=false
+    assert_contains_re "$agent pins Codex effort high" "$path" '^model_reasoning_effort: high$' || ok=false
+  done
   $ok
 }
 
@@ -368,6 +426,7 @@ scenario s11 "repeated-link findings route through the repair path with named ow
 scenario s12 "relay graders reject evidence mutations" s12_relay_grader_mutations
 scenario s13 "parallel runner splits the serial nested-loop set" s13_parallel_runner
 scenario s14 "dry-run round is wired before the gate with gate confirmation" s14_dryrun_round_wiring
+scenario s15 "blocking bar, scoped rounds, stall and compaction stops, and robust returns are pinned" s15_convergence_and_robust_returns
 
 log ""
 log "================================================================"
