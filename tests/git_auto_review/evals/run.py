@@ -148,8 +148,9 @@ def eval_timeout(eval_id: str, default: int) -> int:
 def partition_ids(ids: list[str]) -> tuple[list[str], list[str]]:
     """Split ids into the isolated pool and the serial nested-loop set.
 
-    Both lists keep evals.json file order. An id outside the serial set is
-    isolated, including one the caller named on the command line.
+    Both lists keep the order of `ids`, which is evals.json file order for the
+    default set and the caller's order for a subset named on the command line.
+    An id outside the serial set is isolated.
     """
 
     serial_members = set(SERIAL_NESTED_LOOP_IDS)

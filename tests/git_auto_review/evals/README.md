@@ -49,6 +49,8 @@ sandbox target. They measure the gate itself, not the loop around it.
 | `stops_on_helper_inability` | The declared-inability stop distinct from the contract-violating one |
 | `stops_on_helper_spawn_failure` / `stops_on_helper_mid_run_death` | The spawn-failure and mid-run-death stops through the environment-note seam |
 | `stops_on_helper_script_failure` | The helper-script failure stop with the pre-run tree intact |
+| `stops_on_helper_script_failure_relay` | The relay-init failure stop with no relay directory and the pre-run tree intact |
+| `stops_on_helper_script_failure_restore` | The restore failure stop with the post-failure baseline intact |
 | `stops_on_concurrent_modification` | The concurrent-modification stop after an external write |
 | `stops_on_charter_refusal` | The CHARTER-before-write refusal with `charter-set-refused` listing |
 | `triage_reports_status_and_reason` | One finding fixed, the refuted one's file byte-identical and listed |

@@ -1,7 +1,7 @@
 ---
 name: auto_gate_git
 description: Runs git_review as the review gate for git_auto_review, keeping that skill's review criteria, headings, labels, and tags verbatim while forbidding its mutation paths, then derives a structured verdict from the report: one block per finding carrying id, heading, label, non_blocking, location, lane, Fix, and tag, plus the open decisions. Assigns each finding's lane and location by loading and applying the skill's lane-classification block, assigns each finding's id as the consecutive positive integers in report order, and on a delta re-review takes the prior gate return as the prior findings set, tagging every prior finding closed, open, open and not acknowledged, settled by a decision, or regressed, and tagging a defect first seen in the delta new.
-version: 1.0.0
+version: 1.0.1
 model: inherit
 background: false
 effort: max
@@ -37,7 +37,8 @@ For a `git_auto_review` call, receive as paths to read:
   <rule>With `<fetch_first>`, `<fast_forward_when_clean>`, and `<scratch_worktree>` forbidden, read `head_sync.txt` in the `<compare_heads>` step, name the checked-out `HEAD` and the head reviewed in the report lead, and state that the run leaves `HEAD` where it is. Report a `head_vs_upstream` of `behind N` on this target as-is, with no fast-forward and no scratch worktree, so the reviewed subject stays that local `HEAD` plus the working-tree changes the target names and the kept-verbatim `<compare_heads>` clause naming `<fast_forward_when_clean>` reads as this run's replacement decision.</rule>
   <rule>Write only the evidence-scratch files `git_review` already writes: the `collect_review_evidence.sh` scratch directory and `report.md` inside it. Change no working-tree product file, because working-tree product edits stay with `auto_fixer_git` alone.</rule>
   <rule>Assign each finding's `id` as the consecutive positive integers in the order findings appear in the report, unique within this gate return, because `git_review`'s `<finding_shape>` carries no id.</rule>
-  <rule>Assign each finding's `lane` and `location` by loading the `git_auto_review` skill's `<lane_classification>` block and applying it as written. Carry no second copy of those cases here; read the block from the skill.</rule>  <rule>Label a location as reproduction lines when its path matches a path named in `ledger.txt`, per the skill's **Scope anchor.** rule.</rule>
+  <rule>Assign each finding's `lane` and `location` by loading the `git_auto_review` skill's `<lane_classification>` block and applying it as written. Carry no second copy of those cases here; read the block from the skill.</rule>
+  <rule>Label a location as reproduction lines when its path matches a path named in `ledger.txt`, per the skill's **Scope anchor.** rule.</rule>
   <rule>Carry each finding's `non_blocking` value through from `git_review`'s non-blocking mark as reporting-only.</rule>
   <rule>On a delta re-review, run a `<re_review>` / `<tags>` pass: take the prior gate return as the prior findings set, take the same target shape as round 1 as the review subject, give every prior finding that `<dispositions>` keeps exactly one tag from `git_review`'s `<tags>` set, and tag a defect first seen in the delta `new` under the heading it belongs in. Reach that pass without editing `git_review`. On round 1 the `tag` field carries the literal `none`, because `git_review` emits no tag on a first review.</rule>
   <rule>Return `status: unable` with the marker line `helper_result: unable` as its own line when this gate cannot run to a verdict: the skills cannot be resolved, the target is unreadable, or the review cannot complete. State the blocker in place of the verdict and name no verdict fields.</rule>

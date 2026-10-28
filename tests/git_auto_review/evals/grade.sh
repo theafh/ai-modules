@@ -20,6 +20,9 @@ repo="${2:?sandbox repo required}"
 root="${3:?sandbox root required}"
 response_file="${RESPONSE_FILE:-}"
 
+GRADE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_SCRIPTS="$GRADE_DIR/../../../plugins/ai_dev/skills/git_auto_review/scripts"
+
 FAILED=0
 
 report() {
@@ -99,7 +102,7 @@ block_lane() {
 
 # file_matches <path> <snapshot> — the working-tree file equals its snapshot.
 file_matches() {
-  [[ -f "$2" ]] || return 0
+  [[ -f "$2" ]] || return 1
   cmp -s "$1" "$2"
 }
 
@@ -204,9 +207,31 @@ case "$eval_id" in
       "$([[ ! -f "$repo/.git_auto_review/default/gate-r2.txt" ]] && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
-  stops_on_helper_failure|stops_on_helper_spawn_failure|stops_on_helper_mid_run_death|stops_on_helper_inability|stops_on_helper_script_failure)
-    report "the stop line names a helper-failure class" \
-      "$(has "$text" "helper" && echo yes || echo no)"
+  stops_on_helper_failure)
+    report "the stop line names the contract-violating class" \
+      "$(has "$text" "contract-violating" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  stops_on_helper_spawn_failure)
+    report "the stop line names the spawn-failure class" \
+      "$(has "$text" "spawn-failure" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  stops_on_helper_mid_run_death)
+    report "the stop line names the mid-run-death class" \
+      "$(has "$text" "mid-run-death" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  stops_on_helper_inability)
+    report "the stop line names the declared-inability class" \
+      "$(has "$text" "declared-inability" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  stops_on_helper_script_failure)
+    report "the stop line names the helper-script class" \
+      "$(has "$text" "helper-script" && echo yes || echo no)"
+    report "the working tree matches its pre-run state" \
+      "$(file_matches "$repo/report.py" "$root/post-failure-report.py" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_script_failure_relay)
@@ -302,7 +327,7 @@ case "$eval_id" in
     report "the stem holds round-r1.diff.txt" \
       "$([[ -f "${sd:-}/round-r1.diff.txt" ]] && echo yes || echo no)"
     report "the saved gate-r1.txt is byte-identical to the staged return" \
-      "$(cmp -s "${sd:-}/gate-r1.txt" "$root/repo/.git_auto_review/default/gate-r1.txt" && echo yes || echo no)"
+      "$(cmp -s "${sd:-}/gate-r1.txt" "$GRADE_DIR/fixtures/relay_round_trip/gate-r1.txt" && echo yes || echo no)"
     ;;
   declines_on_non_default_branch)
     report "no run directory was created" \
@@ -346,6 +371,14 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   retries_once_on_ledger_fail)
+    report "the ledger holds the retry's reproduction" \
+      "$(sd="$(stem_dir || true)"
+         [[ -n "${sd:-}" && -s "${sd:-}/ledger.txt" ]] && echo yes || echo no)"
+    report "the retry leaves every ledger line passing" \
+      "$(sd="$(stem_dir || true)"
+         [[ -n "${sd:-}" ]] && bash "$SKILL_SCRIPTS/run_ledger.sh" \
+           --ledger "${sd}/ledger.txt" --cwd "$repo" >/dev/null 2>&1 \
+           && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_second_ledger_fail)
@@ -361,6 +394,21 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   retries_once_on_unmapped_hunk)
+    report "the retry's delta audit maps every hunk" \
+      "$(sd="$(stem_dir || true)"
+         f="${sd:-}/verifier-r1.txt"
+         [[ -f "$f" ]] && awk '
+           /^# auto_verifier_git delta/ { n++; m = 0; delete maps; next }
+           /^mapping:[[:space:]]*(reproduction|[0-9]+|unmapped)[[:space:]]*$/ {
+             maps[++m] = $0
+           }
+           END {
+             if (n < 2 || m == 0) exit 1
+             for (i = 1; i <= m; i++) {
+               if (maps[i] ~ /unmapped[[:space:]]*$/) exit 1
+             }
+             exit 0
+           }' "$f" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_second_unmapped_hunk)

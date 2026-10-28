@@ -338,6 +338,16 @@ s9_restore_reproduces_captured_state() {
   rm -rf "$outside"
   mkdir -p "$outside"
   stage_five_change_repo "$dir"
+  # A clean tracked path the fixer will edit (so it is absent from the patch),
+  # and a pre-fix rename the fixer will edit on its destination.
+  (
+    cd "$dir" || exit 1
+    printf 'c1\nc2\n' > d/clean-tracked.txt
+    printf 'r1\nr2\n' > d/old-rename.txt
+    git add d/clean-tracked.txt d/old-rename.txt
+    git commit --quiet -m "seed restore targets" -- d/clean-tracked.txt d/old-rename.txt
+    git mv d/old-rename.txt d/new-rename.txt
+  ) || ok=false
   stem="$dir/.git_auto_review/default"
   bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || ok=false
   bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" >/dev/null 2>&1 \
@@ -347,30 +357,39 @@ s9_restore_reproduces_captured_state() {
   mkdir -p "$captured" || { log "    cannot create $captured"; return 1; }
   local f base
   for f in d/staged-only.txt d/staged-then-edited.txt d/tracked-edit.txt \
-      d/preexisting-untracked.txt d/new-untracked.txt; do
+      d/preexisting-untracked.txt d/new-untracked.txt \
+      d/clean-tracked.txt d/new-rename.txt; do
     base="cap.$(printf '%s' "$f" | tr / _)"
     cp "$dir/$f" "$captured/$base" || { log "    cannot capture $f"; return 1; }
   done
   (cd "$dir" && git ls-files -s) > "$captured/index.before" || return 1
 
-  # The fixer writes its own edits, including into one captured tracked path.
+  # The fixer writes its own edits, including into one captured tracked path,
+  # one clean tracked path absent from the patch, and the rename destination.
   printf 'b1\nB2\nFIXER\nb3\nb4\n' > "$dir/d/tracked-edit.txt"
   printf 'FIXER-ONLY\n' > "$dir/d/staged-only.txt"
   printf 'u1\nU2\nFIXER-EXT\n' > "$dir/d/preexisting-untracked.txt"
   printf 'CORRUPT\n' > "$dir/d/new-untracked.txt"
   printf 'fixer added\n' > "$dir/d/fixer-added.txt"
+  printf 'c1\nC2-FIXER\n' > "$dir/d/clean-tracked.txt"
+  printf 'r1\nR2-FIXER\n' > "$dir/d/new-rename.txt"
 
   bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
     >"$outside/out.txt" 2>&1 || { log "    run_restore.sh exited non-zero"; ok=false; }
 
   for f in d/staged-only.txt d/staged-then-edited.txt d/tracked-edit.txt \
-      d/preexisting-untracked.txt d/new-untracked.txt; do
+      d/preexisting-untracked.txt d/new-untracked.txt \
+      d/clean-tracked.txt d/new-rename.txt; do
     base="cap.$(printf '%s' "$f" | tr / _)"
     if ! cmp -s "$dir/$f" "$captured/$base"; then
       log "    $f does not match the captured pre-fix state"
       ok=false
     fi
   done
+  if [[ -e "$dir/d/old-rename.txt" ]]; then
+    log "    the pre-fix rename source was recreated"
+    ok=false
+  fi
   (cd "$dir" && git ls-files -s) > "$captured/index.after"
   if ! cmp -s "$captured/index.before" "$captured/index.after"; then
     log "    the index changed across restore"
@@ -396,6 +415,52 @@ s10_restore_reports_inability() {
   fi
   assert_contains "restore names the missing artefact" "$dir/out.txt" \
     "pre-fix.patch not found" || ok=false
+  $ok
+}
+
+s13_restore_clean_tree() {
+  local ok=true dir stem outside
+  dir="$(new_sandbox restore_clean)"
+  outside="$SCRATCH/restore_clean_outside"
+  rm -rf "$outside"
+  mkdir -p "$outside"
+  (
+    cd "$dir" || exit 1
+    git init --quiet --initial-branch=main
+    git config user.name "Harness"
+    git config user.email "harness@example.test"
+    printf 'base\n' > tracked.txt
+    git add tracked.txt
+    git commit --quiet -m "base"
+  ) || return 1
+  stem="$dir/.git_auto_review/default"
+  bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || ok=false
+  bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" >/dev/null 2>&1 \
+    || ok=false
+  # A clean pre-fix tree writes an empty patch, and restore must not fail on it.
+  if [[ -s "$stem/pre-fix.patch" ]]; then
+    log "    a clean tree wrote a non-empty pre-fix.patch"
+    ok=false
+  fi
+  (cd "$dir" && git ls-files -s) > "$outside/index.before" || ok=false
+  printf 'fixer\n' > "$dir/tracked.txt"
+  printf 'fixer added\n' > "$dir/fixer-added.txt"
+  bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
+    >"$outside/out.txt" 2>&1 \
+    || { log "    run_restore.sh exited non-zero on a clean-tree round"; ok=false; }
+  if [[ "$(cat "$dir/tracked.txt" 2>/dev/null)" != "base" ]]; then
+    log "    the fixer edit on a clean tracked path survived the restore"
+    ok=false
+  fi
+  if [[ -e "$dir/fixer-added.txt" ]]; then
+    log "    the fixer-added untracked file was not deleted"
+    ok=false
+  fi
+  (cd "$dir" && git ls-files -s) > "$outside/index.after" || ok=false
+  if ! cmp -s "$outside/index.before" "$outside/index.after"; then
+    log "    the index changed across restore"
+    ok=false
+  fi
   $ok
 }
 
@@ -460,6 +525,7 @@ scenario s9 "run_restore.sh reproduces the captured worktree, index untouched" s
 scenario s10 "run_restore.sh reports the state it cannot reproduce" s10_restore_reports_inability
 scenario s11 "the Makefile EXCLUDE prune covers a repository-root run" s11_makefile_exclude_prune
 scenario s12 "the shared isolation allowlist names the harness prefix" s12_isolation_allowlist
+scenario s13 "run_restore.sh reproduces a clean pre-fix tree" s13_restore_clean_tree
 
 log ""
 log "================================================================"

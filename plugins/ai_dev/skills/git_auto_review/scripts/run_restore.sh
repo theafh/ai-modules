@@ -2,18 +2,20 @@
 # run_restore.sh - return one git_auto_review round's working tree to its
 # captured pre-fix state.
 #
-# The procedure returns the working-tree content of every captured tracked
-# path to the captured pre-fix state while the index keeps the content it held
-# at capture, solely from the two artefacts run_snapshot.sh wrote. It never
-# touches committed history:
+# The procedure returns the working-tree content of every tracked path to the
+# captured pre-fix state while the index keeps the content it held at capture,
+# solely from the two artefacts run_snapshot.sh wrote. It never touches
+# committed history:
 #
-#   1. For each tracked path `pre-fix.patch` carries, set its working-tree
-#      content to HEAD (`git restore --source=HEAD --worktree` or a
-#      `git show HEAD:<path>` write), which leaves the index untouched, and
-#      remove a path whose a-side is /dev/null.
+#   1. Reset every tracked path's working-tree content to HEAD
+#      (`git restore --source=HEAD --worktree -- .`), which leaves the index
+#      untouched, so a path that was clean at capture and a fixer edited, and
+#      both sides of a rename, return to HEAD. Remove a working-tree file the
+#      index knows and HEAD does not; the captured patch re-adds it when the
+#      pre-fix state held it.
 #   2. Apply `pre-fix.patch` forward into the working tree alone, never with
 #      --index or --cached, so the captured worktree content becomes the
-#      working-tree state again.
+#      working-tree state again. An empty patch needs no apply.
 #   3. Copy each file in `pre-fix.untracked.tar` back over its working-tree
 #      path.
 #   4. Delete the untracked files the fixer added that the copy does not
@@ -51,9 +53,11 @@ Behavior:
   - Uses the run stem from --stem, or `default` when it is absent, and reads
     `.git_auto_review/<stem>/pre-fix.patch` and
     `.git_auto_review/<stem>/pre-fix.untracked.tar`.
-  - Reproduces the captured working-tree content of every captured tracked
-    path while the index keeps the content it held at capture, and deletes the
-    untracked files the fixer added that the captured copy does not contain.
+  - Resets every tracked path's working-tree content to HEAD, removes the
+    working-tree files the index knows and HEAD does not, replays the captured
+    patch, and deletes the untracked files the fixer added that the captured
+    copy does not contain, while the index keeps the content it held at
+    capture.
 
 Exit codes:
   0  the working tree matches the captured pre-fix state
@@ -72,39 +76,51 @@ die_env() {
     exit "$EXIT_ENV"
 }
 
-# Print the tracked paths pre-fix.patch carries, one per line.
-patch_paths() {
-    local patch=$1
-    git apply --numstat -- "$patch" 2>/dev/null \
-        | awk '{ $1=""; $2=""; sub(/^  /, ""); print }'
+# Print the paths the index tracks, one per line.
+index_paths() {
+    (cd "$1" && git ls-files)
 }
 
-reset_path_to_head() {
-    local repo_root=$1 path=$2
-    if (cd "$repo_root" && git cat-file -e "HEAD:$path" 2>/dev/null); then
-        (cd "$repo_root" && git restore --source=HEAD --worktree -- "$path") \
-            || return 1
-    else
-        # The patch's a-side is /dev/null: HEAD holds no such path, so the
-        # captured state has no working-tree file at it.
+# Remove the working-tree files the index tracks but HEAD does not. Their
+# captured content returns from the patch in step 2, so the index keeps its
+# content while the pre-fix working tree is reproduced.
+remove_head_absent_paths() {
+    local repo_root=$1 path
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || continue
+        if (cd "$repo_root" && git cat-file -e "HEAD:$path" 2>/dev/null); then
+            continue
+        fi
         rm -f -- "$repo_root/$path" || return 1
-    fi
+    done < <(index_paths "$repo_root")
     return 0
 }
 
-# Extract the tar's member paths, one per line.
+# Write the tar's member paths to the file named by the second argument, one
+# NUL-delimited record per member. The archive is unpacked into a scratch
+# directory and walked there, because a `tar -tf` listing separates member names
+# with newlines and so cannot carry a name that holds one.
 tar_members() {
-    local tar_file=$1
-    tar -tf "$tar_file" 2>/dev/null
+    local tar_file=$1 dest=$2 probe
+    probe="$(mktemp -d "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")" || return 1
+    if ! (cd "$probe" && tar -xf "$tar_file") 2>/dev/null; then
+        rm -rf "$probe"
+        return 1
+    fi
+    (cd "$probe" && find . \( -type f -o -type l \) -print0) \
+        | while IFS= read -r -d '' member; do
+            printf '%s\0' "${member#./}"
+        done > "$dest"
+    rm -rf "$probe"
 }
 
+# Report whether the candidate path is one of the NUL-delimited member records
+# in the file named by the first argument.
 member_listed() {
     local members=$1 candidate=$2 member
-    while IFS= read -r member; do
+    while IFS= read -r -d '' member; do
         [[ "$member" == "$candidate" ]] && return 0
-        # tar may store a directory member with a trailing slash.
-        [[ "${member%/}" == "$candidate" ]] && return 0
-    done <<< "$members"
+    done < "$members"
     return 1
 }
 
@@ -136,18 +152,19 @@ main() {
     [[ -f "$untracked_tar" ]] \
         || die_env "pre-fix.untracked.tar not found: $untracked_tar"
 
-    # Step 1: reset every captured tracked path's working-tree content to HEAD,
-    # leaving the index untouched.
-    local path
-    while IFS= read -r path; do
-        [[ -n "$path" ]] || continue
-        reset_path_to_head "$repo_root" "$path" \
-            || die_env "cannot reset working-tree content for $path"
-    done < <(patch_paths "$patch")
+    # Step 1: reset every tracked path's working-tree content to HEAD, leaving
+    # the index untouched, then remove the index-known paths HEAD does not hold.
+    (cd "$repo_root" && git restore --source=HEAD --worktree -- .) \
+        || die_env "cannot reset the tracked working tree to HEAD"
+    remove_head_absent_paths "$repo_root" \
+        || die_env "cannot remove a working-tree file HEAD does not hold"
 
-    # Step 2: apply the captured patch forward into the working tree alone.
-    (cd "$repo_root" && git apply -- "$patch") \
-        || die_env "cannot re-apply the captured patch into the working tree"
+    # Step 2: apply the captured patch forward into the working tree alone. An
+    # empty patch, written from a clean pre-fix tree, has nothing to apply.
+    if [[ -s "$patch" ]]; then
+        (cd "$repo_root" && git apply -- "$patch") \
+            || die_env "cannot re-apply the captured patch into the working tree"
+    fi
 
     # Step 3: copy the captured untracked files back over their paths.
     (cd "$repo_root" && tar -xf "$untracked_tar") \
@@ -156,7 +173,11 @@ main() {
     # Step 4: delete the untracked files the fixer added that the captured copy
     # does not contain.
     local members current record
-    members="$(tar_members "$untracked_tar")"
+    members="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")"
+    if ! tar_members "$untracked_tar" "$members"; then
+        rm -f "$members"
+        die_env "cannot list the captured untracked files"
+    fi
     while IFS= read -r -d '' record; do
         case "$record" in
             "?? "*) current="${record#\?\? }" ;;
@@ -168,6 +189,7 @@ main() {
         rm -f -- "$repo_root/$current" \
             || die_env "cannot remove the fixer-added untracked file $current"
     done < <(cd "$repo_root" && git status --porcelain -z --untracked-files=all)
+    rm -f "$members"
 
     # Verify the captured tracked content is reproduced: re-deriving the round's
     # tracked patch must yield the captured patch byte for byte.

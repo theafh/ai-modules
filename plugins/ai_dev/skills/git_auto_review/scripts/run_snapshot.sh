@@ -62,26 +62,29 @@ die_env() {
     exit "$EXIT_ENV"
 }
 
-# Print one untracked path per line, NUL-delimited so a path holding a space or
-# a newline survives, and never a path git considers ignored.
+# Print one untracked path per NUL-delimited record, so a path holding a space
+# or a newline survives the whole round trip, and never a path git considers
+# ignored.
 list_untracked() {
     local repo_root=$1
     (cd "$repo_root" && git status --porcelain -z --untracked-files=all) \
         | while IFS= read -r -d '' record; do
             case "$record" in
-                "?? "*) printf '%s\n' "${record#\?\? }" ;;
+                "?? "*) printf '%s\0' "${record#\?\? }" ;;
             esac
         done
 }
 
-# Write a tar of the listed untracked paths, one path per line on stdin, with
-# paths stored relative to the repository root. An empty list still writes a
-# valid empty archive.
+# Write a tar of the listed untracked paths, one NUL-delimited path per record
+# on stdin, with paths stored relative to the repository root. `tar --null`
+# reads the list as NUL-delimited too, so a name holding a newline stays one
+# member instead of splitting into two. An empty list still writes a valid
+# empty archive.
 write_untracked_tar() {
     local repo_root=$1 dest=$2 list
     list="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")"
     cat > "$list"
-    tar -cf "$dest" -C "$repo_root" -T "$list" || {
+    tar --null -cf "$dest" -C "$repo_root" -T "$list" || {
         rm -f "$list"
         return 1
     }
