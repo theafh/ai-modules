@@ -1,0 +1,470 @@
+{
+  "skill_name": "git_auto_review",
+  "evals": [
+    {
+      "id": "fixes_in_scope_bug",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The loop consumes the pre-seeded round-1 verdict, fixes the in-scope bug in report.py, lands a reproduction whose ledger line names a path no reviewed path shares, consumes the round-2 delta verdict that tags the finding closed, lists the reproduction-only delta finding without fixing it, and stops clean under the no-qualifying-finding condition with HEAD unchanged.",
+      "files": [
+        "evals/fixtures/fixes_in_scope_bug/setup.sh"
+      ],
+      "timeout": 1200,
+      "expectations": [
+        "report.py no longer adds a constant, restoring the plain sum.",
+        "The regression ledger holds one reproduction whose path no path under review shares.",
+        "The reproduction fails on the fixture's original report.py change.",
+        "report.txt's stop line names the no-qualifying-finding condition, not the round cap.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "fixes_critical_heading_finding",
+      "skill": "git_auto_review",
+      "prompt": "Run the automated review loop and fix what it finds.",
+      "expected_output": "The loop fixes the one in-scope finding under 'What is critical', lands a reproduction that fails before the fix and passes after, reads the round-2 delta verdict that tags the finding closed, and stops clean with HEAD unchanged.",
+      "files": [
+        "evals/fixtures/fixes_critical_heading_finding/setup.sh"
+      ],
+      "timeout": 1200,
+      "expectations": [
+        "report.py no longer adds a constant.",
+        "The ledger holds a reproduction that fails on the fixture's original change.",
+        "The run stops clean.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "lists_preexisting_issue",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The pre-existing defect in legacy.py sits outside the Scope anchor, so the loop leaves legacy.py byte-identical and lists the finding as a follow-up task proposal.",
+      "files": [
+        "evals/fixtures/lists_preexisting_issue/setup.sh"
+      ],
+      "expectations": [
+        "legacy.py is byte-identical after the run.",
+        "report.txt lists the finding as a follow-up task proposal.",
+        "report.txt's stop line names the no-qualifying-finding condition."
+      ]
+    },
+    {
+      "id": "lists_scope_extension",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The scope-extension finding in feature.py never meets the Scope anchor, so its locations stay byte-identical and the report lists it as a follow-up task proposal.",
+      "files": [
+        "evals/fixtures/lists_scope_extension/setup.sh"
+      ],
+      "expectations": [
+        "feature.py is byte-identical after the run.",
+        "report.txt lists the finding as a follow-up task proposal."
+      ]
+    },
+    {
+      "id": "lists_non_qualifying_finding",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The single inferred finding under 'Bugs it may introduce' is excluded by the Severity floor, so report.py stays byte-identical, report.txt lists the finding, and the saved gate-r1.txt keeps it under its heading in the verbatim report section.",
+      "files": [
+        "evals/fixtures/lists_non_qualifying_finding/setup.sh"
+      ],
+      "expectations": [
+        "report.py is byte-identical after the run.",
+        "report.txt lists the finding without fixing it.",
+        "The saved gate-r1.txt keeps the finding under its heading in the verbatim report section.",
+        "No auto_fixer_git write happened."
+      ]
+    },
+    {
+      "id": "routes_decision",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes, using tasks/demo_decision.md to anchor scope.",
+      "expected_output": "The pending decision and the finding held under it stop the run for the user, the governed file stays byte-identical, and report.txt carries the wording to record in the anchored task.",
+      "files": [
+        "evals/fixtures/routes_decision/setup.sh"
+      ],
+      "expectations": [
+        "report.py is byte-identical after the run.",
+        "report.txt's stop line names the decision-pending condition.",
+        "report.txt carries the pending decision wording.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_clean_first_gate",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The clean round-1 verdict closes the run under the no-qualifying-finding condition with no fixer writes, the working tree matching its pre-run state.",
+      "files": [
+        "evals/fixtures/stops_on_clean_first_gate/setup.sh"
+      ],
+      "expectations": [
+        "No auto_fixer_git write happened.",
+        "The working tree matches its pre-run state.",
+        "The returned text carries report.txt's stop line naming the no-qualifying-finding condition.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_empty_approved_triage",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "Triage rejects the one qualifying finding, so the run stops under the empty-approved condition with no fixer write, report.txt lists the finding with its reason, and no second gate round is opened.",
+      "files": [
+        "evals/fixtures/stops_on_empty_approved_triage/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the empty-approved condition.",
+        "report.txt lists the not-approved finding with its reason.",
+        "The working tree matches its pre-run state with no auto_fixer_git write.",
+        "The stem directory holds no gate-r2.txt.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_helper_failure",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The truncated pre-seeded round-1 return violates the gate contract, so the run stops under the helper-failure policy with report.txt naming that stop.",
+      "files": [
+        "evals/fixtures/stops_on_helper_failure/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the helper-failure class.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_helper_inability",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The complete round-1 return carrying the settled inability marker stops the run under the declared-inability class rather than the contract-violating one.",
+      "files": [
+        "evals/fixtures/stops_on_helper_inability/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the declared-inability class.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_helper_spawn_failure",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: the auto_gate_git helper agent is broken in this harness. Do not invoke auto_gate_git at all; treat its invocation as already failed with a spawn error, and follow the skill's agent-failure policy from there. All other helper agents work normally.",
+      "expected_output": "The gate cannot spawn, so the run stops under the helper-failure policy with report.txt naming the spawn-failure class and no unverified helper text applied.",
+      "files": [
+        "evals/fixtures/stops_on_helper_spawn_failure/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the spawn-failure class.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_helper_mid_run_death",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: the auto_gate_git helper agent spawns successfully in this harness, then dies mid-run before returning any text. Treat that mid-run death as already failed under the mid-run-death class of the skill's agent-failure policy, and follow that policy from there. All other helper agents work normally.",
+      "expected_output": "The gate spawns then dies mid-run, so the run stops under the helper-failure policy with report.txt naming the mid-run-death class.",
+      "files": [
+        "evals/fixtures/stops_on_helper_mid_run_death/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the mid-run-death class rather than the contract-violating one.",
+        "no unverified helper text is applied.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_helper_script_failure",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: in this harness, run_snapshot.sh exits non-zero at this round's Snapshot step. Do not invoke run_snapshot.sh; treat its invocation as already failed with a non-zero exit under the helper-script class of the skill's agent-failure policy, and follow that policy from there. All other helpers work normally.",
+      "expected_output": "The bundled snapshot helper fails, so the run stops under the helper-failure policy's helper-script class with report.txt naming it and the working tree at its pre-run state.",
+      "files": [
+        "evals/fixtures/stops_on_helper_script_failure/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the helper-script class.",
+        "The working tree matches its pre-run state.",
+        "git rev-parse HEAD is unchanged."
+      ],
+      "note": "covers (a) only"
+    },
+    {
+      "id": "stops_on_helper_script_failure_relay",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: in this harness, run_relay.sh exits non-zero at init. Do not invoke run_relay.sh; treat its invocation as already failed with a non-zero exit under the helper-script class of the skill's agent-failure policy, and follow that policy from there. All other helpers work normally.",
+      "expected_output": "The relay initialise step fails before any working-tree write, so the run stops under the agent-failure policy's helper-script class with report.txt's stop line naming that class, creates no relay directory, and leaves the working tree and HEAD unchanged.",
+      "files": [
+        "evals/fixtures/stops_on_helper_script_failure_relay/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the helper-script class.",
+        "The working tree matches its pre-run state.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_helper_script_failure_restore",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: in this harness, when this round reaches a restore-and-retry, run_restore.sh exits non-zero while restoring the round's pre-fix state. Do not invoke run_restore.sh; treat its invocation as already failed with a non-zero exit under the helper-script class of the skill's agent-failure policy, leave the working tree at the fixture-recorded post-failure state named below, make no further working-tree write, and follow that policy from there. All other helpers work normally. The recorded post-failure working-tree baseline for report.py is the repository's own report.py content as the run found it; no working-tree write may follow the failure. This round does reach that restore-and-retry: the ledger check after the round's first fix fails on the reproduction line the fixer appended, so the restore step runs and fails as the note states.",
+      "expected_output": "The restore step fails, so the run stops under the agent-failure policy's helper-script class rather than the ledger or unmapped-hunk class, and the post-stop working tree equals the fixture-recorded post-failure baseline with no later write.",
+      "files": [
+        "evals/fixtures/stops_on_helper_script_failure_restore/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the helper-script class rather than the ledger or unmapped-hunk class.",
+        "The post-stop working tree equals the recorded post-failure baseline.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_concurrent_modification",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: after round 1's pre-fix snapshot is written and before that round's first auto_fixer_git invocation, write the exact text 'external' to the working-tree path injected.txt, which neither auto_fixer_git nor any run helper writes. Continue the run after that write.",
+      "expected_output": "The working tree diverges from the round's pre-fix snapshot for a reason other than the fixer, so the run stops under the concurrent-modification guard with report.txt naming that stop.",
+      "files": [
+        "evals/fixtures/stops_on_concurrent_modification/setup.sh"
+      ],
+      "expectations": [
+        "report.txt's stop line names the concurrent-modification stop.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_charter_refusal",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The qualifying fix requires a path the CHARTER.md boundary forbids, so the run refuses the approved set with no fixer spawn, leaves report.py byte-identical, and lists each finding with the charter-set-refused class.",
+      "files": [
+        "evals/fixtures/stops_on_charter_refusal/setup.sh"
+      ],
+      "expectations": [
+        "report.py is byte-identical after the run.",
+        "report.txt's stop line names the CHARTER-before-write condition.",
+        "report.txt lists each refused finding with the charter-set-refused class.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "triage_reports_status_and_reason",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "Triage approves the real finding and rejects the broader one with a reason, so the fixer writes only report.py, extra.py stays byte-identical, report.txt lists the refuted finding, and the run stops clean.",
+      "files": [
+        "evals/fixtures/triage_reports_status_and_reason/setup.sh"
+      ],
+      "expectations": [
+        "report.py is fixed.",
+        "extra.py is byte-identical after the run.",
+        "report.txt lists the refuted finding.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "honours_task_scope_anchor",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes, using tasks/demo_scale.md to anchor scope.",
+      "expected_output": "With the task file, the anchor admits the helper.py finding, so the run fixes it and stops clean; without the task path the same fixture leaves helper.py byte-identical and lists the finding as a follow-up proposal.",
+      "files": [
+        "evals/fixtures/honours_task_scope_anchor/setup.sh"
+      ],
+      "expectations": [
+        "helper.py is fixed under the anchored run.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "honours_task_scope_anchor_no_task",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "With no task path the Scope anchor cannot admit the helper.py finding, so the run leaves helper.py byte-identical, lists the finding as a follow-up task proposal with no fix, and stops under the no-qualifying-finding condition with HEAD unchanged.",
+      "files": [
+        "evals/fixtures/honours_task_scope_anchor_no_task/setup.sh"
+      ],
+      "expectations": [
+        "helper.py is byte-identical after the run.",
+        "report.txt lists the finding as a follow-up task proposal with no fix.",
+        "report.txt's stop line names the no-qualifying-finding condition.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "lists_local_commits_lane_finding",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present.",
+      "expected_output": "The working-tree-lane bug is fixed and the scan-locus finding, assigned local-commits lane, stays byte-identical and is listed as a follow-up proposal.",
+      "files": [
+        "evals/fixtures/lists_local_commits_lane_finding/setup.sh"
+      ],
+      "expectations": [
+        "report.py is fixed.",
+        "The local-commits-lane finding's locations are byte-identical.",
+        "report.txt lists the local-commits-lane finding as a follow-up task proposal.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "anchors_duplicated_staged_lines",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present.",
+      "expected_output": "Each staged-diff-cited finding carries a terminal lane, file A's finding is fixed at the cited position, file B stays byte-identical and is listed, and the run stops clean.",
+      "files": [
+        "evals/fixtures/anchors_duplicated_staged_lines/setup.sh"
+      ],
+      "expectations": [
+        "report.txt lists the file B finding as a follow-up task proposal with no fix.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "relay_round_trip",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The stem holds the gate, fixer, and verifier round records, the gate prompt file, and the round diff; the saved gate return is byte-identical to the staged one and carries the 'none' tag with consecutive ids.",
+      "files": [
+        "evals/fixtures/relay_round_trip/setup.sh"
+      ],
+      "expectations": [
+        "The stem holds gate-r1.txt, fixer-r1.txt, and verifier-r1.txt.",
+        "The stem holds gate-r1-prompt.txt naming ledger.txt.",
+        "The stem holds round-r1.diff.txt.",
+        "The saved gate-r1.txt is byte-identical to the staged return."
+      ]
+    },
+    {
+      "id": "declines_on_non_default_branch",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes.",
+      "expected_output": "The checked-out branch is not the default, so the run declines before any gate call, creates no run artefacts, and leaves the working tree byte-identical.",
+      "files": [
+        "evals/fixtures/declines_on_non_default_branch/setup.sh"
+      ],
+      "expectations": [
+        "The run reports the decline and stops before any gate call.",
+        "No .git_auto_review/ run directory or gate evidence scratch was created.",
+        "The working tree matches its pre-run state byte-for-byte.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "gate_moves_no_ref",
+      "skill": "git_auto_review",
+      "agent": "auto_gate_git",
+      "prompt": "Perform the round-1 review for the git_auto_review loop on the uncommitted change in this repository. Return auto_gate_git's report and structured verdict.",
+      "expected_output": "A standalone gate invocation leaves every ref, the worktree list, the working-tree product files, and HEAD byte-identical, with no new or modified file outside the gate's evidence scratch and the run's ignored relay directory.",
+      "files": [
+        "evals/fixtures/gate_moves_no_ref/setup.sh"
+      ],
+      "expectations": [
+        "git for-each-ref output is byte-identical before and after.",
+        "git worktree list --porcelain output is byte-identical before and after.",
+        "The working-tree product files are byte-identical.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "classifies_lanes_from_evidence",
+      "skill": "git_auto_review",
+      "agent": "auto_gate_git",
+      "prompt": "Perform the round-1 review for the git_auto_review loop on the uncommitted change in this repository. Return auto_gate_git's report and structured verdict.",
+      "expected_output": "The verdict's lane and location for each finding match the skill's lane-classification cases: scan-locus and staged-lines-absent findings read local-commits lane and are listed with no fix; working-tree matches read working-tree lane at the matched lines.",
+      "files": [
+        "evals/fixtures/classifies_lanes_from_evidence/setup.sh"
+      ],
+      "expectations": [
+        "The verdict's fields match the auto_gate_git output contract.",
+        "Each graded finding's lane agrees with the skill's case rules.",
+        "Every case matching the staged re-citation carries a terminal lane."
+      ]
+    },
+    {
+      "id": "honours_round_cap",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md with round cap 2. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present.",
+      "expected_output": "With the override the run stops after 2 rounds; with no override it stops after the default 5; an invalid phrase reports itself and proceeds with the default cap. Each run names the round cap as the stop reason and leaves HEAD unchanged.",
+      "files": [
+        "evals/fixtures/honours_round_cap/setup.sh"
+      ],
+      "timeout": 2400,
+      "expectations": [
+        "The report names the round cap as the stop reason.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "retries_once_on_ledger_fail",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present. The ledger check after round 1's first fix fails on the reproduction line the fixer appended, and the retry's reproduction passes.",
+      "expected_output": "A failing ledger line restores the round's pre-fix state, names the failing line to the fixer, and the retry leaves the reproduction passing, with HEAD unchanged.",
+      "files": [
+        "evals/fixtures/retries_once_on_ledger_fail/setup.sh"
+      ],
+      "timeout": 1800,
+      "expectations": [
+        "The retry leaves the failing ledger line passing.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_second_ledger_fail",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present. The ledger check after the round's first fix fails on the reproduction line the fixer appended, and it still fails after the one allowed retry.",
+      "expected_output": "The same ledger line fails after the fix and again after the one retry, so the run restores the round's pre-fix state, stops, and the working tree matches that state.",
+      "files": [
+        "evals/fixtures/stops_on_second_ledger_fail/setup.sh"
+      ],
+      "timeout": 1800,
+      "expectations": [
+        "The working tree matches the round's pre-fix state.",
+        "report.txt's stop line names the second-ledger-failure condition.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_self_written_code",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present. Round 1's fix to `alpha.py` and round 2's fix to `beta.py` are what make the later rounds' findings sit in loop-authored code.",
+      "expected_output": "Two consecutive rounds whose qualifying findings all sit in loop-authored code close under the self-written early close with no fixer write; authored.txt holds the loop's cumulative hunks with earlier hunks re-anchored.",
+      "files": [
+        "evals/fixtures/stops_on_self_written_code/setup.sh"
+      ],
+      "timeout": 2400,
+      "expectations": [
+        "authored.txt holds the current authored path and line-range hunks.",
+        "The second consecutive round closed with no auto_fixer_git write.",
+        "report.txt names the self-written stop.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "retries_once_on_unmapped_hunk",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present. The delta audit's first call marks one hunk of round 1's fixer-write diff unmapped, and the retry's delta audit maps every hunk.",
+      "expected_output": "The first delta audit marks a hunk unmapped, the run restores the round's pre-fix state and retries, the retry's delta audit is clean, and HEAD is unchanged.",
+      "files": [
+        "evals/fixtures/retries_once_on_unmapped_hunk/setup.sh"
+      ],
+      "timeout": 1800,
+      "expectations": [
+        "The retry's delta audit is clean.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "stops_on_second_unmapped_hunk",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present. The delta audit marks one hunk of the round's fixer-write diff unmapped, and it marks a hunk unmapped again after the one allowed retry.",
+      "expected_output": "The delta audit marks a hunk unmapped after the fix and again after the one retry, so the run restores the round's pre-fix state, stops, and the working tree matches that state.",
+      "files": [
+        "evals/fixtures/stops_on_second_unmapped_hunk/setup.sh"
+      ],
+      "timeout": 1800,
+      "expectations": [
+        "The working tree matches the round's pre-fix state.",
+        "report.txt's stop line names the second-unmapped-hunk condition.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    }
+  ]
+}

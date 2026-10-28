@@ -121,6 +121,29 @@ that needs a Claude-specific feature, and it names that run through
 `--vendor claude`, also on a Claude-only harness whose default is Claude. That
 run is part of the change like any other.
 
+### Scope a behavioral re-run to the change's blast radius
+
+When a change edits a fixture, a grader, a runner, or another surface that
+several evals share, re-run the evals that surface reaches and no others. Name
+that set explicitly before starting, from the change itself: an edited fixture
+reaches the evals that name it, a grader or runner edit reaches the evals whose
+graded behaviour it computes, and a shared prompt or helper reaches every eval
+that passes through it. Every eval outside that set keeps the verdict already
+recorded for it, and you report that verdict as recorded rather than re-derived.
+
+State the reach of a shared-surface edit as a property, then verify that
+property instead of re-running to discover it. A prompt note that fires only
+under a condition a small number of evals meet is proved by those evals alone;
+a grading helper every eval calls is proved by one eval per distinct call shape.
+Re-running a whole suite to find out which evals a change touched answers a
+question the change already answers, and it spends the suite's runtime doing it.
+
+Re-run a full suite only when the operator asks for that measurement, and treat
+the ask as the pass it names rather than folding it into a change's done bar.
+When a recorded verdict is stale because its eval's fixture or grading changed,
+that eval belongs in the re-run set; a verdict recorded against unchanged
+fixtures and grading stays valid.
+
 ## Running Tests
 
 ```bash

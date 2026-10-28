@@ -26,6 +26,7 @@ HARNESS_PREFIX_LITERAL = re.compile(r"^[a-z][a-z0-9_]*_$")
 ALLOWED_ISOLATION_PREFIXES = frozenset(
     {
         "agent_spinner_",
+        "git_auto_review_",
         "git_checkout_",
         "git_commit_",
         "git_refresh_",

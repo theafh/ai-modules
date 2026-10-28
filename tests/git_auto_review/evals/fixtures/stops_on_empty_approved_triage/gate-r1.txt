@@ -1,0 +1,51 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change adjusts `report.py`'s `total` helper.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`report.py:3` — `total` adds a constant instead of summing (verified).** The
+working-tree change replaces the sum with `sum(items) + 10`. Fix: add a comment
+above the function.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+
+id: 1
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: report.py:3
+lane: working-tree lane
+Fix: Add a comment above `total` describing the constant.
+tag: none
+
+## Decisions
+None.

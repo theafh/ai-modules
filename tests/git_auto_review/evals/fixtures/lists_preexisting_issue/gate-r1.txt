@@ -1,0 +1,52 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change adjusts `report.py`'s `total` helper.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`legacy.py:1` — pre-existing defect outside the change (verified).** The
+`legacy.py` file already held this text before the change and the change never
+touched it, so the finding sits outside the Scope anchor. Fix: none from this
+run; proposed as a follow-up task.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+
+id: 1
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: legacy.py:1
+lane: working-tree lane
+Fix: none
+tag: none
+
+## Decisions
+None.

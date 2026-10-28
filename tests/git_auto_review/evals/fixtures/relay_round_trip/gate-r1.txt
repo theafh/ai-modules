@@ -1,0 +1,59 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change adjusts the working-tree files named below.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`report.py:3` — wrong value (verified).** Fix: correct the return.
+
+**`legacy.py:1` — pre-existing (verified).** Outside the change.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+id: 1
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: report.py:3
+lane: working-tree lane
+Fix: Correct the return.
+tag: none
+
+id: 2
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: legacy.py:1
+lane: working-tree lane
+Fix: none
+tag: none
+
+## Decisions
+None.

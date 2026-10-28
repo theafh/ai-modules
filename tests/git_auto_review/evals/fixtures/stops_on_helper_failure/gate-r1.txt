@@ -1,0 +1,18 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change adjusts `report.py`'s `total` helper.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+**`report.py:3` — `total` adds a constant instead of summing (verified).** The
+working-tree change replaces the sum with `sum(items) + 10` ...

@@ -1239,3 +1239,21 @@ advisory.
 - concepts/deployment-model.md (overview and the uninstall section now state
   that a scope flag limits uninstall to the scope it names while a scopeless
   run covers every scope)
+
+## [2026-10-28 12:05] update | OpenCode rejects a flow-mapping permission value
+
+- entities/sst-opencode.md (the `permission` value has to be a block mapping;
+  a one-line flow mapping reaches the configuration schema as a plain string,
+  fails its action-or-object union, and rejects the whole configuration with
+  `ConfigInvalidError`; read off the desktop bundle's own agent documentation
+  and configuration schema on 28 October 2026 against desktop 1.19.5)
+- concepts/agent-definition-portability.md (the read-only-lever paragraph now
+  says a generator writes OpenCode's `permission` object as a block mapping,
+  and links the entity page that owns the fact)
+- index.md (OpenCode one-liner, Last updated)
+
+## [2026-10-28 12:06] lint | 0 blocking, 1 warn, 9 info
+
+The narrow post-update lint exited 0. The `boilerplate` warn on `log.md` is
+pre-existing, and the size infos stay advisory; the one on
+`entities/sst-opencode.md` grew with this update.

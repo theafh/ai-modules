@@ -257,6 +257,49 @@ check(not results4.exists(),
 check(calls["uuid"] == 0 and calls["deployed"] == 0,
       "force-uuid no-path: neither mode runner is called")
 
+# --- hermetic git_review trigger-set schema check --------------------------
+#
+# Approach Route and register. requires every raw entry of the two-family
+# set to carry an explicit expected_skill key and no should_trigger key, with
+# both git_review and git_auto_review among the expected skills. The check
+# reads the raw entries before run.py's normalize_eval_entry, so a
+# should_trigger entry cannot slip through by being inferred instead.
+
+def raw_set_error(path):
+    """Return an error string when the raw set violates the schema, else None."""
+    try:
+        raw = json.loads(Path(path).read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return f"cannot read the eval set: {exc}"
+    if not isinstance(raw, list):
+        return "the eval set is not a JSON array"
+    seen = set()
+    for i, entry in enumerate(raw):
+        if "should_trigger" in entry:
+            return f"entry {i} carries should_trigger, which the explicit form forbids"
+        if "expected_skill" not in entry:
+            return f"entry {i} lacks an explicit expected_skill key"
+        if entry["expected_skill"] is not None:
+            seen.add(entry["expected_skill"])
+    for required in ("git_review", "git_auto_review"):
+        if required not in seen:
+            return f"the set never expects {required}"
+    return None
+
+git_set = run_dir / "git_review.json"
+check(raw_set_error(git_set) is None,
+      "git_review set: every raw entry carries expected_skill and no should_trigger")
+check(git_set.is_file() and len(json.loads(git_set.read_text())) >= 1,
+      "git_review set: the file exists and is non-empty")
+
+mutated_dir = Path(tempfile.mkdtemp())
+mutated = mutated_dir / "git_review.json"
+raw_entries = json.loads(git_set.read_text())
+raw_entries[0] = {"query": raw_entries[0]["query"], "should_trigger": True}
+mutated.write_text(json.dumps(raw_entries))
+check(raw_set_error(mutated) is not None,
+      "git_review set: a should_trigger entry without expected_skill is rejected")
+
 print()
 if fails:
     print(f"FAIL: {len(fails)} assertion(s) failed")

@@ -1,0 +1,59 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change adjusts the working-tree files named below.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`alpha.py:3` — `alpha_value` returns 2 where its docstring documents 1 (verified).** The helper's docstring states the documented limit is 1, and the body returns the literal `2`, so every caller that trusts the docstring receives a value one above the limit. Fix: return the documented limit `1` from `alpha_value`.
+
+**`alpha.py:8` — `alpha_max` returns 2 where its docstring documents 1 (verified).** The same mismatch holds in the second helper: its docstring documents a limit of 1 and its body returns the literal `2`. Fix: return the documented limit `1` from `alpha_max`.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+id: 1
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: alpha.py:3
+lane: working-tree lane
+Fix: Return the documented limit `1` from `alpha_value` instead of the literal `2`.
+tag: none
+
+id: 2
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: alpha.py:8
+lane: working-tree lane
+Fix: Return the documented limit `1` from `alpha_max` instead of the literal `2`.
+tag: none
+
+## Decisions
+None.

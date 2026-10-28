@@ -1,0 +1,64 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change touches `file_a.py` and `file_b.py`.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`file_a.py:2` — `a` subtracts a constant (verified).** The staged line
+`result = compute() - 1` is cited at index-world line 2 and still appears in the
+working-tree file. Fix: use `compute()`.
+
+**`file_b.py:2` — `b` subtracts a constant (verified).** The staged line
+`result = compute() - 1` is cited at index-world line 2; the working-tree file
+carries it at several other positions but not at line 2. Fix: use `compute()`.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+
+id: 1
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: file_a.py:2
+lane: working-tree lane
+Fix: Replace `compute() - 1` with `compute()` in `a`.
+tag: none
+
+id: 2
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: file_b.py:2
+lane: local-commits lane
+Fix: Replace `compute() - 1` with `compute()` in `b`.
+tag: none
+
+## Decisions
+None.

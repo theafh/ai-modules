@@ -1,7 +1,7 @@
 ---
 title: Agent definition portability
 created: 2026-08-08
-updated: 2026-10-27
+updated: 2026-10-28
 type: concept
 tags: [agent, frontmatter, portability, claude, codex, cursor, opencode, antigravity, verification-gap]
 sources: [raw/notes/agent-delegation-host-observations-2026-09.md, raw/notes/delegation-probes-2026-10-04.md]
@@ -92,7 +92,10 @@ Antigravity needs both halves of its lever: a `tools` array holding only
 read-only names, and `commandExecutionPolicy` set to `off`, or to `sandbox` where
 the role still needs contained execution. OpenCode uses a `permission` object
 with `edit: deny`, plus `bash: deny` where no shell is needed, because its `edit`
-key gates all file modification. Runs have observed only the levers below.
+key gates all file modification, and a generator writes that object as a block
+mapping or the client rejects the whole configuration
+([SST OpenCode](../entities/sst-opencode.md)). Runs have observed only the
+levers below.
 
 | Host and lever | Mode | Observed reach | Source |
 | --- | --- | --- | --- |

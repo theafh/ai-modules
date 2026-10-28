@@ -2,8 +2,8 @@
 description: Make the deploy script add or update only ai-modules' own hook entries in Codex, Claude Code and Cursor hook files, keep every foreign entry in place, and uninstall only its own.
 scope: deployment
 created: 2026-10-17T00:45:44
-updated: 2026-10-27T16:21:32
-status: checked
+updated: 2026-10-28T01:42:03
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -90,26 +90,74 @@ Related tasks:
      identity the shipped config no longer carries, is removed.
    - Every other entry, event and top-level key of the target file stays as it
      was, including Cursor's `version` and every other key of `settings.json`.
-   - In dry-run mode it reports each entry it would add, update or remove, and
-     writes nothing.
+   - In dry-run mode it reports each entry it would add, update or remove under
+     the existing `would-merge` label naming the target file, keeps the
+     `would-rewrite` label for the `./hooks/` command-path rewrite, and writes
+     nothing.
+   Each harness's shape that the merge reads and writes is fixed by the table
+   below:
+
+   | Harness | File and `hooks` container | Entry and identity | Container removed when empty |
+   | --- | --- | --- | --- |
+   | Codex | `<app_dir>/hooks.json`, top-level `hooks` mapping each event to an array of matcher groups | matcher group `{matcher, hooks[]}`, identity the set of its `hooks[].command` values after the rewrite | the event's array, then the `hooks` object |
+   | Claude Code | `<app_dir>/settings.json`, top-level `hooks` mapping each event to an array of matcher groups | matcher group `{matcher, hooks[]}`, identity the set of its `hooks[].command` values after the rewrite | the event's array, then the `hooks` object; `settings.json` itself stays |
+   | Cursor | `<app_dir>/hooks.json`, top-level `hooks` mapping each event to an array of entries | entry object carrying `command`, identity its `command` after the rewrite | the event's array, then the `hooks` object; top-level `version` stays |
+
+   The Cursor shape follows this task's fixture, since the repository records
+   Cursor's hook contract as unworked.
+
 2. **Log the owned entries.** The function logs the target as `path[hooks]`, as
    today, and writes `@entries:` followed by a compact JSON list of the owned
    entries' events and identities into the fifth field, in place of a whole-key
    prior. The existing `@absent` marker is the precedent for an `@`-prefixed
-   value there. A legacy hook line that still carries a whole-key prior is
-   rewritten to the manifest form on the next deploy.
+   value there. Because the manifest is the current owned set and changes
+   whenever an owned entry is added, updated or removed, the function rewrites
+   its own log line before appending: it deletes any existing line for that
+   `path[hooks]` destination, so one destination keeps exactly one line. A legacy
+   hook line that still carries a whole-key prior is rewritten to the manifest
+   form on the next deploy.
 3. **Route the arms through it.** The `codex)` and `claude)` arms call the new
    function for their hook configs in place of `merge_json_key`, and the
    `cursor)` arm calls it for `cursor-hooks*.json` in place of the copy.
 4. **Uninstall by manifest.** In `uninstall_logged_artifacts`, a `path[key]`
-   line whose fifth field starts with `@entries:` removes exactly the listed
-   entries, removes an event list or `hooks` object the removal left empty, and
-   drops the log line. A line carrying a prior value or `@absent` keeps today's
-   restore or strip, and so does a legacy hook line met before any redeploy.
+   line whose fifth field starts with `@entries:` branches ahead of the shared
+   restore dispatch — before the `skip_absent_shortcircuit` guard and before the
+   `remove_logged_path` → `restore_json_key` and
+   `json_key_uninstall_succeeded` calls — removes exactly the listed entries,
+   removes an event list or `hooks` object the removal left empty, drops the log
+   line, and reports success against its own removal check rather than the
+   recorded-prior comparison. A line carrying a prior value or `@absent` still
+   reaches `remove_logged_path`, `restore_json_key` and
+   `json_key_uninstall_succeeded` unchanged, and so does a legacy hook line met
+   before any redeploy.
 5. **Rewrite the deploy documentation in place.** In `deployment/README.md`,
    the Cursor, Claude Code and OpenAI Codex hook rows of both tables, and the
    passage on the log's fifth field, describe the entry merge and the
-   `@entries:` manifest where they now describe a copy and a whole-key merge.
+   `@entries:` manifest where they now describe a copy and a whole-key merge. In
+   `wiki/concepts/deployment-model.md`, the sentence stating that hook
+   configuration "is merged as a JSON key into an existing settings file" and
+   the sentence stating that "the hook-configuration merges on Claude, Codex,
+   and Antigravity gain the same restore" describe the entry merge in place of a
+   whole-key merge; in `wiki/concepts/hook-delivery-design.md`, so do the
+   sentence stating the deploy merges the Codex config-layer file "into that
+   harness's own hook configuration under the `hooks` key" and the sentence
+   stating the deployment model's "key-merge function writes the Codex and
+   Antigravity hook configuration". Two further live
+   pages carry the same claim and are rewritten in place the same way: in
+   `wiki/concepts/hook-surface-portability.md`, the sentence stating the
+   deployment model "merges hook configuration as a JSON key rather than
+   replacing the target file"; and in
+   `wiki/concepts/output-style-delivery-design.md`, the sentence stating the
+   marked block "is the Markdown counterpart of the JSON key merge the script
+   already performs for hook configuration" together with the sentence stating
+   "the hook merges that predate this work inherited the restore too". The
+   sweep finds these pages by a repository search for the whole-key hook-merge
+   claim rather than by this list alone. Each page is rewritten in place
+   through the `wiki` skill family. Where one of these sentences names
+   Antigravity beside Codex or Claude Code, or states the hook-configuration
+   merge generally, only the Codex and Claude Code parts become the entry
+   merge; the Antigravity part keeps stating the key merge that writes its own
+   `charter_guardrail` hook configuration.
 
 **Out of scope:**
 
@@ -145,17 +193,21 @@ repo's testing rules.
    shipped config no longer carries, a redeploy removes that entry and keeps the
    foreign groups.
 6. `--uninstall` after the deploy in item 1 leaves both foreign groups in
-   place, removes ai-modules' group and its log line, and in a sandbox file that
-   held no other hooks leaves no empty `hooks` object behind.
+   place, removes ai-modules' group and its log line, reports that line removed
+   rather than `still exists after removal`, and in a sandbox file that held no
+   other hooks leaves no empty `hooks` object behind.
 7. The entry-merge function, called with a staged `cursor-hooks.json` fixture
-   against a sandbox Cursor `hooks.json` holding a foreign entry and `version`,
-   keeps both and adds ai-modules' entry once, and the manifest uninstall
-   removes only that entry.
+   against a sandbox Cursor `hooks.json` whose top-level `hooks` object holds a
+   foreign event list carrying a foreign entry, beside a top-level `version`,
+   keeps that event list, entry and `version` unchanged, adds ai-modules' entry
+   to the event list once, and the manifest uninstall removes only that entry.
 8. The same function, called with a staged `claude-code-hooks.json` fixture
    against a sandbox `settings.json` holding a foreign hook group and an
    unrelated key, keeps both and adds ai-modules' group once.
 9. A `--dry-run` of the deploy in item 1 lists each entry it would add, update
-   or remove, and leaves the sandbox files byte-identical.
+   or remove under the `would-merge` label naming `.codex/hooks.json`, keeps
+   the `would-rewrite` line naming the deployed Codex hooks directory, and
+   leaves the sandbox files byte-identical.
 10. A fixture deploy log carrying a legacy whole-key prior for a
     `hooks.json[hooks]` line holds an `@entries:` manifest on that line after
     one deploy.
@@ -167,3 +219,14 @@ repo's testing rules.
     and OpenAI Codex hook rows and the `@entries:` manifest in the fifth-field
     passage, and no longer says the Cursor config is copied to
     `~/.cursor/hooks.json` or that the `hooks` key is merged whole.
+13. A redeploy that changes the owned set, as in item 5, leaves exactly one
+    `@entries:` line for `hooks.json[hooks]` in the deploy log.
+14. A repository search of `wiki/` for the whole-key hook-merge claim — every
+    sentence describing hook configuration as merged through the key-merge
+    function or as a whole `hooks` key, in whatever wording it uses, including
+    the wordings `merged as a JSON key`, `JSON key merge`, `hook merges` and
+    `key-merge function` where each describes hook configuration — finds each
+    occurrence replaced by a statement of the entry merge, with no remaining
+    claim that the `hooks` key is merged whole and no statement that the entry
+    merge writes Antigravity's hook configuration, while `wiki/raw/` and
+    `wiki/log.md` keep their text unchanged.

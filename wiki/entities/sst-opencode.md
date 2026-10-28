@@ -1,7 +1,7 @@
 ---
 title: SST OpenCode
 created: 2026-08-08
-updated: 2026-10-27
+updated: 2026-10-28
 type: entity
 tags: [opencode, skill, agent, hook, system-prompt, frontmatter, discovery]
 sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]
@@ -91,6 +91,17 @@ documented keys include `read`, `edit`, `glob`, `grep`, `bash`, `task`, `skill`,
 `doom_loop`. The `edit` key gates all file modification, covering the `write`,
 `edit`, and `patch` tools, so no separate `write` key exists. The older boolean
 `tools` object is deprecated as of v1.1.1 and merged into `permission`.
+
+The `permission` value has to be written as a block mapping, with each
+capability key on its own indented line. A one-line flow mapping such as
+`permission: { edit: deny }` reaches the configuration schema as a plain
+string, which satisfies neither branch of the schema's action-or-object union,
+so the whole configuration is rejected with `ConfigInvalidError` and the client
+refuses to start. The bundled agent documentation writes the markdown form with
+indented keys and the JSON form as a real object, and the schema accepts a bare
+`allow`, `ask`, or `deny` string only as a blanket action. Read off the desktop
+bundle's own documentation and configuration schema on 28 October 2026 against
+desktop 1.19.5, which produced that error on a flow mapping.
 
 Unrecognised frontmatter is neither ignored nor rejected. The agents
 documentation states that any unrecognised option is passed through directly to

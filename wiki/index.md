@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-27 | Total pages: 36
+> Last updated: 2026-10-28 | Total pages: 36
 
 ## Entities
 
@@ -13,7 +13,7 @@
 - [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md): one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents with effort only as a global setting, and preview plugins.
 - [Google Antigravity](entities/google-antigravity.md): the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and four open verification gaps.
 - [OpenAI Codex](entities/openai-codex.md): configuration layers and trusting a project for a single run, the CLI binary shipped off `PATH` inside the ChatGPT app bundle, TOML agent roles, the built-in sub-agent and goal tools, headless runs through `codex exec`, the single instructions slot, personalities, profiles, and hook trust.
-- [SST OpenCode](entities/sst-opencode.md): its own config tree, foreign-directory discovery, pass-through frontmatter, helpers inheriting the session's model and variant, prompt assembly, and code-only hooks.
+- [SST OpenCode](entities/sst-opencode.md): its own config tree, foreign-directory discovery, pass-through frontmatter, a `permission` value that has to be written as a block mapping, helpers inheriting the session's model and variant, prompt assembly, and code-only hooks.
 
 ## Concepts
 

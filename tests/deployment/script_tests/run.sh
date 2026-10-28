@@ -130,13 +130,18 @@ assert_file "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md"
 
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^mode: subagent$'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^model:'
-assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^permission: \{ edit: deny \}$'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^permission:$'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^  edit: deny$'
+assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^  bash: deny$'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^tools:'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^write:'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^(name|version|background|effort|model_reasoning_effort):'
 
-assert_contains "$PROJECT_DIR/.opencode/agents/auto_reviewer_task.md" '^permission: \{ edit: deny, bash: deny \}$'
-assert_contains "$PROJECT_DIR/.opencode/agents/auto_verifier_task.md" '^permission: \{ edit: deny, bash: deny \}$'
+for agent in auto_reviewer_task auto_verifier_task; do
+  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^permission:$'
+  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^  edit: deny$'
+  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^  bash: deny$'
+done
 
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^mode: subagent$'
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^description:'

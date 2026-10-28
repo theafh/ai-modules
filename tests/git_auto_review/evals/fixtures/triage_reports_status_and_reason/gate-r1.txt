@@ -1,0 +1,64 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change adjusts `report.py`'s `total` helper.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`report.py:3` — `total` adds a constant instead of summing (verified).** The
+working-tree change replaces the sum with `sum(items) + 10`. Fix: restore
+`return sum(items)`.
+
+**`extra.py:2` — `label` returns the wrong text (inferred).** The defect does not
+exist: `label` returns `"ok"` as intended. Fix: rewrite the whole module to use
+a lookup table, which is broader than any real defect requires.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+
+id: 1
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: report.py:3
+lane: working-tree lane
+Fix: Restore `return sum(items)` in `total`.
+tag: none
+
+id: 2
+heading: Bugs it may introduce
+label: inferred
+non_blocking: no
+location: extra.py:2
+lane: working-tree lane
+Fix: Rewrite the whole module to use a lookup table.
+tag: none
+
+## Decisions
+None.

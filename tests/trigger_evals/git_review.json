@@ -1,0 +1,20 @@
+[
+  {"query": "auto-review and fix my uncommitted changes", "expected_skill": "git_auto_review"},
+  {"query": "run the automated review loop on my working tree until it's clean", "expected_skill": "git_auto_review"},
+  {"query": "keep reviewing and fixing my uncommitted changes until nothing is left", "expected_skill": "git_auto_review"},
+  {"query": "auto-fix whatever the review finds in my uncommitted work", "expected_skill": "git_auto_review"},
+  {"query": "drive an automated review gate to a clean exit on my working tree", "expected_skill": "git_auto_review"},
+  {"query": "loop the review over my local commits ahead of upstream and fix the findings", "expected_skill": "git_auto_review"},
+
+  {"query": "review this branch", "expected_skill": "git_review"},
+  {"query": "review my uncommitted changes and tell me if they're approvable", "expected_skill": "git_review"},
+  {"query": "assess the pull request and give me a full assessment", "expected_skill": "git_review"},
+  {"query": "say whether this can be merged as it stands", "expected_skill": "git_review"},
+  {"query": "re-review the delta since last time", "expected_skill": "git_review"},
+  {"query": "post the review as a comment on the PR", "expected_skill": "git_review"},
+  {"query": "automatically review and fix pull request #42", "expected_skill": "git_review"},
+  {"query": "auto-review and fix the branch feature/rate-limit", "expected_skill": "git_review"},
+
+  {"query": "what changed between these two release tags", "expected_skill": null},
+  {"query": "set up a wiki here — none exists yet", "expected_skill": null}
+]

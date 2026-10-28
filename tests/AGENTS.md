@@ -180,10 +180,18 @@ and an escape guard that reads the whole host checkout, such as
 `agent_spinner`'s `git status`. The rest of the `task_auto_check` suite
 uses the default 4 workers. The Pattern A runners on `eval_runner` at
 `vendor.DEFAULT_PARALLEL_WORKERS` are `tests/task_auto_check/evals/run.py`,
-`tests/git_checkout/evals/run.py`, `tests/git_refresh/evals/run.py`, and
-`tests/git_commit/evals/run.py`. `task_auto_check` runs its serial
+`tests/git_checkout/evals/run.py`, `tests/git_refresh/evals/run.py`,
+`tests/git_commit/evals/run.py`, and `tests/git_auto_review/evals/run.py`.
+`task_auto_check` runs its serial
 nested-loop set, the list above, one job at a time after the isolated
-pool. Every `git_checkout`, `git_refresh`, and `git_commit` eval stages its
+pool. `git_auto_review` declares its own serial nested-loop set
+(`honours_round_cap`, `retries_once_on_ledger_fail`,
+`stops_on_second_ledger_fail`, `stops_on_self_written_code`,
+`retries_once_on_unmapped_hunk`, `stops_on_second_unmapped_hunk`) and runs
+those one job at a time after the isolated pool, so its multi-round nested-loop
+stop evals never overlap one another or the pool; every other `git_auto_review`
+eval stages its own sandbox root and runs in the pool. Every `git_checkout`,
+`git_refresh`, and `git_commit` eval stages its
 own sandbox root, so the whole suite runs in the pool. `git_commit`'s worker
 and `grade.sh` both receive the job's `TMPDIR`, so the grader's straggler
 scan reads only that job's context files.

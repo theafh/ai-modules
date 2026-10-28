@@ -1,0 +1,64 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change now fixes `file_a.py`'s staged defect; `file_b.py` is
+untouched.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`file_a.py:2` — `a` subtracts a constant (verified, closed).** The staged
+defect is fixed at the cited position. Fix: none.
+
+**`file_b.py:2` — `b` subtracts a constant (verified).** The cited staged line
+has no occurrence at index-world line 2 in the working-tree file, so the finding
+stays listed as a follow-up task proposal with no fix. Fix: none.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+
+id: 1
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: file_a.py:2
+lane: working-tree lane
+Fix: none
+tag: closed
+
+id: 2
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: file_b.py:2
+lane: local-commits lane
+Fix: none
+tag: open
+
+## Decisions
+None.

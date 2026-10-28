@@ -2,7 +2,7 @@
 description: "Give the wiki family one source of truth: a hub family block, an authority block per front end, cited rather than restated base rules, and one orientation log-read quantity."
 scope: plugins/knowledge_management
 created: 2026-08-11T18:49:52
-updated: 2026-10-16T22:53:04
+updated: 2026-10-28T02:56:15
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -11,9 +11,9 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-The `wiki` hub declares its family, and each of `wiki_fix`, `wiki_import`, and
-`wiki_wrapup` inherits the hub's rules by citation, so every shared rule has
-exactly one statement in the family. A reader of any front end can see which
+The `wiki` hub declares its family, and each `wiki_*` front-end sibling
+inherits the hub's rules by citation, so every shared rule has exactly one
+statement in the family. A reader of any front end can see which
 skill owns the rule it follows, and the orientation log read is stated once and
 reads the same wherever it is cited.
 
@@ -22,8 +22,11 @@ reads the same wherever it is cited.
 The family carries none of the inheritance structure the repo's other family
 uses, so shared rules sit in copies today.
 
-The hub carries no `<family>` block and names none of its three front ends
-anywhere in its body; only the `auto_shaper_wiki` agent appears. The precedent to
+The hub carries no `<family>` block declaring the family or the one job each
+front end covers; its front-end names appear only as pointers, such as the
+`wiki_import` and `wiki_fix` activation lines in `<when_to_activate>` and the
+`wiki_import` and `wiki_wrapup` sibling paths in `<resolve_wiki_skill_bundle>`.
+The precedent to
 follow is the `<family>` block in the base `task` skill, which opens
 "This base `task` skill is the hub of a `task_*` family" and lists each front end
 with the one job it covers.
@@ -51,20 +54,29 @@ marketplace repository it comes from in the sentence beginning
 artefact reference sibling artefacts by name instead, so the fix belongs with the
 family's other cross-reference work.
 
-The orientation log read is stated three ways. `wiki_wrapup` contradicts itself:
-its `<orient_first>` policy says "the last 20 to 30 entries of `log.md`" while its
-own steps say "roughly the last 350 lines of `log.md`". `wiki_import` says 350
-lines in both places, and the hub says only `recent log`.
+The orientation log read is stated in several places with two incompatible
+idioms. The hub carries it twice: `<resuming_an_existing_wiki>` names "the last
+20 to 30 entries" beside a `tail -n 350 "$WIKI/log.md"` command, and
+`<searching>` shows a bare `tail -n 350 "$WIKI/log.md"` fence labelled
+`~last 20 log entries`. `wiki_wrapup` restates "roughly the last 350 lines of
+`log.md`" at both of its sites, its `<orient_first>` policy and its orientation
+step. `wiki_import` restates a fixed line count at three sites,
+`<orient_first_top>`, `<orient_first>`, and its orientation step.
 
 Co-edit: [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md)
-replaces the prescribed log-read idiom with an entry-based read, so the quantity
-this task settles and that idiom must land coherently whichever ships first.
+replaces the prescribed log-read idiom with an entry-based read, owns the
+entry-anchor retrieval recipe, and owns the `auto_shaper_wiki` agent's copy of
+the orientation log read, so the quantity this task settles and that sibling's
+entry-anchor idiom must land coherently whichever ships first.
 
 ## Approach
 
-1. Add a `<family>` block to the hub naming `wiki_import`, `wiki_wrapup`, and
-   `wiki_fix` with the one job each covers, following the `task_*` block's shape
-   and the repo's deployment-agnostic cross-reference rule.
+1. Add a `<family>` block to the hub naming every `wiki_*` front-end sibling the
+   walk finds under `plugins/knowledge_management/skills/`, with the one job each
+   covers, placed as a column-0 block immediately after `</output_contract>` and
+   closing before `</wiki>` in the `task_*` hub's
+   `<output_contract>`-then-`<family>` order, and following the `task_*` block's
+   shape and the repo's deployment-agnostic cross-reference rule.
 2. Add an `<authority>` block to each front end that cites the hub as the source
    of truth for wiki structure, discovery, orientation, ingest, and lint. In
    `wiki_import` and `wiki_wrapup`, rewrite the prose deferral sentence it
@@ -78,14 +90,14 @@ this task settles and that idiom must land coherently whichever ships first.
    hub's blocks by their verbatim tag names, keeping any genuinely
    import-specific detail that the hub's version does not carry.
 4. State the orientation log-read quantity once in the hub's
-   `<resuming_an_existing_wiki>` block as the last 20 to 30 log entries retrieved
-   by entry boundary (not a fixed line count), coordinating with
-   [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md)
-   so that statement and that task's entry-anchor idiom stay coherent
-   whichever ships first. Rewrite `<resuming_an_existing_wiki>` to hold that
-   canonical quantity. Rewrite `<searching>` and the `<orient_first>` pitfall
-   so each cites `<resuming_an_existing_wiki>` by tag instead of restating a
-   quantity or `tail -n 350`. Have `wiki_import` and `wiki_wrapup` cite
+   `<resuming_an_existing_wiki>` block as the last 20 to 30 entries retrieved
+   by entry boundary (not a fixed line count), keeping that statement coherent
+   with the entry-anchor idiom in `wiki_log-rotation-and-retrieval`, as
+   `## Context` records. `<searching>` is the one hub site this step leaves to `tasks/wiki_log-rotation-and-retrieval.md`, which claims that rewrite in its own `## Context` ("Hub `<searching>` citation of `<resuming_an_existing_wiki>` after retiring its `tail -n 350` example stays this task's edit") and proves it in its own Acceptance; so this step retires the orientation-read idiom at `<resuming_an_existing_wiki>` and the two front ends, while the sibling retires the `<searching>` fence, and the hub's two statements read as one rule whichever ships first. Rewrite `<resuming_an_existing_wiki>` to hold that
+   canonical quantity. Leave the hub's `<orient_first>` pitfall as it stands: it already reads
+   "Read SCHEMA + index + recent log before any operation. *(see
+   `<resuming_an_existing_wiki>`)*", so it already cites the tag verbatim and
+   carries no quantity or `tail -n 350` to remove; this step needs no edit there. Have `wiki_import` and `wiki_wrapup` cite
    `<resuming_an_existing_wiki>` by tag, superseding their `<orient_first_top>`,
    `<orient_first>`, and orientation-step wording.
 5. Rewrite the hub's `<role>` sentence so it identifies the skill without naming
@@ -98,12 +110,20 @@ this task settles and that idiom must land coherently whichever ships first.
   [wiki_front-end-skill-dir-resolution.md](archive/wiki_front-end-skill-dir-resolution.md).
 - The hub's output contract, owned by
   [wiki_base-skill-output-contract.md](archive/wiki_base-skill-output-contract.md).
+- Rewriting the hub `<searching>` block, owned by
+  `tasks/wiki_log-rotation-and-retrieval.md`.
 
 ## Acceptance
 
-1. Searching the hub for `<family>` returns one block naming all three front ends,
-   each with one job, and naming no plugin, marketplace, or installed path.
-2. Searching each front end for `<authority>` returns one block citing the hub.
+1. Searching the hub for `<family>` returns one block naming every `wiki_*`
+   front-end sibling the walk finds under `plugins/knowledge_management/skills/`,
+   each with one job, and naming no plugin, marketplace, or installed path, and
+   reading the hub from `</output_contract>` finds that block as the immediate
+   next content, closing before `</wiki>`, the placement
+   `tests/wiki/layer1/hub_output_contract.py` pins with its
+   `block is not immediately before <family>` failure text.
+2. Searching every `wiki_*` front-end sibling the walk finds for `<authority>`
+   returns one block citing the hub.
    Searching `wiki_import` and `wiki_wrapup` for `Defer all wiki structure,
    discovery, orientation` returns no match. Searching `wiki_fix` for `Defer
    all wiki structure, discovery, orientation, ingest, and lint behavior to the
@@ -117,26 +137,35 @@ this task settles and that idiom must land coherently whichever ships first.
    `<list_before_manipulating_unfamiliar_paths>` by tag name, and searching
    `wiki_import` for `raw/<kind>/` returns a match guarding writes into a
    `raw/<kind>/` bucket with `ls "$WIKI/raw/<kind>/"`.
-4. Searching the family for `the last 20 to 30 entries` returns no match outside
-   the hub and one match in the hub's `<resuming_an_existing_wiki>` naming the
-   last 20 to 30 log entries by entry boundary (not line count). Searching the
-   hub's `<searching>` and pitfall `<orient_first>` finds each cites
-   `<resuming_an_existing_wiki>` by its verbatim tag name and restates no
-   quantity. Searching `wiki_import` and `wiki_wrapup` finds each cites
+4. Searching the hub and every `wiki_*` front-end sibling the walk finds under
+   `plugins/knowledge_management/skills/` for `the last 20 to 30 entries` returns
+   no match outside the hub and one match in the hub's
+   `<resuming_an_existing_wiki>` naming the last 20 to 30 entries by entry
+   boundary (not line count); the same phrase in
+   `plugins/knowledge_management/agents/auto_shaper_wiki.md` is that agent's
+   surface and lies outside this search. Searching the
+   hub's pitfall `<orient_first>` finds it cites `<resuming_an_existing_wiki>`
+   by its verbatim tag name and restates no quantity. Searching `wiki_import` and `wiki_wrapup` finds each cites
    `<resuming_an_existing_wiki>` by tag, so a reader of `wiki_wrapup` finds
    one quantity rather than two.
 5. Searching the hub for `knowledge_management` and for the marketplace repository
    URL returns no match, while the `<role>` block still credits the author and
    keeps its RAG contrast.
 6. Running `lint_pseudo_xml.py` from the `ai_instruction_formatting` skill over
-   all four family skills reports no errors; any homogeneous-list hint it emits
+   the hub and every `wiki_*` front-end sibling the walk finds reports no
+   errors; any homogeneous-list hint it emits
    on the new blocks is an accepted info-level hint rather than an error, so the
    run carries no blocking finding.
-7. Searching the hub, `wiki_import`, and `wiki_wrapup` for `350 lines` and
-   `tail -n 350` returns no match. With
-   [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md)
-   read for the entry-aware log-read idiom it prescribes, the hub
+7. Searching the hub's `<resuming_an_existing_wiki>` and pitfall `<orient_first>`,
+   plus `wiki_import` and `wiki_wrapup`, for `350 lines` and `tail -n 350`
+   returns no match. With `tasks/wiki_log-rotation-and-retrieval.md` read for
+   the entry-aware log-read idiom it prescribes, the hub
    orientation-read statement and the cited front-end references name the same
    entry bound the sibling prescribes when it has shipped, or the same entry
-   bound settled in Acceptance item 4 when it has not. So whichever ships
+   bound settled in Acceptance item 4 when it has not. Reading the hub's
+   `<searching>` block, it carries a log-read clause citing
+   `<resuming_an_existing_wiki>` and no `~last 20 log entries` fence once
+   `tasks/wiki_log-rotation-and-retrieval.md` has shipped, and while that
+   sibling is unshipped the fence there is the sibling's edit named in the
+   task's `**Out of scope:**` block. So whichever ships
    first, the quantity and idiom read as one coordinated rule.

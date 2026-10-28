@@ -1,0 +1,76 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change touches `report.py`, `helper.py`, and `scan.py`.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`report.py:3` — `total` adds a constant instead of summing (verified).** The
+working-tree change replaces the sum with `sum(items) + 10`. Fix: restore
+`return sum(items)`.
+
+**`helper.py:3` — `helper` returns the wrong value (verified).** The staged edit
+raises the return to `2`. Fix: restore `return 1`.
+
+**`scan.py:2 (staged)` — a credential sits on an index-only line (verified).**
+The index holds a credential line the working-tree file no longer carries.
+Fix: remove the credential before it is committed.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+
+id: 1
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: report.py:3
+lane: working-tree lane
+Fix: Restore `return sum(items)` in `total`.
+tag: none
+
+id: 2
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: helper.py:3
+lane: working-tree lane
+Fix: Restore `return 1` in `helper`.
+tag: none
+
+id: 3
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: scan.py:2
+lane: local-commits lane
+Fix: Remove the credential from the index-only line.
+tag: none
+
+## Decisions
+None.

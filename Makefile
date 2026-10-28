@@ -16,7 +16,11 @@
 # backup directories, and every regenerated subtree under `tests/` (committed
 # lint should not scan transient sandboxes). The authored harness under
 # `tests/` is committed, so it IS linted; the prunes below mirror
-# `tests/.gitignore`, and the two lists are changed together.
+# `tests/.gitignore`, and the two lists are changed together. The
+# `.git_auto_review` prune covers a review-and-fix run this repo leaves in its
+# own root: its `.git_auto_review/.gitignore` holds `*`, so that run directory
+# stays out of git scope and out of lint scope alike, sitting beside the
+# `tests/.gitignore` mirror the other prunes follow.
 EXCLUDE     := -path ./.git -prune -o \
                -path './deployment/.deploy-backup-*' -prune -o \
                -name workspace -prune -o \
@@ -24,6 +28,7 @@ EXCLUDE     := -path ./.git -prune -o \
                -name .eval_cache -prune -o \
                -name .vendor_probe -prune -o \
                -name __pycache__ -prune -o \
+               -name .git_auto_review -prune -o \
                -path './tests/wiki/layer2/AS-*' -prune -o \
                -path './tests/wiki/layer2/L2-*' -prune -o \
                -path './tests/wiki/layer2/WI-*' -prune -o \

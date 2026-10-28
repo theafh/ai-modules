@@ -1507,10 +1507,10 @@ generate_opencode_agent() {
     fi
     [[ -n "$temperature" ]] && printf 'temperature: %s\n' "$temperature"
     if [[ "$readonly" == "true" ]]; then
-      if [[ ",${tools// /}," == *",Bash,"* ]]; then
-        printf '%s\n' 'permission: { edit: deny }'
-      else
-        printf '%s\n' 'permission: { edit: deny, bash: deny }'
+      printf '%s\n' 'permission:'
+      printf '%s\n' '  edit: deny'
+      if [[ ",${tools// /}," != *",Bash,"* ]]; then
+        printf '%s\n' '  bash: deny'
       fi
     fi
     printf '%s\n\n' '---'

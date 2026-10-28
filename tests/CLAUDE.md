@@ -36,6 +36,7 @@ tree:
 | `git_commit/` | `git_commit` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests plus the eval runner's stop on a failed or empty stage and the grader's per-job `TMPDIR` straggler scan + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade) in the shared `tests/lib/eval_runner` pool. |
 | `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) plus the eval runner's stop on a failed or empty stage + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade) in the shared `tests/lib/eval_runner` pool. |
 | `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper, the size profile with its line counts, its conflicted files, and its binary-path listing with renamed and copied files under their new paths and a renamed file classified by its new path, and its share counting a vendored binary once, and the located secret-scan hits, Compose, YAML, Go `:=`, and suffixed and camelCase key-name assignments among them, with the manual-fallback blocks run under bash and zsh) plus the eval runner's stop on a failed or empty stage + `evals/` behavioral evals over 36 fixtures via `evals/run.py`. |
+| `git_auto_review/` | `git_auto_review` | Pattern A (skill-creator-aligned) | `script_tests/` drives the four bundled scripts (relay init with the staleness clear and the marked preseed pairs, the ledger runner's exit and per-line contract, the round-1 pre-fix pair and the once-only baseline pair, and the Restore procedure reproducing the captured worktree with the index untouched) plus the static skill and agent contracts, the Makefile `.git_auto_review` prune, and the shared isolation allowlist + `evals/` behavioral evals over staged git fixtures via `evals/run.py`, with a serial nested-loop set run one job at a time. |
 | `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract and the eval runner's stop on a failed or empty stage in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on the default Cursor worker, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
 | `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. `evals/test_run.py` checks the style-route preflight and the runner's stop on a failed or empty stage. |
 | `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/test_run.py` checks that no eval grading the sandbox's whole `git status` declares an artefact the micro-deployment writes into the sandbox project, and that the runner stops on a failed or empty stage; `evals/` holds a behavioral eval per family member. `run_all.sh` drives the two script runners and `evals/test_run.py`. |
@@ -176,9 +177,17 @@ contention and timeouts, not faster wall-clock.
 
 The Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS`
 are `tests/task_auto_check/evals/run.py`, `tests/git_checkout/evals/run.py`,
-`tests/git_refresh/evals/run.py`, and `tests/git_commit/evals/run.py`.
+`tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`, and
+`tests/git_auto_review/evals/run.py`.
 `task_auto_check` runs its serial nested-loop set, the list above, one job
-at a time after the isolated pool. Every `git_checkout`, `git_refresh`, and
+at a time after the isolated pool. `git_auto_review` declares its own serial
+nested-loop set (`honours_round_cap`, `retries_once_on_ledger_fail`,
+`stops_on_second_ledger_fail`, `stops_on_self_written_code`,
+`retries_once_on_unmapped_hunk`, `stops_on_second_unmapped_hunk`) and runs
+those one job at a time after the isolated pool, so its multi-round nested-loop
+stop evals never overlap one another or the pool; every other `git_auto_review`
+eval stages its own sandbox root and runs in the pool. Every `git_checkout`,
+`git_refresh`, and
 `git_commit` eval stages its own sandbox root, so the whole suite runs in the
 pool. `git_commit`'s worker and `grade.sh` both receive the job's `TMPDIR`, so
 the grader's straggler scan reads only that job's context files.
