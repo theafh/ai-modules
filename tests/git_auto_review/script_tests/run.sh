@@ -284,11 +284,14 @@ s7_relay_init_and_preseed() {
     "$(cat "$stem/gate-r2.txt")" "preseeded r2 return" || ok=false
   assert_file "ledger recreated" "$stem/ledger.txt" || ok=false
 
-  # The stem is the task file's basename without its extension.
-  bash "$SCRIPTS/run_relay.sh" --task tasks/ai-dev_git-auto-review.md \
+  # The stem is the task file's basename without its extension. The anchor file
+  # lives inside this sandbox so the scenario stays self-contained.
+  mkdir -p "$dir/tasks"
+  printf '# Anchor task\n' > "$dir/tasks/demo_scale.md"
+  bash "$SCRIPTS/run_relay.sh" --task tasks/demo_scale.md \
     --root "$dir" >"$dir/out3.txt" 2>&1 || ok=false
   assert_file "task-derived stem directory" \
-    "$dir/.git_auto_review/ai-dev_git-auto-review/ledger.txt" || ok=false
+    "$dir/.git_auto_review/demo_scale/ledger.txt" || ok=false
   $ok
 }
 
