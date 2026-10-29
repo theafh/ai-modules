@@ -2,9 +2,11 @@
 description: "Reject an unresolvable --task path in run_relay.sh and state that the run stops there, so a mistyped scope anchor cannot silently narrow the run or let an agent fabricate a scope nobody authored."
 scope: plugins/ai_dev/skills/git_auto_review
 created: 2026-10-28T19:49:14
-updated: 2026-10-29T12:21:36
-status: ready
+updated: 2026-10-29T13:20:13
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Reject an unresolvable task path in the git_auto_review relay init

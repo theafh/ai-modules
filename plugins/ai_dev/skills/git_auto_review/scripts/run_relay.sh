@@ -7,7 +7,9 @@
 # writes the empty ledger the run's first fixer appends to.
 #
 # The stem is the optional task file's basename without its extension, or
-# `default` when no task file is given.
+# `default` when no task file is given. A task path that does not resolve to a
+# readable regular file is rejected as an environment error before any relay
+# state is created.
 #
 # Usage:
 #   run_relay.sh [--task <path>] [--root <dir>]
@@ -38,6 +40,9 @@ Behavior:
     --root when it is given (-C style override for harnesses).
   - Derives the run stem from --task's basename without its extension, or
     `default` when --task is absent.
+  - Rejects --task as an environment error before creating any relay state
+    when the path does not resolve to a readable regular file, resolving a
+    relative value against the repository root.
   - Writes `.git_auto_review/.gitignore` with the sole line `*`, creating the
     `.git_auto_review/` directory as part of that write.
   - Creates `.git_auto_review/<stem>/` and clears every file an earlier run
@@ -109,6 +114,17 @@ main() {
         command -v git >/dev/null 2>&1 || die_env "git was not found on PATH"
         repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" \
             || die_env "not inside a git repository"
+    fi
+
+    # The task file anchors the run's scope, so a path that does not resolve is
+    # an environment failure rather than a stem to derive. A relative path
+    # resolves against the relay root, the same root every relay path uses.
+    if [[ -n "$TASK" ]]; then
+        local task_path="$TASK"
+        [[ "$task_path" = /* ]] || task_path="$repo_root/$TASK"
+        if [[ ! -f "$task_path" || ! -r "$task_path" ]]; then
+            die_env "task path is not a readable regular file: $TASK"
+        fi
     fi
 
     local stem

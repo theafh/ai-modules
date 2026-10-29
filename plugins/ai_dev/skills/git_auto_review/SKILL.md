@@ -1,7 +1,7 @@
 ---
 name: git_auto_review
 description: "Run an automated review-and-fix loop over the default branch's uncommitted changes and its local commits ahead of upstream: git_review is the only gate, a single writer agent fixes the findings that qualify, each round is verified refute-by-default and re-reviewed on its delta, and the loop stops under stated convergence rules. Use when the user asks to auto-review and fix uncommitted changes, run the automated review loop, keep reviewing and fixing until the change is clean, auto-fix what the review finds, or drive an automated review gate to a clean exit on the working tree. Every fix stays uncommitted."
-version: 1.0.1
+version: 1.0.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -37,7 +37,7 @@ Bundled scripts live in `scripts/` next to this `SKILL.md`. Resolve each script'
 The run accepts one target and two optional prompt inputs.
 
 - **Target.** The default branch's uncommitted change, reported under two lane labels: the `working-tree lane`, holding the staged, the unstaged, and the untracked changes, and the `local-commits lane`, holding the local commits ahead of the upstream. Both labels are the step strings `collect_uncommitted` writes in `git_review`'s `scripts/collect_review_evidence.sh` (`working-tree lane:` and `local-commits lane:`), reused as this loop's `lane` vocabulary. A checked-out branch target and a pull-request target are out of this skill's reach; the run declines them per `<orient>`.
-- **An optional task file path** that anchors scope, read by `<convergence>`'s **Scope anchor.** and by **Decisions.**.
+- **An optional task file path** that anchors scope, read by `<convergence>`'s **Scope anchor.** and by **Decisions.**. A task path that does not resolve to a readable regular file, with a relative value resolved against the repository root, is reported by `scripts/run_relay.sh` and the run stops under `<agent_failure_policy>`'s `helper-script` class at init, so no relay state is created for it.
 - **An optional round-cap override**, written anywhere in the prompt as the literal phrase `round cap <N>`, matched case-insensitively, where `<N>` is a positive integer. Absent the phrase the run proceeds with the **Stop rule.**'s default cap. A phrase whose integer is zero, negative, or non-numeric is not an override: the run reports that the phrase is not an override and proceeds with the default cap.
 
 The invoking harness may also supply environment notes describing a staged helper condition. Those notes are the harness's fixture seam; apply them exactly as written and follow `<agent_failure_policy>` from there.
@@ -139,7 +139,7 @@ The Close cases for the `authored.txt` rewrite and the self-written stop:
 </convergence>
 
 <relay>
-Files live under `.git_auto_review/<run-stem>/` at the repository root the toplevel `git rev-parse --show-toplevel` reports, so every relay path resolves from that one root. Derive `<run-stem>` as the optional task file's basename without its extension when that path is given, and use `default` when it is omitted.
+Files live under `.git_auto_review/<run-stem>/` at the repository root the toplevel `git rev-parse --show-toplevel` reports, so every relay path resolves from that one root. Derive `<run-stem>` as the optional task file's basename without its extension when that path is given, and use `default` when it is omitted; a task path that does not resolve is rejected and the run stops under `<agent_failure_policy>`'s `helper-script` class at init, as the `<inputs>` task-path bullet states.
 
 After `<orient>` accepts the branch, and only then, `scripts/run_relay.sh` creates `.git_auto_review/.gitignore` containing the sole line `*`, creating the `.git_auto_review/` directory as part of that write, creates the stem directory, and clears everything an earlier run left there. A gate return for any round is pre-seeded deliberately, so the run's invoker stages one marked pair per pre-seeded round, `gate-r<round>.txt` plus that round's marker file `gate-r<round>.preseed` beside it, an empty file whose presence alone marks the pair, created by the harness rather than by the gate, before the run starts. The initialise step's clear preserves every marked per-round pair, keyed by its `gate-r<round>.txt`, while removing every other file an earlier run left there. The initialise step then writes an empty `ledger.txt` under the stem, zero reproduction lines, so that path exists before any fixer append.
 
@@ -239,7 +239,7 @@ When neither route yields a default branch, abort the run. When the current bran
 </orient>
 
 <initialise>
-Read the optional task file path and the optional round-cap override from the prompt per `<inputs>`, reporting a phrase whose integer is not a positive integer and proceeding with the default cap. Create the relay directory and its `.gitignore`, and clear the stem's leftovers while preserving every marked pre-seeded round pair, through `scripts/run_relay.sh` per `<relay>`. Write the empty `ledger.txt`.
+Read the optional task file path and the optional round-cap override from the prompt per `<inputs>`, reporting a phrase whose integer is not a positive integer and proceeding with the default cap, and stopping under `<agent_failure_policy>`'s `helper-script` class when the task path does not resolve as that bullet states. Create the relay directory and its `.gitignore`, and clear the stem's leftovers while preserving every marked pre-seeded round pair, through `scripts/run_relay.sh` per `<relay>`. Write the empty `ledger.txt`.
 
 When `scripts/run_relay.sh` exits non-zero, the run stops under `<agent_failure_policy>` at that point and makes no relay write of its own: no `.git_auto_review` directory, no `.gitignore`, and no `ledger.txt`, so a run that dies at init leaves the repository exactly as it found it. The stop line this run reprints names the class by its literal label `helper-script`, the same label `<agent_failure_policy>` assigns that class.
 </initialise>

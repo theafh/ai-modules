@@ -292,6 +292,45 @@ s7_relay_init_and_preseed() {
     --root "$dir" >"$dir/out3.txt" 2>&1 || ok=false
   assert_file "task-derived stem directory" \
     "$dir/.git_auto_review/demo_scale/ledger.txt" || ok=false
+
+  # A task path that does not resolve to a readable regular file is rejected as
+  # an environment error before any relay state exists for that stem. Each
+  # value below would derive its own stem, so the absence checks are meaningful.
+  local rc=0
+  bash "$SCRIPTS/run_relay.sh" --task tasks/missing_anchor.md \
+    --root "$dir" >"$dir/out4.txt" 2>&1 || rc=$?
+  assert_eq "missing task path exit code" "$rc" "2" || ok=false
+  assert_contains "missing task path named" "$dir/out4.txt" \
+    "tasks/missing_anchor.md" || ok=false
+  [[ -e "$dir/.git_auto_review/missing_anchor" ]] \
+    && { log "    missing task path created a stem directory"; ok=false; }
+
+  rc=0
+  bash "$SCRIPTS/run_relay.sh" --task tasks \
+    --root "$dir" >"$dir/out5.txt" 2>&1 || rc=$?
+  assert_eq "directory task path exit code" "$rc" "2" || ok=false
+  assert_contains "directory task path named" "$dir/out5.txt" "file: tasks" || ok=false
+  [[ -e "$dir/.git_auto_review/tasks" ]] \
+    && { log "    directory task path created a stem directory"; ok=false; }
+
+  printf '# Unreadable anchor\n' > "$dir/tasks/demo_locked.md"
+  chmod 000 "$dir/tasks/demo_locked.md"
+  if [[ -r "$dir/tasks/demo_locked.md" ]]; then
+    # A privileged runner reads the file regardless of its mode; the check
+    # cannot discriminate there, so the scenario reports it instead of passing
+    # silently.
+    log "    note: unreadable-file assertion skipped (runner reads mode 000)"
+  else
+    rc=0
+    bash "$SCRIPTS/run_relay.sh" --task tasks/demo_locked.md \
+      --root "$dir" >"$dir/out6.txt" 2>&1 || rc=$?
+    assert_eq "unreadable task path exit code" "$rc" "2" || ok=false
+    assert_contains "unreadable task path named" "$dir/out6.txt" \
+      "tasks/demo_locked.md" || ok=false
+    [[ -e "$dir/.git_auto_review/demo_locked" ]] \
+      && { log "    unreadable task path created a stem directory"; ok=false; }
+  fi
+  chmod 644 "$dir/tasks/demo_locked.md"
   $ok
 }
 
