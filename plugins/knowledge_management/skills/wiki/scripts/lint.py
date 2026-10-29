@@ -1422,12 +1422,14 @@ def check_log_rotation(wiki: Path) -> list[Issue]:
     if entries > 1000:
         return [Issue(
             SEV_BLOCKING, "log", log,
-            f"{entries} entries — rotate to log-YYYY.md",
+            f"{entries} entries — rotate to log-YYYY.md, or the first free "
+            "log-YYYY-N.md when that name is taken",
         )]
     if entries > 500:
         return [Issue(
             SEV_WARN, "log", log,
-            f"{entries} entries — rotate to log-YYYY.md",
+            f"{entries} entries — rotate to log-YYYY.md, or the first free "
+            "log-YYYY-N.md when that name is taken",
         )]
     return []
 
