@@ -2,7 +2,7 @@
 description: Make the wiki audit move its baseline, and a page's checked date, forward only after it has read the pages in full, so the next audit never skips a page nobody read.
 scope: plugins/knowledge_management
 created: 2026-10-03T15:54:08
-updated: 2026-10-04T17:06:16
+updated: 2026-10-29T06:02:01
 status: open
 reported-by: Andreas Hoffmann
 ---
