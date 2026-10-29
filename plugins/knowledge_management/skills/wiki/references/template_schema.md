@@ -386,7 +386,7 @@ finding, in whichever of the three forms fits it:
 - Accepted finding: md-style — procedures/deploy.md — 42 — fenced code block missing language identifier
 ```
 
-The short two-field form covers `size`, `log`, `stale`, and `log-scope`, whose
+The short two-field form covers `size`, `stale`, and `log-scope`, whose
 messages carry a counter or a date that moves between runs. The path alone
 identifies the finding there. Every other category takes the finding's exact
 message as a third field, and slots its line number in ahead of that message as

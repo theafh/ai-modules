@@ -2360,9 +2360,10 @@ PY
     $ok
 }
 
-# L45: the two-field (path-only) form keys on no message, so a `size`, `log`, or
-# `stale` acceptance keeps matching after that finding's volatile counter or date
-# substring changes.
+# L45: the two-field (path-only) form keys on no message, so a `size` or `stale`
+# acceptance keeps matching after that finding's volatile counter or date
+# substring changes. `log` is deliberately absent: rotation is a warn/blocking
+# finding cleared by rotating the log, never by acceptance (see L76/L77).
 l45_lint_two_field_survives_volatile_message() {
     local wiki; wiki=$(stage_fresh_wiki l45)
     customize_taxonomy "$wiki"
@@ -2390,32 +2391,99 @@ p = pathlib.Path(sys.argv[1])
 t = p.read_text().replace("updated: 2026-05-01", "updated: 2020-01-01")
 p.write_text(t.replace("sources: []", "sources: [raw/notes/fresh.md]"))
 PY
-    # log: log.md past the 500-entry rotation threshold.
-    append_log_entries "$wiki" 520
 
     set_accept_bullets "$wiki" \
         "size — concepts/widget.md" \
-        "stale — concepts/gadget.md" \
-        "log — log.md"
+        "stale — concepts/gadget.md"
     local ret; ret=$(run_lint "$wiki")
     local out=${ret#*|}
     local ok=true
     assert_no_finding_for_file "size accepted" "$out" size "concepts/widget.md" || ok=false
     assert_no_finding_for_file "stale accepted" "$out" stale "concepts/gadget.md" || ok=false
-    assert_no_lint_category "log accepted" "$out" "log" || ok=false
 
-    # Move every volatile substring: more lines, a later `updated`, more entries.
+    # Move every volatile substring: more lines, a later `updated`.
     grow_page_past_soft_cap "$wiki/concepts/widget.md" 40
     python3 - "$wiki/concepts/gadget.md" <<'PY'
 import sys, pathlib
 p = pathlib.Path(sys.argv[1])
 p.write_text(p.read_text().replace("updated: 2020-01-01", "updated: 2021-06-15"))
 PY
-    append_log_entries "$wiki" 30
     ret=$(run_lint "$wiki"); out=${ret#*|}
     assert_no_finding_for_file "size still accepted after line count changed" "$out" size "concepts/widget.md" || ok=false
     assert_no_finding_for_file "stale still accepted after dates changed" "$out" stale "concepts/gadget.md" || ok=false
-    assert_no_lint_category "log still accepted after entry count changed" "$out" "log" || ok=false
+    $ok
+}
+
+# L75: the hub entry-anchor recipe (`grep -n '^## \[' … | tail -30`, then a
+# bounded Read from the earliest offset) returns a 20-to-30 entry slice even
+# when the log is far past the fixed `tail -n 350` size it replaces.
+l75_entry_aware_log_read_bounds_slice() {
+    local wiki; wiki=$(stage_fresh_wiki l75)
+    customize_taxonomy "$wiki"
+    append_log_entries "$wiki" 520
+    local total; total=$(grep -c '^## \[' "$wiki/log.md")
+    local ok=true
+    if [[ $total -le 350 ]]; then
+        log "    [fixture too small: $total entries, expected well over 350]"
+        ok=false
+    fi
+
+    # The recipe: entry anchors for the last 30 entries, then a bounded read
+    # starting at the earliest needed anchor (never a fixed line count).
+    local anchors; anchors=$(grep -n '^## \[' "$wiki/log.md" | tail -30)
+    local anchor_count; anchor_count=$(printf '%s\n' "$anchors" | grep -c '^[0-9]*:')
+    assert_eq "anchor count" "$anchor_count" "30" || ok=false
+
+    local offset; offset=$(printf '%s\n' "$anchors" | head -1 | cut -d: -f1)
+    local slice; slice=$(sed -n "${offset},\$p" "$wiki/log.md")
+    local slice_headings; slice_headings=$(printf '%s\n' "$slice" | grep -c '^## \[')
+
+    if [[ $slice_headings -lt 20 || $slice_headings -gt 30 ]]; then
+        log "    [slice out of bounds: $slice_headings headings, expected 20-30]"
+        ok=false
+    fi
+    # The slice is genuinely bounded: it is a strict subset of the log.
+    if [[ $slice_headings -ge $total ]]; then
+        log "    [slice not bounded: $slice_headings of $total headings]"
+        ok=false
+    fi
+    $ok
+}
+
+# L76: a log past 500 entries reports a warn rotation finding, and the
+# two-field acceptance path cannot suppress it — rotation is the only repair.
+l76_lint_log_rotation_warn_past_500() {
+    local wiki; wiki=$(stage_fresh_wiki l76)
+    customize_taxonomy "$wiki"
+    append_log_entries "$wiki" 520
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit stays 0 on a warn" "$rc" "0" || ok=false
+    assert_lint_finding "rotation warn past 500" "$out" warn "log" || ok=false
+
+    set_accept_bullets "$wiki" "log — log.md"
+    ret=$(run_lint "$wiki"); out=${ret#*|}
+    assert_lint_finding "warn survives acceptance" "$out" warn "log" || ok=false
+    assert_no_acknowledged_section "rotation warn is not acknowledged" "$out" || ok=false
+    $ok
+}
+
+# L77: a log past 1000 entries escalates the rotation finding to blocking, which
+# exits 1, and acceptance cannot suppress it either.
+l77_lint_log_rotation_blocking_past_1000() {
+    local wiki; wiki=$(stage_fresh_wiki l77)
+    customize_taxonomy "$wiki"
+    append_log_entries "$wiki" 1010
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 on blocking" "$rc" "1" || ok=false
+    assert_lint_finding "rotation blocking past 1000" "$out" blocking "log" || ok=false
+
+    set_accept_bullets "$wiki" "log — log.md"
+    ret=$(run_lint "$wiki"); out=${ret#*|}
+    assert_lint_finding "blocking survives acceptance" "$out" blocking "log" || ok=false
     $ok
 }
 
@@ -3632,6 +3700,9 @@ scenario l71 "lint unmatched declare is live info"       l71_lint_unmatched_decl
 scenario l72 "lint declared per-slot isolation"          l72_lint_declared_per_slot_isolation
 scenario l73 "lint flags meta-prose phrase as info"      l73_lint_meta_prose_phrase
 scenario l74 "lint flags long lead paragraph as info"    l74_lint_meta_prose_long_lead
+scenario l75 "entry-aware log read bounds the slice"     l75_entry_aware_log_read_bounds_slice
+scenario l76 "log rotation warns past 500 entries"       l76_lint_log_rotation_warn_past_500
+scenario l77 "log rotation blocks past 1000 entries"     l77_lint_log_rotation_blocking_past_1000
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

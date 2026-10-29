@@ -53,8 +53,9 @@ scenario with its id and description. The prefixes group by surface:
 - `l*` cover `lint.py`, one scenario per check and per suppression
   form, from "clean fresh wiki passes" through the blocking
   frontmatter / link / portability cases to the info-level `size`,
-  `stale`, `log`, `log-heading`, and `log-scope` findings and the
-  three `Accepted finding:` grammars.
+  `stale`, `log-heading`, and `log-scope` findings, the warn-at-500 and
+  blocking-at-1000 rotation findings on `log`, and the three
+  `Accepted finding:` grammars.
 - `a*` cover the prose-contract assertions a script can check in the
   `auto_shaper_wiki` agent and the hub `SKILL.md`, such as the hub's
   file-access guidance and its `<output_contract>`. `s*` cover

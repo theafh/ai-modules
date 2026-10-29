@@ -63,7 +63,11 @@ def main() -> int:
     # skill-owned canonical references are demand-loaded.
     require("Read `$WIKI/SCHEMA.md` end-to-end" in text, "SCHEMA full read was weakened")
     require("Read `$WIKI/index.md` end-to-end" in text, "index full read was weakened")
-    require("tail -n 350 \"$WIKI/log.md\"" in text, "recent log read was weakened")
+    recent_log = section(text, "read_recent_log")
+    require("<resuming_an_existing_wiki>" in recent_log,
+            "recent log read no longer cites the hub entry-anchor recipe")
+    require('tail -n 350 "$WIKI/log.md"' not in text,
+            "retired fixed-line log read idiom remains in the agent")
     require("without whole-file preloads" in read_canonical, "canonical orientation is not demand-loaded")
     require("by contiguous semantic block" in read_canonical, "wiki skill is not read by semantic block")
     require("Defer the \"Page thresholds\" figure" in read_canonical, "threshold read is not deferred")

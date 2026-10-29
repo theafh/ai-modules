@@ -40,7 +40,7 @@ Files involved:
 
 **Out of scope:**
 
-- Switching the prescribed log-read idiom from fixed-line `tail` to entry-aware retrieval — owned by [wiki_log-rotation-and-retrieval.md](../wiki_log-rotation-and-retrieval.md).
+- Switching the prescribed log-read idiom from fixed-line `tail` to entry-aware retrieval — owned by [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md).
 - Editing `wiki_import`, including restating or citing the new read-to-stage-edits rule there.
 
 ## Acceptance

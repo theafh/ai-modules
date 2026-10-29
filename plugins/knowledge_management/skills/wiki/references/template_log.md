@@ -3,7 +3,7 @@
 > Chronological record of wiki changes. Append-only.
 > Format: `## [YYYY-MM-DD HH:MM] action | subject`. The timestamp is local
 > 24-hour wall-clock time, and it is what keeps every new heading unique.
-> Actions: ingest, update, query, lint, create, archive, delete, audit, import, session-wrapup
+> Actions: ingest, update, query, lint, create, archive, delete, audit, import, session-wrapup, rotate
 > Entries: an operation that creates or updates wiki files appends one entry; an
 > operation that changes no file appends none. Lint and audit runs are the
 > exception. Each records its outcome, including a zero-change one, as a
@@ -26,7 +26,7 @@
 > Body: list only files actually created or updated. Skip files that were
 > inspected, considered, or deliberately left unchanged, and do not narrate
 > decisions about what not to do. Aim for roughly 20 lines per entry.
-> When this file exceeds 500 entries, rotate: rename to log-YYYY.md, start fresh.
+> When this file exceeds 500 entries, rotate: rename to log-YYYY.md — or to the first free log-YYYY-N.md when that name is taken — start fresh; the next audit cold-walks once and records a fresh baseline in the new log.
 
 ## [{{NOW}}] create | Wiki initialized
 

@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.10
+version: 1.24.11
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -481,10 +481,18 @@ anything**:
 
 1. **Read `SCHEMA.md`** to understand the domain, conventions, and tag taxonomy.
 2. **Read `index.md`** to learn what pages exist and their summaries.
-3. **Scan recent `log.md`**: read the last 20 to 30 entries with
-   `tail -n 350 "$WIKI/log.md"` (cap each entry at roughly 20 lines; tune the
-   tail by entry length). The log can grow to 500 entries before rotation; a
-   full read wastes context.
+3. **Scan recent `log.md`**: read the last 20 to 30 entries by entry
+   boundary rather than by a fixed line count. List the entry anchors, then
+   read a bounded slice from the earliest offset you need:
+
+   ```bash
+   grep -n '^## \[' "$WIKI/log.md" | tail -30
+   ```
+
+   `Read` from that earliest anchor's line number with an explicit `limit`,
+   which keeps the slice inside the 25000-token cap even on a large log (see
+   `<too_large_to_read_in_one_shot>`). The log rotates at 500 entries, so it
+   stays bounded; a full read still wastes context.
 
 Only after orientation should you ingest, query, or lint. Skipping this causes
 duplicate pages, missed cross-references, schema-contradiction, and repeated
@@ -802,15 +810,16 @@ python3 "$WIKI_SKILL/scripts/lint.py" --quiet      # blocking + warn only
 Findings come in three buckets:
 
 - **blocking**: broken links, missing/malformed frontmatter, missing
-  `index.md`, missing or unparseable `SCHEMA.md` (no extractable type enum).
-  Exits 1; must fix.
+  `index.md`, missing or unparseable `SCHEMA.md` (no extractable type enum),
+  a `log.md` over 1000 entries. Exits 1; must fix.
 - **warn**: orphans, contested pages, source drift, off-taxonomy tags,
-  invalid enum/date values, pages missing from the index, and locked-slot
+  invalid enum/date values, pages missing from the index, a `log.md` over 500
+  entries (rotate it to `log-YYYY.md`), and locked-slot
   boilerplate mismatches that delete or replace canonical content (the
   log.md preamble under the classify-as-extension contract). Insert-only
   locked-slot additions are acknowledged-channel extensions, not live warns.
 - **info**: markdown style nits, oversized pages, low-confidence
-  single-source pages, unused taxonomy tags, log over 500 entries, duplicate
+  single-source pages, unused taxonomy tags, duplicate
   `log.md` entry headings (`log-heading`), and `log.md` entry bullets whose
   subject is a path outside the wiki (`log-scope`). The two log-entry checks
   are surfaced for review because repairing an entry already written is an
@@ -862,8 +871,10 @@ alone: it surfaces, it doesn't enforce.
 rg "transformer" "$WIKI" -g "*.md"            # by content
 fd -e md . "$WIKI"                            # by filename
 rg "tags:.*alignment" "$WIKI" -g "*.md"       # by tag
-tail -n 350 "$WIKI/log.md"                    # ~last 20 log entries
 ```
+
+For recent log entries, use the entry-anchor recipe in
+`<resuming_an_existing_wiki>` rather than a fixed line count.
 </searching>
 
 <appending_to_log>
@@ -1047,7 +1058,7 @@ Quick-scan reminders. See the named section for full guidance.
 </confirm_scope>
 
 <rotate_log_at_500>
-**Rotate the log at 500 entries**: `log.md` → `log-YYYY.md`.
+**Rotate the log at 500 entries**: rename `log.md` to `log-YYYY.md`, or to the first free `log-YYYY-N.md` when that name is taken, then start a fresh `log.md` from the canonical preamble in `references/template_log.md` and record the rotation as the new log's first entry. The next audit cold-walks once, because the prior audit baseline moved into the archive, and records a fresh baseline in the new log.
 </rotate_log_at_500>
 
 <contradictions_are_explicit>

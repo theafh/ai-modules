@@ -59,7 +59,7 @@ designed propagation path, no extra action needed here.
 
 Related tasks:
 
-- [wiki_log-rotation-and-retrieval](../wiki_log-rotation-and-retrieval.md) —
+- [wiki_log-rotation-and-retrieval](wiki_log-rotation-and-retrieval.md) —
   co-edits the same `template_log.md` preamble region (rotation rule) and
   the SKILL.md log-handling prose; coordinate the preamble wording if both
   land near each other.

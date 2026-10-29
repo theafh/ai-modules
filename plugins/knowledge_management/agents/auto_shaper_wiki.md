@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.5
+version: 1.11.6
 model: inherit
 background: false
 effort: high
@@ -63,7 +63,10 @@ exists so the SCHEMA read is never skipped or deferred.
     `- Accepted finding: …` bullet in `$WIKI/SCHEMA.md`'s `## Lint`
     section, which drops it from the live report and the live
     counts, so the live info bucket at exit holds only findings no
-    one has reviewed yet.
+    one has reviewed yet. A `log` rotation finding is the one
+    exception that never reaches that bucket: it is a warn past 500
+    entries and blocking past 1000, and `<fix_log_rotation>`
+    clears it by rotating the log rather than by accepting it.
   </lint_clean>
   <anatomy_compliance>
     Every page matches its declared type's anatomy (sections in the
@@ -250,9 +253,9 @@ have audited before, because the schema, taxonomy, or domain may have changed.
   </read_index>
 
   <read_recent_log>
-    Read the last 20 to 30 entries of `$WIKI/log.md`
-    (`tail -n 350 "$WIKI/log.md"`). Note recent ingests, archives, and
-    prior lint outcomes.
+    Read the last 20 to 30 entries of `$WIKI/log.md` using the entry-anchor
+    recipe in the wiki hub skill's `<resuming_an_existing_wiki>` block. Note
+    recent ingests, archives, and prior lint outcomes.
   </read_recent_log>
 
   <enumerate_pages>
@@ -835,8 +838,11 @@ affect the same file so each file is opened, read, and rewritten once.
 
   <fix_moves>
 
-    Apply the move whose name matches the issue category, with two
-    carve-outs for `log.md` entries already written. A `log-heading`
+    Apply the move whose name matches the issue category. A `log`
+    rotation finding (warn past 500 entries, blocking past 1000) maps
+    to `<fix_log_rotation>`, which rotates the log and leaves every
+    entry byte-identical. Two carve-outs apply to `log.md` entries
+    already written. A `log-heading`
     finding never matches its move automatically:
     `<fix_log_heading_duplicate>` runs only when the operator
     explicitly asked to clean duplicate log headings, so a routine pass
@@ -1284,6 +1290,36 @@ affect the same file so each file is opened, read, and rewritten once.
       the entry order all stay as they are, and no timestamp is
       fabricated for a past entry whose real time is unknown.
     </fix_log_heading_duplicate>
+
+    <fix_log_rotation>
+      Run this move whenever lint reports a `log` finding, at either
+      tier: the warn past 500 entries and the blocking past 1000. It is
+      the repair that makes those findings clearable, so the
+      `<lint_clean>` bar stays reachable without a carve-out for them.
+
+      Resolve the archive name as the first free name for the current
+      year, in this order: `log-YYYY.md`, then the first free
+      `log-YYYY-N.md` for `N` starting at 2 (`log-YYYY-2.md`,
+      `log-YYYY-3.md`, and so on). The first rotation of a year takes
+      `log-YYYY.md`; a second rotation that year lands on
+      `log-YYYY-2.md` beside the untouched `log-YYYY.md`. A name already
+      present on disk is never reused.
+
+      Move the log with `git mv` and no `-f` flag, so an existing
+      archive is never overwritten: the resolved name is free by
+      construction, and the missing `-f` turns a stale resolution into a
+      hard failure instead of a silent loss of history.
+
+      Then start a fresh `log.md` carrying the canonical preamble from
+      `references/template_log.md` verbatim, and write the new log's
+      first entry as `## [YYYY-MM-DD HH:MM] rotate | …`, naming the
+      archive the entries moved to. `rotate` is a member of the
+      canonical `> Actions:` enum in that template.
+
+      Report the rotation in the final report, including the archive
+      name and the entry count moved. Leave the archived file's entries
+      byte-identical: rotation moves history, it never edits it.
+    </fix_log_rotation>
 
     <fix_directory_layout_drift>
       Create the missing `<type>s/` directory for every page type

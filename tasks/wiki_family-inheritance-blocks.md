@@ -63,7 +63,7 @@ idioms. The hub carries it twice: `<resuming_an_existing_wiki>` names "the last
 step. `wiki_import` restates a fixed line count at three sites,
 `<orient_first_top>`, `<orient_first>`, and its orientation step.
 
-Co-edit: [wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md)
+Co-edit: [wiki_log-rotation-and-retrieval.md](archive/wiki_log-rotation-and-retrieval.md)
 replaces the prescribed log-read idiom with an entry-based read, owns the
 entry-anchor retrieval recipe, and owns the `auto_shaper_wiki` agent's copy of
 the orientation log read, so the quantity this task settles and that sibling's
@@ -93,7 +93,7 @@ entry-anchor idiom must land coherently whichever ships first.
    `<resuming_an_existing_wiki>` block as the last 20 to 30 entries retrieved
    by entry boundary (not a fixed line count), keeping that statement coherent
    with the entry-anchor idiom in `wiki_log-rotation-and-retrieval`, as
-   `## Context` records. `<searching>` is the one hub site this step leaves to `tasks/wiki_log-rotation-and-retrieval.md`, which claims that rewrite in its own `## Context` ("Hub `<searching>` citation of `<resuming_an_existing_wiki>` after retiring its `tail -n 350` example stays this task's edit") and proves it in its own Acceptance; so this step retires the orientation-read idiom at `<resuming_an_existing_wiki>` and the two front ends, while the sibling retires the `<searching>` fence, and the hub's two statements read as one rule whichever ships first. Rewrite `<resuming_an_existing_wiki>` to hold that
+   `## Context` records. `<searching>` is the one hub site this step leaves to `tasks/archive/wiki_log-rotation-and-retrieval.md`, which claims that rewrite in its own `## Context` ("Hub `<searching>` citation of `<resuming_an_existing_wiki>` after retiring its `tail -n 350` example stays this task's edit") and proves it in its own Acceptance; so this step retires the orientation-read idiom at `<resuming_an_existing_wiki>` and the two front ends, while the sibling retires the `<searching>` fence, and the hub's two statements read as one rule whichever ships first. Rewrite `<resuming_an_existing_wiki>` to hold that
    canonical quantity. Leave the hub's `<orient_first>` pitfall as it stands: it already reads
    "Read SCHEMA + index + recent log before any operation. *(see
    `<resuming_an_existing_wiki>`)*", so it already cites the tag verbatim and
@@ -111,7 +111,7 @@ entry-anchor idiom must land coherently whichever ships first.
 - The hub's output contract, owned by
   [wiki_base-skill-output-contract.md](archive/wiki_base-skill-output-contract.md).
 - Rewriting the hub `<searching>` block, owned by
-  `tasks/wiki_log-rotation-and-retrieval.md`.
+  `tasks/archive/wiki_log-rotation-and-retrieval.md`.
 
 ## Acceptance
 
@@ -158,14 +158,14 @@ entry-anchor idiom must land coherently whichever ships first.
    run carries no blocking finding.
 7. Searching the hub's `<resuming_an_existing_wiki>` and pitfall `<orient_first>`,
    plus `wiki_import` and `wiki_wrapup`, for `350 lines` and `tail -n 350`
-   returns no match. With `tasks/wiki_log-rotation-and-retrieval.md` read for
+   returns no match. With `tasks/archive/wiki_log-rotation-and-retrieval.md` read for
    the entry-aware log-read idiom it prescribes, the hub
    orientation-read statement and the cited front-end references name the same
    entry bound the sibling prescribes when it has shipped, or the same entry
    bound settled in Acceptance item 4 when it has not. Reading the hub's
    `<searching>` block, it carries a log-read clause citing
    `<resuming_an_existing_wiki>` and no `~last 20 log entries` fence once
-   `tasks/wiki_log-rotation-and-retrieval.md` has shipped, and while that
+   `tasks/archive/wiki_log-rotation-and-retrieval.md` has shipped, and while that
    sibling is unshipped the fence there is the sibling's edit named in the
    task's `**Out of scope:**` block. So whichever ships
    first, the quantity and idiom read as one coordinated rule.

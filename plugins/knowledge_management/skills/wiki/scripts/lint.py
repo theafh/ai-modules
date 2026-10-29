@@ -426,7 +426,7 @@ ACCEPT_SEP = " — "
 # emits at most one line-less Issue per path, and each message embeds a counter
 # or a date that moves between runs, so the path alone identifies the finding
 # and no acceptance ever keys on the volatile substring.
-TWO_FIELD_CATEGORIES = frozenset({"size", "log", "stale", "log-scope"})
+TWO_FIELD_CATEGORIES = frozenset({"size", "stale", "log-scope"})
 
 
 def iter_lint_section_lines(wiki: Path) -> Iterator[str]:
@@ -1401,6 +1401,17 @@ def check_meta_prose(wiki: Path) -> list[Issue]:
 
 
 def check_log_rotation(wiki: Path) -> list[Issue]:
+    """Surface a `log.md` that has outgrown its rotation threshold.
+
+    Two thresholds, matching the rotate-at-500 convention the canonical
+    preamble in ``references/template_log.md`` states: a log past 500 entries
+    is a **warn**, and a log past 1000 entries is **blocking**. The blocking
+    tier is what stops an unbounded log from being tolerated indefinitely,
+    since the finding is repaired by rotating the log rather than accepted:
+    the category is not a two-field acceptance category, so an
+    ``Accepted finding:`` bullet cannot suppress it. The message names the
+    entry count and the rotation destination.
+    """
     log = wiki / "log.md"
     if not log.is_file():
         return []
@@ -1408,8 +1419,16 @@ def check_log_rotation(wiki: Path) -> list[Issue]:
         1 for line in log.read_text(encoding="utf-8").splitlines()
         if line.startswith("## [")
     )
+    if entries > 1000:
+        return [Issue(
+            SEV_BLOCKING, "log", log,
+            f"{entries} entries — rotate to log-YYYY.md",
+        )]
     if entries > 500:
-        return [Issue(SEV_INFO, "log", log, f"{entries} entries — rotate to log-YYYY.md")]
+        return [Issue(
+            SEV_WARN, "log", log,
+            f"{entries} entries — rotate to log-YYYY.md",
+        )]
     return []
 
 
@@ -1574,9 +1593,10 @@ def check_log_scope(wiki: Path) -> list[Issue]:
     One aggregated finding per run, naming the count and a few offenders, so a
     wiki with historical violations gets a signal instead of a swamped report.
     The category is its own — `log-scope`, not ``check_log_rotation``'s `log` —
-    so the two stay independently acceptable; it joins TWO_FIELD_CATEGORIES for
-    the same reasons `log` is there, one line-less finding per path and a message
-    embedding a volatile count, which keeps an acceptance off that count.
+    so the two stay independently identified; it joins TWO_FIELD_CATEGORIES for
+    the same reasons `size` and `stale` are there, one line-less finding per
+    path and a message embedding a volatile count, which keeps an acceptance off
+    that count.
 
     Severity is info by design. The log is append-only and no fix move clears a
     historical violation, so a warn would strand the `auto_shaper_wiki` agent on

@@ -2464,7 +2464,7 @@
           "id": "A2_rotation_rule_present_at_template_text",
           "type": "glob_file_contains",
           "pattern": "HOME/proj/wiki/log.md",
-          "regex": "(?m)^> When this file exceeds 500 entries, rotate: rename to log-YYYY\\.md, start fresh\\.$"
+          "regex": "(?m)^> When this file exceeds 500 entries, rotate: rename to log-YYYY\\.md — or to the first free log-YYYY-N\\.md when that name is taken — start fresh; the next audit cold-walks once and records a fresh baseline in the new log\\.$"
         },
         {
           "id": "A3_existing_entries_untouched",

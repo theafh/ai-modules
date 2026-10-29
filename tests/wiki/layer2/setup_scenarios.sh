@@ -920,7 +920,7 @@ _stale_log_preamble() {
 > Body: list only files actually created or updated. Skip files that were
 > inspected, considered, or deliberately left unchanged, and do not narrate
 > decisions about what not to do. Aim for roughly 20 lines per entry.
-> When this file exceeds 500 entries, rotate: rename to log-YYYY.md, start fresh.
+> When this file exceeds 500 entries, rotate: rename to log-YYYY.md — or to the first free log-YYYY-N.md when that name is taken — start fresh; the next audit cold-walks once and records a fresh baseline in the new log.
 STALEPRE
 }
 
@@ -1197,7 +1197,7 @@ stage_AS-16() {
     # declares no deviation for that slot. A label-only ensure pass would miss
     # it, so this pins the stem-matched half of the unit inventory.
     _assert_template_log_contains \
-        "> When this file exceeds 500 entries, rotate: rename to log-YYYY.md, start fresh."
+        "> When this file exceeds 500 entries, rotate: rename to log-YYYY.md — or to the first free log-YYYY-N.md when that name is taken — start fresh; the next audit cold-walks once and records a fresh baseline in the new log."
     local sb
     sb=$(reset_sandbox AS-16)
     stage "$sb/HOME/proj"
