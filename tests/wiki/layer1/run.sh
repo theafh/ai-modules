@@ -2416,7 +2416,8 @@ PY
 
 # L75: the hub entry-anchor recipe (`grep -n '^## \[' … | tail -30`, then a
 # bounded Read from the earliest offset) returns a 20-to-30 entry slice even
-# when the log is far past the fixed `tail -n 350` size it replaces.
+# when the log is far past the fixed `tail -n 350` size it replaces. The bound
+# is stated in entries, not lines, so a fixed line count is what must fail.
 l75_entry_aware_log_read_bounds_slice() {
     local wiki; wiki=$(stage_fresh_wiki l75)
     customize_taxonomy "$wiki"
@@ -2429,22 +2430,34 @@ l75_entry_aware_log_read_bounds_slice() {
     fi
 
     # The recipe: entry anchors for the last 30 entries, then a bounded read
-    # starting at the earliest needed anchor (never a fixed line count).
+    # from the earliest needed anchor, stopping at the entry count the bound
+    # targets rather than running to EOF. The fixture writes 4 lines per entry,
+    # so 30 entries is 120 lines; the bound is entry-based, not line-based.
     local anchors; anchors=$(grep -n '^## \[' "$wiki/log.md" | tail -30)
     local anchor_count; anchor_count=$(printf '%s\n' "$anchors" | grep -c '^[0-9]*:')
     assert_eq "anchor count" "$anchor_count" "30" || ok=false
 
     local offset; offset=$(printf '%s\n' "$anchors" | head -1 | cut -d: -f1)
-    local slice; slice=$(sed -n "${offset},\$p" "$wiki/log.md")
+    local slice; slice=$(sed -n "${offset},$((offset + 119))p" "$wiki/log.md")
     local slice_headings; slice_headings=$(printf '%s\n' "$slice" | grep -c '^## \[')
 
     if [[ $slice_headings -lt 20 || $slice_headings -gt 30 ]]; then
-        log "    [slice out of bounds: $slice_headings headings, expected 20-30]"
+        log "    [slice out of bounds: $slice_headings entries, expected 20-30]"
         ok=false
     fi
     # The slice is genuinely bounded: it is a strict subset of the log.
     if [[ $slice_headings -ge $total ]]; then
-        log "    [slice not bounded: $slice_headings of $total headings]"
+        log "    [slice not bounded: $slice_headings of $total entries]"
+        ok=false
+    fi
+
+    # The discriminating check: the retired fixed line count (`tail -n 350`)
+    # must land outside the 20-to-30 entry window on this fixture. Without this
+    # the scenario cannot tell an entry-aware read from a line-count read.
+    local fixed; fixed=$(tail -n 350 "$wiki/log.md")
+    local fixed_headings; fixed_headings=$(printf '%s\n' "$fixed" | grep -c '^## \[')
+    if [[ $fixed_headings -ge 20 && $fixed_headings -le 30 ]]; then
+        log "    [fixture does not discriminate: tail -n 350 yields $fixed_headings entries, inside 20-30]"
         ok=false
     fi
     $ok
@@ -2461,6 +2474,20 @@ l76_lint_log_rotation_warn_past_500() {
     local ok=true
     assert_eq "exit stays 0 on a warn" "$rc" "0" || ok=false
     assert_lint_finding "rotation warn past 500" "$out" warn "log" || ok=false
+
+    # `log` must stay out of the two-field whitelist. This is asserted on the
+    # constant directly: `Acceptance.matches` returns early on severity, so a
+    # re-added `log` would not surface through any acceptance-path assertion
+    # below — those prove the severity tier, not the whitelist membership.
+    local whitelisted
+    whitelisted=$(python3 - "$LINT" <<'PY'
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(sys.argv[1]).parent))
+import lint
+print("yes" if "log" in lint.TWO_FIELD_CATEGORIES else "no")
+PY
+)
+    assert_eq "log is not a two-field category" "$whitelisted" "no" || ok=false
 
     set_accept_bullets "$wiki" "log — log.md"
     ret=$(run_lint "$wiki"); out=${ret#*|}
@@ -2480,6 +2507,18 @@ l77_lint_log_rotation_blocking_past_1000() {
     local ok=true
     assert_eq "exit 1 on blocking" "$rc" "1" || ok=false
     assert_lint_finding "rotation blocking past 1000" "$out" blocking "log" || ok=false
+
+    # The same direct constant pin as l76: the blocking tier cannot surface a
+    # re-added `log` through the acceptance path either.
+    local whitelisted
+    whitelisted=$(python3 - "$LINT" <<'PY'
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(sys.argv[1]).parent))
+import lint
+print("yes" if "log" in lint.TWO_FIELD_CATEGORIES else "no")
+PY
+)
+    assert_eq "log is not a two-field category" "$whitelisted" "no" || ok=false
 
     set_accept_bullets "$wiki" "log — log.md"
     ret=$(run_lint "$wiki"); out=${ret#*|}

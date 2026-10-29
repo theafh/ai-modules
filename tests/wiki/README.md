@@ -324,7 +324,7 @@ tests/wiki/
 │   ├── SUMMARY.md                  # rolling human summary of latest run
 │   └── layer1.log                  # latest Layer 1 output
 ├── layer1/
-│   ├── run.sh                      # 19 deterministic scenarios
+│   ├── run.sh                      # 139 deterministic scenarios
 │   └── scratch/<id>/HOME/...       # transient per-scenario fake-HOME trees
 └── layer2/
     ├── evals.json                  # canonical scenarios + assertions
