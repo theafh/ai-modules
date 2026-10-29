@@ -3,7 +3,7 @@ description: Teach the agent_spinner eval runner second turn, inline body, stage
 scope: tests/agent_spinner/evals
 created: 2026-10-03T15:54:08
 updated: 2026-10-20T10:51:42
-status: ready
+status: checked
 reported-by: Andreas Hoffmann
 ---
 

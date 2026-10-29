@@ -3,7 +3,7 @@ description: Move the "changelog is committed-history-derived, never hand-edited
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-21T13:25:38
 updated: 2026-10-17T13:50:32
-status: ready
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
