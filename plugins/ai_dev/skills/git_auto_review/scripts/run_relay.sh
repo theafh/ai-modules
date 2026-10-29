@@ -17,7 +17,8 @@
 # Exit codes:
 #   0  the relay is initialised; the stem directory path is the last stdout line
 #   1  usage error
-#   2  environment error (git missing, or not inside a git repository)
+#   2  environment error (git missing, not inside a git repository, or an
+#      unresolvable --task path)
 
 set -uo pipefail
 

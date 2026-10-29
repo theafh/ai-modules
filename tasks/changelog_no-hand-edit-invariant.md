@@ -2,7 +2,7 @@
 description: Move the "changelog is committed-history-derived, never hand-edited" invariant into the update_changelog skill so the artifact owns it, then remove the duplicated standing repo rule.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-21T13:25:38
-updated: 2026-10-17T13:50:32
+updated: 2026-10-29T12:38:14
 status: checked
 reported-by: Andreas Hoffmann
 ---
