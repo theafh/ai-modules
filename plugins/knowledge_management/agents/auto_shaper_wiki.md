@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.6
+version: 1.11.7
 model: inherit
 background: false
 effort: high
@@ -1305,16 +1305,39 @@ affect the same file so each file is opened, read, and rewritten once.
       `log-YYYY-2.md` beside the untouched `log-YYYY.md`. A name already
       present on disk is never reused.
 
-      Move the log with `git mv` and no `-f` flag, so an existing
-      archive is never overwritten: the resolved name is free by
-      construction, and the missing `-f` turns a stale resolution into a
-      hard failure instead of a silent loss of history.
+      Move the log with no `-f` flag and refuse an occupied destination
+      on both routes, so an existing archive is never overwritten: the
+      resolved name is free by construction, and a refusal turns a stale
+      resolution into a hard failure instead of a silent loss of history.
+      Probe the source once with
+      `git ls-files --error-unmatch "$WIKI/log.md"` and move with `git mv`
+      when that probe exits 0, or with plain `mv` when it exits non-zero.
+      `git mv` refuses an occupied destination by itself; the plain-`mv`
+      branch matches it with an explicit `[ -e "$archive" ]` guard that
+      exits non-zero before the move, and moves with `mv -n` and then
+      confirms the source is gone with `[ ! -e "$WIKI/log.md" ]`, so a
+      destination that appears in between is refused rather than
+      replaced and a skipped move fails loudly instead of reporting
+      success. One probe settles both fallback conditions, because it
+      exits non-zero on an untracked log and outside a git worktree
+      alike, so a non-git wiki and an untracked log both rotate instead
+      of failing. Treat a refusal as a hard stop that re-resolves the
+      archive name, never as a reason to force the move.
 
-      Then start a fresh `log.md` carrying the canonical preamble from
-      `references/template_log.md` verbatim, and write the new log's
-      first entry as `## [YYYY-MM-DD HH:MM] rotate | …`, naming the
-      archive the entries moved to. `rotate` is a member of the
-      canonical `> Actions:` enum in that template.
+      Then start a fresh `log.md` by carrying the live `log.md`
+      preamble — everything above the first `##` heading — into it
+      byte-identically, and write the new log's first entry as
+      `## [YYYY-MM-DD HH:MM] rotate | …`, naming the archive the
+      entries moved to. `rotate` is a member of the canonical
+      `> Actions:` enum in `references/template_log.md`.
+
+      Carry the live preamble rather than restoring canonical template
+      text: an owner-added preamble line is an acknowledged insert-only
+      extension, and a wholesale restore would take it with the
+      entries, losing meaning while `<lint_clean>` still passes. Only
+      the entries rotate; the preamble region survives the move intact.
+      Bringing a drifted preamble back to canonical text stays
+      `<fix_log_preamble_drift>`'s unit-scoped job, never this move's.
 
       Report the rotation in the final report, including the archive
       name and the entry count moved. Leave the archived file's entries
