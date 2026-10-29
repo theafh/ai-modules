@@ -57,6 +57,13 @@ def main() -> int:
     require("grep -n '^## \\[' \"$WIKI/log.md\" | tail -5" in append_log,
             "post-edit log verification changed")
 
+    resuming = section(wiki, "resuming_an_existing_wiki")
+    require("grep -n '^## \\[' \"$WIKI/log.md\" | tail -30" in resuming,
+            "hub entry-anchor recipe changed")
+    require("explicit `limit`" in resuming, "hub bounded-Read clause changed")
+    require("<too_large_to_read_in_one_shot>" in resuming,
+            "hub bounded-Read caution link changed")
+
     provenance = section(wiki, "write_or_update_pages")
     require("Every `sources:` value resolves from the wiki root" in provenance,
             "hub sources root rule missing")
