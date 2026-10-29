@@ -23,7 +23,7 @@ The log records no scope, but each deployed path implies it under the derivation
 
 The scopeless form is a deliberate maintenance mode, which the explicit-scope check marks with `NO_SCOPE_UNINSTALL`. The `style_run.sh` scenario under the comment `# --- Legacy four-field path[key] still strips ---` relies on it removing an entry whose settings file lies outside every target directory.
 
-[The `make update` task](../deployment_update-from-deploy-log.md) groups every log entry by this same derived scope and reuses the helper, which is why the helper serves any logged entry rather than only the entries of the run's own scope. [Merging hook entries into shared hook files](../deployment_merge-hook-entries.md) also edits `uninstall_logged_artifacts`, where it adds a `path[key]` uninstall-by-manifest step; whichever of the two tasks lands second rebases onto the other's edit of that function.
+[The `make update` task](../deployment_update-from-deploy-log.md) groups every log entry by this same derived scope and reuses the helper, which is why the helper serves any logged entry rather than only the entries of the run's own scope. [Merging hook entries into shared hook files](deployment_merge-hook-entries.md) also edits `uninstall_logged_artifacts`, where it adds a `path[key]` uninstall-by-manifest step; whichever of the two tasks lands second rebases onto the other's edit of that function.
 
 `tests/deployment/script_tests/run.sh` stages a scratch home through `HOME` and a scratch project, copies the deploy log aside and restores it on exit, and already runs project-scoped uninstalls for OpenCode, Antigravity, and Codex. Each of those runs while the log holds only that project's entries, so their assertions hold after the fix.
 

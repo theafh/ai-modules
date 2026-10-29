@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-10-28 | Total pages: 36
+> Last updated: 2026-10-29 | Total pages: 36
 
 ## Entities
 
@@ -26,7 +26,7 @@
 - [Claude output styles](concepts/claude-output-styles.md): the two-layer system prompt and the append flag beside it, the two delivery modes, file locations, plugin bundling, and the four-key frontmatter the loader checks without enforcing.
 - [Foreign directory adoption](concepts/foreign-directory-adoption.md): which harnesses read another's config tree, why that is contamination rather than delivery, and the isolation switches.
 - [Guardrail documents as normative rules](concepts/guardrail-documents-as-rules.md): presence-gated lookup, optional adoption, the description misreading, the three paths to true, and the guarding/describing split.
-- [Hook delivery design](concepts/hook-delivery-design.md): the shared-script layout, the uneven per-target deploy routing, the foreign hook files Copilot parses, and the decision to deliver Copilot natively.
+- [Hook delivery design](concepts/hook-delivery-design.md): the shared-script layout, the uneven per-target deploy routing with its entry-grain hook merge, the foreign hook files Copilot parses, and the decision to deliver Copilot natively.
 - [Hook surface portability](concepts/hook-surface-portability.md): four configuration schemas plus one that is code, four signalling contracts, additive layers, and guarantees that vary with the interception point.
 - [Instruction-defect classes](concepts/instruction-defect-classes.md): three ways an AI-consumed instruction passes review and fails at runtime (reach, disposition, intra-file contradiction), why review misses each, why measurement found them, and the measured limit where instruction repair ends and a mechanism must carry the property.
 - [Interpreter and tool-path portability](concepts/interpreter-and-tool-path-portability.md): stock macOS bash 3.2 as the bundled-script floor, the licence reason it stays, the stock python3, the login-shell PATH trap, the constructs verified to fail on that build, the empty-array abort and the EXIT trap that hides a `set -u` abort's status there, and the zsh constructs and special parameters (`status`, `path`) that misfire in commands and snippets an agent runs directly.
@@ -36,7 +36,7 @@
 - [Skill family architecture](concepts/skill-family-architecture.md): naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.
 - [Task lifecycle and status rules](concepts/task-lifecycle-and-status-rules.md): the intended lifecycle of a task file, which skill writes each status, why only a substantive rewrite sends `ready` back to `checked`, that `task_implement` admits only `ready` (and `implemented` for audit-gap repair) with Acceptance-named plus cheap-surface verification as its default done-gate, forward status after implementation with the re-audit re-open of an audited task, follow-up tasks only for stalled loops, unrelated issues, and archived work, final archived status, link-only archive rewrites, the repeated-link warning as a pre-implementation prompt, and how a divergence shows in a skill, a run, or a test.
-- [The deployment model](concepts/deployment-model.md): two discovery roots, per-tool configuration, generated variants, scope precedence, scope-limited uninstall, and the prior-value restore on uninstall.
+- [The deployment model](concepts/deployment-model.md): two discovery roots, per-tool configuration, generated variants, scope precedence, scope-limited uninstall, the prior-value restore on uninstall, and the entry-grain hook merge beside it.
 - [Verification surfaces for a shipped skill](concepts/verification-surfaces.md): script tests as the default ship surface against opt-in behavioral evals, harnesses committed but never deployed, the pinned model under test, a worker isolated from the host's instructions, style, and deployed roles and skills (sandbox root named by harness prefix alone), trigger coverage as its own question, why a grader that tests surface form or hides a conjunction misreports the behaviour, and why a full nested-loop suite is not an ordinary task gate.
 
 ## Comparisons

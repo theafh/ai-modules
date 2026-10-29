@@ -38,6 +38,12 @@ set -euo pipefail
 #   Override the log path with DEPLOYED_ARTIFACTS_LOG so a test deployment can
 #   write inside its own scratch tree and leave the repo log untouched.
 #   Backs up only activated targets (disabled in project-dir mode).
+#   Hook configuration merges entry by entry into each harness's shared hook
+#   file, so an entry ai-modules owns is added, updated at the position it
+#   holds, or removed while every foreign entry stays where it was. The deploy
+#   log records the owned set as an @entries: manifest, and uninstall removes
+#   exactly those entries. Scalar settings keys keep merge_json_key's whole-key
+#   write and its recorded prior.
 #   Backups land in $HOME as <name>_<timestamp>, where <name> defaults to
 #   basename(target_dir). The caller can override <name> when the basename
 #   isn't tool-distinctive — e.g. VS Code's user-prompts dir on macOS and
@@ -1018,6 +1024,261 @@ merge_json_key() {
 }
 
 # ---------------------------------------------------------------------------
+# Merge hook configuration into a harness's shared hook file, entry by entry.
+#
+# Codex's ~/.codex/hooks.json, Claude Code's ~/.claude/settings.json, and
+# Cursor's ~/.cursor/hooks.json are files the user and other tools also write,
+# so merge_json_key's whole-key write would drop every entry ai-modules does
+# not own. This function works at entry grain instead:
+#
+#   - An entry's identity is the set of commands it runs after the ./hooks/
+#     rewrite: a matcher group's hooks[].command values for Codex and Claude
+#     Code, and an entry's command for Cursor.
+#   - A shipped entry whose identity matches an existing entry replaces it at
+#     the position that entry already holds; an unmatched shipped entry is
+#     appended to the end of its event's list.
+#   - An entry the recorded @entries: manifest lists, whose identity the
+#     shipped config no longer carries, is removed.
+#   - Every other entry, event, and top-level key of the target file stays as
+#     it was, including Cursor's version and every other key of settings.json.
+#   - An event's list, then the hooks object, is removed once a removal leaves
+#     it empty.
+#
+# The log line keeps the path[hooks] form and carries @entries: followed by a
+# compact JSON list of the owned entries' events and identities in the fifth
+# field, so uninstall removes exactly those entries. The function drops its own
+# log line before appending, so one destination keeps exactly one line and a
+# legacy whole-key prior converts to the manifest form on the next deploy.
+# ---------------------------------------------------------------------------
+hook_shape_for_target() {
+  case "$1" in
+    cursor) printf 'cursor' ;;
+    *) printf 'matcher' ;;
+  esac
+}
+
+# jq library shared by the entry merge, its dry-run report, and the uninstall
+# check. ident() encodes one entry's identity for one harness shape.
+# shellcheck disable=SC2016
+HOOK_ENTRY_JQ_LIB='
+def ident($shape):
+  if $shape == "cursor" then (.command // "")
+  else ([.hooks[]? | (.command // empty)] | unique | sort | join("\u0001"))
+  end;
+def shipped_identities($event; $shipped; $shape):
+  [ ($shipped[$event] // [])[] | ident($shape) ];
+'
+
+hook_entry_merge_jq() {
+  # shellcheck disable=SC2016
+  printf '%s' "$HOOK_ENTRY_JQ_LIB"'
+  ($existing | if has($key) then .[$key] else {} end) as $eh
+  | ($shipped) as $sh
+  | ($prior) as $pr
+  | (reduce ($sh | keys_unsorted[]) as $event ($eh;
+      . as $acc
+      | ($acc[$event] // []) as $list
+      | (reduce (($sh[$event] // [])[]) as $s ($list;
+          ($s | ident($shape)) as $sid
+          | (map(ident($shape)) | index($sid)) as $idx
+          | if $idx == null then . + [$s] else .[$idx] = $s end
+        )) as $merged
+      | $acc | .[$event] = $merged
+    )) as $merged_hooks
+  | (reduce ($pr[]?) as $m ($merged_hooks;
+      if (shipped_identities($m.event; $sh; $shape) | index($m.identity)) != null then .
+      else
+        . as $h
+        | ($h[$m.event] // []) as $list
+        | ($list | map(select(ident($shape) != $m.identity))) as $kept
+        | if ($kept | length) == 0 then del(.[$m.event]) else .[$m.event] = $kept end
+      end
+    )) as $final_hooks
+  | {
+      result: ($existing | if ($final_hooks | length) == 0 then del(.[$key]) else .[$key] = $final_hooks end),
+      manifest: [ $sh | to_entries[] | .key as $e | .value[] | {event: $e, identity: ident($shape)} ],
+      added: [ $sh | to_entries[] | .key as $e | .value[] as $s
+               | ($s | ident($shape)) as $sid
+               | select((($eh[$e] // []) | map(ident($shape)) | index($sid)) == null)
+               | {event: $e, identity: $sid} ],
+      updated: [ $sh | to_entries[] | .key as $e | .value[] as $s
+                 | ($s | ident($shape)) as $sid
+                 | select((($eh[$e] // []) | map(ident($shape)) | index($sid)) != null)
+                 | {event: $e, identity: $sid} ],
+      removed: [ $pr[]? | . as $m
+                 | select((shipped_identities($m.event; $sh; $shape) | index($m.identity)) == null)
+                 | select((($eh[$m.event] // []) | map(ident($shape)) | index($m.identity)) != null) ]
+    }
+  '
+}
+
+# Drop every deploy-log line whose first tab field is the given destination, so
+# a destination that records a changing manifest keeps one line.
+drop_logged_destination() {
+  local log_path="$1"
+  $DRY_RUN && return 0
+  [[ -f "$DEPLOYED_ARTIFACTS_LOG" ]] || return 0
+
+  local tmp
+  tmp="$(mktemp)"
+  awk -F'\t' -v dest="$log_path" '$1 != dest' "$DEPLOYED_ARTIFACTS_LOG" > "$tmp"
+  mv "$tmp" "$DEPLOYED_ARTIFACTS_LOG"
+}
+
+merge_hook_entries() {
+  local source="$1"
+  local target="$2"
+  local target_id="$3"
+  local artifact_type="$4"
+  local hooks_dir="${5:-}"
+  shift 5 || true
+  local replacements=("$@")
+
+  if [[ ! -f "$source" ]]; then
+    err "missing" "source not found: $source"
+    return 1
+  fi
+
+  local shape
+  shape="$(hook_shape_for_target "$target_id")"
+
+  # Apply the target's replace: rules to the shipped config before it is read,
+  # so an entry's identity is computed from the commands it will really run.
+  local shipped_json
+  shipped_json="$(cat "$source")"
+  local spec variable_name replacement_value
+  for spec in ${replacements[@]+"${replacements[@]}"}; do
+    [[ -n "$spec" ]] || continue
+    variable_name="${spec%%=*}"
+    replacement_value="${spec#*=}"
+    shipped_json="$(printf '%s' "$shipped_json" \
+      | PLACEHOLDER="\$${variable_name}\$" REPLACEMENT_VALUE="$replacement_value" \
+        perl -0pe 's/\Q$ENV{PLACEHOLDER}\E/$ENV{REPLACEMENT_VALUE}/g')"
+  done
+
+  # Rewrite relative ./hooks/ command paths, as the key merge does.
+  if [[ -n "$hooks_dir" ]]; then
+    shipped_json="$(printf '%s' "$shipped_json" | jq --arg dir "$hooks_dir" '
+      walk(if type == "object" and .command and (.command | startswith("./hooks/"))
+           then .command = ($dir + "/" + (.command | ltrimstr("./hooks/")))
+           else . end)')"
+  fi
+
+  local shipped_hooks
+  shipped_hooks="$(printf '%s' "$shipped_json" | jq -c '
+    if has("hooks") and (.hooks | type) == "object" then .hooks else {} end')"
+
+  local existing="{}"
+  if [[ -f "$target" ]]; then
+    existing="$(cat "$target")"
+    if ! printf '%s' "$existing" | jq -e 'type == "object"' >/dev/null 2>&1; then
+      err "failed" "not a JSON object: ${target}"
+      return 1
+    fi
+  fi
+
+  # A recorded manifest is the prior owned set; a legacy whole-key prior and a
+  # four-field line both start from an empty owned set.
+  local log_path="${target}[hooks]"
+  local prior_manifest="[]"
+  local logged_prior=""
+  if logged_prior="$(lookup_logged_prior "$log_path")"; then
+    case "$logged_prior" in
+      @entries:*) prior_manifest="${logged_prior#@entries:}" ;;
+    esac
+  fi
+  if ! printf '%s' "$prior_manifest" | jq -e 'type == "array"' >/dev/null 2>&1; then
+    prior_manifest="[]"
+  fi
+
+  local report
+  report="$(jq -n \
+    --argjson existing "$existing" \
+    --argjson shipped "$shipped_hooks" \
+    --argjson prior "$prior_manifest" \
+    --arg shape "$shape" \
+    --arg key "hooks" \
+    "$(hook_entry_merge_jq)")" || {
+    err "failed" "could not merge hook entries into ${target}"
+    return 1
+  }
+
+  local merged manifest
+  merged="$(printf '%s' "$report" | jq '.result')"
+  manifest="$(printf '%s' "$report" | jq -c '.manifest')"
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    printf '%s' "$report" | jq -r '
+      (.added[]   | "add \(.event) \(.identity)"),
+      (.updated[] | "update \(.event) \(.identity)"),
+      (.removed[] | "remove \(.event) \(.identity)")' \
+      | while IFS= read -r _entry_report; do
+          [[ -n "$_entry_report" ]] || continue
+          info "would-merge" "${target} <- ${_entry_report}"
+        done
+    if [[ -n "$hooks_dir" ]]; then
+      info "would-rewrite" "./hooks/ command paths -> ${hooks_dir}/"
+    fi
+    return 0
+  fi
+
+  printf '%s\n' "$merged" > "$target"
+  drop_logged_destination "$log_path"
+  append_deployed_artifact_log "$log_path" "$target_id" "$artifact_type" "$source" "@entries:${manifest}"
+  ok "merged" "${target} <- hooks entries"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+}
+
+# Remove exactly the entries a recorded @entries: manifest lists from a hook
+# file, dropping an event's list and then the hooks object once a removal
+# leaves it empty.
+remove_hook_entries_by_manifest() {
+  local target="$1"
+  local key="$2"
+  local manifest_json="$3"
+  local shape="$4"
+
+  [[ -f "$target" ]] || return 0
+
+  local updated
+  updated="$(jq --argjson prior "$manifest_json" --arg shape "$shape" --arg key "$key" \
+    "$HOOK_ENTRY_JQ_LIB"'
+    (.[$key] // {}) as $hooks
+    | (reduce ($prior[]?) as $m ($hooks;
+        . as $h
+        | ($h[$m.event] // []) as $list
+        | ($list | map(select(ident($shape) != $m.identity))) as $kept
+        | if ($kept | length) == 0 then del(.[$m.event]) else .[$m.event] = $kept end
+      )) as $final
+    | if ($final | length) == 0 then del(.[$key]) else .[$key] = $final end
+  ' "$target")" || return 1
+
+  printf '%s\n' "$updated" > "$target"
+  ok "restored" "${target} .${key} (owned hook entries)"
+  SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
+}
+
+# Success check for an @entries: manifest removal: none of the listed entries
+# may remain in the hook file.
+hook_manifest_uninstall_succeeded() {
+  local target="$1"
+  local key="$2"
+  local manifest_json="$3"
+  local shape="$4"
+
+  [[ -f "$target" ]] || return 0
+
+  jq -e --argjson prior "$manifest_json" --arg shape "$shape" --arg key "$key" \
+    "$HOOK_ENTRY_JQ_LIB"'
+    (.[$key] // {}) as $hooks
+    | [ $hooks | to_entries[] | .key as $e | .value[]
+        | {event: $e, identity: ident($shape)} ] as $now
+    | all($prior[]?; . as $m | ($now | index({event: $m.event, identity: $m.identity})) == null)
+  ' "$target" >/dev/null 2>&1
+}
+
+# ---------------------------------------------------------------------------
 # Restore a top-level JSON key to a recorded prior value, or delete it when
 # the prior is the @absent marker. Used during uninstall for newly logged
 # path[key] entries that carry a fifth-field prior.
@@ -1743,12 +2004,13 @@ install_for_app() {
           if [[ "$src_ext" == "json" ]]; then
             # Only deploy the Cursor-specific config; skip other JSON configs
             [[ "$source_abs" == *cursor-hooks* ]] || { info "skip" "[$name] not a Cursor hook config"; return 0; }
-            local dest_path="${app_dir}/hooks.json"
-            if [[ ${#replacement_specs[@]} -gt 0 ]]; then
-              copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
+            local hooks_dir
+            if [[ -n "$PROJECT_DIR" ]]; then
+              hooks_dir=".cursor/hooks"
             else
-              copy_file "$source_abs" "$dest_path" "$app_id" "$type"
+              hooks_dir="${app_dir}/hooks"
             fi
+            merge_hook_entries "$source_abs" "${app_dir}/hooks.json" "$app_id" "$type" "$hooks_dir" ${replacement_specs[@]+"${replacement_specs[@]}"}
           elif [[ "$src_ext" == "sh" ]]; then
             local dest_dir="${app_dir}/hooks"
             ensure_dir "$dest_dir"
@@ -1766,7 +2028,8 @@ install_for_app() {
           if [[ "$src_ext" == "json" ]]; then
             # Only deploy the Claude Code-specific config; skip other JSON configs
             [[ "$source_abs" == *claude-code-hooks* ]] || { info "skip" "[$name] not a Claude hook config"; return 0; }
-            # Merge the hooks key into settings.json. Global deployment uses absolute
+            # Merge ai-modules' hook entries into settings.json, leaving every
+            # foreign entry in place. Global deployment uses absolute
             # script paths; project-dir uses paths relative to the project root so
             # the repo stays portable across machines.
             local hooks_dir
@@ -1775,7 +2038,7 @@ install_for_app() {
             else
               hooks_dir="${app_dir}/hooks"
             fi
-            merge_json_key "$source_abs" "${app_dir}/settings.json" "hooks" "$app_id" "$type" "$hooks_dir"
+            merge_hook_entries "$source_abs" "${app_dir}/settings.json" "$app_id" "$type" "$hooks_dir" ${replacement_specs[@]+"${replacement_specs[@]}"}
           elif [[ "$src_ext" == "sh" ]]; then
             local dest_dir="${app_dir}/hooks"
             ensure_dir "$dest_dir"
@@ -1799,7 +2062,7 @@ install_for_app() {
               return 0
             fi
             local hooks_dir="${app_dir}/hooks"
-            merge_json_key "$source_abs" "${app_dir}/hooks.json" "hooks" "$app_id" "$type" "$hooks_dir"
+            merge_hook_entries "$source_abs" "${app_dir}/hooks.json" "$app_id" "$type" "$hooks_dir" ${replacement_specs[@]+"${replacement_specs[@]}"}
           elif [[ "$src_ext" == "sh" ]]; then
             local dest_dir="${app_dir}/hooks"
             ensure_dir "$dest_dir"
@@ -2308,7 +2571,9 @@ uninstall_logged_artifacts() {
     if $DRY_RUN; then
       SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
       if [[ "$logged_path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
-        if [[ -n "$logged_prior" && "$logged_prior" != "@absent" ]]; then
+        if [[ "$logged_prior" == "@entries:"* ]]; then
+          info "would-restore" "$logged_path (owned hook entries)"
+        elif [[ -n "$logged_prior" && "$logged_prior" != "@absent" ]]; then
           info "would-restore" "$logged_path"
         else
           info "would-strip" "$logged_path"
@@ -2317,6 +2582,31 @@ uninstall_logged_artifacts() {
         info "would-rm" "$logged_path"
       fi
       remaining_entries+=("$logged_entry")
+      continue
+    fi
+
+    # A path[key] line carrying an @entries: manifest removes exactly the
+    # entries ai-modules owns and branches ahead of the shared restore
+    # dispatch, which would otherwise write a whole-key prior back.
+    if [[ "$logged_path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ && "$logged_prior" == "@entries:"* ]]; then
+      local manifest_file="${BASH_REMATCH[1]}"
+      local manifest_key="${BASH_REMATCH[2]}"
+      local manifest_json="${logged_prior#@entries:}"
+      local manifest_shape
+      manifest_shape="$(hook_shape_for_target "$logged_target_id")"
+      if ! remove_hook_entries_by_manifest "$manifest_file" "$manifest_key" "$manifest_json" "$manifest_shape"; then
+        err "failed" "Could not remove owned hook entries from $logged_path"
+        remaining_entries+=("$logged_entry")
+        continue
+      fi
+      if ! hook_manifest_uninstall_succeeded "$manifest_file" "$manifest_key" "$manifest_json" "$manifest_shape"; then
+        err "failed" "$logged_path still exists after removal"
+        remaining_entries+=("$logged_entry")
+        continue
+      fi
+      ok "removed" "$logged_path"
+      SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
+      removed_count=$((removed_count + 1))
       continue
     fi
 

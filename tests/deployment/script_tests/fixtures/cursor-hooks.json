@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "./hooks/charter_guardrail.sh",
+        "timeout": 10
+      }
+    ]
+  }
+}

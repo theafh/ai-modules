@@ -2,9 +2,11 @@
 description: Make the deploy script add or update only ai-modules' own hook entries in Codex, Claude Code and Cursor hook files, keep every foreign entry in place, and uninstall only its own.
 scope: deployment
 created: 2026-10-17T00:45:44
-updated: 2026-10-28T01:42:03
-status: ready
+updated: 2026-10-29T20:12:25
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Merge ai-modules' hook entries into shared hook files instead of replacing them
@@ -58,19 +60,19 @@ stale and prompts the user again.
 
 Related tasks:
 
-- [The output-style groundwork](archive/deployment_output-style-claude-groundwork.md)
+- [The output-style groundwork](deployment_output-style-claude-groundwork.md)
   built the first-write prior capture inside `merge_json_key` and the deploy
   log's fifth field. This task keeps that contract for scalar keys and gives
   hook keys an entry manifest instead.
-- [Uninstall respects scope](archive/deployment_uninstall-respects-scope.md) derives each
+- [Uninstall respects scope](deployment_uninstall-respects-scope.md) derives each
   log entry's scope from its deployed path, the `path[key]` form included, and
   edits `uninstall_logged_artifacts`, which this task edits too. Keeping hook
   entries in the `path[key]` form keeps that derivation valid, and whichever
   task lands second rebases onto the other's edit of that function.
-- [Update from the deploy log](deployment_update-from-deploy-log.md) replays
+- [Update from the deploy log](../deployment_update-from-deploy-log.md) replays
   logged entries through the deploy path, so the entry merge gives the same
   result on a replay as on a first deploy.
-- [VS Code hook routing](deployment_vscode-hook-routing.md) edits the `vscode)`
+- [VS Code hook routing](../deployment_vscode-hook-routing.md) edits the `vscode)`
   arm of the same `hook)` case, records the decision that Claude Code's hooks
   stay out of `settings.json`, and owns Copilot's hook delivery.
 
@@ -167,7 +169,7 @@ Related tasks:
   entry.
 - Copilot's hook delivery, owned by the VS Code hook routing task.
 - OpenCode's hook delivery, owned by
-  [the OpenCode hook bridge](deployment_opencode-hook-bridge.md).
+  [the OpenCode hook bridge](../deployment_opencode-hook-bridge.md).
 - Shipping a `cursor-hooks*.json` or `claude-code-hooks*.json`, since this task
   makes those routes safe without adding a config to either.
 

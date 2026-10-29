@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-10-27
+updated: 2026-10-29
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -74,11 +74,16 @@ own frontmatter and a mapped [tool vocabulary](antigravity-tool-vocabulary.md),
 OpenCode agents with its permission object, and Cursor's output style as an
 always-apply `.mdc` rule. Antigravity also takes a per-class
 fan-out rather than one write, because its
-[global roots](antigravity-global-roots.md) diverge by artefact class. Hook configuration is merged as a JSON key into an existing settings file
-rather than replacing it, which is what the script's key-merge function exists
-for; Codex and Antigravity are the two targets a shipped hook file actually
-reaches that way today, and
-[hook delivery design](hook-delivery-design.md) has the per-target routing.
+[global roots](antigravity-global-roots.md) diverge by artefact class. Hook
+configuration is merged into an existing settings file rather than replacing it.
+Codex's `hooks.json`, Claude Code's `settings.json`, and Cursor's `hooks.json`
+take an entry-by-entry merge, which adds an ai-modules entry that is missing,
+updates one that exists at the position it already holds, and removes one the
+shipped config no longer carries, while every foreign entry stays where it was;
+Antigravity's file takes a named-key merge under `charter_guardrail` that touches
+nothing else in it. Codex is the one target a shipped hook file actually reaches
+that way today, and [hook delivery design](hook-delivery-design.md) has the
+per-target routing.
 
 The reasons behind each transform are per-harness facts and live on the harness
 pages, starting with
@@ -137,9 +142,13 @@ success check accepts a key still present with its restored prior, treating
 absence as success only for `@absent` and for those legacy lines.
 
 The capture sits on the shared merge function rather than on a style-specific
-caller, so the hook-configuration merges on Claude, Codex, and Antigravity gain
-the same restore. It shipped with the first style deploy because a style is
-delivered as a file plus a settings key rather than as a file alone. See
+caller, so every scalar settings key gains the same restore, and Antigravity's
+named-key hook merge inherits it too. A hook file shared with the user is
+different: ai-modules owns only the entries it wrote, so those merge at entry
+grain and uninstall removes exactly the listed entries from an `@entries:`
+manifest rather than writing a whole-key prior back. The capture shipped with
+the first style deploy because a style is delivered as a file plus a settings
+key rather than as a file alone. See
 [Claude output styles](claude-output-styles.md).
 
 ### What the script has become, and the line that keeps it a helper

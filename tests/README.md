@@ -282,7 +282,11 @@ don't bring up new harnesses under Pattern B.
   shared three-scope fixture (a scope flag limits removal to that scope, a
   scopeless run covers every scope, out-of-scope entries are reported and
   kept), and the `logged_path_scope` helper's per-target derivation;
-  `script_tests/style_run.sh` covers output-style deployment and uninstall.
+  `script_tests/style_run.sh` covers output-style deployment and uninstall;
+  `script_tests/hook_merge_run.sh` covers the entry-grain hook merge into a
+  shared hook file, its dry-run report, the `@entries:` deploy-log manifest,
+  the manifest uninstall, and the routing and documentation claims that keep
+  the whole-key merge superseded.
 - **`trigger_evals/`**: a different axis from the rest, namely whether a
   skill's `description:` makes Claude load it on a realistic user message. Driven
   by the local `run.py` wrapper, with hermetic unit tests under `script_tests/`

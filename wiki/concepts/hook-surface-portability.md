@@ -1,7 +1,7 @@
 ---
 title: Hook surface portability
 created: 2026-08-08
-updated: 2026-10-01
+updated: 2026-10-29
 type: concept
 tags: [hook, portability, claude, codex, opencode, antigravity, copilot, plugin]
 sources: []
@@ -133,8 +133,8 @@ recorded on [hook delivery design](hook-delivery-design.md).
   and where its deploy routes each file.
 - [Agent definition portability](agent-definition-portability.md), the other
   surface where one file cannot serve every target.
-- [The deployment model](deployment-model.md), which merges hook configuration as
-  a JSON key rather than replacing the target file.
+- [The deployment model](deployment-model.md), which merges hook configuration
+  entry by entry rather than replacing the target file.
 
 ## Derived from
 

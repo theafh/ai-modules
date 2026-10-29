@@ -1,7 +1,7 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-10-07
+updated: 2026-10-29
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
 sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
@@ -92,8 +92,8 @@ Antigravity's global carrier is a single file the user owns,
 `~/.gemini/GEMINI.md`. Writing it wholesale would destroy the user's own
 content, so the deploy writes a delimited block inside it, between begin and end
 markers, rewrites only that block on redeploy, and removes only that span on
-uninstall. It is the Markdown counterpart of the JSON key merge the script
-already performs for hook configuration, and it generalises: wherever a
+uninstall. It is the Markdown counterpart of the entry merge the script already
+performs for hook configuration, and it generalises: wherever a
 harness's global carrier is one user-owned file rather than a directory, a
 marked block is the safe write. Codex's `~/.codex/AGENTS.md` is the same shape
 and would take the same block, but that additive route lost to the synthesized
@@ -169,9 +169,11 @@ rather than being retrofitted. Starting with a file-only target such as VS Code
 would have built half the machinery and discovered the other half later.
 
 That bet paid out as intended. The capture and restore landed on the shared
-key-merge function rather than on a style-only wrapper, so the hook merges that
-predate this work inherited the restore too, and every remaining target adds a
-delivery route onto machinery that already exists. See
+key-merge function rather than on a style-only wrapper, so every later scalar
+settings key inherited the restore. The hook entry merge grew its own
+`@entries:` manifest beside that function and reuses the same log field rather
+than adding a second one. Every remaining target adds a delivery route onto
+machinery that already exists. See
 [the deployment model](deployment-model.md).
 
 The per-harness split follows from the research rather than from a preference for

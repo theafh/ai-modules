@@ -1,7 +1,7 @@
 ---
 title: Hook delivery design
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-29
 checked: 2026-08-09
 type: concept
 tags: [hook, deployment, portability, plugin, claude, codex, antigravity, copilot, cursor, opencode]
@@ -46,8 +46,10 @@ The deploy script routes them unevenly, and the unevenness is worth knowing
 before reading a deployed tree. It copies the shell script into the hook
 directory of Claude, Cursor, Codex, Antigravity, and Copilot, and marks it
 executable. It merges the Codex config-layer file into that harness's own hook
-configuration under the `hooks` key, and the Antigravity file under its own
-named-hook key. Claude and Cursor each have a merge branch that matches on a
+configuration entry by entry, so an entry ai-modules owns is added, updated at
+the position it holds, or removed while every foreign entry stays where it was,
+and it merges the Antigravity file under its own named-hook key. Claude and
+Cursor each have a merge branch that matches on a
 harness-named configuration file the repository does not ship, so Claude's hook
 configuration reaches a machine through plugin install rather than through the
 deploy, and Cursor receives the script with nothing wired to call it. OpenCode
@@ -106,8 +108,8 @@ is still unworked.
 
 - [Hook surface portability](hook-surface-portability.md), for the contracts each
   configuration answers to.
-- [The deployment model](deployment-model.md), whose key-merge function writes
-  the Codex and Antigravity hook configuration.
+- [The deployment model](deployment-model.md), whose entry merge writes the
+  Codex hook configuration and whose named-key merge writes Antigravity's.
 - [Foreign directory adoption](foreign-directory-adoption.md), for why delivery
   goes native instead of through an adopted tree.
 - [GitHub Copilot in VS Code](../entities/github-copilot-vs-code.md), for the hook
