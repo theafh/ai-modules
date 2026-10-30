@@ -3,7 +3,7 @@
 #
 # `file_a.py` carries a staged-diff-cited finding whose added line still appears
 # in the working-tree file, once at the cited index-world position and once
-# later, so lane case 4 rewrites the location to that match and case 7 assigns
+# later, so lane case 4 rewrites the location to that match and case 8 assigns
 # working-tree lane; the run fixes it there. `file_b.py` carries a staged-diff
 # citation whose added line leaves several content matches in the working-tree
 # file and none at the cited index-world position, so case 3 keeps the cited

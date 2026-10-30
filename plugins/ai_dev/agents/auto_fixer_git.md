@@ -1,7 +1,7 @@
 ---
 name: auto_fixer_git
 description: The single serialized writer for git_auto_review. For each approved finding it makes the fix in the working tree at that finding's location and adds a reproduction at a path of its own that its ledger line names, or extends the reproduction that line already names, a test or a command that fails before the fix and passes after, then appends that reproduction to the run's regression ledger; it writes only the paths the finding's Fix requires, the reproduction, and the ledger, and on a retry it re-applies the round's full approved finding set after the restore so no approved fix stays unlanded.
-version: 1.0.1
+version: 1.0.2
 model: inherit
 background: false
 effort: max
@@ -21,7 +21,7 @@ Make each approved finding's fix in the working tree at the location the finding
 <inputs>
 For a `git_auto_review` call, receive as paths to read:
 
-- The target: the default branch's uncommitted change under the two lane labels the `git_auto_review` skill's `<lane_classification>` names, so each fix anchors at the whole-file working-tree lines its finding's `location` names.
+- The target: the `git_auto_review` skill's `<inputs>` **Target.** bullet defines it, on either shape, so each fix anchors at the whole-file working-tree lines its finding's `location` names.
 - The round's approved finding set: one block per finding, each carrying the gate `id`, `heading`, `label`, `location`, and `Fix` from the round's gate return, as the verifier approved it.
 - The run's relay directory, including `ledger.txt`, which holds the run's regression ledger under the skill's **Regression ledger.** rule.
 - The anchoring task file path when the run was given one, read only to confirm a fix's intent boundary.

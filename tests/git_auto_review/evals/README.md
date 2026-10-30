@@ -29,9 +29,9 @@ live `git_review` and stay cheap and deterministic. `stops_on_clean_first_gate`
 for example stages a round-1 verdict with no findings, and `fixes_in_scope_bug`
 stages a round-2 delta verdict that tags the fixed finding closed.
 
-The two direct-agent evals declare `"agent": "auto_gate_git"` and stage no
-preseed, so the runner micro-deploys that agent and runs it against the
-sandbox target. They measure the gate itself, not the loop around it.
+Every eval declaring a non-empty `agent` key is a direct-agent eval: it
+stages no preseed, so the runner micro-deploys that agent and runs it against
+the sandbox target. Those evals measure the gate itself, not the loop around it.
 
 ## Signal per eval
 
@@ -59,7 +59,9 @@ sandbox target. They measure the gate itself, not the loop around it.
 | `lists_local_commits_lane_finding` | The local-commits-lane finding's locations byte-identical and listed |
 | `anchors_duplicated_staged_lines` | The no-match staged finding's file byte-identical and listed |
 | `relay_round_trip` | The stem holding the gate, fixer, and verifier round records, the gate prompt, and the round diff, with the saved return byte-identical |
-| `declines_on_non_default_branch` | The decline before any gate call, with no run artefacts |
+| `declines_on_detached_head` | The decline on a detached `HEAD` before any gate call, with no run artefacts |
+| `fixes_branch_commit_bug` | A committed branch defect fixed in the working tree and uncommitted, `HEAD` and `refs/heads/feature` unchanged, one ledger reproduction, and a clean stop |
+| `gate_reviews_branch_and_worktree` | The gate's report headings and base-SHA lead, both a committed and an uncommitted defect listed in `working-tree lane` at their working-tree lines, and refs, worktrees, product files, and `HEAD` byte-identical |
 | `gate_moves_no_ref` | Refs, worktrees, product files, and HEAD byte-identical around a standalone gate run |
 | `classifies_lanes_from_evidence` | Each finding's lane and location matching the skill's case rules |
 | `honours_round_cap` | The round-cap stop for the override and default runs |

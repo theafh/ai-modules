@@ -16,10 +16,9 @@ shape as a marked pre-seeded gate-return pair under the relay: `gate-r1.txt`
 plus an empty `gate-r1.preseed` marker, injected before the run so the loop
 reads the pair in place of a gate invocation. Live `git_review` is not the
 fixture mechanism for those shapes, so those evals need no forge layer and
-run cheaply. The two direct-agent evals that DO need the live gate declare
-``mode: "agent"`` and a target agent name; the runner then micro-deploys that
-agent file and runs it directly through ``micro_deploy.run_worker`` instead
-of the skill.
+run cheaply. A direct-agent eval that needs the live gate declares a non-empty ``agent`` key naming its
+target agent; the runner then micro-deploys that agent file and runs it
+directly through ``micro_deploy.run_worker`` instead of the skill.
 
 The worker policy comes from `tests/lib/vendor.py`: the worker runs on
 Cursor by default (model `auto`), and `--vendor claude` runs where Claude is

@@ -2,9 +2,11 @@
 description: "Run git_auto_review's review-and-fix loop on a checked-out feature branch, over its commits since the default branch plus the working tree, and route every automated fix ask to it."
 scope: plugins/ai_dev/skills/git_auto_review
 created: 2026-10-29T23:42:35
-updated: 2026-10-30T11:32:10
-status: ready
+updated: 2026-10-30T20:46:50
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Run git_auto_review's review-and-fix loop on a checked-out feature branch
@@ -25,7 +27,7 @@ These passages carry the restriction:
 - The `ai_dev` description in `plugins/ai_dev/.claude-plugin/plugin.json`, `plugins/ai_dev/.codex-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and `.agents/plugins/marketplace.json` ("an automated review-and-fix loop over that same default-branch uncommitted target"), the `git_auto_review` bullets in `plugins/ai_dev/README.md` and in the root `README.md` `## Plugins` list, and the sentence "`git_auto_review` drives a finished uncommitted change" in `wiki/concepts/agent-delegated-automation.md`.
 - Two tests pin the restriction: `tests/trigger_evals/git_review.json` expects `git_review` on "auto-review and fix the branch feature/rate-limit" and on "automatically review and fix pull request #42", and the eval `declines_on_non_default_branch` in `tests/git_auto_review/evals/evals.json` grades the decline.
 
-[The original git_auto_review task](archive/ai-dev_git-auto-review.md) put "Auto-reviewing or auto-fixing a checked-out branch target" in its `**Out of scope:**` block, and this task reverses that one exclusion. The loop machinery that task built (the convergence rules, the relay, snapshots and Restore, the regression ledger, the audit delta, and the concurrent-modification guard) reads `HEAD` and the working tree, so it carries over to a branch unchanged.
+[The original git_auto_review task](ai-dev_git-auto-review.md) put "Auto-reviewing or auto-fixing a checked-out branch target" in its `**Out of scope:**` block, and this task reverses that one exclusion. The loop machinery that task built (the convergence rules, the relay, snapshots and Restore, the regression ledger, the audit delta, and the concurrent-modification guard) reads `HEAD` and the working tree, so it carries over to a branch unchanged.
 
 Flipping the scope alone leaves the gate blind to half of a branch, because `git_review`'s `scripts/collect_review_evidence.sh` has two modes and neither covers a branch with uncommitted fixes. Branch mode (`--base <ref> --head <ref>`) reads the committed three-dot range and nothing in the working tree. `--uncommitted` reads the working tree and lists the commits ahead of the upstream in `local_commits.txt` as a log without diffs, and on a feature branch that tracks its own remote branch, that upstream covers only the unpushed commits. From round 2 on the fixes sit uncommitted, so a gate that read branch mode alone would re-report findings the fixer already closed.
 

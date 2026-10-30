@@ -385,11 +385,74 @@ case "$eval_id" in
     report "the saved gate-r1.txt is byte-identical to the staged return" \
       "$(cmp -s "${sd:-}/gate-r1.txt" "$GRADE_DIR/fixtures/relay_round_trip/gate-r1.txt" && echo yes || echo no)"
     ;;
-  declines_on_non_default_branch)
+  declines_on_detached_head)
     report "no run directory was created" \
       "$([[ ! -d "$repo/.git_auto_review" ]] && echo yes || echo no)"
     report "the working tree matches its pre-run state" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  fixes_branch_commit_bug)
+    report "the branch commit's bug is fixed in the working tree" \
+      "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] \
+         && [[ "$(grep -c 'return sum(items)' "$repo/report.py" 2>/dev/null)" == "1" ]] \
+         && echo yes || echo no)"
+    report "the fix is uncommitted" \
+      "$([[ -n "$(cd "$repo" && git status --porcelain -- report.py)" ]] \
+         && [[ -n "$(cd "$repo" && git diff HEAD -- report.py)" ]] \
+         && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    report "refs/heads/feature is unchanged" \
+      "$([[ -f "$root/.feature.before" ]] \
+         && [[ "$(cd "$repo" && git rev-parse refs/heads/feature)" == "$(cat "$root/.feature.before")" ]] \
+         && echo yes || echo no)"
+    report "the ledger holds one reproduction" \
+      "$(n=0
+         if sd="$(stem_dir)"; then n="$(grep -c . "$sd/ledger.txt" 2>/dev/null || echo 0)"; fi
+         [[ "$n" -ge 1 ]] && echo yes || echo no)"
+    report "the stop line names the no-qualifying-finding condition" \
+      "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
+    ;;
+  gate_reviews_branch_and_worktree)
+    refs_now="$(cd "$repo" && git for-each-ref)"
+    worktrees_now="$(cd "$repo" && git worktree list --porcelain)"
+    base_sha="$(cat "$root/.base.sha" 2>/dev/null || true)"
+    lead="$(printf '%s\n' "$text" | awk '/^## /{exit} {print}')"
+    order_ok="$(printf '%s\n' "$text" | awk '
+      /^## What the changes do and implement/ { h[1] = NR }
+      /^## What it retires/ { h[2] = NR }
+      /^## What of the existing workflow changes/ { h[3] = NR }
+      /^## What is critical/ { h[4] = NR }
+      /^## Bugs it may introduce/ { h[5] = NR }
+      /^## What should be fixed though it is not a clear bug/ { h[6] = NR }
+      /^## Decisions the implementer must make before fixing/ { h[7] = NR }
+      /^## Can it be structurally merged as it is/ { h[8] = NR }
+      END {
+        last = 0
+        for (i = 1; i <= 8; i++) {
+          if (h[i] == "") continue
+          if (h[i] <= last) exit 1
+          last = h[i]
+        }
+        exit (h[1] && h[2] && h[3] && h[5] && h[8]) ? 0 : 1
+      }' && echo yes || echo no)"
+    report "the report uses git_review's headings in their stated order" "$order_ok"
+    report "the lead opens with the base ref and its SHA" \
+      "$([[ -n "$base_sha" ]] && has "$lead" "origin/main" && has "$lead" "$base_sha" && echo yes || echo no)"
+    report "the committed defect is reported under Bugs it may introduce" \
+      "$(has "$text" "Bugs it may introduce" && has "$text" "report.py:4" && echo yes || echo no)"
+    report "the uncommitted defect is reported under Bugs it may introduce" \
+      "$(has "$text" "report.py:3" && echo yes || echo no)"
+    report "the verdict lists both defects in working-tree lane" \
+      "$(block_lane "$text" "report.py:3" "working-tree lane" \
+         && block_lane "$text" "report.py:4" "working-tree lane" \
+         && echo yes || echo no)"
+    report "git for-each-ref is byte-identical" \
+      "$(printf '%s\n' "$refs_now" | cmp -s - "$root/.refs.before" && echo yes || echo no)"
+    report "git worktree list is byte-identical" \
+      "$(printf '%s\n' "$worktrees_now" | cmp -s - "$root/.worktrees.before" && echo yes || echo no)"
+    report "the working-tree product files are byte-identical" \
+      "$(file_matches "$repo/report.py" "$root/.report.before" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   gate_moves_no_ref)

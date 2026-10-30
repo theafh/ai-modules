@@ -28,7 +28,7 @@ These passages and tests carry the floor:
 - `tests/git_auto_review/script_tests/run.sh`: the `s4_convergence_labels_single_source` scenario loops over five labels, `**Severity floor.**` among them.
 - `tests/git_auto_review/evals/`: the eval `lists_non_qualifying_finding` stages one `inferred` finding under `Bugs it may introduce` and grades that the floor leaves it unfixed. The eval `triage_reports_status_and_reason` stages an `inferred` bug in a committed, untouched `extra.py` whose `Fix:` rewrites a whole module; the **Scope anchor.** excludes it as a pre-existing issue in a file the change does not touch, independently of the floor, so the eval's "triage rejects the broader one" expectation never reaches triage.
 
-[The branch-target task](../ai-dev_git-auto-review-branch-target.md) edits other passages of the same files: `<inputs>`, `<orient>`, and `<lane_classification>` in the skill, the target bullets of the three agents, `tests/git_auto_review/evals/README.md`, and the `s3` scenario of `script_tests/run.sh`. The two tasks carry no build order, and whichever lands second applies its edits on top of the other's.
+[The branch-target task](ai-dev_git-auto-review-branch-target.md) edits other passages of the same files: `<inputs>`, `<orient>`, and `<lane_classification>` in the skill, the target bullets of the three agents, `tests/git_auto_review/evals/README.md`, and the `s3` scenario of `script_tests/run.sh`. The two tasks carry no build order, and whichever lands second applies its edits on top of the other's.
 
 ## Approach
 

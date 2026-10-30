@@ -1,7 +1,7 @@
 ---
 name: auto_verifier_git
 description: Refute-by-default verifier for git_auto_review. In triage mode it judges each qualifying finding of the round's gate verdict and approves one only when the fix its Fix names is real, minimum, scope-anchored, and safe, returning not-approved with a reason otherwise; in delta mode it maps every hunk of the round's fixer-write diff to the approved finding id or reproduction that licenses it, or marks it unmapped, so the loop restores and retries once and stops on a second unmapped result.
-version: 1.0.1
+version: 1.0.2
 model: inherit
 background: false
 effort: max
@@ -26,7 +26,7 @@ For a triage call, receive as paths to read:
 - The round's gate return, under the relay as `gate-r<round>.txt`, whose `## Findings` blocks carry each finding's `id`, `heading`, `label`, `non_blocking`, `location`, `lane`, `Fix`, and `tag`.
 - The `git_auto_review` skill path, so its `<convergence>` qualification rule and **Scope anchor.** are read in place.
 - The run's relay directory, including `ledger.txt`, so the reproduction-line exclusion **Scope anchor.** states applies to this judgement.
-- The target: the default branch's uncommitted change the gate reviewed.
+- The target: the `git_auto_review` skill's `<inputs>` **Target.** bullet defines it, on either shape, as the change the gate reviewed.
 - The anchoring task file path when the run was given one, read for the Goal and Acceptance the **Scope anchor.** reads.
 
 For a delta call, receive the round's `round-r<round>.diff.txt` as the hunk set to map, the triage return from the same round, the round's approved finding set, and `ledger.txt`.

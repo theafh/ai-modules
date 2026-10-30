@@ -180,6 +180,7 @@ s3_lane_classification_single_source() {
   assert_contains "lane block exists" "$skill" "<lane_classification>" || ok=false
   assert_contains "staged scan-locus case" "$skill" "(staged)" || ok=false
   assert_contains "staged re-cite case" "$skill" "re-cite to working tree" || ok=false
+  assert_contains "branch-range re-cite case" "$skill" "Branch-range re-cite to working tree." || ok=false
   assert_contains "untracked membership case" "$skill" "membership" || ok=false
   assert_contains "catch-all case" "$skill" "Catch-all" || ok=false
   assert_contains "gate loads the block" "$AGENTS_DIR/auto_gate_git.md" "loading the \`git_auto_review\` skill's \`<lane_classification>\` block" || ok=false

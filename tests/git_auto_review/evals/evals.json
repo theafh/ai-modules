@@ -334,18 +334,35 @@
       ]
     },
     {
-      "id": "declines_on_non_default_branch",
+      "id": "declines_on_detached_head",
       "skill": "git_auto_review",
       "prompt": "Auto-review and fix my uncommitted changes.",
-      "expected_output": "The checked-out branch is not the default, so the run declines before any gate call, creates no run artefacts, and leaves the working tree byte-identical.",
+      "expected_output": "HEAD is detached, so the run declines before any gate call, creates no run artefacts, and leaves the working tree byte-identical.",
       "files": [
-        "evals/fixtures/declines_on_non_default_branch/setup.sh"
+        "evals/fixtures/declines_on_detached_head/setup.sh"
       ],
       "expectations": [
         "The run reports the decline and stops before any gate call.",
         "No .git_auto_review/ run directory or gate evidence scratch was created.",
         "The working tree matches its pre-run state byte-for-byte.",
         "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "fixes_branch_commit_bug",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix this branch.",
+      "expected_output": "The loop consumes the pre-seeded round-1 verdict for the bug committed on the checked-out feature branch, fixes it in the working tree uncommitted, lands a reproduction whose ledger line names a path no reviewed path shares, consumes the round-2 delta verdict that tags the finding closed, and stops clean under the no-qualifying-finding condition with HEAD and refs/heads/feature unchanged.",
+      "files": [
+        "evals/fixtures/fixes_branch_commit_bug/setup.sh"
+      ],
+      "timeout": 1200,
+      "expectations": [
+        "report.py no longer adds a constant, restoring the plain sum.",
+        "The fix is uncommitted: git diff HEAD shows the report.py change.",
+        "The regression ledger holds one reproduction whose path no path under review shares.",
+        "report.txt's stop line names the no-qualifying-finding condition, not the round cap.",
+        "git rev-parse HEAD and refs/heads/feature are unchanged."
       ]
     },
     {
@@ -377,6 +394,23 @@
         "The verdict's fields match the auto_gate_git output contract.",
         "Each graded finding's lane agrees with the skill's case rules.",
         "Every case matching the staged re-citation carries a terminal lane."
+      ]
+    },
+    {
+      "id": "gate_reviews_branch_and_worktree",
+      "skill": "git_auto_review",
+      "agent": "auto_gate_git",
+      "prompt": "Perform the round-1 review for the git_auto_review loop on the change of this checked-out branch since the default branch. Return auto_gate_git's report and structured verdict.",
+      "expected_output": "The gate collects the branch-mode and working-tree evidence sets, reports under git_review's headings in their stated order with the base ref and its SHA in the lead, and lists both the committed defect and the uncommitted one in working-tree lane at their working-tree lines, leaving every ref, the worktree list, the product files, and HEAD byte-identical.",
+      "files": [
+        "evals/fixtures/gate_reviews_branch_and_worktree/setup.sh"
+      ],
+      "expectations": [
+        "The report uses git_review's heading set in its stated order with first-review presence applied.",
+        "The lead opens with the base ref origin/main and its SHA.",
+        "Each defect is listed under the heading that owns it.",
+        "The verdict lists both defects in working-tree lane, the committed one at its working-tree lines.",
+        "Refs, worktrees, product files, and HEAD are byte-identical."
       ]
     },
     {

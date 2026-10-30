@@ -37,8 +37,9 @@ ready by running a bounded loop over five task agents — drift, a
 pre-gate implementer dry run, gate, review, and verification — and
 applying the edits they bless. `task_fix` repairs the whole backlog inline for mechanical fixes, and
 hands the harder judgement calls to a writer agent when the user opts in or the
-tree is large enough to need it. `git_auto_review` drives a finished uncommitted
-change to a clean exit the same way: `git_review` is the only gate, one writer
+tree is large enough to need it. `git_auto_review` drives a checked-out branch's
+change since the default branch, or a finished uncommitted change, to a clean
+exit the same way: `git_review` is the only gate, one writer
 fixes the findings that qualify, and each round is verified refute-by-default and
 re-reviewed on its delta until the convergence rules stop the loop.
 

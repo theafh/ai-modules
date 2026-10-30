@@ -11,12 +11,12 @@
 #   scan.py    an index-only credential line the scan cites with the `(staged)`
 #              suffix at scan.py:2 (case 1 -> local-commits lane, follow-up)
 #   helper.py  a `### staged` citation whose added line still appears in the
-#              working-tree file at line 3 (case 4 -> case 7, working-tree lane)
+#              working-tree file at line 3 (case 4 -> case 8, working-tree lane)
 #   gone.py    a `### staged` citation whose added lines no longer appear in
 #              the working-tree file at that path, cited at gone.py:2 (case 2
 #              -> local-commits lane, follow-up, no fix)
 #   file_a.py  a duplicated staged line with one occurrence at the cited
-#              index-world position, file_a.py:2 (case 4 anchors there, case 7
+#              index-world position, file_a.py:2 (case 4 anchors there, case 8
 #              assigns working-tree lane at line 2)
 #   file_b.py  a duplicated staged line with several content matches and none
 #              at the cited position, cited at file_b.py:2 (case 3 keeps the
@@ -73,7 +73,7 @@ EOF
 
   # helper.py: stage a line that divides by a zero-valued divisor at index-world
   # line 2, then edit the working tree so that same line appears there at
-  # working-tree line 3 (case 4 -> case 7).
+  # working-tree line 3 (case 4 -> case 8).
   cat > helper.py <<'EOF'
 def helper():
     return 1 / 0
@@ -101,7 +101,7 @@ EOF
 
   # file_a.py: stage the defect line at index-world line 2, then leave that same
   # line in the working tree at line 2 (the cited position) and again at line 6,
-  # so case 4 anchors the cited occurrence (case 4 -> case 7, line 2).
+  # so case 4 anchors the cited occurrence (case 4 -> case 8, line 2).
   cat > file_a.py <<'EOF'
 def a():
     result = compute() / 0

@@ -4,7 +4,7 @@
 #
 # Acceptance 25 names three findings: a verified in-scope working-tree-lane bug
 # in `report.py`, a verified in-scope finding on a change staged and then edited
-# again in `helper.py` (lane case 4 rewrites the location, case 7 assigns
+# again in `helper.py` (lane case 4 rewrites the location, case 8 assigns
 # working-tree lane), and a `(staged)` scan-locus citation on an index-only line
 # in `scan.py` (case 1, local-commits lane). Round 1's pre-seeded gate return
 # carries all three; round 2's delta return tags the two fixed findings closed
@@ -38,7 +38,7 @@ EOF
   git update-ref refs/remotes/origin/main HEAD
 
   # helper.py: stage `return 2`, then edit the working tree so the staged added
-  # line still appears there (lane case 4 -> case 7, working-tree lane).
+  # line still appears there (lane case 4 -> case 8, working-tree lane).
   cat > helper.py <<'EOF'
 def helper():
     return 2

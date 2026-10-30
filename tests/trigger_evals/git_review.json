@@ -12,8 +12,9 @@
   {"query": "say whether this can be merged as it stands", "expected_skill": "git_review"},
   {"query": "re-review the delta since last time", "expected_skill": "git_review"},
   {"query": "post the review as a comment on the PR", "expected_skill": "git_review"},
-  {"query": "automatically review and fix pull request #42", "expected_skill": "git_review"},
-  {"query": "auto-review and fix the branch feature/rate-limit", "expected_skill": "git_review"},
+  {"query": "automatically review and fix pull request #42", "expected_skill": "git_auto_review"},
+  {"query": "auto-review and fix the branch feature/rate-limit", "expected_skill": "git_auto_review"},
+  {"query": "run a loop of review and fix and auto-fix bugs in my branch", "expected_skill": "git_auto_review"},
 
   {"query": "what changed between these two release tags", "expected_skill": null},
   {"query": "set up a wiki here — none exists yet", "expected_skill": null}

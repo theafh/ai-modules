@@ -1,7 +1,7 @@
 ---
 name: git_auto_review
-description: "Run an automated review-and-fix loop over the default branch's uncommitted changes and its local commits ahead of upstream: git_review is the only gate, a single writer agent fixes the findings that qualify, each round is verified refute-by-default and re-reviewed on its delta, and the loop stops under stated convergence rules. Use when the user asks to auto-review and fix uncommitted changes, run the automated review loop, keep reviewing and fixing until the change is clean, auto-fix what the review finds, or drive an automated review gate to a clean exit on the working tree. Every fix stays uncommitted."
-version: 1.0.4
+description: "Run an automated review-and-fix loop over the checked-out branch's change since the default branch plus its working tree, and over the default branch's uncommitted changes: git_review is the only gate, a single writer agent fixes the findings that qualify, each round is verified refute-by-default and re-reviewed on its delta, and the loop stops under stated convergence rules. Use when the user asks to auto-review and fix uncommitted changes, auto-review and fix this branch, run the automated review loop, keep reviewing and fixing until the change is clean, loop review and fix over my branch against main, auto-fix what the review finds, or drive an automated review gate to a clean exit. Every fix stays uncommitted."
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -15,14 +15,16 @@ git_auto_review is the opt-in automated review-and-fix loop beside `git_review`.
 </role>
 
 <when_to_activate>
-Activate when the user asks for an automated review-and-fix pass over the default-branch uncommitted target this skill's `<inputs>` names:
+Activate when the user asks for an automated review-and-fix pass over either target shape this skill's `<inputs>` names, the working tree or the checked-out branch:
 
 - "Auto-review and fix my uncommitted changes."
+- "Auto-review and fix this branch."
 - "Run the automated review loop until it is clean."
+- "Loop review and fix over my branch against main."
 - "Keep reviewing and fixing this change until the review finds nothing."
 - "Auto-fix whatever the review turns up on the working tree."
 
-Route to `git_review` for manual review of any target, and for review of a branch or a pull request, whether manual or the automated review-and-fix shape. Route to a `task_*` sibling for task readiness work; this loop reviews a change, not a task file.
+Route to `git_review` for manual review of any target, a branch or a pull request included. Route to a `task_*` sibling for task readiness work; this loop reviews a change, not a task file.
 </when_to_activate>
 
 <authority>
@@ -34,9 +36,10 @@ Bundled scripts live in `scripts/` next to this `SKILL.md`. Resolve each script'
 </path_resolution>
 
 <inputs>
-The run accepts one target and two optional prompt inputs.
+The run accepts one target and three optional prompt inputs.
 
-- **Target.** The default branch's uncommitted change, reported under two lane labels: the `working-tree lane`, holding the staged, the unstaged, and the untracked changes, and the `local-commits lane`, holding the local commits ahead of the upstream. Both labels are the step strings `collect_uncommitted` writes in `git_review`'s `scripts/collect_review_evidence.sh` (`working-tree lane:` and `local-commits lane:`), reused as this loop's `lane` vocabulary. A checked-out branch target and a pull-request target are out of this skill's reach; the run declines them per `<orient>`.
+- **Target.** The run has two target shapes. On the default branch the target is that branch's uncommitted change, reported under two lane labels: the `working-tree lane`, holding the staged, the unstaged, and the untracked changes, and the `local-commits lane`, holding the local commits ahead of the upstream. On any other checked-out branch the target is that branch's change: the commits from the merge base of the remote-tracking default ref and `HEAD` up to `HEAD`, plus the working tree, meaning the staged, the unstaged, and the untracked changes. The branch target's base is the `<remote>/<default>` ref `<orient>` resolves, read without a fetch, so the gate's `--no-fetch` requirement holds. Every fix lands in the working tree, uncommitted, and the branch's commits and ref stay as they are. Both lane labels are the step strings `collect_uncommitted` writes in `git_review`'s `scripts/collect_review_evidence.sh` (`working-tree lane:` and `local-commits lane:`), reused as this loop's `lane` vocabulary.
+- **An optional named target**, written anywhere in the prompt as the literal phrase `branch <ref>` or `pull request <ref>`, matched case-insensitively. `<ref>` is a branch name in the shapes `git_review`'s `<accepted_forms>` accepts (a bare name or the `<remote>/<branch>` form) or a pull-request URL or number, and it counts as a named target only when it resolves to an existing branch or pull request. A pull-request ref resolves to its head branch through the same `<pull_request>` route `git_review` uses. `<orient>` accepts the named target when it is the checked-out branch and declines otherwise.
 - **An optional task file path** that anchors scope, read by `<convergence>`'s **Scope anchor.** and by **Decisions.**. A task path that does not resolve to a readable regular file, with a relative value resolved against the repository root, is reported by `scripts/run_relay.sh` and the run stops under `<agent_failure_policy>`'s `helper-script` class at init, so no relay state is created for it.
 - **An optional round-cap override**, written anywhere in the prompt as the literal phrase `round cap <N>`, matched case-insensitively, where `<N>` is a positive integer. Absent the phrase the run proceeds with the **Stop rule.**'s default cap. A phrase whose integer is zero, negative, or non-numeric is not an override: the run reports that the phrase is not an override and proceeds with the default cap.
 
@@ -52,17 +55,18 @@ The invoking harness may also supply environment notes describing a staged helpe
 <lane_classification>
 **Lane classification.** When `auto_gate_git` builds the structured verdict, every finding's `location` is `path:start` or `path:start-end`, 1-based inclusive. The coordinate convention, stated once here: `location` carries working-tree line numbers when the cited lines exist in the working-tree file the fixer edits, so `location`, the fixer's anchor, and the **Stop rule.**'s authored-hunk parse share those lines; it still reads `path:start` or `path:start-end` with index-world line numbers when the finding has no working-tree counterpart. The sole signal that a finding is not a working-tree line is its `lane` value `local-commits lane`; `location` carries no mark field. `auto_gate_git`'s `<output_contract>` template stays as that agent states it.
 
-Walk the cases below in order. Cases 1 through 3 and 5 through 9 are terminal: the first matching terminal case sets that finding's location handling, its `lane`, and its fix disposition. Case 4 is a location rewrite only: when it matches, rewrite `location` as it states and continue the same ordered walk from case 5, so a later terminal case assigns `lane` and disposition. When none of cases 5 through 8 match, case 9 is the terminal case.
+Walk the cases below in order. Cases 1 through 3 and 6 through 10 are terminal: the first matching terminal case sets that finding's location handling, its `lane`, and its fix disposition. Cases 4 and 5 are location rewrites only: when one matches, rewrite `location` as it states and continue the same ordered walk from case 6, so a later terminal case assigns `lane` and disposition. When none of cases 6 through 9 match, case 10 is the terminal case.
 
 1. **`(staged)` scan-locus.** The report cites a `path:line` hit carrying the `(staged)` suffix that `git_review`'s `<evidence_set>` appends for the index line of content only the index holds. Keep the cited index-world `path:start` or `path:start-end` with no mark field, assign `lane` `local-commits lane`, list the finding as a follow-up task proposal, and make no fix.
 2. **`### staged` lines absent.** The citation comes from the `### staged` section of `worktree_diff.txt` (the `git diff --cached` hunk numbering, distinct from the scan-locus suffix) and its added lines no longer appear in the working-tree file at that path. Apply the same disposition as case 1.
 3. **`### staged` duplicated, no index-aligned hit.** The same `### staged` citation whose added lines leave several content matches in the working-tree file and none at the cited index-world numbers. Keep the cited location, assign `lane` `local-commits lane`, list the finding as a follow-up task proposal, and make no fix.
-4. **`### staged` re-cite to working tree.** The same `### staged` citation whose added lines still appear in the working-tree file. Match those lines there and number `location` from the match; when they appear more than once, anchor the occurrence at the cited index-world numbers. This case rewrites `location` to that working-tree `path:start` or `path:start-end`, assigns no `lane`, and continues the ordered walk from case 5 using the rewritten location.
-5. **`### unstaged` membership.** The path and range fall inside a `### unstaged` hunk at the working-tree lines the location names. Assign `lane` `working-tree lane`.
-6. **`### untracked` membership.** The path falls in a `### untracked` section, read as that whole file's single hunk numbered from its first line, because `write_untracked_diffs` writes `+`-prefixed lines with no `@@` header. Assign `lane` `working-tree lane`.
-7. **`### staged` membership.** The path and range fall inside a `### staged` hunk under the working-tree added-lines match of case 4, so a staged-then-edited change classifies by content rather than by coincident numbers. Assign `lane` `working-tree lane`.
-8. **Clean tracked-file membership.** The path is tracked in the working tree and the cited lines exist there, with no `### staged`, `### unstaged`, or `### untracked` hunk covering them. Assign `lane` `working-tree lane`, so a finding the **Scope anchor.** admits outside the diff, including a task-file-anchored finding on an unmodified tracked file and a finding in a local commit whose file the working tree still carries, stays fixable.
-9. **Catch-all.** Every other finding. Assign `lane` `local-commits lane`, which borrows `collect_uncommitted`'s `local-commits lane:` step string as vocabulary only and asserts no working-tree location and never that the finding concerns a local commit, and make no fix under the non-qualifying classification `<convergence>` states.
+4. **`### staged` re-cite to working tree.** The same `### staged` citation whose added lines still appear in the working-tree file. Match those lines there and number `location` from the match; when they appear more than once, anchor the occurrence at the cited index-world numbers. This case rewrites `location` to that working-tree `path:start` or `path:start-end`, assigns no `lane`, and continues the ordered walk from case 6 using the rewritten location.
+5. **Branch-range re-cite to working tree.** A citation from the branch-mode `full_diff.txt` whose added lines appear in the working-tree file at that path. Match those lines there and renumber `location` from the match; when they appear more than once, anchor the occurrence at the cited `HEAD`-side numbers. This case rewrites `location` to that working-tree `path:start` or `path:start-end`, assigns no `lane`, and continues the ordered walk from case 6 using the rewritten location. A citation whose added lines no longer appear in the working tree falls through to case 10 and is listed with no fix.
+6. **`### unstaged` membership.** The path and range fall inside a `### unstaged` hunk at the working-tree lines the location names. Assign `lane` `working-tree lane`.
+7. **`### untracked` membership.** The path falls in a `### untracked` section, read as that whole file's single hunk numbered from its first line, because `write_untracked_diffs` writes `+`-prefixed lines with no `@@` header. Assign `lane` `working-tree lane`.
+8. **`### staged` membership.** The path and range fall inside a `### staged` hunk under the working-tree added-lines match of case 4, so a staged-then-edited change classifies by content rather than by coincident numbers. Assign `lane` `working-tree lane`.
+9. **Clean tracked-file membership.** The path is tracked in the working tree and the cited lines exist there, with no `### staged`, `### unstaged`, or `### untracked` hunk covering them. Assign `lane` `working-tree lane`, so a finding the **Scope anchor.** admits outside the diff, including a task-file-anchored finding on an unmodified tracked file and a finding in a local commit or a branch commit whose file the working tree still carries, stays fixable.
+10. **Catch-all.** Every other finding. Assign `lane` `local-commits lane`, which borrows `collect_uncommitted`'s `local-commits lane:` step string as vocabulary only and asserts no working-tree location and never that the finding concerns a local commit, and make no fix under the non-qualifying classification `<convergence>` states.
 
 `auto_gate_git` loads this block and applies it as written when it assigns each finding's `lane` and `location`; its agent file carries no second copy of these cases.
 </lane_classification>
@@ -231,7 +235,11 @@ When `CHARTER.md` exists at the repository root, the orchestrator validates each
 <orient>
 Resolve the default branch by reading the remote `HEAD` symref `refs/remotes/<remote>/HEAD` for the remote the checked-out branch's upstream names, `origin` when it names none, and fall back to the `HEAD branch:` line of `git remote show <remote>` when that symref is absent. Both routes advertise a head without moving a ref, so the gate's `--no-fetch` requirement holds.
 
-When neither route yields a default branch, abort the run. When the current branch is not the resolved default branch, decline the run. Abort and decline are the same terminal move: report the condition and stop there, before any gate call, with no working-tree write and no relay or evidence-scratch artefact created.
+When neither route yields a default branch, abort the run.
+
+Read the checked-out branch with `git symbolic-ref --short HEAD`. Decline the run in two cases: when that command fails because `HEAD` is detached, and when the `<inputs>` named-target input names a branch or pull request other than the checked-out branch, recognized only through that input's literal phrase and never from a bare mention of the words "branch" or "pull request"; a decline on the named target names `git_checkout` as the skill that puts the repository on it. Otherwise accept the run: the default branch takes the default-branch target, and any other checked-out branch takes the branch target.
+
+Abort and decline are the same terminal move: report the condition and stop there, before any gate call, with no working-tree write and no relay or evidence-scratch artefact created.
 </orient>
 
 <initialise>

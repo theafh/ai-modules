@@ -9,7 +9,7 @@ does not ship inside the plugin.
 | Surface | Where | What it tests |
 | :--- | :--- | :--- |
 | `script_tests/` | Deterministic shell assertions | The published artefact shape and frontmatter, the pseudo-XML lint, the single-source lane-classification and convergence statements, the carry-over blocks, and the four bundled scripts: `run_relay.sh` (the `.gitignore`, the stem derivation, the `--task` path rejection, the staleness clear, and the marked preseed pairs), `run_ledger.sh` (the exit and per-line contract), `run_snapshot.sh` (the pre-fix pair and the once-only baseline pair), and `run_restore.sh` (reproducing the captured worktree with the index untouched). It also exercises the Makefile's `.git_auto_review` prune on a probe root and checks the shared isolation allowlist. |
-| `evals/` | Behavioral eval definitions | Staged git fixtures for the review-and-fix loop: the clean-first-gate and non-qualifying stops, an in-scope fix with its reproduction and the reproduction-only delta finding, the pre-existing and scope-extension follow-ups, the decision and CHARTER stops, the helper-failure and helper-script-failure stops, the concurrent-modification guard, triage status and reason, the scope anchor through a task file and the same fixture with no task path, the local-commits lane, the round cap, and the ledger and unmapped-hunk restore-and-retry stops. |
+| `evals/` | Behavioral eval definitions | Staged git fixtures for the review-and-fix loop: the clean-first-gate and non-qualifying stops, an in-scope fix with its reproduction and the reproduction-only delta finding, the pre-existing and scope-extension follow-ups, the decision and CHARTER stops, the helper-failure and helper-script-failure stops, the concurrent-modification guard, triage status and reason, the scope anchor through a task file and the same fixture with no task path, the local-commits lane, the round cap, and the ledger and unmapped-hunk restore-and-retry stops. The branch-target evals cover a committed branch defect fixed uncommitted (`fixes_branch_commit_bug`), a detached-`HEAD` decline (`declines_on_detached_head`), and a standalone gate that reports a committed and an uncommitted defect in one file (`gate_reviews_branch_and_worktree`). |
 
 The authored harness is committed; `tests/.gitignore` keeps run output out.
 These tests do not ship inside the plugin, since `make deploy` copies only
@@ -38,11 +38,12 @@ consumes the pair in place of a gate invocation, so live `git_review` is not
 the fixture mechanism and those evals need no forge layer. Multi-round evals
 stage one pair per round they expect to drive.
 
-The two direct-agent evals (`gate_moves_no_ref`, `classifies_lanes_from_evidence`)
-declare `mode: "agent"` in `evals.json`, so the runner micro-deploys
-`auto_gate_git` and runs that agent itself against the sandbox target. Both
+Every eval declaring a non-empty `agent` key in `evals.json` is a direct-agent
+eval: the runner micro-deploys that agent and runs it against the sandbox
+target. Both
 the spawn-failure and mid-run-death evals use an environment note in the run
 prompt instead of the preseed, matching the loop's helper-failure policy.
 
 See `evals/README.md` for the signal each eval uses, and `RUNBOOK.md` for the
-trigger measurement and the lane-classification measurement.
+trigger measurement, the lane-classification measurement, and the
+branch-and-worktree measurement.
