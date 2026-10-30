@@ -190,9 +190,11 @@ s3_lane_classification_single_source() {
 
 s4_convergence_labels_single_source() {
   local ok=true skill="$SKILL_DIR/SKILL.md" label
-  for label in "**Scope anchor.**" "**Severity floor.**" "**Regression ledger.**" "**Decisions.**" "**Stop rule.**"; do
+  for label in "**Scope anchor.**" "**Regression ledger.**" "**Decisions.**" "**Stop rule.**"; do
     assert_contains "convergence label $label" "$skill" "$label" || ok=false
   done
+  assert_not_contains_re "skill drops the severity floor block" "$skill" '<severity_floor>' || ok=false
+  assert_not_contains_re "skill drops the severity floor label" "$skill" 'Severity floor' || ok=false
   assert_contains "convergence block exists" "$skill" "<convergence>" || ok=false
   assert_contains "round cap default 5" "$skill" "cap of 5 rounds" || ok=false
   assert_contains "round cap override phrase" "$skill" "round cap <N>" || ok=false
@@ -555,7 +557,7 @@ s12_isolation_allowlist() {
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "new pseudo-XML artefacts lint clean" s2_pseudo_xml_lints
 scenario s3 "lane classification is stated once and read by the gate" s3_lane_classification_single_source
-scenario s4 "convergence states the five labels and the stop conditions once" s4_convergence_labels_single_source
+scenario s4 "convergence states the four labels and the stop conditions once" s4_convergence_labels_single_source
 scenario s5 "the carry-over blocks and path resolution exist" s5_carryover_blocks
 scenario s6 "run_ledger.sh honours the ledger exit and reporting contract" s6_ledger_contract
 scenario s7 "run_relay.sh initialises the relay and preserves marked pairs" s7_relay_init_and_preseed

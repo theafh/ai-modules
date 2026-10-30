@@ -3,8 +3,10 @@
 #
 # Round 1's pre-seeded gate return carries two qualifying findings. The second
 # names a change that is not real (it asks for a rewrite the defect does not
-# require), so refute-by-default triage rejects it. Round 2's delta return tags
-# the first closed with no new finding.
+# require), so refute-by-default triage rejects it. `extra.py` lands in the
+# working tree as an untracked file, so its cited line is a line the change
+# adds and the Scope anchor admits the finding, which reaches triage. Round 2's
+# delta return tags the first closed with no new finding.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,9 +22,6 @@ seed_in_scope_change "$target"
 def label():
     return "ok"
 EOF
-  git add extra.py
-  git commit --quiet -m "seed extra"
-  git update-ref refs/remotes/origin/main HEAD
 )
 record_head "$target"
 record_index "$target"

@@ -1,7 +1,7 @@
 ---
 name: git_auto_review
 description: "Run an automated review-and-fix loop over the default branch's uncommitted changes and its local commits ahead of upstream: git_review is the only gate, a single writer agent fixes the findings that qualify, each round is verified refute-by-default and re-reviewed on its delta, and the loop stops under stated convergence rules. Use when the user asks to auto-review and fix uncommitted changes, run the automated review loop, keep reviewing and fixing until the change is clean, auto-fix what the review finds, or drive an automated review gate to a clean exit on the working tree. Every fix stays uncommitted."
-version: 1.0.3
+version: 1.0.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -69,11 +69,11 @@ Walk the cases below in order. Cases 1 through 3 and 5 through 9 are terminal: t
 
 <convergence>
 <qualification>
-A finding qualifies for an automated fix, and is a qualifying finding for the **Stop rule.** and for `auto_verifier_git` triage, only when all five conditions hold: its `tag` permits qualification, it meets the **Scope anchor.**, it meets the **Severity floor.**, it carries `lane` `working-tree lane` under `<lane_classification>`, and it is not held under **Decisions.**.
+A finding qualifies for an automated fix, and is a qualifying finding for the **Stop rule.** and for `auto_verifier_git` triage, only when all four conditions hold: its `tag` permits qualification, it meets the **Scope anchor.**, it carries `lane` `working-tree lane` under `<lane_classification>`, and it is not held under **Decisions.**. The gate verdict's `non_blocking` field is reporting-only: it carries `git_review`'s non-blocking mark through the structured verdict and does not enter the qualification conjunction.
 
-**Tag permit.** On round 1's first review the tag is `none`; on a delta re-review the qualifying tag values are `open`, `open and not acknowledged`, `regressed`, and `new`, each still subject to the four conditions above. A `closed` finding and a `settled by a decision` finding never qualify and receive no fix.
+**Tag permit.** On round 1's first review the tag is `none`; on a delta re-review the qualifying tag values are `open`, `open and not acknowledged`, `regressed`, and `new`, each still subject to the other three conditions above. A `closed` finding and a `settled by a decision` finding never qualify and receive no fix.
 
-Every gate-listed finding that does not qualify is classified once here and rendered on the two surfaces each already holds. The run lists the finding with its `lane` and no fix, naming it a follow-up task proposal where it is a pre-existing issue or a scope extension under the **Scope anchor.**, a lane-excluded finding under `<lane_classification>`, a severity-floor-excluded finding under the **Severity floor.**, or a tag-excluded finding, meaning `closed` or `settled by a decision`, under this paragraph's tag permit. The first rendering surface is the gate's `git_review` report, which keeps the finding under its heading; that heading's presence follows `<first_review_presence>` and `<delta_presence>` as written. This reporting obligation overrides `git_review`'s `<non_findings>`, `<lint_baseline>`, and `<only_what_is_open>` suppression rules inside `auto_gate_git`'s composition of that gate report, so a non-qualifying finding this classification keeps stays present under its heading there. The second surface is `report.txt` under `<relay>`, which carries that finding as its one line and remains only the loop's terminal surface, distinct from the gate report and not itself the subject of those `git_review` suppression rules.
+Every gate-listed finding that does not qualify is classified once here and rendered on the two surfaces each already holds. The run lists the finding with its `lane` and no fix, naming it a follow-up task proposal where it is a pre-existing issue or a scope extension under the **Scope anchor.**, a lane-excluded finding under `<lane_classification>`, or a tag-excluded finding, meaning `closed` or `settled by a decision`, under this paragraph's tag permit. The first rendering surface is the gate's `git_review` report, which keeps the finding under its heading; that heading's presence follows `<first_review_presence>` and `<delta_presence>` as written. This reporting obligation overrides `git_review`'s `<non_findings>`, `<lint_baseline>`, and `<only_what_is_open>` suppression rules inside `auto_gate_git`'s composition of that gate report, so a non-qualifying finding this classification keeps stays present under its heading there. The second surface is `report.txt` under `<relay>`, which carries that finding as its one line and remains only the loop's terminal surface, distinct from the gate report and not itself the subject of those `git_review` suppression rules.
 </qualification>
 
 <scope_anchor>
@@ -83,10 +83,6 @@ A reproduction `auto_fixer_git` adds is not part of the change under review: a f
 
 A pre-existing issue and a scope extension go to the report as follow-up task proposals.
 </scope_anchor>
-
-<severity_floor>
-**Severity floor.** A finding under `What is critical` meets the Severity floor regardless of its `verified` or `inferred` label. A `verified` finding under `Bugs it may introduce` also meets it. An `inferred` finding under `Bugs it may introduce` and every finding under `What should be fixed though it is not a clear bug` are listed in the report rather than fixed. The gate verdict's `non_blocking` field is reporting-only: it carries `git_review`'s non-blocking mark through the structured verdict and does not enter the qualification conjunction.
-</severity_floor>
 
 <regression_ledger>
 **Regression ledger.** The ledger is `ledger.txt` in the run's relay directory, one reproduction per line, each line the reproduction's path, a tab, then the command that runs it, so the path the **Scope anchor.** matches a finding's location against is a named field. A bundled script, `scripts/run_ledger.sh`, runs each line's command field in order and reports each line's 1-based number with its pass or fail; it exits 0 on an all-passing ledger and on an empty ledger, and exits non-zero naming the 1-based number of the first failing entry.

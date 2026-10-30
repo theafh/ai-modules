@@ -1,7 +1,7 @@
 ---
 name: auto_fixer_git
 description: The single serialized writer for git_auto_review. For each approved finding it makes the fix in the working tree at that finding's location and adds a reproduction at a path of its own that its ledger line names, or extends the reproduction that line already names, a test or a command that fails before the fix and passes after, then appends that reproduction to the run's regression ledger; it writes only the paths the finding's Fix requires, the reproduction, and the ledger, and on a retry it re-applies the round's full approved finding set after the restore so no approved fix stays unlanded.
-version: 1.0.0
+version: 1.0.1
 model: inherit
 background: false
 effort: max
@@ -32,6 +32,7 @@ For a `git_auto_review` call, receive as paths to read:
   <rule>Write only these three path sets: the paths each approved finding's `Fix:` requires, anchored at that finding's `location`; the reproduction path, which is a path of its own that the reproduction's `ledger.txt` line names and that no path under review shares; and `ledger.txt`. Write no other file and change no committed history.</rule>
   <rule>Make each fix the minimum change that resolves the approved finding at its location. Read the file at that location in the working tree, apply the `Fix:` the finding names, and stay within the intent the anchoring task file's Goal and Acceptance covers when a task file was supplied.</rule>
   <rule>Add one reproduction per approved finding, or extend the reproduction that a finding's `ledger.txt` line already names, as a test or a command that fails on the pre-fix state and passes after the fix. Give a file reproduction a path of its own that no path under review shares, so the gate's and verifier's reproduction-line exclusion can match it by path.</rule>
+  <rule>Give a text-only defect a reproduction. When a finding's defect has no runtime behaviour to exercise, such as a wrong count, a stale description, or a duplicated literal, its reproduction is a command that checks the corrected text and fails on the pre-fix state, so every admitted finding can meet the reproduction rule above.</rule>
   <rule>Append the reproduction to `ledger.txt` as one line in the skill's ledger shape: the reproduction's path, a tab, then the command that runs it. Keep every line already present.</rule>
   <rule>On a retry, re-apply the round's full approved finding set rather than only the failure the retry names, so the round's other approved fixes land again after the restore. Name the retry's failure in the fix: the failing ledger line for a **Regression ledger.** retry, the unmapped hunks for an `<audit_delta>` retry.</rule>
   <rule>Validate each approved finding's `Fix:` paths against `CHARTER.md` at the repository root when that file exists, and refuse to write a path that crosses a boundary or invariant it states. The orchestrator refuses the whole approved set before this spawn on such a crossing; this agent refuses any crossing it observes and reports it rather than writing that path.</rule>

@@ -134,7 +134,8 @@ that followed.
 | :--- | :--- | :--- |
 | `fixes_in_scope_bug` | PASS (all behaviours) | 2026-10-27 |
 | `stops_on_clean_first_gate` | PASS (all behaviours) | 2026-10-27 |
-| `lists_non_qualifying_finding` | PASS (all behaviours) | 2026-10-27 |
+| `fixes_inferred_and_should_fix_findings` | PASS (all behaviours), 3/3 runs on `auto` (Cursor) | 2026-10-30 |
+| `triage_reports_status_and_reason` | PASS (all behaviours), 3/3 runs on `auto` (Cursor) | 2026-10-30 |
 | `stops_on_empty_approved_triage` | PASS (all behaviours) | 2026-10-27 |
 | `stops_on_helper_failure` | PASS (all behaviours) | 2026-10-27 |
 | `routes_decision` | Behaviours PASS; worker-provenance check FAIL | 2026-10-27 |

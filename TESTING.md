@@ -155,6 +155,19 @@ python3 tests/<skill>/evals/run.py <id>               # one eval
 python3 tests/<skill>/evals/run.py --force            # ignore recorded verdicts
 ```
 
+Run script tests outside the agent harness's write sandbox, because a sandbox
+that blocks writes the scripts need fails scenarios on a healthy tree. In
+Cursor's default agent sandbox, `bash tests/git_auto_review/script_tests/run.sh`
+reports 10 pass / 3 fail on `s8`, `s9`, and `s13`, the scenarios that drive
+`run_snapshot.sh` and `run_restore.sh`, while the same tree passes 13/13
+outside it, and an unwritable `TMPDIR` reproduces that split (observed
+2026-10-30). In Cursor, run the suite with `required_permissions: ["all"]`.
+Treat a failure seen only inside a sandbox as an environment result: re-run it
+unsandboxed before reporting it, and report it as a finding only when the
+unsandboxed run fails too. A pristine-HEAD baseline taken inside the same
+sandbox fails the same way, so it shows the sandbox's effect and says nothing
+about whether HEAD is broken.
+
 Run behavioural evals without `--vendor`. The default is the Cursor worker
 (`agent -p` with model `auto`), because Cursor tests are cheaper and faster
 than the Claude worker; the Claude-only harnesses default to Claude and stop

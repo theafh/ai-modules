@@ -41,7 +41,7 @@ sandbox target. They measure the gate itself, not the loop around it.
 | `fixes_critical_heading_finding` | One "What is critical" finding fixed, its reproduction landed, and a clean stop |
 | `lists_preexisting_issue` | The pre-existing defect's file byte-identical and the finding listed as a follow-up proposal |
 | `lists_scope_extension` | The untouched feature file byte-identical and the finding listed as a follow-up proposal |
-| `lists_non_qualifying_finding` | The severity-floor-excluded finding's file byte-identical, the finding listed, and the saved gate return keeping it under its heading |
+| `fixes_inferred_and_should_fix_findings` | The inferred bug and the should-fix text defect both fixed, one ledger reproduction per finding, and a clean stop |
 | `routes_decision` | The decision-pending stop, no fixer write, and the decision wording carried in the report |
 | `stops_on_clean_first_gate` | No fixer write, the pre-run tree intact, and the no-qualifying stop named |
 | `stops_on_empty_approved_triage` | The empty-approved stop, the not-approved reason listed, and no second gate round |

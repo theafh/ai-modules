@@ -2,7 +2,8 @@
 
 ## What the changes do and implement
 
-The uncommitted change adjusts `report.py`'s `total` helper.
+The uncommitted change adjusts `report.py`'s `total` helper and adds
+`notes.md`.
 
 ## What it retires
 
@@ -25,7 +26,10 @@ constant is unintended.
 
 ## What should be fixed though it is not a clear bug
 
-None.
+**`notes.md:3` — the notes name the wrong file for the ledger (inferred).** The
+line says the ledger stores its reproductions in `report.txt`, while the run's
+regression ledger is `ledger.txt`. Fix: change `report.txt` to `ledger.txt` in
+that line.
 
 ## Decisions the implementer must make before fixing
 
@@ -46,6 +50,15 @@ non_blocking: no
 location: report.py:3
 lane: working-tree lane
 Fix: Restore `return sum(items)` in `total`.
+tag: none
+
+id: 2
+heading: What should be fixed though it is not a clear bug
+label: inferred
+non_blocking: no
+location: notes.md:3
+lane: working-tree lane
+Fix: Change `report.txt` to `ledger.txt` in that line.
 tag: none
 
 ## Decisions

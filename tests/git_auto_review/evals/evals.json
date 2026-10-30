@@ -62,18 +62,19 @@
       ]
     },
     {
-      "id": "lists_non_qualifying_finding",
+      "id": "fixes_inferred_and_should_fix_findings",
       "skill": "git_auto_review",
       "prompt": "Auto-review and fix my uncommitted changes.",
-      "expected_output": "The single inferred finding under 'Bugs it may introduce' is excluded by the Severity floor, so report.py stays byte-identical, report.txt lists the finding, and the saved gate-r1.txt keeps it under its heading in the verbatim report section.",
+      "expected_output": "The loop consumes the pre-seeded round-1 verdict, fixes both the inferred bug in report.py and the text-only defect in the untracked notes.md, lands one reproduction per finding in the ledger, consumes the round-2 delta verdict that tags both closed, and stops clean under the no-qualifying-finding condition with HEAD unchanged.",
       "files": [
-        "evals/fixtures/lists_non_qualifying_finding/setup.sh"
+        "evals/fixtures/fixes_inferred_and_should_fix_findings/setup.sh"
       ],
       "expectations": [
-        "report.py is byte-identical after the run.",
-        "report.txt lists the finding without fixing it.",
-        "The saved gate-r1.txt keeps the finding under its heading in the verbatim report section.",
-        "No auto_fixer_git write happened."
+        "report.py no longer adds a constant, restoring the plain sum.",
+        "notes.md names ledger.txt instead of report.txt.",
+        "The regression ledger holds one reproduction per finding.",
+        "report.txt's stop line names the no-qualifying-finding condition.",
+        "git rev-parse HEAD is unchanged."
       ]
     },
     {
@@ -250,14 +251,14 @@
       "id": "triage_reports_status_and_reason",
       "skill": "git_auto_review",
       "prompt": "Auto-review and fix my uncommitted changes.",
-      "expected_output": "Triage approves the real finding and rejects the broader one with a reason, so the fixer writes only report.py, extra.py stays byte-identical, report.txt lists the refuted finding, and the run stops clean.",
+      "expected_output": "Triage approves the real finding and rejects the broader one with a reason, so the fixer writes only report.py, extra.py stays byte-identical, report.txt lists the refuted finding with the class triage-not-approved, and the run stops clean.",
       "files": [
         "evals/fixtures/triage_reports_status_and_reason/setup.sh"
       ],
       "expectations": [
         "report.py is fixed.",
         "extra.py is byte-identical after the run.",
-        "report.txt lists the refuted finding.",
+        "report.txt lists the refuted finding with the class triage-not-approved.",
         "git rev-parse HEAD is unchanged."
       ]
     },

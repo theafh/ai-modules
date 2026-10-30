@@ -168,14 +168,20 @@ case "$eval_id" in
     report "the report lists the finding as a follow-up proposal" \
       "$(has "$text" "feature.py" && echo yes || echo no)"
     ;;
-  lists_non_qualifying_finding)
-    report "report.py is byte-identical" \
-      "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
-    report "the report lists the finding without fixing it" \
-      "$(has "$text" "report.py" && echo yes || echo no)"
-    report "the saved gate-r1.txt keeps the finding under its heading" \
-      "$(f="$repo/.git_auto_review/default/gate-r1.txt"
-         [[ -f "$f" ]] && grep -Fq "Bugs it may introduce" "$f" && echo yes || echo no)"
+  fixes_inferred_and_should_fix_findings)
+    report "report.py restores the plain sum" \
+      "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] && echo yes || echo no)"
+    report "notes.md names the ledger file" \
+      "$([[ "$(grep -c 'report.txt' "$repo/notes.md" 2>/dev/null)" == "0" ]] \
+         && [[ "$(grep -c 'ledger.txt' "$repo/notes.md" 2>/dev/null)" == "1" ]] \
+         && echo yes || echo no)"
+    report "the ledger holds one reproduction per finding" \
+      "$(n=0
+         if sd="$(stem_dir)"; then n="$(grep -c . "$sd/ledger.txt" 2>/dev/null || echo 0)"; fi
+         [[ "$n" -ge 2 ]] && echo yes || echo no)"
+    report "the stop line names the no-qualifying-finding condition" \
+      "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   routes_decision)
     report "report.py is byte-identical" \
@@ -273,8 +279,8 @@ case "$eval_id" in
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] && echo yes || echo no)"
     report "extra.py is byte-identical" \
       "$([[ "$(grep -c 'return \"ok\"' "$repo/extra.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
-    report "the report lists the refuted finding" \
-      "$(has "$text" "extra.py" && echo yes || echo no)"
+    report "the report lists the refuted finding with the triage class" \
+      "$(has_line "$text" "extra.py" "triage-not-approved" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   honours_task_scope_anchor)
