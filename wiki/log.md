@@ -1295,3 +1295,10 @@ pre-existing, and the size infos stay advisory; the one on
 - concepts/output-style-delivery-design.md (the hook merge restated as the entry
   merge carrying its own `@entries:` manifest)
 - index.md (hook-merge summaries refreshed, Last updated)
+
+## [2026-10-30 21:50] update | name the branch target in agent-delegated automation
+
+- concepts/agent-delegated-automation.md (the `git_auto_review` sentence now
+  names a checked-out branch's change since the default branch beside a
+  finished uncommitted change, and the page's `updated` date moves to
+  2026-10-30)

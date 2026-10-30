@@ -61,6 +61,7 @@ the sandbox target. Those evals measure the gate itself, not the loop around it.
 | `relay_round_trip` | The stem holding the gate, fixer, and verifier round records, the gate prompt, and the round diff, with the saved return byte-identical |
 | `declines_on_detached_head` | The decline on a detached `HEAD` before any gate call, with no run artefacts |
 | `fixes_branch_commit_bug` | A committed branch defect fixed in the working tree and uncommitted, `HEAD` and `refs/heads/feature` unchanged, one ledger reproduction, and a clean stop |
+| `declines_on_named_other_branch` | The decline when the prompt names a branch other than the checked-out one, before any gate call, naming `git_checkout`, with no run artefacts |
 | `gate_reviews_branch_and_worktree` | The gate's report headings and base-SHA lead, both a committed and an uncommitted defect listed in `working-tree lane` at their working-tree lines, and refs, worktrees, product files, and `HEAD` byte-identical |
 | `gate_moves_no_ref` | Refs, worktrees, product files, and HEAD byte-identical around a standalone gate run |
 | `classifies_lanes_from_evidence` | Each finding's lane and location matching the skill's case rules |

@@ -136,7 +136,7 @@ measures it against `LISTING_BUDGET_RISK_CHARS` (1000).
 | Worker model | `sonnet` | `sonnet` |
 | `len(description)` | 901 | 723 |
 | Per-entry counts | 17/17 entries at the `precise_n / n >= 0.5` predicate | — |
-| `deployed_root:` line | `/Users/andreas.hoffmann/.claude/skills/git_review` | — |
+| `deployed_root:` line | `~/.claude/skills/git_review` | — |
 
 Both recorded lengths sit under the 1000-character threshold. The run is
 `tests/trigger_evals/results/git_review/2026-10-30_193724/`; every entry

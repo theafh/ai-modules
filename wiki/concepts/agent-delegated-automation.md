@@ -1,7 +1,7 @@
 ---
 title: Agent-delegated automation
 created: 2026-08-29
-updated: 2026-10-25
+updated: 2026-10-30
 type: concept
 tags: [skill, agent, authoring, repo-structure]
 sources: [raw/notes/agent-spinner-run-evidence-2026-09.md]

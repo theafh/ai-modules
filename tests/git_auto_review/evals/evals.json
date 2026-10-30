@@ -349,6 +349,22 @@
       ]
     },
     {
+      "id": "declines_on_named_other_branch",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on branch feature.",
+      "expected_output": "The prompt's named target is a branch other than the checked-out one, so the run declines before any gate call, creates no run artefacts, names git_checkout as the skill that puts the repository on it, and leaves the working tree byte-identical.",
+      "files": [
+        "evals/fixtures/declines_on_named_other_branch/setup.sh"
+      ],
+      "expectations": [
+        "The run reports the decline and stops before any gate call.",
+        "The decline names git_checkout as the skill to use.",
+        "No .git_auto_review/ run directory or gate evidence scratch was created.",
+        "The working tree matches its pre-run state byte-for-byte.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
       "id": "fixes_branch_commit_bug",
       "skill": "git_auto_review",
       "prompt": "Auto-review and fix this branch.",

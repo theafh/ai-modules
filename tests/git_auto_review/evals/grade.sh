@@ -100,6 +100,17 @@ block_lane() {
   '
 }
 
+# section_body <text> <heading> — the body between a `## <heading>` line and
+# the next `## ` line. An assertion anchored here cannot be satisfied by a
+# mention elsewhere in the return, such as a verdict block's `location:` line.
+section_body() {
+  printf '%s\n' "$1" | awk -v heading="## $2" '
+    inside && /^## / { exit }
+    !inside && $0 == heading { inside = 1; next }
+    inside { print }
+  '
+}
+
 # file_matches <path> <snapshot> — the working-tree file equals its snapshot.
 file_matches() {
   [[ -f "$2" ]] || return 1
@@ -392,6 +403,15 @@ case "$eval_id" in
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
+  declines_on_named_other_branch)
+    report "no run directory was created" \
+      "$([[ ! -d "$repo/.git_auto_review" ]] && echo yes || echo no)"
+    report "the decline names git_checkout as the skill to use" \
+      "$(has "$text" "git_checkout" && echo yes || echo no)"
+    report "the working tree matches its pre-run state" \
+      "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
   fixes_branch_commit_bug)
     report "the branch commit's bug is fixed in the working tree" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] \
@@ -440,9 +460,11 @@ case "$eval_id" in
     report "the lead opens with the base ref and its SHA" \
       "$([[ -n "$base_sha" ]] && has "$lead" "origin/main" && has "$lead" "$base_sha" && echo yes || echo no)"
     report "the committed defect is reported under Bugs it may introduce" \
-      "$(has "$text" "Bugs it may introduce" && has "$text" "report.py:4" && echo yes || echo no)"
+      "$(bugs_body="$(section_body "$text" "Bugs it may introduce")"
+         has "$bugs_body" "report.py:4" && echo yes || echo no)"
     report "the uncommitted defect is reported under Bugs it may introduce" \
-      "$(has "$text" "report.py:3" && echo yes || echo no)"
+      "$(bugs_body="$(section_body "$text" "Bugs it may introduce")"
+         has "$bugs_body" "report.py:3" && echo yes || echo no)"
     report "the verdict lists both defects in working-tree lane" \
       "$(block_lane "$text" "report.py:3" "working-tree lane" \
          && block_lane "$text" "report.py:4" "working-tree lane" \

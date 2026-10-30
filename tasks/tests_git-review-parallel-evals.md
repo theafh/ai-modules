@@ -3,7 +3,7 @@ description: Run git_review evals at default 4 workers through the shared helper
 scope: tests/git_review/evals
 created: 2026-10-04T22:11:10
 updated: 2026-10-24T00:59:09
-status: ready
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
