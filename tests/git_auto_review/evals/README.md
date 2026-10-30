@@ -53,7 +53,7 @@ sandbox target. They measure the gate itself, not the loop around it.
 | `stops_on_helper_script_failure_restore` | The restore failure stop with the post-failure baseline intact |
 | `stops_on_concurrent_modification` | The concurrent-modification stop after an external write |
 | `stops_on_charter_refusal` | The CHARTER-before-write refusal with `charter-set-refused` listing |
-| `triage_reports_status_and_reason` | One finding fixed, the refuted one's file byte-identical and listed |
+| `triage_reports_status_and_reason` | One finding fixed, the refuted one's file byte-identical and listed with the `triage-not-approved` class on its line |
 | `honours_task_scope_anchor` | The task-anchored finding fixed and HEAD unchanged |
 | `honours_task_scope_anchor_no_task` | The same fixture with no task path: the finding's file byte-identical and the finding listed as a follow-up proposal |
 | `lists_local_commits_lane_finding` | The local-commits-lane finding's locations byte-identical and listed |

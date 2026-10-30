@@ -120,6 +120,57 @@ index_unchanged() {
   [[ "$(cd "$repo" && git ls-files -s)" == "$before" ]]
 }
 
+# reproduction_path_for <record_file> <finding_id> — the reproduction path the
+# fixer record's `## Writes` block for that finding names. A block runs
+# `path:` then `finding:` then `kind:`, so the fields are read in that order
+# and a `kind: reproduction` block whose finding matches yields its path. A
+# template placeholder left with its angle brackets is skipped, because the
+# prompt text in the same file carries the unfilled template.
+reproduction_path_for() {
+  local record=$1 want=$2
+  [[ -f "$record" ]] || return 1
+  awk -v want="$want" '
+    /^path:[[:space:]]*/ {
+      p = $0
+      sub(/^path:[[:space:]]*/, "", p)
+      f = ""
+      next
+    }
+    /^finding:[[:space:]]*/ {
+      f = $0
+      sub(/^finding:[[:space:]]*/, "", f)
+      next
+    }
+    /^kind:[[:space:]]*/ {
+      k = $0
+      sub(/^kind:[[:space:]]*/, "", k)
+      if (k == "reproduction" && f == want && p !~ /[<>]/) {
+        print p
+        exit
+      }
+      next
+    }
+  ' "$record"
+}
+
+# ledger_has_reproduction_per_finding <stem_dir> <finding_ids> — every listed
+# finding has a ledger line whose path field is the reproduction path its
+# fixer record names, so two lines that both serve one finding fail. A missing
+# stem, record, or ledger yields a clean failure rather than an arithmetic
+# error, so the empty-ledger path reports "no".
+ledger_has_reproduction_per_finding() {
+  local sd=$1 ids=$2 id repro
+  [[ -n "$sd" ]] || return 1
+  for id in $ids; do
+    repro="$(reproduction_path_for "$sd/fixer-r1.txt" "$id")"
+    [[ -n "$repro" ]] || return 1
+    awk -F'\t' -v want="$repro" \
+      '$1 == want { found = 1 } END { exit(found ? 0 : 1) }' \
+      "$sd/ledger.txt" 2>/dev/null || return 1
+  done
+  return 0
+}
+
 # The relay stem directory the run created, if any.
 stem_dir() {
   local d
@@ -176,9 +227,8 @@ case "$eval_id" in
          && [[ "$(grep -c 'ledger.txt' "$repo/notes.md" 2>/dev/null)" == "1" ]] \
          && echo yes || echo no)"
     report "the ledger holds one reproduction per finding" \
-      "$(n=0
-         if sd="$(stem_dir)"; then n="$(grep -c . "$sd/ledger.txt" 2>/dev/null || echo 0)"; fi
-         [[ "$n" -ge 2 ]] && echo yes || echo no)"
+      "$(ledger_has_reproduction_per_finding "$(stem_dir || true)" "1 2" \
+         && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
