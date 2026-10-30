@@ -1058,7 +1058,9 @@ hook_shape_for_target() {
 }
 
 # jq library shared by the entry merge, its dry-run report, and the uninstall
-# check. ident() encodes one entry's identity for one harness shape.
+# check. ident() encodes one entry's identity for one harness shape, and the
+# shape predicates read an event value the deploy does not own as foreign
+# content rather than as entries.
 # shellcheck disable=SC2016
 HOOK_ENTRY_JQ_LIB='
 def ident($shape):
@@ -1067,26 +1069,48 @@ def ident($shape):
   end;
 def shipped_identities($event; $shipped; $shape):
   [ ($shipped[$event] // [])[] | ident($shape) ];
+def is_entry_list($v):
+  ($v | type) == "array" and ([$v[] | type == "object"] | all);
+def foreign_event($hooks; $event):
+  ($hooks | has($event)) and (is_entry_list($hooks[$event]) | not);
+def member_identities($value; $shape):
+  # The identities an event value holds, whether or not it is a clean entry
+  # list. Only an array can hold entries, so a string or object value holds
+  # none: the user replaced the event wholesale. An array that also carries a
+  # non-object member is still read for the object members it holds.
+  if ($value | type) == "array"
+  then [ $value[] | select(type == "object") | ident($shape) ]
+  else []
+  end;
+def identities_in($hooks; $event; $shape):
+  [ (if foreign_event($hooks; $event) then [] else ($hooks[$event] // []) end)[]
+    | ident($shape) ];
 '
 
 hook_entry_merge_jq() {
   # shellcheck disable=SC2016
   printf '%s' "$HOOK_ENTRY_JQ_LIB"'
   ($existing | if has($key) then .[$key] else {} end) as $eh
+  | (($eh == null) or (($eh | type) == "object")) as $owns_hooks
+  | (if $owns_hooks then ($eh // {}) else {} end) as $acc_hooks
   | ($shipped) as $sh
   | ($prior) as $pr
-  | (reduce ($sh | keys_unsorted[]) as $event ($eh;
+  | (reduce ($sh | keys_unsorted[]) as $event ($acc_hooks;
       . as $acc
-      | ($acc[$event] // []) as $list
-      | (reduce (($sh[$event] // [])[]) as $s ($list;
-          ($s | ident($shape)) as $sid
-          | (map(ident($shape)) | index($sid)) as $idx
-          | if $idx == null then . + [$s] else .[$idx] = $s end
-        )) as $merged
-      | $acc | .[$event] = $merged
+      | if foreign_event($acc; $event) then .
+        else
+          ($acc[$event] // []) as $list
+          | (reduce (($sh[$event] // [])[]) as $s ($list;
+              ($s | ident($shape)) as $sid
+              | (map(ident($shape)) | index($sid)) as $idx
+              | if $idx == null then . + [$s] else .[$idx] = $s end
+            )) as $merged
+          | $acc | .[$event] = $merged
+        end
     )) as $merged_hooks
   | (reduce ($pr[]?) as $m ($merged_hooks;
       if (shipped_identities($m.event; $sh; $shape) | index($m.identity)) != null then .
+      elif foreign_event(.; $m.event) then .
       else
         . as $h
         | ($h[$m.event] // []) as $list
@@ -1095,19 +1119,38 @@ hook_entry_merge_jq() {
       end
     )) as $final_hooks
   | {
-      result: ($existing | if ($final_hooks | length) == 0 then del(.[$key]) else .[$key] = $final_hooks end),
-      manifest: [ $sh | to_entries[] | .key as $e | .value[] | {event: $e, identity: ident($shape)} ],
-      added: [ $sh | to_entries[] | .key as $e | .value[] as $s
+      result: (
+        if $owns_hooks | not then $existing
+        elif ($final_hooks | length) == 0 then $existing | del(.[$key])
+        else $existing | .[$key] = $final_hooks
+        end),
+      manifest: (
+        if $owns_hooks | not then $pr
+        else
+          [ $sh | to_entries[]
+            | select(foreign_event($acc_hooks; .key) | not)
+            | .key as $e | .value[] | {event: $e, identity: ident($shape)} ]
+          + [ $pr[]? | . as $m
+              | select(foreign_event($acc_hooks; $m.event))
+              | select((member_identities($acc_hooks[$m.event]; $shape) | index($m.identity)) != null)
+              | {event: $m.event, identity: $m.identity} ]
+        end),
+      added: [ $sh | to_entries[]
+               | select($owns_hooks and (foreign_event($acc_hooks; .key) | not))
+               | .key as $e | .value[] as $s
                | ($s | ident($shape)) as $sid
-               | select((($eh[$e] // []) | map(ident($shape)) | index($sid)) == null)
+               | select((identities_in($acc_hooks; $e; $shape) | index($sid)) == null)
                | {event: $e, identity: $sid} ],
-      updated: [ $sh | to_entries[] | .key as $e | .value[] as $s
+      updated: [ $sh | to_entries[]
+                 | select($owns_hooks and (foreign_event($acc_hooks; .key) | not))
+                 | .key as $e | .value[] as $s
                  | ($s | ident($shape)) as $sid
-                 | select((($eh[$e] // []) | map(ident($shape)) | index($sid)) != null)
+                 | select((identities_in($acc_hooks; $e; $shape) | index($sid)) != null)
                  | {event: $e, identity: $sid} ],
       removed: [ $pr[]? | . as $m
+                 | select($owns_hooks and (foreign_event($acc_hooks; $m.event) | not))
                  | select((shipped_identities($m.event; $sh; $shape) | index($m.identity)) == null)
-                 | select((($eh[$m.event] // []) | map(ident($shape)) | index($m.identity)) != null) ]
+                 | select((identities_in($acc_hooks; $m.event; $shape) | index($m.identity)) != null) ]
     }
   '
 }
@@ -1232,7 +1275,9 @@ merge_hook_entries() {
 
 # Remove exactly the entries a recorded @entries: manifest lists from a hook
 # file, dropping an event's list and then the hooks object once a removal
-# leaves it empty.
+# leaves it empty. A non-object hooks value, an empty manifest, and an event
+# value the deploy does not own are content ai-modules did not write, so they
+# stay exactly as they were and the file is left untouched.
 remove_hook_entries_by_manifest() {
   local target="$1"
   local key="$2"
@@ -1241,26 +1286,44 @@ remove_hook_entries_by_manifest() {
 
   [[ -f "$target" ]] || return 0
 
-  local updated
-  updated="$(jq --argjson prior "$manifest_json" --arg shape "$shape" --arg key "$key" \
+  local result
+  result="$(jq --argjson prior "$manifest_json" --arg shape "$shape" --arg key "$key" \
     "$HOOK_ENTRY_JQ_LIB"'
     (.[$key] // {}) as $hooks
-    | (reduce ($prior[]?) as $m ($hooks;
-        . as $h
-        | ($h[$m.event] // []) as $list
-        | ($list | map(select(ident($shape) != $m.identity))) as $kept
-        | if ($kept | length) == 0 then del(.[$m.event]) else .[$m.event] = $kept end
-      )) as $final
-    | if ($final | length) == 0 then del(.[$key]) else .[$key] = $final end
+    | (($hooks | type) == "object" and ($prior | length) > 0) as $owns
+    | (if ($owns | not) then .
+       else
+         (reduce ($prior[]?) as $m ($hooks;
+             if foreign_event(.; $m.event) then .
+             else
+               . as $h
+               | ($h[$m.event] // []) as $list
+               | ($list | map(select(ident($shape) != $m.identity))) as $kept
+               | if ($kept | length) == ($list | length) then .
+                 elif ($kept | length) == 0 then del(.[$m.event])
+                 else .[$m.event] = $kept
+                 end
+             end
+           )) as $final
+         | if ($final | length) == 0 then del(.[$key])
+           else .[$key] = $final
+           end
+       end) as $after
+    | {changed: ($after != .), result: $after}
   ' "$target")" || return 1
 
-  printf '%s\n' "$updated" > "$target"
+  [[ "$(printf '%s' "$result" | jq -r '.changed')" == "true" ]] || return 0
+
+  printf '%s\n' "$(printf '%s' "$result" | jq '.result')" > "$target"
   ok "restored" "${target} .${key} (owned hook entries)"
   SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
 }
 
 # Success check for an @entries: manifest removal: none of the listed entries
-# may remain in the hook file.
+# may remain in the hook file. A non-object hooks value holds no owned entry, so
+# it never fails the check. A foreign event value is read for the object members
+# it still holds, so an owned entry the user's edit left in place fails the
+# check and keeps the log line rather than being reported as removed.
 hook_manifest_uninstall_succeeded() {
   local target="$1"
   local key="$2"
@@ -1272,9 +1335,15 @@ hook_manifest_uninstall_succeeded() {
   jq -e --argjson prior "$manifest_json" --arg shape "$shape" --arg key "$key" \
     "$HOOK_ENTRY_JQ_LIB"'
     (.[$key] // {}) as $hooks
-    | [ $hooks | to_entries[] | .key as $e | .value[]
-        | {event: $e, identity: ident($shape)} ] as $now
-    | all($prior[]?; . as $m | ($now | index({event: $m.event, identity: $m.identity})) == null)
+    | if ($hooks | type) != "object" then true
+      else
+        [ $hooks | to_entries[] | .key as $e
+            | (if foreign_event($hooks; $e)
+               then member_identities($hooks[$e]; $shape)
+               else [ .value[] | ident($shape) ]
+               end)[] | {event: $e, identity: .} ] as $now
+        | all($prior[]?; . as $m | ($now | index({event: $m.event, identity: $m.identity})) == null)
+      end
   ' "$target" >/dev/null 2>&1
 }
 
@@ -2622,6 +2691,23 @@ uninstall_logged_artifacts() {
       SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
       removed_count=$((removed_count + 1))
       continue
+    fi
+
+    # A manifest line kept because an owned entry survived its event keeps the
+    # script that entry points at. Removing the script would leave the user's
+    # config naming a missing file, so the script stays too and its line stays
+    # for a later run that can retry the removal.
+    if [[ "$logged_path" != *"["* && -f "$logged_path" ]]; then
+      local kept_manifest
+      for kept_manifest in "${remaining_entries[@]+"${remaining_entries[@]}"}"; do
+        [[ "$kept_manifest" == *"@entries:"* ]] || continue
+        if printf '%s' "${kept_manifest#*@entries:}" \
+             | jq -e --arg id "$logged_path" 'any(.[]?; .identity == $id)' >/dev/null 2>&1; then
+          info "skip" "$logged_path is still referenced by a kept hook manifest"
+          remaining_entries+=("$logged_entry")
+          continue 2
+        fi
+      done
     fi
 
     if ! remove_logged_path "$logged_path" "$logged_prior"; then

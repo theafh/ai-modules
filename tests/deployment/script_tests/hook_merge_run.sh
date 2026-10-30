@@ -35,6 +35,31 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Checksum one file, so the dry-run snapshot compares content and not just
+# names. A machine that carries neither tool must fail loudly: an empty digest
+# would make the comparison pass without testing anything.
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    printf 'FAIL: neither shasum nor sha256sum is available to checksum %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+# Recursive listing plus per-file checksums, relative to the tree root.
+snapshot_tree() {
+  local root="$1" rel=""
+  (
+    cd "$root" || exit 1
+    find . -mindepth 1 -type f | LC_ALL=C sort | while IFS= read -r rel; do
+      printf '%s  %s\n' "$(sha256_of "$rel")" "$rel"
+    done
+  )
+}
+
 cd "$REPO_ROOT"
 
 assert_file "$DEPLOY_SCRIPT"
@@ -98,7 +123,7 @@ cmp -s "$first_result" "$codex_hooks" ||
 # Item 9: a dry run lists each add/update/remove under would-merge naming the
 # target, keeps the would-rewrite line, and writes nothing.
 # ---------------------------------------------------------------------------
-snapshot_before="$(cd "$GLOBAL_HOME" && find . -mindepth 1 -type f | LC_ALL=C sort | while IFS= read -r f; do printf '%s  %s\n' "$(shasum -a 256 "$f" | awk '{print $1}')" "$f"; done)"
+snapshot_before="$(snapshot_tree "$GLOBAL_HOME")"
 dry_out="$(deploy_global_codex --dry-run)"
 printf '%s\n' "$dry_out" | grep -q 'would-merge.*\.codex/hooks\.json' ||
   fail "dry run must report would-merge naming .codex/hooks.json, got: $dry_out"
@@ -107,7 +132,7 @@ printf '%s\n' "$dry_out" | grep -q 'would-rewrite.*\.codex/hooks/' ||
 # A second identical deploy would update the owned entry in place.
 printf '%s\n' "$dry_out" | grep -q 'would-merge.*update PreToolUse' ||
   fail "dry run must report the entry it would update, got: $dry_out"
-snapshot_after="$(cd "$GLOBAL_HOME" && find . -mindepth 1 -type f | LC_ALL=C sort | while IFS= read -r f; do printf '%s  %s\n' "$(shasum -a 256 "$f" | awk '{print $1}')" "$f"; done)"
+snapshot_after="$(snapshot_tree "$GLOBAL_HOME")"
 assert_eq "$snapshot_after" "$snapshot_before" \
   "dry run must leave the sandbox files byte-identical"
 
@@ -581,5 +606,258 @@ assert_eq "$pre_change_hits" "7" \
 if printf '%s\n' "$pre_change_out" | grep -Eq 'raw/source\.md|log\.md'; then
   fail "the wiki sweep must keep wiki/raw/ and wiki/log.md out of the scan: $pre_change_out"
 fi
+
+# ---------------------------------------------------------------------------
+# Item 15: a hook file whose shape the merge does not own is foreign content.
+# A `hooks` value that is not an object, or an event value that is not an array
+# of objects, is left exactly as it was, and the deploy still succeeds so the
+# remaining artifacts land. Reading such a shape as entries used to fail jq and
+# abort the whole deploy.
+# ---------------------------------------------------------------------------
+malformed_deploy() { # home-dir -> runs a global Codex hook deploy in that home
+  local home="$1"
+  HOME="$home" DEPLOYED_ARTIFACTS_LOG="${home}/deploy.log" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type hook --target codex >/dev/null 2>&1
+}
+
+# A `hooks` value that is an object but not an entry map: every event's value is
+# a non-array, so no event is mergeable and the whole value stays untouched.
+NONLIST_HOME="${SCRATCH}/nonlist-home"
+mkdir -p "${NONLIST_HOME}/.codex"
+nonlist_target="${NONLIST_HOME}/.codex/hooks.json"
+printf '%s\n' '{"hooks":{"PreToolUse":{"matcher":"x"},"PostToolUse":"hand-edited"}}' > "$nonlist_target"
+malformed_deploy "$NONLIST_HOME" ||
+  fail "a deploy must succeed over a hooks object whose event values are not arrays"
+assert_eq "$(jq -c '.hooks' "$nonlist_target")" \
+  '{"PreToolUse":{"matcher":"x"},"PostToolUse":"hand-edited"}' \
+  "a deploy must leave a hooks object of non-array event values untouched"
+
+# A `hooks` value that is an array rather than an object is preserved whole.
+ARRAY_HOME="${SCRATCH}/array-home"
+mkdir -p "${ARRAY_HOME}/.codex"
+array_target="${ARRAY_HOME}/.codex/hooks.json"
+printf '%s\n' '{"hooks":[{"matcher":"x"}]}' > "$array_target"
+malformed_deploy "$ARRAY_HOME" ||
+  fail "a deploy must succeed over a hooks value that is an array"
+assert_eq "$(jq -c '.hooks' "$array_target")" '[{"matcher":"x"}]' \
+  "a deploy must leave a non-object hooks value untouched"
+
+# A `hooks` value that is a string is preserved whole, and the top-level keys
+# beside it stay as they were.
+STRING_HOME="${SCRATCH}/string-home"
+mkdir -p "${STRING_HOME}/.codex"
+string_target="${STRING_HOME}/.codex/hooks.json"
+printf '%s\n' '{"other":1,"hooks":"hand-edited"}' > "$string_target"
+malformed_deploy "$STRING_HOME" ||
+  fail "a deploy must succeed over a hooks value that is a string"
+assert_eq "$(jq -c '.' "$string_target")" '{"other":1,"hooks":"hand-edited"}' \
+  "a deploy must leave a non-object hooks value and its sibling keys untouched"
+
+# A single non-array event value beside a mergeable one is preserved in place
+# while the mergeable event takes ai-modules' entry.
+MIXED_HOME="${SCRATCH}/mixed-home"
+mkdir -p "${MIXED_HOME}/.codex"
+mixed_target="${MIXED_HOME}/.codex/hooks.json"
+printf '%s\n' '{"hooks":{
+  "PreToolUse":[{"matcher":"Foreign","hooks":[{"type":"command","command":"/bin/foreign-pre"}]}],
+  "PostToolUse":"hand-edited"
+}}' > "$mixed_target"
+mixed_foreign="$(jq -c '.hooks.PreToolUse[0]' "$mixed_target")"
+malformed_deploy "$MIXED_HOME" ||
+  fail "a deploy must succeed over a non-array event value beside a mergeable one"
+assert_eq "$(jq -c '.hooks.PostToolUse' "$mixed_target")" '"hand-edited"' \
+  "a deploy must leave a non-array event value untouched"
+assert_eq "$(jq -c '.hooks.PreToolUse[0]' "$mixed_target")" "$mixed_foreign" \
+  "a deploy must keep the foreign entry of a mergeable event"
+assert_eq "$(jq '[.hooks.PreToolUse[] | select([.hooks[]?.command] | map(select(endswith("charter_guardrail.sh"))) | length > 0)] | length' "$mixed_target")" "1" \
+  "a deploy must still add ai-modules' entry to a mergeable event beside a foreign one"
+
+# A null hooks value carries no foreign content, so the merge treats it as
+# absent and installs ai-modules' entry as on a file that lacks the key.
+NULL_HOME="${SCRATCH}/null-home"
+mkdir -p "${NULL_HOME}/.codex"
+null_target="${NULL_HOME}/.codex/hooks.json"
+printf '%s\n' '{"hooks":null}' > "$null_target"
+malformed_deploy "$NULL_HOME" ||
+  fail "a deploy must succeed over a null hooks value"
+assert_eq "$(jq '[.hooks.PreToolUse[] | select([.hooks[]?.command] | map(select(endswith("charter_guardrail.sh"))) | length > 0)] | length' "$null_target")" "1" \
+  "a deploy must install ai-modules' entry into a null hooks value"
+
+# An entry list that carries a non-object member is not an entry list either:
+# the whole event value stays as it was.
+JUNK_HOME="${SCRATCH}/junk-home"
+mkdir -p "${JUNK_HOME}/.codex"
+junk_target="${JUNK_HOME}/.codex/hooks.json"
+printf '%s\n' '{"hooks":{"PreToolUse":[
+  {"matcher":"Foreign","hooks":[{"type":"command","command":"/bin/foreign-pre"}]},
+  "hand-edited"
+]}}' > "$junk_target"
+junk_before="$(jq -c '.hooks' "$junk_target")"
+malformed_deploy "$JUNK_HOME" ||
+  fail "a deploy must succeed over an event list holding a non-object member"
+assert_eq "$(jq -c '.hooks' "$junk_target")" "$junk_before" \
+  "a deploy must leave an event list with a non-object member untouched"
+
+# A non-object hooks value does not block the artifacts after it: the hook
+# script that follows the config in the deploy order still lands.
+assert_file "${NONLIST_HOME}/.codex/hooks/charter_guardrail.sh"
+
+# ---------------------------------------------------------------------------
+# Item 16: the uninstall reads a value the deploy did not own as content it
+# leaves alone. A hooks value the deploy recorded as an empty @entries: manifest
+# and a non-object hooks value both survive the uninstall, which never deletes
+# a key the deploy did not write.
+# ---------------------------------------------------------------------------
+uninstall_in_home() { # home-dir -> runs a global Codex hook uninstall there
+  local home="$1"
+  HOME="$home" DEPLOYED_ARTIFACTS_LOG="${home}/deploy.log" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type hook --target codex --uninstall
+}
+
+# A hooks value that is an empty list is not an entry map, so the deploy owns
+# no entry there and records an empty manifest; the uninstall must leave the
+# empty list in place instead of deleting the key.
+EMPTY_LIST_HOME="${SCRATCH}/empty-list-home"
+mkdir -p "${EMPTY_LIST_HOME}/.codex"
+empty_list_target="${EMPTY_LIST_HOME}/.codex/hooks.json"
+printf '%s\n' '{"version":1,"hooks":[]}' > "$empty_list_target"
+malformed_deploy "$EMPTY_LIST_HOME" ||
+  fail "a deploy must succeed over an empty hooks list"
+grep -q "@entries:\[\]" "${EMPTY_LIST_HOME}/deploy.log" ||
+  fail "a deploy over an empty hooks list must record an empty @entries: manifest"
+uninstall_in_home "$EMPTY_LIST_HOME" >/dev/null ||
+  fail "an uninstall must succeed after a deploy over an empty hooks list"
+assert_eq "$(jq -c '.' "$empty_list_target")" '{"version":1,"hooks":[]}' \
+  "an uninstall must leave an empty hooks list exactly as the deploy found it"
+
+# An event value that is an object is not an entry list either: the uninstall
+# skips it, reports its line removed, and leaves the value untouched.
+FOREIGN_OBJ_HOME="${SCRATCH}/foreign-obj-home"
+mkdir -p "${FOREIGN_OBJ_HOME}/.codex"
+foreign_obj_target="${FOREIGN_OBJ_HOME}/.codex/hooks.json"
+printf '%s\n' '{"version":1,"hooks":{"PreToolUse":{"matcher":"x"}}}' > "$foreign_obj_target"
+malformed_deploy "$FOREIGN_OBJ_HOME" ||
+  fail "a deploy must succeed over an object event value"
+uninstall_in_home "$FOREIGN_OBJ_HOME" >/dev/null ||
+  fail "an uninstall must succeed after a deploy over an object event value"
+assert_eq "$(jq -c '.' "$foreign_obj_target")" '{"version":1,"hooks":{"PreToolUse":{"matcher":"x"}}}' \
+  "an uninstall must leave an object event value exactly as the deploy found it"
+
+# A non-object hooks value survives the uninstall with its sibling keys.
+FOREIGN_VALUE_HOME="${SCRATCH}/foreign-value-home"
+mkdir -p "${FOREIGN_VALUE_HOME}/.codex"
+foreign_value_target="${FOREIGN_VALUE_HOME}/.codex/hooks.json"
+printf '%s\n' '{"other":1,"hooks":"hand-edited"}' > "$foreign_value_target"
+malformed_deploy "$FOREIGN_VALUE_HOME" ||
+  fail "a deploy must succeed over a non-object hooks value"
+uninstall_in_home "$FOREIGN_VALUE_HOME" >/dev/null ||
+  fail "an uninstall must succeed after a deploy over a non-object hooks value"
+assert_eq "$(jq -c '.' "$foreign_value_target")" '{"other":1,"hooks":"hand-edited"}' \
+  "an uninstall must leave a non-object hooks value and its sibling keys untouched"
+
+# ---------------------------------------------------------------------------
+# Item 17: a hand-edited event value beside a mergeable one is content the
+# uninstall does not own, so the uninstall skips it, removes ai-modules' entry
+# from the mergeable event, reports the line removed rather than failed, and
+# drops its log line.
+# ---------------------------------------------------------------------------
+FOREIGN_EVENT_HOME="${SCRATCH}/foreign-event-home"
+mkdir -p "${FOREIGN_EVENT_HOME}/.codex"
+foreign_event_target="${FOREIGN_EVENT_HOME}/.codex/hooks.json"
+printf '%s\n' '{"hooks":{
+  "PreToolUse":[{"matcher":"Foreign","hooks":[{"type":"command","command":"/bin/foreign-pre"}]}],
+  "PostToolUse":"hand-edited"
+}}' > "$foreign_event_target"
+malformed_deploy "$FOREIGN_EVENT_HOME" ||
+  fail "a deploy must succeed over a non-array event value beside a mergeable one"
+foreign_event_out="$(uninstall_in_home "$FOREIGN_EVENT_HOME")" ||
+  fail "an uninstall must succeed over a non-array event value beside a mergeable one"
+assert_eq "$(jq -c '.hooks.PostToolUse' "$foreign_event_target")" '"hand-edited"' \
+  "an uninstall must leave a non-array event value untouched"
+assert_eq "$(jq -c '.hooks.PreToolUse' "$foreign_event_target")" \
+  '[{"matcher":"Foreign","hooks":[{"type":"command","command":"/bin/foreign-pre"}]}]' \
+  "an uninstall must remove ai-modules' entry from a mergeable event beside a foreign one"
+if grep -q 'still exists after removal' <<< "$foreign_event_out"; then
+  fail "an uninstall beside a non-array event value must report its line removed: $foreign_event_out"
+fi
+printf '%s\n' "$foreign_event_out" | grep -q 'removed.*hooks\.json\[hooks\]' ||
+  fail "an uninstall beside a non-array event value must report the line removed, got: $foreign_event_out"
+if grep -q 'hooks\.json\[hooks\]' "${FOREIGN_EVENT_HOME}/deploy.log" 2>/dev/null; then
+  fail "an uninstall beside a non-array event value must drop the hooks.json[hooks] log line"
+fi
+
+# Item 18: an event value that became foreign while still holding an entry the
+# recorded manifest names is not read as wholly unowned. The deploy keeps the
+# entry in its manifest so a later uninstall still owns it, and the uninstall
+# reports failure rather than claiming a removal it did not make. An event
+# replaced wholesale holds no owned entry, so it keeps round 2's clean success.
+# ---------------------------------------------------------------------------
+# The identity the deploy recorded for its own entry in a destination's
+# @entries: manifest, read from the log so a foreign entry in the same file
+# cannot be mistaken for it.
+manifest_identity() { # home-dir -> identity string
+  awk -F'\t' '$1 ~ /hooks\.json\[hooks\]$/ {print $5}' "$1/deploy.log" | tail -1 \
+    | sed -e 's/^@entries://' \
+    | jq -r '.[0].identity // ""' 2>/dev/null
+}
+
+owned_entry_present() { # hooks.json identity -> "true" when the entry is there
+  jq -r --arg id "$2" '
+    [.hooks[]?[]? | select(type == "object")
+     | [.hooks[]? | (.command // empty)] | unique | sort | join("\u0001")
+     | select(. == $id)] | length' "$1"
+}
+
+# A redeploy over an appended non-object member must keep the owned entry in
+# the manifest instead of rewriting it to @entries:[].
+PARTIAL_HOME="${SCRATCH}/partial-foreign-home"
+mkdir -p "${PARTIAL_HOME}/.codex"
+partial_target="${PARTIAL_HOME}/.codex/hooks.json"
+printf '%s\n' '{"hooks":{"PreToolUse":[{"matcher":"Foreign","hooks":[{"type":"command","command":"/bin/foreign-pre"}]}]}}' \
+  > "$partial_target"
+malformed_deploy "$PARTIAL_HOME" ||
+  fail "a deploy must succeed into a file holding one foreign group"
+partial_identity="$(manifest_identity "$PARTIAL_HOME")"
+[[ -n "$partial_identity" ]] ||
+  fail "the deploy must record the identity of the entry it installed"
+jq '.hooks.PreToolUse += ["hand-edited"]' "$partial_target" > "${PARTIAL_HOME}/tmp" \
+  && mv "${PARTIAL_HOME}/tmp" "$partial_target"
+malformed_deploy "$PARTIAL_HOME" ||
+  fail "a redeploy must succeed over an event value that holds a non-object member"
+partial_manifest="$(awk -F'\t' '$1 ~ /hooks\.json\[hooks\]$/ {print $5}' "${PARTIAL_HOME}/deploy.log" | tail -1)"
+[[ "$partial_manifest" == *"$partial_identity"* ]] ||
+  fail "a redeploy must keep an owned entry its event value still holds, got: $partial_manifest"
+
+# An uninstall over that same value must not claim a removal it did not make,
+# and must not delete the script the surviving entry points at.
+partial_out="$(uninstall_in_home "$PARTIAL_HOME")" || true
+if grep -q 'removed.*hooks\.json\[hooks\]' <<< "$partial_out"; then
+  fail "an uninstall must not report a removal over an entry it left in place: $partial_out"
+fi
+assert_eq "$(owned_entry_present "$partial_target" "$partial_identity")" "1" \
+  "an uninstall must leave the owned entry it could not remove"
+[[ -f "${PARTIAL_HOME}/.codex/hooks/charter_guardrail.sh" ]] ||
+  fail "an uninstall must keep a hook script a surviving owned entry references"
+grep -q "$partial_identity" "${PARTIAL_HOME}/deploy.log" ||
+  fail "an uninstall must keep the log line of an entry it left in place"
+
+# An event replaced wholesale holds no owned entry, so the uninstall reports
+# success, drops its line, and preserves the user's value: round 2's behaviour.
+WHOLE_HOME="${SCRATCH}/whole-foreign-home"
+mkdir -p "${WHOLE_HOME}/.codex"
+whole_target="${WHOLE_HOME}/.codex/hooks.json"
+printf '%s\n' '{"hooks":{"PreToolUse":[{"matcher":"Foreign","hooks":[{"type":"command","command":"/bin/foreign-pre"}]}]}}' \
+  > "$whole_target"
+malformed_deploy "$WHOLE_HOME" ||
+  fail "a deploy must succeed before a wholesale event replacement"
+jq '.hooks.PreToolUse = "hand-edited"' "$whole_target" > "${WHOLE_HOME}/tmp" \
+  && mv "${WHOLE_HOME}/tmp" "$whole_target"
+whole_out="$(uninstall_in_home "$WHOLE_HOME")" ||
+  fail "an uninstall must succeed over a wholesale event replacement"
+if grep -q 'still exists after removal' <<< "$whole_out"; then
+  fail "a wholesale replacement must not report failure: $whole_out"
+fi
+assert_eq "$(jq -c '.hooks.PreToolUse' "$whole_target")" '"hand-edited"' \
+  "an uninstall must preserve a wholesale event replacement"
 
 printf 'Hook entry-merge regression passed\n'

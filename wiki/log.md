@@ -1283,3 +1283,15 @@ pre-existing, and the size infos stay advisory; the one on
   its zero-change process-record clause, and the `Repair:`, `Scope:`, and
   rotation-rule groups are present at current template text, clearing the
   `boilerplate` warn; the entries below are untouched)
+
+## [2026-10-29 20:15] update | restate hook delivery as an entry-grain merge
+
+- concepts/deployment-model.md (the whole-key hook-merge claims replaced with
+  the entry-grain merge, and Antigravity's named-key merge kept distinct from it)
+- concepts/hook-delivery-design.md (the Codex hook configuration stated as an
+  entry-grain merge)
+- concepts/hook-surface-portability.md (the deployment model merges hook
+  configuration entry by entry rather than replacing a whole key)
+- concepts/output-style-delivery-design.md (the hook merge restated as the entry
+  merge carrying its own `@entries:` manifest)
+- index.md (hook-merge summaries refreshed, Last updated)
