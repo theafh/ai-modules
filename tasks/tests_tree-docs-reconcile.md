@@ -95,7 +95,7 @@ subject of the sentence.
 
 **Out of scope:** Rewriting harness-local `README.md` / `RUNBOOK.md` files
 beyond what a wrong count in them requires. The stage-guard scenarios, which
-[the stage-guard task](tests_eval-stage-guard.md) owns. Any change to what a
+[the stage-guard task](archive/tests_eval-stage-guard.md) owns. Any change to what a
 suite asserts.
 
 **Co-edits.** The `### Parallel workers` sections are the same passages four

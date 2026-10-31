@@ -5,14 +5,14 @@
       "id": "fixes_in_scope_bug",
       "skill": "git_auto_review",
       "prompt": "Auto-review and fix my uncommitted changes.",
-      "expected_output": "The loop consumes the pre-seeded round-1 verdict, fixes the in-scope bug in report.py, lands a reproduction in the run relay's ignored repro/ directory whose ledger line names that path, consumes the round-2 delta verdict that tags the finding closed, lists the reproduction-only delta finding without fixing it, and stops clean under the no-qualifying-finding condition with HEAD unchanged.",
+      "expected_output": "The loop consumes the pre-seeded round-1 verdict, fixes the in-scope bug in report.py, lands a reproduction file directly in the run's ignored .git_auto_review folder whose ledger line names that path, consumes the round-2 delta verdict that tags the finding closed, lists the reproduction-only delta finding without fixing it, and stops clean under the no-qualifying-finding condition with HEAD unchanged.",
       "files": [
         "evals/fixtures/fixes_in_scope_bug/setup.sh"
       ],
       "timeout": 1200,
       "expectations": [
         "report.py no longer adds a constant, restoring the plain sum.",
-        "The regression ledger holds one reproduction whose path sits in the run relay's ignored repro/ directory, so no path under review shares it.",
+        "The regression ledger holds one reproduction whose path is a reproduction-r<round>-finding-<id> file directly in the run's ignored .git_auto_review folder.",
         "The reproduction fails on the fixture's original report.py change.",
         "report.txt's stop line names the no-qualifying-finding condition, not the round cap.",
         "git rev-parse HEAD is unchanged."
@@ -368,7 +368,7 @@
       "id": "fixes_branch_commit_bug",
       "skill": "git_auto_review",
       "prompt": "Auto-review and fix this branch.",
-      "expected_output": "The loop consumes the pre-seeded round-1 verdict for the bug committed on the checked-out feature branch, fixes it in the working tree uncommitted, lands a reproduction in the run relay's ignored repro/ directory whose ledger line names that path, consumes the round-2 delta verdict that tags the finding closed, and stops clean under the no-qualifying-finding condition with HEAD and refs/heads/feature unchanged.",
+      "expected_output": "The loop consumes the pre-seeded round-1 verdict for the bug committed on the checked-out feature branch, fixes it in the working tree uncommitted, lands a reproduction file directly in the run's ignored .git_auto_review folder whose ledger line names that path, consumes the round-2 delta verdict that tags the finding closed, and stops clean under the no-qualifying-finding condition with HEAD and refs/heads/feature unchanged.",
       "files": [
         "evals/fixtures/fixes_branch_commit_bug/setup.sh"
       ],
@@ -376,7 +376,7 @@
       "expectations": [
         "report.py no longer adds a constant, restoring the plain sum.",
         "The fix is uncommitted: git diff HEAD shows the report.py change.",
-        "The regression ledger holds one reproduction whose path sits in the run relay's ignored repro/ directory, so no path under review shares it.",
+        "The regression ledger holds one reproduction whose path is a reproduction-r<round>-finding-<id> file directly in the run's ignored .git_auto_review folder.",
         "report.txt's stop line names the no-qualifying-finding condition, not the round cap.",
         "git rev-parse HEAD and refs/heads/feature are unchanged."
       ]

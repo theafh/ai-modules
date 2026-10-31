@@ -2,8 +2,8 @@
 description: "Guard agent_spinner and guardrail_audit against a failed or empty stage, and pin the stage guard in every harness that ships stage.sh."
 scope: "local test harnesses"
 created: 2026-10-30T23:41:12
-updated: 2026-10-31T22:28:04
-status: audited
+updated: 2026-10-31T23:19:33
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: "Andreas Hoffmann"
 design-extended: false
@@ -116,7 +116,7 @@ every harness the Context selector yields.
 needs no change. Any new eval or fixture; this task only adds failure-path
 coverage. Count and per-harness file-enumeration drift in `tests/README.md` and
 `tests/CLAUDE.md` beyond the stage-guard sentences and the three inventory
-rows item 4 repairs, which [the docs-reconcile task](tests_tree-docs-reconcile.md)
+rows item 4 repairs, which [the docs-reconcile task](../tests_tree-docs-reconcile.md)
 owns.
 
 **Co-edits.** Other live tasks touch the same files and must be rebased rather
@@ -126,27 +126,27 @@ runner's `evals/run.py`, the `script_tests/run.sh` of each harness the Context
 selector yields, the README of each such harness, and the stage-guard rows in
 `tests/README.md` and `tests/CLAUDE.md`. Rebase over every live task the grep
 names. [The agent_spinner parallel-evals
-task](tests_agent-spinner-parallel-evals.md) rewrites
+task](../tests_agent-spinner-parallel-evals.md) rewrites
 `tests/agent_spinner/evals/run.py` onto the shared helper and may rewrite its
 `stage()` call; whichever lands second keeps this task's failure path. [The
-agent_spinner runner-modes task](tests_agent-spinner-runner-modes.md) adds
+agent_spinner runner-modes task](../tests_agent-spinner-runner-modes.md) adds
 `tests/agent_spinner/evals/test_run.py` and a case in
 `tests/agent_spinner/script_tests/run.sh`, so both edit that suite's tail. [The
-guardrail_audit parallel-evals task](tests_guardrail-audit-parallel-evals.md)
+guardrail_audit parallel-evals task](../tests_guardrail-audit-parallel-evals.md)
 rewrites `tests/guardrail_audit/evals/run.py` onto the shared helper, including
 its `stage()` call, and rewrites `tests/guardrail_audit/README.md`; whichever
 lands second keeps this task's failure path and its README clause. [The
-task-hub parallel-evals task](tests_task-hub-parallel-evals.md) changes
+task-hub parallel-evals task](../tests_task-hub-parallel-evals.md) changes
 `tests/task/evals/run.py`'s `stage` signature and its `evals/test_run.py`, which
 is the same declaration/stage-guard surface, though a different harness from
 the three this task touches. [The agent_spinner run-ledger
-task](ai-dev_agent-spinner-run-ledger.md) replaces the check "the skill bundles
+task](../ai-dev_agent-spinner-run-ledger.md) replaces the check "the skill bundles
 no runtime scripts" in `tests/agent_spinner/script_tests/run.sh` — the same
 suite tail this task appends its `check_stage_guard.py` case to — and rewrites
 in place the `agent_spinner/` bullet in `tests/README.md` that the operator-docs
 item adds the stage-guard clause to; whichever lands second keeps both this
 task's stage-guard case and its README clause. [The eval-graders
-task](tests_eval-graders-bite-on-inert-worker.md) appends its own
+task](../tests_eval-graders-bite-on-inert-worker.md) appends its own
 `script_tests/` scenario to `tests/git_auto_review/script_tests/run.sh`, the
 same suite tail this task appends its `check_stage_guard.py` case to, so
 whichever lands second appends rather than rewrites.

@@ -269,10 +269,10 @@ s7_relay_init_and_preseed() {
     "$(cat "$dir/.git_auto_review/.gitignore")" "*" || ok=false
   assert_file "stem ledger" "$stem/ledger.txt" || ok=false
   assert_eq "ledger is empty" "$(wc -c < "$stem/ledger.txt" | tr -d ' ')" "0" || ok=false
-  [[ -d "$stem/repro" ]] || { log "    init created no repro/ directory"; ok=false; }
-  # The reproductions directory sits under the relay's ignore, so it never
-  # surfaces as an untracked path in the reviewed tree.
-  assert_eq "repro/ is ignored" \
+  # Reproduction files sit directly in the stem, and the relay's .gitignore
+  # makes git ignore them.
+  printf 'exit 0\n' > "$stem/reproduction-r1-finding-1.sh"
+  assert_eq "a reproduction in the stem is ignored" \
     "$(cd "$dir" && git status --porcelain --untracked-files=all -- .git_auto_review)" "" \
     || ok=false
 
@@ -281,7 +281,6 @@ s7_relay_init_and_preseed() {
   printf 'stale return\n' > "$stem/gate-r1.txt"
   printf 'stale fixer\n' > "$stem/fixer-r1.txt"
   printf 'stale report\n' > "$stem/report.txt"
-  printf 'exit 0\n' > "$stem/repro/finding-1.sh"
   # A deliberately pre-seeded pair survives, marker and return together.
   printf 'preseeded r2 return\n' > "$stem/gate-r2.txt"
   : > "$stem/gate-r2.preseed"
@@ -289,9 +288,8 @@ s7_relay_init_and_preseed() {
   [[ -f "$stem/gate-r1.txt" ]] && { log "    stale gate-r1.txt survived init"; ok=false; }
   [[ -f "$stem/fixer-r1.txt" ]] && { log "    stale fixer-r1.txt survived init"; ok=false; }
   [[ -f "$stem/report.txt" ]] && { log "    stale report.txt survived init"; ok=false; }
-  [[ -f "$stem/repro/finding-1.sh" ]] \
+  [[ -f "$stem/reproduction-r1-finding-1.sh" ]] \
     && { log "    stale reproduction survived init"; ok=false; }
-  [[ -d "$stem/repro" ]] || { log "    re-init left no repro/ directory"; ok=false; }
   assert_file "preseed pair return survives" "$stem/gate-r2.txt" || ok=false
   assert_file "preseed pair marker survives" "$stem/gate-r2.preseed" || ok=false
   assert_eq "preseed return kept verbatim" \

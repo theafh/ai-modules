@@ -183,19 +183,22 @@ ledger_has_reproduction_per_finding() {
 }
 
 # reproductions_in_relay <stem_dir> — the ledger carries at least one line, and
-# every line's path field names an existing file in the stem's `repro/`
-# directory, so no reproduction landed in the reviewed tree.
+# every line's path field names an existing `reproduction-r<round>-finding-<id>`
+# file directly in the run's `.git_auto_review/<stem>/` folder.
 reproductions_in_relay() {
-  local sd=$1 stem path rest file n=0
+  local sd=$1 stem path rest name file n=0
   [[ -n "$sd" && -f "$sd/ledger.txt" ]] || return 1
   stem="${sd##*/}"
   while IFS=$'\t' read -r path rest || [[ -n "$path" ]]; do
     [[ -n "$path" ]] || continue
     n=$((n + 1))
     case "$path" in
-      ".git_auto_review/$stem/repro/"?*|*"/.git_auto_review/$stem/repro/"?*) ;;
+      ".git_auto_review/$stem/"*) name="${path#".git_auto_review/$stem/"}" ;;
+      *"/.git_auto_review/$stem/"*) name="${path##*"/.git_auto_review/$stem/"}" ;;
       *) return 1 ;;
     esac
+    [[ "$name" =~ ^reproduction-r[0-9]+-finding-[0-9]+(\.[A-Za-z0-9]+)?$ ]] \
+      || return 1
     file="$path"
     [[ "$file" == /* ]] || file="$repo/$path"
     [[ -f "$file" ]] || return 1
@@ -224,7 +227,7 @@ case "$eval_id" in
            ledger_lines="$(grep -c . "$sd/ledger.txt" 2>/dev/null || echo 0)"
          fi
          [[ "$ledger_lines" -ge 1 ]] && echo yes || echo no)"
-    report "every reproduction sits in the relay's repro/ directory" \
+    report "every reproduction is a reproduction-r<round>-finding-<id> file in the run's .git_auto_review folder" \
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
@@ -237,7 +240,7 @@ case "$eval_id" in
       "$(n=0
          if sd="$(stem_dir)"; then n="$(grep -c . "$sd/ledger.txt" 2>/dev/null || echo 0)"; fi
          [[ "$n" -ge 1 ]] && echo yes || echo no)"
-    report "every reproduction sits in the relay's repro/ directory" \
+    report "every reproduction is a reproduction-r<round>-finding-<id> file in the run's .git_auto_review folder" \
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
@@ -265,7 +268,7 @@ case "$eval_id" in
     report "the ledger holds one reproduction per finding" \
       "$(ledger_has_reproduction_per_finding "$(stem_dir || true)" "1 2" \
          && echo yes || echo no)"
-    report "every reproduction sits in the relay's repro/ directory" \
+    report "every reproduction is a reproduction-r<round>-finding-<id> file in the run's .git_auto_review folder" \
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
@@ -457,7 +460,7 @@ case "$eval_id" in
       "$(n=0
          if sd="$(stem_dir)"; then n="$(grep -c . "$sd/ledger.txt" 2>/dev/null || echo 0)"; fi
          [[ "$n" -ge 1 ]] && echo yes || echo no)"
-    report "every reproduction sits in the relay's repro/ directory" \
+    report "every reproduction is a reproduction-r<round>-finding-<id> file in the run's .git_auto_review folder" \
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
