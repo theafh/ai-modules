@@ -2,9 +2,11 @@
 description: "Make the deterministic test gate hermetic and green: fix skill_doctor's mixed-family grouping failure, and remove git_review's dependence on ambient git core.quotePath."
 scope: "local test harnesses"
 created: 2026-10-30T23:33:51
-updated: 2026-10-31T10:36:25
-status: checked
+updated: 2026-10-31T18:12:20
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make the deterministic test gate hermetic and green
@@ -45,11 +47,10 @@ produces the mixed group `'git_auto_review family' -> ['git_auto_review',
 family prefix with it, and `git_auto_review`'s `<family>` block declares
 `git_review`, whose leading token `git` also prefixes `git_auto_review`,
 `git_checkout`, `git_commit`, `git_refresh`, and `git_status`-style neighbours.
-The grouping then binds two names that share no family token. Either the
-grouping needs a same-token test before it binds, or the `<family>` block needs
-to stop declaring a name outside its own token — the implementer settles which
-against the check's own stated intent, since the check exists to guarantee that
-a sibling finding's message is true.
+The grouping then binds two names that share no family token, and the check
+exists to guarantee that a sibling finding's message is true. `## Approach`
+step 1 settles the repair: the `<family>` block stops declaring the
+out-of-token name, and `declaring_hubs()` stays as written.
 
 **`git_review`: five failing checks under a non-default git setting.** With
 `core.quotePath=false` in the environment — set through
@@ -97,9 +98,21 @@ Fix the product-adjacent grouping first, then make the harness hermetic.
    true`) that the scenarios already carry is the fallback for a clean
    environment, so it stays as written. Keep the assertions as they are: the
    scenarios assert a real property of the bundled scripts, and the fix belongs
-   in the fixture, not in the check. Add one scenario that re-exports the
-   inverted value for its own git invocations and runs the quoted-path
-   assertions under it, so the pin is proved rather than assumed.
+   in the fixture, not in the check. Add one scenario that proves the pin
+   rather than assuming it. It stages a scratch repo holding a non-ASCII path,
+   exports the inverted `core.quotePath` value inside the subshells that
+   compute its own expectations, and leaves the collector call under the
+   suite-entry clear. The scenario then asserts the git-quoted form on the
+   collector's evidence — `"\303\244.txt"` in `name_status.txt` and
+   `+++ "b/\303\244.txt"` in `full_diff.txt` — and asserts the raw unquoted
+   path on one deliberately bypassed `git diff --name-status` call that exports
+   the inverted value in its own invocation. With the inverted `GIT_CONFIG_*`
+   environment exported, the two assertions together show the collector's
+   quoted form comes from the suite-entry clear and not from the operator's
+   setting. The collector calls `git diff` without `-c`, so in a clean
+   environment git's default `core.quotePath=true` already prints the quoted
+   form and the clear is unobservable there; the inverted run is the one that
+   proves the pin.
 3. **Record the ambient-config class.** Note in `tests/AGENTS.md` and
    `tests/CLAUDE.md`, in lockstep, that a script test pinning git output shape
    clears or overrides the inherited `GIT_CONFIG_*` environment for every git
@@ -119,9 +132,10 @@ these suites, which the sibling parallel-eval tasks own.
   appears in the whole-repo `comparison_groups` output; the check
   `self_whole_repo_groups_each_hold_one_family` is still present and still
   asserts that every group holds one family.
-- The `skill_doctor` change is accompanied by a fixture or scenario that fails
-  when the grouping binds two names sharing no family token, so the fix is
-  pinned rather than only observed.
+- A `skill_doctor` scenario reads `git_auto_review`'s `<family>` declaration
+  through the discovery module and fails when that declaration names
+  `git_review`, so the declaration-side fix is proved by the declaration it
+  changed rather than only observed in one whole-repo run.
 - `bash tests/git_review/script_tests/run.sh` exits zero with
   `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.quotePath`, and
   `GIT_CONFIG_VALUE_0=false` exported, and also exits zero without them. Both
@@ -131,9 +145,18 @@ these suites, which the sibling parallel-eval tasks own.
   with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.quotePath`, and
   `GIT_CONFIG_VALUE_0=false` exported, so the suite set the Goal names is
   proven by running it rather than inferred from the two suites above.
-- A `git_review` scenario stages a scratch repo with the ambient
-  `core.quotePath` deliberately inverted and still passes its quoted-path
-  assertions, proving the suite no longer reads the operator's setting.
+- The new `git_review` scenario that `## Approach` **`git_review`
+  hermeticity** describes stages a scratch repo holding a non-ASCII path,
+  exports the inverted `core.quotePath` value inside the subshells computing
+  its own expectations, and runs the collector under the suite-entry clear. It
+  asserts `"\303\244.txt"` in `name_status.txt` and `+++ "b/\303\244.txt"` in
+  `full_diff.txt`, and asserts the raw unquoted path on one deliberately
+  bypassed `git diff --name-status` call exporting the inverted value in its
+  own invocation. `bash tests/git_review/script_tests/run.sh` reports that
+  scenario as a pass. Run with `GIT_CONFIG_COUNT=1`,
+  `GIT_CONFIG_KEY_0=core.quotePath`, and `GIT_CONFIG_VALUE_0=false` exported,
+  removing the suite-entry clear makes that scenario fail, so the item flips
+  with the pin rather than with the ambient setting.
 - `tests/AGENTS.md` and `tests/CLAUDE.md` both carry the statement `## Approach`
   step 3 defines, and the two files remain in lockstep on it.
 - `make lint` passes.

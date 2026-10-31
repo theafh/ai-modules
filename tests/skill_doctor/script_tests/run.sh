@@ -14,8 +14,9 @@
 # the comparison group each sibling finding is measured inside — the
 # cross-plugin coincidence split, the declared cross-plugin family, the
 # one-plugin hubless prefix family, the no-grouping-argument default,
-# walk-omitted given paths, the identical-purpose pair in both readings, and
-# the unaffiliated whole-repo set). Also covers the shared skill_discovery
+# walk-omitted given paths, the identical-purpose pair in both readings, the
+# unaffiliated whole-repo set, and git_auto_review's own <family> declaration
+# read through the discovery module). Also covers the shared skill_discovery
 # module under both load paths, the shipped SKILL.md static contract, and the
 # eval runner's stop on a failed or empty stage.
 
@@ -1627,6 +1628,36 @@ check "self_whole_repo_groups_each_hold_one_family" \
   "all(all(n == label.split(' ')[0] or n.startswith(label.split(' ')[0] + '_') \
            for n in names) \
        for label, names in data['comparison_groups'].items())"
+
+# 8. The declaration side of that grouping. declaring_hubs() binds a declared
+#    name to the first declaring hub, in name order, whose own name is the
+#    name or a family-name prefix of it, and otherwise to the first declaring
+#    hub. No hub whose name prefixes git_review declares it, so a git_review
+#    entry in git_auto_review's <family> block would bind it to that hub's
+#    comparison group. Reading the block through the discovery module pins
+#    the declaration the whole-repo run depends on rather than observing one
+#    run's output. A missing block fails too, so a parse that finds no block
+#    cannot pass by default.
+git_auto_review_family_omits() {
+  SD_MODULE="$SKILL_DIR/scripts/skill_discovery.py" \
+  SD_SKILL="$REPO_ROOT/plugins/ai_dev/skills/git_auto_review/SKILL.md" \
+  SD_OMIT="$1" \
+  python3 -c "
+import importlib.util, os, sys
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location(
+    'skill_discovery', os.environ['SD_MODULE'])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+names = module.parse_family_block_names(
+    Path(os.environ['SD_SKILL']), strict=False)
+sys.exit(0 if names is not None
+         and os.environ['SD_OMIT'] not in names else 1)
+"
+}
+check "git_auto_review_family_block_omits_git_review" \
+  git_auto_review_family_omits git_review
 
 # --- the shared discovery module ------------------------------------------
 # One implementation of the walk, the frontmatter name read, the plugin-host

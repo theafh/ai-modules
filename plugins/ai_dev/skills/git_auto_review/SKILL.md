@@ -1,7 +1,7 @@
 ---
 name: git_auto_review
 description: "Run an automated review-and-fix loop over the checked-out branch's change since the default branch plus its working tree, and over the default branch's uncommitted changes: git_review is the only gate, a single writer agent fixes the findings that qualify, each round is verified refute-by-default and re-reviewed on its delta, and the loop stops under stated convergence rules. Use when the user asks to auto-review and fix uncommitted changes, auto-review and fix this branch, run the automated review loop, keep reviewing and fixing until the change is clean, loop review and fix over my branch against main, auto-fix what the review finds, or drive an automated review gate to a clean exit. Every fix stays uncommitted."
-version: 1.0.5
+version: 1.0.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -267,10 +267,11 @@ The run's deliverable is `report.txt`, written to the relay and reprinted to the
 <family>
 `git_auto_review` sits beside `git_review` and mirrors `task_auto_check`'s loop shape for a change rather than a task. Each does one job and points at the next:
 
-- `git_review` reviews a change and reports under its headings, manually.
 - `task_auto_check` drives one task to readiness.
 - `task_auto_implement` runs implement, audit, and finish for one task.
 - `git_auto_review` runs the automated review-and-fix loop for a finished change **(this skill)**.
+
+Among the hubs whose family blocks list a name, `skill_doctor` binds that name to the first in name order whose own name is the name or a family-name prefix of it, and otherwise to the first declaring hub in name order, so `task_auto_check` binds to the `task` hub, which lists it too. Name `git_review` in prose, as the opening sentence does: no hub whose name prefixes `git_review` lists it, so a bullet here would bind it to this hub and pull it into this hub's comparison group.
 
 It reviews; committing, pushing, and review-comment publication stay with the user and the `git_*` siblings.
 </family>

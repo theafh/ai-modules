@@ -237,6 +237,10 @@ Keep graders model-free when possible; when a judge LLM exists
 it inherits on Claude and uses `auto` on Cursor.
 Do not pin dated model ids such as `claude-sonnet-4-6`.
 
+### Ambient git configuration: pin the output shape at suite entry
+
+A script test that pins the shape of git output clears or overrides the inherited `GIT_CONFIG_PARAMETERS` variable, which carries `git -c` settings into child processes, and the inherited `GIT_CONFIG_COUNT` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` block for every git invocation it makes, because git resolves both ahead of any repository config. A `git config` setting in the test's own scratch repository is the fallback that keeps the same assertion true in a clean environment. `tests/git_review/script_tests/run.sh` is the reference: it clears both once at suite entry, keeps each quoted-path scenario's `git config core.quotepath true`, and s35 proves the pin by asserting the git-quoted non-ASCII path on the collector's evidence beside a deliberately bypassed call that exports the inverted value and prints the raw path. That proof holds when the suite runs with the inverted value exported; in a clean environment git's default already quotes, so the clear is unobservable there.
+
 ### Verdict cache, timeouts, isolation
 
 Same rules as `tests/CLAUDE.md`: content-keyed cache under

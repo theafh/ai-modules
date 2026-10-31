@@ -103,7 +103,14 @@ tests/skill_doctor/
     by mutation: reverting the purpose floor, the typographic-punctuation
     severity, the file-type path, or the plural nouns each fails a named
     check;
-  - a self-check that `skill_doctor` clears its own gate;
+  - a self-check that `skill_doctor` clears its own gate, and the
+    declaration side of the comparison grouping: `git_auto_review`'s
+    `<family>` block, read through the discovery module, omits
+    `git_review`. A declared name binds to the first declaring hub, in
+    name order, whose own name is the name or a family-name prefix of it,
+    and otherwise to the first declaring hub; no hub whose name prefixes
+    `git_review` declares it, so a listing there would bind it to
+    `git_auto_review`'s comparison group;
   - static `SKILL.md` contract anchors from the task acceptance list;
   - the eval runner's stop on a failed or empty stage, through
     `tests/lib/check_stage_guard.py`.

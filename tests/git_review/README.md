@@ -45,6 +45,16 @@ The load-bearing ones:
 - **s34** runs `tests/lib/check_stage_guard.py` on `evals/run.py`, so a
   stage that fails or names no sandbox repository stops the eval before any
   worker starts.
+- **s35** stages a repository holding a non-ASCII path and proves the
+  suite-entry clear of the inherited `GIT_CONFIG_PARAMETERS` and
+  `GIT_CONFIG_COUNT` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`
+  environment: the collector keeps the git-quoted path in
+  `name_status.txt` and `full_diff.txt`, while one deliberately bypassed
+  `git diff --name-status` call exporting the inverted `core.quotePath` value
+  prints the raw path. That proof holds when the suite runs with the inverted
+  value exported, where removing the clear makes s35 fail; in a clean
+  environment git's default already quotes, so the clear is unobservable
+  there.
 
 ## evals: skill behavior, one vendor worker per eval
 

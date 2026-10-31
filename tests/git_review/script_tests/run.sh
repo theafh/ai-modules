@@ -7,8 +7,12 @@
 # drafted report, plus the grader's report-form discrimination, the eval-32
 # delta-tag fail branches, and the eval-41 push-order proofs (hook log,
 # TMPDIR-scoped report.md, and grader fail branches), and the eval runner's
-# stop on a failed or empty stage. Repository scenarios stage their own
-# sandbox under scratch/<id>/; form checks read fixtures.
+# stop on a failed or empty stage, and the suite-entry clear of the inherited
+# GIT_CONFIG_PARAMETERS and GIT_CONFIG_COUNT block, which together with each
+# quoted-path scenario's `git config core.quotepath true` keeps the git-quoted
+# non-ASCII paths those scenarios assert.
+# Repository scenarios stage their own sandbox under scratch/<id>/; form checks
+# read fixtures.
 # shellcheck disable=SC2329
 
 set -uo pipefail
@@ -30,6 +34,21 @@ FAILED_IDS=()
 mkdir -p "$SCRATCH"
 mkdir -p "$(dirname "$RESULTS")"
 : > "$RESULTS"
+
+# Git resolves core.quotePath from the inherited GIT_CONFIG_PARAMETERS (the
+# carrier for `git -c` settings) and GIT_CONFIG_COUNT / GIT_CONFIG_KEY_* /
+# GIT_CONFIG_VALUE_* environment ahead of any repository config, so an
+# operator profile or the Cursor sandbox can flip the path quoting these
+# scenarios assert. Clear both once here, at suite entry, which strips the
+# operator's exported settings from every git invocation below — the
+# collectors' evidence and the scenarios' own expectation computations alike.
+# Global and system config still reach every invocation; each quoted-path
+# scenario's `git config core.quotepath true` in its scratch repo covers them,
+# since repository config outranks both.
+while IFS= read -r git_config_var; do
+    unset "$git_config_var"
+done < <(compgen -e |
+    grep -E '^GIT_CONFIG_(PARAMETERS|COUNT|KEY_[0-9]+|VALUE_[0-9]+)$')
 
 log() { printf '%s\n' "$*" | tee -a "$RESULTS" >&2; }
 
@@ -616,6 +635,7 @@ s22_unreadable_path_records_unread_remainder() {
     repo=$("$HERE/../evals/fixtures/unreadable_path/setup.sh" "$target") || return 1
     (
         cd "$repo" || exit 1
+        git config core.quotepath true
         printf 'readable = 3\nAWS = "AKIAIOSFODNN7EXAMPLE"\n' > src/readable.py
         printf 'nonascii_marker = 1\nKEY = "AKIAIOSFODNN7EXAMPLE"\n' > ä.txt
         git add src/readable.py ä.txt
@@ -2402,6 +2422,65 @@ s29_secret_scan_patterns_match_manual_fallback() {
     $ok
 }
 
+# --- hermetic git configuration ----------------------------------------------
+
+# The suite clears the inherited GIT_CONFIG_PARAMETERS and GIT_CONFIG_COUNT
+# block at entry, which strips the operator's exported settings from every git
+# invocation below. This scenario proves that clear on a non-ASCII path: the
+# collector's evidence keeps git's quoted form while one deliberately bypassed
+# call that exports the inverted value shows the raw path. When the suite runs
+# with the inverted GIT_CONFIG_* value exported, the quoted evidence can only
+# come from the suite-entry clear; in a clean environment git's default
+# already quotes, so the clear is unobservable there. The scratch repo's own
+# `git config core.quotepath true` covers the global and system config that
+# still reach every invocation; the GIT_CONFIG_* block outranks that repo
+# setting, so the bypassed call still prints the raw path.
+s35_non_ascii_path_quotes_under_the_suite_pin() {
+    local target repo ev ret raw ok=true
+    target="$SCRATCH/s35"
+    rm -rf "$target"
+    mkdir -p "$target"
+    git init --quiet --bare --initial-branch=main "$target/origin.git" || return 1
+    git clone --quiet "$target/origin.git" "$target/repo" 2>/dev/null || return 1
+    repo="$target/repo"
+    (
+        cd "$repo" || exit 1
+        identity
+        git config core.quotepath true
+        printf 'seed\n' > seed.txt
+        git add -A
+        git commit --quiet -m "seed the base tree"
+        git push --quiet origin main
+        git checkout --quiet -b feature
+        printf 'nonascii\n' > 'ä.txt'
+        git add 'ä.txt'
+        git commit --quiet -m "add a non-ascii path"
+        git push --quiet -u origin feature
+    ) || return 1
+
+    ev="$target/ev"
+    ret=$(collect "$repo" --base main --head feature --out "$ev" --no-fetch)
+    assert_eq "exit" "${ret%%|*}" "0" || ok=false
+    assert_contains "name_status keeps the git-quoted path" \
+        "$(cat "$ev/name_status.txt" 2>/dev/null)" '"\303\244.txt"' || ok=false
+    assert_contains "full_diff keeps the git-quoted header" \
+        "$(cat "$ev/full_diff.txt" 2>/dev/null)" '+++ "b/\303\244.txt"' || ok=false
+
+    # One call bypasses the suite-entry clear and exports the inverted value in
+    # its own invocation; its raw path shows that value outranks git's default
+    # and the repo setting. So when the suite runs with that value exported,
+    # the quoted evidence above can only come from the clear; in a clean
+    # environment git's default already quotes, so the clear is unobservable.
+    raw=$(
+        cd "$repo" || exit 1
+        GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.quotePath \
+            GIT_CONFIG_VALUE_0=false git diff --name-status main..feature
+    ) || ok=false
+    assert_contains "the inverted setting prints the raw path" "$raw" $'A\tä.txt' || ok=false
+    assert_absent "the inverted setting prints no quoted path" "$raw" '\303\244' || ok=false
+    $ok
+}
+
 # --- run ----------------------------------------------------------------------
 
 scenario s1  "fetch precedes the three-dot diff"                      s1_fetches_before_the_three_dot_diff
@@ -2451,6 +2530,8 @@ scenario s33 "size profile share counts a vendored binary once" \
     s33_size_profile_share_counts_vendored_binary_once
 scenario s34 "eval runner: a failed or empty stage raises before any worker" \
     s34_eval_runner_stage_failure_raises
+scenario s35 "non-ascii path stays git-quoted under the suite-entry pin" \
+    s35_non_ascii_path_quotes_under_the_suite_pin
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the
