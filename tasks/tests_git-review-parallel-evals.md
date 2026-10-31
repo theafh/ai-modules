@@ -2,7 +2,7 @@
 description: Run git_review evals at default 4 workers through the shared helper, isolate per-eval temp files, and treat model contention as a timeout-tuning problem rather than a serial requirement.
 scope: tests/git_review/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-24T00:59:09
+updated: 2026-10-31T09:32:04
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -37,7 +37,14 @@ This task consumes [the shared Pattern A eval runner](archive/tests_shared-patte
 ## Approach
 
 Rewrite `evals/run.py` onto the shared helper: `--workers` default 4, workspace at
-`tests/git_review/workspace`. Keep vendor resolution on `tests/lib/vendor.py`.
+`tests/git_review/workspace` as the sole run root, and rewrite every `workspace`
+run-root reference in place: in `evals/run.py` the `WORKSPACE` constant and the
+docstring's `under workspace/run-<ts>/<id>/` step, and in
+`tests/git_review/RUNBOOK.md` the `Read workspace/run-<ts>/1/response.txt` line
+under `## Run one eval before running all of them`, the `gitignored, like
+workspace/` clause under `## The verdict cache`, the `grade.sh` example under
+`## Grade an already-run sandbox`, and the run-tree under `## Reading a run`.
+Keep vendor resolution on `tests/lib/vendor.py`.
 Apply the helper's per-job `TMPDIR`/`TEMP`/`TMP` mapping as the environment of `stage` (so `stage` runs under that mapping, matching the env-passing pattern in `tests/git_commit/evals/run.py` and `tests/git_checkout/evals/run.py`—not those runners' `stage()` return shapes). Keep `stage()` returning `sandbox_repo`, `prompt`, `target`, and `gh_env` while adding the job `env` argument; then copy that same mapping onto the worker env before folding `gh_env`, so a fixture that sets `TMPDIR` in `gh_env` (as `push_approval` does for gradeable `report.md` mtime) still wins for the worker; pass that same job mapping—not the post-`gh_env` worker env—to the `grade.sh` subprocess so its `mktemp` stays isolated per job, and keep that subprocess's argv as the current three-argument form `grade.sh <id> <sandbox_repo> <response.txt>` (the worker's captured response path under the run tree), rewriting the existing call onto the helper rather than adopting the sibling Pattern A two-argument `grade.sh <id> <workdir>` shape. Each eval's
 `timing.json` is written through the shared helper's `write_run_artifacts`
 path with `started_at` and `ended_at` beside `duration_s`, matching
@@ -50,7 +57,11 @@ Pattern A `eval_runner` / `DEFAULT_PARALLEL_WORKERS` pool sentence in place
 so `tests/git_review/evals/run.py` joins that set beside the existing runners,
 and supersede the sequential-list entry that names `git_review` for timeout
 contention.
-Keep the two files' Parallel-workers sections in lockstep with each other.
+Apply those two edits identically to both files: the pool sentence names the
+same runner set and the sequential entry is superseded the same way in each,
+while each file keeps its own bullet-or-prose list shape.
+Full-section reconciliation of the two files' remaining differences is out of
+scope below.
 Rewrite the `git_review/` inventory row in `tests/CLAUDE.md` and the
 `**git_review/**` bullet in `tests/README.md` in place to the sibling
 Pattern A form used by `git_commit` / `git_checkout`: name `evals/run.py`
@@ -72,7 +83,12 @@ clear of 600s, leave `--timeout` at 600. `--workers 1` remains the latency
 reading.
 
 **Out of scope:** Adding review evals. Changing `collect_review_evidence.sh`.
-Live-testing unshipped editorial plugin harnesses.
+Live-testing unshipped editorial plugin harnesses. Full-section reconciliation
+of the two operator guides' `### Parallel workers` sections — heading wording,
+bullet-versus-prose list shape, and the `Raising the default past 4` rationale
+sentence only `tests/CLAUDE.md` carries — which
+[the tests-tree docs reconciliation task](tests_tree-docs-reconcile.md) owns and
+lands after this task's runner-list edits settle.
 
 ## Acceptance
 
@@ -112,8 +128,10 @@ Live-testing unshipped editorial plugin harnesses.
   sandbox`, the Pattern A `eval_runner` / `DEFAULT_PARALLEL_WORKERS` pool
   sentence names `tests/git_review/evals/run.py` among the parallel runners,
   and the prior sequential-list entry that named `git_review` for timeout
-  contention is superseded in both files. One canonical parallel-policy
-  statement remains per file; the two files stay in lockstep.
+  contention is superseded in both files. Each file names the same runner set
+  in its pool sentence and supersedes the same sequential entry, keeping each
+  file's existing bullet-or-prose list shape; one canonical pool statement and
+  one canonical sequential-entry statement remain per file.
 - The `git_review/` inventory row in `tests/CLAUDE.md` names `evals/`
   behavioral evals through `evals/run.py` in the shared
   `tests/lib/eval_runner` pool (sibling Pattern A form); the prior non-pool
@@ -134,10 +152,16 @@ Live-testing unshipped editorial plugin harnesses.
   writes its `run-<ts>` directory under `tests/git_review/workspace`, and
   `evals/run.py` names that path as the sole run root in place of
   `WORKSPACE = THIS / "workspace"`.
-- In `RUNBOOK.md`, the `grade.sh` example under `## Grade an already-run
-  sandbox` and the run-tree under `## Reading a run` each name
-  `tests/git_review/workspace` as the only `run.py` run root. The prior root
-  `tests/git_review/evals/workspace` is superseded in both passages.
+- In `RUNBOOK.md`, every `workspace` run-root reference names
+  `tests/git_review/workspace` as the only `run.py` run root, and none places
+  the root beside `evals/`: the `Read workspace/run-<ts>/1/response.txt` line
+  under `## Run one eval before running all of them`, the `grade.sh` example
+  under `## Grade an already-run sandbox`, the `gitignored, like workspace/`
+  clause under `## The verdict cache`, and the run-tree under `## Reading a
+  run`. `evals/run.py`'s docstring step 3 names `tests/git_review/workspace`
+  for its `run-<ts>/<id>/` artifacts. The prior root
+  `tests/git_review/evals/workspace` is superseded at every one of those
+  sites.
 - A `--workers 4 --force` timeout-band sample of ids 18, 41, and 2 in
   `tests/git_review/results/timeout-band.md` states either the raise outcome or the
   leave-at-600 outcome. On raise, `run.py --help` (or the argparse
