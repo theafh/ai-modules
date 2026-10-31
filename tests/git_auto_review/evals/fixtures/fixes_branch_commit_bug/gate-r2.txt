@@ -2,8 +2,8 @@
 
 ## What the changes do and implement
 
-The `feature` branch's commit now sums the items exactly, and the working tree
-adds one reproduction.
+The `feature` branch's commit now sums the items exactly, and the run adds one
+reproduction in its ignored relay at `.git_auto_review/default/reproduction-r1-finding-1.py`.
 
 ## What it retires
 

@@ -2,7 +2,8 @@
 
 ## What the changes do and implement
 
-The uncommitted change now sums the items exactly, and adds one reproduction.
+The uncommitted change now sums the items exactly, and the run adds one
+reproduction in its ignored relay at `.git_auto_review/default/reproduction-r1-finding-1.py`.
 
 ## What it retires
 
@@ -21,8 +22,9 @@ None.
 **`report.py:3` — `total` adds a constant instead of summing (verified, closed).**
 The added constant is gone. Fix: none.
 
-**`tests/repro_total.py:1` — reproduction asserts an off-by-one (inferred).** The
-reproduction the loop added is not part of the change under review. Fix: none.
+**`.git_auto_review/default/reproduction-r1-finding-1.py:1` — reproduction
+asserts an off-by-one (inferred).** The reproduction the loop added sits in the
+ignored relay, outside the change under review. Fix: none.
 
 ## What should be fixed though it is not a clear bug
 
@@ -53,8 +55,8 @@ id: 2
 heading: Bugs it may introduce
 label: inferred
 non_blocking: no
-location: tests/repro_total.py:1
-lane: working-tree lane
+location: .git_auto_review/default/reproduction-r1-finding-1.py:1
+lane: local-commits lane
 Fix: none
 tag: new
 
