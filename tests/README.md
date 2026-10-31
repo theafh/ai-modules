@@ -218,13 +218,15 @@ don't bring up new harnesses under Pattern B.
   pre-seed pairs, the ledger runner's exit and per-line contract, the round-1
   pre-fix pair and the once-only baseline pair, and the Restore procedure
   reproducing the captured worktree with the index untouched) plus the static
-  skill and agent contracts, the Makefile `.git_auto_review` prune, and the
-  shared isolation allowlist. `evals/` holds behavioral evals over staged git
+  skill and agent contracts, the Makefile `.git_auto_review` prune, the
+  shared isolation allowlist, and the eval runner's stop on a failed or empty
+  stage through `tests/lib/check_stage_guard.py`. `evals/` holds behavioral evals over staged git
   fixtures, run through `evals/run.py` on the default Cursor worker with a
   deterministic `grade.sh`; its multi-round nested-loop stop evals run one job
   at a time after the isolated pool. See `evals/README.md`.
 - **`guardrail_audit/`**: Pattern A, prose-only skill. `script_tests/`
-  covers the static SKILL.md / registration contract; `evals/` has five
+  covers the static SKILL.md / registration contract and the eval runner's
+  stop on a failed or empty stage; `evals/` has five
   staged fixtures (presence-gating, doc-vs-doc, doc-vs-code retrofit,
   grounded TESTING.md proposal, multi-project nature mismatch) with
   byte-identity grading and a `run.py` on the default Cursor worker.
@@ -241,7 +243,8 @@ don't bring up new harnesses under Pattern B.
 - **`agent_spinner/`**: Pattern A, prose-only skill. `script_tests/`
   covers the static contract (SKILL.md budgets and blocks, the six shape
   tags, the per-harness greps that must return nothing, the reference set,
-  and registration lockstep); `evals/` holds 21 staged fixtures, one per
+  registration lockstep, and the eval runner's stop on a failed or empty
+  stage); `evals/` holds 21 staged fixtures, one per
   independently staged behavioural acceptance item, driven by
   `evals/run.py` on the default Cursor worker with a deterministic
   `grade.sh`. The runner

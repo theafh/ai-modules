@@ -2,9 +2,11 @@
 description: "Guard agent_spinner and guardrail_audit against a failed or empty stage, and pin the stage guard in every harness that ships stage.sh."
 scope: "local test harnesses"
 created: 2026-10-30T23:41:12
-updated: 2026-10-31T09:43:24
-status: ready
+updated: 2026-10-31T22:28:04
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: "Andreas Hoffmann"
+design-extended: false
 ---
 
 # Guard every eval runner's stage against a failed or empty stage

@@ -187,6 +187,12 @@ check "marketplace .claude-plugin mentions guardrail_audit sibling" \
 # currently says. See tests/lib/plugin_version.sh for the rule it encodes.
 check_plugin_version_lockstep ai_dev
 
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox project, before any worker could start.
+check "the eval runner's stage() raises on a failed or empty stage" \
+  python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" \
+  "$REPO_ROOT/tests/guardrail_audit/evals"
+
 # Skill directory layout.
 check "skill directory has only SKILL.md (slim sibling, no copied references/)" \
   bash -c '[[ "$(ls -1 "'"$REPO_ROOT"'/plugins/ai_dev/skills/guardrail_audit" | wc -l | tr -d " ")" == "1" ]] && test -f "'"$SKILL"'"'

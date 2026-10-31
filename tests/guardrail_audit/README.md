@@ -21,9 +21,10 @@ tests/guardrail_audit/
 
 - **script_tests**: frontmatter, `<authority>`, `<audit_bound>`, no
   restated hub definitional content, hub forward-references intact,
-  plugin / marketplace / README registration, plus
-  `sandbox_git_isolation.sh` (fixture git cannot commit into the host
-  checkout).
+  plugin / marketplace / README registration, plus `script_tests/` proving
+  the eval runner's stop on a failed or empty stage through
+  `tests/lib/check_stage_guard.py` and `sandbox_git_isolation.sh` (fixture
+  git cannot commit into the host checkout).
 - **evals**: six staged fixtures covering presence-gating, doc-vs-doc,
   doc-vs-code (retrofit), an unreached `## Direction` target read as
   drive-toward work, grounded TESTING.md proposal, and multi-project

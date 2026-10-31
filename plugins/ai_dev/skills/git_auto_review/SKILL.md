@@ -1,7 +1,7 @@
 ---
 name: git_auto_review
 description: "Run an automated review-and-fix loop over the checked-out branch's change since the default branch plus its working tree, and over the default branch's uncommitted changes: git_review is the only gate, a single writer agent fixes the findings that qualify, each round is verified refute-by-default and re-reviewed on its delta, and the loop stops under stated convergence rules. Use when the user asks to auto-review and fix uncommitted changes, auto-review and fix this branch, run the automated review loop, keep reviewing and fixing until the change is clean, loop review and fix over my branch against main, auto-fix what the review finds, or drive an automated review gate to a clean exit. Every fix stays uncommitted."
-version: 1.0.6
+version: 1.0.7
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -83,15 +83,15 @@ Every gate-listed finding that does not qualify is classified once here and rend
 <scope_anchor>
 **Scope anchor.** A finding meets the Scope anchor when it concerns lines the change added or modified, or behaviour the change's intent covers, read from the anchoring task file's `## Goal` and `## Acceptance` when a task file is given.
 
-A reproduction `auto_fixer_git` adds is not part of the change under review: a file reproduction lives at a path of its own that its `ledger.txt` line names and that no path under review shares, and the gate and the verifier label a location as reproduction lines when its path matches a path named in `ledger.txt`. A finding whose location sits only in reproduction lines therefore never meets the Scope anchor; it is listed in the report and receives no fix. The reproduction's own correctness is enforced by the **Regression ledger.** restore-and-retry, not by gate qualification.
+A reproduction `auto_fixer_git` adds is not part of the change under review: a file reproduction lives in the stem's `repro/` directory under `<relay>`, at the path its `ledger.txt` line names, so the relay's ignore keeps it out of the reviewed tree and no path under review shares it. The gate and the verifier still label a location as reproduction lines when its path matches a path named in `ledger.txt`. A finding whose location sits only in reproduction lines therefore never meets the Scope anchor; it is listed in the report and receives no fix. The reproduction's own correctness is enforced by the **Regression ledger.** restore-and-retry, not by gate qualification.
 
 A pre-existing issue and a scope extension go to the report as follow-up task proposals.
 </scope_anchor>
 
 <regression_ledger>
-**Regression ledger.** The ledger is `ledger.txt` in the run's relay directory, one reproduction per line, each line the reproduction's path, a tab, then the command that runs it, so the path the **Scope anchor.** matches a finding's location against is a named field. A bundled script, `scripts/run_ledger.sh`, runs each line's command field in order and reports each line's 1-based number with its pass or fail; it exits 0 on an all-passing ledger and on an empty ledger, and exits non-zero naming the 1-based number of the first failing entry.
+**Regression ledger.** The ledger is `ledger.txt` in the run's relay directory, one reproduction per line, each line the reproduction's path, a tab, then the command that runs it, so the path the **Scope anchor.** matches a finding's location against is a named field. The path field is relative to the repository root, and for a file reproduction it names a file in the stem's `repro/` directory. A bundled script, `scripts/run_ledger.sh`, runs each line's command field in order and reports each line's 1-based number with its pass or fail; it exits 0 on an all-passing ledger and on an empty ledger, and exits non-zero naming the 1-based number of the first failing entry.
 
-The orchestrator runs `scripts/run_ledger.sh` after every fix round. A failing line restores the round's pre-fix state and repeats the round once with the failing line named to the fixer; a second failure restores the pre-fix state and the **Stop rule.**'s second-ledger-failure condition stops the run.
+The orchestrator runs `scripts/run_ledger.sh` with `--cwd` set to the repository root after every fix round, so each reproduction finds the repository through its working directory rather than through its own location. A failing line restores the round's pre-fix state and repeats the round once with the failing line named to the fixer; a second failure restores the pre-fix state and the **Stop rule.**'s second-ledger-failure condition stops the run. A restore leaves the relay untouched, so each reproduction survives it together with its ledger line, and the retry extends that reproduction rather than adding a second one.
 </regression_ledger>
 
 <decisions>
@@ -141,7 +141,7 @@ The Close cases for the `authored.txt` rewrite and the self-written stop:
 <relay>
 Files live under `.git_auto_review/<run-stem>/` at the repository root the toplevel `git rev-parse --show-toplevel` reports, so every relay path resolves from that one root. Derive `<run-stem>` as the optional task file's basename without its extension when that path is given, and use `default` when it is omitted; a task path that does not resolve is rejected and the run stops under `<agent_failure_policy>`'s `helper-script` class at init, as the `<inputs>` task-path bullet states.
 
-After `<orient>` accepts the branch, and only then, `scripts/run_relay.sh` creates `.git_auto_review/.gitignore` containing the sole line `*`, creating the `.git_auto_review/` directory as part of that write, creates the stem directory, and clears everything an earlier run left there. A gate return for any round is pre-seeded deliberately, so the run's invoker stages one marked pair per pre-seeded round, `gate-r<round>.txt` plus that round's marker file `gate-r<round>.preseed` beside it, an empty file whose presence alone marks the pair, created by the harness rather than by the gate, before the run starts. The initialise step's clear preserves every marked per-round pair, keyed by its `gate-r<round>.txt`, while removing every other file an earlier run left there. The initialise step then writes an empty `ledger.txt` under the stem, zero reproduction lines, so that path exists before any fixer append.
+After `<orient>` accepts the branch, and only then, `scripts/run_relay.sh` creates `.git_auto_review/.gitignore` containing the sole line `*`, creating the `.git_auto_review/` directory as part of that write, creates the stem directory, and clears everything an earlier run left there. A gate return for any round is pre-seeded deliberately, so the run's invoker stages one marked pair per pre-seeded round, `gate-r<round>.txt` plus that round's marker file `gate-r<round>.preseed` beside it, an empty file whose presence alone marks the pair, created by the harness rather than by the gate, before the run starts. The initialise step's clear preserves every marked per-round pair, keyed by its `gate-r<round>.txt`, while removing every other file an earlier run left there. The initialise step then creates the empty `repro/` directory and writes an empty `ledger.txt` under the stem, zero reproduction lines, so both paths exist before any fixer write.
 
 Each relay file holds exactly one round's record, all under the stem directory:
 
@@ -154,6 +154,7 @@ Each relay file holds exactly one round's record, all under the stem directory:
   verifier-r<round>.txt      triage then delta prompt-plus-return pairs
   round-r<round>.diff.txt    the round's fixer-write diff, diff -U0
   ledger.txt                 the regression ledger
+  repro/                     the run's file reproductions
   report.txt                 the run's report
   pre-fix.patch              per-round captured tracked changes
   pre-fix.untracked.tar      per-round captured untracked files
@@ -171,6 +172,8 @@ Each relay file holds exactly one round's record, all under the stem directory:
 The gate prompt the round composes is persisted beside that round's gate record as `gate-r<round>-prompt.txt`, holding the prompt text the round composed, whether that round invoked `auto_gate_git` or consumed a pre-seeded return.
 
 `ledger.txt` holds the run's regression ledger under **Regression ledger.**, and each of the gate and verifier prompts names it among its inputs so both apply the reproduction-line exclusion **Scope anchor.** defines.
+
+`repro/` holds every file reproduction `auto_fixer_git` writes, and it is the only place that agent writes one; a reproduction never goes into the project's own tree, a test directory included. Because the relay's `.gitignore` covers it, a reproduction stays out of the reviewed change, the snapshot, the Restore path set, and the user's commits, and the next run's initialise step clears it with the rest of the stem.
 
 `report.txt`, written under the stem directory at each stop and reprinted to the caller, is the run's report: the loop's own terminal answer, distinct from the `git_review` report the gate return carries. It carries, in order: a stop line naming the **Stop rule.** condition that ended the run; then one line per finding the run did not fix, carrying its id, heading, location, lane, and either its follow-up task proposal or non-qualifying class under `<convergence>`'s once-stated classification, or the class `triage-not-approved` with the reason `auto_verifier_git` returned for that finding under its triage `<output_contract>`, or the class `charter-set-refused` for each finding of an approved set the CHARTER-before-write validation refused; then the pending decisions, with the wording each records into a supplied task file.
 
@@ -192,7 +195,7 @@ Each round's baseline is that round's pre-fix snapshot: the tracked patch plus t
 
 Check the baseline before every `auto_fixer_git` invocation in the round. The **Stop rule.**'s concurrent-modification condition fires only when the working tree diverges from that snapshot for a reason other than this run's fixer.
 
-Two path sets are outside the guard. The gate's evidence scratch, which `git_review` writes outside the reviewed tree, and the run's ignored relay directory never fire the guard, and a restore never deletes a run file.
+Two path sets are outside the guard. The gate's evidence scratch, which `git_review` writes outside the reviewed tree, and the run's ignored relay directory, its `repro/` reproductions included, never fire the guard, and a restore never deletes a run file.
 
 After every `auto_fixer_git` write in the round, the orchestrator runs the **Regression ledger.** check first, then `<audit_delta>`. **Regression ledger.** and `<audit_delta>` each keep their own one restore-and-retry, so a round may invoke `auto_fixer_git` once for the initial fix and once more per failure class that authorizes a retry. Every invocation receives the round's full approved finding set together with the named failure that class raises, the failing ledger line for a **Regression ledger.** retry and the unmapped hunks for an `<audit_delta>` retry, so a retry re-applies the round's other approved fixes after the restore rather than leaving them unlanded.
 </concurrent_modification_guard>
@@ -243,7 +246,7 @@ Abort and decline are the same terminal move: report the condition and stop ther
 </orient>
 
 <initialise>
-Read the optional task file path and the optional round-cap override from the prompt per `<inputs>`, reporting a phrase whose integer is not a positive integer and proceeding with the default cap, and stopping under `<agent_failure_policy>`'s `helper-script` class when the task path does not resolve as that bullet states. Create the relay directory and its `.gitignore`, and clear the stem's leftovers while preserving every marked pre-seeded round pair, through `scripts/run_relay.sh` per `<relay>`. Write the empty `ledger.txt`.
+Read the optional task file path and the optional round-cap override from the prompt per `<inputs>`, reporting a phrase whose integer is not a positive integer and proceeding with the default cap, and stopping under `<agent_failure_policy>`'s `helper-script` class when the task path does not resolve as that bullet states. Create the relay directory and its `.gitignore`, and clear the stem's leftovers while preserving every marked pre-seeded round pair, through `scripts/run_relay.sh` per `<relay>`. Create the empty `repro/` directory and write the empty `ledger.txt`.
 
 When `scripts/run_relay.sh` exits non-zero, the run stops under `<agent_failure_policy>` at that point and makes no relay write of its own: no `.git_auto_review` directory, no `.gitignore`, and no `ledger.txt`, so a run that dies at init leaves the repository exactly as it found it. The stop line this run reprints names the class by its literal label `helper-script`, the same label `<agent_failure_policy>` assigns that class.
 </initialise>

@@ -429,9 +429,10 @@ raises `RuntimeError` when stage.sh fails or when the sandbox path it prints is
 empty or not a directory. Before that guard, a failed stage left `eval` an
 empty string, the script still reached `printf`, and the runner got an empty
 path. `pathlib.Path("")` is the current directory, so the worker would have
-started in the repository checkout. `agent_spinner` and `guardrail_audit` call
-stage.sh through `subprocess.check_output`, which already raises on a failed
-stage.
+started in the repository checkout. `agent_spinner`, `guardrail_audit`, and
+every other runner that stages through `stage.sh` run it under `bash -c` with
+the guard above, so a failed or empty stage raises `RuntimeError` in each of
+them.
 
 `python3 tests/lib/check_stage_guard.py <evals_dir>` imports that runner,
 points its `STAGE` at a stand-in stager that fails and then at one that exits 0

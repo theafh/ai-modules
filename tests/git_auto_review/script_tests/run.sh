@@ -269,11 +269,19 @@ s7_relay_init_and_preseed() {
     "$(cat "$dir/.git_auto_review/.gitignore")" "*" || ok=false
   assert_file "stem ledger" "$stem/ledger.txt" || ok=false
   assert_eq "ledger is empty" "$(wc -c < "$stem/ledger.txt" | tr -d ' ')" "0" || ok=false
+  [[ -d "$stem/repro" ]] || { log "    init created no repro/ directory"; ok=false; }
+  # The reproductions directory sits under the relay's ignore, so it never
+  # surfaces as an untracked path in the reviewed tree.
+  assert_eq "repro/ is ignored" \
+    "$(cd "$dir" && git status --porcelain --untracked-files=all -- .git_auto_review)" "" \
+    || ok=false
 
-  # Leftovers from an earlier run, a stale gate-r1.txt among them, are cleared.
+  # Leftovers from an earlier run, a stale gate-r1.txt and a stale
+  # reproduction among them, are cleared.
   printf 'stale return\n' > "$stem/gate-r1.txt"
   printf 'stale fixer\n' > "$stem/fixer-r1.txt"
   printf 'stale report\n' > "$stem/report.txt"
+  printf 'exit 0\n' > "$stem/repro/finding-1.sh"
   # A deliberately pre-seeded pair survives, marker and return together.
   printf 'preseeded r2 return\n' > "$stem/gate-r2.txt"
   : > "$stem/gate-r2.preseed"
@@ -281,6 +289,9 @@ s7_relay_init_and_preseed() {
   [[ -f "$stem/gate-r1.txt" ]] && { log "    stale gate-r1.txt survived init"; ok=false; }
   [[ -f "$stem/fixer-r1.txt" ]] && { log "    stale fixer-r1.txt survived init"; ok=false; }
   [[ -f "$stem/report.txt" ]] && { log "    stale report.txt survived init"; ok=false; }
+  [[ -f "$stem/repro/finding-1.sh" ]] \
+    && { log "    stale reproduction survived init"; ok=false; }
+  [[ -d "$stem/repro" ]] || { log "    re-init left no repro/ directory"; ok=false; }
   assert_file "preseed pair return survives" "$stem/gate-r2.txt" || ok=false
   assert_file "preseed pair marker survives" "$stem/gate-r2.preseed" || ok=false
   assert_eq "preseed return kept verbatim" \
@@ -555,6 +566,16 @@ s12_isolation_allowlist() {
   $ok
 }
 
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox repository, before any worker could start.
+s14_eval_runner_stage_guard() {
+  local out rc
+  out=$(python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" \
+    "$REPO_ROOT/tests/git_auto_review/evals" 2>&1) && rc=0 || rc=$?
+  [[ "$rc" == 0 ]] || log "$out"
+  assert_eq "tests/lib/check_stage_guard.py exit" "$rc" "0"
+}
+
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "new pseudo-XML artefacts lint clean" s2_pseudo_xml_lints
 scenario s3 "lane classification is stated once and read by the gate" s3_lane_classification_single_source
@@ -568,6 +589,7 @@ scenario s10 "run_restore.sh reports the state it cannot reproduce" s10_restore_
 scenario s11 "the Makefile EXCLUDE prune covers a repository-root run" s11_makefile_exclude_prune
 scenario s12 "the shared isolation allowlist names the harness prefix" s12_isolation_allowlist
 scenario s13 "run_restore.sh reproduces a clean pre-fix tree" s13_restore_clean_tree
+scenario s14 "the eval runner stops on a failed or empty stage" s14_eval_runner_stage_guard
 
 log ""
 log "================================================================"

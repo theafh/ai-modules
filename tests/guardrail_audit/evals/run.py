@@ -23,6 +23,7 @@ import argparse
 import datetime
 import json
 import pathlib
+import shlex
 import subprocess
 import sys
 import time
@@ -72,19 +73,43 @@ def source_roots_for():
 
 
 def stage(eval_id: str, target: pathlib.Path) -> dict:
-    out = subprocess.check_output(
-        ["bash", str(STAGE), eval_id, str(target)],
-        text=True,
+    """Run stage.sh and read back the staged values.
+
+    stage.sh prints printf-%q-quoted `name=value` lines meant to be `eval`'d in
+    bash, so bash evaluates them and re-emits the raw values NUL-separated. The
+    script captures stage.sh's output before evaluating it and exits with
+    stage.sh's status when it fails, so a failed stage raises here. An empty or
+    missing sandbox_proj raises too, because pathlib.Path("") is the current
+    directory and the worker would otherwise start in the checkout.
+    """
+    emit = (
+        f'out="$(bash {shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
+        f'{shlex.quote(str(target))})" || exit $?; eval "$out"; '
+        'printf "%s\\0%s\\0%s\\0%s\\0" '
+        '"$sandbox_proj" "$skill_path" "$hub_path" "$prompt"'
     )
-    env: dict[str, str] = {}
-    for line in out.splitlines():
-        if "=" not in line:
-            continue
-        key, raw = line.split("=", 1)
-        env[key] = subprocess.check_output(
-            ["bash", "-c", f"printf %s {raw}"], text=True
-        ).rstrip("\n")
-    return env
+    result = subprocess.run(
+        ["bash", "-c", emit], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"stage.sh failed for eval {eval_id} (rc={result.returncode}): "
+            f"{result.stderr.strip()}"
+        )
+    sandbox_proj, skill_path, hub_path, prompt, _rest = (
+        result.stdout.split("\0")
+    )
+    if not sandbox_proj or not pathlib.Path(sandbox_proj).is_dir():
+        raise RuntimeError(
+            f"stage.sh staged no sandbox project for eval {eval_id}: "
+            f"{sandbox_proj!r}"
+        )
+    return {
+        "sandbox_proj": sandbox_proj,
+        "skill_path": skill_path,
+        "hub_path": hub_path,
+        "prompt": prompt,
+    }
 
 
 def worker_completed(rc: int, stdout: str) -> bool:
@@ -98,7 +123,13 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
 
     root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
-        staged = stage(eval_id, root)
+        try:
+            staged = stage(eval_id, root)
+        except RuntimeError as exc:
+            message = str(exc)
+            (eval_dir / "stderr.txt").write_text(f"{message}\n")
+            print(f"  [{eval_id}] FAIL — {message}\n", flush=True)
+            return False, False
         workdir = staged["sandbox_proj"]
         model_label = resolved.worker_model or "<inherit>"
 

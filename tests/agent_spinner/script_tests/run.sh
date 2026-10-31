@@ -211,6 +211,13 @@ sys.exit(0 if blocks and all(
 check "no template claims precedence over the surrounding conversation" \
   tree_lacks "$REFS" 'takes? precedence|override[s]? (any|all|the)|ignore (all |any )?(previous|prior|earlier)|supersede[s]? (any|all)|regardless of (any|all)|highest authority'
 
+# --- eval harness -----------------------------------------------------------
+# The eval runner's stage() raises on a stage.sh that fails, and on one that
+# exits 0 without naming a sandbox project, before any worker could start.
+check "the eval runner's stage() raises on a failed or empty stage" \
+  python3 "$REPO_ROOT/tests/lib/check_stage_guard.py" \
+  "$REPO_ROOT/tests/agent_spinner/evals"
+
 # --- trigger evals ----------------------------------------------------------
 check "trigger eval set exists" test -f "$TRIGGERS"
 check "trigger eval set is valid JSON" jq empty "$TRIGGERS"

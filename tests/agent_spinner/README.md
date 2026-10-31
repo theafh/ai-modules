@@ -27,9 +27,10 @@ tests/agent_spinner/
   probe's four capabilities and its deployment-versus-callability rule, the
   per-harness greps that must return nothing, the one-way advisory direction
   (no shipped surface cites `agent_spinner` back), the reference set and its
-  action-first templates, the trigger eval set, and registration lockstep
-  across both plugin manifests, both marketplaces, both READMEs, and the wiki
-  concept page.
+  action-first templates, the trigger eval set, registration lockstep across
+  both plugin manifests, both marketplaces, both READMEs, and the wiki concept
+  page, and `script_tests/` proves the eval runner's stop on a failed or
+  empty stage through `tests/lib/check_stage_guard.py`.
 - **evals**: 21 staged fixtures, one per independently staged behavioural
   Acceptance item in the task that introduced the skill. Every compound
   acceptance bullet was split into its own fixture, so a failure names one

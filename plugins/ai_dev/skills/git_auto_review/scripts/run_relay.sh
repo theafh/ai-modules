@@ -3,7 +3,8 @@
 #
 # Creates the repository-root `.git_auto_review/.gitignore` holding the sole
 # line `*`, creates the run-stem directory, clears every file an earlier run
-# left there except the deliberately pre-seeded marked gate-return pairs, and
+# left there except the deliberately pre-seeded marked gate-return pairs,
+# creates the empty `repro/` directory that holds the run's reproductions, and
 # writes the empty ledger the run's first fixer appends to.
 #
 # The stem is the optional task file's basename without its extension, or
@@ -49,6 +50,9 @@ Behavior:
   - Creates `.git_auto_review/<stem>/` and clears every file an earlier run
     left there, preserving one marked pair per pre-seeded round:
     `gate-r<round>.txt` beside an empty `gate-r<round>.preseed` marker.
+  - Creates an empty `repro/` directory under the stem, the only place the
+    run's fixer writes reproductions, so they stay ignored and are cleared
+    with the stem on the next run.
   - Writes an empty `ledger.txt` under the stem, zero reproduction lines.
 
 Exit codes:
@@ -146,6 +150,7 @@ main() {
 
     local stem_dir="$repo_root/.git_auto_review/$stem"
     mkdir -p "$stem_dir" || die_env "cannot create $stem_dir"
+    mkdir -p "$stem_dir/repro" || die_env "cannot create $stem_dir/repro"
     : > "$stem_dir/ledger.txt" || die_env "cannot write $stem_dir/ledger.txt"
 
     printf 'Relay initialised at %s\n' "$stem_dir"
