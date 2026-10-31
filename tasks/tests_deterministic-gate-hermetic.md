@@ -2,7 +2,7 @@
 description: "Make the deterministic test gate hermetic and green: fix skill_doctor's mixed-family grouping failure, and remove git_review's dependence on ambient git core.quotePath."
 scope: "local test harnesses"
 created: 2026-10-30T23:33:51
-updated: 2026-10-31T08:10:22
+updated: 2026-10-31T10:36:25
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -72,32 +72,44 @@ ambient git config, which is the defect here.
 
 Fix the product-adjacent grouping first, then make the harness hermetic.
 
-1. **`skill_doctor` grouping.** Decide between narrowing `declaring_hubs()` so
-   a declaration only binds a name sharing the hub's own family token, and
-   narrowing the `git_auto_review` `<family>` block so it stops declaring
-   `git_review`. Choose the side that keeps the check's intent — a sibling
-   finding's message naming a real family — and record the choice in the code
-   comment that states the resolution rule. Whichever side changes, the
-   existing `self_whole_repo_groups_each_hold_one_family` check must pass on
-   the repo's own tree, and the fixture cases that already pass must keep
-   passing.
+1. **`skill_doctor` grouping.** Remove `git_review` from `git_auto_review`'s
+   `<family>` block. `declaring_hubs()` stays as written: its docstring states
+   that a block binds a member whose own name shares no prefix with the family,
+   so the declaration is what carries that member's family, and the
+   `sibling_group_binds_every_declared_member` and
+   `declared_span_compares_across_the_plugin_split` fixtures assert that
+   cross-token authority on the repo's own tree. Record the resolution rule
+   beside the declaration it governs. The existing
+   `self_whole_repo_groups_each_hold_one_family` check must pass on the repo's
+   own tree, and the fixture cases that already pass must keep passing.
 2. **`git_review` hermeticity.** Give the affected scenarios their own git
-   configuration rather than the ambient one. Set `core.quotePath` explicitly
-   in the scratch repository the scenario stages, and unset or override the
-   `GIT_CONFIG_*` environment the suite inherits for the commands that produce
-   the quoted-path evidence. Keep the assertions as they are: the scenarios
-   assert a real property of the bundled scripts, and the fix belongs in the
-   fixture, not in the check. Add one scenario that runs the quoted-path
-   assertions with the ambient variables deliberately set to the opposite
-   value, so the pin is proved rather than assumed.
+   configuration rather than the ambient one. Git resolves `core.quotePath`
+   from the inherited `GIT_CONFIG_COUNT` / `GIT_CONFIG_KEY_*` /
+   `GIT_CONFIG_VALUE_*` environment ahead of any repository config, and a
+   command-line `-c` ahead of both, so clearing that environment is the
+   operative half of the pin: clear those variables once at suite entry,
+   beside the suite's own prologue, so the pin covers every git invocation the
+   suite makes — the collectors that produce the quoted-path evidence and the
+   scenarios' own expectation computations alike, including the
+   `git diff --name-only` fixture-shape guards and the `git diff --name-only` /
+   `--numstat` / `--name-status` calls that build `expected_paths` and the
+   line-count baselines. The repository setting (`git config core.quotepath
+   true`) that the scenarios already carry is the fallback for a clean
+   environment, so it stays as written. Keep the assertions as they are: the
+   scenarios assert a real property of the bundled scripts, and the fix belongs
+   in the fixture, not in the check. Add one scenario that re-exports the
+   inverted value for its own git invocations and runs the quoted-path
+   assertions under it, so the pin is proved rather than assumed.
 3. **Record the ambient-config class.** Note in `tests/AGENTS.md` and
    `tests/CLAUDE.md`, in lockstep, that a script test pinning git output shape
-   sets the relevant git config in its own scratch repo instead of inheriting
-   the operator's. Cite the `git_review` scenario as the reference.
+   clears or overrides the inherited `GIT_CONFIG_*` environment for every git
+   invocation it makes, with a `git config` setting in its own scratch repo as
+   the clean-environment fallback. Cite the `git_review` scenario as the
+   reference.
 
-**Out of scope:** The `make lint` surface, which already passes. Changing what
-either suite asserts about product behaviour. Parallelizing these suites,
-which the sibling parallel-eval tasks own.
+**Out of scope:** The `make lint` surface, which already passes. Changing the
+assertions the existing scenarios make about product behaviour. Parallelizing
+these suites, which the sibling parallel-eval tasks own.
 
 ## Acceptance
 
@@ -115,10 +127,13 @@ which the sibling parallel-eval tasks own.
   `GIT_CONFIG_VALUE_0=false` exported, and also exits zero without them. Both
   runs are recorded for commit in `tests/git_review/results/` as a note naming
   the two commands and their tallies.
+- Every suite that the selector `tests/*/script_tests/run.sh` finds exits zero
+  with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.quotePath`, and
+  `GIT_CONFIG_VALUE_0=false` exported, so the suite set the Goal names is
+  proven by running it rather than inferred from the two suites above.
 - A `git_review` scenario stages a scratch repo with the ambient
   `core.quotePath` deliberately inverted and still passes its quoted-path
   assertions, proving the suite no longer reads the operator's setting.
-- `tests/AGENTS.md` and `tests/CLAUDE.md` carry the same statement that a
-  script test pinning git output shape sets that config in its own scratch
-  repo, and the two files remain in lockstep on it.
+- `tests/AGENTS.md` and `tests/CLAUDE.md` both carry the statement `## Approach`
+  step 3 defines, and the two files remain in lockstep on it.
 - `make lint` passes.

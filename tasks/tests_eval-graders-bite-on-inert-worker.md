@@ -2,7 +2,7 @@
 description: "Make every behavioral eval grader fail an inert worker: assert at least one positive artifact so absence-only checks stop scoring a no-op run as a pass."
 scope: "local test harnesses"
 created: 2026-10-30T23:33:51
-updated: 2026-10-31T09:40:11
+updated: 2026-10-31T11:09:10
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -132,9 +132,22 @@ worker, preferring a filesystem or invocation fact over a response claim, as
    code and `note_response` carries only what no check can decide. In
    `tests/git_refresh/evals/grade.sh`, the passage naming "the helper
    invocation in evals 1, 2, and 4" and "response lines never decide the
-   exit code" becomes a statement that eval 4's `default_run_called` /
-   `prune_gone_after_default_run` pair decides the exit code, while evals 1
-   and 2's invocation lines stay operator-confirmed.
+   exit code" becomes a statement that eval 4's `default_run_called` check
+   decides the exit code, reading the recorded no-argument `refresh_repo.sh`
+   call shape a plain-refresh run logs; `prune_gone_after_default_run`
+   remains eval 3's check, paired with eval 3's `default_run_called`, and
+   evals 1 and 2's invocation lines stay operator-confirmed. Rewrite the two
+   harness READMEs that state the same division in the same pass. In
+   `tests/git_checkout/evals/README.md`, the passage beginning "The
+   expectations that speak only about the response or about which helper
+   ran" and ending "confirm those by reading `response.txt`" becomes a
+   statement that the eval 3, 5, 6, and 7 helper-invocation check decides
+   the exit code and `response` lines carry only what no check decides. In
+   `tests/git_refresh/evals/README.md`, the passage beginning "The
+   expectations that speak only about the response, and which helper ran in
+   evals 1, 2, and 4" becomes that same post-change division, with eval 4's
+   helper-invocation check deciding the exit code and evals 1 and 2's
+   invocation lines staying operator-confirmed.
 2. **Add the positive half to each absence-only state check.** An eval that
    asserts "no branch was created" also asserts the evidence that the run
    reached the decision: the helper log line, the reported cause token, or the
@@ -157,7 +170,24 @@ worker, preferring a filesystem or invocation fact over a response claim, as
    `tests/task/evals/fixtures/fix_coherence*/setup.sh` comments each become a
    statement that the grader reads the response through `RESPONSE_FILE` and
    that `coherence-report.md` remains the graded surface for the coherence
-   evals' structured fields.
+   evals' structured fields. Rewrite in place, in the same pass, every passage
+   under `tests/task/` that the new `RESPONSE_FILE` read falsifies, locating
+   them by search over that tree rather than by a fixed list: any passage
+   stating that the grader cannot read the agent's response, or that a
+   verdict-string expectation stays operator-confirmed for that reason,
+   becomes the post-change division. The passages already located are
+   `tests/task/evals/README.md`'s "the prose verdict strings are the one place
+   free-form response text is load-bearing" passage and its "stay for you to
+   confirm from the captured `response.txt`" passage, `tests/task/evals/grade.sh`'s
+   head block beginning "Output-verdict expectations" and ending "the
+   LLM-graded expectations in evals.json", `tests/task/evals/run.py`'s
+   "prose-verdict confirmation the operator does by reading `response.txt`"
+   and "remain operator-confirmed" passages, and `tests/task/RUNBOOK.md`'s
+   "leave verdict-string checks to `expectations[]` (agent-attest)" line. Each
+   becomes a statement that the grader reads the response through
+   `RESPONSE_FILE` and that `agent-attest` covers only the judgements no check
+   can decide. The `grade.sh` head block is a distinct passage from the
+   `coherence_wrote_nothing` comment step 3 already names.
 4. **Prove the fail branch in the harness's own script tests.** Each harness's
    `script_tests/` gains one scenario that stages an eval, grades it against an
    empty response, and asserts a non-zero exit. That scenario is the regression
@@ -214,13 +244,17 @@ on `git_auto_review/script_tests/run.sh`, so whichever lands second appends.
   planted subject, and the same run against an empty response file exits
   non-zero.
 - Searching `tests/git_checkout/evals/grade.sh`,
-  `tests/git_refresh/evals/grade.sh`, `tests/task/evals/grade.sh`,
-  `tests/task/evals/stage.sh`, `tests/task/evals/README.md`, and the four
-  `tests/task/evals/fixtures/fix_coherence*/setup.sh` files for `never decide
-  the exit code`, `cannot read the agent's response text`, and `never sees the
-  agent's response text` returns no passage asserting that a response or
-  helper-invocation expectation cannot decide the exit code, and every named
-  file states the post-change division in place.
+  `tests/git_checkout/evals/README.md`, `tests/git_refresh/evals/grade.sh`,
+  `tests/git_refresh/evals/README.md`, and every tracked file under
+  `tests/task/`, each read as continuous prose with leading comment markers
+  and hard wraps collapsed to single spaces and emphasis markers stripped,
+  for `never decide the exit code`, `cannot read the agent's response text`,
+  `never sees the agent's response text`, `cannot be checked here`, `which
+  helper ran`, `the one place free-form response text is load-bearing`,
+  `stay for you to confirm from the captured`, `remain operator-confirmed`,
+  and `leave verdict-string checks to` returns no passage asserting that a
+  response or helper-invocation expectation cannot decide the exit code, and
+  every file the selector reaches states the post-change division in place.
 - The probe is recorded for commit as a script or a note under
   `tests/lib/`, naming the command that runs it and the harness set it covers,
   so a later change can re-measure the same property rather than re-derive it.
