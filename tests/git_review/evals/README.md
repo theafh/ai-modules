@@ -2,7 +2,10 @@
 
 Forty-eight evals over thirty-six fixtures, driven by `run.py`, which spawns one
 vendor worker per eval, the Cursor `agent -p` worker by default, and grades the
-result with `grade.sh`.
+result with `grade.sh`. Each eval is one job in the shared pool from
+`tests/lib/eval_runner.py` (`--workers`, default 4,
+`vendor.DEFAULT_PARALLEL_WORKERS`, each job with its own `TMPDIR`), and every
+eval stages its own sandbox root.
 The schema is skill-creator's canonical `evals.json`
 (`{id, prompt, expected_output, files, expectations[]}`) plus an optional
 `dependencies` object for the verdict cache. `dependencies` maps a skill-root
@@ -22,11 +25,14 @@ for the shared key policy.
 ## Running
 
 ```bash
-python3 tests/git_review/evals/run.py            # every eval
-python3 tests/git_review/evals/run.py 13 32 44   # a subset
-python3 tests/git_review/evals/run.py --force 1  # ignore the cached verdict
+python3 tests/git_review/evals/run.py             # every eval, 4 at a time
+python3 tests/git_review/evals/run.py --workers 1 # one eval at a time
+python3 tests/git_review/evals/run.py 13 32 44    # a subset
+python3 tests/git_review/evals/run.py --force 1   # ignore the cached verdict
 ```
 
+`--workers` defaults to 4 (`vendor.DEFAULT_PARALLEL_WORKERS`), and
+`--workers 1` is the serial opt-in. Each job gets its own `TMPDIR`.
 `RUNBOOK.md` in the parent directory has the staging, grading, cache, and
 timeout details.
 

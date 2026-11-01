@@ -100,7 +100,7 @@ suite asserts.
 
 **Co-edits.** The `### Parallel workers` sections are the same passages four
 live tasks rewrite, so whichever lands second rebases. [The git-review
-parallel-evals task](tests_git-review-parallel-evals.md) and [the task-hub
+parallel-evals task](archive/tests_git-review-parallel-evals.md) and [the task-hub
 parallel-evals task](tests_task-hub-parallel-evals.md) both rewrite those two
 sections' runner lists and serial-exception lists. [The trigger-evals
 cursor-vendor task](tests_trigger-evals-cursor-vendor.md) rewrites the trigger

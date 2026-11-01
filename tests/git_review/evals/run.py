@@ -3,28 +3,34 @@
 
 One vendor-resolved print-mode worker runs per eval, so the skill under test
 uses one explicit worker policy each run: the worker runs on Cursor by
-default (`auto`), `--vendor claude` (`sonnet`) runs where Claude is needed or asked for, and `--model ''` inherits the vendor CLI default. The meta level on top stays model-free: the deterministic
-`grade.sh`, and the operator's reading of `response.txt` for the prose-verdict
-expectations.
+default (`auto`), `--vendor claude` (`sonnet`) runs where Claude is needed or
+asked for, and `--model ''` inherits the vendor CLI default. The meta level on
+top stays model-free: the deterministic `grade.sh`, and the operator's reading
+of `response.txt` for the prose-verdict expectations.
 
-Per eval the runner:
+Each eval is one job in the shared pool from `tests/lib/eval_runner.py`
+(`--workers`, default `vendor.DEFAULT_PARALLEL_WORKERS`, each job with its own
+TMPDIR). Every eval stages its own sandbox root, so no two jobs share a
+repository. Per eval the job:
 
-1. Stages a fresh sandbox via `stage.sh <id> <target>` and reads back
-   `sandbox_repo`, `prompt`, `target`, `gh_env`.
+1. Stages a fresh sandbox via `stage.sh <id> <target>` under the job
+   environment and reads back `sandbox_repo`, `prompt`, `target`, `gh_env`.
 2. Micro-deploys git_review, git_checkout, git_commit, git_refresh, and the
    guardrail hub through the deploy script into a scratch home, wraps each
    deployed bundled script in a logging shim that appends to the sandbox's
    `script_calls.log` and then runs an unshimmed copy of the deployed script
-   kept in that scratch home, and runs a vendor-resolved print-mode worker
-   with the sandbox repo as the working directory. When the eval staged a
-   stub `gh`, its `gh_env` file is folded into the worker environment and its
-   `bin` directory goes first on PATH, so the forge layer is served from
-   fixture JSON and every call is recorded.
-3. Captures `response.txt` / `stderr.txt` / `timing.json` (with the
+   kept in that scratch home, points the worker's TMPDIR, TEMP, and TMP at the
+   job's own directory, and runs a vendor-resolved print-mode worker with the
+   sandbox repo as the working directory. When the eval staged a stub `gh`,
+   its `gh_env` file is folded into the worker environment and its `bin`
+   directory goes first on PATH, so the forge layer is served from fixture JSON
+   and every call is recorded.
+3. Captures `response.txt` / `stderr.txt` / `timing.json` (with `started_at`,
+   `ended_at`, the job `tmpdir`, and the
    `artefacts_read_from_micro_deployment` integrity record) under
-   `workspace/run-<ts>/<id>/`.
+   `tests/git_review/workspace/run-<ts>/<id>/`.
 4. Grades the post-run sandbox with `grade.sh <id> <sandbox_repo>
-   <response.txt>`.
+   <response.txt>` under the same job environment.
 
 Exit code is 0 only when every eval's worker completed cleanly (CLI rc 0 with a
 real response) AND its deterministic grade passed. A timed-out or crashed worker
@@ -34,14 +40,13 @@ partially-correct sandbox state an aborted run left.
 Usage:
     python3 tests/git_review/evals/run.py [eval_id ...]   # default: all
       [--vendor claude|cursor] [--model sonnet|auto|'']
-      [--timeout 600] [--worker-bin <bin>] [--force] [--no-cache]
+      [--workers 4] [--timeout 600] [--worker-bin <bin>] [--force] [--no-cache]
 """
 
 from __future__ import annotations
 
 import argparse
 import datetime
-import json
 import os
 import pathlib
 import shlex
@@ -49,22 +54,28 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Mapping
 
 THIS = pathlib.Path(__file__).resolve().parent
 STAGE = THIS / "stage.sh"
 GRADE = THIS / "grade.sh"
 EVALS = THIS / "evals.json"
-WORKSPACE = THIS / "workspace"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402  (shared local test helper; run output is gitignored)
+import eval_runner  # noqa: E402  (shared Pattern A job pool)
 import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper)
 import worker_isolation  # noqa: E402  (shared sandbox-root helper)
 
+# The sole run root: tests/git_review/workspace, beside evals/.
+WORKSPACE = eval_runner.resolve_workspace(THIS)
+
 ARTEFACTS = ["git_review", "git_checkout", "git_commit", "git_refresh", "guardrail"]
 
 ISOLATION_PREFIX = "git_review_"
+
+DEFAULT_IDS = eval_runner.load_eval_ids(EVALS)
 
 
 def source_roots_for():
@@ -118,10 +129,6 @@ def shim_deployed_scripts(
             deployed_script.chmod(0o755)
 
 
-def default_ids():
-    return [str(e["id"]) for e in json.loads(EVALS.read_text())["evals"]]
-
-
 WORKER_PROMPT = """\
 You are running an automated skill regression eval. Do exactly this:
 
@@ -140,7 +147,7 @@ You are running an automated skill regression eval. Do exactly this:
 """
 
 
-def stage(eval_id: str, target: pathlib.Path) -> dict:
+def stage(eval_id: str, target: pathlib.Path, env: Mapping[str, str]) -> dict:
     """Run stage.sh and read back the staged values. stage.sh prints
     printf-%q-quoted `name=value` lines meant to be `eval`'d in bash, so we let
     bash eval them and re-emit the raw values NUL-separated. The script
@@ -155,7 +162,7 @@ def stage(eval_id: str, target: pathlib.Path) -> dict:
         '"$sandbox_repo" "$prompt" "$target" "$gh_env"'
     )
     result = subprocess.run(
-        ["bash", "-c", emit], capture_output=True, text=True
+        ["bash", "-c", emit], capture_output=True, text=True, env=dict(env)
     )
     if result.returncode != 0:
         raise RuntimeError(
@@ -222,14 +229,24 @@ def worker_completed(rc: int, stdout: str) -> bool:
     return rc == 0 and bool(stdout.strip())
 
 
+def _apply_job_temp(deploy_env: dict[str, str], job_env: Mapping[str, str]) -> None:
+    """Point the worker at this job's TMPDIR, TEMP, and TMP."""
+
+    for key in ("TMPDIR", "TEMP", "TMP"):
+        value = job_env.get(key)
+        if value:
+            deploy_env[key] = value
+
+
 def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
-            timeout: int, cache, force: bool):
+            timeout: int, cache, force: bool, env: Mapping[str, str]):
+    """Run one eval inside the caller's job. Returns (passed, was_cached)."""
     eval_dir = run_dir / eval_id
     eval_dir.mkdir(parents=True, exist_ok=True)
 
     root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
-        staged = stage(eval_id, root)
+        staged = stage(eval_id, root, env)
         workdir = staged["sandbox_repo"]
         model_label = resolved.worker_model or "<inherit>"
 
@@ -243,28 +260,30 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 prompt=staged["prompt"],
                 dependencies=eval_cache.dependencies_for(EVALS, eval_id),
             )
-            if not force:
-                hit = cache.lookup(eval_id, key)
-                if hit is not None:
-                    eval_cache.write_replay_artifacts(eval_dir, hit)
-                    verdict = "PASS" if hit["passed"] else "FAIL"
-                    print(f"  [eval-{eval_id}] CACHED {verdict} "
-                          f"(graded {hit.get('graded_at', '?')}, "
-                          f"model={hit.get('model', '?')}); skipped {resolved.config.label}, "
-                          "--force to re-run\n", flush=True)
-                    return hit["passed"], True
+        hit = eval_runner.cache_lookup(cache, eval_id, key, eval_dir, force=force)
+        if hit is not None:
+            verdict = "PASS" if hit["passed"] else "FAIL"
+            print(f"  [eval-{eval_id}] CACHED {verdict} "
+                  f"(graded {hit.get('graded_at', '?')}, "
+                  f"model={hit.get('model', '?')}); skipped {resolved.config.label}, "
+                  "--force to re-run\n", flush=True)
+            return bool(hit["passed"]), True
 
         target_root = pathlib.Path(staged["target"])
         stub = " (stub gh)" if staged["gh_env"] else ""
         print(f"  [eval-{eval_id}] running {resolved.config.label} "
               f"(model={model_label}){stub} ...", flush=True)
-        start = time.time()
+        started_at = time.time()
         # The skills deploy into a scratch home beside, never inside, the repo
         # under review, so a review never sees a copied skill tree in its worktree.
         with micro_deploy.micro_deploy(
             resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
         ) as md:
             shim_deployed_scripts(md, target_root)
+            # The worker writes its scratch files into the job's own TMPDIR.
+            # A fixture that sets TMPDIR in gh_env (push_approval points it at
+            # the eval target so report.md's mtime is gradeable) folds over it.
+            _apply_job_temp(md.env, env)
             md.env.update(env_for(md.env, staged["gh_env"]))
             prompt = WORKER_PROMPT.format(
                 skill_path=md.path_map["git_review"],
@@ -280,32 +299,38 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             )
             rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
             integrity, checkout_unread = micro_deploy.provenance_records(worker)
-        duration_s = time.time() - start
+        ended_at = time.time()
+        duration_s = ended_at - started_at
 
-        response_path = eval_dir / "response.txt"
-        response_path.write_text(stdout if isinstance(stdout, str) else stdout.decode())
-        (eval_dir / "stderr.txt").write_text(
-            stderr if isinstance(stderr, str) else stderr.decode())
-        (eval_dir / "timing.json").write_text(json.dumps({
-            "eval_id": eval_id,
-            "duration_s": duration_s,
-            "worker_rc": rc,
-            "claude_rc": rc,
-            "model": model_label,
-            "artefacts_read_from_micro_deployment": integrity,
-                "checkout_unread": checkout_unread,
-        }, indent=2))
+        eval_runner.write_run_artifacts(
+            eval_dir,
+            stdout=stdout,
+            stderr=stderr,
+            eval_id=eval_id,
+            duration_s=duration_s,
+            worker_rc=rc,
+            model=model_label,
+            started_at=started_at,
+            ended_at=ended_at,
+            tmpdir=env.get("TMPDIR"),
+            artefacts_read_from_micro_deployment=integrity,
+            checkout_unread=checkout_unread,
+        )
 
         # Keep the call logs beside the response: they are half the evidence for
         # every publishing eval and the sandbox is discarded with the run directory.
         for log_name in ("gh_calls.log", "script_calls.log"):
-            src_log = pathlib.Path(staged["target"]) / log_name
+            src_log = target_root / log_name
             if src_log.exists():
                 (eval_dir / log_name).write_text(src_log.read_text())
 
+        # The grader runs under the job's environment, so its mktemp stays in
+        # the job's TMPDIR. The three-argument form is this harness's canonical
+        # grade call: eval id, sandbox repo, and the captured response path.
+        response_path = eval_dir / "response.txt"
         grade = subprocess.run(
             ["bash", str(GRADE), eval_id, workdir, str(response_path)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, env=dict(env),
         )
         (eval_dir / "grading.txt").write_text(grade.stdout + grade.stderr)
         print(grade.stdout, end="", flush=True)
@@ -339,8 +364,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         # Cache only a conclusive verdict from a completed worker: a timeout or
         # crash is transient rather than a property of the inputs, so caching it
         # would replay a spurious verdict on a later clean run.
-        if cache is not None and completed:
-            cache.record(
+        if completed:
+            eval_runner.cache_record(
+                cache,
                 eval_id,
                 key,
                 passed=passed,
@@ -356,10 +382,13 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Run the git_review behavioral evals on a vendor worker."
+    )
     parser.add_argument("ids", nargs="*", default=None,
-                        help="Eval ids to run (default: every id in evals.json)")
+                        help=f"Eval ids to run (default: {' '.join(DEFAULT_IDS)}).")
     vendor.add_vendor_arguments(parser)
+    eval_runner.add_workers_argument(parser)
     parser.add_argument("--timeout", type=int, default=600,
                         help="Per-eval worker timeout in seconds (default 600). "
                              "A full review reads every changed file, so these "
@@ -371,7 +400,13 @@ def main() -> int:
                         help="Neither read nor write the verdict cache.")
     args = parser.parse_args()
 
-    ids = args.ids if args.ids else default_ids()
+    ids = list(args.ids) if args.ids else list(DEFAULT_IDS)
+    unknown = [eval_id for eval_id in ids if eval_id not in DEFAULT_IDS]
+    if unknown:
+        parser.error(
+            f"unknown eval id(s) {', '.join(unknown)}; "
+            f"valid: {' '.join(DEFAULT_IDS)}"
+        )
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
@@ -382,26 +417,39 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}; evals: {ids}"
+        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
     )
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")
 
     micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
-    # Sequential on purpose: two review workers on one machine contend for the
-    # model and both slow past the per-eval timeout.
-    results = {i: run_one(i, run_dir, resolved, args.timeout, cache, args.force)
-               for i in ids}
+    def make_job(eval_id: str) -> eval_runner.JobFn:
+        def job(env: Mapping[str, str]) -> tuple[bool, bool]:
+            return run_one(eval_id, run_dir, resolved, args.timeout, cache,
+                           args.force, env)
 
-    ok = sum(1 for passed, _ in results.values() if passed)
-    cached_n = sum(1 for _, was_cached in results.values() if was_cached)
-    print("=" * 56)
-    print(f"graded: {ok}/{len(results)} evals passed ({cached_n} from cache)")
-    for i, (passed, was_cached) in results.items():
-        print(f"  eval-{i}: {'PASS' if passed else 'FAIL'}"
-              f"{' (cached)' if was_cached else ''}")
-    return 0 if ok == len(results) else 1
+        return job
+
+    def on_error(index: int, exc: Exception) -> tuple[bool, bool]:
+        print(f"  [eval-{ids[index]}] FAIL — harness fault: {exc}\n", flush=True)
+        return False, False
+
+    # Parallel by default: every eval stages its own sandbox root and
+    # eval_runner gives every job its own TMPDIR, so no two jobs share a
+    # repository or a temp directory. Model contention is a --timeout and
+    # --workers tuning concern; pass --workers 1 to serialize.
+    results = eval_runner.run_jobs(
+        [make_job(eval_id) for eval_id in ids],
+        workers=args.workers,
+        on_error=on_error,
+    )
+    rows = [
+        (f"eval-{eval_id}", passed, was_cached)
+        for eval_id, (passed, was_cached) in zip(ids, results)
+    ]
+    eval_runner.print_summary(rows)
+    return 0 if all(passed for _eval_id, passed, _cached in rows) else 1
 
 
 if __name__ == "__main__":

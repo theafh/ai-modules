@@ -21,9 +21,9 @@ fixture with a single eval first:
 python3 tests/git_review/evals/run.py 1
 ```
 
-Read `workspace/run-<ts>/1/response.txt` and `grading.txt` before widening. A
-fixture-design bug caught on one eval costs minutes; the same bug caught across
-a full run costs hours.
+Read `tests/git_review/workspace/run-<ts>/1/response.txt` and `grading.txt`
+before widening. A fixture-design bug caught on one eval costs minutes; the
+same bug caught across a full run costs hours.
 
 ## Stage a fixture by hand to inspect it
 
@@ -55,7 +55,7 @@ cat "$GH_STUB_LOG"           # every call the run made
 
 ```bash
 bash tests/git_review/evals/grade.sh 32 "$sandbox_repo" \
-  tests/git_review/evals/workspace/run-<ts>/32/response.txt
+  tests/git_review/workspace/run-<ts>/32/response.txt
 ```
 
 `grade.sh` prints `PASS`/`FAIL` per check and `agent-attest` for the
@@ -64,7 +64,8 @@ not a pass: read it against `response.txt` before calling the eval green.
 
 ## The verdict cache
 
-Verdicts live in `evals/.eval_cache/` (gitignored, like `workspace/`). The key
+Verdicts live in `evals/.eval_cache/` (gitignored, like
+`tests/git_review/workspace/`). The key
 covers the `git_review` skill directory (narrowed by each eval's
 `dependencies` map in `evals.json` to the `SKILL.md` stages that eval
 reaches, with undeclared files and non-stage bytes still fail-closed), the
@@ -90,16 +91,22 @@ diff spanning several thousand lines by design; a fresh Cursor run of eval 18
 measured about 52 seconds. If a run shows a transient single-eval timeout that
 recovers on retry, raise the timeout rather than chasing the symptom.
 
-Run these sequentially. Two review workers on one machine contend for the model
-and both slow past the timeout; `run.py` already runs them in order.
+The runner runs four evals at a time by default (`--workers`, default
+`vendor.DEFAULT_PARALLEL_WORKERS`). Contention can lengthen a job; that is a
+`--timeout` and `--workers` tuning concern rather than a reason to serialize.
+Pass `--workers 1` for the serial opt-in and the latency reading. A
+2026-11-01 `--workers 4 --force` sample of ids 18, 41, and 2 measured 95 to
+166 seconds, a serial retry of eval 41 took 188 seconds, and a later two-job
+`--force` pair of ids 18 and 2 reached 313 seconds, all clear of the 600s
+default; `tests/git_review/results/timeout-band.md` records the measurements.
 
 ## Reading a run
 
 ```text
-tests/git_review/evals/workspace/run-<ts>/<id>/
+tests/git_review/workspace/run-<ts>/<id>/
 ├── response.txt    the worker's final response, the prose evidence
 ├── stderr.txt      worker stderr; a 401 here is an auth problem, not a regression
-├── timing.json     duration and the CLI return code
+├── timing.json     duration, the CLI return code, and the job's tmpdir
 ├── gh_calls.log    (forge evals) every stub gh invocation, in order
 ├── grading.txt     grade.sh output
 └── sandbox/        the staged fixture as the run left it

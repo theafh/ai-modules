@@ -181,7 +181,8 @@ and an escape guard that reads the whole host checkout, such as
 uses the default 4 workers. The Pattern A runners on `eval_runner` at
 `vendor.DEFAULT_PARALLEL_WORKERS` are `tests/task_auto_check/evals/run.py`,
 `tests/git_checkout/evals/run.py`, `tests/git_refresh/evals/run.py`,
-`tests/git_commit/evals/run.py`, and `tests/git_auto_review/evals/run.py`.
+`tests/git_commit/evals/run.py`, `tests/git_review/evals/run.py`, and
+`tests/git_auto_review/evals/run.py`.
 `task_auto_check` runs its serial
 nested-loop set, the list above, one job at a time after the isolated
 pool. `git_auto_review` declares its own serial nested-loop set
@@ -207,8 +208,8 @@ for the helper's unit tests.
 Runners that already default to `DEFAULT_PARALLEL_WORKERS` outside this
 helper: wiki layer 2, `language_humanizer`, and `natural_language`. Pattern A
 runners that stay sequential until sibling conversion tasks wire them onto
-`eval_runner` (plus permanent isolation exceptions): `git_review`
-(timeout), `task`, `task_create`, and `task_fix`
+`eval_runner` (plus permanent isolation exceptions): `task`, `task_create`,
+and `task_fix`
 (serial until their parallel-worker tasks land; the host guard ignores
 unrelated live backlog edits), `agent_spinner` (unscoped host `git status`,
 until its guard compares only the names each eval owns), and

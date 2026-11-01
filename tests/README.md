@@ -142,7 +142,8 @@ don't bring up new harnesses under Pattern B.
   under bash and, when it is on `PATH`, under `zsh -f`, and a copy that names
   a variable `status` or `path` must fail the zsh run. `evals/` holds 48
   behavioral evals over 36 fixtures, run through `evals/run.py` on the
-  default Cursor worker with a deterministic `grade.sh`. Forge fixtures put a stub
+  default Cursor worker in the shared `tests/lib/eval_runner` pool with a
+  deterministic `grade.sh`. Forge fixtures put a stub
   `gh` on `PATH` that serves fixture JSON and logs every call, so a run that
   posts nothing is provable. See `evals/README.md`.
 - **`language_humanizer/`**: Pattern A, prose-only skill. The skill

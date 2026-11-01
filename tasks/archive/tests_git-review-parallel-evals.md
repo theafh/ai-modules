@@ -2,9 +2,11 @@
 description: Run git_review evals at default 4 workers through the shared helper, isolate per-eval temp files, and treat model contention as a timeout-tuning problem rather than a serial requirement.
 scope: tests/git_review/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-31T09:56:39
-status: ready
+updated: 2026-11-01T09:47:07
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize the git_review behavioral evals at default four workers
@@ -30,8 +32,8 @@ Contention can still lengthen a job. That is a timeout and `--workers` tuning
 concern. Isolated sandboxes already exist, so correctness does not require a
 single-file walk.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
-[The timeout-crash task](archive/tests_eval-runner-timeout-crash.md) still owns the
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
+[The timeout-crash task](tests_eval-runner-timeout-crash.md) still owns the
 `task_auto_check` timing band, not this harness.
 
 ## Approach
@@ -87,7 +89,7 @@ Live-testing unshipped editorial plugin harnesses. Full-section reconciliation
 of the two operator guides' `### Parallel workers` sections — heading wording,
 bullet-versus-prose list shape, and the `Raising the default past 4` rationale
 sentence only `tests/CLAUDE.md` carries — which
-[the tests-tree docs reconciliation task](tests_tree-docs-reconcile.md) owns and
+[the tests-tree docs reconciliation task](../tests_tree-docs-reconcile.md) owns and
 lands after this task's runner-list edits settle.
 
 ## Acceptance
