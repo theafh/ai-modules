@@ -1,14 +1,14 @@
 # git_auto_review regression harness
 
 Regression coverage for the `git_auto_review` skill, its three helper agents,
-and its four bundled scripts. The harness is committed and runs locally; it
+and its five bundled scripts. The harness is committed and runs locally; it
 does not ship inside the plugin.
 
 ## Surfaces
 
 | Surface | Where | What it tests |
 | :--- | :--- | :--- |
-| `script_tests/` | Deterministic shell assertions | The published artefact shape and frontmatter, the pseudo-XML lint, the single-source lane-classification and convergence statements, the carry-over blocks, and the four bundled scripts: `run_relay.sh` (the `.gitignore`, the stem derivation, the `--task` path rejection, the staleness clear, and the marked preseed pairs), `run_ledger.sh` (the exit and per-line contract), `run_snapshot.sh` (the pre-fix pair and the once-only baseline pair), and `run_restore.sh` (reproducing the captured worktree with the index untouched). It also exercises the Makefile's `.git_auto_review` prune on a probe root, checks the shared isolation allowlist, and `script_tests/` proves the eval runner's stop on a failed or empty stage through `tests/lib/check_stage_guard.py`. |
+| `script_tests/` | Deterministic shell assertions | The published artefact shape and frontmatter, the pseudo-XML lint, the single-source lane-classification and convergence statements, the carry-over blocks, and the five bundled scripts: `run_relay.sh` (the `.gitignore`, the stem derivation, the `--task` path rejection, the staleness clear, and the marked preseed pairs), `run_ledger.sh` (the exit and per-line contract, and bytecode writing off for every command), `run_snapshot.sh` (the pre-fix pair, the ignored-path manifest, and the once-only baseline pair), `run_round_diff.sh` (the scripted round diff over the pre-fix state, its binary path-only hunks included), and `run_restore.sh` (reproducing the captured worktree and removing the fixer-added untracked and ignored paths with the index untouched). It also exercises the Makefile's `.git_auto_review` prune on a probe root, checks the shared isolation allowlist, and `script_tests/` proves the eval runner's stop on a failed or empty stage through `tests/lib/check_stage_guard.py`. |
 | `evals/` | Behavioral eval definitions | Staged git fixtures for the review-and-fix loop: the clean-first-gate and non-qualifying stops, an in-scope fix with its reproduction and the reproduction-only delta finding, the pre-existing and scope-extension follow-ups, the decision and CHARTER stops, the helper-failure and helper-script-failure stops, the concurrent-modification guard, triage status and reason, the scope anchor through a task file and the same fixture with no task path, the local-commits lane, the round cap, and the ledger and unmapped-hunk restore-and-retry stops. The branch-target evals cover a committed branch defect fixed uncommitted (`fixes_branch_commit_bug`), a detached-`HEAD` decline (`declines_on_detached_head`), the decline when the prompt names a branch other than the checked-out one (`declines_on_named_other_branch`), and a standalone gate that reports a committed and an uncommitted defect in one file (`gate_reviews_branch_and_worktree`). |
 
 The authored harness is committed; `tests/.gitignore` keeps run output out.

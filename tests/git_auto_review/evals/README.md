@@ -6,8 +6,9 @@ newer harnesses in this repo: `evals.json` carries prompts and
 expectations, and `fixtures/*/setup.sh` stages sandboxes for a worker to
 run in.
 
-The deterministic `script_tests/` surface verifies the four bundled scripts
-and the static contract. These evals verify loop behavior when a worker
+The deterministic `script_tests/` surface verifies the five bundled scripts,
+including `run_round_diff.sh`, the scripted round diff over the pre-fix state, and the static
+contract. These evals verify loop behavior when a worker
 actually loads the skill and drives the round lifecycle on a staged
 repository.
 
@@ -71,6 +72,7 @@ the sandbox target. Those evals measure the gate itself, not the loop around it.
 | `stops_on_self_written_code` | The self-written stop with `authored.txt` holding the cumulative hunks |
 | `retries_once_on_unmapped_hunk` | The unmapped-hunk restore-and-retry leaving the delta audit clean |
 | `stops_on_second_unmapped_hunk` | The second-unmapped-hunk stop with the pre-fix tree restored |
+| `restores_stray_fixer_path` | The round diff reporting a stray untracked file and a fixer-added ignored text and binary file, the first delta audit marking them unmapped (the binary one as a path-only entry), the restore removing them with the folders they created, the pre-existing ignored file kept, and a clean retry |
 
 `eval_runner.load_eval_ids` derives `DEFAULT_IDS` from `evals.json`, so new
 entries join the ordinary suite automatically.

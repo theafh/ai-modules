@@ -188,7 +188,8 @@ nested-loop set, the list above, one job at a time after the isolated
 pool. `git_auto_review` declares its own serial nested-loop set
 (`honours_round_cap`, `retries_once_on_ledger_fail`,
 `stops_on_second_ledger_fail`, `stops_on_self_written_code`,
-`retries_once_on_unmapped_hunk`, `stops_on_second_unmapped_hunk`) and runs
+`retries_once_on_unmapped_hunk`, `stops_on_second_unmapped_hunk`,
+`restores_stray_fixer_path`) and runs
 those one job at a time after the isolated pool, so its multi-round nested-loop
 stop evals never overlap one another or the pool; every other `git_auto_review`
 eval stages its own sandbox root and runs in the pool. Every `git_checkout`,

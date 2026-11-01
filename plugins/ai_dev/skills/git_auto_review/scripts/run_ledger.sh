@@ -6,6 +6,11 @@
 # line's 1-based number with its pass or fail. An empty ledger, one carrying
 # zero reproduction lines, exits 0.
 #
+# Every ledger command runs with bytecode writing off: `main` exports
+# `PYTHONDONTWRITEBYTECODE=1` before its line loop, so a Python reproduction
+# that imports the repository module it exercises leaves no `__pycache__`
+# behind for the round diff to report.
+#
 # Usage:
 #   run_ledger.sh [--ledger <path>] [--cwd <dir>]
 #
@@ -34,7 +39,8 @@ Behavior:
     field after it, in order.
   - Reports each line's 1-based number with its pass or fail.
   - Runs each command from --cwd, or from the current directory when --cwd
-    is absent.
+    is absent, with `PYTHONDONTWRITEBYTECODE=1` exported so a Python
+    reproduction leaves no compiled bytecode behind.
   - Exits 0 on an all-passing ledger and on an empty ledger, zero
     reproduction lines included, and otherwise exits 1 naming the 1-based
     number of the first failing entry.
@@ -67,6 +73,10 @@ main() {
         CWD="$PWD"
     fi
     CWD="$(cd "$CWD" && pwd)"
+
+    # Each line's `bash -c` inherits this export, so a reproduction that runs a
+    # Python interpreter writes no bytecode into the tree the round diff reads.
+    export PYTHONDONTWRITEBYTECODE=1
 
     local number=0 path command first_fail=""
     while IFS= read -r line || [[ -n "$line" ]]; do

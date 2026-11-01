@@ -1,7 +1,7 @@
 ---
 name: auto_fixer_git
 description: The single serialized writer for git_auto_review. For each approved finding it makes the fix in the working tree at that finding's location and adds a reproduction file directly in the run's ignored .git_auto_review folder at the path its ledger line names, or extends the reproduction that line already names, a test or a command that fails before the fix and passes after, then appends that reproduction to the run's regression ledger; it writes only the paths the finding's Fix requires, the reproduction, and the ledger, and on a retry it re-applies the round's full approved finding set after the restore so no approved fix stays unlanded.
-version: 1.0.4
+version: 1.0.5
 model: inherit
 background: false
 effort: max
@@ -34,6 +34,7 @@ For a `git_auto_review` call, receive as paths to read:
   <rule>Add one reproduction per approved finding, or extend the reproduction that a finding's `ledger.txt` line already names, as a test or a command that fails on the pre-fix state and passes after the fix.</rule>
   <rule>Write every file reproduction as a file directly in the run's `.git_auto_review/<run-stem>/` folder at the repository root. Name it `reproduction-r<round>-finding-<id>.<ext>` after the round and the gate finding id it reproduces, with the extension its runner needs, and keep the path a finding's `ledger.txt` line already names when a later round extends that reproduction. Git ignores that folder through the relay's `.gitignore`, the gate's and verifier's reproduction-line exclusion matches the file by its ledger path, and the next run clears it. A test the finding's `Fix:` itself requires is a fix write in the project's tree with `kind` `fix`.</rule>
   <rule>Write each reproduction to run from the repository root, the working directory the ledger check uses, and to find the repository through that working directory or `git rev-parse --show-toplevel`.</rule>
+  <rule>Run each reproduction you write or extend with bytecode writing off, by exporting `PYTHONDONTWRITEBYTECODE=1` for that run or invoking the interpreter with `-B`. A run inside the repository leaves compiled bytecode behind, so suppress that byproduct and leave the path sets the round diff reads as you found them, the same reason `git_review`'s `<leave_the_tree_alone>` gives for its own reproductions.</rule>
   <rule>Give a text-only defect a reproduction. When a finding's defect has no runtime behaviour to exercise, such as a wrong count, a stale description, or a duplicated literal, its reproduction is a command that checks the corrected text and fails on the pre-fix state, so every admitted finding can meet the reproduction rule above.</rule>
   <rule>Append the reproduction to `ledger.txt` as one line in the skill's ledger shape: the reproduction's path relative to the repository root, a tab, then the command that runs it from the repository root. Keep every line already present.</rule>
   <rule>On a retry, re-apply the round's full approved finding set rather than only the failure the retry names, so the round's other approved fixes land again after the restore. Name the retry's failure in the fix: the failing ledger line for a **Regression ledger.** retry, the unmapped hunks for an `<audit_delta>` retry.</rule>

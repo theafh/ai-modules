@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Bundled-script unit tests for the git_auto_review skill.
 #
-# Drives the four bundled scripts this skill ships:
-#   run_relay.sh     relay init: .gitignore, stem, staleness clear, preseed
-#   run_ledger.sh    the regression ledger runner and its exit contract
-#   run_snapshot.sh  the round's pre-fix artefacts and the round-1 baseline
-#   run_restore.sh   the Restore procedure against the working tree
+# Drives the five bundled scripts this skill ships:
+#   run_relay.sh       relay init: .gitignore, stem, staleness clear, preseed
+#   run_ledger.sh      the regression ledger runner and its exit contract
+#   run_snapshot.sh    the round's pre-fix artefacts and the round-1 baseline
+#   run_round_diff.sh  the round's fixer-write diff over the pre-fix state
+#   run_restore.sh     the Restore procedure against the working tree
 #
 # Every scenario stages its own git sandbox under scratch/<id>/, so no
 # scenario touches the host repository's working tree.
@@ -19,6 +20,7 @@ SKILL_DIR="$REPO_ROOT/plugins/ai_dev/skills/git_auto_review"
 SCRIPTS="$SKILL_DIR/scripts"
 PXML="$REPO_ROOT/plugins/ai_dev/skills/ai_instruction_formatting/scripts/lint_pseudo_xml.py"
 AGENTS_DIR="$REPO_ROOT/plugins/ai_dev/agents"
+GRADE_SCRIPT="$REPO_ROOT/tests/git_auto_review/evals/grade.sh"
 
 SCRATCH="$SCRIPT_DIR/scratch"
 RESULTS="$SCRIPT_DIR/../results/script_tests.log"
@@ -574,6 +576,420 @@ s14_eval_runner_stage_guard() {
   assert_eq "tests/lib/check_stage_guard.py exit" "$rc" "0"
 }
 
+
+# Stage a minimal repository whose .gitignore carries the given lines and whose
+# base commit carries one tracked text file. Prints nothing; fails on error.
+stage_ignore_repo() {
+  local dir=$1 ignores=$2
+  (
+    set -e
+    cd "$dir"
+    git init --quiet --initial-branch=main
+    git config user.name "Harness"
+    git config user.email "harness@example.test"
+    printf '%s' "$ignores" > .gitignore
+    printf 'a1\na2\n' > tracked.txt
+    git add .
+    git commit --quiet -m "base"
+  )
+}
+
+# The block of `diff --git` output for one path, written to stdout.
+diff_block_for() {
+  local diff=$1 path=$2
+  awk -v want="diff --git a/$path b/$path" '
+    /^diff --git / { inside = ($0 == want); next }
+    inside { print }
+  ' "$diff"
+}
+
+# ---------------------------------------------------------------- scenarios
+
+s15_round_diff_path_kinds() {
+  local ok=true dir stem diff block
+  dir="$(new_sandbox round_diff_paths)"
+  stage_ignore_repo "$dir" $'ignored/\n' || return 1
+  printf 'a1\nA2\n' > "$dir/tracked.txt"
+  mkdir -p "$dir/ignored"
+  printf 'keep\n' > "$dir/ignored/keep.txt"
+  bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || ok=false
+  bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" >/dev/null 2>&1 \
+    || ok=false
+  stem="$dir/.git_auto_review/default"
+
+  mkdir -p "$dir/stray/new"
+  printf 'stray\n' > "$dir/stray/new/added.txt"
+  printf 'fixer\n' > "$dir/ignored/fixer-added.txt"
+  printf 'a1\nA2\nFIX\n' > "$dir/tracked.txt"
+  printf 'relay\n' > "$stem/relay-only.txt"
+
+  bash "$SCRIPTS/run_round_diff.sh" --stem default --round 1 --root "$dir" \
+    >"$SCRATCH/round_diff_paths.out" 2>&1 || ok=false
+  diff="$stem/round-r1.diff.txt"
+  assert_file "round diff" "$diff" || ok=false
+  assert_eq "one header per changed path" \
+    "$(grep -c '^diff --git ' "$diff")" "3" || ok=false
+
+  block="$(diff_block_for "$diff" "stray/new/added.txt")"
+  [[ "$block" == *"new file mode 100644"* && "$block" == *"+stray"* ]] \
+    || { log "    the untracked addition is not a whole-file addition"; ok=false; }
+
+  block="$(diff_block_for "$diff" "ignored/fixer-added.txt")"
+  [[ "$block" == *"new file mode 100644"* && "$block" == *"+fixer"* ]] \
+    || { log "    the ignored addition is not a whole-file addition"; ok=false; }
+
+  block="$(diff_block_for "$diff" "tracked.txt")"
+  [[ "$block" == *"@@"* && "$block" != *"new file mode"* ]] \
+    || { log "    the tracked edit is not its own hunk"; ok=false; }
+  if grep -Fq 'relay-only.txt' "$diff"; then
+    log "    the run's own relay file reached the round diff"
+    ok=false
+  fi
+  $ok
+}
+
+s16_restore_removes_fixer_folders() {
+  local ok=true dir stem
+  dir="$(new_sandbox restore_folders)"
+  stage_ignore_repo "$dir" $'ignored/\n' || return 1
+  mkdir -p "$dir/pre" "$dir/ignored"
+  printf 'pre\n' > "$dir/pre/keep.txt"
+  printf 'keep\n' > "$dir/ignored/keep.txt"
+  bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || ok=false
+  bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" >/dev/null 2>&1 \
+    || ok=false
+  stem="$dir/.git_auto_review/default"
+  printf 'r1\tbash r1.sh\n' > "$stem/ledger.txt"
+
+  mkdir -p "$dir/new/deep" "$dir/ignored"
+  printf 'fixer\n' > "$dir/new/deep/added.txt"
+  printf 'fixer\n' > "$dir/ignored/fixer-added.txt"
+
+  bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
+    >"$SCRATCH/restore_folders.out" 2>&1 || { log "    run_restore.sh exited non-zero"; ok=false; }
+
+  [[ ! -e "$dir/new/deep/added.txt" && ! -e "$dir/new" ]] \
+    || { log "    the fixer-added two-level folder survived the restore"; ok=false; }
+  [[ ! -e "$dir/ignored/fixer-added.txt" ]] \
+    || { log "    the fixer-added ignored file survived the restore"; ok=false; }
+  assert_eq "the pre-existing ignored file survives" \
+    "$(cat "$dir/ignored/keep.txt" 2>/dev/null)" "keep" || ok=false
+  assert_eq "the pre-fix untracked file survives" \
+    "$(cat "$dir/pre/keep.txt" 2>/dev/null)" "pre" || ok=false
+  assert_file "pre-fix.patch survives" "$stem/pre-fix.patch" || ok=false
+  assert_file "pre-fix.untracked.tar survives" "$stem/pre-fix.untracked.tar" \
+    || ok=false
+  assert_file "pre-fix.ignored.manifest survives" \
+    "$stem/pre-fix.ignored.manifest" || ok=false
+  assert_file "ledger.txt survives" "$stem/ledger.txt" || ok=false
+  $ok
+}
+
+s17_round_diff_binary_paths() {
+  local ok=true dir stem diff
+  dir="$(new_sandbox round_diff_binary)"
+  stage_ignore_repo "$dir" $'ignored/\n' || return 1
+  printf '\376\377' > "$dir/tracked.bin"
+  (cd "$dir" && git add tracked.bin && git commit --quiet -m "binary base") \
+    || return 1
+  bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || ok=false
+  bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" >/dev/null 2>&1 \
+    || ok=false
+  stem="$dir/.git_auto_review/default"
+
+  mkdir -p "$dir/ignored"
+  printf '\377\376' > "$dir/ignored/added.bin"
+  printf '\375\376' > "$dir/untracked.bin"
+  printf '\377\376\375' > "$dir/tracked.bin"
+
+  bash "$SCRIPTS/run_round_diff.sh" --stem default --round 1 --root "$dir" \
+    >"$SCRATCH/round_diff_binary.out" 2>&1 || ok=false
+  diff="$stem/round-r1.diff.txt"
+  assert_file "binary round diff" "$diff" || ok=false
+  assert_contains "ignored binary path-only hunk" "$diff" \
+    "Binary files /dev/null and b/ignored/added.bin differ" || ok=false
+  assert_contains "untracked binary path-only hunk" "$diff" \
+    "Binary files /dev/null and b/untracked.bin differ" || ok=false
+  assert_contains "tracked binary path-only hunk" "$diff" \
+    "Binary files a/tracked.bin and b/tracked.bin differ" || ok=false
+  if ! python3 -c 'import sys; data = open(sys.argv[1], "rb").read(); data.decode("utf-8"); sys.exit(1 if b"\x00" in data else 0)' "$diff"; then
+    log "    the round diff is not valid UTF-8 without NUL bytes"
+    ok=false
+  fi
+  $ok
+}
+
+s18_snapshot_skips_run_output_trees() {
+  local ok=true dir stem manifest list
+  dir="$(new_sandbox snapshot_run_output)"
+  stage_ignore_repo "$dir" $'ignored/\ntests/**/workspace/\n' || return 1
+  mkdir -p "$dir/ignored" "$dir/tests/demo/workspace"
+  printf 'keep\n' > "$dir/ignored/keep.txt"
+  printf 'run output\n' > "$dir/tests/demo/workspace/run.txt"
+  bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || ok=false
+  bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" >/dev/null 2>&1 \
+    || ok=false
+  stem="$dir/.git_auto_review/default"
+  manifest="$stem/pre-fix.ignored.manifest"
+  assert_file "ignored manifest" "$manifest" || ok=false
+  list="$SCRATCH/snapshot_run_output.manifest.txt"
+  tr '\0' '\n' < "$manifest" > "$list"
+  assert_contains "the normal ignored path is listed" "$list" "ignored/keep.txt" \
+    || ok=false
+  if grep -Fq 'tests/demo/workspace' "$list"; then
+    log "    the run-output tree reached the ignored manifest"
+    ok=false
+  fi
+  bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
+    >"$SCRATCH/snapshot_run_output.out" 2>&1 || { log "    run_restore.sh exited non-zero"; ok=false; }
+  assert_eq "the run-output tree file is untouched" \
+    "$(cat "$dir/tests/demo/workspace/run.txt" 2>/dev/null)" "run output" \
+    || ok=false
+  $ok
+}
+
+s19_ledger_bytecode_off() {
+  local ok=true dir out status
+  dir="$(new_sandbox ledger_bytecode)"
+  (
+    set -e
+    cd "$dir"
+    git init --quiet --initial-branch=main
+    git config user.name "Harness"
+    git config user.email "harness@example.test"
+    cat > report.py <<'PY'
+def total(items):
+    return sum(items)
+PY
+    cat > check.py <<'PY'
+from report import total
+
+assert total([1, 2, 3]) == 6, "total must sum the items"
+PY
+    git add report.py check.py
+    git commit --quiet -m "base"
+  ) || return 1
+  printf 'check.py\tpython3 check.py\n' > "$dir/ledger.txt"
+  # Run the ledger with the caller's bytecode settings removed, so the result
+  # rests on run_ledger.sh's own export alone: an agent harness that already
+  # exports PYTHONDONTWRITEBYTECODE, or a PYTHONPYCACHEPREFIX that moves the
+  # cache out of the sandbox, would otherwise pass this scenario against a
+  # ledger that never turns bytecode writing off.
+  env -u PYTHONDONTWRITEBYTECODE -u PYTHONPYCACHEPREFIX \
+    bash "$SCRIPTS/run_ledger.sh" --ledger "$dir/ledger.txt" --cwd "$dir" \
+    >"$SCRATCH/ledger_bytecode.out" 2>&1 || ok=false
+  assert_contains "the plain python command passes" "$SCRATCH/ledger_bytecode.out" \
+    "line 1: PASS" || ok=false
+  status="$(cd "$dir" && git status --porcelain --untracked-files=all)"
+  if printf '%s\n' "$status" | grep -Fq '__pycache__'; then
+    log "    the ledger left a __pycache__ path in git status"
+    ok=false
+  fi
+  out="$(find "$dir" -name __pycache__ -print)"
+  [[ -z "$out" ]] || { log "    a __pycache__ directory exists: $out"; ok=false; }
+  $ok
+}
+
+s20_newline_untracked_path() {
+  local ok=true dir stem newline_name
+  dir="$(new_sandbox snapshot_newline)"
+  stage_ignore_repo "$dir" $'ignored/\n' || return 1
+  newline_name=$'weird\nname.txt'
+  printf 'n1\nn2\n' > "$dir/$newline_name"
+  bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || ok=false
+  bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" >/dev/null 2>&1 \
+    || { log "    run_snapshot.sh failed on a newline-named path"; ok=false; }
+  stem="$dir/.git_auto_review/default"
+  mkdir -p "$dir/extract"
+  tar -xf "$stem/pre-fix.untracked.tar" -C "$dir/extract" 2>/dev/null \
+    || { log "    cannot unpack the snapshot archive"; ok=false; }
+  assert_file "the newline-named path is one archive member" \
+    "$dir/extract/$newline_name" || ok=false
+
+  printf 'fixer\n' > "$dir/tracked.txt"
+  printf 'fixer added\n' > "$dir/fixer-added.txt"
+  bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
+    >"$SCRATCH/snapshot_newline.out" 2>&1 || { log "    run_restore.sh failed"; ok=false; }
+  assert_file "the restore puts the newline-named path back" \
+    "$dir/$newline_name" || ok=false
+  assert_eq "the tracked path returns to HEAD" \
+    "$(cat "$dir/tracked.txt")" "a1
+a2" || ok=false
+  [[ ! -e "$dir/fixer-added.txt" ]] \
+    || { log "    the fixer-added file survived"; ok=false; }
+  $ok
+}
+
+# stage_gate_scope_case <dir> <section-body-file> — a sandbox whose staged
+# relay report carries the given `## Bugs it may introduce` body and a verdict
+# block naming both defect paths, so only the section body varies.
+stage_gate_scope_case() {
+  local dir=$1 body=$2 sha
+  mkdir -p "$dir/repo/.git_auto_review/default"
+  (
+    cd "$dir/repo" || exit 1
+    git init --quiet --initial-branch=main
+    git config user.name "Repro"
+    git config user.email "repro@example.test"
+    printf 'def total(items):\n    return sum(items) / 0\n' > report.py
+    git add report.py
+    git commit --quiet -m "fixture base"
+  ) || return 1
+  sha="$(git -C "$dir/repo" rev-parse HEAD)"
+  printf '%s\n' "$sha" > "$dir/.base.sha"
+  printf '%s\n' "$sha" > "$dir/.head.before"
+  (cd "$dir/repo" && git for-each-ref) > "$dir/.refs.before"
+  (cd "$dir/repo" && printf '%s\n' "$(git worktree list --porcelain)") \
+    > "$dir/.worktrees.before"
+  cp "$dir/repo/report.py" "$dir/.report.before"
+  {
+    printf 'Reviewed HEAD on main against origin/main at %s.\n\n' "$sha"
+    printf '## What the changes do and implement\n\nA branch defect.\n\n'
+    printf '## What it retires\n\nNothing.\n\n'
+    printf '## What of the existing workflow changes\n\nNothing.\n\n'
+    printf '## Bugs it may introduce\n\n'
+    cat "$body"
+    printf '\n## What should be fixed though it is not a clear bug\n\nNone.\n\n'
+    printf '## Decisions the implementer must make before fixing\n\nNone.\n\n'
+    printf '## Can it be structurally merged as it is\n\nYes.\n\n'
+    printf '# auto_gate_git verdict\n\n## Findings\n\n'
+    printf 'id: 1\nheading: Bugs it may introduce\nlabel: verified\n'
+    printf 'location: report.py:4\nlane: working-tree lane\ntag: none\n\n'
+    printf 'id: 2\nheading: Bugs it may introduce\nlabel: verified\n'
+    printf 'location: report.py:3\nlane: working-tree lane\ntag: none\n'
+  } > "$dir/repo/.git_auto_review/default/report.txt"
+}
+
+s21_grade_section_scope() {
+  local ok=true dir committed uncommitted
+  local label_committed="the committed defect is reported under Bugs it may introduce"
+  local label_uncommitted="the uncommitted defect is reported under Bugs it may introduce"
+  local work="$SCRATCH/grade_section_scope"
+  rm -rf "$work"
+  mkdir -p "$work"
+
+  printf 'The defect paths are named only in the verdict.\n' > "$work/off_body.txt"
+  dir="$work/off_body"
+  stage_gate_scope_case "$dir" "$work/off_body.txt" || return 1
+  RESPONSE_FILE="" bash "$GRADE_SCRIPT" gate_reviews_branch_and_worktree \
+    "$dir/repo" "$dir" > "$dir/grade.out" 2>&1
+  committed="$(grep -F -- "$label_committed" "$dir/grade.out" || true)"
+  uncommitted="$(grep -F -- "$label_uncommitted" "$dir/grade.out" || true)"
+  [[ "$committed" == *FAIL* ]] \
+    || { log "    the committed verdict-only check did not fail"; ok=false; }
+  [[ "$uncommitted" == *FAIL* ]] \
+    || { log "    the uncommitted verdict-only check did not fail"; ok=false; }
+
+  {
+    printf '**report.py:4** — the committed defect divides by zero.\n'
+    printf '**report.py:3** — the uncommitted defect divides by zero.\n'
+  } > "$work/in_body.txt"
+  dir="$work/in_body"
+  stage_gate_scope_case "$dir" "$work/in_body.txt" || return 1
+  RESPONSE_FILE="" bash "$GRADE_SCRIPT" gate_reviews_branch_and_worktree \
+    "$dir/repo" "$dir" > "$dir/grade.out" 2>&1
+  committed="$(grep -F -- "$label_committed" "$dir/grade.out" || true)"
+  uncommitted="$(grep -F -- "$label_uncommitted" "$dir/grade.out" || true)"
+  [[ "$committed" == *ok* ]] \
+    || { log "    the committed in-body check did not pass"; ok=false; }
+  [[ "$uncommitted" == *ok* ]] \
+    || { log "    the uncommitted in-body check did not pass"; ok=false; }
+  $ok
+}
+
+s22_grade_ledger_per_finding() {
+  local ok=true dir line
+  local label="the ledger holds one reproduction per finding"
+  local work="$SCRATCH/grade_ledger_per_finding"
+  rm -rf "$work"
+  mkdir -p "$work"
+
+  stage_ledger_case() {
+    local case_dir=$1
+    mkdir -p "$case_dir/repo/.git_auto_review/default"
+    printf 'def total(items):\n    return sum(items)\n' > "$case_dir/repo/report.py"
+    printf '# Ledger notes\n\nThe regression ledger stores one reproduction per finding in `ledger.txt`.\n' \
+      > "$case_dir/repo/notes.md"
+    printf 'no qualifying finding remains\n' > "$case_dir/response.txt"
+    : > "$case_dir/repo/.git_auto_review/default/ledger.txt"
+    {
+      printf '# auto_fixer_git record\n\n## Writes\n\n'
+      printf 'path: repro/one.sh\nfinding: 1\nkind: reproduction\n\n'
+      printf 'path: repro/two.sh\nfinding: 2\nkind: reproduction\n\n'
+      printf '## Ledger\n\n'
+      printf 'line: repro/one.sh\tbash repro/one.sh\n'
+      printf 'line: repro/two.sh\tbash repro/two.sh\n'
+    } > "$case_dir/repo/.git_auto_review/default/fixer-r1.txt"
+  }
+
+  grade_ledger_case() {
+    local case_dir=$1
+    RESPONSE_FILE="$case_dir/response.txt" \
+      bash "$GRADE_SCRIPT" fixes_inferred_and_should_fix_findings \
+      "$case_dir/repo" "$case_dir" > "$case_dir/grade.out" 2>&1
+    grep -F -- "$label" "$case_dir/grade.out" || true
+  }
+
+  dir="$work/per_finding"
+  stage_ledger_case "$dir"
+  {
+    printf 'repro/one.sh\tbash repro/one.sh\n'
+    printf 'repro/two.sh\tbash repro/two.sh\n'
+  } > "$dir/repo/.git_auto_review/default/ledger.txt"
+  line="$(grade_ledger_case "$dir")"
+  [[ "$line" == *ok* ]] \
+    || { log "    one line per finding did not pass: $line"; ok=false; }
+
+  dir="$work/both_for_one"
+  stage_ledger_case "$dir"
+  {
+    printf 'repro/one.sh\tbash repro/one.sh\n'
+    printf 'repro/one.sh\tbash repro/one.sh\n'
+  } > "$dir/repo/.git_auto_review/default/ledger.txt"
+  line="$(grade_ledger_case "$dir")"
+  [[ "$line" == *FAIL* ]] \
+    || { log "    two lines for one finding did not fail: $line"; ok=false; }
+
+  dir="$work/empty"
+  stage_ledger_case "$dir"
+  line="$(grade_ledger_case "$dir")"
+  [[ "$line" == *FAIL* ]] \
+    || { log "    the empty ledger did not report a clean failure: $line"; ok=false; }
+  if grep -Fq "arithmetic syntax error" "$dir/grade.out"; then
+    log "    the empty-ledger path raised an arithmetic syntax error"
+    ok=false
+  fi
+  $ok
+}
+
+s23_eval_docs_inventory() {
+  local ok=true evals_readme harness_readme runbook
+  evals_readme="$REPO_ROOT/tests/git_auto_review/evals/README.md"
+  harness_readme="$REPO_ROOT/tests/git_auto_review/README.md"
+  runbook="$REPO_ROOT/tests/git_auto_review/RUNBOOK.md"
+
+  assert_contains "the named-target decline has a signal row" "$evals_readme" \
+    '| `declines_on_named_other_branch` |' || ok=false
+  assert_contains "the branch-target sentence names the decline eval" \
+    "$harness_readme" '`declines_on_named_other_branch`' || ok=false
+  assert_contains "the triage row names its class" "$evals_readme" \
+    '| `triage_reports_status_and_reason` |' || ok=false
+  if ! grep -F -- '| `triage_reports_status_and_reason` |' "$evals_readme" \
+    | grep -Fq 'triage-not-approved'; then
+    log "    the triage signal row does not name triage-not-approved"
+    ok=false
+  fi
+  assert_contains "the runbook records the deployed root in ~ form" "$runbook" \
+    '`deployed_root:` line' || ok=false
+  assert_contains "the runbook names the tilde deployed root" "$runbook" \
+    '`~/.claude/skills/git_review`' || ok=false
+  if grep -nE '/Users/[^/]+/' "$runbook"; then
+    log "    the runbook records an absolute home path"
+    ok=false
+  fi
+  $ok
+}
+
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "new pseudo-XML artefacts lint clean" s2_pseudo_xml_lints
 scenario s3 "lane classification is stated once and read by the gate" s3_lane_classification_single_source
@@ -588,6 +1004,15 @@ scenario s11 "the Makefile EXCLUDE prune covers a repository-root run" s11_makef
 scenario s12 "the shared isolation allowlist names the harness prefix" s12_isolation_allowlist
 scenario s13 "run_restore.sh reproduces a clean pre-fix tree" s13_restore_clean_tree
 scenario s14 "the eval runner stops on a failed or empty stage" s14_eval_runner_stage_guard
+scenario s15 "run_round_diff.sh reports each changed path kind once" s15_round_diff_path_kinds
+scenario s16 "run_restore.sh removes the folders the fixer created" s16_restore_removes_fixer_folders
+scenario s17 "run_round_diff.sh carries binary paths as path-only hunks" s17_round_diff_binary_paths
+scenario s18 "run_snapshot.sh skips the harness run-output trees" s18_snapshot_skips_run_output_trees
+scenario s19 "run_ledger.sh runs every command with bytecode writing off" s19_ledger_bytecode_off
+scenario s20 "snapshot and restore survive a newline in an untracked name" s20_newline_untracked_path
+scenario s21 "the branch-and-worktree grader scopes defects to their section" s21_grade_section_scope
+scenario s22 "the ledger grader keys its check per finding" s22_grade_ledger_per_finding
+scenario s23 "the eval docs and runbook enumerate the measured behaviour" s23_eval_docs_inventory
 
 log ""
 log "================================================================"

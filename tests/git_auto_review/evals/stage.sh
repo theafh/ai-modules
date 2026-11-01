@@ -54,6 +54,21 @@ bash "$HERE/fixtures/$fixture/setup.sh" "$target" >/dev/null
 sandbox_repo="$target/repo"
 git -C "$sandbox_repo" rev-parse HEAD > "$target/.eval_started_at"
 
+# The stage-time path record: the tracked, untracked, and ignored paths the
+# grader's cleanliness helper compares the post-run tree against. The run's
+# own `.git_auto_review/` folder is dropped because every file under it is
+# the run's, not a stray the fixer left behind.
+{
+  (cd "$sandbox_repo" && git ls-files -z)
+  (cd "$sandbox_repo" && git ls-files --others --exclude-standard -z)
+  (cd "$sandbox_repo" && git ls-files --others --ignored --exclude-standard -z)
+} | while IFS= read -r -d '' path; do
+  case "$path" in
+    .git_auto_review/*) continue ;;
+  esac
+  printf '%s\0' "$path"
+done > "$target/.paths.before"
+
 printf 'sandbox_repo=%s\n' "$(printf %q "$sandbox_repo")"
 printf 'skill_name=%s\n' "$(printf %q "git_auto_review")"
 printf 'skill_path=%s\n' "$(printf %q "$SKILL_MD")"

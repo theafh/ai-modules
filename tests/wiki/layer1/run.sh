@@ -3606,6 +3606,134 @@ a3_wiki_hub_output_contract() {
     python3 "$HUB_OUTPUT_CONTRACT"
 }
 
+# c1: the hub's page-update and log-entry rules stay stated, the durable
+# behaviour the two retired wiki reproductions checked.
+c1_wiki_log_and_updated_contract() {
+    local ok=true hub="$WIKI_SKILL/SKILL.md"
+    grep -Fq -- '**Updating existing pages**: always bump the `updated` date.' "$hub" \
+        || { log "    the hub no longer bumps updated on an edited page"; ok=false; }
+    grep -Fq -- 'files actually created or updated' "$hub" \
+        || { log "    the hub no longer lists the changed files in the log entry"; ok=false; }
+    $ok
+}
+
+# c2: the auto_shaper_wiki rotation move keeps its tracked probe, its guarded
+# plain-mv fallback, its no-clobber refusal, and the live preamble, and the
+# four move cases behave as the block states.
+c2_rotation_move_contract() {
+    local ok=true agent="$REPO_ROOT/plugins/knowledge_management/agents/auto_shaper_wiki.md"
+    local work="$SCRATCH/rotation_contract"
+    rm -rf "$work"
+    mkdir -p "$work"
+    local block="$work/rotation_block.txt"
+    awk '/<fix_log_rotation>/{on=1} on{print} /<\/fix_log_rotation>/{on=0}' \
+        "$agent" > "$block"
+    [[ -s "$block" ]] || { log "    no <fix_log_rotation> block"; return 1; }
+
+    grep -Fq -- 'git ls-files --error-unmatch' "$block" \
+        || { log "    the rotation move states no tracked probe"; ok=false; }
+    grep -Fq -- 'git mv' "$block" \
+        || { log "    the rotation move no longer names git mv"; ok=false; }
+    grep -Fq -- 'mv -n' "$block" \
+        || { log "    the fallback move states no no-clobber flag"; ok=false; }
+    grep -Fq -- '[ -e "$archive" ]' "$block" \
+        || { log "    the fallback move states no occupied-destination guard"; ok=false; }
+    grep -Fq -- 'live `log.md`' "$block" \
+        || { log "    the rotation move does not name the live preamble"; ok=false; }
+
+    rotate() {
+        local wiki=$1 archive=$2 branch
+        if (cd "$wiki" && git ls-files --error-unmatch log.md >/dev/null 2>&1); then
+            branch="git mv"
+            (cd "$wiki" && git mv log.md "$archive") || return 1
+        else
+            branch="mv"
+            (
+                cd "$wiki" || exit 1
+                if [ -e "$archive" ]; then exit 1; fi
+                mv -n log.md "$archive"
+            ) || return 1
+        fi
+        printf '%s' "$branch"
+    }
+
+    stage_wiki() {
+        local dir=$1
+        mkdir -p "$dir"
+        printf '## [2026-01-01 00:00] note | a\n' > "$dir/log.md"
+    }
+
+    local plain="$work/plain" untracked="$work/untracked" tracked="$work/tracked"
+    local occupied_plain="$work/occupied-plain" occupied_tracked="$work/occupied-tracked"
+    local branch
+
+    stage_wiki "$plain"
+    branch=$(rotate "$plain" log-2026.md) || { log "    rotation failed off-git"; ok=false; }
+    [[ "$branch" == "mv" && -f "$plain/log-2026.md" && ! -e "$plain/log.md" ]] \
+        || { log "    the non-git wiki did not rotate with plain mv"; ok=false; }
+
+    stage_wiki "$untracked"
+    (
+        set -e
+        cd "$untracked"
+        git init --quiet --initial-branch=main
+        git config user.name "Harness"
+        git config user.email "harness@example.test"
+        printf 'base\n' > tracked.txt
+        git add tracked.txt
+        git commit --quiet -m "base"
+    ) || { log "    cannot stage the untracked-log repository"; ok=false; }
+    branch=$(rotate "$untracked" log-2026.md) || { log "    rotation failed on an untracked log"; ok=false; }
+    [[ "$branch" == "mv" && -f "$untracked/log-2026.md" ]] \
+        || { log "    an untracked log did not rotate with plain mv"; ok=false; }
+
+    stage_wiki "$tracked"
+    (
+        set -e
+        cd "$tracked"
+        git init --quiet --initial-branch=main
+        git config user.name "Harness"
+        git config user.email "harness@example.test"
+        git add log.md
+        git commit --quiet -m "base"
+    ) || { log "    cannot stage the tracked-log repository"; ok=false; }
+    branch=$(rotate "$tracked" log-2026.md) || { log "    rotation failed on a tracked log"; ok=false; }
+    (cd "$tracked" && git status --porcelain | grep -Fq 'R  log.md -> log-2026.md') \
+        || { log "    git did not record the tracked move as a rename"; ok=false; }
+
+    stage_wiki "$occupied_plain"
+    printf '## [2025-01-01 00:00] note | older\n' > "$occupied_plain/log-2026.md"
+    if branch=$(rotate "$occupied_plain" log-2026.md); then
+        log "    the plain-mv fallback replaced an occupied archive"
+        ok=false
+    fi
+    grep -Fq 'older' "$occupied_plain/log-2026.md" \
+        || { log "    the fallback destroyed the occupied archive"; ok=false; }
+    [[ -f "$occupied_plain/log.md" ]] \
+        || { log "    the fallback removed the log it refused to move"; ok=false; }
+
+    stage_wiki "$occupied_tracked"
+    printf '## [2025-01-01 00:00] note | older\n' > "$occupied_tracked/log-2026.md"
+    (
+        set -e
+        cd "$occupied_tracked"
+        git init --quiet --initial-branch=main
+        git config user.name "Harness"
+        git config user.email "harness@example.test"
+        git add log.md log-2026.md
+        git commit --quiet -m "base"
+    ) || { log "    cannot stage the occupied-archive repository"; ok=false; }
+    if branch=$(rotate "$occupied_tracked" log-2026.md); then
+        log "    the git-mv route replaced an occupied archive"
+        ok=false
+    fi
+    grep -Fq 'older' "$occupied_tracked/log-2026.md" \
+        || { log "    git mv destroyed the occupied archive"; ok=false; }
+    [[ -f "$occupied_tracked/log.md" ]] \
+        || { log "    git mv removed the log it refused to move"; ok=false; }
+    $ok
+}
+
 ###############################################################################
 # Run all scenarios
 ###############################################################################
@@ -3746,6 +3874,8 @@ scenario l77 "log rotation blocks past 1000 entries"     l77_lint_log_rotation_b
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract
 scenario a3  "wiki hub output contract"                    a3_wiki_hub_output_contract
+scenario c1  "wiki page-update and log-entry contract"      c1_wiki_log_and_updated_contract
+scenario c2  "auto_shaper rotation move contract"            c2_rotation_move_contract
 
 scenario s1  "compute_sha256 inserts missing sha line"        s1_sha256_insert_missing
 scenario s2  "compute_sha256 unchanged when correct"          s2_sha256_unchanged_when_correct

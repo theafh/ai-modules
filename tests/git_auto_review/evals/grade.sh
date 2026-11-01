@@ -206,6 +206,87 @@ reproductions_in_relay() {
   [[ "$n" -ge 1 ]]
 }
 
+# enumerate_paths <repo> — the tracked, untracked, and ignored paths now, one
+# NUL-delimited record each, with the run's `.git_auto_review/` folder dropped
+# because every file under it belongs to the run rather than to a stray write.
+enumerate_paths() {
+  local repo=$1 path
+  {
+    (cd "$repo" && git ls-files -z)
+    (cd "$repo" && git ls-files --others --exclude-standard -z)
+    (cd "$repo" && git ls-files --others --ignored --exclude-standard -z)
+  } | while IFS= read -r -d '' path; do
+    case "$path" in
+      .git_auto_review/*) continue ;;
+    esac
+    printf '%s\0' "$path"
+  done
+}
+
+# path_in_list <nul-list-file> <path> — the list holds that NUL-delimited path.
+path_in_list() {
+  local list=$1 candidate=$2 member
+  [[ -f "$list" ]] || return 1
+  while IFS= read -r -d '' member; do
+    [[ "$member" == "$candidate" ]] && return 0
+  done < "$list"
+  return 1
+}
+
+# clean_after_run <root> <repo> [approved path...] — every path the tree
+# carries after the run is in the stage-time record `.paths.before`, is a path
+# the eval's approved fix writes, or lies under the per-pass micro-deployment's
+# sandbox-project agent copies (on Cursor, `.cursor/agents/`). A path outside
+# all three is a stray the run did not account for.
+clean_after_run() {
+  local root=$1 repo=$2
+  shift 2
+  local before="$root/.paths.before" path approved
+  [[ -f "$before" ]] || return 1
+  while IFS= read -r -d '' path; do
+    path_in_list "$before" "$path" && continue
+    case "$path" in
+      .cursor/agents/*) continue ;;
+    esac
+    for approved in "$@"; do
+      [[ "$path" == "$approved" ]] && continue 2
+    done
+    return 1
+  done < <(enumerate_paths "$repo")
+  return 0
+}
+
+# verifier_maps_unmapped <file> <needle> — one delta block whose `hunk:` line
+# names the needle and whose `mapping:` line reads `unmapped`.
+verifier_maps_unmapped() {
+  local file=$1 needle=$2
+  [[ -f "$file" ]] || return 1
+  awk -v needle="$needle" '
+    /^[[:space:]]*hunk:[[:space:]]*/ { h = $0; next }
+    /^[[:space:]]*mapping:[[:space:]]*/ {
+      if (index(h, needle) && $0 ~ /unmapped[[:space:]]*$/) found = 1
+      next
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$file"
+}
+
+# verifier_path_only_unmapped <file> <needle> — one delta block whose `hunk:`
+# line names the needle with no `@@` range and whose `mapping:` line reads
+# `unmapped`, the shape a binary file's path-only entry carries.
+verifier_path_only_unmapped() {
+  local file=$1 needle=$2
+  [[ -f "$file" ]] || return 1
+  awk -v needle="$needle" '
+    /^[[:space:]]*hunk:[[:space:]]*/ { h = $0; next }
+    /^[[:space:]]*mapping:[[:space:]]*/ {
+      if (index(h, needle) && h !~ /@@/ && $0 ~ /unmapped[[:space:]]*$/) found = 1
+      next
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$file"
+}
+
 # The relay stem directory the run created, if any.
 stem_dir() {
   local d
@@ -229,6 +310,8 @@ case "$eval_id" in
          [[ "$ledger_lines" -ge 1 ]] && echo yes || echo no)"
     report "every reproduction is a reproduction-r<round>-finding-<id> file in the run's .git_auto_review folder" \
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
+    report "the working tree carries no path the run did not account for" \
+      "$(clean_after_run "$root" "$repo" report.py && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
@@ -242,6 +325,8 @@ case "$eval_id" in
          [[ "$n" -ge 1 ]] && echo yes || echo no)"
     report "every reproduction is a reproduction-r<round>-finding-<id> file in the run's .git_auto_review folder" \
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
+    report "the working tree carries no path the run did not account for" \
+      "$(clean_after_run "$root" "$repo" report.py && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   lists_preexisting_issue)
@@ -270,6 +355,8 @@ case "$eval_id" in
          && echo yes || echo no)"
     report "every reproduction is a reproduction-r<round>-finding-<id> file in the run's .git_auto_review folder" \
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
+    report "the working tree carries no path the run did not account for" \
+      "$(clean_after_run "$root" "$repo" report.py notes.md && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
@@ -462,6 +549,8 @@ case "$eval_id" in
          [[ "$n" -ge 1 ]] && echo yes || echo no)"
     report "every reproduction is a reproduction-r<round>-finding-<id> file in the run's .git_auto_review folder" \
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
+    report "the working tree carries no path the run did not account for" \
+      "$(clean_after_run "$root" "$repo" report.py && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     ;;
@@ -587,6 +676,29 @@ case "$eval_id" in
   stops_on_second_unmapped_hunk)
     report "the stop line names an unmapped-hunk condition" \
       "$(has "$text" "unmapped" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  restores_stray_fixer_path)
+    sd="$(stem_dir || true)"
+    verifier_file="${sd:-}/verifier-r1.txt"
+    report "report.py restores the plain sum" \
+      "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] \
+         && [[ "$(grep -c 'return sum(items)' "$repo/report.py" 2>/dev/null)" == "1" ]] \
+         && echo yes || echo no)"
+    report "the stray untracked file and its folder are gone" \
+      "$([[ ! -e "$repo/stray/new/added.txt" && ! -e "$repo/stray" ]] && echo yes || echo no)"
+    report "the fixer-added ignored file and its folder are gone" \
+      "$([[ ! -e "$repo/__pycache__/added.txt" && ! -e "$repo/__pycache__" ]] && echo yes || echo no)"
+    report "the fixer-added binary ignored file is gone" \
+      "$([[ ! -e "$repo/__pycache__/blob.bin" ]] && echo yes || echo no)"
+    report "the pre-existing ignored file survives with its content" \
+      "$([[ "$(cat "$repo/ignored/keep.txt" 2>/dev/null)" == "keep" ]] && echo yes || echo no)"
+    report "the first delta audit marks the extra untracked path unmapped" \
+      "$(verifier_maps_unmapped "$verifier_file" "stray/new/added.txt" && echo yes || echo no)"
+    report "the first delta audit marks the binary path-only entry unmapped" \
+      "$(verifier_path_only_unmapped "$verifier_file" "__pycache__/blob.bin" && echo yes || echo no)"
+    report "the working tree carries no path the run did not account for" \
+      "$(clean_after_run "$root" "$repo" report.py && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   *)

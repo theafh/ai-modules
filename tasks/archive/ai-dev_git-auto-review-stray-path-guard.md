@@ -2,9 +2,11 @@
 description: "Make git_auto_review restore and report any file its fixer creates outside the approved fixes and the run's .git_auto_review folder, and resolve the loose reproduction scripts in tests/."
 scope: plugins/ai_dev/skills/git_auto_review
 created: 2026-10-31T21:57:38
-updated: 2026-11-01T14:03:21
-status: ready
+updated: 2026-11-01T17:52:38
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Catch stray fixer files in git_auto_review mechanically
@@ -26,7 +28,7 @@ The naming rule covers reproductions. Four parts of the loop decide whether any 
 
 `task_auto_check`'s `stray_hunk_reverted` eval in `tests/task_auto_check/evals/evals.json` is the in-repo precedent for planting a stray writer edit through an environment note and grading that the loop reverted it.
 
-[The inert-worker grader task](tests_eval-graders-bite-on-inert-worker.md) also edits `tests/git_auto_review/evals/grade.sh` and adds a scenario to `tests/git_auto_review/script_tests/run.sh`. The two tasks add separate arms and scenarios, so whichever lands second adds its own beside the other's.
+[The inert-worker grader task](../tests_eval-graders-bite-on-inert-worker.md) also edits `tests/git_auto_review/evals/grade.sh` and adds a scenario to `tests/git_auto_review/script_tests/run.sh`. The two tasks add separate arms and scenarios, so whichever lands second adds its own beside the other's.
 
 ## Approach
 

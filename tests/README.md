@@ -214,11 +214,12 @@ don't bring up new harnesses under Pattern B.
   mechanical lint cleanup) through `run.py` on the default Cursor
   worker with a deterministic `grade.sh`. The deepest loop here, so `RUNBOOK.md` records
   the cheap-first fixture probe that keeps a fixture bug off the full run.
-- **`git_auto_review/`**: Pattern A. `script_tests/` drives the four bundled
+- **`git_auto_review/`**: Pattern A. `script_tests/` drives the five bundled
   scripts the skill ships (relay init with its staleness clear and marked
   pre-seed pairs, the ledger runner's exit and per-line contract, the round-1
-  pre-fix pair and the once-only baseline pair, and the Restore procedure
-  reproducing the captured worktree with the index untouched) plus the static
+  pre-fix pair and the once-only baseline pair, the scripted round diff (`run_round_diff.sh`)
+  over the pre-fix state, and the Restore procedure reproducing the captured
+  worktree with the index untouched) plus the static
   skill and agent contracts, the Makefile `.git_auto_review` prune, the
   shared isolation allowlist, and the eval runner's stop on a failed or empty
   stage through `tests/lib/check_stage_guard.py`. `evals/` holds behavioral evals over staged git

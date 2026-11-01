@@ -78,6 +78,7 @@ SERIAL_NESTED_LOOP_IDS = (
     "stops_on_self_written_code",
     "retries_once_on_unmapped_hunk",
     "stops_on_second_unmapped_hunk",
+    "restores_stray_fixer_path",
 )
 
 DEFAULT_IDS = eval_runner.load_eval_ids(EVALS)
@@ -206,6 +207,10 @@ def _apply_job_temp(deploy_env: dict[str, str], job_env: Mapping[str, str]) -> N
         value = job_env.get(key)
         if value:
             deploy_env[key] = value
+    # Every python3 the worker or its spawned fixer runs inside the sandbox
+    # writes no __pycache__, so the stage-time path record and the round diff
+    # stay free of bytecode the reproduction itself never meant to add.
+    deploy_env["PYTHONDONTWRITEBYTECODE"] = "1"
 
 
 def run_one(

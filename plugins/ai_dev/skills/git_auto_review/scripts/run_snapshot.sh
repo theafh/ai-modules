@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 # run_snapshot.sh - write one git_auto_review round's pre-fix snapshot.
 #
-# Writes the two restore artefacts run_restore.sh replays: `pre-fix.patch`,
+# Writes the three restore artefacts run_restore.sh replays: `pre-fix.patch`,
 # the patch of the round's tracked changes with the index and the worktree
-# read together (`git diff HEAD --binary --no-color --no-ext-diff`), and
+# read together (`git diff HEAD --binary --no-color --no-ext-diff`);
 # `pre-fix.untracked.tar`, a copy of the untracked files present before the
 # fix (enumerated with `git status --porcelain --untracked-files=all`, ignored
-# paths excluded).
+# paths excluded); and `pre-fix.ignored.manifest`, the ignored files present
+# before the fix as NUL-delimited path-plus-content-hash records, enumerated
+# with `git ls-files --others --ignored --exclude-standard -z`. The ignored
+# enumeration leaves out the run's own `.git_auto_review/` folder and the
+# harness run-output trees this repository regenerates.
 #
 # On the round where the run's baseline pair is absent it also writes
 # `baseline.patch` and `baseline.untracked.tar` once and never rewrites them,
-# so a later round rewrites only the `pre-fix.*` pair.
+# so a later round rewrites only the `pre-fix.*` files.
 #
 # Usage:
 #   run_snapshot.sh [--stem <name>] [--root <dir>]
@@ -41,7 +45,11 @@ Behavior:
     --root when it is given.
   - Uses the run stem from --stem, or `default` when it is absent, and writes
     under `.git_auto_review/<stem>/`.
-  - Rewrites `pre-fix.patch` and `pre-fix.untracked.tar` for the round.
+  - Rewrites `pre-fix.patch`, `pre-fix.untracked.tar`, and
+    `pre-fix.ignored.manifest` for the round.
+  - Writes the ignored manifest as NUL-delimited path-plus-content-hash
+    records for the ignored files outside the run's `.git_auto_review/`
+    folder and outside the harness run-output trees under `tests/`.
   - Writes `baseline.patch` and `baseline.untracked.tar` once, only when that
     pair is absent, and never rewrites it.
 
@@ -62,6 +70,29 @@ die_env() {
     exit "$EXIT_ENV"
 }
 
+# Report success when the repository-root-relative path lies under the run's
+# own `.git_auto_review/` folder or under a harness run-output tree this
+# repository regenerates. The ignored manifest, the round diff, and Restore
+# all read this one exclusion.
+is_run_owned_path() {
+    local path=$1 rest
+    case "$path" in
+        .git_auto_review/*) return 0 ;;
+        tests/*) ;;
+        *) return 1 ;;
+    esac
+    rest="/${path#tests/}/"
+    case "$rest" in
+        */workspace/*|*/scratch/*|*/.eval_cache/*|*/results/*|*/.vendor_probe/*)
+            return 0 ;;
+    esac
+    case "$path" in
+        tests/wiki/layer2/AS-*|tests/wiki/layer2/L2-*|tests/wiki/layer2/WI-*|tests/wiki/layer2/WU-*|tests/wiki/layer2/MP-*)
+            return 0 ;;
+    esac
+    return 1
+}
+
 # Print one untracked path per NUL-delimited record, so a path holding a space
 # or a newline survives the whole round trip, and never a path git considers
 # ignored.
@@ -73,6 +104,41 @@ list_untracked() {
                 "?? "*) printf '%s\0' "${record#\?\? }" ;;
             esac
         done
+}
+
+# Print one ignored path per NUL-delimited record, leaving out the run's own
+# `.git_auto_review/` folder and the harness run-output trees.
+list_ignored() {
+    local repo_root=$1 path
+    (cd "$repo_root" && git ls-files --others --ignored --exclude-standard -z) \
+        | while IFS= read -r -d '' path; do
+            is_run_owned_path "$path" && continue
+            printf '%s\0' "$path"
+        done
+}
+
+# Hash one file's content with SHA-256, using whichever of the two standing
+# tools this machine carries.
+file_hash() {
+    local file=$1
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$file" | awk '{print $1}'
+    elif command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$file" | awk '{print $1}'
+    else
+        return 1
+    fi
+}
+
+# Write the ignored manifest as NUL-delimited path-plus-content-hash records.
+write_ignored_manifest() {
+    local repo_root=$1 dest=$2 path hash
+    : > "$dest" || return 1
+    while IFS= read -r -d '' path; do
+        hash="$(file_hash "$repo_root/$path")" || return 1
+        printf '%s\0%s\0' "$path" "$hash" >> "$dest" || return 1
+    done < <(list_ignored "$repo_root")
+    return 0
 }
 
 # Write a tar of the listed untracked paths, one NUL-delimited path per record
@@ -126,6 +192,8 @@ main() {
     list_untracked "$repo_root" \
         | write_untracked_tar "$repo_root" "$stem_dir/pre-fix.untracked.tar" \
         || die_env "cannot write pre-fix.untracked.tar"
+    write_ignored_manifest "$repo_root" "$stem_dir/pre-fix.ignored.manifest" \
+        || die_env "cannot write pre-fix.ignored.manifest"
 
     if [[ ! -f "$stem_dir/baseline.patch" \
         || ! -f "$stem_dir/baseline.untracked.tar" ]]; then

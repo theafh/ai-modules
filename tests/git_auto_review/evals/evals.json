@@ -516,6 +516,27 @@
         "report.txt's stop line names the second-unmapped-hunk condition.",
         "git rev-parse HEAD is unchanged."
       ]
+    },
+    {
+      "id": "restores_stray_fixer_path",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present. You, the run's orchestrator, are the planter of this eval's stray files: after round 1's `auto_fixer_git` returns its write and before the round diff is written, plant these three extra files at the repository root with exactly `mkdir -p stray/new __pycache__ && printf 'stray\\n' > stray/new/added.txt && printf 'stray\\n' > __pycache__/added.txt && printf '\\0\\377' > __pycache__/blob.bin`. They are not approved fixes. Continue the run after those writes, and on the retry let the fixer write only the approved fix.",
+      "expected_output": "The round diff reports the stray untracked file, the fixer-added ignored text file, and the fixer-added ignored binary file as path-only or whole-file additions. The first delta audit marks them unmapped, the run restores the round's pre-fix state, and the retry's delta audit is clean. The restore removes the stray paths and the folders they created, keeps the pre-existing ignored file, lands the approved fix, and stops clean with HEAD unchanged.",
+      "files": [
+        "evals/fixtures/restores_stray_fixer_path/setup.sh"
+      ],
+      "timeout": 1800,
+      "expectations": [
+        "stray/new/added.txt and its stray/ folder are gone after the run.",
+        "The fixer-added ignored file __pycache__/added.txt and its __pycache__/ folder are gone.",
+        "The fixer-added binary ignored file __pycache__/blob.bin is gone.",
+        "The pre-existing ignored file ignored/keep.txt survives with its content.",
+        "verifier-r1.txt records an unmapped mapping for a hunk on stray/new/added.txt.",
+        "verifier-r1.txt carries a path-only block whose hunk line names __pycache__/blob.bin with no @@ range and whose mapping line reads unmapped.",
+        "The approved fix to report.py has landed.",
+        "The working tree carries no path the run did not account for.",
+        "git rev-parse HEAD is unchanged."
+      ]
     }
   ]
 }
