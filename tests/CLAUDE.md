@@ -17,9 +17,12 @@ Standing coverage lives in repo-root `TESTING.md` `## Coverage Expectations`
 and the matching bullets in repo-root `CLAUDE.md`. Short form for this
 tree:
 
-- **Default / "run the tests":** the skill's `script_tests/run.sh` or
-  `run_all.sh` (deterministic). Do not start LLM-worker evals from that ask
-  alone.
+- **Default / "run the tests":** `make test`, which runs `tests/run_all.sh`
+  over every harness's deterministic entrypoint (`script_tests/run.sh` or
+  `run_all.sh`) and every `tests/lib/test_*` unit test, one pass/fail line per
+  surface. Narrow to one harness with `bash tests/<skill>/run_all.sh` (or
+  `bash tests/<skill>/script_tests/run.sh` where it has no `run_all.sh`). Do
+  not start LLM-worker evals from that ask alone.
 - **Behavioral evals:** only when Acceptance names them, when the change
   edits loop/relay/orchestration that scripts cannot pin and a named
   scenario buys the signal, or when the operator explicitly asks (including

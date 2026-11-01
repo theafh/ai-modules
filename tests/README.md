@@ -49,20 +49,22 @@ alongside in `script_tests/` (not a "layer" of the eval, just plain
 shell unit tests for the scripts the skill ships).
 
 ```text
-tests/<skill_name>/
-├── README.md
-├── RUNBOOK.md
-├── run_all.sh                    # bundled-script unit tests entrypoint
-├── results/
-├── script_tests/
-│   ├── run.sh
-│   └── scratch/<id>/             # transient per-scenario sandboxes
-├── evals/                        # skill-creator
-│   ├── README.md
-│   ├── evals.json                # canonical schema
-│   └── fixtures/<name>/setup.sh  # per-eval sandbox stagers
-└── workspace/                    # skill-creator run output
-    └── iteration-N/
+tests/
+├── run_all.sh                    # aggregate deterministic gate (`make test`)
+└── <skill_name>/
+    ├── README.md
+    ├── RUNBOOK.md
+    ├── run_all.sh                # this harness's deterministic entrypoint
+    ├── results/
+    ├── script_tests/
+    │   ├── run.sh
+    │   └── scratch/<id>/         # transient per-scenario sandboxes
+    ├── evals/                    # skill-creator
+    │   ├── README.md
+    │   ├── evals.json            # canonical schema
+    │   └── fixtures/<name>/setup.sh  # per-eval sandbox stagers
+    └── workspace/                # skill-creator run output
+        └── iteration-N/
 ```
 
 Reference: `skill-creator/SKILL.md` and `skill-creator/references/schemas.md`
@@ -82,6 +84,13 @@ Migrate to Pattern A on the next significant iteration of the harness;
 don't bring up new harnesses under Pattern B.
 
 ## Current harnesses
+
+`tests/run_all.sh` is the aggregate gate: it discovers each harness below at
+run time, runs the harness's deterministic entrypoint and any
+`evals/test_run.py` or `evals/test_grade.py` the entrypoint leaves out, and
+runs every `tests/lib/test_*` unit test. `make test` invokes it, and
+`bash tests/run_all.sh --list` prints the discovered set. A harness keeps its
+own deterministic entrypoint as the scoped subset for one harness.
 
 - **`wiki/`**: Pattern B. Full Layer 1 (deterministic, `layer1/run.sh`
   prints its own scenario tally) + Layer 2 (every scenario in
@@ -159,15 +168,16 @@ don't bring up new harnesses under Pattern B.
   `--vendor cursor`. No verdict cache: the repeated draws are the
   measurement.
 - **`natural_language/`**: Pattern A, behavioral only (the subject is an
-  output style, so there is no `script_tests/`). 2 scenarios × a fixed
-  5-pass denominator, graded by a deterministic `grade.py` plus a
-  refute-biased `judge.py`. No verdict cache: the repeated draws are
-  the measurement. Workers load the style through Claude output-style
-  selection, so the runner defaults to Claude, stops with an error on
-  `--vendor cursor`, and runs on Claude wherever a change needs it, with
-  `--vendor claude` in the command. `evals/test_run.py` checks the
-  style-route preflight and the runner's stop on a failed or empty stage
-  without starting a worker.
+  output style, so there is no `script_tests/`). `run_all.sh` drives the
+  deterministic surface: `evals/test_run.py` (the style-route preflight and
+  the runner's stop on a failed or empty stage) and `evals/test_grade.py`
+  (the grader's wrap-collapsed matching), neither of which starts a worker.
+  2 scenarios × a fixed 5-pass denominator, graded by a deterministic
+  `grade.py` plus a refute-biased `judge.py`. No verdict cache: the repeated
+  draws are the measurement. Workers load the style through Claude
+  output-style selection, so the runner defaults to Claude, stops with an
+  error on `--vendor cursor`, and runs on Claude wherever a change needs it,
+  with `--vendor claude` in the command.
 - **`task/`**: Pattern A. The `task_*` family hub, holding three
   deterministic surfaces: `script_tests/run.sh` unit-tests the bundled
   `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (86 scenarios),

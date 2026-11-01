@@ -95,9 +95,10 @@ run so results stay comparable, and keep grading on the model-free grader.
 A change to a shipped component lands with the **deterministic** surfaces that
 prove it: `make lint` when markdown or shell moved, and the matching
 `script_tests/` (or `run_all.sh`) when the change touches scripts, registration,
-pins, or harness wiring those scripts assert. Script tests are the default
-post-implementation check and the default reading of "run the tests" unless the
-operator narrows or widens scope.
+pins, or harness wiring those scripts assert. Those matching script tests are
+the default post-implementation check. The default reading of "run the tests"
+is `make test`, the aggregate gate over every deterministic surface (see
+`## Running Tests`), unless the operator narrows it to one harness or widens it.
 
 Behavioral (LLM-worker) evals are opt-in proof for behaviour scripts cannot pin.
 Run them only when at least one of these holds:
@@ -146,10 +147,25 @@ fixtures and grading stays valid.
 
 ## Running Tests
 
+`make test` runs `tests/run_all.sh`, the one command that covers the whole
+deterministic surface: the gate discovers every harness under `tests/`, runs
+its deterministic entrypoint and any `evals/test_run.py` or
+`evals/test_grade.py` that entrypoint leaves out, runs every
+`tests/lib/test_*` unit test, prints one pass/fail line per
+surface, and exits non-zero when any surface fails. The per-harness forms
+below it are the scoped subset for one harness.
+
 ```bash
 make lint                                              # markdown, JSON, shell, repo-wide
-bash tests/<skill>/run_all.sh                          # that skill's deterministic surface
-bash tests/<skill>/script_tests/run.sh                 # the same, where no run_all.sh exists
+make test                                              # every deterministic surface, one gate
+bash tests/run_all.sh                                  # the same gate, direct
+bash tests/run_all.sh --list                           # what the gate covers
+bash tests/run_all.sh --surface <name>                 # one surface (harness name or lib)
+
+# Scoped alternative: one harness's deterministic surface
+bash tests/<skill>/run_all.sh
+bash tests/<skill>/script_tests/run.sh                 # where no run_all.sh exists
+
 python3 tests/<skill>/evals/run.py                    # behavioural evals, default vendor
 python3 tests/<skill>/evals/run.py <id>               # one eval
 python3 tests/<skill>/evals/run.py --force            # ignore recorded verdicts

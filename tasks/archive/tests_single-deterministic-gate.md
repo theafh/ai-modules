@@ -2,9 +2,11 @@
 description: "Wire the shared tests/lib unit tests and every harness's deterministic surface into one runnable gate, so no suite is reachable only by remembering its path."
 scope: "local test harnesses"
 created: 2026-10-30T23:33:51
-updated: 2026-10-31T13:51:12
-status: ready
+updated: 2026-11-01T22:28:37
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Give the test tree one runnable deterministic gate
@@ -115,7 +117,7 @@ invocations. Wiring behavioral evals into the aggregate, which stay opt-in per
 which run fast enough serially at the measured total.
 
 **Landing order.** This task lands after [the hermetic-gate
-task](archive/tests_deterministic-gate-hermetic.md), because Acceptance requires
+task](tests_deterministic-gate-hermetic.md), because Acceptance requires
 `bash tests/run_all.sh` to exit zero on a clean checkout and that task is what
 makes `skill_doctor` and `git_review` green. Landing this one first is still
 useful — the aggregate reports whichever surfaces it finds red, which at the

@@ -4,6 +4,7 @@
 #   make deploy / global / install   deploy artefacts to global config dirs
 #   make uninstall                   remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 #   make clean                       remove managed deployment backups
+#   make test                        run every deterministic test surface
 #   make lint                        report lint issues across md/json/sh
 #   make fix                         auto-fix lint issues where possible
 #   make help                        list targets
@@ -42,6 +43,7 @@ SH_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.sh' -print)
 
 .PHONY: help \
         deploy global install uninstall clean \
+        test \
         lint lint-md lint-json lint-sh \
         fix fix-md
 
@@ -59,6 +61,9 @@ uninstall: ## Remove previously deployed artefacts; a scope flag limits it to th
 
 clean: ## Remove managed deployment backups (--clear-backups).
 	./deployment/deployment.sh --clear-backups
+
+test: ## Run every deterministic test surface (tests/run_all.sh).
+	bash tests/run_all.sh
 
 lint: ## Run all linters and report issues across md/json/sh.
 	@rc=0; \
