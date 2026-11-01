@@ -365,7 +365,9 @@ s8_snapshot_and_baseline() {
   cp "$stem/baseline.patch" "$dir/baseline.keep"
   cp "$stem/pre-fix.patch" "$dir/prefix.round1"
 
-  # A second round rewrites the pre-fix pair and never the baseline pair.
+  # A second round rewrites the three pre-fix artefacts `pre-fix.patch`,
+  # `pre-fix.untracked.tar`, and `pre-fix.ignored.manifest`, and never the
+  # baseline pair.
   printf 'between rounds\n' > "$stem/../probe"
   rm -f "$dir/.git_auto_review/default/../probe"
   printf 'b1\nB2\nROUND2\n' > "$dir/d/tracked-edit.txt"
@@ -720,7 +722,7 @@ s17_round_diff_binary_paths() {
 }
 
 s18_snapshot_skips_run_output_trees() {
-  local ok=true dir stem manifest list
+  local ok=true dir stem manifest list rc=0
   dir="$(new_sandbox snapshot_run_output)"
   stage_ignore_repo "$dir" $'ignored/\ntests/**/workspace/\n' || return 1
   mkdir -p "$dir/ignored" "$dir/tests/demo/workspace"
@@ -740,6 +742,20 @@ s18_snapshot_skips_run_output_trees() {
     log "    the run-output tree reached the ignored manifest"
     ok=false
   fi
+
+  # An ignored path this machine cannot hash still records its path and leaves
+  # the snapshot exiting 0, because the content hash is best-effort. A dangling
+  # symlink lists as an ignored path and hashes on no host, so the assertion
+  # holds wherever the suite runs.
+  ln -s missing-target "$dir/ignored/unhashable"
+  rc=0
+  bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" \
+    >"$SCRATCH/snapshot_unhashable.out" 2>&1 || rc=$?
+  assert_eq "unhashable ignored path exit code" "$rc" "0" || ok=false
+  tr '\0' '\n' < "$manifest" > "$list"
+  assert_contains_re "the unhashable ignored path is listed" "$list" \
+    '^ignored/unhashable$' || ok=false
+
   bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
     >"$SCRATCH/snapshot_run_output.out" 2>&1 || { log "    run_restore.sh exited non-zero"; ok=false; }
   assert_eq "the run-output tree file is untouched" \
@@ -1007,7 +1023,7 @@ scenario s14 "the eval runner stops on a failed or empty stage" s14_eval_runner_
 scenario s15 "run_round_diff.sh reports each changed path kind once" s15_round_diff_path_kinds
 scenario s16 "run_restore.sh removes the folders the fixer created" s16_restore_removes_fixer_folders
 scenario s17 "run_round_diff.sh carries binary paths as path-only hunks" s17_round_diff_binary_paths
-scenario s18 "run_snapshot.sh skips the harness run-output trees" s18_snapshot_skips_run_output_trees
+scenario s18 "run_snapshot.sh skips the harness run-output trees and records an unhashable ignored path" s18_snapshot_skips_run_output_trees
 scenario s19 "run_ledger.sh runs every command with bytecode writing off" s19_ledger_bytecode_off
 scenario s20 "snapshot and restore survive a newline in an untracked name" s20_newline_untracked_path
 scenario s21 "the branch-and-worktree grader scopes defects to their section" s21_grade_section_scope

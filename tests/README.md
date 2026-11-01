@@ -217,7 +217,8 @@ don't bring up new harnesses under Pattern B.
 - **`git_auto_review/`**: Pattern A. `script_tests/` drives the five bundled
   scripts the skill ships (relay init with its staleness clear and marked
   pre-seed pairs, the ledger runner's exit and per-line contract, the round-1
-  pre-fix pair and the once-only baseline pair, the scripted round diff (`run_round_diff.sh`)
+  pre-fix artefacts `pre-fix.patch`, `pre-fix.untracked.tar`, and
+  `pre-fix.ignored.manifest` and the once-only baseline pair, the scripted round diff (`run_round_diff.sh`)
   over the pre-fix state, and the Restore procedure reproducing the captured
   worktree with the index untouched) plus the static
   skill and agent contracts, the Makefile `.git_auto_review` prune, the

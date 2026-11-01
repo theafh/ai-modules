@@ -1,7 +1,7 @@
 ---
 name: git_auto_review
 description: "Run an automated review-and-fix loop over the checked-out branch's change since the default branch plus its working tree, and over the default branch's uncommitted changes: git_review is the only gate, a single writer agent fixes the findings that qualify, each round is verified refute-by-default and re-reviewed on its delta, and the loop stops under stated convergence rules. Use when the user asks to auto-review and fix uncommitted changes, auto-review and fix this branch, run the automated review loop, keep reviewing and fixing until the change is clean, loop review and fix over my branch against main, auto-fix what the review finds, or drive an automated review gate to a clean exit. Every fix stays uncommitted."
-version: 1.0.9
+version: 1.0.10
 author: Andreas F. Hoffmann
 license: MIT
 ---

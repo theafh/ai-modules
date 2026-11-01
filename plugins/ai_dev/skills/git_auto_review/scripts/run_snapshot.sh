@@ -131,11 +131,13 @@ file_hash() {
 }
 
 # Write the ignored manifest as NUL-delimited path-plus-content-hash records.
+# The hash is best-effort: no consumer reads it, so a path this machine cannot
+# hash still records its path instead of failing the snapshot.
 write_ignored_manifest() {
     local repo_root=$1 dest=$2 path hash
     : > "$dest" || return 1
     while IFS= read -r -d '' path; do
-        hash="$(file_hash "$repo_root/$path")" || return 1
+        hash="$(file_hash "$repo_root/$path")" || hash=""
         printf '%s\0%s\0' "$path" "$hash" >> "$dest" || return 1
     done < <(list_ignored "$repo_root")
     return 0
