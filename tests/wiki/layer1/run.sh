@@ -3935,7 +3935,7 @@ c2_rotation_move_contract() {
     rm -rf "$work"
     mkdir -p "$work"
     local block="$work/rotation_block.txt"
-    awk '/<fix_log_rotation>/{on=1} on{print} /<\/fix_log_rotation>/{on=0}' \
+    awk '/^[[:space:]]*<fix_log_rotation>[[:space:]]*$/{on=1} on{print} /^[[:space:]]*<\/fix_log_rotation>[[:space:]]*$/{exit}' \
         "$agent" > "$block"
     [[ -s "$block" ]] || { log "    no <fix_log_rotation> block"; return 1; }
 
@@ -4054,7 +4054,7 @@ c3_citation_report_only_contract() {
     local moves="$work/fix_moves.txt" compile="$work/compile_issue_list.txt"
     awk '/<fix_moves>/{on=1} on{print} /<\/fix_moves>/{on=0}' \
         "$agent" > "$moves"
-    awk '/<compile_issue_list>/{on=1} on{print} /<\/compile_issue_list>/{on=0}' \
+    awk '/<compile_issue_list>/{on=1} on{print} /<\/compile_issue_list>/{exit}' \
         "$agent" > "$compile"
     [[ -s "$moves" ]] || { log "    no <fix_moves> block"; return 1; }
     [[ -s "$compile" ]] || { log "    no <compile_issue_list> block"; return 1; }
