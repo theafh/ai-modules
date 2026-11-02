@@ -11,9 +11,13 @@
 # against the snapshots stage.sh took under <target>/.eval/ before the run.
 # Prints PASS or FAIL per check and exits 0 only when every check passed.
 #
-# Expectations that speak only about the worker's response or about which
-# helper it invoked are printed as "response" lines for the operator to
-# confirm from response.txt; they never decide the exit code.
+# Expectations that speak only about the worker's response are printed as
+# "response" lines for the operator to confirm from response.txt; they never
+# decide the exit code. The helper invocation is graded from
+# <target>/script_calls.log, where run.py's logging shim records each
+# checkout_branch.sh call with its branch argument: in evals 3, 5, 6, and 7 the
+# recorded call decides the exit code, while the invocation lines in evals 1,
+# 2, and 4 stay operator-confirmed.
 
 set -uo pipefail
 
@@ -135,6 +139,21 @@ no_stash() {
   ! git rev-parse --verify --quiet refs/stash
 }
 
+# --- Helper-call predicates --------------------------------------------------
+
+# run.py's logging shim appends "checkout_branch.sh <branch>" per call, so a
+# recorded line with the eval's branch argument proves the run reached the
+# decision under test rather than leaving an untouched sandbox.
+script_log="$target/script_calls.log"
+
+helper_called_with() {
+  [[ -s "$script_log" ]] || return 1
+  awk -v arg="$1" '
+    $1 == "checkout_branch.sh" && $2 == arg { found = 1 }
+    END { exit !found }
+  ' "$script_log"
+}
+
 # --- Per-eval checks ---------------------------------------------------------
 
 case "$eval_id" in
@@ -166,6 +185,8 @@ case "$eval_id" in
     check "no local release-prep branch exists" branch_absent release-prep
     check "nothing was created: local branches as found" local_branches_as_found
     check "worktree left as found" worktree_as_found
+    check "the helper ran with the bare name release-prep" \
+      helper_called_with release-prep
     note_response "invoked scripts/checkout_branch.sh with the bare name release-prep"
     note_response "listed origin/release-prep and fork/release-prep as candidates"
     note_response "asked which remote the local branch should track and picked no default"
@@ -189,6 +210,8 @@ case "$eval_id" in
     check "no local hotfix/tls branch was created" branch_absent hotfix/tls
     check "nothing was created: local branches as found" local_branches_as_found
     check "worktree left as found" worktree_as_found
+    check "the helper ran with the bare name hotfix/tls" \
+      helper_called_with hotfix/tls
     note_response "invoked scripts/checkout_branch.sh"
     note_response "named the restricted fetch refspec or single-branch clone as the cause"
     note_response "showed the configured fetch refspec for origin"
@@ -201,6 +224,8 @@ case "$eval_id" in
     check "no remote gained a ship-it branch" absent_on_every_remote ship-it
     check "nothing was created: local branches as found" local_branches_as_found
     check "worktree left as found" worktree_as_found
+    check "the helper ran with the bare name ship-it" \
+      helper_called_with ship-it
     note_response "invoked scripts/checkout_branch.sh"
     note_response "reported that ship-it exists neither locally nor on any remote"
     note_response "kept that miss distinct from a branch hidden by a fetch refspec"
@@ -215,6 +240,8 @@ case "$eval_id" in
       tracked_and_modified seed.txt
     check "worktree left as found" worktree_as_found
     check "no stash entry was created" no_stash
+    check "the helper ran with the bare name rework" \
+      helper_called_with rework
     note_response "invoked scripts/checkout_branch.sh"
     note_response "named seed.txt as the blocking path"
     note_response "ran no reset or checkout-discard to make the switch proceed"

@@ -69,9 +69,10 @@ Cursor worker (`agent -p`, model `auto`) by default, the project's
 measurement vendor, or Claude's `sonnet` under `--vendor claude` (see
 `tests/CLAUDE.md`). It spawns the worker with `$sandbox_proj` as
 the working directory, so `discover_tasks.sh` resolves the sandbox and
-never the real repo. The deterministic `grade.sh` it calls uses no
-model; the output-verdict expectations stay for you to confirm from the
-captured `response.txt` on the inherited session model.
+never the real repo. The deterministic `grade.sh` it calls uses no model
+and reads the captured response through `RESPONSE_FILE` for the checks each
+eval carries; the remaining `agent-attest` judgements stay for you to
+confirm from that response on the inherited session model.
 
 ```bash
 python3 tests/task/evals/run.py                 # all evals
@@ -123,7 +124,10 @@ eval "$(bash tests/task/evals/stage.sh <eval_id>)"
 #    RUN THE WORKER WITH $sandbox_proj AS ITS WORKING DIRECTORY so the
 #    skill's discover_tasks.sh resolves the sandbox, never the real repo.
 
-# 3. Grade the post-run sandbox programmatically.
+# 3. Grade the post-run sandbox programmatically. Pass the captured response
+#    to run the eval's response checks; omit RESPONSE_FILE for a sandbox-only
+#    grade, which skips them.
+RESPONSE_FILE=<captured response.txt> bash tests/task/evals/grade.sh <eval_id> "$sandbox_proj"
 bash tests/task/evals/grade.sh <eval_id> "$sandbox_proj"
 ```
 
@@ -147,10 +151,10 @@ their prompts ask the agent to write its report to
 `coherence-report.md` in the sandbox project root, with a
 `selected: <task filenames>` line and one
 `verdict: <task> - <ship-as-is|alter|defer-candidate> - <evidence>` line
-per task. `grade.sh` never sees the agent's *response* text, so a report
-on disk in a structured shape is what makes the selected-set boundary and
-the per-task verdicts deterministically gradeable rather than
-attest-only. The content asked for is exactly what `task_fix`'s
+per task. `grade.sh` reads the agent's response through `RESPONSE_FILE`,
+and `coherence-report.md` remains the graded surface for the selected-set
+boundary and the per-task verdicts, which free-form response prose does not
+make deterministic. The content asked for is exactly what `task_fix`'s
 `<output_contract>` already mandates, and the assess-only evals pair it
 with `tracked_unmodified` so a run that writes a repair fails whatever
 its report claims.
@@ -160,18 +164,22 @@ The output-verdict expectations live in `evals.json`'s `expectations[]`
 from the transcript): the literal `# General assessment`,
 `No issues found.`, `Gaps:`, `Success: full task compliance confirmed.`,
 and `audit complete — …` strings each skill is instructed to emit. `grade.sh`
-lists them as `agent-attest` notes rather than asserting them, because it
-never sees the agent's response text.
+asserts the ones each eval carries from the response it reads through
+`RESPONSE_FILE`, and lists only the judgements no check can decide as
+`agent-attest` notes.
 
 ## Success
 
-For each eval: `grade.sh <id> "$sandbox_proj"` exits 0 with PASS on every
-programmatic check, and the operator (or `run_eval`) confirms the
-`agent-attest` / `evals.json` output expectations.
+For each eval: `RESPONSE_FILE=<captured response.txt> grade.sh <id>
+"$sandbox_proj"` exits 0 with PASS on every programmatic check, and the
+operator (or `run_eval`) confirms the remaining `agent-attest` /
+`evals.json` output expectations. With `RESPONSE_FILE` unset, the grader
+skips the response checks and grades sandbox state alone.
 
 ## Scope discipline
 
 These evals consume LLM tokens and are NOT auto-run from `run_all.sh`.
-Per `tests/CLAUDE.md`, lean on filesystem-state and structured-field
-checks first; the prose verdict strings are the one place free-form
-response text is load-bearing, and there the exact literal is the signal.
+Per `tests/CLAUDE.md`, lean on filesystem-state and structured-field checks
+first. The grader reads the response through `RESPONSE_FILE` for the subject
+and verdict checks each eval carries; `agent-attest` covers only the
+judgements no check can decide.

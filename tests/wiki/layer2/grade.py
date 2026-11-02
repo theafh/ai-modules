@@ -3,7 +3,8 @@
 
 Reads each pass's TEST REPORT (written by the subagent to `report.md`) and
 evaluates the assertion list for the scenario. Writes one `grading.json`
-per pass directory.
+per pass directory, then exits non-zero when the run holds no pass or any
+pass the grader marks failed.
 
 Layout expected:
     workspace/run-<ts>/
@@ -472,7 +473,7 @@ def main() -> int:
 
     (run_dir / "grading_summary.json").write_text(json.dumps(summary, indent=2))
     print(f"\nGraded {len(summary)} pass(es). Summary: {run_dir}/grading_summary.json")
-    return 0
+    return 0 if summary and all(item["passed"] for item in summary) else 1
 
 
 if __name__ == "__main__":

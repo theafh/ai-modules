@@ -426,7 +426,21 @@ scenario s11 "repeated-link findings route through the repair path with named ow
 scenario s12 "relay graders reject evidence mutations" s12_relay_grader_mutations
 scenario s13 "parallel runner splits the serial nested-loop set" s13_parallel_runner
 scenario s14 "dry-run round is wired before the gate with gate confirmation" s14_dryrun_round_wiring
+# The inert-worker pin: stage every eval, grade it against an empty response,
+# and fail when any eval grades PASS. A grader that certifies an untouched
+# sandbox is the defect; this scenario turns red whenever one returns.
+s16_inert_worker_probe_pin() {
+  local out rc
+  out=$(python3 "$REPO_ROOT/tests/lib/inert_worker_probe.py" \
+    --harness task_auto_check 2>&1) && rc=0 || rc=$?
+  if [[ "$rc" == 0 ]]; then return 0; fi
+  log "$out"
+  log "    expected the inert-worker probe to exit 0, got $rc"
+  return 1
+}
+
 scenario s15 "blocking bar, scoped rounds, stall and compaction stops, and robust returns are pinned" s15_convergence_and_robust_returns
+scenario s16 "inert worker: no eval grades PASS on an empty response" s16_inert_worker_probe_pin
 
 log ""
 log "================================================================"

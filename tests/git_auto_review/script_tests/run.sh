@@ -1028,7 +1028,19 @@ scenario s19 "run_ledger.sh runs every command with bytecode writing off" s19_le
 scenario s20 "snapshot and restore survive a newline in an untracked name" s20_newline_untracked_path
 scenario s21 "the branch-and-worktree grader scopes defects to their section" s21_grade_section_scope
 scenario s22 "the ledger grader keys its check per finding" s22_grade_ledger_per_finding
+# The inert-worker pin: stage every eval, grade it against an empty response,
+# and fail when any eval grades PASS. A grader that certifies an untouched
+# sandbox is the defect; this scenario turns red whenever one returns.
+s24_inert_worker_probe_pin() {
+  local out rc
+  out=$(python3 "$REPO_ROOT/tests/lib/inert_worker_probe.py" \
+    --harness git_auto_review 2>&1) && rc=0 || rc=$?
+  [[ "$rc" == 0 ]] || log "$out"
+  assert_eq "inert-worker probe exit (0 when no eval grades PASS)" "$rc" "0"
+}
+
 scenario s23 "the eval docs and runbook enumerate the measured behaviour" s23_eval_docs_inventory
+scenario s24 "inert worker: no eval grades PASS on an empty response" s24_inert_worker_probe_pin
 
 log ""
 log "================================================================"

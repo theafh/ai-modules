@@ -1212,6 +1212,17 @@ s34_eval_runner_stage_failure_raises() {
     assert_eq "tests/lib/check_stage_guard.py exit" "$rc" "0"
 }
 
+# The inert-worker pin: stage every eval, grade it against an empty response,
+# and fail when any eval grades PASS. A grader that certifies an untouched
+# sandbox is the defect; this scenario turns red whenever one returns.
+s36_inert_worker_probe_pin() {
+    local out rc
+    out=$(python3 "$REPO_ROOT/tests/lib/inert_worker_probe.py" \
+        --harness git_review 2>&1) && rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "inert-worker probe exit (0 when no eval grades PASS)" "$rc" "0"
+}
+
 # --- extract_heading_range.sh ------------------------------------------------
 
 write_report() {
@@ -2532,6 +2543,8 @@ scenario s34 "eval runner: a failed or empty stage raises before any worker" \
     s34_eval_runner_stage_failure_raises
 scenario s35 "non-ascii path stays git-quoted under the suite-entry pin" \
     s35_non_ascii_path_quotes_under_the_suite_pin
+scenario s36 "inert worker: no eval grades PASS on an empty response" \
+    s36_inert_worker_probe_pin
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

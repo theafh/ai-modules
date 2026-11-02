@@ -184,7 +184,9 @@ Each Layer 2 run produces, under
 - `benchmark.md`: human-readable summary
 - `report.html`: self-contained, interactive viewer with per-assertion results, prompts, responses, reports, and timing
 
-The aggregator automatically compares against the most recent prior
+`run.py` exits non-zero when `grade.py` marks any pass failed, including a
+run directory holding no pass or one whose `response.txt` is empty. The
+aggregator automatically compares against the most recent prior
 `benchmark.json` and exits non-zero if any assertion that was 100% in
 the prior run is <100% now, or any scenario that was clean across all
 passes now has at least one fail. That's the regression signal.

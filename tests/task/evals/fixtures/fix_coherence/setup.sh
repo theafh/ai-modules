@@ -95,9 +95,9 @@
 #
 # The backlog is seeded lint-clean and git-committed, so any post-run diff or
 # lint finding is attributable to the run. The prompt asks for the assessment
-# in coherence-report.md as well as in the response: grade.sh never sees the
-# agent's response text, so writing the report into the sandbox is what makes
-# the assess-phase verdicts deterministically gradeable. The content graded is
+# in coherence-report.md as well as in the response: grade.sh reads the captured
+# response through RESPONSE_FILE, and the report file remains what makes the
+# assess-phase verdicts deterministically gradeable. The content graded is
 # exactly what task_fix's <output_contract> already mandates.
 
 set -euo pipefail

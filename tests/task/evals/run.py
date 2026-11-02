@@ -6,9 +6,10 @@ host session, i.e. on whatever model the session inherited. This runner
 instead spawns one vendor-resolved print-mode worker per eval. By default
 that means the Cursor worker (`agent -p`, model `auto`); `--vendor claude`
 (model `sonnet`) runs where Claude is needed or asked for, and
-`--model ''` inherits the vendor CLI default. The meta level on top — the deterministic `grade.sh`, and any
-prose-verdict confirmation the operator does by reading `response.txt` —
-stays model-free.
+`--model ''` inherits the vendor CLI default. The meta level on top — the
+deterministic `grade.sh`, which reads the captured response through
+`RESPONSE_FILE`, and the operator's confirmation of the remaining
+`agent-attest` judgements — stays model-free.
 
 Per eval the runner:
 
@@ -24,17 +25,20 @@ Per eval the runner:
 3. Captures `response.txt` / `stderr.txt` / `timing.json` (with the
    `artefacts_read_from_micro_deployment` integrity record) under
    `workspace/run-<ts>/<id>/`.
-4. Grades the post-run sandbox with `grade.sh <id> <sandbox_proj>`.
+4. Grades the post-run sandbox with `grade.sh <id> <sandbox_proj>`, passing
+   the captured response through `RESPONSE_FILE`.
 
 Exit code is 0 only when every eval's worker completed cleanly (CLI rc 0
 with a real response) AND its deterministic grade passed. A timed-out or
 crashed worker fails the eval regardless of grade.sh: grade.sh then sees
 only partial sandbox state (e.g. an early status stamp an aborted loop
 left behind), which could otherwise masquerade as a clean pass.
-The output-verdict expectations in evals.json (the literal
-`# General assessment`, `Gaps:`, `Success: full task compliance
-confirmed.`, `audit complete — …` strings) remain operator-confirmed
-from the captured `response.txt`.
+The grader reads the captured response through `RESPONSE_FILE` for the
+subject and verdict checks each eval carries, and those checks decide the
+exit code. The remaining output-verdict expectations in evals.json (the
+literal `# General assessment`, `No issues found.`, `Success: full task
+compliance confirmed.`, and `audit complete — …` strings) are the
+judgements no check can decide and stay operator-confirmed.
 
 Usage:
     python3 tests/task/evals/run.py [eval_id ...]
@@ -49,6 +53,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import os
 import pathlib
 import shlex
 import subprocess
@@ -269,8 +274,13 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 "checkout_unread": checkout_unread,
         }, indent=2))
 
+        grade_env = dict(os.environ)
+        grade_env["RESPONSE_FILE"] = str(eval_dir / "response.txt")
         grade = subprocess.run(
-            ["bash", str(GRADE), eval_id, workdir], capture_output=True, text=True
+            ["bash", str(GRADE), eval_id, workdir],
+            capture_output=True,
+            text=True,
+            env=grade_env,
         )
         (eval_dir / "grading.txt").write_text(grade.stdout + grade.stderr)
         print(grade.stdout, end="", flush=True)

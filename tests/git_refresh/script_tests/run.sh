@@ -462,6 +462,19 @@ scenario s10 "flags: help and unknown argument handling"                  s10_he
 scenario s11 "eval runner: a failed or empty stage raises before any worker" s11_eval_runner_stage_failure_raises
 scenario s12 "eval 3 grade: the shimmed helper log proves the gated order" s12_eval3_grade_reads_order_from_shimmed_helper_log
 
+# The inert-worker pin: stage every eval, grade it against an empty response,
+# and fail when any eval grades PASS. A grader that certifies an untouched
+# sandbox is the defect; this scenario turns red whenever one returns.
+s13_inert_worker_probe_pin() {
+    local out rc
+    out=$(python3 "$REPO_ROOT/tests/lib/inert_worker_probe.py" \
+        --harness git_refresh 2>&1) && rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "inert-worker probe exit (0 when no eval grades PASS)" "$rc" "0"
+}
+
+scenario s13 "inert worker: no eval grades PASS on an empty response" s13_inert_worker_probe_pin
+
 log ""
 log "================================================================"
 log "  $((PASS+FAIL)) scenarios - $PASS pass, $FAIL fail"

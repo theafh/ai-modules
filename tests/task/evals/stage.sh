@@ -54,10 +54,10 @@
 #
 # The six backlog-coherence ids ask for the assessment in coherence-report.md as
 # well as in the response, with a `selected:` line and one `verdict:` line per
-# task. grade.sh never sees the agent's response text, so that structured report
-# file is what makes the assess-phase verdicts and the selected-set boundary
-# deterministically gradeable; its content is what task_fix's <output_contract>
-# already mandates.
+# task. grade.sh reads the captured response through RESPONSE_FILE, and that
+# structured report file remains what makes the assess-phase verdicts and the
+# selected-set boundary deterministically gradeable; its content is what
+# task_fix's <output_contract> already mandates.
 #
 # Prints name=value lines on stdout, each value already quoted with
 # printf %q so the block is safe to `eval`:
@@ -89,7 +89,8 @@ skill_for() { printf '%s/%s/SKILL.md' "$SKILLS" "$1"; }
 
 # Shared tail for the six backlog-coherence prompts: it asks for the report on
 # disk in a machine-readable shape so grade.sh can assert the selected set and
-# the per-task verdicts, which it cannot read out of the agent's response.
+# the per-task verdicts from the structured report, which the free-form
+# response does not make deterministic.
 REPORT_CONTRACT='Write your full report to coherence-report.md in the project root as well as answering here, and make its backlog-coherence assessment section machine-readable: one line "selected: <comma-separated task filenames>" naming exactly the selected live set, one line per selected task in the form "verdict: <task filename> - <ship-as-is|alter|defer-candidate> - <the evidence>", and a "## Ship order" section naming each wave and the tasks in it.'
 
 case "$eval_id" in

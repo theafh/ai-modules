@@ -76,9 +76,9 @@ python3 tests/task_auto_check/evals/run.py repair_to_ready
 
 The runner writes `response.txt`, `stderr.txt`, `timing.json`, and
 `grading.txt` under `tests/task_auto_check/workspace/run-*/<eval-id>/`.
-Treat `grading.txt` as the programmatic filesystem verdict and inspect
-`response.txt` for the `agent-attest` transcript expectations listed by
-the grader.
+Treat `grading.txt` as the programmatic verdict: the transcript checks now
+fail an absent or empty `response.txt`, and the operator confirms only the
+remaining `agent-attest` judgements.
 
 Two operational caveats. The isolation check compares the live `tasks/`
 tree to an isolated copy taken in the eval temp dir, and only for basenames

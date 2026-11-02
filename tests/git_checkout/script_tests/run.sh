@@ -549,6 +549,17 @@ s15_eval_runner_stage_failure_raises() {
     assert_eq "tests/lib/check_stage_guard.py exit" "$rc" "0"
 }
 
+# The inert-worker pin: stage every eval, grade it against an empty response,
+# and fail when any eval grades PASS. A grader that certifies an untouched
+# sandbox is the defect; this scenario turns red whenever one returns.
+s16_inert_worker_probe_pin() {
+    local out rc
+    out=$(python3 "$REPO_ROOT/tests/lib/inert_worker_probe.py" \
+        --harness git_checkout 2>&1) && rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "inert-worker probe exit (0 when no eval grades PASS)" "$rc" "0"
+}
+
 scenario s1  "remote-only branch: create tracking branch with explicit upstream" s1_remote_only_branch_creates_tracking_branch
 scenario s2  "second remote, pushed after clone: fetch covers every remote"      s2_second_remote_branch_pushed_after_clone_resolves
 scenario s3  "successful checkout leaves a stale remote-tracking ref in place"   s3_successful_checkout_leaves_stale_remote_ref_in_place
@@ -564,6 +575,7 @@ scenario s12 "non-conflicting dirty worktree: switch with changes intact"       
 scenario s13 "slashed branch name is not read as a remote-qualified argument"    s13_slashed_branch_name_is_not_read_as_a_remote
 scenario s14 "flags: help, missing argument, and extra argument handling"        s14_usage_and_argument_handling
 scenario s15 "eval runner: a failed or empty stage raises before any worker"     s15_eval_runner_stage_failure_raises
+scenario s16 "inert worker: no eval grades PASS on an empty response"            s16_inert_worker_probe_pin
 
 log ""
 log "================================================================"

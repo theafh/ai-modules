@@ -2,28 +2,31 @@
 # grade.sh — programmatic grader for the git_refresh behavioral evals.
 #
 # Usage:
-#   grade.sh <eval_id> <sandbox_repo>
+#   grade.sh <eval_id> <sandbox_repo> [response_file]
 #
 # Asserts the post-run repository state each eval's expectations name in
 # evals.json: the branch HEAD ends on, the default-branch tip after the
 # fast-forward, which local branches survive the run or are gone after it, and
 # uncommitted content the run must keep. Each check compares against the
-# snapshots stage.sh took under <target>/.eval/ before the run. Eval 3 also
-# reads <target>/script_calls.log, where run.py's logging shim records each
-# refresh_repo.sh call in order: the default run deletes gone-merged before any
-# opt-in, so only that log can show the gated --prune-gone call followed the
-# default run. Prints PASS or FAIL per check and exits 0 only when every check
-# passed.
+# snapshots stage.sh took under <target>/.eval/ before the run. Evals 3 and 4
+# also read <target>/script_calls.log, where run.py's logging shim records each
+# refresh_repo.sh call in order: eval 3's default run deletes gone-merged
+# before any opt-in, so only that log can show the gated --prune-gone call
+# followed the default run, and eval 4's argument-less call proves the helper
+# ran at all. Eval 4's dirty-worktree cause token is read from the response
+# file. Prints PASS or FAIL per check and exits 0 only when every check passed.
 #
 # Expectations that speak only about the worker's response are printed as
 # "response" lines for the operator to confirm from response.txt, and so is
-# the helper invocation in evals 1, 2, and 4; response lines never decide the
-# exit code.
+# the helper invocation in evals 1 and 2; response lines never decide the exit
+# code. Eval 4's helper invocation and dirty-worktree report are graded from
+# the helper log and the response file, and they do decide the exit code.
 
 set -uo pipefail
 
 eval_id="${1:?eval id required}"
 repo="${2:?sandbox repo path required}"
+response="${3:-}"
 
 if [[ ! -d "$repo/.git" ]]; then
   echo "FAIL: $repo is not a git repo" >&2
@@ -122,6 +125,11 @@ no_stash() {
   ! git rev-parse --verify --quiet refs/stash
 }
 
+# The response predicates fail when the response file is absent or empty, so a
+# run that produced nothing cannot satisfy a report check.
+have_response() { [[ -n "$response" && -s "$response" ]]; }
+says() { have_response && grep -qiF -- "$1" "$response"; }
+
 # --- Helper-call predicates --------------------------------------------------
 
 # run.py's logging shim appends "refresh_repo.sh <args>" per call, in call
@@ -190,8 +198,10 @@ case "$eval_id" in
     check "dirty.txt is still untracked and uncommitted" untracked dirty.txt
     check "worktree left as found" worktree_as_found
     check "no stash entry was created" no_stash
-    note_response "invoked scripts/refresh_repo.sh"
-    note_response "reported the dirty worktree and the skipped switch or fast-forward steps"
+    check "the helper log records a refresh_repo.sh default run with no arguments" \
+      default_run_called
+    check "the response reports the dirty worktree" says "dirty"
+    note_response "reported the skipped switch or fast-forward steps"
     note_response "ran no reset, checkout-discard, or other command that hides the uncommitted change"
     ;;
   *)

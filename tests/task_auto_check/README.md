@@ -26,4 +26,5 @@ Behavioral evals live in `evals/evals.json`. `evals/run.py` stages a
 fresh sandbox per case, spawns a pinned worker to load
 `plugins/ai_dev/skills/task_auto_check/SKILL.md`, captures the response
 under `workspace/run-*/`, and grades the filesystem-verifiable
-expectations with `evals/grade.sh`.
+expectations and the transcript checks from that captured response with
+`evals/grade.sh`; a present-but-empty transcript fails the transcript checks.

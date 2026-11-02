@@ -568,7 +568,8 @@ case "$eval_id" in
     check "no stash was created" no_stash
     check "the scratch worktree was removed" one_worktree
     check "no new commit landed" no_new_commit
-    attest "the report says the review ran from a scratch worktree"
+    check "the report says the review ran from a scratch worktree" \
+        says_regex "scratch worktree|worktree"
     ;;
   8)
     check "the repository is still on main" on_branch main
@@ -740,6 +741,8 @@ case "$eval_id" in
   36)
     check "no comment was posted" gh_no_comment_posted
     check "no review was posted" gh_no_review_posted
+    check "the review report is delivered in the chat response" \
+        says_regex "structurally merged"
     ;;
   37)
     check "a plain comment was posted" gh_posted_comment

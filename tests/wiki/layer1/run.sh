@@ -3885,6 +3885,26 @@ scenario s5  "compute_sha256 --check flags drift exit 1"      s5_sha256_check_fl
 scenario s6  "compute_sha256 --check clean exits 0"           s6_sha256_check_clean
 scenario s7  "compute_sha256 recurses into a directory"       s7_sha256_directory_recurses
 
+# G1: layer2/grade.py fails a run whose only pass delivered nothing. An empty
+# response.txt is the inert-worker case; a grader that exits 0 there would let
+# run.py's aggregate path treat a silent pass as a clean run.
+g1_grade_empty_delivery_exits_nonzero() {
+    local home run pass rc
+    home=$(fresh_scratch g1)
+    run="$home/run"
+    pass="$run/L2-1/pass-1"
+    mkdir -p "$pass"
+    : > "$pass/response.txt"
+    python3 "$SCRIPT_DIR/../layer2/grade.py" "$run" >/dev/null 2>&1 && rc=0 || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        return 0
+    fi
+    log "    layer2 grade.py exited 0 on a run holding one empty response.txt"
+    return 1
+}
+
+scenario g1  "layer2 grade fails an empty-delivery pass"      g1_grade_empty_delivery_exits_nonzero
+
 log ""
 log "==================================="
 log "  Layer 1: $PASS passed, $FAIL failed"

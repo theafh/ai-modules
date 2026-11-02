@@ -5,8 +5,10 @@
 # Usage:
 #   grade.sh <eval_id> <sandbox_proj>
 #
-# The grader checks filesystem-verifiable behavior. Transcript-level
-# expectations remain as agent-attest notes in grading.txt.
+# The grader checks filesystem-verifiable behavior and the transcript checks
+# each arm carries. A present-but-empty response.txt fails those transcript
+# checks; only the judgements no check can decide remain as agent-attest notes
+# in grading.txt.
 
 set -uo pipefail
 
@@ -32,8 +34,9 @@ REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
 LINT="$REPO_ROOT/plugins/ai_dev/skills/task/scripts/lint.py"
 TASKS="$proj/tasks"
 
-# Worker transcript written by run.py next to the sandbox; absent when the
-# eval is staged operator-driven. Transcript checks run only when present.
+# Worker transcript written by run.py next to the sandbox. A transcript check
+# fails when the file is absent or empty; only the attest judgements remain
+# operator-confirmed.
 RESPONSE="${RESPONSE_FILE:-$target/../response.txt}"
 # shellcheck source=../../lib/repeated_link_disposition.sh
 . "$HERE/../../lib/repeated_link_disposition.sh"
@@ -692,6 +695,8 @@ case "$eval_id" in
     check "status stays ready/checked (gate stamp only)" status_kept
     check "all 320 field bullets remain (not gutted or collapsed into a pointer)" enumeration_intact
     check "task remains oversized and surfaced rather than auto-fixed" still_oversized
+    check "transcript surfaces the oversize as a split needing routing" \
+      response_has 'split|auto_shaper'
     note_agent_attest "response surfaces the oversize as a split needing human or auto_shaper_task routing"
     note_agent_attest "response does not auto-split or truncate the task and reports zero mechanical-lint edit groups for this file"
     ;;
@@ -710,6 +715,8 @@ case "$eval_id" in
     check "no extra task files created" one_task
     check "task body is unchanged (zero repair edits)" body_preserved
     check "task lints clean" task_lints
+    check "transcript points to task_implement as the next step" \
+      response_has 'task_implement'
     note_agent_attest "response reports one gate call and zero edit rounds"
     note_agent_attest "response names task_check as the gate and defines no second readiness criterion"
     note_agent_attest "response points to task_implement as the next step"
@@ -733,6 +740,8 @@ case "$eval_id" in
     check "committed cursor-pagination Goal is not restored" origin_not_restored
     check "updated timestamp remains unchanged because no edit was applied" updated_unchanged
     check "task lints clean after drift route" task_lints
+    check "transcript surfaces the human intention check" \
+      response_has 'intention|intent'
     note_agent_attest "response invokes auto_drift_task exactly once at freeze time before any task_check gate call"
     note_agent_attest "response surfaces the human intention check about prior Goal drift"
     note_agent_attest "response includes recovered cursor-pagination intent and current filter-documentation intent"
@@ -751,6 +760,8 @@ case "$eval_id" in
     check "gate reached (status ready or checked)" gate_reached
     check "narrowed Out of scope carve-out remains" narrowing_kept
     check "task lints clean" task_lints
+    check "transcript names the auto_drift_task check" \
+      response_has 'auto_drift_task'
     note_agent_attest "response invokes auto_drift_task once and classifies clean"
     note_agent_attest "response reports no human intention check"
     note_agent_attest "response reaches the task_check gate (at least one gate call)"
@@ -769,6 +780,8 @@ case "$eval_id" in
     check "gate reached (status ready or checked)" gate_reached
     check "corrected docs/api.md path and widened title remain" path_corrected
     check "task lints clean" task_lints
+    check "transcript names the auto_drift_task check" \
+      response_has 'auto_drift_task'
     note_agent_attest "response invokes auto_drift_task once and classifies clean"
     note_agent_attest "response reports no human intention check"
     note_agent_attest "response reaches the task_check gate (at least one gate call)"
@@ -790,6 +803,8 @@ case "$eval_id" in
     check "webhook-broadened body is unchanged" body_preserved
     check "updated timestamp remains unchanged because no edit was applied" updated_unchanged
     check "task lints clean after drift route" task_lints
+    check "transcript reports the drift classification" \
+      response_has 'drift'
     note_agent_attest "response invokes auto_drift_task exactly once at freeze time before any task_check gate call"
     note_agent_attest "response reports classification drift with drifted_fields: goal"
     note_agent_attest "response surfaces the human intention check about Goal drift"
@@ -808,6 +823,8 @@ case "$eval_id" in
     check "gate reached (status ready or checked)" gate_reached
     check "committed CSV-export Goal remains with refinement wording" csv_goal_kept
     check "task lints clean" task_lints
+    check "transcript names the auto_drift_task check" \
+      response_has 'auto_drift_task'
     note_agent_attest "response invokes auto_drift_task once and classifies clean"
     note_agent_attest "response reports no human intention check"
     note_agent_attest "response reaches the task_check gate (at least one gate call)"
@@ -1165,6 +1182,8 @@ PY
     check "no split file is archived or moved" no_archive_task
     check "combined original scope remains in the source task" original_scope_kept
     check "task lints clean" task_lints
+    check "transcript surfaces the split proposal" \
+      response_has 'split'
     note_agent_attest "response surfaces a split proposal as human-routed or task_auto_shaper-routed"
     note_agent_attest "response does not auto-perform a file-creating split"
     ;;
@@ -1222,15 +1241,10 @@ PY
     check "task file is byte-for-byte unchanged" file_untouched
     check "no extra task files created" one_task
     check "task lints clean" task_lints
-    if [[ -s "$RESPONSE" ]]; then
-      names_helper() { grep -qi 'auto_gate_task' "$RESPONSE"; }
-      asks_user() { grep -qiE 'how to proceed|proceed|choose|decide|which option' "$RESPONSE"; }
-      check "transcript names auto_gate_task in the helper-failure error" names_helper
-      check "transcript asks the user how to proceed" asks_user
-    else
-      note_agent_attest "response surfaces a clear helper-failure error naming auto_gate_task and the spawn failure after the retry"
-      note_agent_attest "response lists the options it sees and asks the user how to proceed"
-    fi
+    names_helper() { response_has 'auto_gate_task'; }
+    asks_user() { response_has 'how to proceed|proceed|choose|decide|which option'; }
+    check "transcript names auto_gate_task in the helper-failure error" names_helper
+    check "transcript asks the user how to proceed" asks_user
     note_agent_attest "response computes no readiness verdict in the main context and runs no inline gate automatically"
     ;;
 
@@ -1245,15 +1259,10 @@ PY
     check "task file is byte-for-byte unchanged" file_untouched
     check "no extra task files created" one_task
     check "task lints clean" task_lints
-    if [[ -s "$RESPONSE" ]]; then
-      names_helper() { grep -qi 'auto_drift_task' "$RESPONSE"; }
-      asks_user() { grep -qiE 'how to proceed|proceed|choose|decide|which option' "$RESPONSE"; }
-      check "transcript names auto_drift_task in the helper-failure error" names_helper
-      check "transcript asks the user how to proceed" asks_user
-    else
-      note_agent_attest "response surfaces a clear helper-failure error naming auto_drift_task and the spawn failure after the retry"
-      note_agent_attest "response lists the options it sees and asks the user how to proceed"
-    fi
+    names_helper() { response_has 'auto_drift_task'; }
+    asks_user() { response_has 'how to proceed|proceed|choose|decide|which option'; }
+    check "transcript names auto_drift_task in the helper-failure error" names_helper
+    check "transcript asks the user how to proceed" asks_user
     note_agent_attest "response improvises no drift classification and does not silently proceed to the gate"
     ;;
 
@@ -1275,14 +1284,10 @@ PY
     check "task body is byte-identical to the staged body" body_preserved
     check "no extra task files created" one_task
     check "task lints clean" task_lints
-    if [[ -s "$RESPONSE" ]]; then
-      names_helper() { grep -qi 'auto_verifier_task' "$RESPONSE"; }
-      asks_user() { grep -qiE 'how to proceed|proceed|choose|decide|which option' "$RESPONSE"; }
-      check "transcript names auto_verifier_task in the helper-failure error" names_helper
-      check "transcript asks the user how to proceed" asks_user
-    else
-      note_agent_attest "response surfaces a clear helper-failure error naming auto_verifier_task, lists the options it sees, and asks the user how to proceed"
-    fi
+    names_helper() { response_has 'auto_verifier_task'; }
+    asks_user() { response_has 'how to proceed|proceed|choose|decide|which option'; }
+    check "transcript names auto_verifier_task in the helper-failure error" names_helper
+    check "transcript asks the user how to proceed" asks_user
     note_agent_attest "response improvises no verifier verdict and applies no unverified reviewer proposal"
     ;;
 
@@ -1344,15 +1349,10 @@ PY
     check "task body is unchanged (zero body edits)" body_preserved
     check "no extra task files created" one_task
     check "task lints clean" task_lints
-    if [[ -s "$RESPONSE" ]]; then
-      trigger_engaged() { grep -qiE 'refut' "$RESPONSE"; }
-      citations_survived() { grep -qiE 'surviv' "$RESPONSE"; }
-      check "transcript names the immediate-ready refutation pass" trigger_engaged
-      check "transcript reports the citations surviving" citations_survived
-    else
-      note_agent_attest "response reports the immediate-ready refutation trigger firing on the first-call zero-issue ready verdict"
-      note_agent_attest "response reports each citation surviving refutation"
-    fi
+    trigger_engaged() { response_has 'refut'; }
+    citations_survived() { response_has 'surviv'; }
+    check "transcript names the immediate-ready refutation pass" trigger_engaged
+    check "transcript reports the citations surviving" citations_survived
     note_agent_attest "response reports the ready stamp standing and points to task_implement as the next step"
     note_agent_attest "response names task_check as the only readiness gate and defines no second readiness criterion"
     ;;
@@ -1376,7 +1376,7 @@ PY
     # measurement in results/.
     ready_route_challenged() {
       [[ "$(fm_field "$f" status)" != "ready" ]] && return 0
-      [[ -s "$RESPONSE" ]] || return 0
+      response_readable || return 1
       grep -qiE 'refut|surviv|signature' "$RESPONSE"
     }
     check "status is ready or checked, written only by task_check" status_valid
@@ -1402,6 +1402,8 @@ PY
     check "no interaction-driven body edit is applied (body unchanged)" body_preserved
     check "no extra task files created" one_task
     check "task lints clean" task_lints
+    check "transcript reports the interaction scan" \
+      response_has 'interaction'
     note_agent_attest "the Interaction scan lens runs and raises no contradiction or unattended-interaction finding for this touch-point-disjoint task"
     note_agent_attest "response reports one gate call and no interaction-driven repair"
     ;;

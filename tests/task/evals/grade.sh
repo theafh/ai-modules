@@ -6,13 +6,16 @@
 #
 # Runs the filesystem-verifiable subset of each eval's expectations
 # against the post-run sandbox and prints PASS/FAIL per check. Exits 0
-# only if every programmatic check passed.
+# only if every programmatic check passed. When RESPONSE_FILE names the
+# captured transcript, the response checks each eval carries also run.
+# With RESPONSE_FILE unset the grader grades the sandbox checks and skips
+# only the checks that read the response; a RESPONSE_FILE that is set but
+# empty fails those checks.
 #
-# Scope: filesystem + git + suite state only. Output-verdict
-# expectations (the literal headers / verdict lines each read-only skill
-# must emit) cannot be checked here — they are listed under
-# "agent-attest" for the operator to confirm from the transcript and are
-# the LLM-graded expectations in evals.json.
+# Scope: filesystem + git + suite state, plus the response checks the
+# runner enables through RESPONSE_FILE. The output-verdict expectations no
+# check can decide are listed under "agent-attest" for the operator to
+# confirm from the transcript.
 
 set -uo pipefail
 
@@ -52,6 +55,20 @@ check() {
   fi
 }
 note_agent_attest() { printf '  -     agent-attest  %s\n' "$1"; }
+
+# --- response checks ---------------------------------------------------------
+
+RESPONSE_FILE="${RESPONSE_FILE:-}"
+
+# resp_has <regex> -> the captured response matches, read with its hard wraps
+# collapsed. An unset RESPONSE_FILE skips the check, so an operator grading
+# sandbox state alone is not blocked; a RESPONSE_FILE that is set but empty
+# fails it, which is the inert-worker case.
+resp_has() {
+  [[ -n "$RESPONSE_FILE" ]] || return 0
+  [[ -s "$RESPONSE_FILE" ]] || return 1
+  tr '\n' ' ' < "$RESPONSE_FILE" | tr -s ' ' | grep -qiE -- "$1"
+}
 
 # --- helpers -----------------------------------------------------------------
 
@@ -97,8 +114,10 @@ body_unchanged() {
 # --- backlog-coherence helpers ------------------------------------------------
 # The six fix_coherence* evals ask the agent to write its report to
 # coherence-report.md in a machine-readable shape (a `selected:` line and one
-# `verdict:` line per task). grade.sh cannot read the agent's response text, so
-# that file is the graded surface for the assess-phase verdicts.
+# `verdict:` line per task). The grader reads the captured response through
+# RESPONSE_FILE, and coherence-report.md remains the graded surface for the
+# assess-phase verdicts and the selected-set boundary, which free-form response
+# prose does not make deterministic.
 REPORT="$proj/coherence-report.md"
 
 # unwrapped_file <path> -> the file with hard wraps collapsed. Task bodies are
@@ -497,6 +516,7 @@ case "$eval_id" in
     check "read-only: the sandbox git tree is unchanged" git_tree_clean
     check "fixture archived task remains in archive/" archived_task_present
     check "fixture archived task keeps status finished" status_finished
+    check "the response names the archived task it explains" resp_has 'api_retry-after-header'
     note_agent_attest "response leads with a compact bottom-line explanation"
     note_agent_attest "orienting frame names tasks/archive/api_retry-after-header.md, status finished, and scope plugins/ai_dev"
     note_agent_attest "response covers What (documentation goal), Why (client-orientation motivation), and How (rewrite plus example response)"
@@ -505,6 +525,7 @@ case "$eval_id" in
 
   select)
     check "read-only: the sandbox git tree is unchanged" git_tree_clean
+    check "the response recommends the planted api bug task" resp_has 'api_auth-bug'
     note_agent_attest "response starts with '# Recommendation'"
     note_agent_attest "recommended task is tasks/api_auth-bug.md"
     note_agent_attest "suggested next action is task_implement because the recommended task is ready"
@@ -543,18 +564,22 @@ case "$eval_id" in
     check "task A has no implemented-by stamp"                       a_no_implemented_by
     check "prerequisite task B still present and open"               b_present_open
     check "render.py hardcoded COLORS map left intact (not wired)"   render_untouched
+    check "the response names the prerequisite task"                 resp_has 'theme_palette-block'
     note_agent_attest "response surfaces theme_palette-block.md as task A's hard prerequisite, citing the forward-reference / dependency cross-link evidence"
     note_agent_attest "response lists the prerequisite, asks whether to build render_wire-palette ahead of it, and stops without building (no user green-light in a headless run)"
     ;;
 
   select_inbound_dep)
     check "read-only: the sandbox git tree is unchanged" git_tree_clean
+    check "the response names the outside-scope prerequisite" resp_has 'infra_shared-config-loader'
     note_agent_attest "response names infra_shared-config-loader.md as the prerequisite blocking api_rate-limit-endpoint.md — the INBOUND note in B's body was honored though A is silent and B is outside the api filter"
     note_agent_attest "api_rate-limit-endpoint.md is not offered as an unblocked next task; the outside-scope prerequisite is named as the required next work (api_response-cache.md is the sensible unblocked pick)"
     ;;
 
   select_dep_regression)
     check "read-only: the sandbox git tree is unchanged" git_tree_clean
+    check "the response names the creator task" resp_has 'theme_palette-block'
+    check "the response names the consumer task" resp_has 'render_wire-palette'
     note_agent_attest "creator theme_palette-block.md is ranked AHEAD of consumer render_wire-palette.md (forward-reference hard dependency, creator-before-consumer)"
     note_agent_attest "docs_glossary-page.md and docs_faq-page.md surface as a soft companion relationship with NO forced order between them"
     ;;
@@ -563,6 +588,7 @@ case "$eval_id" in
     no_test_added() { [[ -z "$(find "$proj/tests" -name 'test_*.py' 2>/dev/null)" ]]; }
     check "read-only: the sandbox git tree is unchanged" git_tree_clean
     check "no test file was added (audit reports, it does not fix)" no_test_added
+    check "the response emits the Gaps list naming the missing test" resp_has 'gaps:'
     note_agent_attest "response contains a 'Gaps:' list naming the missing test"
     ;;
 
@@ -702,8 +728,9 @@ case "$eval_id" in
     check "bare line-number reference re-anchored to a label"     linepointer_reanchored
     check "oversized page left intact (split is a judgement call)" huge_not_split
     # Default-on backlog-coherence: this fixture plants no cross-task defect, so
-    # the assessment must still appear and report the clean case. It is checked
-    # by attestation because grade.sh never sees the agent's response text; the
+    # the assessment must still appear and report the clean case. The grader
+    # reads the captured response through RESPONSE_FILE; this coherence
+    # judgement stays attest-only because no deterministic check decides it. The
     # deterministic half is that no coherence repair was written, which the
     # api_good.md and api_huge.md checks above already assert.
     coherence_wrote_nothing() {
@@ -740,6 +767,8 @@ case "$eval_id" in
 
   query)
     check "read-only: the sandbox git tree is unchanged" git_tree_clean
+    check "the response lists the api open tasks" resp_has 'api_rate-limit'
+    check "the response lists the infra open task" resp_has 'infra_grafana-cleanup'
     note_agent_attest "response lists the open tasks grouped by scope (api, infra), leading with open work"
     note_agent_attest "the archived task (api_legacy-auth.md) is NOT surfaced — the query asked for open tasks only"
     ;;
@@ -956,6 +985,7 @@ case "$eval_id" in
     check "task has no implemented-by stamp"                               a_no_implemented_by
     check "src/theme.py left byte-for-byte unchanged (boundary honored)"   theme_untouched
     check "src/report.py left unchanged (work held before crossing)"       report_untouched
+    check "the response names the boundary file src/theme.py"              resp_has 'src/theme\.py'
     note_agent_attest "response surfaces the body-versus-boundary contradiction: the Goal and the 'format_line wraps its text in ANSI color codes' acceptance require editing src/theme.py, which the **Out of scope:** block rejects"
     note_agent_attest "response quotes the conflicting passages, applies the reconcile-or-surface disposition, and holds without crossing the boundary (no user resolution available in a headless run)"
     ;;

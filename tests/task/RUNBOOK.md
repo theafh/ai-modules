@@ -34,9 +34,12 @@ python3 tests/task/evals/test_run.py          # eval-runner artefact declaration
 #   2. run:    an agent loads $skill_path (or invokes the deployed Skill
 #              $skill_name) and applies it to $sandbox_proj with $prompt,
 #              RUN WITH $sandbox_proj AS THE WORKING DIRECTORY
-#   3. grade:  bash evals/grade.sh <id> "$sandbox_proj"
+#   3. grade:  RESPONSE_FILE=<captured response.txt> bash evals/grade.sh <id> "$sandbox_proj"
+#              (omit RESPONSE_FILE for a sandbox-only grade that skips the
+#               response checks)
 eval "$(bash tests/task/evals/stage.sh finish)"
 #   ... agent runs here, in $sandbox_proj ...
+RESPONSE_FILE=<captured response.txt> bash tests/task/evals/grade.sh finish "$sandbox_proj"
 bash tests/task/evals/grade.sh finish "$sandbox_proj"
 
 # Trigger evals (Claude-only, LLM cost): family routing, where a change
@@ -78,8 +81,9 @@ tests/trigger_evals/results/task/<ts>/
   (`id`, `skill`, `prompt`, `expected_output`, `files`, `expectations`),
   a fixture `setup.sh` under `evals/fixtures/<id>/`, and the case
   branches in `evals/stage.sh` and `evals/grade.sh`. Grade on
-  filesystem/git/suite state; leave verdict-string checks to
-  `expectations[]` (agent-attest).
+  filesystem/git/suite state, and read the captured response through
+  `RESPONSE_FILE` for the subject and verdict checks the eval carries; leave
+  only the judgements no check can decide to `expectations[]` (agent-attest).
 - **Trigger query**: add a `{query, expected_skill}` to
   `../trigger_evals/task.json`.
 

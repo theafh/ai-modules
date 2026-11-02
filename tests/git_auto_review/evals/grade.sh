@@ -519,6 +519,8 @@ case "$eval_id" in
     report "the working tree matches its pre-run state" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    report "the decline names the detached HEAD" \
+      "$(has "$text" "detached" && echo yes || echo no)"
     ;;
   declines_on_named_other_branch)
     report "no run directory was created" \
@@ -608,6 +610,8 @@ case "$eval_id" in
     report "the working-tree product files are byte-identical" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    report "the gate returned its structured verdict" \
+      "$(has "$text" "lane:" && echo yes || echo no)"
     ;;
   classifies_lanes_from_evidence)
     # Each graded finding is anchored to its own verdict block: the check

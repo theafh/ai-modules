@@ -66,7 +66,8 @@ route and both marker-missing version branches without starting a worker, and
 runs `tests/lib/check_stage_guard.py` so a stage that fails or names no
 sandbox project stops a scenario before any worker starts.
 `python3 tests/natural_language/evals/test_grade.py` checks that a hard wrap
-at 72 columns does not change the series or pronoun-run verdicts.
+at 72 columns does not change the series or pronoun-run verdicts, and that an
+empty chat delivery makes `grade.py` exit non-zero.
 
 ## What it measures
 
@@ -82,8 +83,9 @@ sandbox. `--workers 1` serializes them.
 `grade.py` checks word count, pronoun-opening runs, the list-or-colon series,
 the em dash, canary and shadow-share definitions in their first-use window,
 `delivered.md`, and an untouched draft for `connected_rewrite`. For
-`chat_brevity` it checks that `response.txt` stays at or under 120 words and
-has no heading line. `judge.py` is refute-biased: it fails an assertion unless
+`chat_brevity` it checks that `response.txt` is present and non-empty, stays at
+or under 120 words, and has no heading line, and it exits non-zero when the
+delivery is absent or empty. `judge.py` is refute-biased: it fails an assertion unless
 the delivered text plainly satisfies it. For `connected_rewrite` it reports
 four source-relation assertions (`contrast_kept`, `two_reasons_kept`,
 `condition_kept`, `signal_inventory_kept`) plus the shape assertions

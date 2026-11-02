@@ -17,7 +17,8 @@ This is the regression-test entrypoint for the wiki skill. Each invocation:
      - Run the vendor-resolved print-mode worker; capture stdout/stderr/timing
        (with `artefacts_read_from_micro_deployment` and `checkout_unread`)
        into the pass dir, then snapshot the root and remove it.
-2. Runs grade.py and aggregate.py.
+2. Runs grade.py and aggregate.py, then returns non-zero when either the
+   grade or the aggregate code is non-zero.
 3. Compares to the most recent prior benchmark.json (if any) and reports
    regressions.
 
@@ -309,9 +310,12 @@ def main() -> int:
     print("\nNormalizing ...")
     subprocess.run([sys.executable, str(NORMALIZE), str(run_dir)], check=False)
 
-    # Grade
+    # Grade. Capture the return code instead of raising, so a failing run still
+    # reaches the aggregate and the report writer below.
     print("\nGrading ...")
-    subprocess.run([sys.executable, str(GRADE), str(run_dir)], check=True)
+    grade_rc = subprocess.run(
+        [sys.executable, str(GRADE), str(run_dir)], check=False
+    ).returncode
 
     # Aggregate (with optional regression compare)
     print("\nAggregating ...")
@@ -320,7 +324,7 @@ def main() -> int:
     if prev:
         cmd += ["--previous", str(prev)]
         print(f"Comparing against {prev}")
-    rc = subprocess.run(cmd).returncode
+    aggregate_rc = subprocess.run(cmd).returncode
 
     # Render HTML report (best-effort)
     render = THIS / "render_report.py"
@@ -328,7 +332,7 @@ def main() -> int:
         subprocess.run([sys.executable, str(render), str(run_dir)], check=False)
 
     print(f"\nDone. See:\n  {run_dir}/report.html\n  {run_dir}/benchmark.md\n  {run_dir}/grading_summary.json")
-    return rc
+    return grade_rc or aggregate_rc
 
 
 if __name__ == "__main__":

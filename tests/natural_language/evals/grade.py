@@ -5,7 +5,9 @@ connected_rewrite grades delivered.md: word count at or below the draft,
 no three consecutive pronoun openings, the three-item series as a list or a
 colon series, no em dash, canary and shadow share defined in their first-use
 window, the delivered file present, and the draft untouched.
-chat_brevity grades response.txt: at most 120 words and no heading line.
+chat_brevity grades response.txt: the response is present, at most 120 words,
+and has no heading line, and the grader exits non-zero when the delivery is
+absent or empty.
 
 Usage:
     python3 grade.py <eval_id> <sandbox_proj> <source_file> [--json]
@@ -302,6 +304,15 @@ def build_checks(eval_id: str, ctx: dict) -> dict:
             ),
         )
     elif eval_id == "chat_brevity":
+        add(
+            "response_text_present",
+            bool(delivered.strip()),
+            (
+                "response.txt carries the delivered answer"
+                if delivered.strip()
+                else "response.txt is absent or empty"
+            ),
+        )
         add(
             "length_at_most_120",
             delivered_words <= CHAT_WORD_CAP,

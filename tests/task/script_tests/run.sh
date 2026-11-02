@@ -3501,6 +3501,19 @@ scenario fs5 "lint: --file duplicate basename reports named only" fs5_scoped_dup
 scenario fs6 "lint: --help and Usage document --file"          fs6_help_and_usage_document_file_option
 scenario fs7 "lint: --file edge cases (empty, CWD decoy, dir)"  fs7_scoped_path_edge_cases
 
+# The inert-worker pin: stage every eval, grade it against an empty response,
+# and fail when any eval grades PASS. A grader that certifies an untouched
+# sandbox is the defect; this scenario turns red whenever one returns.
+eg1_inert_worker_probe_pin() {
+    local out rc
+    out=$(python3 "$REPO_ROOT/tests/lib/inert_worker_probe.py" \
+        --harness task 2>&1) && rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "inert-worker probe exit (0 when no eval grades PASS)" "$rc" "0"
+}
+
+scenario eg1 "inert worker: no eval grades PASS on an empty response" eg1_inert_worker_probe_pin
+
 ###############################################################################
 # Summary
 ###############################################################################

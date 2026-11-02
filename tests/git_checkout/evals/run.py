@@ -16,9 +16,11 @@ its own sandbox root, so no two jobs share a repository. Per eval the job:
 2. Otherwise takes a fresh sandbox root from
    `worker_isolation.create_sandbox_root`, stages the eval's fixture there via
    `stage.sh <id> <root>`, and reads back `sandbox_repo` and `prompt`.
-3. Micro-deploys the declared artefacts into a scratch home and runs the
-   worker with the sandbox clone as its working directory and a prompt that
-   tells it to load the deployed SKILL.md.
+3. Micro-deploys the declared artefacts into a scratch home, wraps each
+   deployed bundled script in a logging shim that appends `<script> <args>` to
+   the sandbox root's `script_calls.log`, and runs the worker with the sandbox
+   clone as its working directory and a prompt that tells it to load the
+   deployed SKILL.md.
 4. Writes `response.txt`, `stderr.txt`, and `timing.json` (with the
    `artefacts_read_from_micro_deployment` and `checkout_unread` records) under
    `tests/git_checkout/workspace/run-<ts>-<pid>/<id>/`, then grades the clone
@@ -47,6 +49,7 @@ import json
 import os
 import pathlib
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -179,6 +182,43 @@ def stage(
     return {"sandbox_repo": sandbox_repo, "prompt": prompt}
 
 
+def shim_deployed_scripts(
+    deploy: micro_deploy.MicroDeployHandle, target_root: pathlib.Path
+) -> None:
+    """Wrap each deployed bundled script in a logging shim.
+
+    Which helper calls a run made, and with which arguments, is a transcript
+    fact the runner does not keep, so every deployed `scripts/*.sh` becomes a
+    shim that appends `<script> <args>` to `<target>/script_calls.log` and
+    then runs the deployed script. The untouched deployed skill tree is copied
+    under the scratch home first and the shim execs that copy, so the behaviour
+    under test is the deployed script's and a worker that follows a shim never
+    leaves the micro-deployment for the repository checkout. grade.sh reads
+    the log to prove the absence-only evals reached the decision they test.
+    """
+
+    log = target_root / "script_calls.log"
+    unshimmed_root = deploy.scratch_home / "unshimmed"
+    for name in ARTEFACTS:
+        deployed_dir = deploy.path_map[name].parent
+        scripts_dir = deployed_dir / "scripts"
+        if not scripts_dir.is_dir():
+            continue
+        unshimmed_dir = unshimmed_root / name
+        shutil.copytree(deployed_dir, unshimmed_dir)
+        for deployed_script in sorted(scripts_dir.glob("*.sh")):
+            real_script = unshimmed_dir / "scripts" / deployed_script.name
+            deployed_script.write_text(
+                "#!/usr/bin/env bash\n"
+                "# Logging shim written by tests/git_checkout/evals/run.py. Records\n"
+                "# the call, then runs the unshimmed deployed bundled script.\n"
+                f"printf '%s %s\\n' {shlex.quote(deployed_script.name)} \"$*\" "
+                f">> {shlex.quote(str(log))}\n"
+                f"exec {shlex.quote(str(real_script))} \"$@\"\n"
+            )
+            deployed_script.chmod(0o755)
+
+
 def worker_completed(rc: int, stdout: str) -> bool:
     """Whether a worker run is trustworthy for grading.
 
@@ -243,6 +283,7 @@ def run_one(
         with micro_deploy.micro_deploy(
             resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
         ) as deploy:
+            shim_deployed_scripts(deploy, pathlib.Path(workdir).parent)
             _apply_job_temp(deploy.env, env)
             prompt = WORKER_PROMPT.format(
                 skill_path=deploy.path_map[SKILL],

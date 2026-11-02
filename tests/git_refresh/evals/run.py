@@ -320,7 +320,7 @@ def run_one(
         )
 
         grade = subprocess.run(
-            ["bash", str(GRADE), eval_id, workdir],
+            ["bash", str(GRADE), eval_id, workdir, str(eval_dir / "response.txt")],
             capture_output=True,
             text=True,
             env=dict(env),

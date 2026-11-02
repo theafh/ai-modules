@@ -26,9 +26,10 @@ name ids (`run.py 3 4`) to run a subset. Each eval is one job in the shared
 pool from `tests/lib/eval_runner.py`, which runs four jobs at once by default
 and gives each its own `TMPDIR`; `--workers 1` serializes them. A job stages
 its fixture with `stage.sh` into a fresh sandbox root outside the checkout,
-micro-deploys the skill into a scratch home, runs one print-mode worker on the
-default Cursor vendor (`agent -p`, model `auto`), and grades the clone with
-`grade.sh`. Each eval leaves `response.txt`, `stderr.txt`, `timing.json`,
+micro-deploys the skill into a scratch home, wraps each deployed bundled script
+in a logging shim that appends to the sandbox root's `script_calls.log`, runs
+one print-mode worker on the default Cursor vendor (`agent -p`, model `auto`),
+and grades the clone with `grade.sh`. Each eval leaves `response.txt`, `stderr.txt`, `timing.json`,
 `grading.txt`, and a copy of its sandbox under
 `tests/git_checkout/workspace/run-<ts>-<pid>/<id>/`, and the run closes with a
 graded summary naming every eval and its verdict.
@@ -47,9 +48,13 @@ run, as the model policy in `tests/CLAUDE.md` states.
 ends on, the upstream it tracks and the tip it points at, that `HEAD` stays a
 symbolic ref, which local branches exist, whether the worktree was left as
 found, and the uncommitted content eval 7 must keep. It compares against the
-snapshots `stage.sh` takes under `<target>/.eval/` before the run. The
-expectations that speak only about the response or about which helper ran
-print as `response` lines; confirm those by reading `response.txt`.
+snapshots `stage.sh` takes under `<target>/.eval/` before the run. It also
+reads `<target>/script_calls.log`, where the runner's logging shim records each
+`checkout_branch.sh <branch>` call: in evals 3, 5, 6, and 7 the recorded call
+and branch argument decide the exit code, so an untouched sandbox fails. The
+expectations that speak only about the response, and the helper-invocation
+lines in evals 1, 2, and 4, print as `response` lines and never decide the exit
+code; confirm those by reading `response.txt`.
 
 The three phases also run by hand for debugging:
 
@@ -62,6 +67,11 @@ eval "$(bash tests/git_checkout/evals/stage.sh <eval_id>)"
 # 3. Grade the post-run repository
 bash tests/git_checkout/evals/grade.sh <eval_id> "$sandbox_repo"
 ```
+
+Only the runner's shim writes `script_calls.log`, so a hand run of evals 3, 5,
+6, and 7 fails their helper-call checks unless you append one
+`checkout_branch.sh <branch>` line per helper call you made to
+`$sandbox_repo/../script_calls.log`.
 
 Skill-creator's `python -m scripts.run_eval` is a different tool: the
 *trigger* evaluator for description optimization, which understands neither

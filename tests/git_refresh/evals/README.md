@@ -51,12 +51,15 @@ run, as the model policy in `tests/CLAUDE.md` states.
 ends on, the default-branch tip after the fast-forward, which local branches
 are gone or survive, and the uncommitted content eval 4 must keep. It compares
 against the snapshots `stage.sh` takes under `<target>/.eval/` before the run.
-Eval 3 also reads `script_calls.log`, because its default run already deletes
+Evals 3 and 4 also read `script_calls.log`. Eval 3's default run already deletes
 `gone-merged` before any opt-in and the repository looks the same with or
-without the gated follow-up: the log must record a default run with no
-arguments and a later `--prune-gone` call. The expectations that speak only
-about the response, and which helper ran in evals 1, 2, and 4, print as
-`response` lines; confirm those by reading `response.txt`.
+without the gated follow-up, so the log must record a default run with no
+arguments and a later `--prune-gone` call. Eval 4's argument-less call proves
+the helper ran, and its dirty-worktree cause token is read from the response
+file. The expectations that speak only about the response, and the
+helper-invocation lines in evals 1 and 2, print as `response` lines; confirm
+those by reading `response.txt`. Eval 4's helper invocation and dirty-worktree
+report decide the exit code.
 
 The three phases also run by hand for debugging:
 
@@ -66,13 +69,15 @@ eval "$(bash tests/git_refresh/evals/stage.sh <eval_id>)"
 
 # 2. Have an agent load $skill_path and apply $prompt inside $sandbox_repo.
 
-# 3. Grade the post-run repository
-bash tests/git_refresh/evals/grade.sh <eval_id> "$sandbox_repo"
+# 3. Grade the post-run repository; the response file is optional
+bash tests/git_refresh/evals/grade.sh <eval_id> "$sandbox_repo" [response.txt]
 ```
 
 Only the runner's shim writes `script_calls.log`, so a hand run of eval 3 fails
-its two log checks unless you append one `refresh_repo.sh <args>` line per
-helper call you made to `$sandbox_repo/../script_calls.log`.
+its two log checks and eval 4 fails its call check unless you append one
+`refresh_repo.sh <args>` line per helper call you made to
+`$sandbox_repo/../script_calls.log`. Eval 4's dirty-worktree report check also
+needs the run's response text passed as the third argument.
 
 ## Schema
 

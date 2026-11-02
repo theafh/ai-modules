@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import pathlib
+import subprocess
 import sys
+import tempfile
 import textwrap
 
 import grade as grader
@@ -51,6 +53,32 @@ def wrap_markdown(text: str, width: int = 72) -> str:
         paragraph.append(stripped)
     flush()
     return "\n".join(lines) + "\n"
+
+
+def empty_delivery_exits_nonzero() -> bool:
+    """grade.py fails a chat_brevity run whose response.txt is empty."""
+
+    with tempfile.TemporaryDirectory() as td:
+        proj = pathlib.Path(td) / "proj"
+        proj.mkdir()
+        (proj / "response.txt").write_text("")
+        source = pathlib.Path(td) / "question.md"
+        source.write_text("What is the answer?\n")
+        (pathlib.Path(td) / ".fixture_pristine").write_text(
+            source.read_text()
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(THIS / "grade.py"),
+                "chat_brevity",
+                str(proj),
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode != 0
 
 
 def main() -> int:
@@ -190,6 +218,10 @@ def main() -> int:
     check(
         "canary share gloss counts when shadow share is absent",
         grader.shadow_defined_at_first_use(canary_share_only),
+    )
+    check(
+        "an empty chat_brevity delivery exits non-zero",
+        empty_delivery_exits_nonzero(),
     )
 
     print(f"\n{PASS} passed, {FAIL} failed")

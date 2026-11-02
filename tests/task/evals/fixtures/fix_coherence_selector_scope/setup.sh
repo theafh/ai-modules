@@ -9,8 +9,9 @@
 # delta/epsilon) so grade.sh can grep one without matching another.
 #
 # The prompt asks for the assessment in coherence-report.md as well as in the
-# response, because grade.sh never sees the agent's response text; the report
-# file is what makes the selected-set boundary deterministically gradeable.
+# response. grade.sh reads the captured response through RESPONSE_FILE, and the
+# report file remains what makes the selected-set boundary deterministically
+# gradeable.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
