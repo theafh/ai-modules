@@ -963,15 +963,74 @@ PY
 # Inserts a canonical "- Domain: <tags>" bullet under the "## Tag Taxonomy"
 # heading; `model` is included so write_valid_concept_page's tag validates.
 customize_taxonomy() {
-    local wiki=$1
-    python3 - "$wiki/SCHEMA.md" <<'PY'
+    local wiki=$1 tags=${2:-model, architecture, benchmark, training}
+    python3 - "$wiki/SCHEMA.md" "$tags" <<'PY'
 import sys, pathlib
 p = pathlib.Path(sys.argv[1])
 text = p.read_text()
 marker = "## Tag Taxonomy\n"
-bullet = "\n- Domain: model, architecture, benchmark, training\n"
+bullet = f"\n- Domain: {sys.argv[2]}\n"
 p.write_text(text.replace(marker, marker + bullet, 1))
 PY
+}
+
+# Write a raw source sidecar that lints cleanly: a remote source_url plus the
+# ingested/sha256 metadata the raw-frontmatter check expects.
+# Args: <wiki> <kind> <slug>
+write_clean_raw_source() {
+    local wiki=$1 kind=$2 slug=$3
+    mkdir -p "$wiki/raw/$kind"
+    cat > "$wiki/raw/$kind/$slug.md" <<EOF
+---
+source_url: https://example.com/$slug
+ingested: 2026-05-01
+sha256: placeholder
+---
+
+$slug source body.
+EOF
+    python3 "$SHA256" "$wiki/raw/$kind/$slug.md" >/dev/null 2>&1
+}
+
+# Write a minimally-valid typed page at <type>s/<slug>.md. Pass an empty
+# sources_line to omit the key entirely, or a full line such as
+# "sources: [raw/articles/alpha.md]" to carry one.
+# Args: <wiki> <type> <slug> [sources_line]
+write_typed_page() {
+    local wiki=$1 type=$2 slug=$3 sources_line=${4-}
+    local dir
+    case "$type" in
+        entity) dir=entities ;;
+        concept) dir=concepts ;;
+        comparison) dir=comparisons ;;
+        query) dir=queries ;;
+        summary) dir=summaries ;;
+        procedure) dir=procedures ;;
+        *) log "    [unknown page type: $type]"; return 1 ;;
+    esac
+    mkdir -p "$wiki/$dir"
+    {
+        printf '%s\n' '---'
+        printf 'title: %s\n' "$slug"
+        printf '%s\n' 'created: 2026-05-01'
+        printf '%s\n' 'updated: 2026-05-01'
+        printf 'type: %s\n' "$type"
+        printf '%s\n' 'tags: [model]'
+        if [[ -n "$sources_line" ]]; then
+            printf '%s\n' "$sources_line"
+        fi
+        printf '%s\n' 'confidence: high'
+        printf '%s\n' '---'
+        printf '\n# %s\n\n' "$slug"
+        printf 'Placeholder for %s used by the citation-consistency harness.\n' "$slug"
+    } > "$wiki/$dir/$slug.md"
+}
+
+# Append an index.md link to a page in any type folder.
+# Args: <wiki> <folder> <slug>
+add_index_entry_for() {
+    local wiki=$1 folder=$2 slug=$3
+    printf '\n- [%s](%s/%s.md) — placeholder\n' "$slug" "$folder" "$slug" >> "$wiki/index.md"
 }
 
 # Run lint and echo "<exit>|<stdout>".
@@ -3429,6 +3488,256 @@ PY
     $ok
 }
 
+# L78: a summary page declares two sources but cites only one inline -> info
+# `citation` naming the uncited entry, never the pinned-but-undeclared side.
+l78_lint_citation_declared_never_cited() {
+    local wiki; wiki=$(stage_fresh_wiki l78)
+    customize_taxonomy "$wiki" model
+    write_clean_raw_source "$wiki" articles alpha
+    write_clean_raw_source "$wiki" articles beta
+    write_typed_page "$wiki" summary citation-declared \
+        "sources: [raw/articles/alpha.md, raw/articles/beta.md]"
+    cat >> "$wiki/summaries/citation-declared.md" <<'EOF'
+
+Alpha grounds this claim ([alpha](../raw/articles/alpha.md)).
+EOF
+    add_index_entry_for "$wiki" summaries citation-declared
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_finding_for_file "declared-not-cited info" "$out" info citation "summaries/citation-declared.md" || ok=false
+    assert_live_message "declared-not-cited message" "$out" "summaries/citation-declared.md" "declared but never cited inline" || ok=false
+    assert_live_message "uncited source named" "$out" "summaries/citation-declared.md" "raw/articles/beta.md" || ok=false
+    assert_no_live_message "no pinned-undeclared finding" "$out" "summaries/citation-declared.md" 'cited inline but missing from `sources:`' || ok=false
+    $ok
+}
+
+# L79: a query page cites a raw source inline while carrying no `sources:` key
+# -> info `citation` naming the pinned-but-undeclared source, never the
+# declared-but-never-cited side.
+l79_lint_citation_cited_but_undeclared() {
+    local wiki; wiki=$(stage_fresh_wiki l79)
+    customize_taxonomy "$wiki" model
+    write_clean_raw_source "$wiki" articles alpha
+    write_typed_page "$wiki" query citation-pinned
+    cat >> "$wiki/queries/citation-pinned.md" <<'EOF'
+
+The answer rests on alpha ([alpha](../raw/articles/alpha.md)).
+EOF
+    add_index_entry_for "$wiki" queries citation-pinned
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_finding_for_file "pinned-undeclared info" "$out" info citation "queries/citation-pinned.md" || ok=false
+    assert_live_message "pinned-undeclared message" "$out" "queries/citation-pinned.md" 'cited inline but missing from `sources:`' || ok=false
+    assert_live_message "undeclared source named" "$out" "queries/citation-pinned.md" "raw/articles/alpha.md" || ok=false
+    assert_no_live_message "no declared-not-cited finding" "$out" "queries/citation-pinned.md" "declared but never cited inline" || ok=false
+    $ok
+}
+
+# L80: a comparison page carries no local `.md` inline links -> the zero-links
+# info backstop. An external URL and an image do not clear it, because the
+# primitive drops both.
+l80_lint_citation_zero_inline_links() {
+    local wiki; wiki=$(stage_fresh_wiki l80)
+    customize_taxonomy "$wiki" model
+    write_typed_page "$wiki" comparison citation-unlinked
+    cat >> "$wiki/comparisons/citation-unlinked.md" <<'EOF'
+
+The comparison draws on external material ([example](https://example.com/compare)).
+![diagram](diagram.png)
+EOF
+    add_index_entry_for "$wiki" comparisons citation-unlinked
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_finding_for_file "zero-links info" "$out" info citation "comparisons/citation-unlinked.md" || ok=false
+    assert_live_message "zero-links message" "$out" "comparisons/citation-unlinked.md" "no local \`.md\` inline links" || ok=false
+    assert_no_live_message "no declared-not-cited finding" "$out" "comparisons/citation-unlinked.md" "declared but never cited inline" || ok=false
+    assert_no_live_message "no pinned-undeclared finding" "$out" "comparisons/citation-unlinked.md" 'cited inline but missing from `sources:`' || ok=false
+    $ok
+}
+
+# L81: true negative. Every `sources:` entry has a matching inline raw link and
+# every inline raw link is declared -> none of the new findings.
+l81_lint_citation_channels_agree() {
+    local wiki; wiki=$(stage_fresh_wiki l81)
+    customize_taxonomy "$wiki" model
+    write_clean_raw_source "$wiki" articles alpha
+    write_clean_raw_source "$wiki" articles beta
+    write_typed_page "$wiki" summary citation-agree \
+        "sources: [raw/articles/alpha.md, raw/articles/beta.md]"
+    cat >> "$wiki/summaries/citation-agree.md" <<'EOF'
+
+Alpha grounds the first claim ([alpha](../raw/articles/alpha.md)).
+Beta grounds the second ([beta](../raw/articles/beta.md)).
+EOF
+    add_index_entry_for "$wiki" summaries citation-agree
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "channels agree" "$out" "citation" || ok=false
+    $ok
+}
+
+# L82: the page-citing false positive guard. A query page that omits `sources:`
+# and cites only another wiki page draws no citation finding, because the check
+# never demands that raw links exist. A sibling carrying an empty `sources: []`
+# list is the same empty inventory and stays clean too.
+l82_lint_citation_page_citing_query_clean() {
+    local wiki; wiki=$(stage_fresh_wiki l82)
+    customize_taxonomy "$wiki" model
+    write_valid_concept_page "$wiki" companion
+    add_index_entry_concept "$wiki" companion
+    write_typed_page "$wiki" query citation-page-citing
+    cat >> "$wiki/queries/citation-page-citing.md" <<'EOF'
+
+The answer is assembled from [companion](../concepts/companion.md).
+EOF
+    add_index_entry_for "$wiki" queries citation-page-citing
+    write_typed_page "$wiki" query citation-empty-inventory "sources: []"
+    cat >> "$wiki/queries/citation-empty-inventory.md" <<'EOF'
+
+This answer also draws on [companion](../concepts/companion.md).
+EOF
+    add_index_entry_for "$wiki" queries citation-empty-inventory
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "page-citing query stays clean" "$out" "citation" || ok=false
+    $ok
+}
+
+# L83: `strip_code` preprocessing. The declared raw path appears only inside a
+# fenced example and inline code, so it stays absent from the inline-citation
+# set: the declared-but-never-cited finding fires for it, no pinned-undeclared
+# finding fires, and the live non-raw prose link keeps the zero-links backstop
+# quiet.
+l83_lint_citation_code_examples_not_citations() {
+    local wiki; wiki=$(stage_fresh_wiki l83)
+    customize_taxonomy "$wiki" model
+    write_clean_raw_source "$wiki" articles example
+    write_valid_concept_page "$wiki" companion
+    add_index_entry_concept "$wiki" companion
+    write_typed_page "$wiki" summary citation-example \
+        "sources: [raw/articles/example.md]"
+    cat >> "$wiki/summaries/citation-example.md" <<'EOF'
+
+Background: [companion](../concepts/companion.md).
+
+```markdown
+Example citation: [example](../raw/articles/example.md).
+```
+
+Inline example: `[example](../raw/articles/example.md)`.
+EOF
+    add_index_entry_for "$wiki" summaries citation-example
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_finding_for_file "code-example declared-not-cited" "$out" info citation "summaries/citation-example.md" || ok=false
+    assert_live_message "declared example source named" "$out" "summaries/citation-example.md" "declared but never cited inline" || ok=false
+    assert_live_message "declared example path named" "$out" "summaries/citation-example.md" "raw/articles/example.md" || ok=false
+    assert_no_live_message "code example is not a citation" "$out" "summaries/citation-example.md" 'cited inline but missing from `sources:`' || ok=false
+    assert_no_live_message "live prose link clears zero-links" "$out" "summaries/citation-example.md" "no local \`.md\` inline links" || ok=false
+    $ok
+}
+
+# L84: the synthesis-type gate is exactly {summary, query, comparison}. Entity,
+# concept, and procedure pages with a decorative sources entry and no inline
+# links draw none of the new findings, and the constant itself pins the set.
+l84_lint_citation_synthesis_type_gate() {
+    local wiki; wiki=$(stage_fresh_wiki l84)
+    customize_taxonomy "$wiki" model
+    write_clean_raw_source "$wiki" articles alpha
+    local ptype slug
+    for ptype in entity concept procedure; do
+        slug="out-of-scope-$ptype"
+        write_typed_page "$wiki" "$ptype" "$slug" "sources: [raw/articles/alpha.md]"
+        case "$ptype" in
+            entity) add_index_entry_for "$wiki" entities "$slug" ;;
+            concept) add_index_entry_for "$wiki" concepts "$slug" ;;
+            procedure) add_index_entry_for "$wiki" procedures "$slug" ;;
+        esac
+    done
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "non-synthesis types out of scope" "$out" "citation" || ok=false
+    local gate
+    gate=$(python3 - "$LINT" <<'PY'
+import pathlib
+import sys
+
+sys.path.insert(0, str(pathlib.Path(sys.argv[1]).parent))
+import lint
+
+print(",".join(sorted(lint.SYNTHESIS_TYPES)))
+PY
+)
+    assert_eq "synthesis-type gate" "$gate" "comparison,query,summary" || ok=false
+    $ok
+}
+
+# L85: a wiki tripping only the three new findings stays info-only and exits 0.
+# The summary declares an uncited source, the query pins an undeclared one, and
+# the comparison carries no local `.md` links — exactly three findings, no warn,
+# no blocking.
+l85_lint_citation_findings_are_info_only() {
+    local wiki; wiki=$(stage_fresh_wiki l85)
+    customize_taxonomy "$wiki" model
+    write_clean_raw_source "$wiki" articles alpha
+    write_clean_raw_source "$wiki" articles beta
+    write_clean_raw_source "$wiki" articles gamma
+    write_valid_concept_page "$wiki" companion
+    add_index_entry_concept "$wiki" companion
+    write_typed_page "$wiki" summary citation-all-summary \
+        "sources: [raw/articles/alpha.md, raw/articles/beta.md]"
+    cat >> "$wiki/summaries/citation-all-summary.md" <<'EOF'
+
+Alpha grounds this claim ([alpha](../raw/articles/alpha.md)).
+The overview also relies on [companion](../concepts/companion.md).
+EOF
+    write_typed_page "$wiki" query citation-all-query
+    cat >> "$wiki/queries/citation-all-query.md" <<'EOF'
+
+The answer rests on gamma ([gamma](../raw/articles/gamma.md)).
+EOF
+    write_typed_page "$wiki" comparison citation-all-comparison
+    cat >> "$wiki/comparisons/citation-all-comparison.md" <<'EOF'
+
+No local citations appear on this page.
+EOF
+    add_index_entry_for "$wiki" summaries citation-all-summary
+    add_index_entry_for "$wiki" queries citation-all-query
+    add_index_entry_for "$wiki" comparisons citation-all-comparison
+    cat >> "$wiki/concepts/companion.md" <<'EOF'
+
+See [the summary](../summaries/citation-all-summary.md),
+[the query](../queries/citation-all-query.md), and
+[the comparison](../comparisons/citation-all-comparison.md).
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit (info only)" "$rc" "0" || ok=false
+    assert_eq "total findings" "$(lint_total "$out")" "3" || ok=false
+    assert_live_severity_count "three info findings" "$out" info "3" || ok=false
+    assert_live_severity_count "no warn findings" "$out" warn "0" || ok=false
+    assert_live_severity_count "no blocking findings" "$out" blocking "0" || ok=false
+    assert_live_message "declared-not-cited on summary" "$out" "summaries/citation-all-summary.md" "declared but never cited inline" || ok=false
+    assert_live_message "pinned-undeclared on query" "$out" "queries/citation-all-query.md" 'cited inline but missing from `sources:`' || ok=false
+    assert_live_message "zero-links on comparison" "$out" "comparisons/citation-all-comparison.md" "no local \`.md\` inline links" || ok=false
+    $ok
+}
+
 ###############################################################################
 # compute_sha256.py scenarios
 ###############################################################################
@@ -3734,6 +4043,45 @@ c2_rotation_move_contract() {
     $ok
 }
 
+# c3: the citation finding's report-only disposition is stated once in
+# <fix_moves>, the superseded two-carve-outs wording is gone, and
+# <compile_issue_list> emits `report only` with no body edit.
+c3_citation_report_only_contract() {
+    local ok=true agent="$REPO_ROOT/plugins/knowledge_management/agents/auto_shaper_wiki.md"
+    local work="$SCRATCH/citation_contract"
+    rm -rf "$work"
+    mkdir -p "$work"
+    local moves="$work/fix_moves.txt" compile="$work/compile_issue_list.txt"
+    awk '/<fix_moves>/{on=1} on{print} /<\/fix_moves>/{on=0}' \
+        "$agent" > "$moves"
+    awk '/<compile_issue_list>/{on=1} on{print} /<\/compile_issue_list>/{on=0}' \
+        "$agent" > "$compile"
+    [[ -s "$moves" ]] || { log "    no <fix_moves> block"; return 1; }
+    [[ -s "$compile" ]] || { log "    no <compile_issue_list> block"; return 1; }
+    local moves_flat compile_flat
+    moves_flat=$(tr '\n' ' ' < "$moves" | tr -s ' ')
+    compile_flat=$(tr '\n' ' ' < "$compile" | tr -s ' ')
+
+    printf '%s' "$moves_flat" | grep -Fq -- 'report-only disposition' \
+        || { log "    citation is not named a report-only disposition"; ok=false; }
+    printf '%s' "$moves_flat" | grep -Fq -- 'name each one in the final report' \
+        || { log "    final-report naming of each citation finding is missing"; ok=false; }
+    printf '%s' "$moves_flat" | grep -Fq -- '`report only` in the `<compile_issue_list>` `->` column' \
+        || { log "    fix_moves does not route citation to report only"; ok=false; }
+    printf '%s' "$moves_flat" | grep -Fq -- 'apply no body edit' \
+        || { log "    fix_moves does not state the no-body-edit posture"; ok=false; }
+    printf '%s' "$moves_flat" | grep -Fq -- 'Two carve-outs' \
+        && { log "    superseded two-carve-outs wording remains"; ok=false; }
+
+    printf '%s' "$compile_flat" | grep -Fq -- 'A `citation` finding' \
+        || { log "    compile_issue_list does not name a citation finding"; ok=false; }
+    printf '%s' "$compile_flat" | grep -Fq -- '`report only` in the `->` column' \
+        || { log "    compile_issue_list does not emit report only"; ok=false; }
+    printf '%s' "$compile_flat" | grep -Fq -- 'applies no body edit' \
+        || { log "    compile_issue_list does not state the no-body-edit posture"; ok=false; }
+    $ok
+}
+
 ###############################################################################
 # Run all scenarios
 ###############################################################################
@@ -3869,13 +4217,22 @@ scenario l73 "lint flags meta-prose phrase as info"      l73_lint_meta_prose_phr
 scenario l74 "lint flags long lead paragraph as info"    l74_lint_meta_prose_long_lead
 scenario l75 "entry-aware log read bounds the slice"     l75_entry_aware_log_read_bounds_slice
 scenario l76 "log rotation warns past 500 entries"       l76_lint_log_rotation_warn_past_500
-scenario l77 "log rotation blocks past 1000 entries"     l77_lint_log_rotation_blocking_past_1000
+scenario l77 "log rotation blocks past 1000 entries"       l77_lint_log_rotation_blocking_past_1000
+scenario l78 "lint citation declared but never cited"       l78_lint_citation_declared_never_cited
+scenario l79 "lint citation cited but undeclared"           l79_lint_citation_cited_but_undeclared
+scenario l80 "lint citation zero inline links backstop"     l80_lint_citation_zero_inline_links
+scenario l81 "lint citation channels agree (true negative)" l81_lint_citation_channels_agree
+scenario l82 "lint citation page-citing query stays clean"  l82_lint_citation_page_citing_query_clean
+scenario l83 "lint citation ignores code examples"          l83_lint_citation_code_examples_not_citations
+scenario l84 "lint citation synthesis-type gate"            l84_lint_citation_synthesis_type_gate
+scenario l85 "lint citation findings stay info-only"        l85_lint_citation_findings_are_info_only
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract
 scenario a3  "wiki hub output contract"                    a3_wiki_hub_output_contract
 scenario c1  "wiki page-update and log-entry contract"      c1_wiki_log_and_updated_contract
 scenario c2  "auto_shaper rotation move contract"            c2_rotation_move_contract
+scenario c3  "auto_shaper citation report-only contract"     c3_citation_report_only_contract
 
 scenario s1  "compute_sha256 inserts missing sha line"        s1_sha256_insert_missing
 scenario s2  "compute_sha256 unchanged when correct"          s2_sha256_unchanged_when_correct

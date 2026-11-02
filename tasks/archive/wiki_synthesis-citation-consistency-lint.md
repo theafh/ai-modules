@@ -2,9 +2,11 @@
 description: "Add a lint.py check that surfaces citation-consistency issues on synthesis pages. It flags sources: never cited inline, inline raw missing from sources:, and zero inline links."
 scope: plugins/knowledge_management
 created: 2026-06-18T00:36:41
-updated: 2026-10-28T00:07:00
-status: ready
+updated: 2026-11-02T15:23:23
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Add a synthesis-page citation-consistency lint check
@@ -33,11 +35,11 @@ The primitives this check needs already exist in the same file:
 
 Why only synthesis types: `query`/`summary`/`comparison` are the pages that synthesize across sources, so a missing or inconsistent citation there is the "synthesizes without citing" failure mode the check targets. The check must **not** demand that raw links exist, because a `query` page legitimately cites other wiki pages (an inline link into `concepts/` or `entities/` rather than into `raw/`) whose own raw grounding sits on those pages. It only flags disagreement between what is *declared* and what is *linked to raw*, which leaves a legitimately page-citing page that omits `sources:` unflagged (same empty inventory as an empty list if one appears). Shipped Provenance and `REQUIRED_FRONTMATTER` leave the key off when there are no captured sources. The sibling `sources:`-consuming checks read the inventory with the same `fm.get("sources") or []` and then guard on its type: `check_stale_content` and `check_source_paths_exist` skip the page with `if not isinstance(sources, list): continue`, and `check_quality_signals` gates its single-source check with `isinstance(sources, list)` — so the new check applies the same `isinstance(sources, list)` guard and reads a non-list value as the empty inventory.
 
-Remediation is not built here. Because the `auto_shaper_wiki` agent runs `lint.py` inside its assess→fix→verify loop, the new finding flows to the agent automatically; an implementer adds no remediation logic to the linter. Info-level finding **suppression** is likewise out of scope. That mechanism is owned by [wiki_lint-accepted-info-suppression.md](archive/wiki_lint-accepted-info-suppression.md); this task adds no per-finding acknowledge handling.
+Remediation is not built here. Because the `auto_shaper_wiki` agent runs `lint.py` inside its assess→fix→verify loop, the new finding flows to the agent automatically; an implementer adds no remediation logic to the linter. Info-level finding **suppression** is likewise out of scope. That mechanism is owned by [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md); this task adds no per-finding acknowledge handling.
 
-[wiki_auto-shaper-internal-contradictions.md](archive/wiki_auto-shaper-internal-contradictions.md) already finished: it rewrote `<lint_clean>` with the contested-page warn carve-out. The carve-out stays contested-only; Goal owns why these three findings therefore stay `info`.
+[wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md) already finished: it rewrote `<lint_clean>` with the contested-page warn carve-out. The carve-out stays contested-only; Goal owns why these three findings therefore stay `info`.
 
-Related work: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) owns mid-conversation `wiki_import` capture into `raw/` + `sources:` (and `wiki_fix` routing for uncaptured narration); it does not define the provenance convention. What counts as a source for this check is the shipped **Provenance** contract already cited above in this section.
+Related work: [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) owns mid-conversation `wiki_import` capture into `raw/` + `sources:` (and `wiki_fix` routing for uncaptured narration); it does not define the provenance convention. What counts as a source for this check is the shipped **Provenance** contract already cited above in this section.
 
 ## Approach
 

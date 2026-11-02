@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.7
+version: 1.11.8
 model: inherit
 background: false
 effort: high
@@ -728,7 +728,9 @@ the fix move.
     ```
 
     Group lines by severity (blocking → warn → info → semantic) so
-    the remediate phase can work top-down. If the lint pass exits 0
+    the remediate phase can work top-down. A `citation` finding
+    carries `report only` in the `->` column: it is named in the final
+    report and applies no body edit. If the lint pass exits 0
     and the page-first walk finds no semantic issues, the wiki is
     clean: skip the remediate phase, but still record this audit's
     baseline via `<append_audit_log_entry>` (a zero-change outcome
@@ -841,21 +843,26 @@ affect the same file so each file is opened, read, and rewritten once.
     Apply the move whose name matches the issue category. A `log`
     rotation finding (warn past 500 entries, blocking past 1000) maps
     to `<fix_log_rotation>`, which rotates the log and leaves every
-    entry byte-identical. Two carve-outs apply to `log.md` entries
-    already written. A `log-heading`
-    finding never matches its move automatically:
-    `<fix_log_heading_duplicate>` runs only when the operator
-    explicitly asked to clean duplicate log headings, so a routine pass
-    leaves those findings reported and the entries untouched. A
-    `log-scope` finding has **no** fix move at all: report the
-    violating entry, name it in the final report, and leave its text
-    byte-identical. The log is append-only in substance
-    (`<configurable_zones>`), and trimming a historical entry whose
-    subject was a file outside the wiki is an editorial decision the
-    owner makes, not a sweep this agent performs. Where this agent
-    *writes* a new entry (`<append_audit_log_entry>`), the `Scope:`
-    group in `references/template_log.md` binds it directly: the
-    subject of every bullet is a file under the wiki.
+    entry byte-identical. Three carve-outs keep a finding reported
+    without an automatic body edit. A `log-heading` finding never
+    matches its move automatically: `<fix_log_heading_duplicate>` runs
+    only when the operator explicitly asked to clean duplicate log
+    headings, so a routine pass leaves those findings reported and the
+    entries untouched. A `log-scope` finding has **no** fix move at
+    all: report the violating entry, name it in the final report, and
+    leave its text byte-identical. A `citation` finding takes the
+    report-only disposition: name each one in the final report, print
+    `report only` in the `<compile_issue_list>` `->` column, and apply
+    no body edit, because inserting a citation, pruning a decorative
+    `sources:` entry, or flagging the page for human review is a
+    judgment call the agent surfaces rather than auto-applies. The log
+    is append-only in substance (`<configurable_zones>`), and trimming
+    a historical entry whose subject was a file outside the wiki is an
+    editorial decision the owner makes, not a sweep this agent
+    performs. Where this agent *writes* a new entry
+    (`<append_audit_log_entry>`), the `Scope:` group in
+    `references/template_log.md` binds it directly: the subject of
+    every bullet is a file under the wiki.
 
     <fix_frontmatter_missing_or_malformed>
       Rewrite the frontmatter block in the canonical order (`title`,

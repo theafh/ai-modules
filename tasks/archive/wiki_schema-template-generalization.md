@@ -66,7 +66,7 @@ Four live tasks own passages in this same file, and this task leaves each alone:
 
 Two soft companions share coordination surface but do not own template passages:
 
-- [wiki_synthesis-citation-consistency-lint.md](../wiki_synthesis-citation-consistency-lint.md) compares `sources:` against inline links, so making the field optional in defect 2 gives that check an absent-field case to handle.
+- [wiki_synthesis-citation-consistency-lint.md](wiki_synthesis-citation-consistency-lint.md) compares `sources:` against inline links, so making the field optional in defect 2 gives that check an absent-field case to handle.
 - [wiki_front-end-skill-dir-resolution.md](wiki_front-end-skill-dir-resolution.md) (`ready`) owns authoring the base-skill `$WIKI_SKILL` resolution home this task's template cites; until that lands, cite the agent's interim `<resolve_runtime_paths>` as Context defect 7 states.
 
 The archived [wiki_lint-blind-spots-and-false-positives.md](wiki_lint-blind-spots-and-false-positives.md) already fenced the `Example for AI/ML:` taxonomy block so it stops parsing as live config, so defect 6 is the remaining unfenced set elsewhere in the file.

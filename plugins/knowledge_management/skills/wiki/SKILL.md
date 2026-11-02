@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.12
+version: 1.24.13
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -820,10 +820,16 @@ Findings come in three buckets:
   locked-slot additions are acknowledged-channel extensions, not live warns.
 - **info**: markdown style nits, oversized pages, low-confidence
   single-source pages, unused taxonomy tags, duplicate
-  `log.md` entry headings (`log-heading`), and `log.md` entry bullets whose
-  subject is a path outside the wiki (`log-scope`). The two log-entry checks
+  `log.md` entry headings (`log-heading`), `log.md` entry bullets whose
+  subject is a path outside the wiki (`log-scope`), and synthesis-page
+  citation inconsistency (`citation`): declared-but-never-cited (a `sources:`
+  entry with no inline link), cited-but-undeclared (an inline `raw/` link
+  absent from `sources:`), and zero-inline-links (a synthesis page with no
+  local `.md` inline links). The two log-entry checks
   are surfaced for review because repairing an entry already written is an
-  operator-requested move rather than a routine sweep.
+  operator-requested move rather than a routine sweep. The citation check
+  verifies presence and channel consistency, not grounding: cite where the
+  claim is grounded rather than adding a citation to clear the check.
 
 Full check matrix: `references/lint_checks.md`.
 </narrow_inline_checks>

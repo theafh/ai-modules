@@ -2129,7 +2129,7 @@ def check_markdown_style(wiki: Path) -> list[Issue]:
 # ---------------------------------------------------------------------------
 # Source-attribution checks
 #
-# The wiki uses three rules for source attribution:
+# The wiki uses four rules for source attribution:
 #
 #   1. `sources:` frontmatter is the canonical, page-level source inventory.
 #      Every entry must resolve to a real file under `raw/` — blocking when
@@ -2145,6 +2145,10 @@ def check_markdown_style(wiki: Path) -> list[Issue]:
 #      broken-link check, and split a claim from its evidence — undesirable
 #      in an LLM-first wiki where attribution should sit next to the claim.
 #      Warn-level so the conversion path is clear and actionable.
+#   4. On synthesis pages (`summary`, `query`, `comparison`), the two
+#      provenance channels must agree: every `sources:` entry is cited
+#      inline and every inline `raw/` citation is declared. Info-level,
+#      presence and consistency only — grounding stays a review concern.
 # ---------------------------------------------------------------------------
 
 SOURCES_HEADER_RE = re.compile(
@@ -2249,6 +2253,70 @@ def check_sources_section(wiki: Path) -> list[Issue]:
                     "per-source notes inline and remove the heading",
                     line=i,
                 ))
+    return issues
+
+
+def check_synthesis_citation(wiki: Path) -> list[Issue]:
+    """Surface disagreement between a synthesis page's two provenance channels.
+
+    For pages whose ``type`` is in ``SYNTHESIS_TYPES``, compare the
+    ``sources:`` frontmatter inventory against the inline markdown links in the
+    body that resolve under ``raw/``. Three info findings:
+
+    - a ``sources:`` entry no inline link references (declared, never pinned);
+    - an inline ``raw/`` citation absent from ``sources:`` (pinned, never
+      declared);
+    - a synthesis page with no local ``.md`` inline links at all, the coarse
+      backstop for synthesis grounded in nothing visible.
+
+    Citation presence and channel consistency only: whether a cited source
+    actually supports a paraphrased claim stays a human or agent review
+    concern. Fenced and inline code are stripped before link extraction,
+    matching ``check_links_and_orphans`` and the index walk, so a documentation
+    example is never read as a citation. Every finding is info: a citation is
+    a judgment call the review surface reports rather than auto-applies.
+    """
+    issues: list[Issue] = []
+    for page in iter_wiki_pages(wiki):
+        text = page.read_text(encoding="utf-8")
+        fm, body = parse_frontmatter(text)
+        if not fm:
+            continue
+        page_type = fm.get("type")
+        if not isinstance(page_type, str) or page_type not in SYNTHESIS_TYPES:
+            continue
+        sources = fm.get("sources") or []
+        if not isinstance(sources, list):
+            sources = []
+        declared = {src for src in sources if isinstance(src, str) and src}
+        links = extract_md_links(strip_code(body), page)
+        if not links:
+            issues.append(Issue(
+                SEV_INFO, "citation", page,
+                "synthesis page carries no local `.md` inline links — cite "
+                "where the claim is grounded; the linter checks citation "
+                "presence and consistency, not grounding",
+            ))
+        cited: set[str] = set()
+        for target, _text, _raw in links:
+            try:
+                rel = target.relative_to(wiki).as_posix()
+            except ValueError:
+                continue
+            if rel.startswith("raw/"):
+                cited.add(rel)
+        for src in sorted(declared - cited):
+            issues.append(Issue(
+                SEV_INFO, "citation", page,
+                f"`sources:` entry declared but never cited inline: {src} — "
+                f"cite it where the claim is grounded, or drop it from "
+                f"`sources:`",
+            ))
+        for src in sorted(cited - declared):
+            issues.append(Issue(
+                SEV_INFO, "citation", page,
+                f"raw source cited inline but missing from `sources:`: {src}",
+            ))
     return issues
 
 
@@ -2472,6 +2540,7 @@ def main() -> int:
         issues.extend(check_wikilink_syntax(wiki))
         issues.extend(check_footnote_syntax(wiki))
         issues.extend(check_sources_section(wiki))
+        issues.extend(check_synthesis_citation(wiki))
 
     boilerplate_live, boilerplate_ack = check_verbatim_boilerplate(wiki)
     issues.extend(boilerplate_live)
