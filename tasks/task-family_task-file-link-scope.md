@@ -2,8 +2,8 @@
 description: "Restrict the task linter's link check to links written in task files, so it never judges links in any other markdown file in the repository."
 scope: plugins/ai_dev/skills/task
 created: 2026-10-31T15:51:33
-updated: 2026-11-02T13:51:20
-status: checked
+updated: 2026-11-02T14:12:25
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -43,5 +43,5 @@ reported-by: Andreas Hoffmann
 - A staged live task file carrying a single leading-`/` link to a path absent from the repository root produces one blocking `broken-link` finding on a default run, and one carrying a single leading-`/` link to a path present at the repository root produces none; this guard passes today and keeps the leading-`/` resolution rule that `## Approach` preserves proven through the narrowing.
 - Under `--file` naming one task, a dangling link in that task still produces its finding, and a dangling link in another task file does not.
 - `grep -nE 'iter_repo_markdown_files|parse_makefile_exclude|is_find_prune_exclude|_git_toplevel|_git_ignores|_list_git_markdown_files|_list_rglob_markdown_files|_list_find_markdown_files|FIND_PRUNE_TESTS|FIND_PRUNE_OPERATORS|import shlex' plugins/ai_dev/skills/task/scripts/lint.py` returns nothing, so every helper, module constant, and import that `iter_repo_markdown_files` alone used is gone from the linter.
-- `grep -rnE 'every markdown file under|wherever they live|every in-repo markdown link from every|repo-wide link integrity|every repo markdown file' plugins/ai_dev` returns nothing outside the base `task` skill's `<archive>` inbound scan (step 4), which the `**Out of scope:**` block keeps as it is, and each prose site Context names states that the link check covers the links written in task files only.
+- `grep -rnE --exclude-dir=__pycache__ --exclude='*.pyc' 'every markdown file under|wherever they live|every in-repo markdown link from every|repo-wide link integrity|every repo markdown file' plugins/ai_dev` returns nothing outside the base `task` skill's `<archive>` inbound scan (step 4), which the `**Out of scope:**` block keeps as it is, and each prose site Context names states that the link check covers the links written in task files only. The two exclusion flags keep the proof over source text, so a gitignored bytecode cache cannot match after the rewrite.
 - `tests/task/script_tests/run.sh` covers each staged case above in its `l*` group and passes.
