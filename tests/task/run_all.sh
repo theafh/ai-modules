@@ -8,7 +8,9 @@
 #                                   hub, its siblings, and the family agents
 #   - evals/test_run.py:            the eval runner's artefact declarations,
 #                                   checked against grade.sh and one real
-#                                   micro-deployment per vendor, no model call
+#                                   micro-deployment per vendor, plus the
+#                                   parallel surface and hermetic host-guard
+#                                   proof, no model call
 #
 # All three run on every invocation and the exit code aggregates them, so a
 # failure in one surface still leaves the others' verdicts visible.

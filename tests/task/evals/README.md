@@ -81,8 +81,8 @@ python3 tests/task/evals/run.py lossless_split  # just the split-source fidelity
 python3 tests/task/evals/run.py --model ''      # inherit the CLI default instead
 ```
 
-Per eval it writes `workspace/run-<ts>/<id>/{response.txt, stderr.txt,
-timing.json, grading.txt}` and exits 0 only if every eval's worker
+Per eval it writes `tests/task/workspace/run-<ts>/<id>/{response.txt,
+stderr.txt, timing.json, grading.txt}` and exits 0 only if every eval's worker
 completed cleanly (CLI rc 0 with a real response) and its grade passed.
 A timed-out or crashed worker fails the eval regardless of `grade.sh`,
 since `grade.sh` then sees only partial sandbox state. The manual
@@ -98,15 +98,19 @@ debugging a single eval by hand.
 
 <!-- -->
 
-> **The `fix_coherence*` evals are the other slow group.** All six read a
-> whole live task set plus the artifacts it targets in one context. The
-> assess-only and selector ones finish quickly; the two reconcile ones
-> want far longer, and `fix_coherence_reconcile_escalated` spawns the
-> `auto_shaper_task` → reviewer/verifier fan-out on top of that. The
-> `--timeout` default is 1800s so those run without a flag, and a
-> timeout is a ceiling rather than a wait, so the fast evals pay nothing
-> for it. Run the deep ones sequentially: two nested loops in parallel
-> contend for the model and both slow down.
+> **The Approach serial nested-loop set is the other slow group.**
+> `auto_check_boundary` runs the full task_auto_check nested-agent loop
+> (drift → dry run → gate → reviewer → verifier); the two
+> `fix_coherence_reconcile_*` ids read a whole live task set plus the
+> artifacts it targets in one context, and
+> `fix_coherence_reconcile_escalated` spawns the `auto_shaper_task` →
+> reviewer/verifier fan-out on top of that. Those three ids run sequentially
+> after the isolated pool, while the rest of the hub suite uses the default
+> 4 workers, because two nested loops in parallel contend for the model and
+> both slow down. `auto_check_boundary` carries its own `"timeout": 3000` in
+> `evals.json`; the two reconcile ids use the runner's 1800s default, and a
+> timeout is a ceiling rather than a wait, so the fast evals pay nothing for
+> it.
 
 ## Manual three-phase workflow
 

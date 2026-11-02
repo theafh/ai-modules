@@ -14,7 +14,7 @@ programs; each sibling's *behavior* gets its own eval. `task_create/` and
 | --- | --- | --- | --- |
 | Bundled scripts | `script_tests/run.sh` | `discover_tasks.sh`, `init_tasks.sh`, and the full `lint.py` check set | `./tests/task/run_all.sh` |
 | Family contract | `script_tests/contract_run.sh` | the prose contract across the hub, its siblings, and the family agents: one canonical rule statement per rule, siblings citing rather than copying it, and the standing-doc presence gates | `./tests/task/run_all.sh` |
-| Runner declarations | `evals/test_run.py` | every eval that grades the sandbox's whole `git status` declares no artefact the micro-deployment writes into the sandbox project, and the agent-spawning siblings keep their agents | `./tests/task/run_all.sh` |
+| Runner declarations and parallel surface | `evals/test_run.py` | every eval that grades the sandbox's whole `git status` declares no artefact the micro-deployment writes into the sandbox project, the agent-spawning siblings keep their agents, and the Pattern A runner's 4-worker pool, serial tail, timing fields, and hermetic host-guard overlap proof hold | `./tests/task/run_all.sh` |
 | Skill behavior | `evals/` | a behavioral eval per family member, plus dependency evals for task_implement / task_select (stage → agent → grade) | operator-driven, see `evals/README.md` |
 | Triggering | `../trigger_evals/task.json` | family routing: each sibling wins its phrasings, broad/ambiguous → base `task`, no bleed | `../trigger_evals/run.py` |
 
@@ -71,6 +71,16 @@ added, which dirties it. It runs the real deploy script with no model call.
 A last check runs `tests/lib/check_stage_guard.py` on `evals/run.py`, so a
 stage that fails or names no sandbox project stops the eval before any worker
 starts.
+
+It also checks the Pattern A surface: `--workers` defaults to 4, the run root
+is `tests/task/workspace`, the Approach serial nested-loop set is the three
+ids the task names, `timing.json` keeps the measurement fields, and a
+hermetic case runs two real jobs through `tests/lib/eval_runner.run_jobs`
+against a temporary host mirror. The mirror proves overlapping sandbox-only
+jobs leave host `tasks/` untouched, and that a newer planted file carrying one
+eval's fixture name fails that eval while an overlapping eval with other
+fixture names stays PASS. The proof writes
+`results/parallel_workers_hermetic.md`.
 
 ## Behavioral evals
 

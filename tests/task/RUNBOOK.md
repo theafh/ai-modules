@@ -6,10 +6,16 @@ For the full design, see `README.md`. This is the operator's quick-ref.
 
 All harness logic lives under `tests/task/`. The skills under test are
 read-only to the harness. Fixtures stage their own sandboxes and never
-patch the deployed or source skills. Every behavioral eval also asserts
-an isolation fail-safe (the sandbox's fixture names stay clear of the host
-`tasks/` tree, measured against a temp copy), so a parallel edit of some
-other live task does not fail the suite.
+patch the deployed or source skills. Every behavioral eval asserts a
+per-eval isolation fail-safe: that eval's own fixture names stay clear of
+the host `tasks/` tree, measured against the temp copy `stage.sh` takes and
+the `.eval_started_at` marker it stamps, so a parallel edit of some other
+live task and an overlapping pool job both stay outside that eval's
+comparison. `evals/run.py` runs every isolated eval in the default 4-worker
+pool and then runs the Approach serial nested-loop set (`auto_check_boundary`,
+`fix_coherence_reconcile_escalated`,
+`fix_coherence_reconcile_inline_staleness`) one id at a time after that
+pool.
 
 ## Common commands
 

@@ -2,9 +2,11 @@
 description: Parallelize isolated task-hub evals at default 4 workers via Pattern A with per-eval host-tasks fail-safes under overlap, and keep the Approach serial nested-loop set sequential in-run.
 scope: tests/task/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-31T08:57:00
-status: ready
+updated: 2026-11-02T18:51:01
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize isolated task-hub evals without mixing host-tree fail-safes and keep the Approach serial nested-loop set sequential
@@ -36,10 +38,10 @@ stays per-eval, marker-scoped, and fixture-scoped: an operator edit of a task
 the sandbox does not name stays outside the comparison, as `tests/CLAUDE.md`
 documents under the heading "Host `tasks/` during a task-family run".
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
 Sibling harnesses with the same fail-safe are
-[task_create](tests_task-create-parallel-evals.md) and
-[task_fix](tests_task-fix-parallel-evals.md).
+[task_create](../tests_task-create-parallel-evals.md) and
+[task_fix](../tests_task-fix-parallel-evals.md).
 
 ## Approach
 
@@ -67,7 +69,7 @@ the shared helper.
 
 **Out of scope:** The `script_tests/` and `contract_run.sh` surfaces. Deep
 `task_auto_check` repair loops, which
-[the auto_check parallel task](archive/tests_task-auto-check-parallel-evals.md) owns.
+[the auto_check parallel task](tests_task-auto-check-parallel-evals.md) owns.
 Live-testing unshipped editorial plugin harnesses.
 
 ## Acceptance

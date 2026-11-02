@@ -136,7 +136,7 @@ guardrail_audit parallel-evals task](../tests_guardrail-audit-parallel-evals.md)
 rewrites `tests/guardrail_audit/evals/run.py` onto the shared helper, including
 its `stage()` call, and rewrites `tests/guardrail_audit/README.md`; whichever
 lands second keeps this task's failure path and its README clause. [The
-task-hub parallel-evals task](../tests_task-hub-parallel-evals.md) changes
+task-hub parallel-evals task](tests_task-hub-parallel-evals.md) changes
 `tests/task/evals/run.py`'s `stage` signature and its `evals/test_run.py`, which
 is the same declaration/stage-guard surface, though a different harness from
 the three this task touches. [The agent_spinner run-ledger

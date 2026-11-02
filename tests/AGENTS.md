@@ -172,24 +172,32 @@ Isolated-sandbox evals that use `tests/lib/eval_runner` default to **4**
 concurrent jobs (`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`). Each job
 gets its own `TMPDIR`. Pass `--workers 1` to serialize. A harness keeps a
 sequential subset only when its jobs share a resource the helper cannot
-isolate. Today that subset is the `task_auto_check` serial nested-loop set
+isolate. Today those subsets are the `task_auto_check` serial nested-loop set
 (`repair_to_ready`, `relay_by_path`, `stray_hunk_reverted`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
 `immediate_ready_citations_overturn`, `regroup_via_reviewer`,
 `regroup_immediate_ready`, `regroup_same_paragraph_ready`,
 `committed_rule_deletion_routed`, `last_call_ready_refuted`,
 `regate_isolated`, `dryrun_gap_confirmed`), which runs one job at a time after the isolated pool,
-and an escape guard that reads the whole host checkout, such as
-`agent_spinner`'s `git status`. The rest of the `task_auto_check` suite
-uses the default 4 workers. Raising the default past 4 mostly buys model
-contention and timeouts, not faster wall-clock.
+`tests/task/evals/run.py`'s Approach serial nested-loop set
+(`auto_check_boundary`, `fix_coherence_reconcile_escalated`,
+`fix_coherence_reconcile_inline_staleness`), which also runs one id at a
+time after the isolated pool, and an escape guard that reads the whole host
+checkout, such as `agent_spinner`'s `git status`. The rest of the
+`task_auto_check` suite and the rest of the `task` hub suite use the default
+4 workers. Raising the default past 4 mostly buys model contention and
+timeouts, not faster wall-clock.
 
 The Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS`
-are `tests/task_auto_check/evals/run.py`, `tests/git_checkout/evals/run.py`,
-`tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`,
-`tests/git_review/evals/run.py`, and `tests/git_auto_review/evals/run.py`.
-`task_auto_check` runs its serial nested-loop set, the list above, one job
-at a time after the isolated pool. `git_auto_review` declares its own serial
+are `tests/task_auto_check/evals/run.py`, `tests/task/evals/run.py`,
+`tests/git_checkout/evals/run.py`, `tests/git_refresh/evals/run.py`,
+`tests/git_commit/evals/run.py`, `tests/git_review/evals/run.py`, and
+`tests/git_auto_review/evals/run.py`. `task_auto_check` runs its serial
+nested-loop set, the list above, one job at a time after the isolated pool.
+`tests/task/evals/run.py` runs its Approach serial nested-loop set
+(`auto_check_boundary`, `fix_coherence_reconcile_escalated`,
+`fix_coherence_reconcile_inline_staleness`) one id at a time after the
+isolated pool. `git_auto_review` declares its own serial
 nested-loop set (`honours_round_cap`, `retries_once_on_ledger_fail`,
 `stops_on_second_ledger_fail`, `stops_on_self_written_code`,
 `retries_once_on_unmapped_hunk`, `stops_on_second_unmapped_hunk`,
@@ -225,7 +233,7 @@ helper (private pools, not yet on `eval_runner`):
 Pattern A runners that stay sequential until their sibling conversion tasks
 wire them onto `eval_runner` (plus permanent isolation exceptions):
 
-- `task`, `task_create`, `task_fix` — still serial until
+- `task_create`, `task_fix` — still serial until
   their parallel-worker tasks land. The host guard compares an isolated temp
   copy and only the sandbox's fixture names, so an unrelated live backlog edit
   no longer fails them.

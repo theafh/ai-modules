@@ -30,7 +30,7 @@ the workspace root (`resolve_workspace`), so run-dir naming stays with this
 runner.
 
 This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
-The fail-safe contract matches [the task-hub parallel task](tests_task-hub-parallel-evals.md).
+The fail-safe contract matches [the task-hub parallel task](archive/tests_task-hub-parallel-evals.md).
 
 ## Approach
 
