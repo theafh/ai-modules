@@ -8,14 +8,18 @@ Run:
 The live checks compare the gate's `--list` output against the harness
 directories and tests/lib/test_* files on disk, so a harness that joins the
 tree without joining the gate fails here. The synthetic checks prove the
-comparison's fail branch.
+comparison's fail branch and pin the entrypoint coverage match, where a
+comment, a here-doc message, a variable interpreter, and a loop each decide
+whether an eval file stays listed.
 """
 
 from __future__ import annotations
 
 import pathlib
+import shutil
 import subprocess
 import sys
+import tempfile
 
 THIS = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = THIS.parents[1]
@@ -99,6 +103,133 @@ def run_gate(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+# Synthetic entrypoints for the coverage match: a name, a description, the
+# entrypoint body, and whether the eval file must stay listed. A line that
+# only mentions the file leaves it listed; a line that runs it does not.
+ENTRYPOINT_CASES = [
+    (
+        "comment",
+        "a comment-only entrypoint",
+        "# The unit tests live in evals/test_run.py and are not run here.\n"
+        "exit 0\n",
+        True,
+    ),
+    (
+        "heredoc",
+        "a here-doc usage line",
+        "cat <<'USAGE'\n"
+        "python3 evals/test_run.py\n"
+        "USAGE\n"
+        "exit 0\n",
+        True,
+    ),
+    (
+        "literal",
+        "a literal interpreter invocation",
+        'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
+        'python3 "$SCRIPT_DIR/evals/test_run.py"\n',
+        False,
+    ),
+    (
+        "variable",
+        "an interpreter held in a variable",
+        'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
+        "PYTHON=python3\n"
+        '"$PYTHON" "$SCRIPT_DIR/evals/test_run.py"\n',
+        False,
+    ),
+    (
+        "loop",
+        "a for loop over the file",
+        'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
+        'for f in "$SCRIPT_DIR"/evals/test_run.py; do python3 "$f"; done\n',
+        False,
+    ),
+    (
+        "loop_multiline",
+        "a for loop split across lines",
+        'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
+        'for f in "$SCRIPT_DIR"/evals/test_run.py\n'
+        "do\n"
+        '    python3 "$f"\n'
+        "done\n",
+        False,
+    ),
+    (
+        "semicolon",
+        "a name followed by a semicolon",
+        "python3 evals/test_run.py;\n",
+        False,
+    ),
+    (
+        "arith_command",
+        "an arithmetic command before a real invocation",
+        "shift=1\n"
+        "(( shift = 1 << 3 ))\n"
+        "python3 evals/test_run.py\n",
+        False,
+    ),
+    (
+        "arith_multiline",
+        "an arithmetic expression continued across lines",
+        "shift=$((1 +\n"
+        "    2 << 3))\n"
+        "python3 evals/test_run.py\n",
+        False,
+    ),
+    (
+        "reserved_then",
+        "an invocation behind then",
+        "if [ -d . ]; then python3 evals/test_run.py; fi\n",
+        False,
+    ),
+    (
+        "reserved_do",
+        "an invocation behind do",
+        "while false; do python3 evals/test_run.py; done\n",
+        False,
+    ),
+    (
+        "reserved_group",
+        "an invocation inside a brace group",
+        "{ python3 evals/test_run.py; }\n",
+        False,
+    ),
+    (
+        "reserved_bang",
+        "an invocation behind a negation",
+        "! python3 evals/test_run.py\n",
+        False,
+    ),
+]
+
+
+def synthetic_listing(
+    cases: list[tuple[str, str, str, bool]],
+) -> tuple[int, dict[str, list[str]]]:
+    """List a scratch tree holding one harness per entrypoint case."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        tests = root / "tests"
+        (tests / "lib").mkdir(parents=True)
+        shutil.copy(REPO_ROOT / "tests" / "run_all.sh", tests / "run_all.sh")
+        for name, _, entry, _ in cases:
+            harness = tests / name
+            (harness / "evals").mkdir(parents=True)
+            (harness / "run_all.sh").write_text(entry, encoding="utf-8")
+            (harness / "evals" / "test_run.py").write_text(
+                f'print("{name} eval unit tests")\n', encoding="utf-8"
+            )
+        result = subprocess.run(
+            ["bash", "tests/run_all.sh", "--list"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+        )
+    _, files = parse_listing(result.stdout)
+    return result.returncode, files
+
+
 def main() -> int:
     result = run_gate("--list")
     check("bash tests/run_all.sh --list exits 0", result.returncode == 0)
@@ -135,6 +266,16 @@ def main() -> int:
 
     unknown = run_gate("--surface", "no_such_surface")
     check("an unknown surface is rejected", unknown.returncode == 2)
+
+    exit_code, synthetic = synthetic_listing(ENTRYPOINT_CASES)
+    check("a scratch tree listing exits 0", exit_code == 0)
+    for name, label, _, expect_listed in ENTRYPOINT_CASES:
+        covered = f"tests/{name}/evals/test_run.py" in synthetic.get(name, [])
+        if expect_listed:
+            verdict = f"{label} leaves evals/test_run.py listed"
+        else:
+            verdict = f"{label} drops evals/test_run.py from the listing"
+        check(verdict, covered == expect_listed)
 
     missing = compare("harness", ["alpha", "beta"], ["alpha"])
     check(
