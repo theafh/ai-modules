@@ -1082,7 +1082,7 @@
       ],
       "expectations": [
         "The run warns that the push will dismiss the existing approval, naming the ruleset that dismisses stale reviews on push.",
-        "gh_calls.log carries a push line with a time.time() epoch, and a report.md under the eval target carries the dismissal warning with st_mtime strictly before that epoch.",
+        "gh_calls.log carries a push line with a time.time() epoch, and a report.md in an evidence directory logged by an `evidence_dir` line in script_calls.log, or under the eval target, carries the dismissal warning with st_mtime strictly before that epoch.",
         "After the push line, gh_calls.log shows a checks read and a merge-state read (mergeable or mergeStateStatus)."
       ],
       "dependencies": {

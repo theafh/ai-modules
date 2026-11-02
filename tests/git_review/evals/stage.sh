@@ -24,7 +24,8 @@
 #   $target/bin/gh               (forge evals) the stub gh itself
 #   $target/gh_calls.log         (forge evals) every stub invocation, one per line
 #   $target/gh_env               (forge evals) the env the runner passes through
-#   $target/script_calls.log     every bundled-script invocation, one per line
+#   $target/script_calls.log     one line per bundled-script call, plus an
+#                                evidence_dir line per successful collector call
 #   $target/.eval_started_at     the staged HEAD SHA, for grade.sh
 
 set -euo pipefail

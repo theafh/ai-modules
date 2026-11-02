@@ -6,7 +6,9 @@
 # extract_heading_range.sh, which cuts an inclusive heading range out of a
 # drafted report, plus the grader's report-form discrimination, the eval-32
 # delta-tag fail branches, and the eval-41 push-order proofs (hook log,
-# TMPDIR-scoped report.md, and grader fail branches), and the eval runner's
+# report.md under the target or a logged evidence directory, and grader fail
+# branches), and the collector shim's evidence_dir logging, and the eval
+# runner's
 # stop on a failed or empty stage, and the suite-entry clear of the inherited
 # GIT_CONFIG_PARAMETERS and GIT_CONFIG_COUNT block, which together with each
 # quoted-path scenario's `git config core.quotepath true` keeps the git-quoted
@@ -1223,6 +1225,98 @@ s36_inert_worker_probe_pin() {
     assert_eq "inert-worker probe exit (0 when no eval grades PASS)" "$rc" "0"
 }
 
+# The collector's shim records the evidence directory it reported, so the
+# grader can find a draft the worker wrote outside the eval target. Drive the
+# shim that shim_deployed_scripts() writes for collect_review_evidence.sh
+# against a stand-in collector: stdout and exit status pass through, and an
+# exit-0 call appends `evidence_dir <last stdout line>` after the invocation.
+s37_collector_shim_records_evidence_dir() {
+    local out rc
+    out=$(python3 - "$REPO_ROOT/tests/git_review/evals" "$SCRATCH/s37" <<'PY'
+import pathlib
+import subprocess
+import sys
+import tempfile
+import types
+
+evals_dir = pathlib.Path(sys.argv[1])
+scratch = pathlib.Path(sys.argv[2])
+sys.path.insert(0, str(evals_dir))
+import run  # noqa: E402
+
+failures = []
+
+def check(label, condition):
+    if not condition:
+        failures.append(label)
+
+scratch.mkdir(parents=True, exist_ok=True)
+work = pathlib.Path(tempfile.mkdtemp(dir=scratch))
+target = work / "target"
+target.mkdir()
+home = work / "home"
+home.mkdir()
+
+path_map = {}
+for name in run.ARTEFACTS:
+    skill_dir = home / name
+    skill_dir.mkdir()
+    skill_md = skill_dir / "SKILL.md"
+    skill_md.write_text(f"# {name}\n")
+    path_map[name] = skill_md
+
+evidence = work / "evidence"
+evidence.mkdir()
+
+collector = path_map["git_review"].parent / "scripts" / "collect_review_evidence.sh"
+collector.parent.mkdir()
+collector.write_text(
+    "#!/usr/bin/env bash\n"
+    'if [ "${1:-}" = fail ]; then\n'
+    "  printf 'collector failed\\n'\n"
+    "  exit 3\n"
+    "fi\n"
+    f"printf 'manifest.txt\\ncounts.txt\\n{evidence}\\n'\n"
+)
+collector.chmod(0o755)
+
+handle = types.SimpleNamespace(path_map=path_map, scratch_home=home)
+run.shim_deployed_scripts(handle, target)
+shim = collector
+log = target / "script_calls.log"
+
+ok = subprocess.run(["bash", str(shim), "--base", "main"], capture_output=True, text=True)
+check("exit-0 stdout passes through",
+      ok.stdout == f"manifest.txt\ncounts.txt\n{evidence}\n")
+check("exit-0 status passes through", ok.returncode == 0)
+lines = log.read_text().splitlines() if log.exists() else []
+check("invocation line recorded",
+      bool(lines) and lines[0].startswith("collect_review_evidence.sh "))
+check("evidence_dir line follows the invocation",
+      len(lines) >= 2 and lines[1] == f"evidence_dir {evidence}")
+check("one evidence_dir line per successful call",
+      sum(1 for line in lines if line.startswith("evidence_dir ")) == 1)
+
+# A non-zero collector passes its status through and records no evidence_dir.
+log.unlink()
+bad = subprocess.run(["bash", str(shim), "fail"], capture_output=True, text=True)
+check("non-zero stdout passes through", bad.stdout == "collector failed\n")
+check("non-zero status passes through", bad.returncode == 3)
+lines = log.read_text().splitlines() if log.exists() else []
+check("non-zero call still records its invocation",
+      bool(lines) and lines[0].startswith("collect_review_evidence.sh "))
+check("non-zero call records no evidence_dir",
+      not any(line.startswith("evidence_dir ") for line in lines))
+
+if failures:
+    print("\n".join(failures))
+    sys.exit(1)
+PY
+) && rc=0 || rc=$?
+    [[ "$rc" == 0 ]] || log "$out"
+    assert_eq "collector shim evidence-dir logging exit" "$rc" "0"
+}
+
 # --- extract_heading_range.sh ------------------------------------------------
 
 write_report() {
@@ -1642,6 +1736,58 @@ PY
     out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
     assert_eq "report mtime not before push epoch fails grading" "$rc" "1" || ok=false
     assert_contains "report mtime not before push epoch fails that check" "$out" \
+        "FAIL  the warning was emitted before the push ran" || ok=false
+
+    # An outside-target evidence directory: the collector logged it, so the
+    # grader finds the only draft there even though no report.md sits under the
+    # target. The draft must be newer than the staged marker and older than the
+    # push, so the epochs are built from the marker's own mtime.
+    local outside="$SCRATCH/s23_outside"
+    rm -rf "$outside"
+    mkdir -p "$outside"
+    rm -f "$evidence/report.md"
+    cat > "$outside/report.md" <<'MD'
+Warning: pushing dismisses the existing approval because stale reviews are dismissed on push.
+MD
+    local started_epoch push_epoch report_epoch
+    started_epoch="$(python3 -c 'import os,sys; print(os.stat(sys.argv[1]).st_mtime)' "$target/.eval_started_at")"
+    report_epoch="$(python3 -c 'import sys; print(float(sys.argv[1]) + 1)' "$started_epoch")"
+    push_epoch="$(python3 -c 'import sys; print(float(sys.argv[1]) + 2)' "$started_epoch")"
+    {
+        printf 'pr view 7 --json number,title,statusCheckRollup,mergeable,mergeStateStatus\n'
+        printf 'push refs/heads/feature/export %s\n' "$push_epoch"
+        printf 'pr view 7 --json statusCheckRollup\n'
+        printf 'pr view 7 --json mergeable,mergeStateStatus\n'
+    } > "$target/gh_calls.log"
+    python3 - "$outside/report.md" "$report_epoch" <<'PY'
+import os, sys
+epoch = float(sys.argv[2])
+os.utime(sys.argv[1], (epoch, epoch))
+PY
+    printf 'evidence_dir %s\n' "$outside" > "$target/script_calls.log"
+    out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
+    assert_eq "outside draft named by evidence_dir grades clean" "$rc" "0" || ok=false
+    assert_contains "outside draft named by evidence_dir passes the warning order" "$out" \
+        "PASS  the warning was emitted before the push ran" || ok=false
+
+    # Fail branch: the same outside draft when no evidence_dir line names it.
+    : > "$target/script_calls.log"
+    out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
+    assert_eq "outside draft with no evidence_dir line fails grading" "$rc" "1" || ok=false
+    assert_contains "outside draft with no evidence_dir line fails that check" "$out" \
+        "FAIL  the warning was emitted before the push ran" || ok=false
+
+    # Fail branch: the draft is not newer than the staged marker, so a stale
+    # draft in a reused directory cannot pass even when it is logged.
+    printf 'evidence_dir %s\n' "$outside" > "$target/script_calls.log"
+    python3 - "$outside/report.md" "$started_epoch" <<'PY'
+import os, sys
+epoch = float(sys.argv[2])
+os.utime(sys.argv[1], (epoch, epoch))
+PY
+    out=$(bash "$grader" 41 "$target/repo" "$response" 2>&1) && rc=0 || rc=$?
+    assert_eq "outside draft not newer than the marker fails grading" "$rc" "1" || ok=false
+    assert_contains "outside draft not newer than the marker fails that check" "$out" \
         "FAIL  the warning was emitted before the push ran" || ok=false
 
     $ok
@@ -2545,6 +2691,8 @@ scenario s35 "non-ascii path stays git-quoted under the suite-entry pin" \
     s35_non_ascii_path_quotes_under_the_suite_pin
 scenario s36 "inert worker: no eval grades PASS on an empty response" \
     s36_inert_worker_probe_pin
+scenario s37 "collector shim logs each successful call's evidence directory" \
+    s37_collector_shim_records_evidence_dir
 scenario form_discrimination "form checks distinguish prose from field blocks" form_discrimination
 
 # The standing repo rules keep the plugin metadata in lockstep; assert the

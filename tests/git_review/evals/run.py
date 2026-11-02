@@ -19,9 +19,12 @@ repository. Per eval the job:
    guardrail hub through the deploy script into a scratch home, wraps each
    deployed bundled script in a logging shim that appends to the sandbox's
    `script_calls.log` and then runs an unshimmed copy of the deployed script
-   kept in that scratch home, points the worker's TMPDIR, TEMP, and TMP at the
-   job's own directory, and runs a vendor-resolved print-mode worker with the
-   sandbox repo as the working directory. When the eval staged a stub `gh`,
+   kept in that scratch home. The collector's shim also appends an
+   `evidence_dir <path>` line per successful call, recording the evidence
+   directory it reported as its last stdout line. It points the worker's
+   TMPDIR, TEMP, and TMP at the job's own directory, and runs a vendor-resolved
+   print-mode worker with the sandbox repo as the working directory. When the
+   eval staged a stub `gh`,
    its `gh_env` file is folded into the worker environment and its `bin`
    directory goes first on PATH, so the forge layer is served from fixture JSON
    and every call is recorded.
@@ -103,9 +106,16 @@ def shim_deployed_scripts(
     not keep, so every deployed `scripts/*.sh` becomes a shim that records the
     invocation in `<target>/script_calls.log` and then runs the deployed
     script. The untouched deployed skill tree is copied under the scratch home
-    first and the shim execs that copy, so the behaviour under test is the
+    first and the shim runs that copy, so the behaviour under test is the
     deployed script's and a worker that follows a shim never leaves the
     micro-deployment for the repository checkout.
+
+    The collector's shim goes one step further: it passes the collector's
+    stdout and exit status through unchanged, and on exit 0 appends an
+    `evidence_dir <path>` line holding the last stdout line. That records the
+    directory the collector used even when the worker chose it with `--out`,
+    so the grader can find a `report.md` draft the worker wrote outside the
+    eval target. Every other shim keeps the log-then-exec form.
     """
     log = target_root / "script_calls.log"
     unshimmed_root = deploy.scratch_home / "unshimmed"
@@ -118,14 +128,34 @@ def shim_deployed_scripts(
         shutil.copytree(deployed_dir, unshimmed_dir)
         for deployed_script in sorted(scripts_dir.glob("*.sh")):
             real_script = unshimmed_dir / "scripts" / deployed_script.name
-            deployed_script.write_text(
-                "#!/usr/bin/env bash\n"
-                "# Logging shim written by tests/git_review/evals/run.py. Records the\n"
-                "# call, then runs the unshimmed deployed bundled script.\n"
-                f"printf '%s %s\\n' {shlex.quote(deployed_script.name)} \"$*\" "
-                f">> {shlex.quote(str(log))}\n"
-                f"exec {shlex.quote(str(real_script))} \"$@\"\n"
-            )
+            if deployed_script.name == "collect_review_evidence.sh":
+                deployed_script.write_text(
+                    "#!/usr/bin/env bash\n"
+                    "# Logging shim written by tests/git_review/evals/run.py. Records\n"
+                    "# the call, runs the unshimmed deployed collector with stdout\n"
+                    "# passed through, and on exit 0 appends the evidence directory it\n"
+                    "# printed last as an `evidence_dir <path>` line.\n"
+                    f"printf '%s %s\\n' {shlex.quote(deployed_script.name)} \"$*\" "
+                    f">> {shlex.quote(str(log))}\n"
+                    'out="$(mktemp "${TMPDIR:-/tmp}/git_review_shim.XXXXXX")"\n'
+                    f"{shlex.quote(str(real_script))} \"$@\" | tee \"$out\"\n"
+                    'rc="${PIPESTATUS[0]}"\n'
+                    'if [ "$rc" -eq 0 ]; then\n'
+                    "  printf 'evidence_dir %s\\n' \"$(tail -n 1 \"$out\")\" "
+                    f">> {shlex.quote(str(log))}\n"
+                    "fi\n"
+                    'rm -f "$out"\n'
+                    'exit "$rc"\n'
+                )
+            else:
+                deployed_script.write_text(
+                    "#!/usr/bin/env bash\n"
+                    "# Logging shim written by tests/git_review/evals/run.py. Records the\n"
+                    "# call, then runs the unshimmed deployed bundled script.\n"
+                    f"printf '%s %s\\n' {shlex.quote(deployed_script.name)} \"$*\" "
+                    f">> {shlex.quote(str(log))}\n"
+                    f"exec {shlex.quote(str(real_script))} \"$@\"\n"
+                )
             deployed_script.chmod(0o755)
 
 
@@ -282,7 +312,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             shim_deployed_scripts(md, target_root)
             # The worker writes its scratch files into the job's own TMPDIR.
             # A fixture that sets TMPDIR in gh_env (push_approval points it at
-            # the eval target so report.md's mtime is gradeable) folds over it.
+            # the eval target) folds over it, which places the collector's
+            # default evidence directory in the target when the worker's shell
+            # honours that TMPDIR.
             _apply_job_temp(md.env, env)
             md.env.update(env_for(md.env, staged["gh_env"]))
             prompt = WORKER_PROMPT.format(
