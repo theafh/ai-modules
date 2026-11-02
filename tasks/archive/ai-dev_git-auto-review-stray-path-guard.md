@@ -28,7 +28,7 @@ The naming rule covers reproductions. Four parts of the loop decide whether any 
 
 `task_auto_check`'s `stray_hunk_reverted` eval in `tests/task_auto_check/evals/evals.json` is the in-repo precedent for planting a stray writer edit through an environment note and grading that the loop reverted it.
 
-[The inert-worker grader task](../tests_eval-graders-bite-on-inert-worker.md) also edits `tests/git_auto_review/evals/grade.sh` and adds a scenario to `tests/git_auto_review/script_tests/run.sh`. The two tasks add separate arms and scenarios, so whichever lands second adds its own beside the other's.
+[The inert-worker grader task](tests_eval-graders-bite-on-inert-worker.md) also edits `tests/git_auto_review/evals/grade.sh` and adds a scenario to `tests/git_auto_review/script_tests/run.sh`. The two tasks add separate arms and scenarios, so whichever lands second adds its own beside the other's.
 
 ## Approach
 

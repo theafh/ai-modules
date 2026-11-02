@@ -2,8 +2,8 @@
 description: "Grade git_review eval 41's push warning from report.md in every evidence directory the run's collector calls used, logged by the run.py shim, so a worker's --out outside the target still grades."
 scope: tests/git_review
 created: 2026-11-01T09:49:38
-updated: 2026-11-01T09:49:38
-status: open
+updated: 2026-11-02T13:50:28
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -26,7 +26,7 @@ The logging shim comes from `shim_deployed_scripts()` in `tests/git_review/evals
 1. Rewrite the shim that `shim_deployed_scripts()` writes for `collect_review_evidence.sh`. After the invocation line, it runs the unshimmed collector with stdout and exit status passed through unchanged and, when the collector exits 0, appends one line `evidence_dir <path>` to `script_calls.log`, where `<path>` is the collector's last stdout line. Every other deployed script keeps today's log-then-`exec` shim.
 2. Rewrite each description of `script_calls.log` in place so it says the log also carries an `evidence_dir` line per successful collector call: the `shim_deployed_scripts()` docstring, the logging-shim step of the `run.py` module docstring, the `$target/script_calls.log` line in the `stage.sh` header comment, and the RUNBOOK passage that begins "Staging prepares the fixture and an empty `$target/script_calls.log`". Rewrite the `run.py` comment beside `_apply_job_temp(md.env, env)` that says `push_approval` points `TMPDIR` at the eval target "so report.md's mtime is gradeable", so it says the fixture's `TMPDIR` places the collector's default directory in the target when the worker's shell honours it.
 3. Rewrite `warning_before_push()` in `grade.sh` in place. Its candidate drafts are every `report.md` under the eval target plus `<path>/report.md` for each `evidence_dir <path>` line in `$target/script_calls.log`. A candidate outside the eval target counts only when its `st_mtime` is later than the `st_mtime` of `$target/.eval_started_at`, so a stale draft that an earlier run left in a reused directory cannot pass. The check passes when at least one counted candidate contains both the approval wording and the dismissal wording the current check requires and has an `st_mtime` strictly less than the push-line epoch.
-4. Extend `s23_push_approval_order_proofs` with the branches Acceptance names, keeping its existing branches. Add a script scenario that drives `shim_deployed_scripts()` from Python with a stand-in handle whose `path_map` maps every `ARTEFACTS` name to a temporary skill directory and whose `scratch_home` is a temporary directory, with only the `git_review` stand-in carrying a `scripts/collect_review_evidence.sh`.
+4. Extend `s23_push_approval_order_proofs` with the branches Acceptance names, keeping its existing branches. Add a script scenario that drives `shim_deployed_scripts()` from Python with a stand-in handle whose `path_map` maps every `ARTEFACTS` name to a `SKILL.md` path inside a temporary skill directory, the shape `micro_deploy._deployed_path()` returns so that `.parent` is the skill directory, and whose `scratch_home` is a temporary directory, with only the `git_review` stand-in carrying a `scripts/collect_review_evidence.sh`.
 5. Rewrite in place the eval 41 expectation in `evals.json` that places "a report.md under the eval target", the order-proof sentence under `### 41: push_approval` in `tests/git_review/evals/README.md`, and the `push_approval` row of that file's fixture table, so each names an evidence directory logged in `script_calls.log`, or the eval target, as where the draft is found.
 6. Run eval 41 once on the default vendor and record it as Acceptance describes.
 

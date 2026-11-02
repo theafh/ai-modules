@@ -169,9 +169,9 @@ write it.
 ### Parallel workers
 
 Isolated-sandbox evals that use `tests/lib/eval_runner` default to **4**
-concurrent jobs (`DEFAULT_PARALLEL_WORKERS` in `tests/lib/vendor.py`). Each
-job gets its own `TMPDIR`. Pass `--workers 1` to serialize. A harness keeps
-a sequential subset only when its jobs share a resource the helper cannot
+concurrent jobs (`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`). Each job
+gets its own `TMPDIR`. Pass `--workers 1` to serialize. A harness keeps a
+sequential subset only when its jobs share a resource the helper cannot
 isolate. Today that subset is the `task_auto_check` serial nested-loop set
 (`repair_to_ready`, `relay_by_path`, `stray_hunk_reverted`,
 `guard_rebaseline_after_gate`, `interaction_scan_surfaces`,
@@ -181,44 +181,63 @@ isolate. Today that subset is the `task_auto_check` serial nested-loop set
 `regate_isolated`, `dryrun_gap_confirmed`), which runs one job at a time after the isolated pool,
 and an escape guard that reads the whole host checkout, such as
 `agent_spinner`'s `git status`. The rest of the `task_auto_check` suite
-uses the default 4 workers. The Pattern A runners on `eval_runner` at
-`vendor.DEFAULT_PARALLEL_WORKERS` are `tests/task_auto_check/evals/run.py`,
-`tests/git_checkout/evals/run.py`, `tests/git_refresh/evals/run.py`,
-`tests/git_commit/evals/run.py`, `tests/git_review/evals/run.py`, and
-`tests/git_auto_review/evals/run.py`.
-`task_auto_check` runs its serial
-nested-loop set, the list above, one job at a time after the isolated
-pool. `git_auto_review` declares its own serial nested-loop set
-(`honours_round_cap`, `retries_once_on_ledger_fail`,
+uses the default 4 workers. Raising the default past 4 mostly buys model
+contention and timeouts, not faster wall-clock.
+
+The Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS`
+are `tests/task_auto_check/evals/run.py`, `tests/git_checkout/evals/run.py`,
+`tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`,
+`tests/git_review/evals/run.py`, and `tests/git_auto_review/evals/run.py`.
+`task_auto_check` runs its serial nested-loop set, the list above, one job
+at a time after the isolated pool. `git_auto_review` declares its own serial
+nested-loop set (`honours_round_cap`, `retries_once_on_ledger_fail`,
 `stops_on_second_ledger_fail`, `stops_on_self_written_code`,
 `retries_once_on_unmapped_hunk`, `stops_on_second_unmapped_hunk`,
 `restores_stray_fixer_path`) and runs
 those one job at a time after the isolated pool, so its multi-round nested-loop
 stop evals never overlap one another or the pool; every other `git_auto_review`
 eval stages its own sandbox root and runs in the pool. Every `git_checkout`,
-`git_refresh`, and `git_commit` eval stages its
-own sandbox root, so the whole suite runs in the pool. `git_commit`'s worker
-and `grade.sh` both receive the job's `TMPDIR`, so the grader's straggler
-scan reads only that job's context files.
+`git_refresh`, and
+`git_commit` eval stages its own sandbox root, so the whole suite runs in the
+pool. `git_commit`'s worker and `grade.sh` both receive the job's `TMPDIR`, so
+the grader's straggler scan reads only that job's context files.
 
-The helper runs before and after hooks one call at a time, but it cannot tell
-which overlapping job changed a shared tree. Each hook receives its job's
-index, so a parallel escape guard claims only the names that job owns, as
-`tests/lib/host_tasks_guard.sh` does. A job that raises fills only its own
-result slot through the runner's required `on_error` callback, and a Ctrl-C
-keeps queued jobs from starting. Run `python3 tests/lib/test_eval_runner.py`
-for the helper's unit tests.
+The helper runs a harness's before and after hooks around each job, one hook
+call at a time, so two escape-guard snapshots never interleave. The hooks
+share one lock, and that lock cannot tell which overlapping job changed a
+shared tree. Each hook therefore receives its job's index, and a parallel
+escape guard uses it to claim only the names that job owns, the way
+`tests/lib/host_tasks_guard.sh` compares only the sandbox's fixture names.
+Every runner passes the required `on_error` callback, so a job that raises
+fills only its own result slot with the fault verdict that callback builds,
+and the run still reaches its graded summary. A Ctrl-C keeps queued jobs from
+starting and lets the running ones finish. Unit tests live in
+`tests/lib/test_eval_runner.py` (run `python3 tests/lib/test_eval_runner.py`).
 
 Runners that already default to `DEFAULT_PARALLEL_WORKERS` outside this
-helper: wiki layer 2, `language_humanizer`, and `natural_language`. Pattern A
-runners that stay sequential until sibling conversion tasks wire them onto
-`eval_runner` (plus permanent isolation exceptions): `task`, `task_create`,
-and `task_fix`
-(serial until their parallel-worker tasks land; the host guard ignores
-unrelated live backlog edits), `agent_spinner` (unscoped host `git status`,
-until its guard compares only the names each eval owns), and
-`guardrail_audit` / `skill_doctor` until an isolation sweep proves them.
-Details of this section stay in lockstep with `tests/CLAUDE.md`.
+helper (private pools, not yet on `eval_runner`):
+
+- `tests/wiki/layer2/run.py` — one outside-checkout sandbox root per pass;
+  passes of the same scenario stay sequential.
+- `tests/language_humanizer/evals/run.py` — one isolated sandbox root per pass.
+- `tests/natural_language/evals/run.py` — one sandbox per pass.
+
+Pattern A runners that stay sequential until their sibling conversion tasks
+wire them onto `eval_runner` (plus permanent isolation exceptions):
+
+- `task`, `task_create`, `task_fix` — still serial until
+  their parallel-worker tasks land. The host guard compares an isolated temp
+  copy and only the sandbox's fixture names, so an unrelated live backlog edit
+  no longer fails them.
+- `agent_spinner` brackets each eval with a host-checkout `git status`, which
+  sees every overlapping eval's changes, so it stays serial until its guard
+  compares only the names each eval owns.
+- `guardrail_audit`, `skill_doctor` — still serial; no isolation sweep
+  has proven concurrent evals yet.
+
+Do not put this default in `TESTING.md`. That file is methodology.
+Operator knobs live in this file and its twin guide, plus the runner
+`--workers` default.
 
 ### Subset runs
 

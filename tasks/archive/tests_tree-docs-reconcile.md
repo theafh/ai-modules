@@ -2,9 +2,11 @@
 description: "Reconcile tests-tree docs with the harness: stale scenario counts, wrong fixture counts, and a drifted parallel-workers section."
 scope: "local test harnesses"
 created: 2026-10-30T23:33:51
-updated: 2026-10-31T10:50:49
-status: ready
+updated: 2026-11-02T13:57:12
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Reconcile the tests-tree docs with the harness they describe
@@ -95,15 +97,15 @@ subject of the sentence.
 
 **Out of scope:** Rewriting harness-local `README.md` / `RUNBOOK.md` files
 beyond what a wrong count in them requires. The stage-guard scenarios, which
-[the stage-guard task](archive/tests_eval-stage-guard.md) owns. Any change to what a
+[the stage-guard task](tests_eval-stage-guard.md) owns. Any change to what a
 suite asserts.
 
 **Co-edits.** The `### Parallel workers` sections are the same passages four
 live tasks rewrite, so whichever lands second rebases. [The git-review
-parallel-evals task](archive/tests_git-review-parallel-evals.md) and [the task-hub
-parallel-evals task](tests_task-hub-parallel-evals.md) both rewrite those two
+parallel-evals task](tests_git-review-parallel-evals.md) and [the task-hub
+parallel-evals task](../tests_task-hub-parallel-evals.md) both rewrite those two
 sections' runner lists and serial-exception lists. [The trigger-evals
-cursor-vendor task](tests_trigger-evals-cursor-vendor.md) rewrites the trigger
+cursor-vendor task](../tests_trigger-evals-cursor-vendor.md) rewrites the trigger
 runner's entry in both sections. This task brings the two sections fully into lockstep against the tree as it
 stands, then rebases onto the runner-list edits when the three sibling tasks
 land; the full lockstep holds whichever of them lands first. The

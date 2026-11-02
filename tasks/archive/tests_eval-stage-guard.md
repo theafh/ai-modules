@@ -116,7 +116,7 @@ every harness the Context selector yields.
 needs no change. Any new eval or fixture; this task only adds failure-path
 coverage. Count and per-harness file-enumeration drift in `tests/README.md` and
 `tests/CLAUDE.md` beyond the stage-guard sentences and the three inventory
-rows item 4 repairs, which [the docs-reconcile task](../tests_tree-docs-reconcile.md)
+rows item 4 repairs, which [the docs-reconcile task](tests_tree-docs-reconcile.md)
 owns.
 
 **Co-edits.** Other live tasks touch the same files and must be rebased rather
@@ -146,7 +146,7 @@ suite tail this task appends its `check_stage_guard.py` case to — and rewrites
 in place the `agent_spinner/` bullet in `tests/README.md` that the operator-docs
 item adds the stage-guard clause to; whichever lands second keeps both this
 task's stage-guard case and its README clause. [The eval-graders
-task](../tests_eval-graders-bite-on-inert-worker.md) appends its own
+task](tests_eval-graders-bite-on-inert-worker.md) appends its own
 `script_tests/` scenario to `tests/git_auto_review/script_tests/run.sh`, the
 same suite tail this task appends its `check_stage_guard.py` case to, so
 whichever lands second appends rather than rewrites.

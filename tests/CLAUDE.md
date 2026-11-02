@@ -33,6 +33,13 @@ tree:
 
 ## What's here
 
+Scenario counts come from each harness's
+`bash tests/<harness>/script_tests/run.sh` tally line where it has that
+script, and from `jq '.evals | length'` on its `evals/evals.json` where it
+does not; eval counts come from that `jq` count, and fixture counts from
+`ls tests/<harness>/evals/fixtures` beside that harness's shared helper
+files.
+
 | Subdir | Skill | Pattern | What it covers |
 | --- | --- | --- | --- |
 | `wiki/` | `wiki` | Pattern B (legacy two-layer) | Layer 1 deterministic script unit tests, including a scenario proving `layer2/grade.py` exits non-zero on an empty-delivery pass, + Layer 2 LLM skill-behavior evals via custom orchestrator. |
@@ -46,8 +53,8 @@ tree:
 | `task_create/` | `task_create` | Pattern A (skill-creator-aligned) | `script_tests/run.sh` checks `evals/grade.sh` verdicts on staged fixtures carrying chosen task bodies, every fixture's git identity, and the eval runner's stop on a failed or empty stage; no `run_all.sh`, so run `bash tests/task_create/script_tests/run.sh` directly. Four staged evals over the base **Decide or label** rule and the `<prior_art>` Novel class as the create path applies them (`reconcile-recorded`, `labeled-why-open`, `guardrail-bound-surface`, and `related-precedent-novel`); the bundled scripts it drives are covered under `task/script_tests/`. |
 | `task_fix/` | `task_fix` | Pattern A (skill-creator-aligned) | `script_tests/run.sh` checks `evals/grade.sh` on staged fixtures and chosen responses, and the eval runner's stop on a failed or empty stage; no `run_all.sh`. Four staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and leave the archived body quiet, gather a reference page's current state and its edit into one passage, surface a gathering that would leave an Acceptance item nothing to measure, and name a repeat inside one paragraph again in plain text there. Grades the task file's bytes and the run's per-finding disposition line. |
 | `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks, parallel-runner checks, the runner's stop on a failed or empty stage among them, and the inert-worker grader pin, + `evals/` over the autonomous readiness loop (repair-to-ready, frozen commitments, isolated re-gates, last-call citation refutation, gate/verifier/drift stops, mechanical lint cleanup). |
-| `guardrail_audit/` | `guardrail_audit` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md and registration contract + `evals/` over five staged fixtures with byte-identity grading. |
-| `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract and the eval runner's stop on a failed or empty stage + `evals/` over three staged fixtures. |
+| `guardrail_audit/` | `guardrail_audit` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md and registration contract + `evals/` over six staged fixtures with byte-identity grading. |
+| `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract and the eval runner's stop on a failed or empty stage + `evals/` over six staged fixtures. |
 | `agent_spinner/` | `agent_spinner` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md / references / grep / registration contract + `evals/` over 21 staged fixtures, one per independently staged behavioural acceptance item. The runner denies the spawn tool for no-delegation-surface fixtures and brackets each eval with a host-checkout `git status`. |
 | `git_refresh/` | `git_refresh` | Pattern A (skill-creator-aligned) | `script_tests/` over the bundled `refresh_repo.sh` on staged repositories, plus the eval runner's stop on a failed or empty stage, eval 3's grade reading the gated order from the helper log, eval 4's grade reading the helper log and response, and the inert-worker grader pin + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker behind a logging shim around the deployed helper → grade) in the shared `tests/lib/eval_runner` pool. |
 | `ai_instruction_writing/` | `ai_instruction_writing` | Pattern A (script-only) | `script_tests/` asserts the static prose contract of a skill that ships no bundled scripts. |
@@ -230,7 +237,7 @@ wire them onto `eval_runner` (plus permanent isolation exceptions):
   has proven concurrent evals yet.
 
 Do not put this default in `TESTING.md`. That file is methodology.
-Operator knobs live in this file, `tests/AGENTS.md`, and the runner
+Operator knobs live in this file and its twin guide, plus the runner
 `--workers` default.
 
 ### Subset runs: skipped ids are not visited

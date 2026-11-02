@@ -92,6 +92,13 @@ runs every `tests/lib/test_*` unit test. `make test` invokes it, and
 `bash tests/run_all.sh --list` prints the discovered set. A harness keeps its
 own deterministic entrypoint as the scoped subset for one harness.
 
+Scenario counts are the tally line `bash tests/<harness>/script_tests/run.sh`
+prints where a harness has that script, and the `jq '.evals | length'` count
+on its `evals/evals.json` where it does not; eval counts come from that
+`jq` count, and fixture counts from the directories
+`ls tests/<harness>/evals/fixtures` lists beside that harness's shared helper
+files.
+
 - **`wiki/`**: Pattern B. Full Layer 1 (deterministic, `layer1/run.sh`
   prints its own scenario tally) + Layer 2 (every scenario in
   `layer2/evals.json`, each over that file's top-level `passes`
@@ -108,15 +115,18 @@ own deterministic entrypoint as the scoped subset for one harness.
   a deterministic `grade.sh`. See `evals/README.md`.
 - **`git_checkout/`**: Pattern A. `script_tests/` implemented (14
   bundled-script scenarios over staged clones with real remotes, plus one
-  proving the eval runner's `stage()` stops on a failed or empty stage).
+  proving the eval runner's `stage()` stops on a failed or empty stage and
+  one proving no eval grades PASS on an inert worker).
   `evals/` holds seven behavioral evals over five fixtures, run through
   `evals/run.py` on the default Cursor worker in the shared
   `tests/lib/eval_runner` pool with a deterministic `grade.sh`. See
   `evals/README.md`.
 - **`git_review/`**: Pattern A. `script_tests/` implemented (34
   bundled-script scenarios over staged clones with real remotes, plus the
-  plugin-meta lockstep checks and one scenario proving the eval runner's
-  `stage()` stops on a failed or empty stage): the ordered evidence collection, the two
+  four plugin-meta lockstep checks, one scenario proving the eval runner's
+  `stage()` stops on a failed or empty stage, one proving the suite-entry
+  git-config pin against a non-ASCII path, and one proving no eval grades
+  PASS on an inert worker): the ordered evidence collection, the two
   commit walks, the base-side versions of deleted files, the test merge, the
   head-against-its-upstream relationship the fast-forward decision rests on,
   the stub-`gh` thread and thread-comment pagination, the heading-range helper,
@@ -180,7 +190,7 @@ own deterministic entrypoint as the scoped subset for one harness.
   with `--vendor claude` in the command.
 - **`task/`**: Pattern A. The `task_*` family hub, holding three
   deterministic surfaces: `script_tests/run.sh` unit-tests the bundled
-  `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (86 scenarios),
+  `lint.py`, `discover_tasks.sh`, and `init_tasks.sh` (116 scenarios),
   `script_tests/contract_run.sh` asserts the family contract across the
   hub, its siblings, and the family agents, and `evals/test_run.py` checks
   that no eval grading the sandbox's whole `git status` declares an
@@ -239,10 +249,11 @@ own deterministic entrypoint as the scoped subset for one harness.
   at a time after the isolated pool. See `evals/README.md`.
 - **`guardrail_audit/`**: Pattern A, prose-only skill. `script_tests/`
   covers the static SKILL.md / registration contract and the eval runner's
-  stop on a failed or empty stage; `evals/` has five
+  stop on a failed or empty stage; `evals/` has six
   staged fixtures (presence-gating, doc-vs-doc, doc-vs-code retrofit,
-  grounded TESTING.md proposal, multi-project nature mismatch) with
-  byte-identity grading and a `run.py` on the default Cursor worker.
+  declared-direction target (`direction_target`), grounded TESTING.md
+  proposal, multi-project nature mismatch) with byte-identity grading and a `run.py` on the default
+  Cursor worker.
 - **`skill_doctor/`**: Pattern A. `script_tests/` cover
   `resolve_scope.py` (hub-with-`<family>` and prefix-only) and
   `discovery_safety.py` (risky sibling-description outlier,
@@ -250,7 +261,7 @@ own deterministic entrypoint as the scoped subset for one harness.
   line including a fixture per promised blocking class, and
   false-positive regression guards over real shipped description
   shapes), plus the static SKILL.md contract and the eval runner's stop on
-  a failed or empty stage. `evals/` has three
+  a failed or empty stage. `evals/` has six
   staged fixtures driven by `run.py` on the default Cursor worker with a
   deterministic `grade.sh`; `run_all.sh` drives only the script tests.
 - **`agent_spinner/`**: Pattern A, prose-only skill. `script_tests/`

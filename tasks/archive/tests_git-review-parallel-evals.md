@@ -89,7 +89,7 @@ Live-testing unshipped editorial plugin harnesses. Full-section reconciliation
 of the two operator guides' `### Parallel workers` sections — heading wording,
 bullet-versus-prose list shape, and the `Raising the default past 4` rationale
 sentence only `tests/CLAUDE.md` carries — which
-[the tests-tree docs reconciliation task](../tests_tree-docs-reconcile.md) owns and
+[the tests-tree docs reconciliation task](tests_tree-docs-reconcile.md) owns and
 lands after this task's runner-list edits settle.
 
 ## Acceptance
