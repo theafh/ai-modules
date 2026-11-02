@@ -21,7 +21,7 @@ repository. Per eval the job:
    `script_calls.log` and then runs an unshimmed copy of the deployed script
    kept in that scratch home. The collector's shim also appends an
    `evidence_dir <path>` line per successful call, recording the evidence
-   directory it reported as its last stdout line. It points the worker's
+   directory it reported as its last stdout line. The job points the worker's
    TMPDIR, TEMP, and TMP at the job's own directory, and runs a vendor-resolved
    print-mode worker with the sandbox repo as the working directory. When the
    eval staged a stub `gh`,

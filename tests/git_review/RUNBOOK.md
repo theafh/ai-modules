@@ -35,14 +35,14 @@ echo "$gh_env"         # the stub-gh env file, empty for git-only evals
 ```
 
 Staging prepares the fixture and an empty `$target/script_calls.log`, and it
-stages no skill. During a run, `run.py` micro-deploys `git_review`,
-`git_checkout`, `git_commit`, `git_refresh`, and the `guardrail` hub into a
-per-eval scratch home and wraps every deployed bundled script in a logging
-shim. Each shim appends its call to that
-log and then runs an unshimmed copy of the deployed script kept in the same
-scratch home; the collector's shim also appends an `evidence_dir <path>` line
-when the collector exits 0, recording the evidence directory it reported as its
-last stdout line, so a hand-staged fixture records no script calls.
+stages no skill, so a hand-staged fixture records no script calls. During a
+run, `run.py` micro-deploys `git_review`, `git_checkout`, `git_commit`,
+`git_refresh`, and the `guardrail` hub into a per-eval scratch home and wraps
+every deployed bundled script in a logging shim. Each shim appends its call to
+that log and then runs an unshimmed copy of the deployed script kept in the
+same scratch home; the collector's shim also appends an `evidence_dir <path>`
+line when the collector exits 0, recording the evidence directory it reported
+as its last stdout line.
 
 For a forge eval, put the stub on `PATH` before running anything by hand:
 

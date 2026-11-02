@@ -57,7 +57,8 @@ prompt="$(python3 -c 'import json,sys; sys.stdout.write(json.loads(sys.argv[1]))
 
 "$HERE/fixtures/$fixture/setup.sh" "$target" >/dev/null
 
-# The runner's logging shims append one line per bundled-script call here.
+# The runner's logging shims append one line per bundled-script call here,
+# plus an `evidence_dir` line per successful collector call.
 : > "$target/script_calls.log"
 
 sandbox_repo="$target/repo"
