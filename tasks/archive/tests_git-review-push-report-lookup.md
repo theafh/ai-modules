@@ -2,8 +2,8 @@
 description: "Grade git_review eval 41's push warning from report.md in every evidence directory the run's collector calls used, logged by the run.py shim, so a worker's --out outside the target still grades."
 scope: tests/git_review
 created: 2026-11-01T09:49:38
-updated: 2026-11-02T21:14:16
-status: audited
+updated: 2026-11-02T22:06:22
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -17,7 +17,7 @@ Eval 41 (`push_approval`) in the `git_review` harness proves the warning came be
 
 ## Context
 
-[The push-order proof task](archive/tests_git-review-push-order-proof.md) built today's mechanism. The `push_approval` fixture (`tests/git_review/evals/fixtures/push_approval/setup.sh`) adds a `TMPDIR` line to its `gh_env` that points into the eval target, so the collector's default evidence directory (`mktemp -d "${TMPDIR:-/tmp}/git_review.XXXXXX"` in `collect_review_evidence.sh`) lands there, and `warning_before_push()` in `tests/git_review/evals/grade.sh` finds the draft with `target.rglob("report.md")`. The skill's `<draft_the_report_to_a_file>` writes `report.md` "inside the evidence directory `<collect>` used", and the collector accepts `--out <dir>`, so the skill lets the worker choose any directory.
+[The push-order proof task](tests_git-review-push-order-proof.md) built today's mechanism. The `push_approval` fixture (`tests/git_review/evals/fixtures/push_approval/setup.sh`) adds a `TMPDIR` line to its `gh_env` that points into the eval target, so the collector's default evidence directory (`mktemp -d "${TMPDIR:-/tmp}/git_review.XXXXXX"` in `collect_review_evidence.sh`) lands there, and `warning_before_push()` in `tests/git_review/evals/grade.sh` finds the draft with `target.rglob("report.md")`. The skill's `<draft_the_report_to_a_file>` writes `report.md` "inside the evidence directory `<collect>` used", and the collector accepts `--out <dir>`, so the skill lets the worker choose any directory.
 
 That mechanism fails on Cursor CLI 2026.10.22. Every eval 41 run on that version on 2026-11-01, through both the pooled `run.py` and the sequential `run.py` from commit `5504360`, failed only `the warning was emitted before the push ran`, with the worker exiting 0. In each of those runs, `script_calls.log` shows the worker calling the collector with its own `--out` directory, either under `/tmp` (`/tmp/git_review_evidence_*`) or under the macOS per-user temp directory (`tmp.*` names from a bare `mktemp -d`), so `report.md` landed outside the eval target. Earlier passing runs on Cursor CLI 2026.10.01 and 2026.10.14 either omitted `--out` or passed a directory inside the target's `tmp/`. The bare `mktemp -d` results also show that the worker's shell does not always see the fixture's `TMPDIR`, so the collector's default directory can land outside the target as well. `tests/git_review/results/parallel-tmpdir-windows.md` records those runs.
 
