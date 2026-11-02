@@ -97,7 +97,7 @@ All 46 records carry `eval_id`, `skill_name`, `duration_s`, `worker_rc`, `claude
 
 ### Per-job TMPDIR
 
-`tests/task/evals/run.py:396` calls `eval_runner.run_jobs(jobs, workers=workers, on_error=on_error)`. `tests/lib/eval_runner.py:198` gives each job a fresh `tempfile.mkdtemp(prefix="eval_runner_")`, and `_job_env` at `tests/lib/eval_runner.py:177-185` sets `TMPDIR`, `TEMP`, and `TMP` to that directory; `run.py:231` copies them into the worker deployment environment. Verdict: MET.
+`tests/task/evals/run.py:395` calls `eval_runner.run_jobs(jobs, workers=workers, on_error=on_error)`. `tests/lib/eval_runner.py:198` gives each job a fresh `tempfile.mkdtemp(prefix="eval_runner_")`, and `_job_env` at `tests/lib/eval_runner.py:177-185` sets `TMPDIR`, `TEMP`, and `TMP` to that directory; `run.py:231` copies them into the worker deployment environment. Verdict: MET.
 
 ### Staging marker
 
@@ -105,7 +105,7 @@ All 46 records carry `eval_id`, `skill_name`, `duration_s`, `worker_rc`, `claude
 
 ### Hermetic planted-file case
 
-`tests/task/results/parallel_workers_hermetic.md` records both outcomes from the deterministic proof: the `check` eval's isolation check fails on the planted newer host file carrying its own fixture name (`api_make-it-better.md`), while the overlapping `query` eval, whose fixture names omit that file, stays PASS. Verdict: MET.
+`tests/task/results/run-parallel_workers_hermetic.md` records both outcomes from the deterministic proof: the `check` eval's isolation check fails on the planted newer host file carrying its own fixture name (`api_make-it-better.md`), while the overlapping `query` eval, whose fixture names omit that file, stays PASS. Verdict: MET.
 
 ### Host tasks tree
 

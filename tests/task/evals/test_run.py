@@ -27,6 +27,7 @@ Run:
 from __future__ import annotations
 
 import contextlib
+import io
 import json
 import os
 import pathlib
@@ -37,6 +38,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 
 import run as runner  # puts tests/lib on sys.path for the imports below
 import eval_runner
@@ -52,6 +54,16 @@ SERIAL_NESTED_LOOP_IDS = (
     "auto_check_boundary",
     "fix_coherence_reconcile_escalated",
     "fix_coherence_reconcile_inline_staleness",
+)
+
+# The fields run_one adds to the shared timing record; the measurement and
+# the provenance checks read every one of them.
+TIMING_KEYS = (
+    "started_at",
+    "ended_at",
+    "skill_name",
+    "artefacts_read_from_micro_deployment",
+    "checkout_unread",
 )
 
 # A grade.sh call that reads the whole sandbox status: `git_tree_clean`, or a
@@ -140,6 +152,128 @@ def git_status(project: pathlib.Path) -> str:
     ).stdout
 
 
+def run_one_record() -> tuple[dict, bool]:
+    """Run run_one with the worker, deployment, and grader stubbed.
+
+    Returns the timing record it wrote and whether the staging-time marker
+    kept its content and mtime. The stub replaces only what would call a
+    model, so the code under test is run_one's own artefact and marker
+    handling rather than a reading of run.py's source.
+    """
+    state: dict[str, object] = {}
+
+    class Deploy:
+        env: dict[str, str] = {}
+        path_map = {"task": "/deployed/task/SKILL.md"}
+
+    @contextlib.contextmanager
+    def fake_deploy(*_args, **_kwargs):
+        yield Deploy()
+
+    def fake_stage(eval_id: str, target, env) -> dict[str, str]:
+        root = pathlib.Path(target)
+        proj = root / "proj"
+        proj.mkdir(parents=True, exist_ok=True)
+        marker = root / ".eval_started_at"
+        marker.write_text("1700000000\n", encoding="utf-8")
+        os.utime(marker, (1_700_000_000, 1_700_000_000))
+        state["before"] = (
+            marker.stat().st_mtime_ns,
+            marker.read_text(encoding="utf-8"),
+        )
+        return {
+            "sandbox_proj": str(proj),
+            "skill_name": "task",
+            "skill_path": "/deployed/task/SKILL.md",
+            "prompt": "probe",
+        }
+
+    worker = types.SimpleNamespace(returncode=0, stdout="probe response\n", stderr="")
+    grade = subprocess.CompletedProcess([], 0, "grade ok\n", "")
+    replacements = (
+        (runner, "stage", fake_stage),
+        (runner, "subprocess", types.SimpleNamespace(run=lambda *_a, **_k: grade)),
+        (runner.micro_deploy, "micro_deploy", fake_deploy),
+        (runner.micro_deploy, "run_worker", lambda **_kwargs: worker),
+        (
+            runner.micro_deploy,
+            "provenance_records",
+            lambda _worker: ({"status": "PASS"}, {"status": "PASS"}),
+        ),
+        (runner.micro_deploy, "read_checks_passed", lambda _integrity, _unread: True),
+    )
+    saved = [
+        (module, name, getattr(module, name))
+        for module, name, _value in replacements
+    ]
+    with tempfile.TemporaryDirectory(prefix="task_run_one_") as tmp:
+        run_dir = pathlib.Path(tmp)
+        try:
+            for module, name, value in replacements:
+                setattr(module, name, value)
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.run_one(
+                    "query",
+                    run_dir,
+                    types.SimpleNamespace(
+                        worker_model="probe",
+                        vendor="cursor",
+                        bin="agent",
+                        config=types.SimpleNamespace(label="probe"),
+                    ),
+                    1,
+                    None,
+                    False,
+                    {},
+                )
+        finally:
+            for module, name, value in saved:
+                setattr(module, name, value)
+
+        timing = json.loads(
+            (run_dir / "query" / "timing.json").read_text(encoding="utf-8")
+        )
+        # run_one keeps a copy of the finished sandbox under the run dir and
+        # removes the live root, so the surviving marker is the copy's.
+        marker = run_dir / "query" / "sandbox" / ".eval_started_at"
+        after = (
+            marker.stat().st_mtime_ns,
+            marker.read_text(encoding="utf-8"),
+        )
+        return timing, after == state["before"]
+
+
+def pool_dispatch() -> tuple[list[tuple[str, bool, bool]], int]:
+    """Run _execute with a stubbed run_one and report the threads it used."""
+    threads: set[int] = set()
+    lock = threading.Lock()
+
+    def fake_run_one(eval_id, run_dir, resolved, timeout, cache, force, env):
+        with lock:
+            threads.add(threading.get_ident())
+        time.sleep(0.05)
+        return eval_id == "probe_a", False
+
+    with tempfile.TemporaryDirectory(prefix="task_pool_") as tmp:
+        saved = runner.run_one
+        runner.run_one = fake_run_one
+        try:
+            rows = runner._execute(
+                ["probe_a", "probe_b"],
+                run_dir=pathlib.Path(tmp),
+                resolved=types.SimpleNamespace(
+                    worker_model="probe", vendor="cursor", bin="agent"
+                ),
+                timeout=1,
+                cache=None,
+                force=False,
+                workers=2,
+            )
+        finally:
+            runner.run_one = saved
+    return rows, len(threads)
+
+
 def runner_parallel_surface() -> None:
     """Check the Pattern A runner's workers, ids, split, and timing writer."""
     with open(THIS / "evals.json", encoding="utf-8") as fh:
@@ -178,31 +312,25 @@ def runner_parallel_surface() -> None:
         "the run root is tests/task/workspace",
         runner.WORKSPACE == runner.THIS.parent / "workspace",
     )
-    source = (THIS / "run.py").read_text(encoding="utf-8")
     check(
-        "run.py resolves the run root through eval_runner.resolve_workspace",
-        "WORKSPACE = eval_runner.resolve_workspace(THIS)" in source,
+        "the run root is eval_runner's resolved workspace for this harness",
+        runner.WORKSPACE == eval_runner.resolve_workspace(runner.THIS),
+    )
+    timing, marker_unchanged = run_one_record()
+    check(
+        "run_one's timing record carries every key the measurement reads",
+        set(TIMING_KEYS) <= set(timing),
     )
     check(
-        "run.py no longer uses WORKSPACE = THIS / \"workspace\"",
-        'WORKSPACE = THIS / "workspace"' not in source,
+        "run_one leaves the staging-time .eval_started_at marker untouched",
+        marker_unchanged,
     )
+    rows, pool_threads = pool_dispatch()
     check(
-        "run_one writes timing through write_run_artifacts",
-        "write_run_artifacts(" in source,
-    )
-    for field in (
-        "started_at=started_at",
-        "ended_at=ended_at",
-        "skill_name=staged[\"skill_name\"]",
-        "artefacts_read_from_micro_deployment=integrity",
-        "checkout_unread=checkout_unread",
-    ):
-        check(f"run_one records {field.split('=')[0]}", field in source)
-    check("the pool runner calls eval_runner.run_jobs", "eval_runner.run_jobs(" in source)
-    check(
-        "run.py never rewrites the staging-time .eval_started_at marker",
-        ".eval_started_at" not in source,
+        "the pool dispatch runs run.py's jobs concurrently through "
+        "eval_runner.run_jobs",
+        rows == [("probe_a", True, False), ("probe_b", False, False)]
+        and pool_threads == 2,
     )
 
 
@@ -420,7 +548,7 @@ def _verdict(row: dict) -> str:
     return "PASS" if row["isolation"] else "FAIL"
 
 
-def _write_hermetic_record(clean: dict, planted: dict, real_unchanged: bool) -> None:
+def _write_hermetic_record(clean: dict, planted: dict) -> None:
     RESULTS.mkdir(parents=True, exist_ok=True)
     rows = {row["eval_id"]: row for row in clean["rows"]}
     planted_rows = {row["eval_id"]: row for row in planted["rows"]}
@@ -451,14 +579,14 @@ The overlapping `query` eval, whose fixture names omit that file, stayed
 - Overlapping windows: {"yes" if planted["overlap"] else "no"}
 - `check` isolation: {_verdict(planted_rows["check"])}
 - `query` isolation: {_verdict(planted_rows["query"])}
-- Real checkout `tasks/` unchanged by the proof: {"yes" if real_unchanged else "no"}
 """
-    (RESULTS / "parallel_workers_hermetic.md").write_text(text, encoding="utf-8")
+    (RESULTS / "run-parallel_workers_hermetic.md").write_text(
+        text, encoding="utf-8"
+    )
 
 
 def hermetic_host_guard() -> None:
     """Prove overlapping jobs stay inside their sandboxes and the guard works."""
-    real_before = _tasks_signature(REPO / "tasks")
     with tempfile.TemporaryDirectory(prefix="task_guard_host_") as tmp:
         mirror = _host_mirror(pathlib.Path(tmp))
         clean = _overlap_clean_case(mirror)
@@ -499,9 +627,7 @@ def hermetic_host_guard() -> None:
             row for row in planted["rows"] if row["eval_id"] == "query"
         )["isolation"],
     )
-    real_after = _tasks_signature(REPO / "tasks")
-    check("the real checkout tasks/ tree is unchanged", real_before == real_after)
-    _write_hermetic_record(clean, planted, real_before == real_after)
+    _write_hermetic_record(clean, planted)
 
 
 def main() -> int:

@@ -80,7 +80,7 @@ against a temporary host mirror. The mirror proves overlapping sandbox-only
 jobs leave host `tasks/` untouched, and that a newer planted file carrying one
 eval's fixture name fails that eval while an overlapping eval with other
 fixture names stays PASS. The proof writes
-`results/parallel_workers_hermetic.md`.
+`results/run-parallel_workers_hermetic.md`.
 
 ## Behavioral evals
 

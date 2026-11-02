@@ -194,8 +194,16 @@ files.
   `script_tests/contract_run.sh` asserts the family contract across the
   hub, its siblings, and the family agents, and `evals/test_run.py` checks
   that no eval grading the sandbox's whole `git status` declares an
-  artefact the micro-deployment writes into the sandbox project and that
-  the runner's `stage()` stops on a failed or empty stage.
+  artefact the micro-deployment writes into the sandbox project, that
+  the runner's `stage()` stops on a failed or empty stage, and that the
+  parallel surface holds: `--workers` defaults to 4, the Approach serial
+  nested-loop set is the three ids the task names, and `timing.json`
+  keeps the fields it reads. A hermetic host-guard case there runs two real
+  jobs through `tests/lib/eval_runner.run_jobs` against a temporary host
+  mirror, proving overlapping sandbox-only jobs leave the host `tasks/` tree
+  untouched and a planted newer host file carrying one eval's fixture name
+  fails that eval's isolation check while an overlapping eval with other
+  fixture names stays PASS.
   `run_all.sh` drives all three and aggregates their exit codes. `evals/`
   holds a behavioral eval per family member, run out-of-band via
   `evals/run.py`.
