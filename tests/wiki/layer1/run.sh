@@ -3896,10 +3896,11 @@ g1_grade_empty_delivery_exits_nonzero() {
     mkdir -p "$pass"
     : > "$pass/response.txt"
     python3 "$SCRIPT_DIR/../layer2/grade.py" "$run" >/dev/null 2>&1 && rc=0 || rc=$?
-    if [[ "$rc" -ne 0 ]]; then
+    if [[ "$rc" -eq 1 ]]; then
         return 0
     fi
-    log "    layer2 grade.py exited 0 on a run holding one empty response.txt"
+    log "    layer2 grade.py exited $rc on a run holding one empty response.txt"
+    log "    expected exit 1 for a graded failure; exit 2 means a broken grader"
     return 1
 }
 

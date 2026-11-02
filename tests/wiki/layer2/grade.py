@@ -4,7 +4,9 @@
 Reads each pass's TEST REPORT (written by the subagent to `report.md`) and
 evaluates the assertion list for the scenario. Writes one `grading.json`
 per pass directory, then exits non-zero when the run holds no pass or any
-pass the grader marks failed.
+pass the grader marks failed. An internal error — an unreadable `evals.json`
+or an exception while grading — exits 2, so a caller can tell a broken
+grader from a graded failure.
 
 Layout expected:
     workspace/run-<ts>/
@@ -431,12 +433,9 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
     }
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("run_dir", help="workspace/run-<ts>/ directory to grade")
-    args = parser.parse_args()
+def grade_run(run_dir: pathlib.Path) -> int:
+    """Grade every pass under `run_dir`; 0 when all pass, 1 otherwise."""
 
-    run_dir = pathlib.Path(args.run_dir).resolve()
     evals = json.loads(EVALS_PATH.read_text())
     evals_by_id = {e["id"]: e for e in evals["evals"]}
 
@@ -474,6 +473,18 @@ def main() -> int:
     (run_dir / "grading_summary.json").write_text(json.dumps(summary, indent=2))
     print(f"\nGraded {len(summary)} pass(es). Summary: {run_dir}/grading_summary.json")
     return 0 if summary and all(item["passed"] for item in summary) else 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("run_dir", help="workspace/run-<ts>/ directory to grade")
+    args = parser.parse_args()
+
+    try:
+        return grade_run(pathlib.Path(args.run_dir).resolve())
+    except Exception as exc:  # noqa: BLE001 - an internal error gets its own exit
+        print(f"grade.py internal error: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

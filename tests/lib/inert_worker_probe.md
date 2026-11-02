@@ -16,7 +16,9 @@ stage through their own `evals/stage.sh`; `wiki` grades a synthetic
 `L2-1/pass-1/response.txt` run directory because that harness's grader reads a
 run directory rather than one eval.
 
-The probe exits 1 when any eval grades PASS and 0 when every graded eval fails.
+The probe exits 1 when any eval grades PASS, and an inert pass outranks an
+unmeasured harness: it exits 2 when a harness could not be measured and no eval
+graded PASS, and 0 when every graded eval fails.
 The script tests run the same command as a pin, so a later edit that removes a
 positive check turns the pin red.
 

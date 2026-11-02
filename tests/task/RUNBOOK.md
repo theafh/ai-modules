@@ -40,6 +40,7 @@ python3 tests/task/evals/test_run.py          # eval-runner artefact declaration
 eval "$(bash tests/task/evals/stage.sh finish)"
 #   ... agent runs here, in $sandbox_proj ...
 RESPONSE_FILE=<captured response.txt> bash tests/task/evals/grade.sh finish "$sandbox_proj"
+# ... or the sandbox-only alternative, which skips the response checks:
 bash tests/task/evals/grade.sh finish "$sandbox_proj"
 
 # Trigger evals (Claude-only, LLM cost): family routing, where a change

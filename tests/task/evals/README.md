@@ -128,6 +128,7 @@ eval "$(bash tests/task/evals/stage.sh <eval_id>)"
 #    to run the eval's response checks; omit RESPONSE_FILE for a sandbox-only
 #    grade, which skips them.
 RESPONSE_FILE=<captured response.txt> bash tests/task/evals/grade.sh <eval_id> "$sandbox_proj"
+# ... or the sandbox-only alternative, which skips the response checks:
 bash tests/task/evals/grade.sh <eval_id> "$sandbox_proj"
 ```
 
@@ -170,7 +171,7 @@ asserts the ones each eval carries from the response it reads through
 
 ## Success
 
-For each eval: `RESPONSE_FILE=<captured response.txt> grade.sh <id>
+For each eval: `RESPONSE_FILE=<captured response.txt> bash grade.sh <id>
 "$sandbox_proj"` exits 0 with PASS on every programmatic check, and the
 operator (or `run_eval`) confirms the remaining `agent-attest` /
 `evals.json` output expectations. With `RESPONSE_FILE` unset, the grader

@@ -19,9 +19,10 @@ directory because that harness's grader reads a run directory rather than one
 eval.
 
 The probe prints one ``INERT-PASS <harness> <id>`` line per eval that passed
-without a worker and a per-harness summary. It exits 1 when any eval graded
-PASS, 2 when a harness could not be measured, and 0 when every graded eval
-failed as it should.
+without a worker and a per-harness summary. An inert pass outranks an
+unmeasured harness: it exits 1 when any eval graded PASS, exits 2 when a
+harness could not be measured and no eval graded PASS, and 0 when every graded
+eval failed as it should.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ import argparse
 import json
 import os
 import pathlib
+import shlex
 import shutil
 import subprocess
 import sys
@@ -78,7 +80,8 @@ def stage(harness: str, eval_id: str, target: pathlib.Path) -> dict[str, str]:
         wanted = ('sandbox_proj', 'source_file')
     args = ' '.join(f'"${{{name}}}"' for name in wanted)
     emit = (
-        f'out="$(bash {stage_sh} {eval_id} {target})" || exit $?; '
+        f'out="$(bash {shlex.quote(str(stage_sh))} {shlex.quote(eval_id)} '
+        f'{shlex.quote(str(target))})" || exit $?; '
         f'eval "$out"; printf \'%s\\0\' {args}'
     )
     result = subprocess.run(
@@ -90,7 +93,7 @@ def stage(harness: str, eval_id: str, target: pathlib.Path) -> dict[str, str]:
             f"(rc={result.returncode}): {result.stderr.strip()}"
         )
     values = result.stdout.split("\0")
-    return dict(zip(wanted, values, strict=False))
+    return dict(zip(wanted, values))
 
 
 def grade_command(
@@ -131,8 +134,9 @@ def grade_env(harness: str, empty_response: pathlib.Path) -> dict[str, str]:
     return env
 
 
-def probe_one(harness: str, eval_id: str) -> bool:
-    """True when the eval graded PASS with an empty response."""
+def probe_one(harness: str, eval_id: str) -> int:
+    """1 when the eval graded PASS with an empty response, 0 when it graded
+    FAIL, and 2 when its stage or grader could not run."""
 
     target = pathlib.Path(
         tempfile.mkdtemp(prefix=f"inert_probe_{harness}_")
@@ -140,20 +144,34 @@ def probe_one(harness: str, eval_id: str) -> bool:
     try:
         empty_response = target / "empty-response.txt"
         empty_response.write_text("")
-        staged = stage(harness, eval_id, target)
+        try:
+            staged = stage(harness, eval_id, target)
+        except RuntimeError as exc:
+            print(f"cannot measure {harness}/{eval_id}: {exc}", file=sys.stderr)
+            return 2
         result = subprocess.run(
             grade_command(harness, eval_id, target, staged, empty_response),
             capture_output=True,
             text=True,
             env=grade_env(harness, empty_response),
         )
-        return result.returncode == 0
+        if result.returncode == 0:
+            return 1
+        if result.returncode == 1:
+            return 0
+        print(
+            f"cannot measure {harness}/{eval_id}: grader rc={result.returncode}"
+            f" {result.stderr.strip()}",
+            file=sys.stderr,
+        )
+        return 2
     finally:
         shutil.rmtree(target, ignore_errors=True)
 
 
-def probe_wiki() -> bool:
-    """True when layer2/grade.py passes a run holding one empty response."""
+def probe_wiki() -> int:
+    """1 when layer2/grade.py passes a run holding one empty response, 0 when
+    it grades that run FAIL, and 2 when the grader could not run."""
 
     target = pathlib.Path(tempfile.mkdtemp(prefix="inert_probe_wiki_"))
     try:
@@ -169,7 +187,16 @@ def probe_wiki() -> bool:
             capture_output=True,
             text=True,
         )
-        return result.returncode == 0
+        if result.returncode == 0:
+            return 1
+        if result.returncode == 1:
+            return 0
+        print(
+            f"cannot measure wiki/L2-1: grader rc={result.returncode}"
+            f" {result.stderr.strip()}",
+            file=sys.stderr,
+        )
+        return 2
     finally:
         shutil.rmtree(target, ignore_errors=True)
 
@@ -187,17 +214,37 @@ def main() -> int:
 
     total_pass = 0
     measured_any = False
+    unmeasured = False
     for harness in wanted:
         if harness == "wiki":
-            passed = probe_wiki()
             ids = ["L2-1"]
-            passes = [ids[0]] if passed else []
+            status = probe_wiki()
+            if status == 2:
+                unmeasured = True
+                print(
+                    f"{harness}: 1 eval(s) could not be measured",
+                    file=sys.stderr,
+                )
+                passes = []
+            else:
+                passes = [ids[0]] if status == 1 else []
         else:
             ids = eval_ids(harness)
             passes = []
+            unmeasured_here = 0
             for eval_id in ids:
-                if probe_one(harness, eval_id):
+                status = probe_one(harness, eval_id)
+                if status == 2:
+                    unmeasured_here += 1
+                elif status == 1:
                     passes.append(eval_id)
+            if unmeasured_here:
+                unmeasured = True
+                print(
+                    f"{harness}: {unmeasured_here} eval(s) could not be "
+                    f"measured",
+                    file=sys.stderr,
+                )
         measured_any = True
         total_pass += len(passes)
         for eval_id in passes:
@@ -211,7 +258,11 @@ def main() -> int:
     if not measured_any:
         print("no harness measured", file=sys.stderr)
         return 2
-    return 1 if total_pass else 0
+    if total_pass:
+        return 1
+    if unmeasured:
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
