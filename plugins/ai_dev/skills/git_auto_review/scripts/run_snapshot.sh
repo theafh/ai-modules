@@ -6,9 +6,9 @@
 # read together (`git diff HEAD --binary --no-color --no-ext-diff`);
 # `pre-fix.untracked.tar`, a copy of the untracked files present before the
 # fix (enumerated with `git status --porcelain --untracked-files=all`, ignored
-# paths excluded); and `pre-fix.ignored.manifest`, the ignored files present
-# before the fix as NUL-delimited path-plus-content-hash records, enumerated
-# with `git ls-files --others --ignored --exclude-standard -z`. The ignored
+# paths excluded); and `pre-fix.ignored.manifest`, the ignored file paths
+# present before the fix as NUL-delimited path records, enumerated with
+# `git ls-files --others --ignored --exclude-standard -z`. The ignored
 # enumeration leaves out the run's own `.git_auto_review/` folder and the
 # harness run-output trees this repository regenerates.
 #
@@ -47,9 +47,9 @@ Behavior:
     under `.git_auto_review/<stem>/`.
   - Rewrites `pre-fix.patch`, `pre-fix.untracked.tar`, and
     `pre-fix.ignored.manifest` for the round.
-  - Writes the ignored manifest as NUL-delimited path-plus-content-hash
-    records for the ignored files outside the run's `.git_auto_review/`
-    folder and outside the harness run-output trees under `tests/`.
+  - Writes the ignored manifest as NUL-delimited path records for the ignored
+    files outside the run's `.git_auto_review/` folder and outside the harness
+    run-output trees under `tests/`.
   - Writes `baseline.patch` and `baseline.untracked.tar` once, only when that
     pair is absent, and never rewrites it.
 
@@ -117,28 +117,13 @@ list_ignored() {
         done
 }
 
-# Hash one file's content with SHA-256, using whichever of the two standing
-# tools this machine carries.
-file_hash() {
-    local file=$1
-    if command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 "$file" | awk '{print $1}'
-    elif command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$file" | awk '{print $1}'
-    else
-        return 1
-    fi
-}
-
-# Write the ignored manifest as NUL-delimited path-plus-content-hash records.
-# The hash is best-effort: no consumer reads it, so a path this machine cannot
-# hash still records its path instead of failing the snapshot.
+# Write the ignored manifest as NUL-delimited path records. The manifest holds
+# the pre-fix ignored paths only, so no ignored file's content is read.
 write_ignored_manifest() {
-    local repo_root=$1 dest=$2 path hash
+    local repo_root=$1 dest=$2 path
     : > "$dest" || return 1
     while IFS= read -r -d '' path; do
-        hash="$(file_hash "$repo_root/$path")" || hash=""
-        printf '%s\0%s\0' "$path" "$hash" >> "$dest" || return 1
+        printf '%s\0' "$path" >> "$dest" || return 1
     done < <(list_ignored "$repo_root")
     return 0
 }

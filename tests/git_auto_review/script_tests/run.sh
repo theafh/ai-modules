@@ -105,6 +105,27 @@ assert_only_model_inherit() {
   return 0
 }
 
+# Seconds on the monotonic clock, for the ignored-set scaling scenario's bounds.
+now_seconds() { python3 -c 'import time; print("%.6f" % time.monotonic())'; }
+
+elapsed_seconds() {
+  python3 -c 'import sys; print("%.3f" % (float(sys.argv[2]) - float(sys.argv[1])))' \
+    "$1" "$2"
+}
+
+# Time one command, write its output to the scratch log named for the label,
+# print the elapsed seconds, and return the command's exit code.
+timed_seconds() {
+  local label=$1 start end rc
+  shift
+  start="$(now_seconds)"
+  "$@" >"$SCRATCH/ignored_scaling_$label.out" 2>&1
+  rc=$?
+  end="$(now_seconds)"
+  elapsed_seconds "$start" "$end"
+  return "$rc"
+}
+
 new_sandbox() {
   local id=$1
   local dir="$SCRATCH/$id"
@@ -722,7 +743,7 @@ s17_round_diff_binary_paths() {
 }
 
 s18_snapshot_skips_run_output_trees() {
-  local ok=true dir stem manifest list rc=0
+  local ok=true dir stem manifest list rc=0 expected
   dir="$(new_sandbox snapshot_run_output)"
   stage_ignore_repo "$dir" $'ignored/\ntests/**/workspace/\n' || return 1
   mkdir -p "$dir/ignored" "$dir/tests/demo/workspace"
@@ -734,6 +755,16 @@ s18_snapshot_skips_run_output_trees() {
   stem="$dir/.git_auto_review/default"
   manifest="$stem/pre-fix.ignored.manifest"
   assert_file "ignored manifest" "$manifest" || ok=false
+
+  # The manifest is path-only: one ignored file writes exactly that path as
+  # one NUL-delimited record, with no following hash record.
+  expected="ignored/keep.txt"
+  assert_eq "the manifest holds the one path and no hash record" \
+    "$(python3 -c 'import sys; print(repr(open(sys.argv[1], "rb").read()))' \
+      "$manifest")" \
+    "$(python3 -c 'import sys; print(repr(sys.argv[1].encode() + b"\0"))' \
+      "$expected")" || ok=false
+
   list="$SCRATCH/snapshot_run_output.manifest.txt"
   tr '\0' '\n' < "$manifest" > "$list"
   assert_contains "the normal ignored path is listed" "$list" "ignored/keep.txt" \
@@ -743,18 +774,39 @@ s18_snapshot_skips_run_output_trees() {
     ok=false
   fi
 
-  # An ignored path this machine cannot hash still records its path and leaves
-  # the snapshot exiting 0, because the content hash is best-effort. A dangling
-  # symlink lists as an ignored path and hashes on no host, so the assertion
-  # holds wherever the suite runs.
+  # The snapshot reads no ignored file content, so a dangling symlink still
+  # records its path and leaves the snapshot exiting 0. The second snapshot
+  # also keeps the manifest path-only: two paths, two records, no hash record.
   ln -s missing-target "$dir/ignored/unhashable"
   rc=0
   bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" \
     >"$SCRATCH/snapshot_unhashable.out" 2>&1 || rc=$?
-  assert_eq "unhashable ignored path exit code" "$rc" "0" || ok=false
+  assert_eq "unreadable ignored path exit code" "$rc" "0" || ok=false
   tr '\0' '\n' < "$manifest" > "$list"
-  assert_contains_re "the unhashable ignored path is listed" "$list" \
+  assert_contains_re "the unreadable ignored path is listed" "$list" \
     '^ignored/unhashable$' || ok=false
+  assert_eq "the manifest holds two path records and no hash record" \
+    "$(python3 -c 'import sys; print(open(sys.argv[1], "rb").read().count(b"\0"))' \
+      "$manifest")" "2" || ok=false
+  assert_not_contains_re "the manifest holds no hash record" "$list" \
+    '^[0-9a-f]{64}$' || ok=false
+
+  # The scripts read paths only and compare with one set operation per list.
+  assert_not_contains_re "run_snapshot.sh reads no ignored file content" \
+    "$SCRIPTS/run_snapshot.sh" 'file_hash|shasum|sha256sum' || ok=false
+  assert_not_contains_re "run_round_diff.sh rescans no list per path" \
+    "$SCRIPTS/run_round_diff.sh" 'list_contains|append_unique' || ok=false
+  assert_not_contains_re "run_restore.sh rescans no list per path" \
+    "$SCRIPTS/run_restore.sh" 'member_listed' || ok=false
+  assert_contains "run_restore.sh checks for python3" \
+    "$SCRIPTS/run_restore.sh" 'command -v python3' || ok=false
+  local f
+  for f in "$SKILL_DIR/SKILL.md" "$SCRIPTS/run_snapshot.sh" \
+      "$SCRIPTS/run_round_diff.sh" "$SCRIPTS/run_restore.sh"; do
+    assert_not_contains_re "old path-plus-hash wording is gone: $f" \
+      "$f" 'path-plus-content-hash|path plus hash|content-hash record|followed by its content hash' \
+      || ok=false
+  done
 
   bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
     >"$SCRATCH/snapshot_run_output.out" 2>&1 || { log "    run_restore.sh exited non-zero"; ok=false; }
@@ -833,6 +885,66 @@ s20_newline_untracked_path() {
 a2" || ok=false
   [[ ! -e "$dir/fixer-added.txt" ]] \
     || { log "    the fixer-added file survived"; ok=false; }
+  $ok
+}
+
+# The fixed denominator Acceptance item 5 names. Each step must stay under its
+# recorded bound; a per-path rescan at this size measured tens of seconds.
+s25_ignored_set_scaling() {
+  local ok=true dir stem elapsed bound
+  dir="$(new_sandbox ignored_scaling)"
+  stage_ignore_repo "$dir" $'ignored/\n' || return 1
+  mkdir -p "$dir/ignored" || return 1
+  python3 - "$dir" <<'PY' || return 1
+import os
+import sys
+
+root = os.path.join(sys.argv[1], "ignored")
+for i in range(3000):
+    with open(os.path.join(root, "f%04d.txt" % i), "w", encoding="utf-8") as handle:
+        handle.write("content %d\n" % i)
+PY
+  bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || ok=false
+  stem="$dir/.git_auto_review/default"
+
+  bound=6.000
+  elapsed="$(timed_seconds snapshot \
+    bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir")" \
+    || { log "    run_snapshot.sh failed on the scaling fixture"; ok=false; }
+  if python3 -c 'import sys; sys.exit(0 if float(sys.argv[1]) < float(sys.argv[2]) else 1)' \
+      "$elapsed" "$bound"; then
+    log "    snapshot ${elapsed}s < ${bound}s"
+  else
+    log "    snapshot ${elapsed}s reached the ${bound}s bound"
+    log "    comparison site: run_snapshot.sh write_ignored_manifest still reads each ignored file"
+    ok=false
+  fi
+
+  elapsed="$(timed_seconds round_diff \
+    bash "$SCRIPTS/run_round_diff.sh" --stem default --round 1 --root "$dir")" \
+    || { log "    run_round_diff.sh failed on the scaling fixture"; ok=false; }
+  if python3 -c 'import sys; sys.exit(0 if float(sys.argv[1]) < float(sys.argv[2]) else 1)' \
+      "$elapsed" "$bound"; then
+    log "    round diff ${elapsed}s < ${bound}s"
+  else
+    log "    round diff ${elapsed}s reached the ${bound}s bound"
+    log "    comparison site: run_round_diff.sh main-loop membership still scans per path"
+    ok=false
+  fi
+
+  elapsed="$(timed_seconds restore \
+    bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir")" \
+    || { log "    run_restore.sh failed on the scaling fixture"; ok=false; }
+  if python3 -c 'import sys; sys.exit(0 if float(sys.argv[1]) < float(sys.argv[2]) else 1)' \
+      "$elapsed" "$bound"; then
+    log "    restore ${elapsed}s < ${bound}s"
+  else
+    log "    restore ${elapsed}s reached the ${bound}s bound"
+    log "    comparison site: run_restore.sh step-4/step-5 membership still scans per path"
+    ok=false
+  fi
+  assert_file "the scaling round diff is written" \
+    "$stem/round-r1.diff.txt" || ok=false
   $ok
 }
 
@@ -1023,7 +1135,7 @@ scenario s14 "the eval runner stops on a failed or empty stage" s14_eval_runner_
 scenario s15 "run_round_diff.sh reports each changed path kind once" s15_round_diff_path_kinds
 scenario s16 "run_restore.sh removes the folders the fixer created" s16_restore_removes_fixer_folders
 scenario s17 "run_round_diff.sh carries binary paths as path-only hunks" s17_round_diff_binary_paths
-scenario s18 "run_snapshot.sh skips the harness run-output trees and records an unhashable ignored path" s18_snapshot_skips_run_output_trees
+scenario s18 "run_snapshot.sh skips the harness run-output trees and writes a path-only manifest" s18_snapshot_skips_run_output_trees
 scenario s19 "run_ledger.sh runs every command with bytecode writing off" s19_ledger_bytecode_off
 scenario s20 "snapshot and restore survive a newline in an untracked name" s20_newline_untracked_path
 scenario s21 "the branch-and-worktree grader scopes defects to their section" s21_grade_section_scope
@@ -1041,6 +1153,7 @@ s24_inert_worker_probe_pin() {
 
 scenario s23 "the eval docs and runbook enumerate the measured behaviour" s23_eval_docs_inventory
 scenario s24 "inert worker: no eval grades PASS on an empty response" s24_inert_worker_probe_pin
+scenario s25 "the ignored-set steps stay under their recorded bounds at 3,000 paths" s25_ignored_set_scaling
 
 log ""
 log "================================================================"

@@ -122,14 +122,22 @@ tar_members() {
     rm -rf "$probe"
 }
 
-# Report whether the candidate path is one of the NUL-delimited member records
-# in the file named by the first argument.
-member_listed() {
-    local members=$1 candidate=$2 member
-    while IFS= read -r -d '' member; do
-        [[ "$member" == "$candidate" ]] && return 0
-    done < "$members"
-    return 1
+# Print the NUL-delimited records of the first list file that are absent from
+# every later list file. Each list becomes a Python set once, so the whole
+# comparison is one set operation over the NUL-delimited records.
+list_difference() {
+    python3 - "$@" <<'PY'
+import sys
+
+with open(sys.argv[1], "rb") as handle:
+    remaining = set(handle.read().split(b"\0")) - {b""}
+for path in sys.argv[2:]:
+    with open(path, "rb") as handle:
+        remaining -= set(handle.read().split(b"\0"))
+out = sys.stdout.buffer
+for path in sorted(remaining):
+    out.write(path + b"\0")
+PY
 }
 
 # Report success when the repository-root-relative path lies under the run's
@@ -168,16 +176,11 @@ prune_empty_parents() {
 }
 
 # Write the ignored manifest's path records to the file named by the second
-# argument, one NUL-delimited record per path. The manifest alternates a path
-# record with its content-hash record.
+# argument, one NUL-delimited record per path. The manifest is already a
+# NUL-delimited list of paths.
 manifest_paths() {
-    local manifest=$1 dest=$2 path hash
-    : > "$dest" || return 1
-    while IFS= read -r -d '' path; do
-        IFS= read -r -d '' hash || return 1
-        : "$hash"
-        printf '%s\0' "$path" >> "$dest" || return 1
-    done < "$manifest"
+    local manifest=$1 dest=$2
+    cp "$manifest" "$dest" || return 1
     return 0
 }
 
@@ -201,6 +204,8 @@ main() {
             *) die "unknown argument: $1" ;;
         esac
     done
+    command -v python3 >/dev/null 2>&1 \
+        || die_env "python3 was not found on PATH"
 
     local repo_root
     if [[ -n "$ROOT" ]]; then
@@ -243,45 +248,52 @@ main() {
 
     # Step 4: delete the untracked files the fixer added that the captured copy
     # does not contain.
-    local members current record
+    local members current record current_list
     members="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")"
     if ! tar_members "$untracked_tar" "$members"; then
         rm -f "$members"
         die_env "cannot list the captured untracked files"
     fi
+    current_list="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")"
+    : > "$current_list" || {
+        rm -f "$members" "$current_list"
+        die_env "cannot list the working-tree untracked files"
+    }
     while IFS= read -r -d '' record; do
         case "$record" in
-            "?? "*) current="${record#\?\? }" ;;
-            *) continue ;;
+            "?? "*) printf '%s\0' "${record#\?\? }" >> "$current_list" ;;
         esac
-        if member_listed "$members" "$current"; then
-            continue
-        fi
+    done < <(cd "$repo_root" && git status --porcelain -z --untracked-files=all)
+    while IFS= read -r -d '' current; do
         rm -f -- "$repo_root/$current" \
             || die_env "cannot remove the fixer-added untracked file $current"
         prune_empty_parents "$repo_root" "$current"
-    done < <(cd "$repo_root" && git status --porcelain -z --untracked-files=all)
+    done < <(list_difference "$current_list" "$members")
+    rm -f "$current_list"
 
     # Step 5: delete the ignored files the fixer added that the captured
     # manifest does not contain, and remove the folders each deletion emptied.
     # A pre-existing ignored file stays as the fixer left it, and a pre-fix
     # untracked file that the fixer's new ignore rule now covers stays too.
-    local manifest_members ignored
+    local manifest_members ignored ignored_now
     manifest_members="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")"
     manifest_paths "$ignored_manifest" "$manifest_members" \
         || { rm -f "$manifest_members"; die_env "cannot read the ignored manifest"; }
+    ignored_now="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")"
+    : > "$ignored_now" || {
+        rm -f "$manifest_members" "$ignored_now"
+        die_env "cannot list the ignored files"
+    }
+    list_ignored "$repo_root" > "$ignored_now" || {
+        rm -f "$manifest_members" "$ignored_now" "$members"
+        die_env "cannot enumerate the ignored files"
+    }
     while IFS= read -r -d '' ignored; do
-        if member_listed "$manifest_members" "$ignored"; then
-            continue
-        fi
-        if member_listed "$members" "$ignored"; then
-            continue
-        fi
         rm -f -- "$repo_root/$ignored" \
             || die_env "cannot remove the fixer-added ignored file $ignored"
         prune_empty_parents "$repo_root" "$ignored"
-    done < <(list_ignored "$repo_root")
-    rm -f "$manifest_members" "$members"
+    done < <(list_difference "$ignored_now" "$manifest_members" "$members")
+    rm -f "$manifest_members" "$ignored_now" "$members"
 
     # Verify the captured tracked content is reproduced: re-deriving the round's
     # tracked patch must yield the captured patch byte for byte.

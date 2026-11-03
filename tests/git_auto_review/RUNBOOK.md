@@ -168,6 +168,58 @@ per-query precise change on the 16 shared queries.
 A run below the per-entry predicate, or a recorded length above 1000, fails
 the item and sends the implementer back to revise the clauses and re-measure.
 
+## Ignored-set scaling measurement (Acceptance item 5)
+
+The manifest is path-only and each set comparison is one Python 3 set operation,
+so a repository with a large ignored build tree stays cheap. The measurement
+stages a fixed 3,000 synthetic ignored paths under `ignored/` in a scratch
+repository, runs each bundled step three times, and times the unmodified
+per-path membership scan once at the same denominator.
+
+Pre-change rows come from the unmodified scripts, taken before any script edit.
+The scan row times the unmodified `list_contains` called once per candidate over
+a 3,000-record path list. Every row was measured on 2026-11-03 with
+`GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)` and
+`Python 3.14.7` on the same host.
+
+| Phase | Step | Run 1 (s) | Run 2 (s) | Run 3 (s) | Median (s) | Date | `bash --version` |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- | :--- |
+| Pre-change | snapshot | 44.124 | 49.602 | 49.791 | 49.602 | 2026-11-03 | `GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)` |
+| Pre-change | round diff | 84.884 | 87.726 | 86.564 | 86.564 | 2026-11-03 | `GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)` |
+| Pre-change | restore | 23.001 | 22.045 | 22.260 | 22.260 | 2026-11-03 | `GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)` |
+| Pre-change | per-path scan (3,000 paths against 3,000 candidates) | 20.737 | — | — | 20.737 | 2026-11-03 | `GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)` |
+
+Post-change rows come from the edited scripts, measured the same way on the
+same host and date. Each step's bound is set above its post-change median by
+the stated margin and below the 20.737 s single-scan timing, so the bound
+discriminates the set operation from a per-path rescan.
+
+| Phase | Step | Run 1 (s) | Run 2 (s) | Run 3 (s) | Median (s) | Date | `bash --version` |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- | :--- |
+| Post-change | snapshot | 0.283 | 0.290 | 0.266 | 0.283 | 2026-11-03 | `GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)` |
+| Post-change | round diff | 0.555 | 0.653 | 0.565 | 0.565 | 2026-11-03 | `GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)` |
+| Post-change | restore | 0.428 | 0.368 | 0.360 | 0.368 | 2026-11-03 | `GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)` |
+
+Each step's bound is the post-change median plus its stated margin, rounded to
+6.000 s and held strictly below the 20.737 s single-scan timing.
+
+| Step | Post-change median (s) | Margin (s) | Bound (s) | Single-scan timing (s) |
+| :--- | ---: | ---: | ---: | ---: |
+| snapshot | 0.283 | 5.717 | 6.000 | 20.737 |
+| round diff | 0.565 | 5.435 | 6.000 | 20.737 |
+| restore | 0.368 | 5.632 | 6.000 | 20.737 |
+
+The `ignored_set_scaling` scenario in `script_tests/run.sh` stages the same
+fixed 3,000 synthetic ignored paths and fails a step that reaches its bound.
+The snapshot bound proves the hash removal, because the unmodified snapshot
+hashed every ignored file and measured 44-50 s at this denominator. The
+round-diff and restore bounds prove the set operation, because the unmodified
+steps measured 84-88 s and 22-23 s at this denominator, and the single
+membership scan alone measured 20.737 s. A step whose recorded median misses
+its bound fails Acceptance item 5 and names the comparison site that still
+scans per path; a bound at or above the 20.737 s single-scan timing fails the
+item as non-discriminating however fast the runs measured.
+
 ## Session measurement log
 
 The behavioral suite is authored and wired, and every eval in it has a

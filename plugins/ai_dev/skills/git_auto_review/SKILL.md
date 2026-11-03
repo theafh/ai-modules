@@ -1,7 +1,7 @@
 ---
 name: git_auto_review
 description: "Run an automated review-and-fix loop over the checked-out branch's change since the default branch plus its working tree, and over the default branch's uncommitted changes: git_review is the only gate, a single writer agent fixes the findings that qualify, each round is verified refute-by-default and re-reviewed on its delta, and the loop stops under stated convergence rules. Use when the user asks to auto-review and fix uncommitted changes, auto-review and fix this branch, run the automated review loop, keep reviewing and fixing until the change is clean, loop review and fix over my branch against main, auto-fix what the review finds, or drive an automated review gate to a clean exit. Every fix stays uncommitted."
-version: 1.0.10
+version: 1.0.11
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -159,7 +159,7 @@ Each relay file holds exactly one round's record, all under the stem directory:
   report.txt                 the run's report
   pre-fix.patch              per-round captured tracked changes
   pre-fix.untracked.tar      per-round captured untracked files
-  pre-fix.ignored.manifest   per-round captured ignored files, path plus hash
+  pre-fix.ignored.manifest   per-round captured ignored file paths
   baseline.patch             round-1 baseline pair, written once
   baseline.untracked.tar     round-1 baseline pair, written once
   authored.txt               cumulative authored hunks, current lines
@@ -223,7 +223,7 @@ Save each round's pre-fix state as three files under the stem directory, written
 
 - `pre-fix.patch` holds the patch of the round's tracked changes with the index and the worktree read together, produced by `git diff HEAD --binary --no-color --no-ext-diff`, so a staged change and a staged-then-edited change both round trip.
 - `pre-fix.untracked.tar` holds a copy of the untracked files present before the fix, enumerated with `git status --porcelain --untracked-files=all` with ignored paths excluded.
-- `pre-fix.ignored.manifest` holds the ignored files present before the fix, enumerated with `git ls-files --others --ignored --exclude-standard -z`, as NUL-delimited records of each path followed by its content hash. It leaves out the run's own `.git_auto_review/` folder and the harness run-output trees, the folders a test harness regenerates on every run: each `workspace/`, `scratch/`, `.eval_cache/`, `results/`, or `.vendor_probe/` folder at any depth under `tests/`, and each staged `tests/wiki/layer2/` sandbox whose folder name starts with `AS-`, `L2-`, `WI-`, `WU-`, or `MP-`. This entry is the one statement of the harness run-output trees: `scripts/run_snapshot.sh`, `scripts/run_round_diff.sh`, and `scripts/run_restore.sh` each apply this same exclusion, and every other passage that names those trees points here.
+- `pre-fix.ignored.manifest` holds the ignored file paths present before the fix, enumerated with `git ls-files --others --ignored --exclude-standard -z`, as NUL-delimited path records. It leaves out the run's own `.git_auto_review/` folder and the harness run-output trees, the folders a test harness regenerates on every run: each `workspace/`, `scratch/`, `.eval_cache/`, `results/`, or `.vendor_probe/` folder at any depth under `tests/`, and each staged `tests/wiki/layer2/` sandbox whose folder name starts with `AS-`, `L2-`, `WI-`, `WU-`, or `MP-`. This entry is the one statement of the harness run-output trees: `scripts/run_snapshot.sh`, `scripts/run_round_diff.sh`, and `scripts/run_restore.sh` each apply this same exclusion, and every other passage that names those trees points here.
 
 On round 1 alone the writer also writes the baseline pair `baseline.patch` and `baseline.untracked.tar`, the run's start-state snapshot the **Stop rule.** diffs `authored.txt` against, only when that pair is absent, and it never rewrites that pair.
 

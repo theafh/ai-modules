@@ -98,22 +98,29 @@ is_run_owned_path() {
     return 1
 }
 
-# Report whether the candidate path is one of the NUL-delimited records in the
-# file named by the first argument.
-list_contains() {
-    local list=$1 candidate=$2 member
-    [[ -f "$list" ]] || return 1
-    while IFS= read -r -d '' member; do
-        [[ "$member" == "$candidate" ]] && return 0
-    done < "$list"
-    return 1
-}
+# Print one NUL-delimited flag record per NUL-delimited candidate path in the
+# first list file: `yes` or `no` for membership in each later list file, in
+# argument order. Each list becomes a Python set once, so a candidate costs one
+# set lookup instead of a rescan of the whole list.
+classify_membership() {
+    python3 - "$@" <<'PY'
+import sys
 
-# Append the path to the NUL-delimited list unless the list already holds it.
-append_unique() {
-    local list=$1 path=$2
-    list_contains "$list" "$path" && return 0
-    printf '%s\0' "$path" >> "$list"
+with open(sys.argv[1], "rb") as handle:
+    candidates = handle.read().split(b"\0")
+sets = []
+for path in sys.argv[2:]:
+    with open(path, "rb") as handle:
+        sets.append(set(handle.read().split(b"\0")) - {b""})
+out = sys.stdout.buffer
+for candidate in candidates:
+    if not candidate:
+        continue
+    flags = b" ".join(
+        b"yes" if candidate in members else b"no" for members in sets
+    )
+    out.write(flags + b"\0")
+PY
 }
 
 # Report success when the file holds a NUL byte or bytes that are not valid
@@ -151,13 +158,13 @@ collect_paths() {
     local expect_original=0
     while IFS= read -r -d '' record; do
         if ((expect_original)); then
-            append_unique "$union" "$record"
+            printf '%s\0' "$record" >> "$union"
             expect_original=0
             continue
         fi
         status="${record:0:2}"
         path="${record:3}"
-        append_unique "$union" "$path"
+        printf '%s\0' "$path" >> "$union"
         case "$status" in
             *R*|*C*) expect_original=1 ;;
         esac
@@ -165,8 +172,8 @@ collect_paths() {
 
     while IFS= read -r -d '' path; do
         is_run_owned_path "$path" && continue
-        append_unique "$union" "$path"
-        append_unique "$ignored_now" "$path"
+        printf '%s\0' "$path" >> "$union"
+        printf '%s\0' "$path" >> "$ignored_now"
     done < <(cd "$repo_root" && git ls-files --others --ignored --exclude-standard -z)
 
     members="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")" || return 1
@@ -186,21 +193,23 @@ collect_paths() {
     rm -rf "$probe"
     while IFS= read -r -d '' member; do
         is_run_owned_path "$member" && continue
-        append_unique "$union" "$member"
-        append_unique "$untracked_pre" "$member"
+        printf '%s\0' "$member" >> "$union"
+        printf '%s\0' "$member" >> "$untracked_pre"
     done < "$members"
     rm -f "$members"
+
+    # Dedupe each collected list once, after collection, so a path both git
+    # status and an enumeration report stays one record.
+    sort -z -u "$union" -o "$union" || return 1
+    sort -z -u "$ignored_now" -o "$ignored_now" || return 1
+    sort -z -u "$untracked_pre" -o "$untracked_pre" || return 1
 }
 
-# Write the ignored manifest's path records to the NUL-delimited list.
+# Write the ignored manifest's path records to the NUL-delimited list. The
+# manifest is already a NUL-delimited list of paths.
 collect_manifest_paths() {
-    local manifest=$1 dest=$2 path hash
-    : > "$dest" || return 1
-    while IFS= read -r -d '' path; do
-        IFS= read -r -d '' hash || return 1
-        : "$hash"
-        printf '%s\0' "$path" >> "$dest" || return 1
-    done < "$manifest"
+    local manifest=$1 dest=$2
+    cp "$manifest" "$dest" || return 1
     return 0
 }
 
@@ -341,17 +350,18 @@ main() {
     collect_paths "$repo_root" "$union" "$ignored_now" "$untracked_tar" "$untracked_pre" \
         || { rm -rf "$work"; die_env "cannot enumerate the working tree"; }
 
+    local flags_file="$work/membership_flags"
+    classify_membership "$union" "$ignored_now" "$manifest_paths" \
+        "$untracked_pre" > "$flags_file" \
+        || { rm -rf "$work"; die_env "cannot classify the working-tree paths"; }
+
     : > "$dest" || { rm -rf "$work"; die_env "cannot write $dest"; }
 
-    local path in_ignored in_manifest in_untracked pre_exists work_exists
-    while IFS= read -r -d '' path; do
+    local path flags in_ignored in_manifest in_untracked pre_exists work_exists
+    while IFS= read -r -d '' path \
+        && IFS= read -r -d '' flags <&3; do
         is_run_owned_path "$path" && continue
-        in_ignored=no
-        list_contains "$ignored_now" "$path" && in_ignored=yes
-        in_manifest=no
-        list_contains "$manifest_paths" "$path" && in_manifest=yes
-        in_untracked=no
-        list_contains "$untracked_pre" "$path" && in_untracked=yes
+        read -r in_ignored in_manifest in_untracked <<< "$flags"
 
         if [[ "$in_ignored" == yes && "$in_untracked" == no ]]; then
             # An ignored path the manifest does not hold is the fixer's
@@ -393,7 +403,7 @@ main() {
                 emit_removed "$path" "$pre/$path" >> "$dest"
             fi
         fi
-    done < "$union"
+    done < "$union" 3< "$flags_file"
 
     rm -rf "$work"
     printf 'Round diff written at %s\n' "$dest"
