@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""lint.py — health-check the tasks directory, plus repo-wide link integrity.
+"""lint.py — health-check the tasks directory.
 
 Per-file task checks (naming, frontmatter, provenance, status/location,
 datetime, title, size, footnotes, wikilinks, soft-pointer, repeated-link,
@@ -9,26 +9,16 @@ named task under ``--file``. The oversized-page and repeated-link warnings
 fire only on live open, checked, and ready tasks; the soft-pointer check
 stays on live pages.
 
-On a default or ``--include-archive`` run, the link check walks every
-markdown file under the project root (the parent of tasks/) and reports
-broken in-repo targets of any kind (files or directories). When that
-project root sits in a git work tree, as the toplevel or a subdirectory
-git does not ignore, the inventory is
-``git ls-files -z --cached --others --exclude-standard -- '*.md'`` run
-from the root, so gitignored trees such as ``node_modules/`` stay out.
-Outside git, or in a root git ignores, the walk is an ``*.md`` rglob
-that skips only ``.git/``. When the repo-root
-Makefile defines an ``EXCLUDE`` whose tokens are ``find`` prune clauses
-ending in ``-o``, that prune set further filters the inventory (and is
-the sole inventory outside git); any other ``EXCLUDE`` spelling is
-ignored so a non-prune assignment cannot silence the check. Targets that
-leave the repository (``://``, ``mailto:``, empty or fragment-only, or a
-path that resolves outside the project root) draw no finding. A
-destination that starts with ``/`` and does not exist as an absolute
-filesystem path is treated as repository-root-relative before the
-silence rule runs. Under ``--file``, link checks stay scoped to the
-named task file alone so archive close-out still sees findings only for
-that file. The two flags are mutually exclusive.
+The link check covers the links written in task files, and only those: the
+same live files by default, the archive as well under ``--include-archive``,
+and the scoped file under ``--file``. Every in-repo target of any kind
+(files or directories) is resolved from the linking file's directory and
+then the project root. Targets that leave the repository (``://``,
+``mailto:``, empty or fragment-only, or a path that resolves outside the
+project root) draw no finding. A destination that starts with ``/`` and
+does not exist as an absolute filesystem path is treated as
+repository-root-relative before the silence rule runs. The two flags are
+mutually exclusive.
 
 Usage:
     python3 lint.py [TASKS_PATH] [--quiet] [--include-archive | --file PATH]
@@ -47,7 +37,6 @@ from __future__ import annotations
 import argparse
 import html
 import re
-import shlex
 import subprocess
 import sys
 from collections import Counter, defaultdict
@@ -114,15 +103,6 @@ ENTITY_RE = re.compile(
     r"&(?:#[xX][0-9A-Fa-f]{1,6}|#[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});"
 )
 MARKDOWN_ESCAPABLE = frozenset(r"!\"#$%&'()*+,-./:;<=>?@[\]^_`{|}~")
-
-# The only `find` tokens a Makefile EXCLUDE may carry before the linter
-# passes it to `find`: tests that take one operand, and bare operators.
-FIND_PRUNE_TESTS = frozenset({
-    "-path", "-ipath", "-name", "-iname", "-wholename", "-iwholename", "-type",
-})
-FIND_PRUNE_OPERATORS = frozenset({
-    "-prune", "-o", "-or", "-a", "-and", "!", "-not", "(", ")",
-})
 
 # Soft-pointer rule: a task reference anchors on a verbatim greppable
 # label, never a line-number position claim that goes stale silently.
@@ -501,221 +481,6 @@ def iter_task_files(tasks: Path, include_archive: bool = False) -> Iterator[Path
         for path in sorted(archive.glob("*.md")):
             if path.is_file():
                 yield path
-
-
-def parse_makefile_exclude(makefile: Path) -> list[str] | None:
-    """Return the tokenized ``EXCLUDE`` value from a Makefile, or None.
-
-    Reads a ``EXCLUDE := …`` / ``EXCLUDE = …`` / ``EXCLUDE ?= …`` /
-    ``EXCLUDE += …`` assignment (optional ``override`` prefix), including
-    backslash-continued lines, and splits it the way ``find`` would see
-    ``$(EXCLUDE)``. A missing Makefile or a Makefile with no ``EXCLUDE``
-    assignment yields None.
-    """
-    if not makefile.is_file():
-        return None
-    chunks: list[str] = []
-    collecting = False
-    for line in makefile.read_text(encoding="utf-8").splitlines():
-        if not collecting:
-            match = re.match(
-                r"^(?:override\s+)?EXCLUDE\s*(?:\?|\+|:)?=\s*(.*)$",
-                line,
-            )
-            if not match:
-                continue
-            collecting = True
-            rest = match.group(1)
-        else:
-            rest = line
-        stripped = rest.rstrip()
-        continued = stripped.endswith("\\")
-        piece = stripped[:-1].rstrip() if continued else stripped
-        piece = piece.strip()
-        if piece:
-            chunks.append(piece)
-        if not continued:
-            break
-    if not collecting:
-        return None
-    return shlex.split(" ".join(chunks))
-
-
-def is_find_prune_exclude(tokens: list[str]) -> bool:
-    """True when ``tokens`` look like ``find`` prune clauses ending in ``-o``.
-
-    This repository's Makefile uses that shape for ``MD_FILES``. A bare
-    path, a lone ``-name`` filter, or any other non-prune spelling must
-    not drive the inventory, because ``find . $(EXCLUDE) …`` then either
-    matches nothing or treats the value as a second start path.
-
-    Every token must be a test from ``FIND_PRUNE_TESTS`` followed by its
-    operand, or an operator from ``FIND_PRUNE_OPERATORS``. The tokens come
-    from the linted repository's Makefile and are handed to ``find``, so
-    an action such as ``-exec`` or ``-delete`` rejects the whole value and
-    linting never runs a command the repository chose.
-    """
-    if not tokens or tokens[-1] != "-o" or "-prune" not in tokens:
-        return False
-    index = 0
-    while index < len(tokens):
-        token = tokens[index]
-        if token in FIND_PRUNE_TESTS:
-            if index + 1 >= len(tokens):
-                return False
-            index += 2
-        elif token in FIND_PRUNE_OPERATORS:
-            index += 1
-        else:
-            return False
-    return True
-
-
-def _git_toplevel(root: Path) -> Path | None:
-    """Return the git toplevel for ``root``, or None when not in a work tree."""
-    result = subprocess.run(
-        ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        return None
-    top = result.stdout.strip()
-    if not top:
-        return None
-    return Path(top).resolve()
-
-
-def _git_ignores(toplevel: Path, root: Path) -> bool:
-    """True when git ignores ``root``, a directory below ``toplevel``."""
-    try:
-        relative = root.relative_to(toplevel).as_posix()
-    except ValueError:
-        return True
-    result = subprocess.run(
-        ["git", "-C", str(toplevel), "check-ignore", "-q", "--", f"{relative}/"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return result.returncode == 0
-
-
-def _list_git_markdown_files(root: Path) -> list[Path]:
-    """Markdown paths tracked or untracked-but-not-ignored under ``root``.
-
-    ``git ls-files`` run from ``root`` lists only paths below it, relative
-    to it. ``-z`` keeps a non-ASCII name unquoted, so it still resolves.
-    """
-    result = subprocess.run(
-        [
-            "git",
-            "-C",
-            str(root),
-            "ls-files",
-            "-z",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "--",
-            "*.md",
-        ],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="surrogateescape",
-        check=False,
-    )
-    if result.returncode != 0:
-        sys.exit(
-            f"git ls-files for markdown inventory failed under {root}: "
-            f"{result.stderr.strip() or result.stdout.strip() or result.returncode}"
-        )
-    paths: list[Path] = []
-    for entry in result.stdout.split("\0"):
-        if not entry:
-            continue
-        candidate = (root / entry).resolve()
-        if candidate.is_file():
-            paths.append(candidate)
-    return paths
-
-
-def _list_rglob_markdown_files(root: Path) -> list[Path]:
-    """Every ``*.md`` under ``root``, skipping only ``.git/``."""
-    paths: list[Path] = []
-    for path in root.rglob("*.md"):
-        if not path.is_file():
-            continue
-        if ".git" in path.relative_to(root).parts:
-            continue
-        paths.append(path.resolve())
-    return paths
-
-
-def _list_find_markdown_files(root: Path, exclude: list[str]) -> list[Path]:
-    """``find . $(EXCLUDE) -type f -name '*.md' -print`` under ``root``."""
-    result = subprocess.run(
-        ["find", ".", *exclude, "-type", "f", "-name", "*.md", "-print"],
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode not in (0, 1):
-        sys.exit(
-            f"find for markdown inventory failed under {root}: "
-            f"{result.stderr.strip() or result.stdout.strip() or result.returncode}"
-        )
-    paths: list[Path] = []
-    for line in result.stdout.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        candidate = (root / line).resolve()
-        if candidate.is_file():
-            paths.append(candidate)
-    return paths
-
-
-def iter_repo_markdown_files(project_root: Path) -> Iterator[Path]:
-    """Yield every ``*.md`` file under ``project_root`` for link checks.
-
-    Prefer a git-aware inventory when ``project_root`` sits in a git work
-    tree, whether it is the toplevel or a subdirectory such as a monorepo
-    package, so gitignored trees like ``node_modules/`` stay out. A root
-    that git itself ignores, such as a scratch fixture inside another
-    checkout, takes the non-git path instead, because ``git ls-files``
-    would list nothing there. Layer a Makefile ``EXCLUDE`` on top only
-    when it parses as ``find`` prune clauses ending in ``-o``. Outside
-    git, that prune ``EXCLUDE`` is the sole inventory; otherwise fall
-    back to an ``*.md`` rglob that skips ``.git/``. Resolved paths are
-    deduplicated.
-    """
-    root = project_root.resolve()
-    exclude = parse_makefile_exclude(root / "Makefile")
-    prune = exclude if exclude is not None and is_find_prune_exclude(exclude) else None
-    toplevel = _git_toplevel(root)
-    use_git = toplevel is not None and (
-        toplevel == root or not _git_ignores(toplevel, root)
-    )
-    if use_git:
-        paths = _list_git_markdown_files(root)
-        if prune is not None:
-            allowed = set(_list_find_markdown_files(root, prune))
-            paths = [path for path in paths if path in allowed]
-    elif prune is not None:
-        paths = _list_find_markdown_files(root, prune)
-    else:
-        paths = _list_rglob_markdown_files(root)
-    seen: set[Path] = set()
-    for path in sorted(paths):
-        resolved = path.resolve()
-        if resolved in seen:
-            continue
-        seen.add(resolved)
-        yield resolved
 
 
 def _path_inside_root(candidate: Path, project_root: Path) -> bool:
@@ -1792,9 +1557,11 @@ def _resolve_local_link_target(
 
 
 def check_local_links(tasks: Path, page: Path) -> list[Issue]:
-    """Block on broken in-repo markdown link targets from this page.
+    """Block on broken in-repo markdown link targets written in this task file.
 
-    Silence rule: a target draws no finding when it carries ``://``,
+    The link check covers the links written in task files, and only those,
+    so a markdown file outside the tasks tree is never read here. Silence
+    rule: a target draws no finding when it carries ``://``,
     starts with ``mailto:``, is empty or fragment-only, or resolves
     outside the repo root once normalised (an absolute path elsewhere on
     the machine, or a relative path that climbs past the root). A
@@ -1969,11 +1736,11 @@ def main() -> int:
         description=(
             "Health-check the tasks directory (naming, frontmatter, "
             "status/location, size, collisions, and related per-file "
-            "checks on task files) and, on a default or "
-            "--include-archive run, check every in-repo markdown link "
-            "from every markdown file under the project root (any in-repo "
-            "target; silence outside). Under --file, link checks stay "
-            "scoped to the named task file alone."
+            "checks on task files). On a default or --include-archive "
+            "run the link check covers the links written in the task "
+            "files the run covers (any in-repo target; silence outside). "
+            "Under --file, every check stays scoped to the named task "
+            "file alone."
         ),
     )
     parser.add_argument(
@@ -1985,11 +1752,11 @@ def main() -> int:
     scope.add_argument(
         "--include-archive",
         action="store_true",
-        help="Extend the mechanical per-file checks across the whole "
-        "tasks/archive/ tree for task_fix whole-archive maintenance (legacy "
-        "retrofit hints included); the size and repeated-link warnings stay "
-        "on live open, checked, and ready tasks. Link checks already cover "
-        "every repo markdown file on a default run.",
+        help="Extend the mechanical per-file checks and the link check "
+        "across the whole tasks/archive/ tree for task_fix whole-archive "
+        "maintenance (legacy retrofit hints included); the size and "
+        "repeated-link warnings stay on live open, checked, and ready "
+        "tasks.",
     )
     scope.add_argument(
         "--file",
@@ -2012,7 +1779,7 @@ def main() -> int:
     else:
         scoped_file = None
         pages = list(iter_task_files(tasks, include_archive=args.include_archive))
-        link_pages = list(iter_repo_markdown_files(tasks.parent))
+        link_pages = pages
 
     issues: list[Issue] = []
     collision_issues = check_name_collisions(collision_pages)

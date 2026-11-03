@@ -16,21 +16,18 @@
 #      codes (0 when tasks/ exists, 1 when not, 2 on bad arg), --help.
 #   i* init_tasks.sh     — scaffold tasks/+archive/, idempotency,
 #      refusal on a non-directory target, arg/exit handling, --help.
-#   l* lint.py body link resolution (check_local_links): on a default /
-#      --include-archive run the walk covers every repo markdown file
-#      (git ls-files -z --exclude-standard when project_root is the git
-#      toplevel or a subdirectory git does not ignore, so non-ASCII names
-#      stay in; Makefile prune-shaped EXCLUDE layered on top or used
-#      alone outside git, and ignored whole when it carries a find action
-#      such as -exec or -delete; else rglob skipping .git/); any in-repo
-#      target (file or directory) is checked; :// / mailto: / outside-repo
-#      targets stay silent; a leading-/ miss is repo-root-relative;
-#      fences, list-nested fences included, inline code, autolinks, and
-#      raw HTML are scrubbed, while four-column-indented list content
-#      keeps its links; under --file, link checks
-#      stay scoped to the named task. A `.md` link still resolves against
-#      the linking file's directory and, as a fallback, against the
-#      project root.
+#   l* lint.py body link resolution (check_local_links) over task files:
+#      on a default / --include-archive run the check covers the links
+#      written in the task files the run covers (live files by default,
+#      the archive as well under --include-archive), and it reads no
+#      markdown file outside the tasks tree; any in-repo target (file or
+#      directory) is checked; :// / mailto: / outside-repo targets stay
+#      silent; a leading-/ miss is repo-root-relative; fences, list-nested
+#      fences included, inline code, autolinks, and raw HTML are scrubbed,
+#      while four-column-indented list content keeps its links; under
+#      --file, link checks stay scoped to the named task. A `.md` link
+#      still resolves against the linking file's directory and, as a
+#      fallback, against the project root.
 #   am* the base skill's <archive> step 3 move instruction, executed as
 #      the shell sequence it names: one `git ls-files --error-unmatch`
 #      probe, `git mv` on a tracked file, plain `mv` on a non-zero probe.
@@ -287,30 +284,39 @@ l3_sibling_task_link_resolves() {
     $ok
 }
 
-l4_wiki_dangling_task_link_blocks() {
-    # A wiki page linking a missing tasks/ path produces a broken-link
-    # finding naming that wiki page on a default run.
+l4_non_task_markdown_stays_silent() {
+    # A non-task markdown file is never read by the link check: dangling
+    # relative and leading-/ links in a wiki page or a site content page
+    # draw no finding on a default or --include-archive run.
     local tasks; tasks=$(fresh_tasks l4)
     local root; root=$(dirname "$tasks")
-    mkdir -p "$root/wiki"
+    mkdir -p "$root/wiki" "$root/site/content"
     cat > "$root/wiki/page.md" <<'EOF'
 # Wiki page
 
-See [the task](../tasks/missing_task.md).
+See [the task](../tasks/missing_task.md) and [a site route](/posts/first-post/).
+EOF
+    cat > "$root/site/content/index.md" <<'EOF'
+# Site index
+
+See [missing](missing-page.md) and [a route](/posts/first-post/).
 EOF
     local ret; ret=$(run_lint "$tasks")
     local rc=${ret%%|*} out=${ret#*|}
     local ok=true
-    assert_eq "exit 1 (wiki dangling task link blocks)" "$rc" "1" || ok=false
-    assert_contains "broken-link finding fires" "$out" "broken-link" || ok=false
-    assert_contains "finding names the wiki page" "$out" "wiki/page.md" || ok=false
+    assert_eq "exit 0 (non-task markdown is not read on a default run)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link from the wiki page" "$out" "broken-link" || ok=false
+
+    ret=$(run_lint "$tasks" --include-archive)
+    rc=${ret%%|*}; out=${ret#*|}
+    assert_eq "exit 0 (non-task markdown is not read under --include-archive)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link under --include-archive" "$out" "broken-link" || ok=false
     $ok
 }
 
-l5_non_task_md_skips_other_checks() {
-    # A non-task .md under the repo root with no task frontmatter must
-    # not fire footnote / wikilink / soft-pointer / repeated-link checks;
-    # only the link check runs on it.
+l5_non_task_md_never_read() {
+    # A non-task .md under the repo root is never read, so its footnotes,
+    # wikilinks, position claims, repeated links, and links draw no finding.
     local tasks; tasks=$(fresh_tasks l5)
     local root; root=$(dirname "$tasks")
     local now; now=$(date +%Y-%m-%dT%H:%M:%S)
@@ -327,7 +333,7 @@ EOF
     local ret; ret=$(run_lint "$tasks")
     local rc=${ret%%|*} out=${ret#*|}
     local ok=true
-    assert_eq "exit 0 (non-task md only runs link check)" "$rc" "0" || ok=false
+    assert_eq "exit 0 (non-task md is never read)" "$rc" "0" || ok=false
     assert_not_contains "no footnote finding on non-task md" "$out" "footnote" || ok=false
     assert_not_contains "no wikilink finding on non-task md" "$out" "wikilink" || ok=false
     assert_not_contains "no soft-pointer finding on non-task md" "$out" "soft-pointer" || ok=false
@@ -336,23 +342,43 @@ EOF
     $ok
 }
 
-l6_non_md_target_existence() {
-    # Existing non-.md in-repo target is clean; missing non-.md blocks.
+l6_existing_target_kinds_resolve() {
+    # A live task linking an existing file, directory, live task, and
+    # archived task draws no finding; a missing non-.md target blocks.
     local tasks; tasks=$(fresh_tasks l6)
     local root; root=$(dirname "$tasks")
-    mkdir -p "$root/scripts"
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    mkdir -p "$root/scripts" "$root/docs/chapter"
     : > "$root/scripts/helper.sh"
-    write_linking_task "$tasks" "test_ok-script.md" "scripts/helper.sh"
+    write_task "$tasks" "test_live-target.md" "$now"
+    archived_task "$tasks" "test_archived-target.md" "finished"
+    emit "$tasks/test_ok-targets.md" <<EOF
+---
+description: existing target kinds fixture
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
+
+# Existing target kinds
+
+See [file](scripts/helper.sh), [dir](docs/chapter), [live](test_live-target.md),
+and [archived](archive/test_archived-target.md).
+EOF
     local ret; ret=$(run_lint "$tasks")
     local rc=${ret%%|*} out=${ret#*|}
     local ok=true
-    assert_eq "exit 0 (existing non-.md target resolves)" "$rc" "0" || ok=false
-    assert_not_contains "no broken-link for existing script" "$out" "broken-link" || ok=false
+    assert_eq "exit 0 (existing target kinds resolve)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link for existing targets" "$out" "broken-link" || ok=false
 
     write_linking_task "$tasks" "test_missing-script.md" "scripts/missing.sh"
     ret=$(run_lint "$tasks")
     rc=${ret%%|*}; out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
     assert_eq "exit 1 (missing non-.md target blocks)" "$rc" "1" || ok=false
+    assert_eq "exactly one broken-link for the missing target" "$count" "1" || ok=false
     assert_contains "broken-link for missing script" "$out" "broken-link" || ok=false
     $ok
 }
@@ -403,136 +429,45 @@ l8_directory_target_resolves() {
     $ok
 }
 
-l9_makefile_exclude_prunes_dangling() {
-    # A uniquely named directory pruned by Makefile EXCLUDE contributes
-    # no finding for a dangling in-repo link under it.
-    local tasks; tasks=$(fresh_tasks l9)
-    local root; root=$(dirname "$tasks")
-    mkdir -p "$root/zz_lint_exclude_unique_l9"
-    cat > "$root/zz_lint_exclude_unique_l9/dangling.md" <<'EOF'
-# Excluded dangling
-
-See [missing](nope_missing_target.md).
-EOF
-    cat > "$root/Makefile" <<'EOF'
-EXCLUDE     := -path ./.git -prune -o \
-               -path './zz_lint_exclude_unique_l9' -prune -o
-EOF
-    local ret; ret=$(run_lint "$tasks")
-    local rc=${ret%%|*} out=${ret#*|}
-    local ok=true
-    assert_eq "exit 0 (EXCLUDE prunes dangling tree)" "$rc" "0" || ok=false
-    assert_not_contains "no broken-link from excluded tree" "$out" "broken-link" || ok=false
-
-    ret=$(run_lint "$tasks" --include-archive)
-    rc=${ret%%|*}; out=${ret#*|}
-    assert_eq "exit 0 (--include-archive also respects EXCLUDE)" "$rc" "0" || ok=false
-    assert_not_contains "no broken-link under --include-archive" "$out" "broken-link" || ok=false
-    $ok
-}
-
-l10_no_exclude_reports_dangling() {
-    # No Makefile EXCLUDE (and no git toplevel here): a dangling in-repo
-    # link outside .git/ blocks via the rglob fallback.
-    local tasks; tasks=$(fresh_tasks l10)
-    local root; root=$(dirname "$tasks")
-    # Explicitly no Makefile (fresh_tasks already leaves the root empty).
-    rm -f "$root/Makefile"
-    mkdir -p "$root/extra"
-    cat > "$root/extra/notes.md" <<'EOF'
-# Extra notes
-
-See [missing](does_not_exist.md).
-EOF
-    local ret; ret=$(run_lint "$tasks")
-    local rc=${ret%%|*} out=${ret#*|}
-    local ok=true
-    assert_eq "exit 1 (no EXCLUDE: dangling blocks)" "$rc" "1" || ok=false
-    assert_contains "broken-link finding fires" "$out" "broken-link" || ok=false
-    assert_contains "finding names the extra page" "$out" "extra/notes.md" || ok=false
-
-    ret=$(run_lint "$tasks" --include-archive)
-    rc=${ret%%|*}; out=${ret#*|}
-    assert_eq "exit 1 (--include-archive same without EXCLUDE)" "$rc" "1" || ok=false
-    assert_contains "broken-link under --include-archive" "$out" "broken-link" || ok=false
-    $ok
-}
-
-l24_gitignore_skips_node_modules() {
-    # Inside a real git toplevel, a gitignored node_modules README with a
-    # dangling relative link contributes no finding. Stage outside the
-    # surrounding ai-modules checkout so project_root is the git toplevel.
-    local root; root=$(ext_tmp)
-    git -C "$root" init -q
-    printf '%s\n' 'node_modules/' > "$root/.gitignore"
-    mkdir -p "$root/tasks/archive" "$root/node_modules/pkg"
-    write_task "$root/tasks" "test_gitignore-walk.md" "2026-01-01T00:00:00"
-    cat > "$root/node_modules/pkg/README.md" <<'EOF'
-# Vendored package
-
-See [docs](docs/api.md).
-EOF
-    local ret; ret=$(run_lint "$root/tasks")
-    local rc=${ret%%|*} out=${ret#*|}
-    local ok=true
-    assert_eq "exit 0 (gitignored node_modules silent)" "$rc" "0" || ok=false
-    assert_not_contains "no broken-link from node_modules" "$out" "node_modules" || ok=false
-    assert_not_contains "no broken-link finding at all" "$out" "broken-link" || ok=false
-    $ok
-}
-
-l25_non_prune_exclude_keeps_check() {
-    # A Makefile EXCLUDE that is not prune-shaped must not silence the
-    # link check. Outside git, the rglob fallback still sees README.md.
-    local tasks; tasks=$(fresh_tasks l25)
-    local root; root=$(dirname "$tasks")
-    cat > "$root/Makefile" <<'EOF'
-EXCLUDE := -name '*.tmp'
-EOF
-    cat > "$root/README.md" <<'EOF'
-# Root readme
-
-See [missing](does_not_exist.md).
-EOF
-    local ret; ret=$(run_lint "$tasks")
-    local rc=${ret%%|*} out=${ret#*|}
-    local ok=true
-    assert_eq "exit 1 (non-prune EXCLUDE still checks)" "$rc" "1" || ok=false
-    assert_contains "broken-link still fires" "$out" "broken-link" || ok=false
-    assert_contains "finding names README" "$out" "README.md" || ok=false
-    $ok
-}
-
 l26_leading_slash_repo_root_relative() {
     # A leading-/ destination that is not an existing absolute path is
-    # checked as repository-root-relative.
+    # checked as repository-root-relative; one present at the repository
+    # root resolves cleanly.
     local tasks; tasks=$(fresh_tasks l26)
     local root; root=$(dirname "$tasks")
-    cat > "$root/README.md" <<'EOF'
-# Root readme
+    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    : > "$root/present-at-root.md"
+    emit "$tasks/test_leading-slash.md" <<EOF
+---
+description: leading-slash destination fixture
+scope: "test"
+created: $now
+updated: $now
+status: open
+reported-by: Test User
+---
 
-See [abs](/docs/missing.md) and [rel](docs/missing.md).
+# Leading-slash fixture
+
+See [abs](/docs/missing.md), [rel](docs/missing.md), and [present](/present-at-root.md).
 EOF
     local ret; ret=$(run_lint "$tasks")
     local rc=${ret%%|*} out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
     local ok=true
     assert_eq "exit 1 (leading-slash miss blocks)" "$rc" "1" || ok=false
+    assert_eq "exactly the two missing paths report" "$count" "2" || ok=false
     assert_contains "abs label in finding" "$out" "'abs'" || ok=false
     assert_contains "rel label in finding" "$out" "'rel'" || ok=false
+    assert_not_contains "present-at-root path draws no finding" "$out" "link target missing: present-at-root.md" || ok=false
     $ok
 }
 
-l11_file_scope_ignores_other_md() {
-    # Under --file, a dangling link in a different repo markdown file is
-    # ignored; a dangling link in the named task still reports.
+l11_file_scope_ignores_other_task() {
+    # Under --file, a dangling link in a different task file is ignored;
+    # a dangling link in the named task still reports.
     local tasks; tasks=$(fresh_tasks l11)
-    local root; root=$(dirname "$tasks")
-    mkdir -p "$root/wiki"
-    cat > "$root/wiki/other.md" <<'EOF'
-# Other
-
-See [missing](../tasks/ghost.md).
-EOF
+    write_linking_task "$tasks" "test_other.md" "ghost_other.md"
     write_linking_task "$tasks" "test_named.md" "ghost_named.md"
     local ret; ret=$(run_lint "$tasks" --file "$tasks/test_named.md")
     local rc=${ret%%|*} out=${ret#*|}
@@ -540,7 +475,7 @@ EOF
     assert_eq "exit 1 (named task dangling still blocks)" "$rc" "1" || ok=false
     assert_contains "broken-link for named task" "$out" "broken-link" || ok=false
     assert_contains "finding names the scoped task" "$out" "test_named.md" || ok=false
-    assert_not_contains "wiki other.md stays out of --file report" "$out" "other.md" || ok=false
+    assert_not_contains "other task stays out of --file report" "$out" "test_other.md" || ok=false
     $ok
 }
 
@@ -938,38 +873,6 @@ EOF
     $ok
 }
 
-l27_exclude_with_find_action_rejected() {
-    # A prune-shaped EXCLUDE that also carries find actions is rejected as
-    # a whole: no action runs, and the link check falls back to the rglob
-    # walk, so a dangling README link still blocks.
-    local tasks; tasks=$(fresh_tasks l27)
-    local root; root=$(dirname "$tasks")
-    printf '# Victim\n' > "$root/victim.md"
-    cat > "$root/Makefile" <<'EOF'
-EXCLUDE := -path ./.git -prune -o \
-           -name README.md -exec touch l27_exec_sentinel ';' -o \
-           -name victim.md -delete -o
-EOF
-    cat > "$root/README.md" <<'EOF'
-# Root readme
-
-See [missing](does_not_exist.md).
-EOF
-    local ret; ret=$(run_lint "$tasks")
-    local rc=${ret%%|*} out=${ret#*|}
-    local ok=true
-    assert_eq "exit 1 (rejected EXCLUDE keeps link check)" "$rc" "1" || ok=false
-    assert_contains "broken-link still fires" "$out" "broken-link" || ok=false
-    assert_contains "finding names README" "$out" "README.md" || ok=false
-    if [[ -e "$root/l27_exec_sentinel" ]]; then
-        echo "  FAIL: -exec from EXCLUDE ran (sentinel created)"; ok=false
-    fi
-    if [[ ! -e "$root/victim.md" ]]; then
-        echo "  FAIL: -delete from EXCLUDE ran (victim.md removed)"; ok=false
-    fi
-    $ok
-}
-
 l28_leading_inline_code_keeps_link() {
     # A paragraph line that opens with an inline code span still has its
     # links checked: the blanked span must not read as indented code.
@@ -1087,43 +990,38 @@ EOF
     $ok
 }
 
-l31_non_ascii_markdown_name_checked() {
-    # git quotes non-ASCII paths unless -z is used; a non-ASCII markdown
-    # file must stay in the git inventory and report its dangling link.
-    local root; root=$(ext_tmp)
-    git -C "$root" init -q
-    mkdir -p "$root/tasks/archive" "$root/wiki"
-    write_task "$root/tasks" "test_non-ascii.md" "2026-01-01T00:00:00"
-    printf '# Overview\n\nSee [gone](missing-from-umlaut-page.md).\n' > "$root/wiki/übersicht.md"
-    local ret; ret=$(run_lint "$root/tasks")
+l33_live_task_links_archived_task() {
+    # A live task linking an archived task resolves cleanly.
+    local tasks; tasks=$(fresh_tasks l33)
+    archived_task "$tasks" "test_archived-target.md" "finished"
+    write_linking_task "$tasks" "test_archive-link.md" "archive/test_archived-target.md"
+    local ret; ret=$(run_lint "$tasks")
     local rc=${ret%%|*} out=${ret#*|}
     local ok=true
-    assert_eq "exit 1 (non-ASCII page link blocks)" "$rc" "1" || ok=false
-    assert_contains "finding names the non-ASCII page" "$out" "wiki/übersicht.md" || ok=false
-    assert_contains "dangling target reported" "$out" "missing-from-umlaut-page.md" || ok=false
+    assert_eq "exit 0 (live task linking an archived task resolves)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link for archived target" "$out" "broken-link" || ok=false
     $ok
 }
 
-l32_subdirectory_root_uses_git_inventory() {
-    # A tasks/ tree below the git toplevel still takes the git inventory,
-    # so a gitignored node_modules under it stays silent while an
-    # unignored dangling link under the same root still blocks.
-    local top; top=$(ext_tmp)
-    git -C "$top" init -q
-    printf '%s\n' 'node_modules/' > "$top/.gitignore"
-    local root="$top/packages/app"
-    mkdir -p "$root/tasks/archive" "$root/node_modules/pkg" "$root/docs"
-    write_task "$root/tasks" "test_subdir-walk.md" "2026-01-01T00:00:00"
-    printf '# Vendored\n\nSee [docs](docs/api.md).\n' > "$root/node_modules/pkg/README.md"
-    printf '# Guide\n\nSee [gone](missing-from-guide.md).\n' > "$root/docs/guide.md"
-    local ret; ret=$(run_lint "$root/tasks")
+l34_archived_task_link_checked_only_in_archive_mode() {
+    # An archived task's dangling link reports under --include-archive and
+    # draws no finding on a default run.
+    local tasks; tasks=$(fresh_tasks l34)
+    archived_task "$tasks" "test_archived-linker.md" "finished"
+    printf '\nSee [gone](missing-archived-target.md).\n' >> "$tasks/archive/test_archived-linker.md"
+    local ret; ret=$(run_lint "$tasks")
     local rc=${ret%%|*} out=${ret#*|}
-    local count; count=$(grep -c "broken-link" <<<"$out" || true)
     local ok=true
-    assert_eq "exit 1 (unignored dangling link blocks)" "$rc" "1" || ok=false
-    assert_eq "exactly one broken-link below the subdirectory root" "$count" "1" || ok=false
-    assert_contains "unignored guide link reported" "$out" "missing-from-guide.md" || ok=false
-    assert_not_contains "gitignored node_modules stays silent" "$out" "node_modules" || ok=false
+    assert_eq "exit 0 (archived task link silent on a default run)" "$rc" "0" || ok=false
+    assert_not_contains "no broken-link on a default run" "$out" "broken-link" || ok=false
+
+    ret=$(run_lint "$tasks" --include-archive)
+    rc=${ret%%|*}; out=${ret#*|}
+    local count; count=$(grep -c "broken-link" <<<"$out" || true)
+    assert_eq "exit 1 (archived dangling link blocks under --include-archive)" "$rc" "1" || ok=false
+    assert_eq "exactly one broken-link for the archived task" "$count" "1" || ok=false
+    assert_contains "broken-link for archived task" "$out" "broken-link" || ok=false
+    assert_contains "dangling target reported" "$out" "missing-archived-target.md" || ok=false
     $ok
 }
 
@@ -3380,14 +3278,12 @@ y18_plain_scalars_yaml_accepts_stay_clean() {
 scenario l1 "lint: project-root-relative body link resolves"   l1_project_root_fallback_resolves
 scenario l2 "lint: link missing under both roots blocks"       l2_missing_under_both_roots_blocks
 scenario l3 "lint: sibling-task link still resolves"           l3_sibling_task_link_resolves
-scenario l4 "lint: wiki dangling task link blocks on default"  l4_wiki_dangling_task_link_blocks
-scenario l5 "lint: non-task md skips non-link per-file checks" l5_non_task_md_skips_other_checks
-scenario l6 "lint: non-.md target existence check"             l6_non_md_target_existence
+scenario l4 "lint: non-task markdown stays silent"             l4_non_task_markdown_stays_silent
+scenario l5 "lint: non-task md is never read"                  l5_non_task_md_never_read
+scenario l6 "lint: existing target kinds resolve"              l6_existing_target_kinds_resolve
 scenario l7 "lint: outbound and outside-repo targets silent"   l7_outbound_targets_silent
 scenario l8 "lint: directory target resolves"                  l8_directory_target_resolves
-scenario l9 "lint: Makefile EXCLUDE prunes dangling tree"      l9_makefile_exclude_prunes_dangling
-scenario l10 "lint: no EXCLUDE reports dangling outside .git"  l10_no_exclude_reports_dangling
-scenario l11 "lint: --file scopes link checks to named task"   l11_file_scope_ignores_other_md
+scenario l11 "lint: --file scopes link checks to named task"   l11_file_scope_ignores_other_task
 scenario l12 "lint: fenced markdown link ignored"              l12_fenced_link_ignored
 scenario l13 "lint: inline-code markdown link ignored"         l13_inline_code_link_ignored
 scenario l14 "lint: empty labels resolve existing and missing" l14_empty_labels_existing_and_missing
@@ -3400,15 +3296,12 @@ scenario l20 "lint: nested image descriptions stay excluded"  l20_nested_image_d
 scenario l21 "lint: reference title lines stay excluded"       l21_reference_definition_title_lines_are_excluded
 scenario l22 "lint: URL-spelled destinations normalize"        l22_url_spelled_destinations_normalize
 scenario l23 "lint: autolink and raw HTML ignored"             l23_literal_raw_constructs_ignored
-scenario l24 "lint: gitignored node_modules stay silent"       l24_gitignore_skips_node_modules
-scenario l25 "lint: non-prune EXCLUDE keeps link check"        l25_non_prune_exclude_keeps_check
 scenario l26 "lint: leading-slash is repo-root-relative"       l26_leading_slash_repo_root_relative
-scenario l27 "lint: EXCLUDE with find actions is rejected"     l27_exclude_with_find_action_rejected
 scenario l28 "lint: leading inline code keeps line links"      l28_leading_inline_code_keeps_link
 scenario l29 "lint: indented list content keeps links"         l29_indented_list_content_keeps_links
 scenario l30 "lint: list-nested fences are scrubbed"           l30_list_nested_fences_scrubbed
-scenario l31 "lint: non-ASCII markdown name stays checked"     l31_non_ascii_markdown_name_checked
-scenario l32 "lint: subdirectory root uses git inventory"      l32_subdirectory_root_uses_git_inventory
+scenario l33 "lint: live task links an archived task"          l33_live_task_links_archived_task
+scenario l34 "lint: archived link checked only in archive mode" l34_archived_task_link_checked_only_in_archive_mode
 
 scenario d1 "discover: git toplevel resolution"                d1_git_toplevel_resolves
 scenario d2 "discover: missing tasks/ signals exit 1"          d2_missing_tasks_exits_one

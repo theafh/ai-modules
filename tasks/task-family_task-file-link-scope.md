@@ -2,9 +2,11 @@
 description: "Restrict the task linter's link check to links written in task files, so it never judges links in any other markdown file in the repository."
 scope: plugins/ai_dev/skills/task
 created: 2026-10-31T15:51:33
-updated: 2026-11-02T14:12:25
-status: ready
+updated: 2026-11-03T19:51:17
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Restrict the Task Linter's Link Check to Task Files
