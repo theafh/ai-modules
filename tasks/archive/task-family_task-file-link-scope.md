@@ -2,8 +2,8 @@
 description: "Restrict the task linter's link check to links written in task files, so it never judges links in any other markdown file in the repository."
 scope: plugins/ai_dev/skills/task
 created: 2026-10-31T15:51:33
-updated: 2026-11-03T19:51:17
-status: audited
+updated: 2026-11-03T23:03:19
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -17,7 +17,7 @@ design-extended: false
 
 ## Context
 
-- The current remit comes from the archived [task-family_repo-wide-link-integrity](archive/task-family_repo-wide-link-integrity.md), which widened the link walk from task files to every markdown file under the repository root, taking its inventory from `git ls-files` and filtering it by a prune-shaped Makefile `EXCLUDE`. This task reverses that walk and keeps the rest of its work: checking links to non-`.md` targets, silence for links that leave the repository, the repository-root reading of a leading-`/` destination, and skipping fenced code and inline code.
+- The current remit comes from the archived [task-family_repo-wide-link-integrity](task-family_repo-wide-link-integrity.md), which widened the link walk from task files to every markdown file under the repository root, taking its inventory from `git ls-files` and filtering it by a prune-shaped Makefile `EXCLUDE`. This task reverses that walk and keeps the rest of its work: checking links to non-`.md` targets, silence for links that leave the repository, the repository-root reading of a leading-`/` destination, and skipping fenced code and inline code.
 - The widened walk misjudges markdown that is not repository documentation. A website engine's host content links site routes such as `/posts/first-post/`, which the engine resolves from page paths and slugs at request time. The linter reads them as repository-root paths and reports each one as a blocking `broken-link`, so a consuming repository had to add a Makefile `EXCLUDE` solely to silence them. Whether a non-task markdown file's links are valid belongs to that file's own tooling, such as a wiki linter or a host validator.
 - In `plugins/ai_dev/skills/task/scripts/lint.py`, `main` builds `link_pages` from `iter_repo_markdown_files(tasks.parent)` on a default or `--include-archive` run and from the scoped file under `--file`, while the other per-file checks iterate `pages` from `iter_task_files`. The inventory behind `iter_repo_markdown_files` is that function together with every helper, module constant, and import that it alone uses.
 - The remit is stated in prose in the module docstring, the `argparse` description, the `--include-archive` help text, and the `check_local_links` docstring of `lint.py`; in the base `task` skill's `<lint>` passage and its `<markdown_policy>` **Local cross-references are standard markdown links.** bullet; in `task_fix`'s `<authority>` block and its **Remediate.** step ("including broken in-repo links wherever they live"); and in the `auto_shaper_task` rule that begins "Read the base `task` skill and `task_fix` before editing."
