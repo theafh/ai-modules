@@ -276,14 +276,14 @@ files.
   covers the static contract (SKILL.md budgets and blocks, the six shape
   tags, the per-harness greps that must return nothing, the reference set,
   registration lockstep, and the eval runner's stop on a failed or empty
-  stage); `evals/` holds 21 staged fixtures, one per
-  independently staged behavioural acceptance item, driven by
+  stage); `evals/test_run.py` proves the runner's wiring against a stub
+  worker; `evals/` holds 26 staged evals. Each behavioural eval stages one
+  behaviour and the `smoke_*` evals check the runner's modes, driven by
   `evals/run.py` on the default Cursor worker with a deterministic
-  `grade.sh`. The runner
-  denies the spawn tool for the fixtures that stage a host with no
-  delegation surface, and brackets every eval with a host-checkout
-  `git status` so a sandbox escape fails the eval that caused it. See
-  `evals/README.md` for the signal each eval uses.
+  `grade.sh`. The runner withholds tools under its withheld-tool rule and
+  brackets every eval with a host-checkout `git status` so a sandbox escape
+  fails the eval that caused it. See `evals/README.md` for the signal each
+  eval uses and the `## Runner modes` section.
 - **`git_refresh/`**: Pattern A. `script_tests/` covers the bundled
   `refresh_repo.sh` over staged repositories, plus two eval-harness
   scenarios: the runner's `stage()` stops on a failed or empty stage, and

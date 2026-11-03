@@ -55,7 +55,7 @@ files.
 | `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks, parallel-runner checks, the runner's stop on a failed or empty stage among them, and the inert-worker grader pin, + `evals/` over the autonomous readiness loop (repair-to-ready, frozen commitments, isolated re-gates, last-call citation refutation, gate/verifier/drift stops, mechanical lint cleanup). |
 | `guardrail_audit/` | `guardrail_audit` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md and registration contract + `evals/` over six staged fixtures with byte-identity grading. |
 | `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract and the eval runner's stop on a failed or empty stage + `evals/` over six staged fixtures. |
-| `agent_spinner/` | `agent_spinner` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md / references / grep / registration contract + `evals/` over 21 staged fixtures, one per independently staged behavioural acceptance item. The runner denies the spawn tool for no-delegation-surface fixtures and brackets each eval with a host-checkout `git status`. |
+| `agent_spinner/` | `agent_spinner` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md / references / grep / registration contract, the eval runner's plumbing test, + `evals/` over 26 staged evals. Each behavioural eval stages one behaviour and the `smoke_*` evals check the runner's modes; the runner withholds tools under its withheld-tool rule and brackets each eval with a host-checkout `git status`. |
 | `git_refresh/` | `git_refresh` | Pattern A (skill-creator-aligned) | `script_tests/` over the bundled `refresh_repo.sh` on staged repositories, plus the eval runner's stop on a failed or empty stage, eval 3's grade reading the gated order from the helper log, eval 4's grade reading the helper log and response, and the inert-worker grader pin + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker behind a logging shim around the deployed helper → grade) in the shared `tests/lib/eval_runner` pool. |
 | `ai_instruction_writing/` | `ai_instruction_writing` | Pattern A (script-only) | `script_tests/` asserts the static prose contract of a skill that ships no bundled scripts. |
 | `charter_guardrail/` | `guardrail` | Pattern A (script-only) | `script_tests/` exercises the `charter_guardrail.sh` hook that protects `CHARTER.md`: its block and allow decisions for Claude, Codex, and Antigravity tool calls and for shell commands that read or write the charter, the `guardrail/charter-*` branch exception, and its behavior without `jq`. It also checks the hook registrations, the Codex deploy wiring, and how the docs and wiki describe Codex plugin-hook trust; no `run_all.sh`, so drive `script_tests/run.sh` directly. |
@@ -76,7 +76,10 @@ harness here regardless of pattern.
 ### Model policy: `--vendor` selects the worker; graders stay inherited or model-free
 
 Every harness that runs a skill as a subprocess goes through
-`tests/lib/vendor.py`. Run every eval that needs no Claude-specific feature
+`tests/lib/vendor.py`. The parity rule in TESTING.md's `## Running Tests`
+governs every harness: an eval runs and grades the same way on Claude and
+Cursor, and a harness is vendor-specific only when it tests a vendor-specific
+feature, which it names. Run every eval that needs no Claude-specific feature
 without `--vendor`: the default is Cursor, the project's measurement vendor,
 because Cursor runs are cheaper and faster, so develop and iterate on it and
 rely on its results without a matching Claude run. A test that exercises a
@@ -96,14 +99,18 @@ Do not pin dated ids such as `claude-sonnet-4-6` — Claude uses the latest
 | Worker model | `sonnet` (latest alias) | `auto` |
 | Judge / meta LLM | inherit (omit `--model`) | `auto` |
 | Deterministic graders | model-free | model-free |
+| Second turn | `--session-id` on the first turn, `--resume` with the same id on later turns | no session flag on the first turn, `--resume` with the first stream's `session_id` on later turns |
+| Staged agents | plugin roles in the scratch config directory's `agents/`, fixture agents in the sandbox project's `.claude/agents/` | both in the sandbox project's `.cursor/agents/` |
+| Withheld tools | shell and write by `--disallowedTools`; spawn declared absent in the prompt | shell and write by deny entries in `proj/.cursor/cli.json`; spawn declared absent in the prompt |
 
 `--model` / `--judge-model` override the vendor default; `--model ''`
 inherits the CLI default. `--worker-bin` overrides the binary;
-`--claude-bin` remains a deprecated alias. Claude-only surfaces
-(`trigger_evals/`, `natural_language/`) default to Claude and reject an
-explicit `--vendor cursor` until a Cursor equivalent exists, so they run on
-Claude wherever a change needs them, in the foreground, with `--vendor claude`
-in the command.
+`--claude-bin` remains a deprecated alias. Claude-only surfaces default to
+Claude and reject an explicit `--vendor cursor` until a Cursor equivalent
+exists: `trigger_evals/` inspects Claude-specific skill-load evidence from
+`claude -p` runs, and `natural_language/` exercises Claude output-style
+selection. They run on Claude wherever a change needs them, in the foreground,
+with `--vendor claude` in the command.
 
 The Cursor twin of this file is `tests/AGENTS.md` — keep the vendor
 table, the Claude-only list, and the parallel-workers rule in lockstep

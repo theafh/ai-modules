@@ -11,11 +11,12 @@ tests/agent_spinner/
 ├── run_all.sh                   # static contract entrypoint
 ├── script_tests/run.sh          # SKILL.md, references, greps, registration
 ├── evals/
-│   ├── README.md                # the signal each eval uses, and why
+│   ├── README.md                # the signal each eval uses, and the runner modes
 │   ├── evals.json
 │   ├── stage.sh
 │   ├── grade.sh
-│   ├── run.py                   # vendor worker runner (Cursor by default)
+│   ├── run.py                   # vendor worker runner with inline-body, second-turn, staged-agent, and tool-record modes
+│   ├── test_run.py              # runner plumbing against a stub worker
 │   └── fixtures/<id>/setup.sh
 └── workspace/                   # run output (gitignored)
 ```
@@ -30,19 +31,21 @@ tests/agent_spinner/
   action-first templates, the trigger eval set, registration lockstep across
   both plugin manifests, both marketplaces, both READMEs, and the wiki concept
   page, and `script_tests/` proves the eval runner's stop on a failed or
-  empty stage through `tests/lib/check_stage_guard.py`.
-- **evals**: 21 staged fixtures, one per independently staged behavioural
-  Acceptance item in the task that introduced the skill. Every compound
-  acceptance bullet was split into its own fixture, so a failure names one
-  behaviour rather than a conjoined verdict.
+  empty stage through `tests/lib/check_stage_guard.py`. `evals/test_run.py`
+  proves the runner's modes and wiring against a stub worker.
+- **evals**: 26 staged evals. Each behavioural eval stages one behaviour, and
+  the `smoke_*` evals check the runner's modes. Every compound acceptance
+  bullet was split into its own eval, so a failure names one behaviour rather
+  than a conjoined verdict.
 
 ## How a no-delegation-surface fixture stays honest
 
-Seven evals need a host that exposes no callable spawn surface. The runner
-denies the spawn tool on the worker's own command line for those, so the
-absence is a harness state the worker runs into rather than a claim a note
-makes at it. That is what makes the inline-floor and governed-stop evals
-measure anything.
+`jq -r '.evals[] | select(.harness.needs_real_absence == true) | .id' tests/agent_spinner/evals/evals.json`
+lists the evals that need a host exposing no callable spawn surface. The runner withholds the spawn class under
+its withheld-tool rule: no Cursor deny entry withholds the spawn tool, so the
+class is a declared absence in the prompt on both vendors. That is what makes
+the inline-floor and governed-stop evals measure anything. The `## Runner
+modes` section of `evals/README.md` holds the full account.
 
 ## What "outside the sandbox" means here
 

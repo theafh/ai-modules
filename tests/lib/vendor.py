@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 VENDORS = ("claude", "cursor")
+
+# The deploy script's target ids, uppercased for the agent-frontmatter rewrite.
+_DEPLOY_TARGETS = ("vscode", "claude", "cursor", "codex", "antigravity", "opencode")
+_KNOWN_AGENT_PREFIXES = tuple(target.upper() for target in _DEPLOY_TARGETS)
 
 # Isolated-sandbox evals that use tests/lib/eval_runner.py default to this many
 # concurrent jobs (each with its own TMPDIR). Pass --workers 1 to serialize.
@@ -76,6 +82,192 @@ _CONFIGS = {
         label="agent -p",
     ),
 }
+
+
+# --- Withheld tool classes ---------------------------------------------------
+#
+# One row per class of tools the runner can withhold from a worker. A class is
+# a group of tools the runner withholds together. `claude` names the tools
+# Claude Code calls the class, and `cursor_kind` is the tool-kind key Cursor's
+# stream records. The route fields name how each vendor withholds the class:
+# `cli-flag` is a command-line flag, `cli-config` is a deny entry in the CLI's
+# project config, and `declared-absence` is a prompt note on both vendors.
+# `spawn` is declared on both vendors because neither CLI offers a flag or deny
+# entry that removes its spawn tool.
+WITHHELD_TOOL_CLASSES: dict[str, dict[str, object]] = {
+    "spawn": {
+        "claude": ("Agent", "Task", "Workflow"),
+        "cursor_kind": "taskToolCall",
+        "claude_route": "declared-absence",
+        "cursor_route": "declared-absence",
+    },
+    "shell": {
+        "claude": ("Bash",),
+        "cursor_kind": "shellToolCall",
+        "claude_route": "cli-flag",
+        "cursor_route": "cli-config",
+        "cursor_deny": "Shell(*)",
+    },
+    "write": {
+        "claude": ("Edit", "Write", "NotebookEdit"),
+        "cursor_kind": "editToolCall",
+        "claude_route": "cli-flag",
+        "cursor_route": "cli-config",
+        "cursor_deny": "Write(**)",
+    },
+}
+
+WITHHELD_TOOL_CLASS_NAMES = tuple(WITHHELD_TOOL_CLASSES)
+
+
+@dataclass(frozen=True)
+class WithheldPlan:
+    """What one vendor and class list need, and the mechanism that applied."""
+
+    classes: tuple[str, ...] = ()
+    extra_args: tuple[str, ...] = ()
+    deny_entries: tuple[str, ...] = ()
+    declared: tuple[str, ...] = ()
+    withheld_by: dict[str, str] = field(default_factory=dict)
+
+
+def withheld_tool_plan(vendor: str, classes: list[str] | None) -> WithheldPlan:
+    """Resolve withheld classes into CLI arguments, deny entries, and notes.
+
+    A value outside the class set raises ``ValueError`` so the caller can stop
+    the run before staging, naming the eval. The classes come back in the
+    table's canonical order, so a key built from the plan stays stable however
+    the eval spells its list.
+    """
+
+    chosen = config(vendor)
+    requested = list(classes or [])
+    unknown = [name for name in requested if name not in WITHHELD_TOOL_CLASSES]
+    if unknown:
+        raise ValueError(
+            "unknown withheld tool class(es) "
+            f"{', '.join(sorted(set(unknown)))}; choose from "
+            f"{', '.join(WITHHELD_TOOL_CLASS_NAMES)}"
+        )
+
+    ordered = [name for name in WITHHELD_TOOL_CLASS_NAMES if name in requested]
+    claude_names: list[str] = []
+    deny_entries: list[str] = []
+    declared: list[str] = []
+    withheld_by: dict[str, str] = {}
+    for name in ordered:
+        row = WITHHELD_TOOL_CLASSES[name]
+        if chosen.name == "claude":
+            route = str(row["claude_route"])
+            if route == "cli-flag":
+                claude_names.extend(str(tool) for tool in row["claude"])
+                withheld_by[name] = "cli-flag"
+            else:
+                declared.append(name)
+                withheld_by[name] = "declared-absence"
+        else:
+            route = str(row["cursor_route"])
+            if route == "cli-config":
+                deny_entries.append(str(row["cursor_deny"]))
+                withheld_by[name] = "cli-config"
+            else:
+                declared.append(name)
+                withheld_by[name] = "declared-absence"
+
+    extra_args = ["--disallowedTools", *claude_names] if claude_names else []
+    return WithheldPlan(
+        classes=tuple(ordered),
+        extra_args=tuple(extra_args),
+        deny_entries=tuple(deny_entries),
+        declared=tuple(declared),
+        withheld_by=withheld_by,
+    )
+
+
+def withheld_detail(plan: WithheldPlan) -> dict[str, str]:
+    """Each withheld class's mechanism plus its flag or deny entry."""
+
+    detail: dict[str, str] = {}
+    for name in plan.classes:
+        mechanism = plan.withheld_by[name]
+        if mechanism == "cli-flag":
+            detail[name] = "cli-flag:" + ",".join(
+                str(tool) for tool in WITHHELD_TOOL_CLASSES[name]["claude"]
+            )
+        elif mechanism == "cli-config":
+            detail[name] = "cli-config:" + str(
+                WITHHELD_TOOL_CLASSES[name]["cursor_deny"]
+            )
+        else:
+            detail[name] = "declared-absence:prompt-note"
+    return detail
+
+
+def write_cursor_deny_entries(
+    workdir: pathlib.Path | str, deny_entries: list[str] | tuple[str, ...]
+) -> pathlib.Path | None:
+    """Write deny entries into a workdir's Cursor project config.
+
+    The file is ``<workdir>/.cursor/cli.json`` with the shape
+    ``{"permissions": {"allow": [], "deny": [...]}}``. An existing file keeps
+    its allow list and gains only the entries it lacks.
+    """
+
+    entries = [entry for entry in deny_entries if entry]
+    if not entries:
+        return None
+    config_dir = pathlib.Path(workdir) / ".cursor"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    path = config_dir / "cli.json"
+    data: dict[str, object] = {}
+    if path.is_file():
+        try:
+            loaded = json.loads(path.read_text())
+            if isinstance(loaded, dict):
+                data = loaded
+        except json.JSONDecodeError:
+            data = {}
+    permissions = data.get("permissions")
+    if not isinstance(permissions, dict):
+        permissions = {}
+        data["permissions"] = permissions
+    allow = permissions.get("allow")
+    if not isinstance(allow, list):
+        permissions["allow"] = []
+    deny = permissions.get("deny")
+    if not isinstance(deny, list):
+        deny = []
+        permissions["deny"] = deny
+    for entry in entries:
+        if entry not in deny:
+            deny.append(entry)
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    return path
+
+
+def classify_tool(vendor: str, name: str) -> str:
+    """Return the withheld class a tool name belongs to, or ``other``."""
+
+    chosen = config(vendor)
+    for tool_class in WITHHELD_TOOL_CLASS_NAMES:
+        row = WITHHELD_TOOL_CLASSES[tool_class]
+        if chosen.name == "claude":
+            if name in row["claude"]:
+                return tool_class
+        elif name == row["cursor_kind"]:
+            return tool_class
+    return "other"
+
+
+def classify_tool_list(vendor: str, names: list[str]) -> list[str]:
+    """Map a stream's tool list to classes, deduplicated in stream order."""
+
+    classes: list[str] = []
+    for name in names:
+        tool_class = classify_tool(vendor, name)
+        if tool_class not in classes:
+            classes.append(tool_class)
+    return classes
 
 
 def config(vendor: str) -> VendorConfig:
@@ -211,15 +403,24 @@ def build_print_cmd(
     extra_args: list[str] | None = None,
     prompt_before_flags: bool = False,
     output_format: str | None = None,
+    session_id: str | None = None,
+    resume: str | None = None,
 ) -> list[str]:
     """Build the non-interactive worker command for one vendor.
 
     ``output_format`` defaults to plain text on Cursor and to the CLI default
     on Claude. Pass ``stream-json`` to replace Cursor's ``--output-format text``
     and to add ``--output-format stream-json --verbose`` on Claude.
+
+    A Claude first turn passes ``--session-id <id>`` and a later turn passes
+    ``--resume <id>``. A Cursor first turn passes no session flag and a later
+    turn passes ``--resume <id>`` with the session id its first stream carried.
+    Passing both ``session_id`` and ``resume`` is an error.
     """
 
     chosen = config(vendor)
+    if session_id and resume:
+        raise ValueError("pass either session_id or resume, not both")
     extras = list(extra_args or [])
     fmt = (output_format or "").strip() or None
     if chosen.name == "claude":
@@ -229,6 +430,10 @@ def build_print_cmd(
             cmd = [bin, "-p", "--permission-mode", "bypassPermissions"]
         if model:
             cmd += ["--model", model]
+        if resume:
+            cmd += ["--resume", resume]
+        elif session_id:
+            cmd += ["--session-id", session_id]
         if fmt == "stream-json":
             cmd += ["--output-format", "stream-json", "--verbose"]
         elif fmt is not None:
@@ -243,6 +448,8 @@ def build_print_cmd(
         cmd += ["--workspace", workspace]
     if model:
         cmd += ["--model", model]
+    if resume:
+        cmd += ["--resume", resume]
     cmd += ["--output-format", fmt or "text"]
     cmd += extras
     cmd.append(prompt)
@@ -331,16 +538,69 @@ def stage_skill_tree(
     return staged_skill
 
 
+_AGENT_PREFIX_LINE_RE = re.compile(r"^([A-Z]+)_([A-Za-z0-9_-]+:.*)$")
+
+
+def render_agent_frontmatter(text: str, vendor: str) -> str:
+    """Render an agent file's frontmatter for one vendor, body unchanged.
+
+    The rule mirrors ``rewrite_agent_frontmatter`` in
+    ``deployment/deployment.sh``: an unprefixed line stays, the worker
+    vendor's own uppercase prefix is stripped, and a line prefixed with any
+    other deploy target is dropped together with its indented continuation
+    block.
+    """
+
+    chosen = config(vendor)
+    own = chosen.name.upper()
+    in_frontmatter = False
+    frontmatter_done = False
+    skip_prefixed_block = False
+    output: list[str] = []
+
+    for line in text.splitlines():
+        if not frontmatter_done and line == "---":
+            output.append("---")
+            if in_frontmatter:
+                in_frontmatter = False
+                frontmatter_done = True
+            else:
+                in_frontmatter = True
+            continue
+
+        if in_frontmatter:
+            if skip_prefixed_block:
+                if not line.strip() or line[:1].isspace():
+                    continue
+                skip_prefixed_block = False
+
+            match = _AGENT_PREFIX_LINE_RE.match(line)
+            if match:
+                prefix, rest = match.group(1), match.group(2)
+                if prefix == own:
+                    output.append(rest)
+                    continue
+                if prefix in _KNOWN_AGENT_PREFIXES:
+                    skip_prefixed_block = True
+                    continue
+
+        output.append(line)
+
+    return "\n".join(output) + "\n"
+
+
 def stage_agents(
     workdir: pathlib.Path,
     vendor: str,
     agent_files: list[pathlib.Path] | None = None,
 ) -> list[pathlib.Path]:
-    """Copy fixture agent files into the sandbox vendor agents directory.
+    """Stage fixture agent files into the sandbox vendor agents directory.
 
-    Discoverable agents that ``discover_artifacts`` names go through the
-    deploy script's rendering instead. This helper is the minimal post
-    micro-deploy path for fixture agents that are not among those names.
+    Each file's frontmatter is rendered for the worker's vendor by
+    ``render_agent_frontmatter`` and its body is copied unchanged. Discoverable
+    agents that ``discover_artifacts`` names go through the deploy script's
+    rendering instead. This helper is the minimal post micro-deploy path for
+    fixture agents that are not among those names.
     """
 
     chosen = config(vendor)
@@ -355,7 +615,8 @@ def stage_agents(
         if not agent_path.is_file():
             raise FileNotFoundError(f"agent file not found: {agent_path}")
         dest = agents_root / agent_path.name
-        shutil.copy2(agent_path, dest)
+        dest.write_text(render_agent_frontmatter(agent_path.read_text(), chosen.name))
+        shutil.copystat(agent_path, dest)
         staged.append(dest)
     return staged
 

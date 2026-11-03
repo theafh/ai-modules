@@ -85,9 +85,9 @@ for those runs because Cursor tests are cheaper and faster: development and
 iteration happen on it (`agent -p` on model `auto`), and its results stand on
 their own without a matching Claude run. The Claude worker (`claude -p` on
 `sonnet`) runs where a test exercises a Claude-specific feature, which the test
-names, and otherwise only when the human operator explicitly asks for a Claude
-run, which happens from time to time; an agent never runs Claude tests in the
-background. Pin the worker for a
+names, under the parity rule in `## Running Tests`, and otherwise only when the
+human operator explicitly asks for a Claude run, which happens from time to
+time; an agent never runs Claude tests in the background. Pin the worker for a
 run so results stay comparable, and keep grading on the model-free grader.
 
 ## Coverage Expectations
@@ -187,13 +187,15 @@ about whether HEAD is broken.
 Run behavioural evals without `--vendor`. The default is the Cursor worker
 (`agent -p` with model `auto`), because Cursor tests are cheaper and faster
 than the Claude worker; the Claude-only harnesses default to Claude and stop
-with an error on an explicit `--vendor cursor`. Pass `--vendor claude`
-(`claude -p` on `sonnet`) for an eval that needs a Claude-specific feature,
-which the eval names, and otherwise only when the operator has explicitly
-asked for a Claude run. Pass it on a Claude-only harness too, where it repeats
-the default, so every Claude run shows in its command. The verdict cache keys
-on the worker model, so a Cursor result and a Claude result stay separate
-evidence. Grading stays model-free on either worker.
+with an error on an explicit `--vendor cursor`. An eval runs and grades the
+same way on Claude and Cursor, and a harness is vendor-specific only when it
+tests a vendor-specific feature, which it names. Pass `--vendor claude`
+(`claude -p` on `sonnet`) for an eval that needs such a feature and otherwise
+only when the operator has explicitly asked for a Claude run. Pass it on a
+Claude-only harness too, where it repeats the default, so every Claude run
+shows in its command. The verdict cache keys on the worker model, so a Cursor
+result and a Claude result stay separate evidence. Grading stays model-free on
+either worker.
 
 Trigger evals answer a different question, whether a skill's `description:`
 loads it on a realistic message. The trigger evals are Claude-only (the runner

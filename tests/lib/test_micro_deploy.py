@@ -601,6 +601,327 @@ def test_stream_parser_and_provenance() -> None:
     )
 
 
+def test_stream_parser_vendor_neutral_records() -> None:
+    """One call set parses to records that agree on class, helper, and failure.
+
+    The two streams carry the same spawn call, failed shell call, errored call,
+    read, and final message. Their result text stays each vendor's own
+    rendering, so a case requiring the two texts equal would fail.
+    """
+
+    shared_read = "/tmp/shared/.claude/skills/agent_spinner/SKILL.md"
+    claude_lines = "\n".join(
+        [
+            json.dumps(
+                {
+                    "type": "system",
+                    "subtype": "init",
+                    "session_id": "claude-sess",
+                    "tools": ["Read", "Bash", "Task", "Edit"],
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "id": "t1",
+                                "name": "Task",
+                                "input": {
+                                    "subagent_type": "smoke_replier",
+                                    "prompt": "hi",
+                                },
+                            }
+                        ]
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "user",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": "t1",
+                                "content": [
+                                    {"type": "text", "text": "STAGED_AGENT_TOKEN"}
+                                ],
+                            }
+                        ]
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "id": "t2",
+                                "name": "Bash",
+                                "input": {"command": "touch /tmp/proj/marker.txt"},
+                            }
+                        ]
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "user",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": "t2",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "permission denied by the harness",
+                                    }
+                                ],
+                                "is_error": True,
+                            }
+                        ]
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "parent_tool_use_id": "helper-1",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "id": "t3",
+                                "name": "Read",
+                                "input": {"file_path": shared_read},
+                            }
+                        ]
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "user",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": "t3",
+                                "content": "skill body",
+                            }
+                        ]
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "id": "t4",
+                                "name": "Bash",
+                                "input": {"command": "cat /tmp/proj/other.txt"},
+                            }
+                        ]
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "user",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": "t4",
+                                "content": "boom: cannot run",
+                                "is_error": True,
+                            }
+                        ]
+                    },
+                }
+            ),
+            json.dumps(
+                {"type": "result", "result": "claude final", "session_id": "claude-sess"}
+            ),
+        ]
+    )
+    cursor_lines = "\n".join(
+        [
+            json.dumps(
+                {
+                    "type": "system",
+                    "subtype": "init",
+                    "session_id": "cursor-sess",
+                    "model": "auto",
+                    "permissionMode": "default",
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "tool_call",
+                    "subtype": "completed",
+                    "toolCallId": "c1",
+                    "tool_call": {
+                        "taskToolCall": {
+                            "args": {
+                                "subagentType": {"custom": {"name": "smoke_replier"}},
+                                "prompt": "hi",
+                            },
+                            "result": {
+                                "success": {
+                                    "agentId": "helper-chat",
+                                    "conversationSteps": [],
+                                }
+                            },
+                        }
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "tool_call",
+                    "subtype": "completed",
+                    "toolCallId": "c2",
+                    "tool_call": {
+                        "shellToolCall": {
+                            "args": {"command": "touch /tmp/proj/marker.txt"},
+                            "result": {"permissionDenied": "shell denied"},
+                        }
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "tool_call",
+                    "subtype": "completed",
+                    "toolCallId": "c3",
+                    "tool_call": {
+                        "readToolCall": {
+                            "args": {"path": shared_read},
+                            "result": {"success": {}},
+                        }
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "tool_call",
+                    "subtype": "completed",
+                    "toolCallId": "c4",
+                    "tool_call": {
+                        "shellToolCall": {
+                            "args": {"command": "cat /tmp/proj/other.txt"},
+                            "result": {"error": {"message": "boom: cannot run"}},
+                        }
+                    },
+                }
+            ),
+            json.dumps(
+                {"type": "result", "result": "cursor final", "session_id": "cursor-sess"}
+            ),
+        ]
+    )
+    claude = micro_deploy.parse_stream_json("claude", claude_lines)
+    cursor = micro_deploy.parse_stream_json("cursor", cursor_lines)
+
+    check("claude parser session id", claude.session_id == "claude-sess")
+    check("cursor parser session id", cursor.session_id == "cursor-sess")
+    check("claude parser final message", claude.final_message == "claude final")
+    check("cursor parser final message", cursor.final_message == "cursor final")
+    check(
+        "claude init records offered classes",
+        claude.offered_classes == ["other", "shell", "spawn", "write"],
+    )
+    check("cursor stream records no offered classes", cursor.offered_classes is None)
+
+    def by_class(records, tool_class):
+        return [record for record in records if record.tool_class == tool_class]
+
+    for label, claude_records, cursor_records in (
+        ("spawn", by_class(claude.tools, "spawn"), by_class(cursor.tools, "spawn")),
+        ("shell", by_class(claude.tools, "shell"), by_class(cursor.tools, "shell")),
+    ):
+        check(
+            f"{label} class agrees across vendors",
+            len(claude_records) == len(cursor_records) > 0,
+        )
+    claude_spawn = by_class(claude.tools, "spawn")[0]
+    cursor_spawn = by_class(cursor.tools, "spawn")[0]
+    check(
+        "spawn helper agrees across vendors",
+        claude_spawn.helper == cursor_spawn.helper == "smoke_replier",
+    )
+    check(
+        "spawn input keeps each vendor's args mapping",
+        "subagent_type" in claude_spawn.input
+        and "subagentType" in cursor_spawn.input,
+    )
+    claude_shell = by_class(claude.tools, "shell")
+    cursor_shell = by_class(cursor.tools, "shell")
+    check(
+        "failed shell call agrees across vendors",
+        [record.failed for record in claude_shell] == [True, True]
+        and [record.failed for record in cursor_shell] == [True, True],
+    )
+    check(
+        "failed shell result text stays each vendor's rendering",
+        "permission denied by the harness" in claude_shell[0].result_text
+        and "permissionDenied" in cursor_shell[0].result_text
+        and claude_shell[0].result_text != cursor_shell[0].result_text,
+    )
+    check(
+        "errored call carries its message on both vendors",
+        "boom: cannot run" in claude_shell[1].result_text
+        and "boom: cannot run" in cursor_shell[1].result_text,
+    )
+    check(
+        "spawn result text stays each vendor's rendering",
+        "STAGED_AGENT_TOKEN" in claude_spawn.result_text
+        and "agentId" in cursor_spawn.result_text
+        and claude_spawn.result_text != cursor_spawn.result_text,
+    )
+    claude_helper = [record for record in claude.tools if record.tool_use_id == "t3"]
+    check(
+        "claude helper call keeps its parent_tool_use_id",
+        len(claude_helper) == 1
+        and claude_helper[0].parent_tool_use_id == "helper-1",
+    )
+
+    claude_paths = micro_deploy.paths_from_tools(claude.tools)
+    cursor_paths = micro_deploy.paths_from_tools(cursor.tools)
+    check(
+        "paths_from_tools yields the same path list on both vendors",
+        claude_paths == cursor_paths == [
+            "/tmp/proj/marker.txt",
+            shared_read,
+            "/tmp/proj/other.txt",
+        ],
+    )
+    claude_out = micro_deploy.classify_out_of_set(
+        claude_paths,
+        scratch_home=pathlib.Path("/tmp/scratch"),
+        sandbox_project=pathlib.Path("/tmp/proj"),
+    )
+    cursor_out = micro_deploy.classify_out_of_set(
+        cursor_paths,
+        scratch_home=pathlib.Path("/tmp/scratch"),
+        sandbox_project=pathlib.Path("/tmp/proj"),
+    )
+    check(
+        "classify_out_of_set flags the same artefact read on both vendors",
+        claude_out == cursor_out == [str(pathlib.Path(shared_read).resolve())],
+    )
+
+
 def test_classifier_cases() -> None:
     with tempfile.TemporaryDirectory() as td:
         root = pathlib.Path(td)
@@ -1707,6 +2028,7 @@ def main() -> int:
     test_run_worker_passes_launch_path()
     test_worker_env_overlays()
     test_stream_parser_and_provenance()
+    test_stream_parser_vendor_neutral_records()
     test_classifier_cases()
     test_shell_paths_expand_against_worker_env()
     test_run_worker_command_shape_and_timeout()

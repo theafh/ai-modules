@@ -9,6 +9,7 @@ Run:
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import sys
 import tempfile
@@ -169,6 +170,156 @@ def main() -> int:
         ],
     )
 
+    # --- sessions -----------------------------------------------------------
+    claude_first = vendor.build_print_cmd(
+        vendor="claude",
+        bin="claude",
+        model="sonnet",
+        prompt="hello",
+        output_format="stream-json",
+        session_id="sess-1",
+    )
+    check(
+        "claude first turn carries --session-id",
+        "--session-id" in claude_first
+        and claude_first[claude_first.index("--session-id") + 1] == "sess-1"
+        and "--resume" not in claude_first,
+    )
+    claude_resumed = vendor.build_print_cmd(
+        vendor="claude",
+        bin="claude",
+        model="sonnet",
+        prompt="hello",
+        output_format="stream-json",
+        resume="sess-1",
+    )
+    check(
+        "claude resumed turn carries --resume with the same id",
+        "--resume" in claude_resumed
+        and claude_resumed[claude_resumed.index("--resume") + 1] == "sess-1"
+        and "--session-id" not in claude_resumed,
+    )
+    cursor_first = vendor.build_print_cmd(
+        vendor="cursor",
+        bin="agent",
+        model="auto",
+        prompt="hello",
+        output_format="stream-json",
+    )
+    check(
+        "cursor first turn carries no session flag",
+        "--session-id" not in cursor_first and "--resume" not in cursor_first,
+    )
+    cursor_resumed = vendor.build_print_cmd(
+        vendor="cursor",
+        bin="agent",
+        model="auto",
+        prompt="hello",
+        output_format="stream-json",
+        resume="cursor-sess",
+    )
+    check(
+        "cursor resumed turn carries --resume with the stream id",
+        "--resume" in cursor_resumed
+        and cursor_resumed[cursor_resumed.index("--resume") + 1] == "cursor-sess"
+        and "--session-id" not in cursor_resumed,
+    )
+    claude_stream = vendor.build_print_cmd(
+        vendor="claude",
+        bin="claude",
+        model="",
+        prompt="hello",
+        output_format="stream-json",
+    )
+    check(
+        "claude unchanged command when no session is passed",
+        claude_stream
+        == [
+            "claude", "-p", "--permission-mode", "bypassPermissions",
+            "--output-format", "stream-json", "--verbose", "hello",
+        ],
+    )
+    cursor_stream = vendor.build_print_cmd(
+        vendor="cursor",
+        bin="agent",
+        model="auto",
+        prompt="hello",
+        output_format="stream-json",
+    )
+    check(
+        "cursor unchanged command when no session is passed",
+        cursor_stream
+        == [
+            "agent", "-p", "--force", "--sandbox", "disabled",
+            "--model", "auto", "--output-format", "stream-json", "hello",
+        ],
+    )
+
+    # --- withholding --------------------------------------------------------
+    for tool_class, names in (
+        ("shell", ["Bash"]),
+        ("write", ["Edit", "Write", "NotebookEdit"]),
+    ):
+        plan = vendor.withheld_tool_plan("claude", [tool_class])
+        check(
+            f"claude withholds {tool_class} by flag",
+            list(plan.extra_args) == ["--disallowedTools", *names]
+            and plan.withheld_by == {tool_class: "cli-flag"}
+            and plan.declared == ()
+            and plan.deny_entries == (),
+        )
+    for tool_class, entry in (("shell", "Shell(*)"), ("write", "Write(**)")):
+        plan = vendor.withheld_tool_plan("cursor", [tool_class])
+        check(
+            f"cursor withholds {tool_class} by config",
+            plan.extra_args == ()
+            and plan.deny_entries == (entry,)
+            and plan.withheld_by == {tool_class: "cli-config"}
+            and plan.declared == (),
+        )
+    for vendor_name in ("claude", "cursor"):
+        plan = vendor.withheld_tool_plan(vendor_name, ["spawn"])
+        check(
+            f"{vendor_name} declares spawn absent",
+            plan.extra_args == ()
+            and plan.deny_entries == ()
+            and plan.declared == ("spawn",)
+            and plan.withheld_by == {"spawn": "declared-absence"},
+        )
+    try:
+        vendor.withheld_tool_plan("claude", ["Task"])
+        rejected = False
+    except ValueError as err:
+        rejected = "unknown withheld tool class" in str(err)
+    check("a value outside the class set is rejected", rejected)
+    with tempfile.TemporaryDirectory() as td:
+        workdir = pathlib.Path(td)
+        written = vendor.write_cursor_deny_entries(workdir, ["Shell(*)", "Write(**)"])
+        data = json.loads(written.read_text())
+        check(
+            "cursor deny entries land in the project config",
+            written == workdir / ".cursor" / "cli.json"
+            and data == {
+                "permissions": {"allow": [], "deny": ["Shell(*)", "Write(**)"]}
+            },
+        )
+        vendor.write_cursor_deny_entries(workdir, ["Shell(*)"])
+        check(
+            "cursor deny entries merge without duplicates",
+            json.loads(written.read_text())["permissions"]["deny"]
+            == ["Shell(*)", "Write(**)"],
+        )
+    check(
+        "tool classes map from both vendor names",
+        vendor.classify_tool("claude", "Bash") == "shell"
+        and vendor.classify_tool("claude", "Task") == "spawn"
+        and vendor.classify_tool("claude", "Edit") == "write"
+        and vendor.classify_tool("cursor", "shellToolCall") == "shell"
+        and vendor.classify_tool("cursor", "taskToolCall") == "spawn"
+        and vendor.classify_tool("cursor", "editToolCall") == "write"
+        and vendor.classify_tool("cursor", "readToolCall") == "other",
+    )
+
     check_exit(
         "cursor blocks trigger_evals",
         lambda: vendor.require_vendor_allowed("cursor", "trigger_evals"),
@@ -228,6 +379,60 @@ def main() -> int:
             / "demo_skill" / "SKILL.md",
         )
         check("claude staged skill exists", staged_claude.is_file())
+
+        prefixed = root / "agents" / "auto_prefixed.md"
+        prefixed.write_text(
+            "---\n"
+            "name: auto_prefixed\n"
+            "description: base\n"
+            "CLAUDE_model: sonnet\n"
+            "CURSOR_model: auto\n"
+            "CODEX_model: gpt\n"
+            "CODEX_tools:\n"
+            "  - Read\n"
+            "  - Grep\n"
+            "---\n"
+            "body line\n"
+        )
+        expected = {
+            "claude": (
+                "---\nname: auto_prefixed\ndescription: base\n"
+                "model: sonnet\n---\nbody line\n"
+            ),
+            "cursor": (
+                "---\nname: auto_prefixed\ndescription: base\n"
+                "model: auto\n---\nbody line\n"
+            ),
+        }
+        for vendor_name in ("claude", "cursor"):
+            direct = vendor.stage_agents(
+                root / f"direct-{vendor_name}", vendor_name, [prefixed]
+            )
+            check(
+                f"{vendor_name} stage_agents renders the worker's own key",
+                len(direct) == 1
+                and direct[0].read_text() == expected[vendor_name],
+            )
+            check(
+                f"{vendor_name} stage_agents drops a prefixed multi-line block",
+                len(direct) == 1
+                and "CODEX_tools" not in direct[0].read_text()
+                and "- Read" not in direct[0].read_text()
+                and "- Grep" not in direct[0].read_text(),
+            )
+            via_skill = vendor.stage_skill_tree(
+                root / f"tree-{vendor_name}", skill, vendor_name,
+                agent_files=[prefixed],
+            )
+            staged_agent = (
+                root / f"tree-{vendor_name}" / f".{vendor_name}" / "agents"
+                / "auto_prefixed.md"
+            )
+            check(
+                f"{vendor_name} stage_skill_tree renders the worker's own key",
+                via_skill.is_file()
+                and staged_agent.read_text() == expected[vendor_name],
+            )
 
     print(f"\n{PASS} passed, {FAIL} failed")
     return 1 if FAIL else 0

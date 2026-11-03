@@ -2,9 +2,11 @@
 description: Teach the agent_spinner eval runner second turn, inline body, staged agents, CLI-withheld shell/writes with declared-absence spawn, a tool-call record, and the Claude/Cursor parity rule.
 scope: tests/agent_spinner/evals
 created: 2026-10-03T15:54:08
-updated: 2026-11-01T01:42:20
-status: ready
+updated: 2026-11-03T00:51:09
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Runner modes for the agent_spinner evals, the same on Claude and Cursor: a resumed second turn, an inline skill body, staged agents, CLI-withheld shell and writes with declared-absence spawn, a tool-call record, and the parity rule

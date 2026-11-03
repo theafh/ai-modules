@@ -19,6 +19,9 @@ eval_id="${1:?eval id required}"
 proj="${2:?sandbox proj path required}"
 response="${3:-}"
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
+
 if [[ ! -d "$proj" ]]; then
   echo "FAIL: $proj is not a directory" >&2
   exit 1
@@ -335,6 +338,66 @@ named_in_announcement() {
 ran_a_checking_pass() {
   [[ -n "$(find "$BRIEFS_DIR" -type f -name 'check*' 2>/dev/null)" ]] && return 0
   response_has 'check(ing)? pass|refute|re-?check'
+}
+
+# --- smoke-eval helpers -----------------------------------------------------
+#
+# A smoke eval proves one runner mode. Its tool record sits beside the response
+# the runner captured, so grading reads no stream and stays vendor-free.
+
+TOOL_CALLS=""
+if [[ -n "$response" ]]; then
+  TOOL_CALLS="$(dirname "$response")/tool_calls.jsonl"
+fi
+
+smoke_txt_has() {
+  [[ -f "$proj/smoke.txt" ]] && grep -Fq "$1" "$proj/smoke.txt"
+}
+
+smoke_first_line_is_attached_body() {
+  local got want skill
+  [[ -f "$proj/smoke.txt" ]] || return 1
+  got="$(awk 'NF{print; exit}' "$proj/smoke.txt")"
+  skill="$REPO_ROOT/plugins/ai_dev/skills/agent_spinner/SKILL.md"
+  want="$(awk 'BEGIN{fm=0}
+    NR==1 && $0=="---"{fm=1; next}
+    fm && $0=="---"{fm=0; next}
+    !fm && NF{print; exit}' "$skill")"
+  [[ -n "$got" && -n "$want" && "$got" == "$want" ]]
+}
+
+both_responses_exist() {
+  local dir
+  [[ -n "$response" ]] || return 1
+  dir="$(dirname "$response")"
+  [[ -s "$dir/response_turn1.txt" && -s "$dir/response.txt" ]]
+}
+
+staged_agent_spawn_ok() {
+  local token="$1"
+  [[ -s "$TOOL_CALLS" ]] || return 1
+  jq -se --arg token "$token" '
+    any(.[];
+      .type == "tool_call"
+      and .class == "spawn"
+      and (.helper // "") == "smoke_replier"
+      and ((.input | tostring) | contains($token) | not)
+      and .failed == false
+      and ((.result // "") | contains($token)))
+  ' "$TOOL_CALLS" >/dev/null 2>&1
+}
+
+class_withheld_or_failed() {
+  local cls="$1"
+  [[ -s "$TOOL_CALLS" ]] || return 1
+  jq -se --arg cls "$cls" '
+    ( [ .[] | select(.type == "offered_tools") ] as $offered
+      | [ .[] | select(.type == "tool_call" and .class == $cls) ] as $attempts
+      | ( ( $offered | length > 0
+            and ( $offered | any(.classes | index($cls) | not) ) )
+          or ( ( $attempts | length ) > 0
+               and ( $attempts | all(.failed == true) ) ) ) )
+  ' "$TOOL_CALLS" >/dev/null 2>&1
 }
 
 printf 'grading %s against %s\n' "$eval_id" "$proj"
@@ -659,6 +722,36 @@ case "$eval_id" in
     else
       note_agent_attest "verdict corrected against the file, or labelled not re-derived"
     fi
+    ;;
+
+  smoke_inline_body)
+    check "smoke.txt holds the attached body's first non-blank line" \
+      smoke_first_line_is_attached_body
+    ;;
+
+  smoke_second_turn)
+    check "smoke.txt holds the first token" smoke_txt_has SMOKE_TURN1_7Q4K
+    check "smoke.txt holds the second token" smoke_txt_has SMOKE_TURN2_9M2X
+    check "both response files exist" both_responses_exist
+    ;;
+
+  smoke_staged_agent)
+    check "smoke.txt holds the staged agent's token" \
+      smoke_txt_has SMOKE_STAGED_TOKEN
+    check "tool record holds a spawn call naming the agent with its token" \
+      staged_agent_spawn_ok SMOKE_STAGED_TOKEN
+    ;;
+
+  smoke_withheld_shell)
+    check "shell marker absent" file_absent "smoke_shell_marker.txt"
+    check "shell class withheld or every attempt failed" \
+      class_withheld_or_failed shell
+    ;;
+
+  smoke_withheld_write)
+    check "write marker absent" file_absent "smoke_write_marker.txt"
+    check "write class withheld or every attempt failed" \
+      class_withheld_or_failed write
     ;;
 
   *)

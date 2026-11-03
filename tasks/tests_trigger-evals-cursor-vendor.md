@@ -2,8 +2,8 @@
 description: Run the trigger evals on Cursor as on Claude, each worker in its own directory, with same-vendor baselines and no Claude-only label, and record a live run on Cursor.
 scope: tests/trigger_evals
 created: 2026-10-04T10:56:39
-updated: 2026-10-09T18:28:53
-status: open
+updated: 2026-11-02T22:38:28
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -46,9 +46,9 @@ In `tests/lib/vendor.py`:
 
 - Remove the `trigger_evals` entry from `CLAUDE_ONLY`. Keep every other entry, the natural-language task's included wherever it has landed.
 - Add a helper that lists a vendor's user-level skill roots, native root first, built from `Path.home()` and `_VENDOR_ROOTS`. The native root is the one `make deploy` writes for that vendor. Claude has `~/.claude/skills`. Cursor has `~/.cursor/skills`, then `~/.agents/skills`, `~/.claude/skills`, and `~/.codex/skills`, as its skills page lists them.
-- Add a builder for the stream-mode worker command, the command whose output is a stream of JSON records.
-  - Claude keeps today's argv: `claude -p <query> --output-format stream-json --verbose --include-partial-messages`, then `--model <m>` when a model is set.
-  - Cursor gets `agent -p --output-format stream-json --trust --workspace <dir>`, then `--model <m>` when set, then the query.
+- Add a builder for the stream-mode worker command, the command whose output is a stream of JSON records. It takes the resolved worker binary as `bin`, the same way `build_print_cmd(..., bin=...)` does, so a `--worker-bin` override that `vendor.resolve` puts on `Resolved.bin` is the argv head.
+  - Claude keeps today's argv shape: `<bin> -p <query> --output-format stream-json --verbose --include-partial-messages`, then `--model <m>` when a model is set.
+  - Cursor gets `<bin> -p --output-format stream-json --trust --workspace <dir>`, then `--model <m>` when set, then the query.
   - Neither carries `--permission-mode`, `--force`, or `--yolo`, so both CLIs keep their default permission mode. The runner stops each worker at its first tool call, and Context shows a read running in Cursor's default mode.
   - `build_print_cmd` stays as it is for the behavioural runners.
 
@@ -88,7 +88,7 @@ Narrow the Makefile's `EXCLUDE` prune of `tests/trigger_evals/results/` to the p
 
 ### Docs
 
-Rewrite in place the doc passages the "Where the harness is called Claude-only" bullet lists, so none calls the harness Claude-only. In each doc list, remove only the `trigger_evals` entry and keep the rest, as for `CLAUDE_ONLY`. Then make these edits:
+Rewrite in place the doc passages the "Where the harness is called Claude-only" bullet lists, so none calls the harness Claude-only. In each doc list, remove only the `trigger_evals` entry; the residual guide membership is `natural_language/` alone. `CLAUDE_ONLY` keeps every other entry, including `deployment_styles`, and stays separate from the guide lists. Then make these edits:
 
 - In `tests/CLAUDE.md`, rewrite the `## tests/trigger_evals/` section for both vendors. Its run patterns carry no `--vendor` flag, since Cursor becomes the default, and they drop the dated `claude-sonnet-4-6` pin and the explicit `--workers`. The section states each vendor's deployed root and load evidence, the per-worker directory, and each CLI's default permission mode. It also states the drift-check roots and the escape guard, which any write to the checkout during a run trips. It names the Claude-only UUID proxy, the `vendor` and `worker_model` fields, and the same-vendor baseline rule. It keeps the guard task's zero-recall reading, stated for both vendors.
 - In the `## What's here` table of `tests/CLAUDE.md`, rewrite the `trigger_evals/` row's pattern cell, "local `run.py` wrapper (deployed mode; `--force-uuid` for UUID proxy)". The new cell names deployed mode on both vendors and the Claude-only `--force-uuid` opt-in.
@@ -122,7 +122,7 @@ Rewrite in place the doc passages the "Where the harness is called Claude-only" 
 - On Cursor, the default vendor, a `wiki.json` run exists whose `results.json` passes two checks. It gives a value above zero for `jq '[.results[] | select(.expected_skill == "wiki") | .precise_triggers] | add'`. It gives `false` for `jq '[.results[] | select(.expected_skill == null and .precise_pass == false) | .triggered_skill_per_run[]] | any(. == "__worker_failed__")'`.
 - `tests/trigger_evals/results/vendor_parity.md` gives each field the `### Live runs and their record` section names, for every run above. Each failing null entry therefore appears with the skill each of its runs loaded, as a measured load. `grep -F "$HOME" tests/trigger_evals/results/vendor_parity.md` finds nothing.
 - `make -n lint-md` lists `tests/trigger_evals/results/vendor_parity.md`, and `make -n lint-json` lists no file under `tests/trigger_evals/results/`. `git check-ignore tests/trigger_evals/results/vendor_parity.md` exits non-zero, and the "Currently kept" comment in `tests/.gitignore` names the note.
-- No Claude-only list names `trigger_evals`. The lists are `CLAUDE_ONLY`, the "Claude-only surfaces" sentence in `tests/CLAUDE.md`, the `### Claude-only harnesses` list in `tests/AGENTS.md`, the "Claude-only rejects" parenthetical in `tests/README.md`, and the "Claude-only surfaces" sentence in the wiki page. The grep in the "Where the harness is called Claude-only" bullet finds nothing. `CLAUDE_ONLY` still holds `deployment_styles`, each guide's Claude-only list still names `deployment/script_tests/style_run.sh`, and `natural_language` stays wherever it was present.
+- No Claude-only list names `trigger_evals`. The lists are `CLAUDE_ONLY`, the "Claude-only surfaces" sentence in `tests/CLAUDE.md`, the `### Claude-only harnesses` list in `tests/AGENTS.md`, the "Claude-only rejects" parenthetical in `tests/README.md`, and the "Claude-only surfaces" sentence in the wiki page. The grep in the "Where the harness is called Claude-only" bullet finds nothing. `CLAUDE_ONLY` still holds `deployment_styles`, and each guide's Claude-only list still names only `natural_language/`.
 - The `run.py` module docstring describes both vendors' deployed roots and load evidence, the per-worker directory, and the Claude-only UUID proxy. Its usage block shows `--vendor` with both vendors. `grep -c -- '--workers 10' tests/trigger_evals/run.py` prints 0.
 - The `## tests/trigger_evals/` section of `tests/CLAUDE.md` states each fact the `### Docs` section names for it. `awk '/^## tests\/trigger_evals\//{f=1;next} /^## /{f=0} f' tests/CLAUDE.md | grep -cE 'claude-sonnet-4-6|--workers 10'` prints 0.
 - `### Parallel workers` names the trigger runner in both `tests/CLAUDE.md` and `tests/AGENTS.md`. `grep -c 'the two runners whose jobs cannot collide' tests/CLAUDE.md` and ``grep -c 'wiki layer 2 and `language_humanizer`' tests/AGENTS.md`` each print 0. `## Running under Cursor` in `tests/AGENTS.md` holds a trigger-eval command with no `--vendor` flag and a `--baseline` naming a prior Cursor run.

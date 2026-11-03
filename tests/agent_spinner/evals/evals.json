@@ -1,6 +1,6 @@
 {
   "skill_name": "agent_spinner",
-  "notes": "Pattern A behavioral evals, one per independently staged behavioural Acceptance item in tasks/ai-dev_agent-spinner-skill.md. stage -> worker runs the skill -> grade.sh checks the filesystem and roster facts plus the response markers. Static body and grep items live in script_tests/, not here. The per-eval `harness` block is local runner config: `disallowed_tools` is what makes a no-delegation-surface fixture real rather than asserted, `extra_reads` names a governing skill the fixture's ask falls under, and `report_contract` turns on the shared closing-report checks.",
+  "notes": "Pattern A behavioral evals for the agent_spinner skill. stage -> worker runs the skill -> grade.sh checks the filesystem and roster facts plus the response markers. Static body and grep items live in script_tests/, not here. Each behavioural eval stages one behaviour; the smoke_* evals check the runner's modes. The per-eval `harness` block is local runner config: `disallowed_tools` names withheld tool classes under the runner's withheld-tool rule, `extra_reads` names a governing skill the fixture's ask falls under, `agents` stages agent definitions, `inline_body` and `second_turn` select the runner modes, `tool_record` writes each turn's tool calls, and `report_contract` turns on the shared closing-report checks.",
   "evals": [
     {
       "id": "probe_definitions_no_spawn",
@@ -20,10 +20,11 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
-        "report_contract": false
+        "report_contract": false,
+        "needs_real_absence": true
       }
     },
     {
@@ -45,10 +46,11 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
-        "report_contract": true
+        "report_contract": true,
+        "needs_real_absence": true
       }
     },
     {
@@ -92,12 +94,13 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [
           "plugins/ai_dev/skills/task_auto_check/SKILL.md"
         ],
-        "report_contract": false
+        "report_contract": false,
+        "needs_real_absence": true
       }
     },
     {
@@ -230,7 +233,7 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
         "report_contract": false
@@ -254,7 +257,7 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
         "report_contract": false
@@ -299,7 +302,7 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
         "report_contract": false
@@ -364,7 +367,7 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
         "report_contract": false
@@ -387,7 +390,7 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
         "report_contract": false
@@ -431,7 +434,7 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
         "report_contract": false
@@ -475,10 +478,119 @@
       ],
       "harness": {
         "disallowed_tools": [
-          "Task"
+          "spawn"
         ],
         "extra_reads": [],
         "report_contract": true
+      }
+    },
+    {
+      "id": "smoke_inline_body",
+      "skill": "agent_spinner",
+      "prompt": "Write into smoke.txt the first non-blank line of the text attached to this conversation, exactly as you received it. Write no other file.",
+      "expected_output": "smoke.txt holds the attached body's first non-blank line, which starts after the frontmatter; a run that read the staged file in place of the attachment writes the frontmatter's opening line instead.",
+      "files": [
+        "evals/fixtures/smoke_inline_body/setup.sh"
+      ],
+      "expectations": [
+        "smoke.txt holds the attached body's first non-blank line.",
+        "Every other file under the sandbox stays byte-identical to the staged tree.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "inline_body": true,
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "smoke_second_turn",
+      "skill": "agent_spinner",
+      "prompt": "Remember this token for the next turn: SMOKE_TURN1_7Q4K. Reply with exactly: TOKEN_STORED",
+      "expected_output": "The resumed turn reads the token the between step wrote and writes both tokens to smoke.txt.",
+      "files": [
+        "evals/fixtures/smoke_second_turn/setup.sh"
+      ],
+      "expectations": [
+        "smoke.txt holds the first token.",
+        "smoke.txt holds the second token.",
+        "response_turn1.txt and response.txt both exist."
+      ],
+      "harness": {
+        "second_turn": {
+          "prompt": "The file second_token.txt in the working directory holds a second token. Write both tokens into smoke.txt, one per line. Reply with exactly: TOKENS_WRITTEN",
+          "between": "fixtures/smoke_second_turn/between_turns.sh"
+        },
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "smoke_staged_agent",
+      "skill": "agent_spinner",
+      "prompt": "Spawn the agent named smoke_replier exactly once and write its reply into smoke.txt. Run no other spawn.",
+      "expected_output": "The worker spawns smoke_replier once, and smoke.txt holds its fixed token.",
+      "files": [
+        "evals/fixtures/smoke_staged_agent/setup.sh"
+      ],
+      "expectations": [
+        "The tool record holds a spawn call naming smoke_replier.",
+        "That call's input carries no token.",
+        "That call did not fail and returned the token.",
+        "smoke.txt holds the token."
+      ],
+      "harness": {
+        "agents": [
+          "fixtures/smoke_staged_agent/agents/smoke_replier.md"
+        ],
+        "tool_record": true,
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "smoke_withheld_shell",
+      "skill": "agent_spinner",
+      "prompt": "Create the marker file smoke_shell_marker.txt by running the shell command `touch smoke_shell_marker.txt` exactly once. Make no other attempt and create no file another way.",
+      "expected_output": "The shell class is withheld, so the marker stays absent and the tool record shows the class missing from the offered tools or every shell attempt failed.",
+      "files": [
+        "evals/fixtures/smoke_withheld_shell/setup.sh"
+      ],
+      "expectations": [
+        "smoke_shell_marker.txt is absent.",
+        "The tool record shows the shell class missing from the offered tools, or at least one shell attempt with every attempt failed."
+      ],
+      "harness": {
+        "tool_record": true,
+        "disallowed_tools": [
+          "shell"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "smoke_withheld_write",
+      "skill": "agent_spinner",
+      "prompt": "Create the marker file smoke_write_marker.txt by using the file-writing tool exactly once, with the text 'marker'. Make no other attempt and create no file another way.",
+      "expected_output": "The write class is withheld, so the marker stays absent and the tool record shows the class missing from the offered tools or every write attempt failed.",
+      "files": [
+        "evals/fixtures/smoke_withheld_write/setup.sh"
+      ],
+      "expectations": [
+        "smoke_write_marker.txt is absent.",
+        "The tool record shows the write class missing from the offered tools, or at least one write attempt with every attempt failed."
+      ],
+      "harness": {
+        "tool_record": true,
+        "disallowed_tools": [
+          "write"
+        ],
+        "extra_reads": [],
+        "report_contract": false
       }
     }
   ]

@@ -11,10 +11,19 @@ spawn workers and stay out of band.
 
 ## Behavioral evals (Cursor worker by default)
 
+TESTING.md's parity rule under `## Running Tests` governs this suite: an eval
+runs and grades the same way on Claude and Cursor, and the suite is
+vendor-specific only where an eval names a vendor-specific feature. The suite
+command without `--vendor` runs every eval on Cursor's `agent -p` on `auto`,
+the default because it is cheaper and faster. The Claude command is a run the
+operator asks for, or one an eval needs for a Claude-specific feature, which
+the eval names.
+
 ```bash
-python3 tests/agent_spinner/evals/run.py                     # all 21
+python3 tests/agent_spinner/evals/run.py                     # all evals, default Cursor worker
 python3 tests/agent_spinner/evals/run.py inline_floor         # one
 python3 tests/agent_spinner/evals/run.py --force              # bypass the cache
+python3 tests/agent_spinner/evals/run.py --vendor claude      # the Claude run the operator asks for
 ```
 
 Staging needs a working `git init` inside the sandbox (it writes under
@@ -31,10 +40,15 @@ eval "$(bash tests/agent_spinner/evals/stage.sh inline_floor "$target")"
 bash tests/agent_spinner/evals/grade.sh inline_floor "$sandbox_proj" /path/to/response.txt
 ```
 
+The manual path runs no mode eval: it stages, operates, and grades one
+ordinary eval, and the inline-body, second-turn, staged-agent, and tool-record
+modes run through `evals/run.py`. `evals/README.md` `## Runner modes` has the
+full account.
+
 ## Cheap-first fixture probe
 
 Stage every fixture before spending a worker on any of them. A fixture bug
-costs one `claude -p` run per eval to discover the slow way:
+costs one worker run per eval to discover the slow way:
 
 ```bash
 for f in tests/agent_spinner/evals/fixtures/*/; do

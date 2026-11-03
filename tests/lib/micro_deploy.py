@@ -115,27 +115,51 @@ fi
 """
 
 
-@dataclass(frozen=True)
+@dataclass
 class ToolRecord:
-    """Vendor-neutral tool call extracted from a stream-json turn."""
+    """Vendor-neutral tool call extracted from a stream-json turn.
+
+    ``tool_class`` comes from ``vendor.WITHHELD_TOOL_CLASSES`` or is ``other``.
+    ``name`` is the tool name exactly as the stream records it. ``input`` keeps
+    the stream's own args mapping, so the two vendors' keys differ there.
+    ``result_text`` is a string in each vendor's own rendering, and ``failed``
+    is the vendor-neutral failure bit parity compares.
+    """
 
     name: str
     input: dict[str, Any] = field(default_factory=dict)
     failed: bool = False
+    tool_class: str = "other"
+    helper: str | None = None
+    result_text: str = ""
+    parent_tool_use_id: str | None = None
+    tool_use_id: str | None = None
 
 
 @dataclass
 class StreamParse:
-    """Final message, session id, and tool records from one stream-json turn."""
+    """Final message, session id, tool records, and offered classes.
+
+    ``offered_classes`` is ``None`` when the vendor's stream lists no tools,
+    as Cursor's init record does, and a class list when Claude's init record
+    carries its tool list.
+    """
 
     final_message: str = ""
     session_id: str | None = None
     tools: list[ToolRecord] = field(default_factory=list)
+    offered_classes: list[str] | None = None
 
 
 @dataclass
 class WorkerRunResult:
-    """Exit code, final response text, stderr, and read provenance."""
+    """Exit code, final response text, stderr, and read provenance.
+
+    ``tools`` is the provenance list ``paths_from_tools`` reads, with a Cursor
+    helper's transcript calls included. ``stream_tools`` is only the records
+    the turn's own stream carried, which the runner writes to
+    ``tool_calls.jsonl``.
+    """
 
     returncode: int
     stdout: str
@@ -145,6 +169,8 @@ class WorkerRunResult:
     inside_checkout_paths: list[str] = field(default_factory=list)
     session_id: str | None = None
     tools: list[ToolRecord] = field(default_factory=list)
+    stream_tools: list[ToolRecord] = field(default_factory=list)
+    offered_classes: list[str] | None = None
 
 
 @dataclass
@@ -548,11 +574,89 @@ def overlay_fixture_edits(
     return overlaid
 
 
+def _render_value(value: Any) -> str:
+    """Render one stream value as text, keeping strings verbatim."""
+
+    if isinstance(value, str):
+        return value
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, sort_keys=True)
+    return str(value)
+
+
+def _render_claude_content(value: Any) -> str:
+    """Render a ``tool_result`` content value as text."""
+
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, dict) and isinstance(item.get("text"), str):
+                parts.append(item["text"])
+            else:
+                parts.append(_render_value(item))
+        return "\n".join(part for part in parts if part)
+    return _render_value(value)
+
+
+def _render_cursor_result(result: Any) -> str:
+    """Render a Cursor ``result`` object, naming a refusal or error."""
+
+    if not isinstance(result, dict):
+        return _render_value(result)
+    if "success" in result:
+        rendered = _render_value(result["success"])
+        return rendered or "success"
+    for refusal in ("permissionDenied", "writePermissionDenied"):
+        if refusal in result:
+            detail = _render_value(result[refusal])
+            return f"{refusal}: {detail}" if detail else refusal
+    if "error" in result:
+        error = result["error"]
+        if isinstance(error, dict):
+            for key in ("message", "text", "error"):
+                if isinstance(error.get(key), str) and error[key]:
+                    return error[key]
+        return _render_value(error) or "error"
+    return json.dumps(result, sort_keys=True)
+
+
+def _helper_name(tool_class: str, args: dict[str, Any]) -> str | None:
+    if tool_class != "spawn":
+        return None
+    for key in ("subagent_type", "subagentType"):
+        value = args.get(key)
+        if isinstance(value, str) and value:
+            return value
+        if isinstance(value, dict):
+            # Cursor 2026.10.22 records a named role as
+            # {"custom": {"name": "<role>"}}; an earlier build used a string.
+            for nested in ("name", "custom"):
+                inner = value.get(nested)
+                if isinstance(inner, str) and inner:
+                    return inner
+                if isinstance(inner, dict):
+                    name = inner.get("name")
+                    if isinstance(name, str) and name:
+                        return name
+    return None
+
+
 def parse_stream_json(vendor_name: str, text: str) -> StreamParse:
-    """Parse one vendor's stream-json stdout into message, session, tools."""
+    """Parse one vendor's stream-json stdout into message, session, tools.
+
+    Each tool call yields one vendor-neutral ``ToolRecord``. Claude pairs a
+    ``tool_use`` block with the ``tool_result`` whose ``tool_use_id`` matches
+    its ``id``; Cursor reads its ``completed`` ``tool_call`` records. The final
+    message is the closing ``result`` record's ``result`` field on both
+    vendors. Claude's init record also yields the classes on its tool list;
+    Cursor's init lists no tools, so it yields none.
+    """
 
     chosen = vendor.config(vendor_name)
     parsed = StreamParse()
+    claude_index: dict[str, ToolRecord] = {}
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line or not line.startswith("{"):
@@ -578,15 +682,23 @@ def parse_stream_json(vendor_name: str, text: str) -> StreamParse:
             sid = event.get("session_id")
             if isinstance(sid, str):
                 parsed.session_id = sid
+            if chosen.name == "claude":
+                tools = event.get("tools")
+                if isinstance(tools, list):
+                    parsed.offered_classes = vendor.classify_tool_list(
+                        "claude", [str(tool) for tool in tools if isinstance(tool, str)]
+                    )
 
         if chosen.name == "claude":
-            _parse_claude_event(event, parsed)
+            _parse_claude_event(event, parsed, claude_index)
         else:
             _parse_cursor_event(event, parsed)
     return parsed
 
 
-def _tool_use_blocks(message: Any) -> list[ToolRecord]:
+def _tool_use_blocks(
+    message: Any, *, vendor_name: str, parent_tool_use_id: str | None = None
+) -> list[ToolRecord]:
     """Tool records from the ``tool_use`` blocks of one assistant message."""
 
     if not isinstance(message, dict):
@@ -604,21 +716,67 @@ def _tool_use_blocks(message: Any) -> list[ToolRecord]:
         raw_input = block.get("input") or {}
         if not isinstance(raw_input, dict):
             raw_input = {"value": raw_input}
-        records.append(ToolRecord(name=name, input=dict(raw_input)))
+        tool_class = vendor.classify_tool(vendor_name, name)
+        records.append(
+            ToolRecord(
+                name=name,
+                input=dict(raw_input),
+                tool_class=tool_class,
+                helper=_helper_name(tool_class, raw_input),
+                parent_tool_use_id=parent_tool_use_id,
+                tool_use_id=(
+                    str(block.get("id")) if block.get("id") is not None else None
+                ),
+            )
+        )
     return records
 
 
-def _parse_claude_event(event: dict[str, Any], parsed: StreamParse) -> None:
+def _parse_claude_event(
+    event: dict[str, Any],
+    parsed: StreamParse,
+    index: dict[str, ToolRecord],
+) -> None:
     # A helper's tool calls arrive here too, marked with parent_tool_use_id.
-    if event.get("type") != "assistant":
+    event_type = event.get("type")
+    if event_type == "assistant":
+        parent = event.get("parent_tool_use_id")
+        parent_id = str(parent) if parent is not None else None
+        for record in _tool_use_blocks(
+            event.get("message"),
+            vendor_name="claude",
+            parent_tool_use_id=parent_id,
+        ):
+            parsed.tools.append(record)
+            if record.tool_use_id:
+                index[record.tool_use_id] = record
         return
-    parsed.tools.extend(_tool_use_blocks(event.get("message")))
+
+    if event_type != "user":
+        return
+    message = event.get("message")
+    if not isinstance(message, dict):
+        return
+    content = message.get("content") or []
+    if not isinstance(content, list):
+        return
+    for block in content:
+        if not isinstance(block, dict) or block.get("type") != "tool_result":
+            continue
+        tool_use_id = block.get("tool_use_id")
+        if tool_use_id is None:
+            continue
+        record = index.get(str(tool_use_id))
+        if record is None:
+            continue
+        record.result_text = _render_claude_content(block.get("content"))
+        record.failed = bool(block.get("is_error"))
 
 
 def _parse_cursor_event(event: dict[str, Any], parsed: StreamParse) -> None:
     if event.get("type") != "tool_call":
         return
-    if event.get("subtype") not in (None, "started", "completed"):
+    if event.get("subtype") != "completed":
         return
     tool_call = event.get("tool_call") or {}
     if not isinstance(tool_call, dict):
@@ -630,10 +788,22 @@ def _parse_cursor_event(event: dict[str, Any], parsed: StreamParse) -> None:
         if not isinstance(args, dict):
             args = {"value": args}
         result = payload.get("result")
-        failed = False
-        if isinstance(result, dict) and "success" not in result:
-            failed = True
-        parsed.tools.append(ToolRecord(name=str(key), input=dict(args), failed=failed))
+        failed = not (isinstance(result, dict) and "success" in result)
+        tool_class = vendor.classify_tool("cursor", str(key))
+        tool_use_id = event.get("toolCallId")
+        parsed.tools.append(
+            ToolRecord(
+                name=str(key),
+                input=dict(args),
+                failed=failed,
+                tool_class=tool_class,
+                helper=_helper_name(tool_class, args),
+                result_text=_render_cursor_result(result),
+                tool_use_id=(
+                    str(tool_use_id) if tool_use_id is not None else None
+                ),
+            )
+        )
 
 
 def parse_transcript_tools(text: str) -> list[ToolRecord]:
@@ -655,7 +825,7 @@ def parse_transcript_tools(text: str) -> list[ToolRecord]:
             continue
         if not isinstance(entry, dict) or entry.get("role") != "assistant":
             continue
-        tools.extend(_tool_use_blocks(entry.get("message")))
+        tools.extend(_tool_use_blocks(entry.get("message"), vendor_name="cursor"))
     return tools
 
 
@@ -1163,12 +1333,17 @@ def run_worker(
     extra_args: list[str] | None = None,
     cwd: pathlib.Path | str | None = None,
     prompt_before_flags: bool = False,
+    session_id: str | None = None,
+    resume: str | None = None,
 ) -> WorkerRunResult:
     """Run a print-mode worker with stream-json and read provenance.
 
     The provenance covers every helper the worker spawns. On Claude a helper's
     tool calls arrive in the stream. On Cursor they come from the chat
     transcripts under the scratch home, read before the handle closes.
+    ``stream_tools`` holds only the calls the turn's own stream carried.
+    ``session_id`` opens a Claude session and ``resume`` continues one on
+    either vendor.
     """
 
     chosen = vendor.config(vendor_name)
@@ -1181,6 +1356,8 @@ def run_worker(
         extra_args=list(extra_args or []),
         prompt_before_flags=prompt_before_flags,
         output_format="stream-json",
+        session_id=session_id,
+        resume=resume,
     )
     workdir = pathlib.Path(cwd or deploy.sandbox_project)
     env = dict(deploy.env)
@@ -1207,6 +1384,7 @@ def run_worker(
 
     parsed = parse_stream_json(chosen.name, stdout)
     final = parsed.final_message or stdout
+    stream_tools = list(parsed.tools)
     tools = list(parsed.tools)
     if chosen.name == "cursor":
         tools.extend(cursor_transcript_tools(deploy.scratch_home))
@@ -1227,4 +1405,6 @@ def run_worker(
         inside_checkout_paths=inside_checkout,
         session_id=parsed.session_id,
         tools=tools,
+        stream_tools=stream_tools,
+        offered_classes=parsed.offered_classes,
     )

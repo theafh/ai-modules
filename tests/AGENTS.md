@@ -50,6 +50,9 @@ and accepts:
 | Judge / meta LLM | inherit (omit `--model`) | `auto` |
 | Permissions | `--permission-mode bypassPermissions` | `--force --sandbox disabled` |
 | Workspace | subprocess `cwd` | `--workspace <sandbox>` plus `cwd` |
+| Second turn | `--session-id` on the first turn, `--resume` with the same id on later turns | no session flag on the first turn, `--resume` with the first stream's `session_id` on later turns |
+| Staged agents | plugin roles in the scratch config directory's `agents/`, fixture agents in the sandbox project's `.claude/agents/` | both in the sandbox project's `.cursor/agents/` |
+| Withheld tools | shell and write by `--disallowedTools`; spawn declared absent in the prompt | shell and write by deny entries in `proj/.cursor/cli.json`; spawn declared absent in the prompt |
 
 Deterministic graders (`grade.sh`, `grade.py`, pure Python scoring) stay
 model-free on both vendors.
@@ -64,7 +67,10 @@ run. The flag goes on the Claude-only harnesses too, although they default to
 Claude and stop with an error on an explicit `--vendor cursor`. Any other
 Claude run, such as a whole suite on Claude as a compatibility sample, happens
 only after the operator explicitly asks for one in the current session. An
-agent never runs Claude tests in the background.
+agent never runs Claude tests in the background. The parity rule in TESTING.md's
+`## Running Tests` governs every harness: an eval runs and grades the same way
+on Claude and Cursor, and a harness is vendor-specific only when it tests a
+vendor-specific feature, which it names.
 
 ### Claude-only harnesses
 
