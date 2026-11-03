@@ -2,7 +2,7 @@
 description: Run task_fix evals at default 4 workers with per-eval host-tasks fail-safes that stay correct under overlap, using the shared Pattern A helper.
 scope: tests/task_fix/evals
 created: 2026-10-04T22:11:10
-updated: 2026-11-02T22:13:54Z
+updated: 2026-11-03T11:36:17
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -36,7 +36,7 @@ The fail-safe contract matches [the task-hub parallel task](archive/tests_task-h
 
 Rewrite `evals/run.py` onto the shared helper: `--workers` 4, per-job `TMPDIR`,
 and this runner's own run-dir naming under the workspace the helper resolves.
-Keep `grade.sh`'s fixture-scoped host-tree checks. In `tests/CLAUDE.md` under `### Parallel workers: default 4 only where each job has its own sandbox`, and in `tests/AGENTS.md` under `### Parallel workers`, rewrite both lists in place: add `tests/task_fix/evals/run.py` to the Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS`, and supersede the sequential Pattern A entry that names `task_create` and `task_fix` together so that entry names only `task_create` among those two. Rewrite
+Keep `grade.sh`'s fixture-scoped host-tree checks. In `tests/CLAUDE.md` under `### Parallel workers: default 4 only where each job has its own sandbox`, and in `tests/AGENTS.md` under `### Parallel workers`, rewrite both lists in place: add `tests/task_fix/evals/run.py` to the Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS`, and supersede the sequential Pattern A entry that names `task_fix` so that entry no longer names `task_fix`, with whichever sibling runners it still names read from the tree at implementation time. Rewrite
 RUNBOOK sequential guidance. Prove concurrency and an unchanged host `tasks/`
 tree on a Cursor `--force` pair.
 When each uncached job writes `timing.json` through
@@ -51,7 +51,7 @@ Live-testing unshipped editorial plugin harnesses.
 - `run.py --help` shows `--workers` defaulting to 4.
 - `python3 tests/task_fix/evals/run.py` at the default worker count prints a
   graded summary over every id in `evals.json`.
-- In `tests/CLAUDE.md` under `### Parallel workers: default 4 only where each job has its own sandbox`, and in `tests/AGENTS.md` under `### Parallel workers`, the Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS` name `tests/task_fix/evals/run.py`, and the prior sequential entry that lists `task_create` and `task_fix` together is superseded so that list names only `task_create` among those two.
+- In `tests/CLAUDE.md` under `### Parallel workers: default 4 only where each job has its own sandbox`, and in `tests/AGENTS.md` under `### Parallel workers`, the Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS` name `tests/task_fix/evals/run.py`, and the prior sequential entry that lists `task_fix` is superseded so that entry no longer names `task_fix`, with whichever sibling runners it still names read from the tree at implementation time.
 - Each uncached `timing.json` from one `--workers 4 --force` run of at least
   two uncached evals records `started_at` and `ended_at` beside `duration_s`.
   `tests/task_fix/results/parallel_workers_measure.md` records those windows

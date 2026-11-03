@@ -2,7 +2,7 @@
 description: Run task_create evals at default 4 workers with per-eval host-tasks fail-safes that stay correct under overlap, using the shared Pattern A helper.
 scope: tests/task_create/evals
 created: 2026-10-04T22:11:10
-updated: 2026-11-02T23:15:48
+updated: 2026-11-03T11:36:17
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -46,8 +46,9 @@ failure`, rewrite the sentence that begins `Each run writes
 RUNBOOK / evals README sequential guidance. In `tests/CLAUDE.md` under `###
 Parallel workers: default 4 only where each job has its own sandbox`, and in
 `tests/AGENTS.md` under `### Parallel workers`, rewrite both sections in place:
-drop `task_create` from the Pattern A runners that stay sequential (leave
-`task_fix` and the other listed exceptions), and add
+drop `task_create` from the Pattern A runners that stay sequential, leaving the
+other listed exceptions in place, with whichever sibling runners that entry
+still names read from the tree at implementation time, and add
 `tests/task_create/evals/run.py` among the Pattern A runners on `eval_runner`
 at `vendor.DEFAULT_PARALLEL_WORKERS`. Measure with one `--workers 4 --force`
 run of at least two uncached evals on the default vendor (no `--vendor`), and
@@ -67,9 +68,9 @@ scripts this skill drives. Live-testing unshipped editorial plugin harnesses.
   job has its own sandbox`, and in `tests/AGENTS.md` under `### Parallel
   workers`, the Pattern A runners on `eval_runner` at
   `vendor.DEFAULT_PARALLEL_WORKERS` name `tests/task_create/evals/run.py`, and
-  the prior sequential entry that lists `task_create` with `task_fix` is
-  superseded so that list names `task_fix` among those two without
-  `task_create`.
+  the prior sequential entry that lists `task_create` is superseded so that
+  entry no longer names `task_create`, with whichever sibling runners it still
+  names read from the tree at implementation time.
 - `python3 tests/task_create/evals/run.py` at the default worker count prints
   a graded summary over every id in `evals.json`.
 - A graded run from `python3 tests/task_create/evals/run.py` writes its

@@ -54,15 +54,13 @@ note_agent_attest() { printf '  -     agent-attest  %s\n' "$1"; }
 
 # --- filesystem signals -----------------------------------------------------
 
+# Every path handed in as an exclude is skipped, so a caller can hash a tree
+# that the eval asked the run to add one file to.
 _hash_of() {
-  local dir="$1" extra="${2:-}"
+  local dir="$1" extra="${2:-./.git/*}" extra2="${3:-./.git/*}"
   (
     cd "$dir" || exit 1
-    if [[ -n "$extra" ]]; then
-      find . -type f ! -path './.git/*' ! -path "$extra" -print0
-    else
-      find . -type f ! -path './.git/*' -print0
-    fi | sort -z | {
+    find . -type f ! -path './.git/*' ! -path "$extra" ! -path "$extra2" -print0 | sort -z | {
       if command -v sha256sum >/dev/null 2>&1; then
         xargs -0 sha256sum
       else
@@ -73,11 +71,12 @@ _hash_of() {
 }
 
 # The run's own instrumentation output under .agent_spinner/ is excluded on
-# both sides, so writing a roster never reads as editing the corpus.
+# both sides, so writing a roster never reads as editing the corpus. An eval
+# that asks the run to write one sandbox file names it as the second exclude.
 tree_unchanged() {
   local tmp rc
   tmp="$(mktemp)"
-  _hash_of "$proj" './.agent_spinner/*' > "$tmp"
+  _hash_of "$proj" './.agent_spinner/*' "${1:-./.git/*}" > "$tmp"
   cmp -s "$tree_hashes" "$tmp"; rc=$?
   rm -f "$tmp"
   return "$rc"
@@ -727,6 +726,10 @@ case "$eval_id" in
   smoke_inline_body)
     check "smoke.txt holds the attached body's first non-blank line" \
       smoke_first_line_is_attached_body
+    # smoke.txt is the one file this eval asks the run to write, so it is the
+    # only staged path excluded: any second file the run left behind fails.
+    check "sandbox tree byte-identical apart from smoke.txt" \
+      tree_unchanged './smoke.txt'
     ;;
 
   smoke_second_turn)
