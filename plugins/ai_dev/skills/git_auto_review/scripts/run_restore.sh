@@ -248,7 +248,7 @@ main() {
 
     # Step 4: delete the untracked files the fixer added that the captured copy
     # does not contain.
-    local members current record current_list
+    local members current record current_list current_diff
     members="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")"
     if ! tar_members "$untracked_tar" "$members"; then
         rm -f "$members"
@@ -264,18 +264,28 @@ main() {
             "?? "*) printf '%s\0' "${record#\?\? }" >> "$current_list" ;;
         esac
     done < <(cd "$repo_root" && git status --porcelain -z --untracked-files=all)
+    # The comparison writes to a file rather than a process substitution, so a
+    # failing comparison is an error this script can see and report.
+    current_diff="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")" || {
+        rm -f "$members" "$current_list"
+        die_env "cannot compare the working-tree untracked files"
+    }
+    if ! list_difference "$current_list" "$members" > "$current_diff"; then
+        rm -f "$members" "$current_list" "$current_diff"
+        die_env "cannot compare the working-tree untracked files"
+    fi
     while IFS= read -r -d '' current; do
         rm -f -- "$repo_root/$current" \
             || die_env "cannot remove the fixer-added untracked file $current"
         prune_empty_parents "$repo_root" "$current"
-    done < <(list_difference "$current_list" "$members")
-    rm -f "$current_list"
+    done < "$current_diff"
+    rm -f "$current_list" "$current_diff"
 
     # Step 5: delete the ignored files the fixer added that the captured
     # manifest does not contain, and remove the folders each deletion emptied.
     # A pre-existing ignored file stays as the fixer left it, and a pre-fix
     # untracked file that the fixer's new ignore rule now covers stays too.
-    local manifest_members ignored ignored_now
+    local manifest_members ignored ignored_now ignored_diff
     manifest_members="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")"
     manifest_paths "$ignored_manifest" "$manifest_members" \
         || { rm -f "$manifest_members"; die_env "cannot read the ignored manifest"; }
@@ -288,12 +298,23 @@ main() {
         rm -f "$manifest_members" "$ignored_now" "$members"
         die_env "cannot enumerate the ignored files"
     }
+    # The comparison writes to a file rather than a process substitution, so a
+    # failing comparison is an error this script can see and report.
+    ignored_diff="$(mktemp "${TMPDIR:-/tmp}/git_auto_review.XXXXXX")" || {
+        rm -f "$manifest_members" "$ignored_now" "$members"
+        die_env "cannot compare the ignored files"
+    }
+    if ! list_difference "$ignored_now" "$manifest_members" "$members" \
+        > "$ignored_diff"; then
+        rm -f "$manifest_members" "$ignored_now" "$members" "$ignored_diff"
+        die_env "cannot compare the ignored files"
+    fi
     while IFS= read -r -d '' ignored; do
         rm -f -- "$repo_root/$ignored" \
             || die_env "cannot remove the fixer-added ignored file $ignored"
         prune_empty_parents "$repo_root" "$ignored"
-    done < <(list_difference "$ignored_now" "$manifest_members" "$members")
-    rm -f "$manifest_members" "$ignored_now" "$members"
+    done < "$ignored_diff"
+    rm -f "$manifest_members" "$ignored_now" "$members" "$ignored_diff"
 
     # Verify the captured tracked content is reproduced: re-deriving the round's
     # tracked patch must yield the captured patch byte for byte.

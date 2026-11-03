@@ -948,6 +948,71 @@ PY
   $ok
 }
 
+# stage_compare_fail_repo <dir> — a five-change repository whose pre-fix
+# snapshot is written and whose working tree carries one fixer-added untracked
+# file, so the Restore procedure reaches both set comparisons.
+stage_compare_fail_repo() {
+  local dir=$1
+  stage_five_change_repo "$dir" || return 1
+  bash "$SCRIPTS/run_relay.sh" --root "$dir" >/dev/null 2>&1 || return 1
+  bash "$SCRIPTS/run_snapshot.sh" --stem default --root "$dir" >/dev/null 2>&1 \
+    || return 1
+  printf 'fixer added\n' > "$dir/d/fixer-added.txt"
+}
+
+# write_python3_shim <dest> <arity> <real-python3> — a python3 that exits 1
+# when called with at least <arity> arguments and delegates every other call to
+# the real interpreter, so one set comparison fails and the other succeeds.
+# The arity counts the `-` script argument list_difference passes first.
+write_python3_shim() {
+  local dest=$1 arity=$2 real=$3
+  {
+    printf '#!/bin/sh\n'
+    printf 'if [ "$#" -ge %s ]; then\n  exit 1\nfi\n' "$arity"
+    printf "exec '%s' \"\$@\"\n" "$real"
+  } > "$dest" || return 1
+  chmod +x "$dest"
+}
+
+s26_restore_reports_failed_comparison() {
+  local ok=true dir outside shim real_python rc
+  real_python="$(command -v python3)" || {
+    log "    python3 is not on PATH"
+    return 1
+  }
+  outside="$SCRATCH/restore_compare_fail_outside"
+  rm -rf "$outside"
+  mkdir -p "$outside/bin" || return 1
+  shim="$outside/bin"
+
+  # The fixer-added-untracked comparison is the two-list call: python3 - and
+  # the two list files.
+  dir="$(new_sandbox restore_compare_fail_untracked)"
+  stage_compare_fail_repo "$dir" || ok=false
+  write_python3_shim "$shim/python3" 3 "$real_python" || ok=false
+  rc=0
+  PATH="$shim:$PATH" bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
+    >"$outside/untracked.out" 2>&1 || rc=$?
+  assert_eq "restore exits 2 on a failed untracked comparison" "$rc" "2" \
+    || ok=false
+  assert_contains "restore names the failed untracked comparison" \
+    "$outside/untracked.out" "cannot compare the working-tree untracked files" \
+    || ok=false
+
+  # The fixer-added-ignored comparison is the three-list call: python3 - and
+  # the three list files.
+  dir="$(new_sandbox restore_compare_fail_ignored)"
+  stage_compare_fail_repo "$dir" || ok=false
+  write_python3_shim "$shim/python3" 4 "$real_python" || ok=false
+  rc=0
+  PATH="$shim:$PATH" bash "$SCRIPTS/run_restore.sh" --stem default --root "$dir" \
+    >"$outside/ignored.out" 2>&1 || rc=$?
+  assert_eq "restore exits 2 on a failed ignored comparison" "$rc" "2" || ok=false
+  assert_contains "restore names the failed ignored comparison" \
+    "$outside/ignored.out" "cannot compare the ignored files" || ok=false
+  $ok
+}
+
 # stage_gate_scope_case <dir> <section-body-file> — a sandbox whose staged
 # relay report carries the given `## Bugs it may introduce` body and a verdict
 # block naming both defect paths, so only the section body varies.
@@ -1154,6 +1219,7 @@ s24_inert_worker_probe_pin() {
 scenario s23 "the eval docs and runbook enumerate the measured behaviour" s23_eval_docs_inventory
 scenario s24 "inert worker: no eval grades PASS on an empty response" s24_inert_worker_probe_pin
 scenario s25 "the ignored-set steps stay under their recorded bounds at 3,000 paths" s25_ignored_set_scaling
+scenario s26 "run_restore.sh reports a failed set comparison" s26_restore_reports_failed_comparison
 
 log ""
 log "================================================================"
