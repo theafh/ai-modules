@@ -4261,7 +4261,100 @@ g1_grade_empty_delivery_exits_nonzero() {
     return 1
 }
 
+# G2: layer2/aggregate.py names the baseline it compared against, states that
+# baseline's shape, and warns when the baseline covered fewer scenarios than
+# the current run. The warning is informational: only assertion/scenario
+# regressions drive the exit status, so a narrowed compare still exits 0 and a
+# real regression still exits 1.
+g2_aggregate_names_baseline_and_warns_on_narrowing() {
+    local home run prev out rc
+    home=$(fresh_scratch g2)
+    run="$home/run-current"
+    prev="$home/run-prior-debug/benchmark.json"
+    mkdir -p "$run/L2-1/pass-1" "$run/L2-2/pass-1" "$(dirname "$prev")"
+    python3 - "$run" "$prev" <<'PY'
+import json
+import pathlib
+import sys
+
+run = pathlib.Path(sys.argv[1])
+prev = pathlib.Path(sys.argv[2])
+
+
+def write_pass(scenario_id, passed):
+    pass_dir = run / scenario_id / "pass-1"
+    pass_dir.mkdir(parents=True, exist_ok=True)
+    (pass_dir / "grading.json").write_text(json.dumps({
+        "pass_rate": 1.0 if passed else 0.0,
+        "passed": passed,
+        "expectations": [{"text": "assertion", "passed": passed}],
+    }))
+    (pass_dir / "timing.json").write_text(json.dumps({
+        "duration_ms": 1000,
+        "total_tokens": 10,
+    }))
+
+
+write_pass("L2-1", True)
+write_pass("L2-2", True)
+prev.write_text(json.dumps({
+    "run_id": "run-prior-debug",
+    "scenarios": [{
+        "scenario_id": "L2-1",
+        "all_passes_clean": True,
+        "per_assertion": {
+            "assertion": {"pass_rate": 1.0, "passes": 1, "total": 1},
+        },
+    }],
+}))
+PY
+
+    out=$(python3 "$SCRIPT_DIR/../layer2/aggregate.py" "$run" --previous "$prev" 2>&1) && rc=0 || rc=$?
+    assert_eq "narrowing compare exits 0" "$rc" "0" || { log "$out"; return 1; }
+    for needle in \
+        "Baseline: run-prior-debug" \
+        "1 scenario(s): L2-1" \
+        "COMPARE WARNING" \
+        "not covered by the baseline: L2-2"
+    do
+        if [[ "$out" != *"$needle"* ]]; then
+            log "    compare output missing: $needle"
+            log "$out"
+            return 1
+        fi
+    done
+
+    # Flip one pass to failing: the same narrowing warning prints, and the
+    # regression still drives exit status.
+    python3 - "$run" <<'PY'
+import json
+import pathlib
+import sys
+
+grading = pathlib.Path(sys.argv[1]) / "L2-1" / "pass-1" / "grading.json"
+data = json.loads(grading.read_text())
+data.update({
+    "pass_rate": 0.0,
+    "passed": False,
+    "expectations": [{"text": "assertion", "passed": False}],
+})
+grading.write_text(json.dumps(data))
+PY
+    out=$(python3 "$SCRIPT_DIR/../layer2/aggregate.py" "$run" --previous "$prev" 2>&1) && rc=0 || rc=$?
+    assert_eq "regression compare exits 1" "$rc" "1" || { log "$out"; return 1; }
+    for needle in "COMPARE WARNING" "REGRESSIONS DETECTED"
+    do
+        if [[ "$out" != *"$needle"* ]]; then
+            log "    compare output missing: $needle"
+            log "$out"
+            return 1
+        fi
+    done
+    return 0
+}
+
 scenario g1  "layer2 grade fails an empty-delivery pass"      g1_grade_empty_delivery_exits_nonzero
+scenario g2  "layer2 compare names baseline and warns"        g2_aggregate_names_baseline_and_warns_on_narrowing
 
 log ""
 log "==================================="

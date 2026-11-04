@@ -19,7 +19,7 @@ The wiki skill has two surfaces that can regress independently:
    `init_wiki.sh` scaffolds a new wiki and refuses to overwrite an
    existing one. `lint.py` reports broken links / bad frontmatter / etc.
    These are deterministic shell + Python: small inputs, small outputs.
-2. **Skill behavior at the agent level.** Whether Claude, given the
+2. **Skill behavior at the agent level.** Whether the vendor worker, given the
    skill's `SKILL.md`, runs discovery first, interprets the script's
    exit code correctly, asks the user when the result is ambiguous,
    refuses to silently adopt an upstream wiki, etc. This is non-deterministic
@@ -29,7 +29,7 @@ Layer 1 tests the scripts. Layer 2 tests the skill.
 
 ## Layer 1: script-level, deterministic
 
-**Runner:** `layer1/run.sh`. Bash + Python only, no LLM calls. ~1 sec.
+**Runner:** `layer1/run.sh`. Bash + Python only, no LLM calls; measure its wall clock with `time bash tests/wiki/layer1/run.sh`.
 
 For each scenario it stages a fake-`HOME` tree under
 `layer1/scratch/<id>/` and runs the relevant script with `HOME` and
@@ -65,7 +65,7 @@ The runner exits non-zero on any failure. Add a new scenario by
 appending a `scenario` invocation in `run.sh` plus a body function next
 to the existing helpers. The file is self-documenting.
 
-## Layer 2: skill-level, spawns Claude subagents
+## Layer 2: skill-level, spawns vendor workers
 
 For each scenario the harness spawns a subagent that has the wiki
 skill's `SKILL.md` available, gives it a sandbox CWD and an isolated
@@ -73,19 +73,21 @@ fake `HOME`, hands it a user request, and asks for a structured
 TEST REPORT in return. The grader checks that report and the resulting
 sandbox filesystem state against per-scenario assertions.
 
-**Two passes** per scenario, sequential *within* a scenario with a
-sandbox restage between them. Distinct scenarios run in parallel
-(`--workers`, default 4). Two independent samples surface flaky
-behavior; if the two passes disagree on an assertion, the regression
-aggregator flags it.
+The runner takes its passes-per-scenario count from `layer2/evals.json`'s
+`passes` value, running those passes sequentially *within* a scenario with a
+sandbox restage between them. Distinct scenarios run in parallel at the worker
+count `tests/lib/vendor.py`'s `DEFAULT_PARALLEL_WORKERS` sets, which
+`--workers` overrides. Repeated samples surface flaky behavior; if passes
+disagree on an assertion, the regression aggregator flags it.
 
-### The original five discovery scenarios
+### The original discovery scenarios
 
 `layer2/evals.json` is the live inventory. Read it with
 `jq -r '.evals[] | "\(.id)  \(.name)"' layer2/evals.json`. The table below
-covers only the five discovery scenarios the harness started with; the
-`L2-6`+, `WI-*`, `WU-*`, and `AS-*` scenarios added since are described in
-their own `description` field in that file.
+covers only the discovery scenarios the harness started with. Every other
+scenario in the file, including the later `L2` hub cases and the `WI-*`,
+`WU-*`, `AS-*`, and `MP-*` families, is described in its own `description`
+field there.
 
 | ID | Setup | User request | Skill must… |
 | --- | --- | --- | --- |
@@ -136,13 +138,13 @@ What we *don't* trust:
 
 ## How to run
 
-### Quick: Layer 1 only (~1 sec, no LLM cost)
+### Quick: Layer 1 only (deterministic, no LLM cost)
 
 ```bash
 ./tests/wiki/run_all.sh
 ```
 
-### Full: Layer 1 + Layer 2 (~5 to 10 min, default 4 parallel scenarios)
+### Full: Layer 1 + Layer 2 (worker count from the vendor default)
 
 The standalone runner shells out to one vendor worker per pass
 (`claude -p` or `agent -p`) and runs distinct scenarios concurrently:
@@ -153,7 +155,7 @@ The standalone runner shells out to one vendor worker per pass
 python3 ./tests/wiki/layer2/run.py
 ```
 
-`--workers` defaults to 4 (`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`).
+`--workers` defaults to `tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`.
 Passes of one scenario stay sequential. A `--scenario` subset restages
 and grades only those ids.
 
@@ -184,38 +186,71 @@ Each Layer 2 run produces, under
 - `benchmark.md`: human-readable summary
 - `report.html`: self-contained, interactive viewer with per-assertion results, prompts, responses, reports, and timing
 
+The runner prints the scenario set, pass count, vendor/model, and worker count
+at launch, and `benchmark.json` lists the scenarios the run actually covered.
+Read that printed summary and the `benchmark.json` scenario list to tell what a
+`workspace/run-<ts>/` directory covered; the timestamp-only directory name does
+not identify the run kind.
+
 `run.py` exits non-zero when `grade.py` marks any pass failed, including a
 run directory holding no pass or one whose `response.txt` is empty. The
 aggregator automatically compares against the most recent prior
-`benchmark.json` and exits non-zero if any assertion that was 100% in
-the prior run is <100% now, or any scenario that was clean across all
-passes now has at least one fail. That's the regression signal.
+`benchmark.json`. Its compare output names that baseline run and states the
+baseline's shape: how many scenarios it covered and their ids. When the
+baseline does not cover every scenario in the current run, including when it
+covered fewer, the compare prints an explicit narrowing warning naming the
+scenarios the baseline did not cover, so a `--scenario` debug run used as the
+baseline reads as a narrowed comparison rather than a clean pass. The warning
+leaves exit status unchanged. Exit status comes only from assertion or
+scenario regressions: the aggregator exits
+non-zero when any assertion that was 100% in the prior run is <100% now, or any
+scenario that was clean across all passes now has at least one fail.
 
 ## What "all passing" guarantees
 
-When a run shows 100% across the board, it means:
+A scenario-id family is the prefix before the first hyphen on each scenario
+`id`. `layer2/evals.json` is the live inventory, so scan it at read time
+(`jq -r '.evals[].id' layer2/evals.json`) rather than trusting a list frozen
+here. When a run shows 100% across every scenario it covers, it means:
 
-1. The walk-up logic in `discover_wiki.sh` is correct for every input
-   shape we've tested (12 cases including the load-bearing D6
-   ambiguity case).
-2. `init_wiki.sh` refuses to overwrite, refuses on `.no_wiki`, and
-   correctly scaffolds when given a fresh path.
-3. `lint.py` blocks on missing critical files (SCHEMA, index) and
-   passes on a fresh wiki.
-4. Across two independent agent runs per scenario, Claude:
-   - Always invokes discovery before writing.
-   - Correctly interprets exit 0 (auto-adopt) and exit 2 (ambiguous,
-     ask).
-   - Never silently adopts an upstream `EXISTING` wiki when ambiguity
-     should defer to the user.
-   - Refuses to re-init an existing wiki.
-   - Honors the `.no_wiki` opt-out chain.
-   - Adds pages to the right wiki, updates index/log, lints clean.
-5. No file leaked outside the sandbox; `~/wiki` was never created.
+1. **`L2` — the hub `wiki` skill.** These scenarios inherit the file's
+   top-level `skill_name: wiki`. A clean run establishes that the walk-up
+   logic in `discover_wiki.sh` is correct for every input shape the suite
+   stages, including the load-bearing D6 ambiguity case; that `init_wiki.sh`
+   refuses to overwrite, refuses on `.no_wiki`, and correctly scaffolds a
+   fresh path; that `lint.py` blocks on missing critical files and passes on a
+   fresh wiki; and that the later hub cases hold: the filing decision on an
+   answer-only query and on a multi-page synthesis, the re-ingest unchanged
+   and changed branches, and the AVAILABLE-candidate init choice.
+2. **`WI` — `wiki_import`.** A clean run establishes that the front end
+   captures the raw source, mines durable claims, emits its three-section
+   proposal and stops before writing, surfaces contradictions without silently
+   editing the existing page, completes the approval flow through page write,
+   lint, and a dated log entry, and keeps an out-of-repo local source free of a
+   machine-local path.
+3. **`WU` — `wiki_wrapup`.** A clean run establishes the same proposal-only,
+   contradiction-surfacing, and approval-flow plumbing for session wrap-up:
+   discovery delegates to the `wiki` skill, the proposal stops before any page
+   write, contradictions carry both excerpts, and approval lands the concept
+   page, lint, and a dated log entry.
+4. **`AS` — `wiki_fix` exercising `auto_shaper_wiki`.** A clean run establishes
+   that the `wiki_fix` front end reaches the `auto_shaper_wiki` agent and that
+   the agent reconciles deterministic origin fields, surfaces irreducible or
+   schema-contradicting cases instead of inventing values, propagates the
+   canonical log preamble additively, handles the on-demand log-heading repair,
+   surfaces out-of-wiki log subjects and duplicate headings without rewriting
+   them on a routine pass, applies the two-pass normalisation, and preserves
+   acknowledged or declared template deviations while reporting a template
+   candidate.
+5. **`MP` — `wiki_fix` exercising `auto_shaper_wiki` on meta-prose.** A clean
+   run establishes that an oversized custom todo page that trips the page-size
+   info finding does not acquire page-convention or lint-sanction prose in its
+   body; accepted-finding rationale stays in `SCHEMA.md` or the audit log.
+6. No file leaked outside the sandbox; the real `~/wiki` was never created.
 
 It does *not* guarantee:
 
-- That Claude will reliably trigger the skill from a real user message.
+- That the worker will reliably trigger the skill from a real user message.
   That's a description-matching question, separate from skill
   behavior. Test it with the skill-creator's `run_loop.py` against
   realistic user prompts.
@@ -233,7 +268,7 @@ It does *not* guarantee:
 
 Append a `dN_*` / `iN_*` / `lN_*` body function in `layer1/run.sh` and
 a `scenario` line at the bottom. The runner is one self-contained
-file, ~250 lines, with helpers (`fresh_scratch`, `run_discover`,
+file with helpers (`fresh_scratch`, `run_discover`,
 `assert_eq`) at the top.
 
 ### Layer 2
@@ -326,17 +361,17 @@ tests/wiki/
 │   ├── SUMMARY.md                  # rolling human summary of latest run
 │   └── layer1.log                  # latest Layer 1 output
 ├── layer1/
-│   ├── run.sh                      # 139 deterministic scenarios
+│   ├── run.sh                      # deterministic scenario inventory; grep '^scenario '
 │   └── scratch/<id>/HOME/...       # transient per-scenario fake-HOME trees
 └── layer2/
     ├── evals.json                  # canonical scenarios + assertions
-    ├── setup_scenarios.sh          # stages the 5 sandboxes from init_wiki.sh
+    ├── setup_scenarios.sh          # stages each scenario's sandbox from init_wiki.sh
     ├── build_prompt.py             # eval -> agent prompt (prompt assembly central)
     ├── normalize.py                # extract report.md from response.txt; strip noise
     ├── grade.py                    # report.md + sandbox -> grading.json
     ├── aggregate.py                # gradings -> benchmark.json + regression list
     ├── render_report.py            # benchmark + grading -> self-contained report.html
-    ├── run.py                      # standalone orchestrator (claude -p)
+    ├── run.py                      # standalone orchestrator (vendor worker)
     ├── L2-1/ ...                   # optional bare setup_scenarios.sh staging
     └── workspace/
         └── run-<ts>/
@@ -356,11 +391,10 @@ staged `layer2/{AS,L2,WI,WU}-*` sandboxes, and the per-run logs under
 
 ## Latest results
 
-See `results/SUMMARY.md` for the current and prior runs at a glance.
-Open `tests/wiki/layer2/workspace/run-<latest>/report.html` for the
-interactive per-pass view.
-
-The skill has so far passed 100% across two independent end-to-end
-runs (4 samples per scenario, 0 disagreements on assertion outcomes).
-The pass-rate variance is 0%; the only inter-run variance is in
-duration and token usage, as expected.
+Read the current record from the newest `tests/wiki/layer2/workspace/run-<ts>/`
+directory: its printed summary names the scenario set, pass count,
+vendor/model, and worker count; its `benchmark.json` lists the scenarios the
+run actually covered; and its `report.html` is the interactive per-pass view.
+`results/SUMMARY.md` carries the rolling human summary. Read that run's own
+artifacts rather than treating an older pair of runs as the standing result;
+the timestamp-only directory name does not identify the run kind.

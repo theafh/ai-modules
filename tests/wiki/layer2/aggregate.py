@@ -97,6 +97,21 @@ def build_markdown(benchmark: dict, regressions: list[str]) -> str:
     lines = []
     lines.append(f"# Wiki skill regression benchmark — {benchmark['run_id']}")
     lines.append("")
+    baseline = benchmark.get("baseline")
+    if baseline:
+        lines.append(
+            f"Baseline: {baseline['run_id']} — "
+            f"{baseline['n_scenarios']} scenario(s): "
+            f"{', '.join(baseline['scenario_ids']) or '(none)'}"
+        )
+        if baseline.get("narrowed"):
+            lines.append("")
+            lines.append(
+                "!! COMPARE WARNING: the baseline does not cover every "
+                "scenario in this run; not covered by the baseline: "
+                f"{', '.join(baseline['uncovered_scenario_ids'])}"
+            )
+        lines.append("")
     lines.append(f"Total scenarios: {len(benchmark['scenarios'])}")
     clean = sum(1 for s in benchmark["scenarios"] if s["all_passes_clean"])
     lines.append(f"All-passes clean: {clean}/{len(benchmark['scenarios'])}")
@@ -196,7 +211,43 @@ def main() -> int:
     if args.previous:
         prev_path = pathlib.Path(args.previous)
         if prev_path.is_file():
-            regressions = detect_regressions(benchmark, json.loads(prev_path.read_text()))
+            previous = json.loads(prev_path.read_text())
+            regressions = detect_regressions(benchmark, previous)
+
+            baseline_ids = [
+                s["scenario_id"] for s in previous.get("scenarios", [])
+            ]
+            current_ids = [s["scenario_id"] for s in scenarios]
+            baseline_run_id = (
+                previous.get("run_id")
+                or prev_path.parent.name
+                or prev_path.name
+            )
+            uncovered = [
+                sid for sid in current_ids if sid not in set(baseline_ids)
+            ]
+            narrowed = bool(uncovered)
+            benchmark["baseline"] = {
+                "run_id": baseline_run_id,
+                "n_scenarios": len(baseline_ids),
+                "scenario_ids": baseline_ids,
+                "narrowed": narrowed,
+                "uncovered_scenario_ids": uncovered,
+            }
+
+            print(
+                f"Baseline: {baseline_run_id} — {len(baseline_ids)} "
+                f"scenario(s): {', '.join(baseline_ids) or '(none)'}"
+            )
+            if narrowed:
+                print(
+                    "!! COMPARE WARNING: baseline covered "
+                    f"{len(baseline_ids)} scenario(s) but the current run "
+                    f"covers {len(current_ids)}; not covered by the baseline: "
+                    f"{', '.join(uncovered) or '(none)'}. This comparison is "
+                    "narrowed. Exit status still reflects assertion/scenario "
+                    "regressions only."
+                )
     benchmark["regressions"] = regressions
 
     (run_dir / "benchmark.json").write_text(json.dumps(benchmark, indent=2))

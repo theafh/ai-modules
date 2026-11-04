@@ -6,10 +6,10 @@ the operator's quick-ref.
 ## Common commands
 
 ```bash
-# Layer 1 only (fast, deterministic, ~1 sec)
+# Layer 1 only (deterministic, no LLM calls)
 ./tests/wiki/run_all.sh
 
-# Layer 1 + Layer 2 (full regression, ~5 to 10 min, spawns claude -p subprocesses)
+# Layer 1 + Layer 2 (full regression; one vendor worker per pass, Cursor by default)
 ./tests/wiki/run_all.sh --layer2
 
 # Single Layer 2 scenario while debugging
@@ -38,8 +38,19 @@ tests/wiki/layer2/workspace/run-<timestamp>/
   report.html                          # self-contained interactive viewer
 ```
 
-Open `report.html` in a browser. The aggregator returns non-zero if
-any assertion that was 100% in the prior run is now <100%.
+Open `report.html` in a browser. The runner prints the scenario set, pass
+count, vendor/model, and worker count at launch, and `benchmark.json` lists
+the scenarios the run actually covered. Read that printed summary and the
+`benchmark.json` scenario list to tell what a `run-<timestamp>/` directory covered;
+the timestamp-only directory name does not identify the run kind.
+
+The aggregator compares against the most recent prior `benchmark.json`, names
+that baseline run and its shape (scenario count and ids), and prints an
+explicit narrowing warning when the baseline does not cover every scenario in
+the current run, including when it covered fewer. The warning does not change
+exit status. The aggregator returns
+non-zero only when an assertion that was 100% in the prior run is now <100%,
+or a scenario that was clean across all passes now has a fail.
 
 ## Adding a scenario
 
