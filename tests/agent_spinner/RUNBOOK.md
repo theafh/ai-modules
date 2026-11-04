@@ -72,19 +72,23 @@ Fixture helpers in `evals/fixtures/_common.sh`:
 
 ## Trigger evals
 
-Trigger evals are Claude-only, so they run on Claude where a change needs the
-measurement, such as a description edit, with `--vendor claude` in the command
-so the Claude run is visible.
+Trigger evals run on both vendors, on Cursor by default, so run them without
+`--vendor` where a change needs the measurement, such as a description edit.
+Pass a baseline recorded on the same vendor.
 
 ```bash
-python3 tests/trigger_evals/run.py --vendor claude \
-  --eval-set tests/trigger_evals/agent_spinner.json --skill agent_spinner
+python3 tests/trigger_evals/run.py \
+  --eval-set tests/trigger_evals/agent_spinner.json --skill agent_spinner \
+  --baseline tests/trigger_evals/results/agent_spinner/<prior-run>
 ```
 
-The skill has to be deployed for the runner's deployed-mode path. An unavailable
-skill exits with a named unavailability error and writes no score;
-`--force-uuid` remains the deliberate opt-in to the UUID proxy and, for
-`agent_spinner`, also needs
+A Claude run is one the operator asks for; name it with `--vendor claude` so
+the Claude run is visible.
+
+The skill has to be deployed for the runner's deployed-mode path. A skill
+missing from the run vendor's deployed tree exits with a named unavailability
+error and writes no score; `--force-uuid` remains the Claude-only deliberate
+opt-in to the UUID proxy and, for `agent_spinner`, also needs
 `--skill-path plugins/ai_dev/skills/agent_spinner` because the default
 source root is `plugins/knowledge_management/skills/<skill>`.
 
@@ -94,7 +98,7 @@ that is when the cross-set regression check earns its cost. Re-run the
 pre-existing sets then, each against its own prior run:
 
 ```bash
-python3 tests/trigger_evals/run.py --vendor claude \
+python3 tests/trigger_evals/run.py \
   --eval-set tests/trigger_evals/<set>.json \
   --skill <skill> --baseline tests/trigger_evals/results/<skill>/<prior-run>
 ```

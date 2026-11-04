@@ -107,7 +107,7 @@ loud failure and writes no score, and `--force-uuid` remains the deliberate
 UUID-proxy opt-in, superseding the prior "falls back to the UUID proxy" wording.
 Leave the section's run command and deploy-time obligation as they stand; the
 dual-vendor command and baseline rewrite stay with
-[tests_trigger-evals-cursor-vendor.md](../tests_trigger-evals-cursor-vendor.md).
+[tests_trigger-evals-cursor-vendor.md](tests_trigger-evals-cursor-vendor.md).
 
 **Out of scope:**
 

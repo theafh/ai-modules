@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-10-26
+updated: 2026-11-04
 type: concept
 tags: [skill, repo-structure, authoring, claude, cursor, verification-gap]
 sources: [raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
@@ -95,11 +95,11 @@ explicit request, and an agent never starts one on its own initiative or in the
 background.
 
 This practice is recorded in the repo rules, `TESTING.md`, `tests/CLAUDE.md`,
-and `tests/AGENTS.md`, and encoded in `tests/lib/vendor.py`. Claude-only
-surfaces (`trigger_evals`, output-style deploy tests, `natural_language`)
-default to Claude instead and stop with an error on an explicit
-`--vendor cursor` until a Cursor equivalent exists, so they run on Claude
-wherever a change needs them.
+and `tests/AGENTS.md`, and encoded in `tests/lib/vendor.py`. Trigger evals run
+on both Claude and Cursor. The remaining Claude-only surfaces (output-style
+deploy tests, `natural_language`) default to Claude instead and stop with an
+error on an explicit `--vendor cursor` until a Cursor equivalent exists, so
+they run on Claude wherever a change needs them.
 
 ### A worker inherits the host's instructions unless it is isolated
 

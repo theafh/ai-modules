@@ -96,15 +96,15 @@ own commit, separate from the skill change it covers.
 ## Trigger evals
 
 `../trigger_evals/task.json` validates family routing. See
-`../trigger_evals/` and `tests/CLAUDE.md`. Trigger evals are Claude-only, so
-they run on Claude where a change needs the measurement, with `--vendor claude`
-in the command so the Claude run is visible:
+`../trigger_evals/` and `tests/CLAUDE.md`. Trigger evals run on both vendors,
+on Cursor by default, so run them without `--vendor` where a change needs the
+measurement:
 
 ```bash
-python3 tests/trigger_evals/run.py --vendor claude \
+python3 tests/trigger_evals/run.py \
   --eval-set tests/trigger_evals/task.json \
   --skill task --skill-path plugins/ai_dev/skills/task \
-  --runs-per-query 3 --timeout 45 --workers 10
+  --runs-per-query 3 --timeout 45
 ```
 
 Pass `--skill-path` as shown: without it the runner finds no source skill

@@ -200,10 +200,11 @@ result and a Claude result stay separate evidence. Grading stays model-free on
 either worker.
 
 Trigger evals answer a different question, whether a skill's `description:`
-loads it on a realistic message. The trigger evals are Claude-only (the runner
-defaults to Claude), so they run on Claude where a change needs the
-measurement, through
-`python3 tests/trigger_evals/run.py --vendor claude --eval-set <set> --skill <name> --baseline <prior-run>`.
+loads it on a realistic message. They run on both vendors, on Cursor by
+default, through
+`python3 tests/trigger_evals/run.py --eval-set <set> --skill <name> --baseline <prior-run>`.
+Pass a baseline recorded on the same vendor; a cross-vendor baseline writes the
+results without a comparison and exits non-zero naming both vendors.
 
 ## Re-run Economy
 

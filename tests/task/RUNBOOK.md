@@ -49,12 +49,12 @@ RESPONSE_FILE=<captured response.txt> bash tests/task/evals/grade.sh finish "$sa
 # ... or the sandbox-only alternative, which skips the response checks:
 bash tests/task/evals/grade.sh finish "$sandbox_proj"
 
-# Trigger evals (Claude-only, LLM cost): family routing, where a change
-# needs the measurement; --vendor claude keeps the Claude run visible
-python3 tests/trigger_evals/run.py --vendor claude \
+# Trigger evals (LLM cost): family routing, where a change needs the
+# measurement; the default vendor is Cursor
+python3 tests/trigger_evals/run.py \
   --eval-set tests/trigger_evals/task.json \
   --skill task --skill-path plugins/ai_dev/skills/task \
-  --runs-per-query 3 --timeout 45 --workers 10
+  --runs-per-query 3 --timeout 45
 # Keep --skill-path: without it the family degenerates to ['task'] and the
 # family metric stops meaning anything (precise scoring is unaffected).
 ```

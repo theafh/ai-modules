@@ -77,7 +77,7 @@ Through the wiki skill family, record the probe results on `wiki/entities/openai
 - Probing Google Antigravity or GitHub Copilot in VS Code, since the approved program covers Codex and OpenCode.
 - Fixing a skill defect that an eval run surfaces.
 - Proving other skills' eval suites on the new vendors.
-- Trigger evals on the new vendors, which [the Cursor trigger-evals task](../tests_trigger-evals-cursor-vendor.md) owns.
+- Trigger evals on the new vendors, which [the Cursor trigger-evals task](tests_trigger-evals-cursor-vendor.md) owns.
 
 ## Acceptance
 

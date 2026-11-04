@@ -36,7 +36,7 @@ EXCLUDE     := -path ./.git -prune -o \
                -path './tests/wiki/layer2/WI-*' -prune -o \
                -path './tests/wiki/layer2/WU-*' -prune -o \
                -path './tests/wiki/layer2/MP-*' -prune -o \
-               -path './tests/trigger_evals/results/*' -prune -o \
+               -path './tests/trigger_evals/results/*/*' -prune -o \
                -path '*/results/run-*' -prune -o
 MD_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.md' -print)
 JSON_FILES  := $(shell find . $(EXCLUDE) -type f -name '*.json' -print)

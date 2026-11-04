@@ -79,7 +79,6 @@ These default to Claude and stop with a clear error on an explicit
 wherever a change needs them, in the foreground, with `--vendor claude` in the
 command:
 
-- `trigger_evals/` — inspects Claude `Skill(...)` / stream-json load evidence
 - `natural_language/` exercises Claude output-style selection through
   `outputStyle` in a sandbox `.claude/settings.json`.
 
@@ -162,6 +161,8 @@ bash tests/task/run_all.sh
 python3 tests/git_commit/evals/run.py
 python3 tests/guardrail_audit/evals/run.py --force
 python3 tests/language_humanizer/evals/run.py   # the recorded measurement
+python3 tests/trigger_evals/run.py --eval-set tests/trigger_evals/wiki.json \
+  --skill wiki --baseline tests/trigger_evals/results/wiki/<prior-cursor-run>
 
 # Claude (latest sonnet worker, inherited judge): an eval that needs a
 # Claude-specific feature, or a suite the operator explicitly asks for
@@ -236,6 +237,8 @@ helper (private pools, not yet on `eval_runner`):
   passes of the same scenario stay sequential.
 - `tests/language_humanizer/evals/run.py` — one isolated sandbox root per pass.
 - `tests/natural_language/evals/run.py` — one sandbox per pass.
+- `tests/trigger_evals/run.py` — one fresh worker directory per query run,
+  outside the checkout and any git repository.
 
 Pattern A runners that stay sequential until their sibling conversion tasks
 wire them onto `eval_runner` (plus permanent isolation exceptions):

@@ -1,7 +1,7 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-10-27
+updated: 2026-11-04
 type: entity
 tags: [cursor, agent, skill, frontmatter, discovery, verification-gap]
 sources:
@@ -70,7 +70,12 @@ skill in the workspace's `.cursor/skills/` and no path in the prompt, the worker
 read the deployed copies. `CURSOR_CONFIG_DIR`, which the CLI reads before
 `XDG_CONFIG_HOME` for its configuration directory, kept authentication but left
 skill discovery on the home directory, where the CLI looks under `.cursor`,
-`.claude`, `.codex`, `.grok`, and `.agents`. A scratch `HOME` authenticates with only Library/Keychains linked, because the CLI reads its login keychain through `/usr/bin/security` and needs nothing else from the real `Library` ([keychain probes](../raw/notes/cursor-keychain-login-probes-2026-10-26.md)).
+`.claude`, `.codex`, `.grok`, and `.agents`. The skills documentation read on
+4 October 2026 lists the user-level roots `~/.cursor/skills/` and
+`~/.agents/skills/`, plus the compatibility roots `~/.claude/skills/` and
+`~/.codex/skills/` that other harnesses own (documentation,
+`cursor.com/docs/context/skills`, read on 4 October 2026 alongside agent CLI
+2026.10.01). A scratch `HOME` authenticates with only Library/Keychains linked, because the CLI reads its login keychain through `/usr/bin/security` and needs nothing else from the real `Library` ([keychain probes](../raw/notes/cursor-keychain-login-probes-2026-10-26.md)).
 The 2026-10-08 probes linked the whole `Library` instead, which established
 that a scratch `HOME` logs in and that a skill copied into that scratch home's
 `.cursor/skills/` was then the copy read when the prompt named it
@@ -281,18 +286,29 @@ records which entries and modes confine a worker. The deny entries `Task(*)` and
 file. A second turn resumes with `--resume <session_id>`, taking the
 `session_id` from the first turn's stream, so no `create-chat` call is needed.
 
+Without `--trust`, a print-mode run exits 1 before any record and prints
+`Workspace Trust Required`; with `--trust` and without `--force`, the init
+record reports `permissionMode` as `default` (observation, 4 October 2026,
+agent CLI 2026.10.01).
+
 In the stream-json output, the `system`/`init` event carries `model`,
 `permissionMode`, and `session_id` but no tool list. `assistant` events carry
 text, `thinking` events carry deltas, and `tool_call` events carry a `subtype`
 of `started` or `completed`. The `result` event carries `result`, `session_id`,
 and `usage` (`inputTokens`, `outputTokens`, `cacheReadTokens`,
-`cacheWriteTokens`). A `tool_call` object holds one key naming the tool kind,
+`cacheWriteTokens`). A skill load shows as a `tool_call` whose
+`readToolCall.args.path` is the deployed user-level
+`~/.cursor/skills/<name>/SKILL.md`, followed by its `completed` record
+(observation, 4 October 2026, agent CLI 2026.10.01). A shell or write call
+emits the same `tool_call` record with a `shellToolCall` or `editToolCall` key
+carrying `args` and, on completion, a `result` (observation, 9 October 2026,
+agent CLI 2026.10.01). A `tool_call` object holds one key naming the tool kind,
 with `args`, beside `toolCallId`, `startedAtMs`, and `hookAdditionalContexts`,
-and it gains `completedAtMs` on completion (9 October 2026). On completion the
-tool-kind entry also holds a `result` with `success`,
-`permissionDenied`, `writePermissionDenied`, or `error`. The kinds seen were
-`readToolCall`, `shellToolCall`, `editToolCall`, `taskToolCall`,
-`createGoalToolCall`, `updateGoalToolCall`, and `getMcpToolsToolCall`.
+and it gains `completedAtMs` on completion. On completion the tool-kind entry
+also holds a `result` with `success`, `permissionDenied`,
+`writePermissionDenied`, or `error`. The kinds seen were `readToolCall`,
+`shellToolCall`, `editToolCall`, `taskToolCall`, `createGoalToolCall`,
+`updateGoalToolCall`, and `getMcpToolsToolCall`.
 
 ### Rules are the whole instruction mechanism
 

@@ -1310,3 +1310,14 @@ pre-existing, and the size infos stay advisory; the one on
   path, and the page's `updated` date moves to 2026-11-03)
 - index.md (the deployment-model summary names the log-driven update replay,
   Last updated)
+
+## [2026-11-04 14:33] update | trigger evals on both vendors and the Cursor load record
+
+- concepts/verification-surfaces.md (the Claude-only surfaces sentence now
+  says trigger evals run on Claude and Cursor, and the page's `updated` date
+  moves to 2026-11-04)
+- entities/cursor.md (the print-mode passage gains the trust requirement, the
+  skill-load `readToolCall.args.path` record, the shell and write
+  `tool_call` record, and the documented user-level and compatibility skill
+  roots, each dated with its CLI version and source kind; the page's `updated`
+  date moves to 2026-11-04)

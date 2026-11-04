@@ -2,9 +2,11 @@
 description: Run the trigger evals on Cursor as on Claude, each worker in its own directory, with same-vendor baselines and no Claude-only label, and record a live run on Cursor.
 scope: tests/trigger_evals
 created: 2026-10-04T10:56:39
-updated: 2026-11-02T22:38:28
-status: ready
+updated: 2026-11-04T14:56:50
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Run the trigger evals on Cursor as on Claude, with a fresh directory per worker and same-vendor baselines, drop the Claude-only label, and record a live run on Cursor
@@ -34,9 +36,9 @@ A recorded live run on Cursor, the default vendor, proves the measurement there,
   - Claude Code 2.1.226's help says print mode skips the workspace trust dialog, so the Claude argv needs no trust flag in a fresh directory.
 - **What Cursor's documentation covers** (read 2026-10-04). The CLI output-format page, `cursor.com/docs/cli/reference/output-format`, documents the `tool_call` records and `readToolCall.args.path`. It also says print mode suppresses thinking events, which the observation saw anyway. The skills page, `cursor.com/docs/context/skills`, lists the user-level roots `~/.cursor/skills/` and `~/.agents/skills/`. It also lists the compatibility roots `~/.claude/skills/` and `~/.codex/skills/`, which other harnesses own and Cursor reads as well. Neither page describes how a skill gets loaded or the trust prompt, so those facts rest on observation. `make deploy` writes Cursor's copy of each skill under `~/.cursor/skills/`.
 - **Where results go.** Each run writes `results.json` and `run.log` into its own timestamped directory under `tests/trigger_evals/results/<skill>/`. `tests/.gitignore` ignores the trigger harness's per-run directories through `trigger_evals/results/*/`. The same file keeps hand-written analysis notes beside run output under a harness's `results/`, and its "Currently kept" comment lists them. The Makefile's `EXCLUDE` prunes everything under `tests/trigger_evals/results/` from lint. TESTING.md's `## Test Organization` keeps lint scope and git scope in step.
-- **Prerequisite.** [The guard task](archive/tests_trigger-eval-unavailable-skill-guard.md) lands first. It makes a run whose skill is missing from the deployed tree exit non-zero with a named unavailability and no score. It keeps `--force-uuid` as the opt-in to the UUID proxy, and adds that assertion to `tests/trigger_evals/script_tests/run.sh`. It also adds a zero-recall reading to `## tests/trigger_evals/` in `tests/CLAUDE.md`, a note on how to read a run in which no positive query loads the skill.
-- **Shared edits.** [The runner-modes task](tests_agent-spinner-runner-modes.md) also edits `tests/lib/vendor.py`, `tests/lib/test_vendor.py`, the stream parser in `tests/lib/micro_deploy.py` that the Cursor detector builds on, the Claude-only lists and vendor sections of `tests/CLAUDE.md` and `tests/AGENTS.md`, and TESTING.md's `## Running Tests`. Whichever task lands second applies its edits on top of the other's, and the two guides stay in lockstep. [The natural-language task](archive/styles_natural-language-connected-prose.md) adds `natural_language` to `CLAUDE_ONLY` and to the same Claude-only lists. It accepts whatever other entries stand there when it lands.
-- **Precedent.** [The deferred harness-repair task](archive/tests_trigger-eval-harness-repair.md) recorded a zero trigger rate on every positive query. A zero rate looks like a clean result, yet it can mean the detector never fires. A detector that never fires on Cursor would repeat that misread, which is why the live proof needs a non-zero rate.
+- **Prerequisite.** [The guard task](tests_trigger-eval-unavailable-skill-guard.md) lands first. It makes a run whose skill is missing from the deployed tree exit non-zero with a named unavailability and no score. It keeps `--force-uuid` as the opt-in to the UUID proxy, and adds that assertion to `tests/trigger_evals/script_tests/run.sh`. It also adds a zero-recall reading to `## tests/trigger_evals/` in `tests/CLAUDE.md`, a note on how to read a run in which no positive query loads the skill.
+- **Shared edits.** [The runner-modes task](../tests_agent-spinner-runner-modes.md) also edits `tests/lib/vendor.py`, `tests/lib/test_vendor.py`, the stream parser in `tests/lib/micro_deploy.py` that the Cursor detector builds on, the Claude-only lists and vendor sections of `tests/CLAUDE.md` and `tests/AGENTS.md`, and TESTING.md's `## Running Tests`. Whichever task lands second applies its edits on top of the other's, and the two guides stay in lockstep. [The natural-language task](styles_natural-language-connected-prose.md) adds `natural_language` to `CLAUDE_ONLY` and to the same Claude-only lists. It accepts whatever other entries stand there when it lands.
+- **Precedent.** [The deferred harness-repair task](tests_trigger-eval-harness-repair.md) recorded a zero trigger rate on every positive query. A zero rate looks like a clean result, yet it can mean the detector never fires. A detector that never fires on Cursor would repeat that misread, which is why the live proof needs a non-zero rate.
 
 ## Approach
 

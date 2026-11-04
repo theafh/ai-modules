@@ -1,29 +1,34 @@
 #!/usr/bin/env python3
 """Trigger-eval runner for the skills shipped in this repo.
 
-Prefers the deployed skill (under `~/.claude/skills/<name>/`) when present —
-spawns `claude -p <query>` and watches the stream for an actual
-`Skill(skill="<name>", ...)` invocation or a `Read` of the deployed
-`SKILL.md`. When the skill is unavailable in the deployed tree and
-`--force-uuid` is not set, exits with a named unavailability error and
-writes no score. `--force-uuid` is the only entry to the skill-creator
-runner's UUID-proxy approach.
+Measures whether a skill's `description:` makes the agent load that skill for a
+realistic message, on Claude and on Cursor. Both vendors run the same eval sets
+and are graded the same way into one result schema.
 
-This harness is Claude-only: it inspects Claude stream-json tool-use evidence.
-Its worker resolves through `tests/lib/vendor.py`, which defaults this
-Claude-only harness to Claude (worker `sonnet`; `--model ''` inherits the CLI
-default) and stops with an error on `--vendor cursor`. A run is a Claude run,
-made where a change needs the measurement, and its command names
-`--vendor claude` so the Claude run is visible.
+Deployed mode measures the copy of the skill that `make deploy` installed under
+the run vendor's native root: `~/.claude/skills/<name>/` on Claude and
+`~/.cursor/skills/<name>/` on Cursor. Claude records a load as a
+`Skill(skill="<name>", ...)` call or a `Read` of a `/<name>/SKILL.md`; Cursor
+records it as a `tool_call` whose `readToolCall.args.path` ends in
+`/<name>/SKILL.md`, under its native root or a compatibility root. Each worker
+starts in its own fresh directory outside the checkout and any git repository,
+so the repository's instruction files never load. A skill missing from the run
+vendor's deployed tree exits with a named unavailability and writes no score.
+`--force-uuid` is the only entry to skill-creator's UUID-proxy path, which is
+Claude-only because that runner drives `claude -p`.
 
 Usage:
 
-    python3 tests/trigger_evals/run.py --vendor claude \\
+    python3 tests/trigger_evals/run.py \\
       --eval-set tests/trigger_evals/wiki.json \\
       --skill wiki \\
+      [--vendor {claude,cursor}] \\
       [--family wiki,wiki_import,wiki_fix,wiki_wrapup] \\
-      [--model sonnet|''] \\
-      [--runs-per-query 3] [--timeout 45] [--workers 10]
+      [--model sonnet|auto|''] \\
+      [--runs-per-query 3] [--timeout 45] [--workers 4]
+
+`--vendor` defaults to `cursor`. `--workers` defaults to
+`vendor.DEFAULT_PARALLEL_WORKERS`.
 
 Outputs `results.json` and `run.log` under
 `tests/trigger_evals/results/<skill>/<timestamp>/`.
@@ -68,11 +73,13 @@ import select
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+import micro_deploy  # noqa: E402  (shared Cursor stream reader)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -94,8 +101,10 @@ READ_PATH_SKILL_RE = re.compile(r'/([^/]+)/SKILL\.md$')
 WORKER_FAILED = "__worker_failed__"
 
 
-def deployed_skill_root(skill_name: str) -> Path | None:
-    p = Path.home() / ".claude" / "skills" / skill_name
+def deployed_skill_root(skill_name: str, vendor_name: str) -> Path | None:
+    """Return the skill under the vendor's native root, where deploy writes it."""
+
+    p = vendor.skill_roots(vendor_name)[0] / skill_name
     if (p / "SKILL.md").is_file():
         return p
     return None
@@ -180,28 +189,42 @@ def normalize_eval_entry(entry: dict, target_skill: str) -> dict:
     raise ValueError(f"eval entry missing expected_skill / should_trigger: {entry}")
 
 
-def run_one_deployed(
-    query: str,
-    timeout: int,
-    resolved: vendor.Resolved,
-) -> str | None:
-    """Spawn `claude -p <query>` and return the name of the first skill the
-    model loaded — by `Skill(skill="<name>")` or `Read(.../<name>/SKILL.md)`.
-    Returns None if the first tool was anything else (or the model never
-    invoked a tool)."""
-    cmd = [
-        resolved.bin, "-p", query,
-        "--output-format", "stream-json",
-        "--verbose",
-        "--include-partial-messages",
-    ]
-    if resolved.worker_model:
-        cmd.extend(["--model", resolved.worker_model])
-    env = vendor.worker_env(resolved.vendor)
+_NO_DECISION = object()
 
-    proc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env,
-    )
+
+def _fresh_worker_dir() -> Path:
+    """Create a worker directory outside the checkout and any git repository."""
+
+    base = Path(tempfile.gettempdir()).resolve()
+    repo = REPO_ROOT.resolve()
+    if base == repo or repo in base.parents:
+        base = Path("/tmp")
+    try:
+        inside = (
+            subprocess.run(
+                ["git", "-C", str(base), "rev-parse", "--is-inside-work-tree"],
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            == "true"
+        )
+    except OSError:
+        inside = False
+    if inside:
+        base = Path("/tmp")
+    return Path(tempfile.mkdtemp(prefix="trigger_evals_worker_", dir=str(base)))
+
+
+def _read_worker(
+    proc: subprocess.Popen, timeout: int, vendor_name: str
+) -> str | None:
+    """Read one worker's stream and return its first-tool decision.
+
+    Claude reads `stream_event` records. Cursor reads `tool_call` records
+    through ``micro_deploy._parse_cursor_event``. A `result` record with
+    `is_error` true is a failed worker on both vendors. A clean exit before any
+    tool is a no-trigger; every other ending is a failed worker.
+    """
 
     decision_made = False
     triggered_skill: str | None = None
@@ -209,6 +232,7 @@ def run_one_deployed(
     buffer = ""
     pending_tool: str | None = None
     accumulated = ""
+    saw_eof = False
 
     try:
         while not decision_made and time.time() - start < timeout:
@@ -222,6 +246,7 @@ def run_one_deployed(
                 continue
             chunk = os.read(proc.stdout.fileno(), 8192)
             if not chunk:
+                saw_eof = True
                 break
             buffer += chunk.decode("utf-8", errors="replace")
             while "\n" in buffer and not decision_made:
@@ -233,6 +258,33 @@ def run_one_deployed(
                     event = json.loads(line)
                 except json.JSONDecodeError:
                     continue
+                if not isinstance(event, dict):
+                    continue
+
+                if event.get("type") == "result" and event.get("is_error"):
+                    # A dead worker must never pass a negative query, whatever
+                    # the exit status says.
+                    triggered_skill = WORKER_FAILED
+                    decision_made = True
+                    break
+
+                if vendor_name == "cursor":
+                    if event.get("type") != "tool_call":
+                        continue
+                    parsed = micro_deploy.StreamParse()
+                    micro_deploy._parse_cursor_event(event, parsed)
+                    if not parsed.tools:
+                        continue
+                    record = parsed.tools[0]
+                    if record.name == "readToolCall":
+                        path = str(record.input.get("path") or "")
+                        match = READ_PATH_SKILL_RE.search(path)
+                        triggered_skill = match.group(1) if match else None
+                    else:
+                        triggered_skill = None
+                    decision_made = True
+                    continue
+
                 if event.get("type") != "stream_event":
                     continue
                 se = event.get("event", {})
@@ -272,6 +324,13 @@ def run_one_deployed(
         # if it already exited on its own, None if it is still running (we ran
         # out of time). Needed to tell a clean no-trigger from a timeout/crash.
         self_exit_rc = proc.poll()
+        if saw_eof and self_exit_rc is None:
+            # stdout closed just before the process was reaped. Give it a short
+            # grace so a clean exit is not misread as a timeout.
+            try:
+                self_exit_rc = proc.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                self_exit_rc = proc.poll()
         try:
             proc.terminate()
             proc.wait(timeout=2)
@@ -288,12 +347,41 @@ def run_one_deployed(
         # (a trigger, or a deliberate non-family / no-skill choice).
         return triggered_skill
     if self_exit_rc == 0:
-        # The worker exited cleanly before invoking any Skill/Read: a legitimate
+        # The worker exited cleanly before invoking any tool: a legitimate
         # "no trigger" (the model answered without loading a skill).
         return None
     # Still running when we gave up (timeout: self_exit_rc is None) or exited
     # nonzero (crash): a worker failure, not a deliberate no-trigger.
     return WORKER_FAILED
+
+
+def run_one_deployed(
+    query: str,
+    timeout: int,
+    resolved: vendor.Resolved,
+) -> str | None:
+    """Run one worker in a fresh directory and return its first-tool decision."""
+
+    worker_dir = _fresh_worker_dir()
+    try:
+        cmd = vendor.build_stream_cmd(
+            vendor=resolved.vendor,
+            bin=resolved.bin,
+            model=resolved.worker_model,
+            query=query,
+            workspace=str(worker_dir) if resolved.vendor == "cursor" else None,
+        )
+        env = vendor.worker_env(resolved.vendor)
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            env=env,
+            cwd=str(worker_dir),
+        )
+        return _read_worker(proc, timeout, resolved.vendor)
+    finally:
+        shutil.rmtree(worker_dir, ignore_errors=True)
 
 
 def _worker(task: tuple) -> tuple:
@@ -340,10 +428,47 @@ def grade_query(triggered_runs: list[str | None], expected_skill: str | None,
     }
 
 
+class EscapeDetected(RuntimeError):
+    """A worker wrote into the host checkout during the run."""
+
+    def __init__(self, paths: list[str]):
+        self.paths = paths
+        super().__init__(
+            "worker wrote into the host checkout: " + ", ".join(paths)
+        )
+
+
+def _git_status(repo: Path) -> str | None:
+    """Return ``git status --porcelain`` for a repo, or None outside one."""
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def _changed_paths(before: str, after: str) -> list[str]:
+    """Paths present after the run that were not present before it."""
+
+    paths = []
+    for line in sorted(set(after.splitlines()) - set(before.splitlines())):
+        path = line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        paths.append(path)
+    return paths
+
+
 def run_deployed_mode(entries: list[dict], target_skill: str, family: list[str],
                       runs_per_query: int, timeout: int, workers: int,
                       resolved: vendor.Resolved, log) -> dict:
-    print(f"Mode: deployed (~/.claude/skills/{target_skill}/)", file=log, flush=True)
+    native_root = vendor.skill_roots(resolved.vendor)[0] / target_skill
+    print(f"Mode: deployed ({native_root}/)", file=log, flush=True)
     print(f"Family: {family}", file=log, flush=True)
     runs_by_query: list[list[str | None]] = [[None] * runs_per_query for _ in entries]
     tasks = [
@@ -353,12 +478,16 @@ def run_deployed_mode(entries: list[dict], target_skill: str, family: list[str],
     ]
     completed = 0
     total = len(tasks)
+    before = _git_status(REPO_ROOT)
     with ProcessPoolExecutor(max_workers=workers) as pool:
         for qi, ri, name in pool.map(_worker, tasks):
             runs_by_query[qi][ri] = name
             completed += 1
             if completed % 5 == 0 or completed == total:
                 print(f"  progress: {completed}/{total}", file=log, flush=True)
+    after = _git_status(REPO_ROOT)
+    if before is not None and after is not None and before != after:
+        raise EscapeDetected(_changed_paths(before, after))
 
     results = []
     precise_passed = 0
@@ -493,7 +622,9 @@ def main() -> int:
     parser.add_argument("--runs-per-query", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=45,
                         help="Per-query timeout in seconds.")
-    parser.add_argument("--workers", type=int, default=10)
+    parser.add_argument(
+        "--workers", type=int, default=vendor.DEFAULT_PARALLEL_WORKERS
+    )
     parser.add_argument("--results-dir", default=None)
     parser.add_argument("--baseline", default=None,
                         help="Prior results.json (or its run dir) to diff this run "
@@ -506,6 +637,16 @@ def main() -> int:
     args = parser.parse_args()
     vendor.require_vendor_allowed(args.vendor, "trigger_evals")
     resolved = vendor.resolve(args)
+
+    if args.vendor == "cursor" and args.force_uuid:
+        print(
+            "ERROR: --force-uuid is the UUID-proxy path and is Claude-only: "
+            "skill-creator's runner behind it drives `claude -p`. Run it with "
+            "`--vendor claude`, or omit --force-uuid and deploy the skill to "
+            "measure on Cursor.",
+            file=sys.stderr,
+        )
+        return 2
 
     eval_set_path = Path(args.eval_set).resolve()
     if not eval_set_path.is_file():
@@ -529,12 +670,15 @@ def main() -> int:
     if args.skill not in family:
         family = [args.skill] + family
 
-    deployed_root = None if args.force_uuid else deployed_skill_root(args.skill)
+    native_root = vendor.skill_roots(resolved.vendor)[0] / args.skill
+    deployed_root = (
+        None if args.force_uuid else deployed_skill_root(args.skill, args.vendor)
+    )
     if deployed_root is None and not args.force_uuid:
         print(
             f"ERROR: skill '{args.skill}' is unavailable: not found under "
-            f"~/.claude/skills/{args.skill}/. Deploy the skill (make deploy) "
-            f"or pass --force-uuid to use the UUID-proxy path deliberately.",
+            f"{native_root}/. Deploy the skill (make deploy) or pass "
+            f"--force-uuid to use the UUID-proxy path deliberately.",
             file=sys.stderr,
         )
         return 2
@@ -561,13 +705,19 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"Results dir: {out_dir}")
 
-    drift_note = None
+    drift_notes: list[str] = []
     if deployed_root and source_skill_path:
-        drift_note = detect_drift(deployed_root / "SKILL.md",
-                                  source_skill_path / "SKILL.md")
+        for root in vendor.skill_roots(resolved.vendor):
+            copy = root / args.skill / "SKILL.md"
+            if not copy.is_file():
+                continue
+            note = detect_drift(copy, source_skill_path / "SKILL.md")
+            if note:
+                drift_notes.append(note)
 
     log_path = out_dir / "run.log"
     results_path = out_dir / "results.json"
+    baseline_mismatch: tuple[str, str] | None = None
 
     with log_path.open("w") as log:
         log.write(f"eval_set:       {eval_set_path}\n")
@@ -582,7 +732,7 @@ def main() -> int:
         log.write(f"timeout:        {args.timeout}\n")
         log.write(f"workers:        {args.workers}\n")
         log.write(f"force_uuid:     {args.force_uuid}\n\n")
-        if drift_note:
+        for drift_note in drift_notes:
             log.write(drift_note + "\n\n")
             print(drift_note)
 
@@ -602,11 +752,27 @@ def main() -> int:
             print(f"ERROR: {e}", file=sys.stderr)
             return 1
 
+        output["vendor"] = resolved.vendor
+        output["worker_model"] = resolved.worker_model
+
         baseline_cmp = None
         if args.baseline and output["mode"] == "deployed":
             try:
-                baseline_cmp = compare_to_baseline(output, Path(args.baseline).resolve())
-                output["baseline_comparison"] = baseline_cmp
+                base_path = Path(args.baseline).resolve()
+                base = _load_results(base_path)
+                base_vendor = base.get("vendor", "claude")
+                if base_vendor != output["vendor"]:
+                    baseline_mismatch = (base_vendor, output["vendor"])
+                    msg = (
+                        f"baseline vendor mismatch: baseline {base_path} was "
+                        f"recorded on {base_vendor}, this run is on "
+                        f"{output['vendor']}. Comparison skipped."
+                    )
+                    log.write("\nWARNING: " + msg + "\n")
+                    print(f"WARNING: {msg}", file=sys.stderr)
+                else:
+                    baseline_cmp = compare_to_baseline(output, base_path)
+                    output["baseline_comparison"] = baseline_cmp
             except Exception as e:
                 log.write(f"\nWARNING: could not compare to baseline: {e}\n")
                 print(f"WARNING: could not compare to baseline: {e}", file=sys.stderr)
@@ -661,6 +827,8 @@ def main() -> int:
     print(f"results.json: {results_path}")
     print(f"run.log:      {log_path}")
     if output["mode"] == "deployed":
+        if baseline_mismatch is not None:
+            return 1
         cmp = output.get("baseline_comparison")
         if cmp is not None:
             # With a baseline the meaningful signal is regression, not the

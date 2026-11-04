@@ -62,7 +62,7 @@ files.
 | `format_rust/` | `format_rust` | Pattern A (script-only) | `script_tests/` greps SKILL.md and the plugin README for the error-versus-invariant model, panic discipline, and clippy wiring; no `run_all.sh`. |
 | `update_changelog/` | `update_changelog` | Pattern A (script-only) | `script_tests/` covers the deterministic parts of the incremental day-grouping walk. |
 | `deployment/` | the deploy script (no single skill) | Pattern A (script-only) | These script tests execute the real deploy script, so they inherit its `jq`, `perl`, and `rsync` PATH gate. `script_tests/run.sh` covers the OpenCode, Antigravity, and bytecode-exclusion deployment paths, the socket and FIFO backup copy, openrsync vanished-file versus permission exit 23, the startup gate, cleanup-only `--clear-backups` skipping that gate, scope-limited uninstall through a shared three-scope fixture (a scope flag limits removal to that scope, a scopeless run covers every scope, out-of-scope entries are reported and kept) plus the `logged_path_scope` helper's per-target derivation; `script_tests/style_run.sh` covers output-style deployment and uninstall; `script_tests/hook_merge_run.sh` covers the entry-grain hook merge into a shared hook file, its dry-run report, the `@entries:` deploy-log manifest, the manifest uninstall, and the routing and documentation claims that keep the whole-key merge superseded; `script_tests/update_run.sh` covers the log-driven `--update` replay: restoring each recorded scope, one backup per covered global target root, project-scope isolation, dry-run immutability, the vanished-scope drop, foreign-checkout and orphan handling, scope and filter narrowing, and the help, Makefile, and documentation claims. |
-| `trigger_evals/` | wiki and `task_*` family skills | local `run.py` wrapper (deployed mode; `--force-uuid` for UUID proxy) | Whether a skill *triggers* on realistic user messages (description-matching), separate from skill *behavior*. |
+| `trigger_evals/` | wiki and `task_*` family skills | local `run.py` wrapper (deployed mode on Claude and Cursor; Claude-only `--force-uuid` UUID-proxy opt-in) | Whether a skill *triggers* on realistic user messages (description-matching), separate from skill *behavior*. |
 
 Pattern A is preferred for new harnesses. Pattern B stays in `wiki/`
 until the next significant iteration; don't bring up new harnesses
@@ -105,12 +105,11 @@ Do not pin dated ids such as `claude-sonnet-4-6` — Claude uses the latest
 
 `--model` / `--judge-model` override the vendor default; `--model ''`
 inherits the CLI default. `--worker-bin` overrides the binary;
-`--claude-bin` remains a deprecated alias. Claude-only surfaces default to
-Claude and reject an explicit `--vendor cursor` until a Cursor equivalent
-exists: `trigger_evals/` inspects Claude-specific skill-load evidence from
-`claude -p` runs, and `natural_language/` exercises Claude output-style
-selection. They run on Claude wherever a change needs them, in the foreground,
-with `--vendor claude` in the command.
+`--claude-bin` remains a deprecated alias. `natural_language/` exercises
+Claude output-style selection, so it is the one Claude-only surface: it
+defaults to Claude and rejects an explicit `--vendor cursor` until a Cursor
+equivalent exists. It runs on Claude wherever a change needs it, in the
+foreground, with `--vendor claude` in the command.
 
 The Cursor twin of this file is `tests/AGENTS.md` — keep the vendor
 table, the Claude-only list, and the parallel-workers rule in lockstep
@@ -238,6 +237,8 @@ helper (private pools, not yet on `eval_runner`):
   passes of the same scenario stay sequential.
 - `tests/language_humanizer/evals/run.py` — one isolated sandbox root per pass.
 - `tests/natural_language/evals/run.py` — one sandbox per pass.
+- `tests/trigger_evals/run.py` — one fresh worker directory per query run,
+  outside the checkout and any git repository.
 
 Pattern A runners that stay sequential until their sibling conversion tasks
 wire them onto `eval_runner` (plus permanent isolation exceptions):
@@ -755,9 +756,9 @@ scope, not timing.
 ## tests/trigger_evals/: skill triggering (description-matching)
 
 Tests a separate axis from the other harnesses: whether a skill's
-*description* causes Claude to load the skill on a realistic user
-message. Skill *behavior* is tested by `wiki/` and `git_commit/`;
-skill *triggering* is tested here.
+*description* causes the agent to load the skill on a realistic user
+message, on Claude and on Cursor. Skill *behavior* is tested by `wiki/`
+and `git_commit/`; skill *triggering* is tested here.
 
 Each `<skill>.json` is an array of `{query, expected_skill}` entries.
 The runner is the local wrapper `tests/trigger_evals/run.py`.
@@ -787,61 +788,69 @@ set.
 
 ### Run pattern
 
-Trigger evals are Claude-only, so the runner defaults to Claude; run them
-where a change needs the measurement, such as a description edit, in the
-foreground, with `--vendor claude` in the command so the Claude run is
-visible.
+Trigger evals run on Claude and Cursor, and Cursor is the default vendor, so
+run them without `--vendor` where a change needs the measurement, such as a
+description edit. A run that needs a Claude-specific feature, or that the
+operator asks for, names `--vendor claude`.
 
 ```bash
-python3 tests/trigger_evals/run.py --vendor claude \
+python3 tests/trigger_evals/run.py \
   --eval-set tests/trigger_evals/wiki.json \
   --skill wiki \
   --runs-per-query 3 \
-  --timeout 45 \
-  --workers 10
+  --timeout 45
 ```
 
-`run.py` selects mode from the deployed tree:
+`run.py` selects mode from the run vendor's deployed tree:
 
-- **Deployed mode** (default when `~/.claude/skills/<name>/SKILL.md`
-  exists): spawns `claude -p` for each query × runs-per-query and
-  watches the stream for the FIRST tool_use being either
-  `Skill(skill="<X>", …)` or `Read(/<X>/SKILL.md)`. Records *which*
-  skill `<X>` actually fired, not just "did SOMETHING fire." Warns
-  if the deployed `description:` has drifted from the source under
-  `plugins/…/<name>/SKILL.md` (run `make deploy` to resync).
-- **Unavailable skill** (skill absent from the deployed tree, and
-  `--force-uuid` not set): exits non-zero with a named unavailability
-  error and writes no score. Deploy the skill (`make deploy`) before
-  measuring, or pass `--force-uuid` deliberately.
-- **Force UUID** (`--force-uuid`): the only entry to the UUID-proxy
-  path. Delegates to skill-creator's `run_eval.py`, which writes a
-  temp slash command under
+- **Deployed mode** (default when the skill's native root holds
+  `SKILL.md`): on Claude that root is `~/.claude/skills/<name>/`, and on
+  Cursor it is `~/.cursor/skills/<name>/`. Each worker starts in its own
+  fresh directory outside the checkout and any git repository, which keeps
+  the repository's instruction files out. Claude records the first tool as
+  `Skill(skill="<X>", …)` or `Read(/<X>/SKILL.md)`. Cursor records it as a
+  `tool_call` whose `readToolCall.args.path` ends in `/<X>/SKILL.md`, under
+  its native root or a compatibility root. Both record *which* skill `<X>`
+  fired, not just "did SOMETHING fire." Both CLIs run in their default
+  permission mode. The run warns once per copy under any of the vendor's
+  skill roots whose deployed `description:` differs from the source under
+  `plugins/…/<name>/SKILL.md` (run `make deploy` to resync). It also
+  snapshots `git status --porcelain` before the first worker and after the
+  last, and fails the run naming any path a worker wrote into the checkout.
+- **Unavailable skill** (skill absent from the run vendor's native root, and
+  `--force-uuid` not set): exits non-zero with a named unavailability error
+  and writes no score. A copy under a compatibility root does not satisfy
+  the native root. Deploy the skill (`make deploy`) before measuring, or
+  pass `--force-uuid` deliberately.
+- **Force UUID** (`--force-uuid`): the only entry to the UUID-proxy path,
+  and Claude-only. Delegates to skill-creator's `run_eval.py`, which drives
+  `claude -p` and writes a temp slash command under
   `~/.claude/commands/<name>-skill-<uuid>.md` carrying the description
-  being tested and watches for the UUID in `Skill` / `Read` inputs.
-  Family/precise grading is NOT supported in this mode; the proxy
-  reports only the upstream single-skill pass/fail. Rarely useful
-  when the real skill is also deployed: names like `wiki` beat
-  `wiki-skill-<uuid>`, so the proxy never gets called and scores
-  0/N falsely.
+  being tested and watches for the UUID in `Skill` / `Read` inputs. A
+  Cursor run with `--force-uuid` exits non-zero before any worker.
+  Family/precise grading is NOT supported in this mode; the proxy reports
+  only the upstream single-skill pass/fail. Rarely useful when the real
+  skill is also deployed: names like `wiki` beat `wiki-skill-<uuid>`, so the
+  proxy never gets called and scores 0/N falsely.
 
-**Reading a zero-recall outcome.** In deployed mode, a description-level
-zero for the skill under test shows those `expected_skill` rows as
-`[..]` in `run.log`, or `[.F]` when a sibling took the load, while
+**Reading a zero-recall outcome.** In deployed mode on either vendor, a
+description-level zero for the skill under test shows those `expected_skill`
+rows as `[..]` in `run.log`, or `[.F]` when a sibling took the load, while
 null-expected rows still pass. On a single-target set that looks like
 `Precise: 8/16` on `agent_spinner.json` (every target row failed; every
 null row passed). Treat that as evidence about the `description:`, not
 as an availability failure. The unavailable-skill guard covers only
-`--skill`: when that named skill is missing from the deployed tree the
-run exits with the named unavailability and writes no score. Undeployed
-siblings in a multi-skill set still reach deployed mode, so every
+`--skill`: when that named skill is missing from the run vendor's native
+root, the run exits with the named unavailability and writes no score.
+Undeployed siblings in a multi-skill set still reach deployed mode, so every
 positive row at `[..]` with only the null rows passing should first
 send the reader to check what the worker could load (siblings present
 and deployed) before blaming one description. A run that prints
 `Precise: 0/N` with `__worker_failed__` in every triggered column is a
-dead worker; diagnose it through
+dead worker; diagnose a Claude run through
 ``### Worker auth: nested `claude -p` reads the stored OAuth login``
-above, not as a skill regression.
+above, and a Cursor run through `### Auth` in `tests/AGENTS.md`, not as a
+skill regression.
 
 ### Family / precise grading (deployed mode)
 
@@ -882,7 +891,7 @@ directly to the deployed skill.
 
 ```text
 tests/trigger_evals/results/<skill>/<timestamp>/
-├── results.json   # {skill_name, mode, family, results: [...], summary: {...}}
+├── results.json   # {skill_name, mode, family, vendor, worker_model, results: [...], summary: {...}}
 └── run.log        # config + progress + per-query [P|.][F|.] grid
 ```
 
@@ -941,12 +950,17 @@ runs after), and nothing compared runs per query.
 So pass the prior run as `--baseline` on every trigger run:
 
 ```bash
-python3 tests/trigger_evals/run.py --vendor claude \
+python3 tests/trigger_evals/run.py \
   --eval-set tests/trigger_evals/task.json \
   --skill task --skill-path plugins/ai_dev/skills/task \
-  --runs-per-query 3 --timeout 45 --workers 10 \
+  --runs-per-query 3 --timeout 45 \
   --baseline tests/trigger_evals/results/task/<prior-timestamp>
 ```
+
+Pass a baseline recorded on the same vendor. A cross-vendor baseline, or one
+with no `vendor` field (which reads as Claude), writes this run's results
+without a comparison and exits non-zero naming both vendors. `results.json`
+carries `vendor` and `worker_model` at the top level.
 
 `--baseline` accepts the prior run's directory or its `results.json`.
 The run then diffs per query on the shared cohort and reports each

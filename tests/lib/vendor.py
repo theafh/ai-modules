@@ -25,10 +25,6 @@ _KNOWN_AGENT_PREFIXES = tuple(target.upper() for target in _DEPLOY_TARGETS)
 DEFAULT_PARALLEL_WORKERS = 4
 
 CLAUDE_ONLY = {
-    "trigger_evals": (
-        "this harness inspects Claude-specific skill-load evidence from "
-        "`claude -p` runs"
-    ),
     "deployment_styles": (
         "this harness exercises Claude output-style behavior that Cursor does "
         "not expose"
@@ -42,6 +38,29 @@ _VENDOR_ROOTS = {
     "claude": ".claude",
     "cursor": ".cursor",
 }
+
+# Compatibility skill roots each vendor also reads, after its native root.
+_COMPAT_SKILL_ROOTS = {
+    "claude": (),
+    "cursor": (".agents", ".claude", ".codex"),
+}
+
+
+def skill_roots(vendor: str) -> list[pathlib.Path]:
+    """Return a vendor's user-level skill roots, native root first.
+
+    The native root is the one ``make deploy`` writes for that vendor. Cursor
+    also reads the compatibility roots its skills documentation lists, so a
+    skill copy under one of those is a real load too.
+    """
+
+    chosen = config(vendor)
+    native = pathlib.Path.home() / _VENDOR_ROOTS[chosen.name] / "skills"
+    compat = [
+        pathlib.Path.home() / root / "skills"
+        for root in _COMPAT_SKILL_ROOTS[chosen.name]
+    ]
+    return [native, *compat]
 
 
 @dataclass(frozen=True)
@@ -453,6 +472,47 @@ def build_print_cmd(
     cmd += ["--output-format", fmt or "text"]
     cmd += extras
     cmd.append(prompt)
+    return cmd
+
+
+def build_stream_cmd(
+    *,
+    vendor: str,
+    bin: str,
+    model: str,
+    query: str,
+    workspace: str | None = None,
+) -> list[str]:
+    """Build the stream-json worker command for one vendor.
+
+    Claude keeps its print-mode shape and reads the query right after ``-p``.
+    Cursor takes ``--trust`` and ``--workspace`` and reads the query last. Both
+    commands keep the CLI's default permission mode: neither carries
+    ``--permission-mode``, ``--force``, or ``--yolo``. The runner stops each
+    worker at its first tool call, so a default-mode read is enough.
+    """
+
+    chosen = config(vendor)
+    if chosen.name == "claude":
+        cmd = [
+            bin,
+            "-p",
+            query,
+            "--output-format",
+            "stream-json",
+            "--verbose",
+            "--include-partial-messages",
+        ]
+        if model:
+            cmd += ["--model", model]
+        return cmd
+
+    cmd = [bin, "-p", "--output-format", "stream-json", "--trust"]
+    if workspace is not None:
+        cmd += ["--workspace", workspace]
+    if model:
+        cmd += ["--model", model]
+    cmd.append(query)
     return cmd
 
 

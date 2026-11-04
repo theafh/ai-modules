@@ -25,7 +25,7 @@ Claude-specific feature runs on Claude with `--vendor claude` in its command,
 also on a Claude-only harness, so the Claude run is visible; any other Claude
 run waits for the operator's explicit request, and none runs in the
 background. See `tests/CLAUDE.md` and `tests/AGENTS.md` for the
-full matrix, auth, Claude-only rejects (`trigger_evals`, `natural_language/`),
+full matrix, auth, Claude-only rejects (`natural_language/`),
 and the per-pass micro-deployment rule (`tests/lib/micro_deploy.py`: workers
 load artefacts only from that deployment, deployed user copies stay out of
 view, and `artefacts_read_from_micro_deployment` plus `checkout_unread`
@@ -338,10 +338,11 @@ files.
   the vanished-scope drop, foreign-checkout and orphan handling, scope and
   filter narrowing, and the help, Makefile, and documentation claims.
 - **`trigger_evals/`**: a different axis from the rest, namely whether a
-  skill's `description:` makes Claude load it on a realistic user message. Driven
-  by the local `run.py` wrapper, with hermetic unit tests under `script_tests/`
-  for the baseline-regression detector and the
-  deployed-versus-unavailable-versus-`--force-uuid` mode-selection guards.
+  skill's `description:` makes the agent load it on a realistic user message, on
+  Claude and on Cursor. Driven by the local `run.py` wrapper, with hermetic unit
+  tests under `script_tests/` for the baseline-regression detector, the
+  deployed-versus-unavailable-versus-`--force-uuid` mode-selection guards, and
+  the per-vendor deployed worker path.
 
 ## Grader mechanics
 

@@ -15,7 +15,8 @@ scratch/
 
 # Per-run logs and reports under results/. Hand-written analysis notes live in
 # the same directories, so exclude by pattern rather than ignoring results/
-# wholesale. Currently kept: task_auto_check/results/*.md, wiki/results/SUMMARY.md.
+# wholesale. Currently kept: task_auto_check/results/*.md,
+# wiki/results/SUMMARY.md, trigger_evals/results/vendor_parity.md.
 **/results/*.log
 **/results/run-*.json
 **/results/run-*.md

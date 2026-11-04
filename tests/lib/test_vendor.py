@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sys
 import tempfile
@@ -255,6 +256,97 @@ def main() -> int:
         ],
     )
 
+    # --- stream-mode worker command ----------------------------------------
+    claude_stream_cmd = vendor.build_stream_cmd(
+        vendor="claude", bin="claude", model="", query="hello",
+    )
+    check(
+        "claude stream argv without model",
+        claude_stream_cmd
+        == [
+            "claude", "-p", "hello", "--output-format", "stream-json",
+            "--verbose", "--include-partial-messages",
+        ],
+    )
+    claude_stream_cmd = vendor.build_stream_cmd(
+        vendor="claude", bin="claude", model="sonnet", query="hello",
+    )
+    check(
+        "claude stream argv with model",
+        claude_stream_cmd
+        == [
+            "claude", "-p", "hello", "--output-format", "stream-json",
+            "--verbose", "--include-partial-messages", "--model", "sonnet",
+        ],
+    )
+    cursor_stream_cmd = vendor.build_stream_cmd(
+        vendor="cursor", bin="agent", model="", query="hello",
+        workspace="/tmp/w",
+    )
+    check(
+        "cursor stream argv without model",
+        cursor_stream_cmd
+        == [
+            "agent", "-p", "--output-format", "stream-json", "--trust",
+            "--workspace", "/tmp/w", "hello",
+        ],
+    )
+    cursor_stream_cmd = vendor.build_stream_cmd(
+        vendor="cursor", bin="agent", model="auto", query="hello",
+        workspace="/tmp/w",
+    )
+    check(
+        "cursor stream argv with model",
+        cursor_stream_cmd
+        == [
+            "agent", "-p", "--output-format", "stream-json", "--trust",
+            "--workspace", "/tmp/w", "--model", "auto", "hello",
+        ],
+    )
+    for name, argv in (
+        ("claude", vendor.build_stream_cmd(
+            vendor="claude", bin="claude", model="sonnet", query="hello")),
+        ("cursor", vendor.build_stream_cmd(
+            vendor="cursor", bin="agent", model="auto", query="hello",
+            workspace="/tmp/w")),
+    ):
+        check(
+            f"{name} stream argv keeps the default permission mode",
+            not any(
+                flag in argv
+                for flag in ("--permission-mode", "--force", "--yolo")
+            ),
+        )
+
+    # --- user-level skill roots --------------------------------------------
+    old_home = os.environ.get("HOME")
+    try:
+        with tempfile.TemporaryDirectory() as home:
+            os.environ["HOME"] = home
+            claude_roots = vendor.skill_roots("claude")
+            check(
+                "claude skill roots are the native root alone",
+                claude_roots == [pathlib.Path(home) / ".claude" / "skills"],
+            )
+            cursor_roots = vendor.skill_roots("cursor")
+            check(
+                "cursor skill roots put the native root first",
+                cursor_roots[0] == pathlib.Path(home) / ".cursor" / "skills",
+            )
+            check(
+                "cursor skill roots carry the compatibility roots",
+                cursor_roots[1:]
+                == [
+                    pathlib.Path(home) / root / "skills"
+                    for root in (".agents", ".claude", ".codex")
+                ],
+            )
+    finally:
+        if old_home is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = old_home
+
     # --- withholding --------------------------------------------------------
     for tool_class, names in (
         ("shell", ["Bash"]),
@@ -320,13 +412,19 @@ def main() -> int:
         and vendor.classify_tool("cursor", "readToolCall") == "other",
     )
 
+    # Test Integrity: superseded behaviour. The **Vendor parity** decision
+    # recorded in tasks/tests_trigger-evals-cursor-vendor.md removed the
+    # Cursor refusal this check used to pin, so it now proves the opposite:
+    # Cursor reaches trigger_evals.
+    vendor.require_vendor_allowed("cursor", "trigger_evals")
+    check("cursor reaches trigger_evals", True)
+    vendor.require_vendor_allowed("claude", "trigger_evals")
+    check("claude reaches trigger_evals", True)
     check_exit(
-        "cursor blocks trigger_evals",
-        lambda: vendor.require_vendor_allowed("cursor", "trigger_evals"),
+        "cursor still blocks deployment_styles",
+        lambda: vendor.require_vendor_allowed("cursor", "deployment_styles"),
         "does not support `--vendor cursor`",
     )
-    vendor.require_vendor_allowed("claude", "trigger_evals")
-    check("claude allows trigger_evals", True)
     check_exit(
         "cursor blocks natural_language",
         lambda: vendor.require_vendor_allowed("cursor", "natural_language"),
@@ -334,17 +432,25 @@ def main() -> int:
     )
     check("an ordinary harness defaults to cursor", vendor.default_vendor("task") == "cursor")
     check("no harness id defaults to cursor", vendor.default_vendor() == "cursor")
-    for harness in ("natural_language", "trigger_evals"):
-        claude_only = argparse.ArgumentParser(add_help=False)
-        vendor.add_vendor_arguments(claude_only, harness_id=harness)
-        check(
-            f"{harness} defaults to claude without --vendor",
-            claude_only.parse_args([]).vendor == "claude",
-        )
-        check(
-            f"{harness} still parses an explicit cursor for the gate to reject",
-            claude_only.parse_args(["--vendor", "cursor"]).vendor == "cursor",
-        )
+    natural_language = argparse.ArgumentParser(add_help=False)
+    vendor.add_vendor_arguments(natural_language, harness_id="natural_language")
+    check(
+        "natural_language defaults to claude without --vendor",
+        natural_language.parse_args([]).vendor == "claude",
+    )
+    check(
+        "natural_language still parses an explicit cursor for the gate to reject",
+        natural_language.parse_args(["--vendor", "cursor"]).vendor == "cursor",
+    )
+    # Test Integrity: superseded behaviour. The same **Vendor parity** decision
+    # moved trigger_evals off the Claude-only default, so the trigger parser
+    # now defaults to cursor without --vendor.
+    trigger_parser = argparse.ArgumentParser(add_help=False)
+    vendor.add_vendor_arguments(trigger_parser, harness_id="trigger_evals")
+    check(
+        "trigger_evals defaults to cursor without --vendor",
+        trigger_parser.parse_args([]).vendor == "cursor",
+    )
 
     with tempfile.TemporaryDirectory() as td:
         root = pathlib.Path(td)
