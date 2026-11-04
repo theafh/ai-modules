@@ -971,6 +971,22 @@ def test_classifier_cases() -> None:
             "unexpanded tilde path fails closed",
             flagged("~other/.claude/skills/x/SKILL.md"),
         )
+        # Recorded on 4 November 2026 (wiki AS-2, AS-4, AS-9, Cursor): the
+        # worker's transcript carried the unexpanded loop variable from
+        # init_wiki.sh, `.../.cursor/skills/wiki/$f`. The literal prefix is
+        # already inside the deployment, so the fragment stays in set.
+        check(
+            "unexpanded fragment inside the scratch home stays in set",
+            not flagged(str(home / ".cursor/skills/wiki/$f")),
+        )
+        check(
+            "unexpanded fragment inside the sandbox project stays in set",
+            not flagged(str(proj / ".cursor/skills/wiki/$f")),
+        )
+        check(
+            "unexpanded vendor path outside the roots still fails closed",
+            flagged("$D/.claude/skills/x/SKILL.md"),
+        )
         check(
             "grok skill directory outside the roots is out of set",
             flagged("/elsewhere/.grok/skills/x/SKILL.md"),

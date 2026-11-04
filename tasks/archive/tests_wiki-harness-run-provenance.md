@@ -88,7 +88,7 @@ on a literal `$f` path from `init_wiki.sh`. None of this task's changed
 surfaces participates in layer-2 grading. Acceptance 4 therefore verifies that
 the change adds no new graded regression and records those failures as
 baseline context; repairing them is tracked in
-[tests_wiki-layer2-preexisting-failures.md](../tests_wiki-layer2-preexisting-failures.md).
+[tests_wiki-layer2-preexisting-failures.md](tests_wiki-layer2-preexisting-failures.md).
 
 ## Approach
 

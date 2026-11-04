@@ -33,7 +33,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "L2-1/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_ambiguity_ask",
@@ -182,7 +182,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "L2-3/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_init",
@@ -250,7 +250,7 @@
           "id": "A4_init_target_local",
           "type": "report_field_endswith",
           "field": "init_target",
-          "suffix": "L2-4/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A5_schema_created",
@@ -331,7 +331,7 @@
           "id": "A3_resolved_to_home_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "L2-5/HOME/wiki"
+          "suffix": "HOME/wiki"
         },
         {
           "id": "A4_no_ambiguity_ask",
@@ -410,7 +410,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "L2-6/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_re_init",
@@ -508,7 +508,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "L2-7/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_re_init",
@@ -598,7 +598,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "L2-8/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_re_init",
@@ -711,7 +711,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "L2-9/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_re_init",
@@ -813,7 +813,7 @@
           "id": "A1_init_target_under_level",
           "type": "report_field_endswith",
           "field": "init_target",
-          "suffix": "L2-10/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A2_schema_under_wiki",
@@ -887,7 +887,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "WI-1/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_init",
@@ -1140,7 +1140,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "WI-4/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_init",
@@ -1233,7 +1233,7 @@
           "id": "A3_resolved_to_proj_wiki",
           "type": "report_field_endswith",
           "field": "discovery_resolved_path",
-          "suffix": "WU-1/HOME/proj/wiki"
+          "suffix": "HOME/proj/wiki"
         },
         {
           "id": "A4_no_init",

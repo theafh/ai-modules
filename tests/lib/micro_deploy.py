@@ -1179,6 +1179,36 @@ def _is_unresolved(path: str) -> bool:
     return bool(_UNEXPANDED_RE.search(path)) or path.startswith("~")
 
 
+def _unresolved_prefix(path: str) -> str:
+    """The literal part of an unplaceable path, before its first variable."""
+
+    match = _UNEXPANDED_RE.search(path)
+    cut = match.start() if match else len(path)
+    tilde = path.find("~")
+    if tilde != -1:
+        cut = min(cut, tilde)
+    return path[:cut]
+
+
+def _unresolved_fragment_in_set(
+    path: str, roots: list[pathlib.Path], base: pathlib.Path
+) -> bool:
+    """Whether an unplaceable path's literal prefix already sits in set.
+
+    A shell fragment keeps the variable the command never assigned, so the
+    fragment itself cannot be placed. When everything before that variable
+    lies inside the deployment, the fragment names a deployed path and stays
+    in set; a vendor-layout path whose prefix is unknown or outside the roots
+    still fails closed.
+    """
+
+    prefix = _unresolved_prefix(path)
+    if not prefix or "/" not in prefix:
+        return False
+    resolved = _resolve_worker_path(prefix, base)
+    return any(_is_under(resolved, root) for root in roots)
+
+
 def _resolve_worker_path(path: str, base: pathlib.Path) -> pathlib.Path:
     raw = pathlib.Path(path)
     if not raw.is_absolute():
@@ -1211,7 +1241,9 @@ def classify_out_of_set(
     set only when it resolves under the scratch home or the sandbox project,
     and a relative path resolves against the worker's ``cwd`` (the sandbox
     project by default). A path that still carries an unexpanded ``$NAME`` or
-    ``~`` cannot be placed, so one in a vendor layout fails closed. A checkout
+    ``~`` cannot be placed: a vendor-layout path whose literal prefix already
+    lies under a root stays in set as a fragment of a deployed path, while one
+    whose prefix is unknown or outside the roots fails closed. A checkout
     source shape behind such a variable is left alone, because a sandbox
     fixture tree can share it.
     """
@@ -1221,7 +1253,9 @@ def classify_out_of_set(
     out: list[str] = []
     for raw in paths:
         if _is_unresolved(raw):
-            if is_artefact_path(raw):
+            if is_artefact_path(raw) and not _unresolved_fragment_in_set(
+                raw, roots, base
+            ):
                 out.append(raw)
             continue
         resolved = _resolve_worker_path(raw, base)

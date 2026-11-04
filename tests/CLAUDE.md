@@ -145,12 +145,13 @@ of the command assigns expands its later paths, and a relative path after the
 command's own `cd` resolves against that directory. A prefix assignment such as
 `HOME=<fake home> bash x.sh` stays with its own command, as the shell scopes
 it. A vendor-layout path that keeps a variable the command never assigns fails
-closed for the artefact check. A `plugins/` or `styles/` path behind such a
-variable stays unchecked for artefacts, because a sandbox fixture tree can
-share its shape; a path that still carries an unexpanded variable also stays
-unflagged for `checkout_unread`, because it cannot be placed. Each run probes
-authentication once inside a micro-deployment environment before its first
-pass.
+closed for the artefact check unless everything before that variable already
+lies inside the deployment, where it stays in set as a fragment of a deployed
+path. A `plugins/` or `styles/` path behind such a variable stays unchecked for
+artefacts, because a sandbox fixture tree can share its shape; a path that still
+carries an unexpanded variable also stays unflagged for `checkout_unread`,
+because it cannot be placed. Each run probes authentication once inside a
+micro-deployment environment before its first pass.
 
 Each runner declares the artefacts its workers may load once, as an
 `ARTEFACTS` list or an `artefacts_for()` function. Those names feed the deploy

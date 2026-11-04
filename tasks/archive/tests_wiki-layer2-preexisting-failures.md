@@ -2,9 +2,11 @@
 description: Restore a green wiki layer-2 full-suite run by reconciling the path-suffix assertions and the artefact read-check with prefix-only sandbox roots and command transcripts.
 scope: "local test harnesses"
 created: 2026-11-04T20:13:17
-updated: 2026-11-04T20:13:17
-status: open
+updated: 2026-11-04T22:45:38
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Restore a green wiki layer-2 regression suite
@@ -20,7 +22,7 @@ the harness's current prefix-only sandbox roots and command-transcript parsing.
 
 The last full-suite run before the drift was green on 2026-10-03. Commit
 `c0d177b` (2026-10-23, archived task
-[tests_sandbox-root-hides-eval-id.md](archive/tests_sandbox-root-hides-eval-id.md))
+[tests_sandbox-root-hides-eval-id.md](tests_sandbox-root-hides-eval-id.md))
 made every eval sandbox root harness-prefix-only, so a worker cannot read the
 scenario id from its working directory. `tests/wiki/layer2/evals.json` still
 carries 12 `report_field_endswith` assertions whose suffix embeds the scenario
