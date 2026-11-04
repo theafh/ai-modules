@@ -2,9 +2,11 @@
 description: "Replace the gate's hand-written shell scanner with a per-harness declaration so every deterministic eval file runs exactly once and an undecided harness fails by name."
 scope: tests
 created: 2026-11-02T08:13:09
-updated: 2026-11-02T23:24:57
-status: ready
+updated: 2026-11-04T10:27:27
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make the harness eval-file coverage decision explicit and decidable
@@ -17,7 +19,7 @@ The user-visible outcome: `bash tests/run_all.sh --list` names each eval file ex
 
 ## Context
 
-`tests/run_all.sh` discovers a harness, runs its entrypoint (`run_all.sh` or `script_tests/run.sh`), then adds every `evals/test_run.py` or `evals/test_grade.py` the entrypoint "does not already run", so each deterministic file runs once. `TESTING.md` `## Running Tests` restates that promise, and the repo rule that makes `make test` the default test run rests on it. The gate that carries the promise was built by [the single deterministic gate task](archive/tests_single-deterministic-gate.md), whose Goal is the outcome this task preserves.
+`tests/run_all.sh` discovers a harness, runs its entrypoint (`run_all.sh` or `script_tests/run.sh`), then adds every `evals/test_run.py` or `evals/test_grade.py` the entrypoint "does not already run", so each deterministic file runs once. `TESTING.md` `## Running Tests` restates that promise, and the repo rule that makes `make test` the default test run rests on it. The gate that carries the promise was built by [the single deterministic gate task](tests_single-deterministic-gate.md), whose Goal is the outcome this task preserves.
 
 The coverage decision lives in `entrypoint_invokes()`, a hand-written awk scanner built from `scan()`, `tokenize()`, `first_command()`, `is_interpreter()`, `loop_invokes()`, and `segment_invokes()`. It models shell syntax well enough to decide whether an entrypoint executes a file, and each miss costs real time: a miss in one direction drops a suite silently, a miss in the other runs it twice and doubles both its runtime and its failure output. Review rounds on the gate each found a further shape it misread, including a comment-only mention, a here-doc usage line, a variable interpreter, a `for` loop, an arithmetic `(( shift = 1 << 3 ))` command, an arithmetic expression continued across lines, and an invocation behind `then`, `do`, `else`, `elif`, `{`, or `!`.
 

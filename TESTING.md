@@ -149,10 +149,12 @@ fixtures and grading stays valid.
 
 `make test` runs `tests/run_all.sh`, the one command that covers the whole
 deterministic surface: the gate discovers every harness under `tests/`, runs
-its deterministic entrypoint and any `evals/test_run.py` or
-`evals/test_grade.py` that entrypoint leaves out, runs every
-`tests/lib/test_*` unit test, prints one pass/fail line per
-surface, and exits non-zero when any surface fails. The per-harness forms
+its deterministic entrypoint and every `evals/test_run.py` or
+`evals/test_grade.py` the harness's `evals/covered-by-entrypoint` declaration
+omits, runs every `tests/lib/test_*` unit test, prints one pass/fail line per
+surface, and exits non-zero when any surface fails. The declaration names, one
+file per line, the eval files the entrypoint runs; a harness that carries an
+eval file without a declaration fails the gate by name. The per-harness forms
 below it are the scoped subset for one harness.
 
 ```bash

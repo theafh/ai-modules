@@ -86,11 +86,14 @@ don't bring up new harnesses under Pattern B.
 ## Current harnesses
 
 `tests/run_all.sh` is the aggregate gate: it discovers each harness below at
-run time, runs the harness's deterministic entrypoint and any
-`evals/test_run.py` or `evals/test_grade.py` the entrypoint leaves out, and
-runs every `tests/lib/test_*` unit test. `make test` invokes it, and
-`bash tests/run_all.sh --list` prints the discovered set. A harness keeps its
-own deterministic entrypoint as the scoped subset for one harness.
+run time, runs the harness's deterministic entrypoint and every
+`evals/test_run.py` or `evals/test_grade.py` its
+`evals/covered-by-entrypoint` declaration omits, and runs every
+`tests/lib/test_*` unit test. The declaration names, one file per line, the
+eval files the entrypoint runs; a harness that carries an eval file without a
+declaration fails the gate by name. `make test` invokes it, and
+`bash tests/run_all.sh --list` prints the discovered coverage tree. A harness
+keeps its own deterministic entrypoint as the scoped subset for one harness.
 
 Scenario counts are the tally line `bash tests/<harness>/script_tests/run.sh`
 prints where a harness has that script, and the `jq '.evals | length'` count
