@@ -4265,9 +4265,10 @@ g1_grade_empty_delivery_exits_nonzero() {
 # baseline's shape, and warns when the baseline covered fewer scenarios than
 # the current run. The warning is informational: only assertion/scenario
 # regressions drive the exit status, so a narrowed compare still exits 0 and a
-# real regression still exits 1.
+# real regression still exits 1. A baseline that covers every scenario compares
+# without the warning and records narrowed: false.
 g2_aggregate_names_baseline_and_warns_on_narrowing() {
-    local home run prev out rc
+    local home run prev out rc full
     home=$(fresh_scratch g2)
     run="$home/run-current"
     prev="$home/run-prior-debug/benchmark.json"
@@ -4350,6 +4351,67 @@ PY
             return 1
         fi
     done
+
+    # Full coverage: restore the clean pass, then compare against a baseline
+    # holding both scenarios. No narrowing warning prints and benchmark.json
+    # records the comparison as not narrowed.
+    python3 - "$run" <<'PY'
+import json
+import pathlib
+import sys
+
+grading = pathlib.Path(sys.argv[1]) / "L2-1" / "pass-1" / "grading.json"
+data = json.loads(grading.read_text())
+data.update({
+    "pass_rate": 1.0,
+    "passed": True,
+    "expectations": [{"text": "assertion", "passed": True}],
+})
+grading.write_text(json.dumps(data))
+PY
+    full="$home/run-prior-full/benchmark.json"
+    mkdir -p "$(dirname "$full")"
+    python3 - "$full" <<'PY'
+import json
+import pathlib
+import sys
+
+
+def scenario(scenario_id):
+    return {
+        "scenario_id": scenario_id,
+        "all_passes_clean": True,
+        "per_assertion": {
+            "assertion": {"pass_rate": 1.0, "passes": 1, "total": 1},
+        },
+    }
+
+
+pathlib.Path(sys.argv[1]).write_text(json.dumps({
+    "run_id": "run-prior-full",
+    "scenarios": [scenario("L2-1"), scenario("L2-2")],
+}))
+PY
+
+    out=$(python3 "$SCRIPT_DIR/../layer2/aggregate.py" "$run" --previous "$full" 2>&1) && rc=0 || rc=$?
+    assert_eq "full-coverage compare exits 0" "$rc" "0" || { log "$out"; return 1; }
+    if [[ "$out" == *"COMPARE WARNING"* ]]; then
+        log "    full-coverage compare printed COMPARE WARNING"
+        log "$out"
+        return 1
+    fi
+    if ! python3 - "$run/benchmark.json" <<'PY'
+import json
+import pathlib
+import sys
+
+baseline = json.loads(pathlib.Path(sys.argv[1]).read_text()).get("baseline") or {}
+sys.exit(0 if baseline.get("narrowed") is False else 1)
+PY
+    then
+        log "    benchmark.json baseline.narrowed is not false"
+        return 1
+    fi
     return 0
 }
 

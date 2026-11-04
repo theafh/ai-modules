@@ -358,7 +358,7 @@ tests/wiki/
 ├── RUNBOOK.md                      # quick reference (subset of this README)
 ├── run_all.sh                      # entrypoint: Layer 1; --layer2 to add Layer 2
 ├── results/
-│   ├── SUMMARY.md                  # rolling human summary of latest run
+│   ├── SUMMARY.md                  # dated hand-written record of one run
 │   └── layer1.log                  # latest Layer 1 output
 ├── layer1/
 │   ├── run.sh                      # deterministic scenario inventory; grep '^scenario '
@@ -386,15 +386,15 @@ tests/wiki/
 
 The authored harness under `tests/wiki/` is committed. Run output stays
 local via `tests/.gitignore`: the `workspace/` and `scratch/` trees, the
-staged `layer2/{AS,L2,WI,WU}-*` sandboxes, and the per-run logs under
+staged `layer2/{AS,L2,MP,WI,WU}-*` sandboxes, and the per-run logs under
 `results/`.
 
 ## Latest results
 
 Read the current record from the newest `tests/wiki/layer2/workspace/run-<ts>/`
-directory: its printed summary names the scenario set, pass count,
-vendor/model, and worker count; its `benchmark.json` lists the scenarios the
-run actually covered; and its `report.html` is the interactive per-pass view.
+directory: the runner's console output names the scenario set, pass count,
+vendor/model, and worker count; the run's `benchmark.json` lists the scenarios
+the run actually covered; and its `report.html` is the interactive per-pass view.
 `results/SUMMARY.md` carries the dated hand-written record. Read that run's own
 artifacts rather than treating an older pair of runs as the standing result;
 the timestamp-only directory name does not identify the run kind.
