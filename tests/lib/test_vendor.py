@@ -338,7 +338,7 @@ def main() -> int:
                 cursor_roots[1:]
                 == [
                     pathlib.Path(home) / root / "skills"
-                    for root in (".agents", ".claude", ".codex")
+                    for root in (".agents", ".claude", ".codex", ".grok")
                 ],
             )
     finally:

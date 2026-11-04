@@ -79,7 +79,6 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
-import micro_deploy  # noqa: E402  (shared Cursor stream reader)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -217,10 +216,11 @@ def _read_worker(
 ) -> str | None:
     """Read one worker's stream and return its first-tool decision.
 
-    Claude reads `stream_event` records. Cursor reads `tool_call` records
-    through ``micro_deploy._parse_cursor_event``. A `result` record with
-    `is_error` true is a failed worker on both vendors. A clean exit before any
-    tool is a no-trigger; every other ending is a failed worker.
+    Claude reads `stream_event` records. Cursor reads the `started` `tool_call`
+    record's tool kind and `args`, which the model chooses before the call
+    executes. A `result` record with `is_error` true is a failed worker on both
+    vendors. A clean exit before any tool is a no-trigger; every other ending is
+    a failed worker.
     """
 
     decision_made = False
@@ -268,13 +268,17 @@ def _read_worker(
                 if vendor_name == "cursor":
                     if event.get("type") != "tool_call":
                         continue
-                    parsed = micro_deploy.StreamParse()
-                    micro_deploy._parse_cursor_event(event, parsed)
-                    if not parsed.tools:
+                    tool_call = event.get("tool_call")
+                    if not isinstance(tool_call, dict) or not tool_call:
                         continue
-                    record = parsed.tools[0]
-                    if record.name == "readToolCall":
-                        path = str(record.input.get("path") or "")
+                    kind, payload = next(iter(tool_call.items()))
+                    if not isinstance(payload, dict):
+                        payload = {}
+                    if kind == "readToolCall":
+                        args = payload.get("args")
+                        if not isinstance(args, dict):
+                            args = {}
+                        path = str(args.get("path") or "")
                         match = READ_PATH_SKILL_RE.search(path)
                         triggered_skill = match.group(1) if match else None
                     else:

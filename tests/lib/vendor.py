@@ -42,7 +42,7 @@ _VENDOR_ROOTS = {
 # Compatibility skill roots each vendor also reads, after its native root.
 _COMPAT_SKILL_ROOTS = {
     "claude": (),
-    "cursor": (".agents", ".claude", ".codex"),
+    "cursor": (".agents", ".claude", ".codex", ".grok"),
 }
 
 
