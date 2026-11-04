@@ -129,23 +129,95 @@ make_n="$(make -C "$REPO_ROOT" -n update)"
 assert_contains "$make_n" './deployment/deployment.sh --update' \
   "make -n update does not print the update command"
 
+# A documentation check reads the passage that carries a property, so a valid
+# rewording still passes. paragraph_with prints the first blank-line-separated
+# paragraph holding a needle; paragraph_matching does the same with an extended
+# regular expression over the paragraph's folded text;
+# paragraph_with_capabilities finds the paragraph that lists several of the
+# capabilities the deploy script carries; table_row_with reads one Markdown
+# table row; and paragraph_before_code_block prints the paragraph that
+# introduces a section's code block.
+paragraph_with() {
+  local file="$1" needle="$2"
+  awk -v needle="$needle" '
+    BEGIN { RS = ""; ORS = "\n" }
+    index($0, needle) { print; exit }
+  ' "$file"
+}
+
+paragraph_matching() {
+  local file="$1" pattern="$2"
+  awk -v pattern="$pattern" '
+    BEGIN { RS = ""; ORS = "\n" }
+    {
+      text = $0
+      gsub(/\n/, " ", text)
+      if (text ~ pattern) { print; exit }
+    }
+  ' "$file"
+}
+
+paragraph_with_capabilities() {
+  local file="$1"
+  awk '
+    BEGIN {
+      RS = ""; ORS = "\n"
+      split("format log backup dry filter generat", terms, " ")
+    }
+    {
+      text = tolower($0)
+      hits = 0
+      for (i in terms) if (index(text, terms[i])) hits++
+      if (hits >= 3) { print; exit }
+    }
+  ' "$file"
+}
+
+table_row_with() {
+  local file="$1" needle="$2"
+  awk -v needle="$needle" '
+    /^\|/ && index($0, needle) { print; exit }
+  ' "$file"
+}
+
+paragraph_before_code_block() {
+  local file="$1" heading="$2"
+  awk -v heading="$heading" '
+    $0 == heading { inside = 1; next }
+    inside && /^## / { exit }
+    inside && /^```/ { print (para != "" ? para : last); exit }
+    inside && /^$/ {
+      if (para != "") { last = para; para = "" }
+      next
+    }
+    inside { para = (para == "" ? $0 : para "\n" $0) }
+  ' "$file"
+}
+
 deploy_readme="${REPO_ROOT}/deployment/README.md"
 assert_file "$deploy_readme"
-grep -Fq '| `--update` |' "$deploy_readme" ||
+grep -Eq '^\| *`--update` *\|' "$deploy_readme" ||
   fail "deployment/README.md Flags table has no --update row"
-grep -Fq '`--uninstall`, `--update`, and standalone `--clear-backups` are maintenance modes' "$deploy_readme" ||
-  fail "deployment/README.md Run It intro does not list update as a no-scope mode"
-grep -Fq 'unless used with `--uninstall` or `--update`' "$deploy_readme" ||
-  fail "deployment/README.md --type row does not name update"
-grep -Fq '`--update` and `--uninstall` are log-driven maintenance modes' "$deploy_readme" ||
-  fail "deployment/README.md explicit-scope paragraph does not name update"
-grep -Fq '`--update` and `--uninstall` are the two readers of this log' "$deploy_readme" ||
-  fail "deployment/README.md log section does not describe update beside uninstall"
+run_it_intro="$(paragraph_before_code_block "$deploy_readme" '## Run It')"
+assert_contains "$run_it_intro" '--update' \
+  "deployment/README.md Run It introduction does not name update as a no-scope mode"
+type_row="$(table_row_with "$deploy_readme" '`--type TYPES`')"
+assert_contains "$type_row" '--update' \
+  "deployment/README.md --type row does not name update"
+explicit_scope_para="$(paragraph_with "$deploy_readme" 'explicit scope')"
+assert_contains "$explicit_scope_para" '--update' \
+  "deployment/README.md explicit-scope paragraph does not name update"
+log_readers="$(paragraph_matching "$deploy_readme" '[Ll]og.*[Rr]ead|[Rr]ead.*[Ll]og')"
+assert_contains "$log_readers" '--update' \
+  "deployment/README.md log readers paragraph does not name update"
+assert_contains "$log_readers" '--uninstall' \
+  "deployment/README.md log readers paragraph does not name uninstall"
 if grep -Fq 'Re-run the script after editing a source artifact to refresh its deployed copy.' "$deploy_readme"; then
   fail "deployment/README.md still carries the superseded refresh sentence"
 fi
-grep -Fq 'Run `make update` after editing a source artefact' "$deploy_readme" ||
-  fail "deployment/README.md refresh passage does not name make update"
+refresh_para="$(paragraph_matching "$deploy_readme" 'deployed .*copy.*refresh|refresh.*deployed .*copy')"
+assert_contains "$refresh_para" 'make update' \
+  "deployment/README.md refresh passage does not name make update"
 
 grep -Fq 'make update' "${REPO_ROOT}/README.md" ||
   fail "root README.md Makefile block does not list make update"
@@ -157,10 +229,12 @@ for instruction_file in CLAUDE.md AGENTS.md; do
 done
 
 wiki_page="${REPO_ROOT}/wiki/concepts/deployment-model.md"
-grep -Fq 'update and uninstall replay that log' "$wiki_page" ||
-  fail "wiki deployment-model page does not name update beside uninstall"
-grep -Fq 'an update path' "$wiki_page" ||
-  fail "wiki deployment-model page does not name update in the script capability list"
+wiki_overview="$(paragraph_with "$wiki_page" 'uninstall')"
+assert_contains "$wiki_overview" 'update' \
+  "wiki deployment-model page does not name update beside uninstall"
+wiki_capabilities="$(paragraph_with_capabilities "$wiki_page")"
+assert_contains "$wiki_capabilities" 'update' \
+  "wiki deployment-model page does not name update in the script capability list"
 
 grep -Fq 'update_run.sh' "${REPO_ROOT}/tests/deployment/run_all.sh" ||
   fail "tests/deployment/run_all.sh does not run update_run.sh"
@@ -390,7 +464,8 @@ assert_contains "$unrecognized_out" 'unrecognized' \
 assert_log_has "$UNRECOGNIZED_PATH"
 
 # ---------------------------------------------------------------------------
-# Scope narrowing restores only the selected scope; --target narrows too.
+# Scope narrowing restores only the selected scope; --target and --type
+# narrow too.
 # ---------------------------------------------------------------------------
 rm -f "${GLOBAL_SKILL}/SKILL.md"
 printf '%s\n' 'tampered-narrow' > "$PROJECT_RULE"
@@ -406,6 +481,14 @@ cmp -s "${SCRATCH}/expected-rule.mdc" "$PROJECT_RULE" ||
   fail "--target cursor update did not restore the project rule"
 [[ ! -e "${GLOBAL_SKILL}/SKILL.md" ]] ||
   fail "--target cursor update restored the filtered-out global skill"
+
+printf '%s\n' 'tampered-type-skill' > "${GLOBAL_SKILL}/SKILL.md"
+printf '%s\n' 'tampered-type' > "$PROJECT_RULE"
+update --type style >/dev/null
+cmp -s "${SCRATCH}/expected-rule.mdc" "$PROJECT_RULE" ||
+  fail "--type style update did not restore the project rule"
+printf '%s\n' 'tampered-type-skill' | cmp -s - "${GLOBAL_SKILL}/SKILL.md" ||
+  fail "--type style update restored the filtered-out global skill"
 
 # ---------------------------------------------------------------------------
 # A project that received one skill through --only still holds only that one

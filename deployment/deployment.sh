@@ -3060,6 +3060,9 @@ update_logged_artifacts() {
     if $DRY_RUN; then
       replay_args+=(--dry-run)
     fi
+    if $CLEAR_BACKUPS; then
+      replay_args+=(--clear-backups)
+    fi
 
     info "replay" "${p_scope} ${p_target} (types: ${p_types}; artefacts: ${p_names})"
     if ! "${BASH_SOURCE[0]}" "${replay_args[@]}"; then
