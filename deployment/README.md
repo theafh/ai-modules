@@ -2,11 +2,11 @@
 
 `deployment/deployment.sh` deploys repo artifacts into config directories for VS Code GitHub Copilot, Cursor, Claude Code, OpenAI Codex, Google Antigravity, and OpenCode. It can deploy to global config dirs or into a single project directory.
 
-It autodiscovers artifacts by plugin layout, backs up only the selected targets (global mode only), records deployed paths in `deployment/deployed_artefacts.log`, and can uninstall previously deployed artifacts from that log.
+It autodiscovers artifacts by plugin layout, backs up only the selected targets (global mode only), records deployed paths in `deployment/deployed_artefacts.log`, and can update or uninstall previously deployed artifacts from that log.
 
 ## Run It
 
-Run with no arguments to see help. Pass `--global` to deploy globally, or `--project-dir DIR` to deploy into a single project's local config. `--uninstall` and standalone `--clear-backups` are maintenance modes that can run without a deployment scope:
+Run with no arguments to see help. Pass `--global` to deploy globally, or `--project-dir DIR` to deploy into a single project's local config. `--uninstall`, `--update`, and standalone `--clear-backups` are maintenance modes that can run without a deployment scope:
 
 ```bash
 ./deployment/deployment.sh                                        # show help
@@ -15,6 +15,8 @@ Run with no arguments to see help. Pass `--global` to deploy globally, or `--pro
 ./deployment/deployment.sh --global --type skill --target claude  # filter
 ./deployment/deployment.sh --project-dir /path/to/repo --target claude
 ./deployment/deployment.sh --uninstall                            # remove logged artifacts
+./deployment/deployment.sh --update                               # refresh every logged scope
+./deployment/deployment.sh --update --dry-run                     # preview the replay
 ./deployment/deployment.sh --clear-backups --target cursor,claude # clear managed backups only
 ```
 
@@ -24,15 +26,16 @@ Run with no arguments to see help. Pass `--global` to deploy globally, or `--pro
 | --- | --- |
 | `--global` | Deploy into global config dirs (`~/.cursor`, `~/.claude`, …). Mutually exclusive with `--project-dir`. |
 | `--project-dir DIR` | Deploy into a project directory's local config (`<DIR>/.cursor/`, `<DIR>/.claude/`, …). Backups are disabled in this mode. |
-| `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`, `style`. Requires `--global` or `--project-dir` unless used with `--uninstall`. |
+| `--type TYPES` | Comma-separated artifact filter: `command`, `skill`, `agent`, `hook`, `style`. Requires `--global` or `--project-dir` unless used with `--uninstall` or `--update`. |
 | `--target TARGETS` | Comma-separated target filter: `vscode`, `cursor`, `claude`, `codex`, `antigravity`, `opencode`. |
-| `--only NAMES` | Deploy exactly the named artefacts. Each name is a skill directory basename, or an agent or style file basename without its extension. An unknown name, or a value that names no artefact, aborts the run, and a name that `--type` filters out stays valid. Requires `--global` or `--project-dir`, so `--uninstall` rejects the flag and a `--clear-backups` run without a scope stops with the missing-scope error. |
+| `--only NAMES` | Deploy exactly the named artefacts. Each name is a skill directory basename, or an agent or style file basename without its extension. An unknown name, or a value that names no artefact, aborts the run, and a name that `--type` filters out stays valid. Requires `--global` or `--project-dir`, so `--uninstall` and `--update` reject the flag and a `--clear-backups` run without a scope stops with the missing-scope error. |
 | `--uninstall` | Remove previously deployed artifacts that match the active filters. A scope flag limits removal to that scope: `--global` removes only entries deployed into the global scope, and `--project-dir DIR` only entries deployed into that project, while a scopeless run covers every scope. Can run without `--global` or `--project-dir`; backups still run first unless combined with no-scope `--clear-backups`. |
+| `--update` | Redeploy every scope the deploy log records, from this checkout, limited to the targets, types, and artefacts each scope's entries name. A scope flag narrows the replay to that scope, and `--target` and `--type` narrow it further. Can run without `--global` or `--project-dir`. |
 | `--clear-backups` | Remove old managed backups for the selected targets before creating a fresh backup. Without `--global` or `--project-dir`, this clears matching global backups and exits before deploy. No effect in `--project-dir` mode. |
 | `--dry-run` | Preview backups, installs, and uninstall actions without writing changes. |
 | `-h`, `--help` | Show built-in help. |
 
-Deploy operations require an explicit scope: pass `--global` or `--project-dir DIR`. `--dry-run`, `--type`, `--target`, or `--only` alone are deploy/filter requests and abort with a missing-scope error. If `--target` filters out every app, the script aborts. If discovery finds no matching artifacts, it exits cleanly without deploying anything. `jq` is required (used for the JSON merges, hook entry merge included). The script exits early if it's missing.
+Deploy operations require an explicit scope: pass `--global` or `--project-dir DIR`. `--update` and `--uninstall` are log-driven maintenance modes that run without one. `--dry-run`, `--type`, `--target`, or `--only` alone are deploy/filter requests and abort with a missing-scope error. If `--target` filters out every app, the script aborts. If discovery finds no matching artifacts, it exits cleanly without deploying anything. `jq` is required (used for the JSON merges, hook entry merge included). The script exits early if it's missing.
 
 ## Artifact Discovery
 
@@ -111,7 +114,7 @@ Several targets do not consume the repo source files directly:
 
 `replace:path VAR=value` rules in `deployment.conf` substitute `$VAR$` in matching deployed copies.
 
-Every deployed artifact is a copy rather than a live link to the repo. Re-run the script after editing a source artifact to refresh its deployed copy.
+Every deployed artifact is a copy rather than a live link to the repo. Run `make update` after editing a source artefact to refresh its deployed copy in every scope the deploy log records.
 
 ## Backups
 
@@ -128,7 +131,7 @@ Backups land in `$HOME` as `<name>_YYYYMMDD_HHMMSS`, e.g. `~/.cursor_YYYYMMDD_HH
 
 `--clear-backups` removes only backups that match the script's managed naming scheme before creating the fresh backup for that target. When run without a deployment scope, it is a cleanup-only operation: `--target` narrows the global target roots, `--dry-run` previews removals, and the script exits without creating backups or deploying. `--type` and `--only` stay artifact filters, so adding either one makes the run a deploy request again, which stops with the missing-scope error.
 
-## Deploy Log and Uninstall
+## Deploy Log, Update, and Uninstall
 
 Every real deploy appends one line per deployed artifact to `deployment/deployed_artefacts.log` (tab-separated). Setting `DEPLOYED_ARTIFACTS_LOG` in the environment points the script at another log, which is how a test deployment keeps its log inside its own scratch tree:
 
@@ -143,6 +146,8 @@ The log is deduplicated on script exit. Dry runs do not modify it. Four-field li
 On the first write of a JSON key through `merge_json_key`, the previous value is recorded in that fifth field. A later redeploy of the same key reuses the first-recorded prior and does not re-sample the live settings value, so `sort -u` still collapses identical lines.
 
 Hook configuration records an `@entries:` manifest instead of a whole-key prior. A hook file is shared with the user and with other tools, so the deploy merges its entries one at a time: an entry ai-modules owns is added when missing, updated in place at the position it holds, and removed once the shipped config no longer carries it, while every foreign entry stays where it was. The manifest is the current owned set, written as `@entries:` followed by a compact JSON list of each owned entry's event and identity, so it changes whenever an owned entry is added, updated, or removed. The function therefore rewrites its own line before appending and keeps exactly one line per `path[hooks]` destination; a legacy hook line that carries a whole-key prior converts to the manifest form on the next deploy.
+
+`--update` and `--uninstall` are the two readers of this log. `make deploy` widens the global scope to every artefact discovery emits; `make update` instead refreshes what the log records, in every scope, including the project scopes a global deploy never reaches. It groups the entries by scope, target, and type, and re-invokes the script once per (scope, target) pair with that scope's flag, the target, the types it records, and the artefacts it records, so each scope receives exactly its recorded copies rather than the cross product of its targets and types. A project directory that no longer exists has its entries dropped before the replay, a group whose sources all live in another checkout is reported and left untouched, and an entry whose source has left this checkout is reported as an orphan and left in place. `--dry-run` previews the whole replay and writes nothing.
 
 A scope flag limits `--uninstall` to that scope — `--global` removes only entries deployed into the global scope and `--project-dir DIR` only entries deployed into that project — while a scopeless run covers every scope. Within the selected scope, uninstall removes the log entries that match the active filters; unmatched and out-of-scope entries stay in the log. If a logged path is already gone, uninstall treats it as cleaned up and removes the log entry anyway. JSON-merge entries with a recorded prior restore that value (or delete the key when `@absent` was recorded). A `path[key]` line carrying an `@entries:` manifest removes exactly the listed hook entries, then an event list or the `hooks` object once a removal leaves it empty, and checks success against that removal rather than against a recorded prior. When a user edit leaves an event value that still holds an owned entry, that line reports failure and stays in the log, and the hook script it references is kept rather than deleted, so the next run can retry. Legacy four-field `path[key]` lines still uninstall by stripping the key.
 

@@ -2,6 +2,7 @@
 #
 # Targets:
 #   make deploy / global / install   deploy artefacts to global config dirs
+#   make update                      redeploy every scope the deploy log records, from this checkout
 #   make uninstall                   remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 #   make clean                       remove managed deployment backups
 #   make test                        run every deterministic test surface
@@ -42,7 +43,7 @@ JSON_FILES  := $(shell find . $(EXCLUDE) -type f -name '*.json' -print)
 SH_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.sh' -print)
 
 .PHONY: help \
-        deploy global install uninstall clean \
+        deploy global install update uninstall clean \
         test \
         lint lint-md lint-json lint-sh \
         fix fix-md
@@ -55,6 +56,9 @@ deploy: ## Deploy artefacts to global config dirs (--global).
 
 global: deploy   ## Alias for `make deploy`.
 install: deploy  ## Alias for `make deploy`.
+
+update: ## Redeploy every scope the deploy log records, from this checkout (--update).
+	./deployment/deployment.sh --update
 
 uninstall: ## Remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope (--uninstall).
 	./deployment/deployment.sh --uninstall

@@ -102,7 +102,7 @@ ai-modules/
 ├── AGENTS.md                # standing repo instructions for coding agents
 ├── CLAUDE.md                # the same instructions for Claude Code
 ├── CHANGELOG.md             # day-grouped history, written by the shipped update_changelog skill
-└── Makefile                 # deploy, uninstall, lint, and fix entry points
+└── Makefile                 # deploy, update, uninstall, lint, and fix entry points
 ```
 
 The repo runs on the components it ships. Its backlog, knowledge base, charter, and
@@ -211,6 +211,7 @@ Common workflows are wrapped in the [Makefile](Makefile):
 ```bash
 make help        # list targets
 make deploy      # deploy artefacts to global config dirs (aliases: global, install)
+make update      # refresh every scope the deploy log records from this checkout
 make uninstall   # remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 make clean       # remove managed deployment backups
 make lint        # report lint issues across md / json / sh

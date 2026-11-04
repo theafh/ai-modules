@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-10-29
+updated: 2026-11-03
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -18,8 +18,9 @@ OpenAI Codex, Google Antigravity, and OpenCode. It runs in one of two scopes.
 Global mode writes into the user configuration directories, and project mode
 writes into a single project's own local configuration instead. The script
 records every path it wrote into `deployment/deployed_artefacts.log`, and
-uninstall replays that log: a scope flag limits removal to the scope it names,
-while a scopeless run covers every scope.
+update and uninstall replay that log: update redeploys what it records,
+uninstall removes it, and a scope flag limits either mode to the scope it
+names while a scopeless run covers every scope.
 
 The script exists because a marketplace install cannot reach everything. A
 plugin manifest delivers components, but it never writes a settings key and it
@@ -155,9 +156,9 @@ key rather than as a file alone. See
 
 The script is the largest single executable file in the repository, and it
 outweighs every bundled skill script put together. It carries its own
-configuration format, its own log format, backup retention, an uninstall path,
-a dry run, two-dimensional filtering, and a code generator for each target format
-it bridges. It is also the
+configuration format, its own log format, backup retention, an update path, an
+uninstall path, a dry run, two-dimensional filtering, and a code generator for
+each target format it bridges. It is also the
 only substantial program here that ships to nobody, while every machine depends
 on it.
 

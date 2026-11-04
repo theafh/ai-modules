@@ -1302,3 +1302,11 @@ pre-existing, and the size infos stay advisory; the one on
   names a checked-out branch's change since the default branch beside a
   finished uncommitted change, and the page's `updated` date moves to
   2026-10-30)
+
+## [2026-11-03 23:56] update | name the log-driven update on the deployment model page
+
+- concepts/deployment-model.md (the overview now names update beside uninstall
+  as a reader of the deploy log, the script-capability sentence gains an update
+  path, and the page's `updated` date moves to 2026-11-03)
+- index.md (the deployment-model summary names the log-driven update replay,
+  Last updated)

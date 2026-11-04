@@ -2,9 +2,11 @@
 description: Add `make update`, a log-driven deploy mode that redeploys each global or project scope the deploy log records, with its recorded targets and types, from this checkout.
 scope: deployment
 created: 2026-10-07T08:38:14
-updated: 2026-10-27T20:13:09
-status: ready
+updated: 2026-11-04T06:22:34
+status: audited
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Redeploy every recorded scope from the deploy log with `make update`

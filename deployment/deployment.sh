@@ -27,12 +27,16 @@ set -euo pipefail
 #                    fields from discover_artifacts: skill directory basename,
 #                    or agent/style basename without extension). An unknown
 #                    name, or a value that names none, aborts the run. Needs
-#                    --global or --project-dir, and --uninstall rejects the
-#                    flag.
+#                    --global or --project-dir, and --uninstall or --update
+#                    rejects the flag.
 #   --project-dir D  Deploy into a project directory instead of global config dirs
 #   --dry-run        Preview changes without applying them
 #   --uninstall      Remove previously deployed artifacts from deployed_artefacts.log.
 #                    A scope flag limits removal to that scope; without one it covers every scope.
+#   --update         Redeploy every scope deployed_artefacts.log records, from this
+#                    checkout, limited to each scope's recorded targets, types, and
+#                    artefacts. A scope flag narrows it to that scope; --target and
+#                    --type narrow the replay. --dry-run previews the whole replay.
 #   --clear-backups  Remove old selected backups before creating new ones
 #   Logs deployed artifacts to deployed_artefacts.log with target/source metadata.
 #   Override the log path with DEPLOYED_ARTIFACTS_LOG so a test deployment can
@@ -58,6 +62,8 @@ set -euo pipefail
 #   ./deployment.sh --global                     # autodiscover all in global config dirs
 #   ./deployment.sh --global --clear-backups     # drop old backups, then create fresh ones
 #   ./deployment.sh --uninstall                  # uninstall logged artifacts only
+#   ./deployment.sh --update                     # redeploy every logged scope
+#   ./deployment.sh --update --dry-run           # preview the logged-scope replay
 #   ./deployment.sh --clear-backups --target cursor,claude
 #                                                 # clear managed backups only
 #   ./deployment.sh --global --type skill,command
@@ -73,6 +79,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 DRY_RUN=false
 UNINSTALL=false
+UPDATE=false
 CLEAR_BACKUPS=false
 GLOBAL_MODE=false
 BACKUP_CLEANUP_ONLY=false
@@ -94,13 +101,15 @@ Options:
   --global          Deploy into global config dirs. This is the previous default
                     behavior of running the script with no arguments.
   --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook,style.
-                    Requires --global or --project-dir unless used with --uninstall.
+                    Requires --global or --project-dir unless used with --uninstall
+                    or --update.
   --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,antigravity,opencode
   --only NAMES      Comma-separated artefact names to deploy. Each NAME matches the
                     name field of a name|type|rel_path line discover_artifacts emits
                     (skill directory basename, or agent/style basename without extension).
                     An unknown name, or a value that names none, aborts the run.
-                    Requires --global or --project-dir; not valid with --uninstall.
+                    Requires --global or --project-dir; not valid with --uninstall
+                    or --update.
   --project-dir DIR Deploy into a project directory instead of global config dirs.
                     Backups are disabled in this mode.
   --uninstall       Uninstall mode; remove matching logged deployed artifacts after backup.
@@ -108,6 +117,13 @@ Options:
                     entries deployed into the global scope and --project-dir DIR only
                     entries deployed into that project; a scopeless run covers every
                     scope. Can run without --global or --project-dir.
+  --update          Update mode; redeploy every scope the deploy log records from this
+                    checkout, limited to the targets, types, and artefacts each scope's
+                    entries name. A scope flag narrows the replay to that scope, and
+                    --target and --type narrow it further. Drops entries for a project
+                    directory that no longer exists, skips groups deployed from another
+                    checkout, and reports orphaned entries without removing them.
+                    Can run without --global or --project-dir.
   --clear-backups   Remove old backups for selected targets before creating new backups.
                     Without --global or --project-dir, clears backups and exits.
   --dry-run         Preview changes without applying them
@@ -125,6 +141,8 @@ Examples:
   ./deployment/deployment.sh --global --only task,task_create --target claude
   ./deployment/deployment.sh --project-dir /path/to/repo --target claude
   ./deployment/deployment.sh --uninstall
+  ./deployment/deployment.sh --update
+  ./deployment/deployment.sh --update --dry-run
   ./deployment/deployment.sh --clear-backups --target cursor,claude
 USAGE
 }
@@ -144,6 +162,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --uninstall)
       UNINSTALL=true
+      shift
+      ;;
+    --update)
+      UPDATE=true
       shift
       ;;
     --clear-backups)
@@ -618,9 +640,20 @@ if [[ -n "$TARGET_FILTER" ]]; then
 fi
 
 # Uninstall reads the deployment log and never the --only list, so the pair
-# would remove every logged artefact the other filters match.
+# would remove every logged artefact the other filters match. Update reads the
+# log for the names it replays, so a caller-supplied --only would be ignored.
 if [[ -n "$ONLY_FILTER" && "$UNINSTALL" == true ]]; then
   err "abort" "--only selects artefacts to deploy and cannot be combined with --uninstall"
+  exit 1
+fi
+
+if [[ -n "$ONLY_FILTER" && "$UPDATE" == true ]]; then
+  err "abort" "--only selects artefacts to deploy and cannot be combined with --update"
+  exit 1
+fi
+
+if [[ "$UPDATE" == true && "$UNINSTALL" == true ]]; then
+  err "abort" "--update and --uninstall cannot be combined"
   exit 1
 fi
 
@@ -629,6 +662,10 @@ if [[ "$GLOBAL_MODE" != true && -z "$PROJECT_DIR" ]]; then
     # Log-driven uninstall is a maintenance mode: it uses the deployment log
     # plus filters, not a newly selected deployment scope.
     NO_SCOPE_UNINSTALL=true
+  elif [[ "$UPDATE" == true ]]; then
+    # Log-driven update is the other maintenance mode that reads the log
+    # instead of a newly selected deployment scope.
+    :
   elif [[ "$CLEAR_BACKUPS" == true && -z "$TYPE_FILTER" && -z "$ONLY_FILTER" ]]; then
     # Backup cleanup is the other no-scope maintenance mode. --target narrows
     # backup roots; --type and --only stay artifact filters, so either one
@@ -2740,6 +2777,360 @@ uninstall_logged_artifacts() {
   info "log" "Removed ${removed_count} item(s); kept ${#remaining_entries[@]} item(s)"
 }
 
+# Append a value to a comma-separated list when it is not already present.
+append_unique_csv() {
+  local current="$1"
+  local value="$2"
+  local item=""
+  local IFS=','
+
+  if [[ -z "$current" ]]; then
+    printf '%s' "$value"
+    return 0
+  fi
+
+  for item in $current; do
+    if [[ "$item" == "$value" ]]; then
+      printf '%s' "$current"
+      return 0
+    fi
+  done
+
+  printf '%s,%s' "$current" "$value"
+}
+
+# Derive the artefact name discover_artifacts emits for one logged source path.
+# Prints the name and returns 0 only when the source lies under this checkout,
+# still exists, and discovery emits the derived name, so every name handed to
+# --only is one the script accepts.
+logged_source_artifact_name() {
+  local source_path="${1:-}"
+  local artifact_type="${2:-}"
+  local known_names="${3:-}"
+  local name=""
+
+  [[ -n "$source_path" && -n "$artifact_type" ]] || return 1
+  [[ "$source_path" == "$REPO_ROOT/"* ]] || return 1
+  [[ -e "$source_path" ]] || return 1
+
+  if [[ "$artifact_type" == "skill" ]]; then
+    name="$(basename "$source_path")"
+  else
+    local base
+    base="$(basename "$source_path")"
+    name="${base%.*}"
+  fi
+  [[ -n "$name" ]] || return 1
+
+  grep -Fqx -- "$name" <<< "$known_names" || return 1
+  printf '%s' "$name"
+}
+
+# Redeploy every scope the deploy log records. Each (scope, target, type) group
+# is replayed only when at least one of its sources lies in this checkout, and
+# each (scope, target) pair is replayed by re-invoking this script once with the
+# scope flag, target, recorded types, and recorded artefact names, so discovery,
+# deployment.conf rules, generated formats, and backups behave as on a manual
+# deploy. Project scopes whose directory no longer exists are dropped from the
+# log before the first replay; orphaned entries and entries deployed from
+# another checkout stay in the log untouched.
+update_logged_artifacts() {
+  echo "Updating logged scopes..."
+  echo ""
+
+  if [[ ! -f "$DEPLOYED_ARTIFACTS_LOG" ]]; then
+    info "skip" "No deploy log found at $DEPLOYED_ARTIFACTS_LOG"
+    return 0
+  fi
+
+  local known_names
+  known_names="$(TYPE_FILTER="" discover_artifacts | cut -d'|' -f1)"
+
+  local remaining_entries=()
+  local selected_entries=()
+  local scope_order=()
+  local dropped_scopes=()
+  local dropped_counts=()
+  local logged_entry=""
+  local i=0
+
+  while IFS= read -r logged_entry || [[ -n "$logged_entry" ]]; do
+    [[ -n "$logged_entry" ]] || continue
+
+    local logged_path="" logged_target_id="" logged_type="" logged_source="" logged_prior=""
+    IFS=$'\t' read -r logged_path logged_target_id logged_type logged_source logged_prior <<< "$logged_entry"
+
+    if [[ -z "$logged_path" || -z "$logged_target_id" || -z "$logged_type" || -z "$logged_source" ]]; then
+      warn "skip" "Malformed log entry: $logged_entry"
+      remaining_entries+=("$logged_entry")
+      continue
+    fi
+
+    if ! logged_path_matches_active_targets "$logged_target_id"; then
+      if [[ -z "$TARGET_FILTER" ]]; then
+        info "stale" "$logged_path targets removed app '$logged_target_id'"
+      fi
+      remaining_entries+=("$logged_entry")
+      continue
+    fi
+
+    if ! logged_type_matches_filter "$logged_type"; then
+      remaining_entries+=("$logged_entry")
+      continue
+    fi
+
+    local logged_scope
+    logged_scope="$(logged_path_scope "$logged_path" "$logged_target_id")"
+    if [[ -z "$logged_scope" ]]; then
+      warn "unrecognized" "$logged_path (no derivable scope)"
+      remaining_entries+=("$logged_entry")
+      continue
+    fi
+
+    if [[ "$GLOBAL_MODE" == true && "$logged_scope" != "global" ]]; then
+      info "skip" "out-of-scope for this update: $logged_path"
+      remaining_entries+=("$logged_entry")
+      continue
+    fi
+    if [[ -n "$PROJECT_DIR" && "$logged_scope" != "$PROJECT_DIR" ]]; then
+      info "skip" "out-of-scope for this update: $logged_path"
+      remaining_entries+=("$logged_entry")
+      continue
+    fi
+
+    if [[ "$logged_scope" != "global" && ! -d "$logged_scope" ]]; then
+      if ! array_has_exact "$logged_scope" ${scope_order[@]+"${scope_order[@]}"}; then
+        scope_order+=("$logged_scope")
+      fi
+      local drop_index=-1
+      for (( i = 0; i < ${#dropped_scopes[@]}; i++ )); do
+        if [[ "${dropped_scopes[$i]}" == "$logged_scope" ]]; then
+          drop_index=$i
+          break
+        fi
+      done
+      if [[ $drop_index -ge 0 ]]; then
+        dropped_counts[drop_index]=$(( dropped_counts[drop_index] + 1 ))
+      else
+        dropped_scopes+=("$logged_scope")
+        dropped_counts+=(1)
+      fi
+      if $DRY_RUN; then
+        remaining_entries+=("$logged_entry")
+      fi
+      continue
+    fi
+
+    remaining_entries+=("$logged_entry")
+    selected_entries+=("$logged_entry")
+    if ! array_has_exact "$logged_scope" ${scope_order[@]+"${scope_order[@]}"}; then
+      scope_order+=("$logged_scope")
+    fi
+  done < "$DEPLOYED_ARTIFACTS_LOG"
+
+  for (( i = 0; i < ${#dropped_scopes[@]}; i++ )); do
+    if $DRY_RUN; then
+      warn "would-drop" "${dropped_scopes[$i]} (project directory missing; ${dropped_counts[$i]} entry(s) kept)"
+    else
+      warn "drop-scope" "${dropped_scopes[$i]} (project directory missing; ${dropped_counts[$i]} entry(s) dropped)"
+    fi
+  done
+
+  # Write the drop before the first replay, so the replay's own log appends
+  # survive. A dry run keeps the log byte for byte.
+  if ! $DRY_RUN && [[ ${#dropped_scopes[@]} -gt 0 ]]; then
+    local tmp
+    tmp="$(mktemp)"
+    if [[ ${#remaining_entries[@]} -gt 0 ]]; then
+      printf '%s\n' "${remaining_entries[@]}" > "$tmp"
+    fi
+    mv "$tmp" "$DEPLOYED_ARTIFACTS_LOG"
+  fi
+
+  # Group the selected entries by scope, target, and type.
+  local group_keys=()
+  local entry=""
+  for entry in ${selected_entries[@]+"${selected_entries[@]}"}; do
+    local g_path="" g_target="" g_type=""
+    IFS=$'\t' read -r g_path g_target g_type _ <<< "$entry"
+    local g_scope
+    g_scope="$(logged_path_scope "$g_path" "$g_target")"
+    local key="${g_scope}"$'\t'"${g_target}"$'\t'"${g_type}"
+    if ! array_has_exact "$key" ${group_keys[@]+"${group_keys[@]}"}; then
+      group_keys+=("$key")
+    fi
+  done
+
+  local pair_keys=()
+  local pair_types=()
+  local pair_names=()
+  local skip_groups=()
+  local replay_failed=false
+
+  local key=""
+  for key in ${group_keys[@]+"${group_keys[@]}"}; do
+    local k_scope="" k_target="" k_type=""
+    IFS=$'\t' read -r k_scope k_target k_type <<< "$key"
+
+    local group_entries=()
+    local e=""
+    for e in ${selected_entries[@]+"${selected_entries[@]}"}; do
+      local e_path="" e_target="" e_type=""
+      IFS=$'\t' read -r e_path e_target e_type _ _ <<< "$e"
+      local e_scope
+      e_scope="$(logged_path_scope "$e_path" "$e_target")"
+      if [[ "$e_scope" == "$k_scope" && "$e_target" == "$k_target" && "$e_type" == "$k_type" ]]; then
+        group_entries+=("$e")
+      fi
+    done
+
+    local has_local=false
+    for e in "${group_entries[@]}"; do
+      local s_source=""
+      IFS=$'\t' read -r _ _ _ s_source _ <<< "$e"
+      if [[ "$s_source" == "$REPO_ROOT/"* ]]; then
+        has_local=true
+        break
+      fi
+    done
+
+    if [[ "$has_local" != true ]]; then
+      info "foreign" "${k_scope} ${k_target} ${k_type} group is deployed from another checkout"
+      skip_groups+=("${k_scope}"$'\t'"${k_target}"$'\t'"${k_type}"$'\t'"deployed from another checkout")
+      continue
+    fi
+
+    local group_names=()
+    for e in "${group_entries[@]}"; do
+      local n_path="" n_type="" n_source=""
+      IFS=$'\t' read -r n_path _ n_type n_source _ <<< "$e"
+      if [[ "$n_source" == "$REPO_ROOT/"* && ! -e "$n_source" ]]; then
+        warn "orphan" "$n_path (source missing: $n_source)"
+      fi
+      local derived=""
+      if derived="$(logged_source_artifact_name "$n_source" "$n_type" "$known_names")"; then
+        if ! array_has_exact "$derived" ${group_names[@]+"${group_names[@]}"}; then
+          group_names+=("$derived")
+        fi
+      fi
+    done
+
+    if [[ ${#group_names[@]} -eq 0 ]]; then
+      info "skip" "${k_scope} ${k_target} ${k_type}: no replayable artefact names"
+      skip_groups+=("${k_scope}"$'\t'"${k_target}"$'\t'"${k_type}"$'\t'"no replayable artefact names")
+      continue
+    fi
+
+    local pair_key="${k_scope}"$'\t'"${k_target}"
+    local pair_index=-1
+    local j=0
+    for (( j = 0; j < ${#pair_keys[@]}; j++ )); do
+      if [[ "${pair_keys[$j]}" == "$pair_key" ]]; then
+        pair_index=$j
+        break
+      fi
+    done
+    if [[ $pair_index -lt 0 ]]; then
+      pair_keys+=("$pair_key")
+      pair_types+=("")
+      pair_names+=("")
+      pair_index=$(( ${#pair_keys[@]} - 1 ))
+    fi
+    pair_types[pair_index]="$(append_unique_csv "${pair_types[pair_index]}" "$k_type")"
+    local name=""
+    for name in "${group_names[@]}"; do
+      pair_names[pair_index]="$(append_unique_csv "${pair_names[pair_index]}" "$name")"
+    done
+  done
+
+  local p=0
+  for (( p = 0; p < ${#pair_keys[@]}; p++ )); do
+    local p_scope="" p_target=""
+    IFS=$'\t' read -r p_scope p_target <<< "${pair_keys[$p]}"
+    local p_types="${pair_types[$p]}"
+    local p_names="${pair_names[$p]}"
+
+    local replay_args=()
+    if [[ "$p_scope" == "global" ]]; then
+      replay_args+=(--global)
+    else
+      replay_args+=(--project-dir "$p_scope")
+    fi
+    replay_args+=(--target "$p_target" --type "$p_types" --only "$p_names")
+    if $DRY_RUN; then
+      replay_args+=(--dry-run)
+    fi
+
+    info "replay" "${p_scope} ${p_target} (types: ${p_types}; artefacts: ${p_names})"
+    if ! "${BASH_SOURCE[0]}" "${replay_args[@]}"; then
+      err "replay" "deployment failed for ${p_scope} ${p_target}"
+      replay_failed=true
+    fi
+  done
+
+  local s=""
+  for s in ${scope_order[@]+"${scope_order[@]}"}; do
+    local s_drop_index=-1
+    for (( i = 0; i < ${#dropped_scopes[@]}; i++ )); do
+      if [[ "${dropped_scopes[$i]}" == "$s" ]]; then
+        s_drop_index=$i
+        break
+      fi
+    done
+    if [[ $s_drop_index -ge 0 ]]; then
+      if $DRY_RUN; then
+        warn "scope" "${s}: would drop ${dropped_counts[$s_drop_index]} entry(s) (project directory missing)"
+      else
+        warn "scope" "${s}: dropped ${dropped_counts[$s_drop_index]} entry(s) (project directory missing)"
+      fi
+      continue
+    fi
+
+    local replayed_targets=""
+    for (( p = 0; p < ${#pair_keys[@]}; p++ )); do
+      local pk_scope="" pk_target=""
+      IFS=$'\t' read -r pk_scope pk_target <<< "${pair_keys[$p]}"
+      [[ "$pk_scope" == "$s" ]] || continue
+      replayed_targets="$(append_unique_csv "$replayed_targets" "$pk_target")"
+    done
+
+    local skip_reasons=""
+    local skip_entry=""
+    for skip_entry in ${skip_groups[@]+"${skip_groups[@]}"}; do
+      local sk_scope="" sk_rest=""
+      IFS=$'\t' read -r sk_scope sk_rest <<< "$skip_entry"
+      local sk_reason="${sk_rest#*$'\t'*$'\t'}"
+      [[ "$sk_scope" == "$s" ]] || continue
+      skip_reasons="$(append_unique_csv "$skip_reasons" "$sk_reason")"
+    done
+
+    local scope_summary=""
+    if [[ -n "$replayed_targets" ]]; then
+      if $DRY_RUN; then
+        scope_summary="would replay ${replayed_targets}"
+      else
+        scope_summary="replayed ${replayed_targets}"
+      fi
+    fi
+    if [[ -n "$skip_reasons" ]]; then
+      if [[ -n "$scope_summary" ]]; then
+        scope_summary="${scope_summary}; skipped (${skip_reasons})"
+      else
+        scope_summary="skipped (${skip_reasons})"
+      fi
+    fi
+    if [[ -z "$scope_summary" ]]; then
+      scope_summary="skipped (nothing to replay)"
+    fi
+    info "scope" "${s}: ${scope_summary}"
+  done
+
+  if $replay_failed; then
+    return 1
+  fi
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -2781,6 +3172,7 @@ else
 fi
 $DRY_RUN && echo "Mode:          DRY RUN (simulated only, no changes written)"
 $UNINSTALL && echo "Uninstall:     enabled"
+$UPDATE && echo "Update:        enabled"
 $CLEAR_BACKUPS && echo "Clear backups: enabled"
 [[ -n "$TYPE_FILTER" ]] && echo "Types:         $TYPE_FILTER"
 [[ -n "$TARGET_FILTER" ]] && echo "Targets:       $TARGET_FILTER"
@@ -2790,6 +3182,18 @@ echo ""
 
 # Parse deployment.conf
 parse_deployment_conf
+
+# ---------------------------------------------------------------------------
+# Update logged scopes before the backup section, so the update run itself
+# backs up nothing and each replay performs its own equivalent deploy's backup.
+# ---------------------------------------------------------------------------
+if $UPDATE; then
+  update_rc=0
+  update_logged_artifacts || update_rc=$?
+  echo ""
+  echo "Done."
+  exit "$update_rc"
+fi
 
 # ---------------------------------------------------------------------------
 # Backup activated targets only (disabled in project-dir mode)

@@ -321,7 +321,11 @@ files.
   `script_tests/hook_merge_run.sh` covers the entry-grain hook merge into a
   shared hook file, its dry-run report, the `@entries:` deploy-log manifest,
   the manifest uninstall, and the routing and documentation claims that keep
-  the whole-key merge superseded.
+  the whole-key merge superseded; `script_tests/update_run.sh` covers the
+  log-driven `--update` replay: restoring each recorded scope, one backup per
+  covered global target root, project-scope isolation, dry-run immutability,
+  the vanished-scope drop, foreign-checkout and orphan handling, scope and
+  filter narrowing, and the help, Makefile, and documentation claims.
 - **`trigger_evals/`**: a different axis from the rest, namely whether a
   skill's `description:` makes Claude load it on a realistic user message. Driven
   by the local `run.py` wrapper, with hermetic unit tests under `script_tests/`
