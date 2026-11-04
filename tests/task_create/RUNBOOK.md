@@ -17,9 +17,10 @@ only when every case passed.
 python3 tests/task_create/evals/run.py
 ```
 
-Runs every id in `evals/evals.json` on the default Cursor worker, one at a time,
-and prints a per-eval PASS/FAIL plus a tally. Exit code is 0 only when every
-worker completed cleanly *and* its deterministic grade passed.
+Runs every id in `evals/evals.json` on the default Cursor worker, four at a
+time (the default; `--workers 1` serializes), and prints a per-eval PASS/FAIL
+plus a tally. Exit code is 0 only when every worker completed cleanly *and* its
+deterministic grade passed.
 
 ## One eval
 
@@ -44,7 +45,7 @@ python3 tests/task_create/evals/run.py --no-cache
 
 ## Reading a failure
 
-Each run writes `evals/workspace/run-<ts>/<id>/`:
+Each run writes `tests/task_create/workspace/run-<ts>/<id>/`:
 
 - `response.txt`: the worker's user-facing turn. This is the graded surface
   for the "surfaced to the user" half of the rule; read it when a

@@ -196,8 +196,9 @@ timeouts, not faster wall-clock.
 
 The Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS`
 are `tests/task_auto_check/evals/run.py`, `tests/task/evals/run.py`,
-`tests/git_checkout/evals/run.py`, `tests/git_refresh/evals/run.py`,
-`tests/git_commit/evals/run.py`, `tests/git_review/evals/run.py`, and
+`tests/task_create/evals/run.py`, `tests/git_checkout/evals/run.py`,
+`tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`,
+`tests/git_review/evals/run.py`, and
 `tests/git_auto_review/evals/run.py`. `task_auto_check` runs its serial
 nested-loop set, the list above, one job at a time after the isolated pool.
 `tests/task/evals/run.py` runs its Approach serial nested-loop set
@@ -239,10 +240,9 @@ helper (private pools, not yet on `eval_runner`):
 Pattern A runners that stay sequential until their sibling conversion tasks
 wire them onto `eval_runner` (plus permanent isolation exceptions):
 
-- `task_create`, `task_fix` — still serial until
-  their parallel-worker tasks land. The host guard compares an isolated temp
-  copy and only the sandbox's fixture names, so an unrelated live backlog edit
-  no longer fails them.
+- `task_fix` — still serial until its parallel-worker task lands. The host
+  guard compares an isolated temp copy and only the sandbox's fixture names, so
+  an unrelated live backlog edit no longer fails it.
 - `agent_spinner` brackets each eval with a host-checkout `git status`, which
   sees every overlapping eval's changes, so it stays serial until its guard
   compares only the names each eval owns.

@@ -2,9 +2,11 @@
 description: Run task_create evals at default 4 workers with per-eval host-tasks fail-safes that stay correct under overlap, using the shared Pattern A helper.
 scope: tests/task_create/evals
 created: 2026-10-04T22:11:10
-updated: 2026-11-03T11:36:17
-status: ready
+updated: 2026-11-04T12:59:12
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize the task_create behavioral evals without mixing host-tree fail-safes
@@ -26,8 +28,8 @@ eval when it appears, moves, or is newer than `$target/.eval_started_at`, while
 edits to other live tasks stay outside the comparison. `WORKSPACE` is
 `tests/task_create/evals/workspace`. Ids already come from `evals.json`.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
-The fail-safe contract matches [the task-hub parallel task](archive/tests_task-hub-parallel-evals.md).
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
+The fail-safe contract matches [the task-hub parallel task](tests_task-hub-parallel-evals.md).
 
 ## Approach
 
