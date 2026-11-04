@@ -11,10 +11,13 @@ joins the tree without joining the gate fails here. The synthetic checks stage
 one scratch harness per entrypoint shape, each with its own eval file and
 counter, and prove the declaration cases: a declared eval file runs only
 through its entrypoint, an undeclared one is listed as a surface the gate runs,
-and a harness with an eval file and no declaration fails the gate by name.
+an entrypoint-less harness runs the eval file its declaration names, and a
+harness with an eval file and no declaration fails the gate by name.
 
-Set RUN_ALL_GATE to point the checks at a copy of the gate, such as an
-inverted-declaration copy used to prove the fail branch:
+The live checks always run the repository's own tests/run_all.sh. Set
+RUN_ALL_GATE to point the synthetic checks at a copy of the gate, such as an
+inverted-declaration copy used to prove the fail branch, and that override
+governs only the scratch copies synthetic_listing and fail_closed_tree stage:
 
     RUN_ALL_GATE=/tmp/run_all-inverted.sh python3 tests/lib/test_run_all_gate.py
 """
@@ -32,8 +35,9 @@ from dataclasses import dataclass
 THIS = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = THIS.parents[1]
 TESTS = REPO_ROOT / "tests"
-GATE = pathlib.Path(
-    os.environ.get("RUN_ALL_GATE", str(TESTS / "run_all.sh"))
+GATE = (TESTS / "run_all.sh").resolve()
+SCRATCH_GATE = pathlib.Path(
+    os.environ.get("RUN_ALL_GATE", str(GATE))
 ).resolve()
 
 PASS = 0
@@ -149,7 +153,7 @@ COUNTER_EVAL = (
 class Case:
     name: str
     label: str
-    entrypoint: str
+    entrypoint: str | None
     declared: bool = True
     counter: bool = True
     executable: bool = False
@@ -158,7 +162,9 @@ class Case:
 # One scratch harness per entrypoint shape. A declared harness names its eval
 # file in covered-by-entrypoint, so the gate must run the file only through
 # the entrypoint. The comment and here-doc shapes invoke nothing, so their
-# declarations stay empty and their eval files stay gate-run surfaces.
+# declarations stay empty and their eval files stay gate-run surfaces. A
+# harness shaped only by its eval file has no entrypoint to cover it, so a
+# declaration naming that file must not suppress the run either.
 CASES = [
     Case(
         "launcher",
@@ -284,15 +290,21 @@ CASES = [
         declared=False,
         counter=False,
     ),
+    Case(
+        "eval_only",
+        "an entrypoint-less harness",
+        None,
+    ),
 ]
 
 
 def stage_case(tests: pathlib.Path, case: Case) -> None:
     harness = tests / case.name
     (harness / "evals").mkdir(parents=True)
-    entry = harness / "run_all.sh"
-    entry.write_text(case.entrypoint, encoding="utf-8")
-    entry.chmod(0o755)
+    if case.entrypoint is not None:
+        entry = harness / "run_all.sh"
+        entry.write_text(case.entrypoint, encoding="utf-8")
+        entry.chmod(0o755)
     body = COUNTER_EVAL
     if case.executable:
         body = "#!/usr/bin/env python3\n" + body
@@ -321,7 +333,7 @@ def synthetic_listing(
         root = pathlib.Path(tmp)
         tests = root / "tests"
         (tests / "lib").mkdir(parents=True)
-        shutil.copy(GATE, tests / "run_all.sh")
+        shutil.copy(SCRATCH_GATE, tests / "run_all.sh")
         for case in cases:
             stage_case(tests, case)
         listed = run_scratch_gate(root, "--list")
@@ -357,7 +369,7 @@ def fail_closed_tree() -> tuple[
         root = pathlib.Path(tmp)
         tests = root / "tests"
         (tests / "lib").mkdir(parents=True)
-        shutil.copy(GATE, tests / "run_all.sh")
+        shutil.copy(SCRATCH_GATE, tests / "run_all.sh")
         harness = tests / "undeclared"
         (harness / "evals").mkdir(parents=True)
         (harness / "run_all.sh").write_text("exit 0\n", encoding="utf-8")
@@ -427,6 +439,8 @@ def main() -> int:
             f"{case.label} names its eval file exactly once",
             sum(rows.count(eval_path) for rows in synthetic.values()) == 1,
         )
+        if case.entrypoint is None:
+            continue
         check(
             f"{case.label} names its entrypoint under its surface",
             entry_path in synthetic.get(case.name, []),

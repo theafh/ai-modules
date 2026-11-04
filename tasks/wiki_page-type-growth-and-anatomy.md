@@ -2,7 +2,7 @@
 description: Make the size lint and the prose split thresholds growth-pattern aware (per-type defaults + SCHEMA `## Lint` growth bullet), and make custom-type anatomies name their session-derived-source label.
 scope: plugins/knowledge_management
 created: 2026-05-28T19:25:37
-updated: 2026-10-17T13:50:32
+updated: 2026-11-04T10:11:30
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -20,10 +20,11 @@ Two adjacent failures around page-type contracts get fixed together:
 
 This is one of a family of **generalisable refinements** to the wiki skills + `auto_shaper_wiki` agent. The trigger was a concrete friction point surfaced while auditing a real wiki, but the rule is stated globally so it applies to every user of the wiki skills, not just the originating case. During that audit the auto-shaper either parenthetically annotated a paragraph heading or silently broadened the definition of "canon" in a page-summary paragraph. Both are remediation smells driven by an ambiguous custom page-type contract. Separately, lint size findings landed in the page body as sanction prose even though that page type's growth past 200 lines is its expected behaviour.
 
-Two facts about the shipped plugin shape the design:
+Three facts about the shipped plugin shape the design:
 
 - The canonical page-type enum in the SCHEMA template is `entity | concept | comparison | query | summary | procedure`. The originating wiki's `todo` is a **custom** type, honoured because `lint.py` parses each wiki's `type:` enum from its own SCHEMA frontmatter block (the `TYPE_ENUM_RE` read), and `log.md` / `index.md` are special files outside the page walk that the size check never visits. Growth therefore lands as canonical defaults in the linter plus a per-wiki declaration for custom types.
-- SCHEMA.md already has a machine-read config channel: the `## Lint` section, which `lint.py` parses fence-safe for the `Page-check exclusions:` bullet (`LINT_EXCLUDE_RE`). The growth declaration follows that established pattern rather than inventing a second parse convention.
+- SCHEMA.md already has a machine-read config channel: the `## Lint` section, which `lint.py` parses fence-safe through `iter_lint_section_lines` for the `Page-check exclusions:` bullet (`LINT_EXCLUDE_RE`), the `Accepted finding:` bullet (`LINT_ACCEPT_RE`), and the `Declared boilerplate:` bullet (`load_declared_boilerplate`). The growth declaration follows that established pattern rather than inventing a second parse convention.
+- `lint_checks.md` already describes a growth-pattern declaration as a page-type-level suppression scope in its "Three suppression scopes sit side by side" paragraph, but `check_page_size` implements no growth logic and `template_schema.md` carries no declaration bullet. This task makes the shipped reference and the code agree, and keeps that reference paragraph as the statement of the scope.
 
 Files involved:
 
@@ -41,11 +42,11 @@ Related tasks:
 ## Approach
 
 1. **Canonical defaults in `lint.py`.** Map the built-in types: `entity`, `concept`, `procedure`, `comparison` → `fixed`; `summary`, `query` → `unbounded-synthesis`. Defaults live in the linter so existing wikis get them with no migration.
-2. **Custom-type declaration in the SCHEMA `## Lint` section.** One labeled bullet, for example `- Growth patterns: todo=backlog`, parsed with the same fence-safe scan as `Page-check exclusions:` and additive over the defaults. Document the bullet in the template's `## Lint` section (as documentation inside a fenced example, mirroring the exclusions bullet) and in `lint_checks.md`. Register it in the agent's `<configurable_zones>` entry for `template_schema.md`, which today names only the `Page-check exclusions` bullet as wiki-owned inside `## Lint`: without that entry a declared growth pattern survives on nothing but `<hunk_classification>`'s generic extends-the-canon fallback, and an audit reading it as scaffold drift would remove the declaration that keeps the wiki's size findings correct.
+2. **Custom-type declaration in the SCHEMA `## Lint` section.** One labeled bullet, for example `- Growth patterns: todo=backlog`, parsed with the same fence-safe scan as `Page-check exclusions:` and additive over the defaults. Document the bullet in the template's `## Lint` section (as documentation inside a fenced example, mirroring the exclusions bullet) and in `lint_checks.md`. Register it in the agent's `<configurable_zones>` entry for `template_schema.md`, which today names the `Page-check exclusions`, `Accepted finding`, and `Declared boilerplate` bullets as wiki-owned inside `## Lint`: without that entry a declared growth pattern survives on nothing but `<hunk_classification>`'s generic extends-the-canon fallback, and an audit reading it as scaffold drift would remove the declaration that keeps the wiki's size findings correct.
 3. **Growth-aware `check_page_size`.** Resolve each page's effective pattern (declaration first, then canonical default, then `fixed` for an undeclared custom type): `fixed` keeps today's over-200 info finding; `backlog`, `monotonic-append`, and `unbounded-synthesis` defer to 500 lines, past which the finding recommends split-or-graduate-entries rather than a body sanction.
 4. **Growth-aware prose canon.** Move the split-threshold statements outside the linter together with the check so prose and check tell one story: rewrite the `<write_or_update_pages>` split bullet and the `<pages_stay_scannable>` pitfall in `SKILL.md`, the `**Split a page**` threshold bullet in `template_schema.md`, and the `<topic_separation>` objective in `auto_shaper_wiki.md` to state the threshold per growth pattern: `fixed` types split past ~200 lines; growing types defer to step 3's higher threshold, where the action is split or graduate entries.
 5. **Custom-type anatomy rule in `template_schema.md`.** Beside the existing custom-declaration guidance, state that a wiki declaring a custom type defines that type's section anatomy, including the label its entries use for session-derived sources. The originating wiki's `todo` anatomy, a "What the canon says" paragraph reading awkwardly for entries sourced from recorded sessions, is the motivating illustration.
-6. **`auto_shaper_wiki.md` body-routing wording.** Verify the "note the rationale on the page's body or" wording is already gone: [wiki_meta-prose-in-page-bodies.md](archive/wiki_meta-prose-in-page-bodies.md) owns dropping it (sanction rationale routes to `SCHEMA.md` or `log.md`, never the page body) and the wider no-meta-in-body prohibition; the matching step here is verify-only. When this task lands first, leave the wording in place for that task.
+6. **`auto_shaper_wiki.md` body-routing wording.** Verify the "note the rationale on the page's body or" wording is gone: [wiki_meta-prose-in-page-bodies.md](archive/wiki_meta-prose-in-page-bodies.md) shipped that removal (sanction rationale routes to `SCHEMA.md` or `log.md`, never the page body), so this step is verify-only and changes nothing.
 
 ## Acceptance
 
@@ -54,6 +55,6 @@ Related tasks:
 - **Fixture C:** a 250-line `summary` page in a wiki with no growth bullet → no size finding (canonical default covers built-in types).
 - **Fixture D:** the fixture SCHEMA's custom-type section names its session-derived-source label; a todo entry sourced from a recorded session uses that label verbatim with no parenthetical attribution, and attribution lives in frontmatter `sources:` pointing at `raw/meetings/<slug>.md`.
 - The split threshold reads growth-aware at every prose site: the `SKILL.md` split bullet and `<pages_stay_scannable>` pitfall, the `template_schema.md` split bullet, and the agent's `<topic_separation>` objective each state the per-pattern thresholds (fixed at ~200 lines; growing types at the deferral threshold) rather than one unqualified 200-line rule.
-- `template_schema.md` and `lint_checks.md` document the growth bullet, the canonical defaults, and the deferral thresholds.
-- The agent's `<configurable_zones>` entry for `template_schema.md` names the growth bullet alongside `Page-check exclusions`, so a scaffold diff reads a declared growth pattern as wiki-owned content instead of drift.
+- `template_schema.md` and `lint_checks.md` document the growth bullet, the canonical defaults, and the deferral thresholds. The `lint_checks.md` paragraph describing a growth-pattern declaration as a page-type-level suppression scope is matched by the implementation and by the SCHEMA bullet, so the reference states a mechanism the linter actually honours.
+- The agent's `<configurable_zones>` entry for `template_schema.md` names the growth bullet alongside the `Page-check exclusions`, `Accepted finding`, and `Declared boilerplate` bullets, so a scaffold diff reads a declared growth pattern as wiki-owned content instead of drift.
 - `tests/wiki/run_all.sh --layer2` passes.

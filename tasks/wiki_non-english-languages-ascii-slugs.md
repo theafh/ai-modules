@@ -2,7 +2,7 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T15:26:15
-updated: 2026-10-17T13:50:32
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -41,14 +41,14 @@ It says lowercase/hyphens/no-spaces but **never says "ASCII only"**, and every e
 
 ### Files involved
 
-- [SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md): the `<folder_layout>` section (slug shape) and the authoring-conventions area. Add the non-English-language guidance and the content-vs-slug split.
-- In [scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py), add the new check. Findings are `Issue(severity, bucket, page, message)`; severity constants `SEV_BLOCKING / SEV_WARN / SEV_INFO`; existing path-shape logic lives in `check_type_location`. Add a sibling `check_filename_ascii` (bucket `filename`) and register it in the run pipeline.
+- [SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md): the `<folder_layout>` section (slug shape) and the `<write_or_update_pages>` authoring bullets. Add the non-English-language guidance and the content-vs-slug split.
+- In [scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py), add the new check. Findings are `Issue(severity, category, path, message, line)`; severity constants `SEV_BLOCKING / SEV_WARN / SEV_INFO`; existing path-shape logic lives in `check_type_location`. Add a sibling `check_filename_ascii` (category `filename`) and register it in the run pipeline. Page filenames come from `iter_wiki_pages` and raw-sidecar filenames from `iter_raw_files`, so the check covers both iterators.
 - In [references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md), document the new check row in the matrix and add it to the **warn** bucket list.
 - [auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md): the `<remediate>` phase, beside the existing `<fix_wrong_directory_for_declared_type>` move and under the `<use_git_mv>` constraint. Add an ASCII-fold-rename remediation for the new warning.
 
 ### Related task
 
-- [wiki_two-pass-normalisation.md](archive/wiki_two-pass-normalisation.md) co-edits the same `auto_shaper_wiki.md` `<remediate>` phase. Coordinate so the new ASCII-fold rename slots in as a fix-group alongside the displaced-semantics routing rule rather than conflicting with it.
+- [wiki_two-pass-normalisation.md](archive/wiki_two-pass-normalisation.md) shipped the displaced-semantics routing rule as `<two_pass_remediation>` in the same `auto_shaper_wiki.md` `<remediate>` phase. The new ASCII-fold rename slots in as a fix-group alongside that shipped rule.
 
 The rename machinery to reuse already ships in the agent rather than arriving with that task: `<fix_wrong_directory_for_declared_type>` carries the `git mv`-then-repair-inbound-links-and-index pattern, and the `<use_git_mv>` fix constraint states the history-preserving rule every rename follows. Model the ASCII-fold remediation on those two rather than inventing a parallel mechanism.
 
@@ -93,7 +93,7 @@ When the `filename` warning fires, the autofix mirrors the manual session fix:
 - `template_schema.md`'s "File names:" convention requires pure ASCII and shows the transliteration rule.
 - `lint.py` emits a `warn`/`filename` finding for a page whose filename contains a non-ASCII character, names the path, and suggests the ASCII slug; NFD-decomposed names are detected if implemented.
 - `lint_checks.md` documents the new check in the matrix and lists it under the warn bucket.
-- `auto_shaper_wiki.md` `<remediate>` phase carries the ASCII-fold rename remediation (git mv + re-point references), coordinated with the [wiki_two-pass-normalisation.md](archive/wiki_two-pass-normalisation.md) edits to the same section.
+- `auto_shaper_wiki.md` `<remediate>` phase carries the ASCII-fold rename remediation (git mv + re-point references), coexisting with the shipped `<two_pass_remediation>` rule in the same section.
 - The tags open decision is reflected: either tags fold to ASCII (default) or the tag check NFC-normalizes both sides, per the user's call.
 - A wiki linter fixture with a non-ASCII / NFD filename produces the new warning; after the auto_shaper fix the filename is pure ASCII, references resolve, and the linter is clean.
 - The wiki test suite (`tests/wiki/run_all.sh`) passes.

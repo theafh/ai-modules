@@ -2,7 +2,7 @@
 description: "Turn make install into environment preparation: declare the runtime and development tool floor in one file, report and install what is missing or too old, and free the name from the deploy alias."
 scope: "repo toolchain"
 created: 2026-09-18T13:48:56
-updated: 2026-10-16T22:53:04
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -13,7 +13,7 @@ reported-by: Andreas Hoffmann
 
 `make install` is currently an alias for `make deploy`, so the name that conventionally means "prepare the environment" is taken by the deploy. A contributor on a fresh machine still has no single declaration of the tool floor, and no target that installs what is missing.
 
-After this task the repository declares its tool floor in one place and `make install` acts on it. The target reports every tool it checked with its status, treats a tool present below its declared minimum version the same as an absent one, installs the missing ones it knows how to install, prints each install command before running it, and names anything it cannot install along with the exact command the operator should run. It exits non-zero while a required tool is still missing, so a caller can rely on its status. The deploy keeps its own entry points, `make deploy` and `make global`, and the standing repo documentation stops presenting `install` as a third name for the deploy.
+After this task the repository declares its tool floor in one place and `make install` acts on it. The target reports every tool it checked with its status, treats a tool present below its declared minimum version the same as an absent one, installs the missing ones it knows how to install, prints each install command before running it, and names anything it cannot install along with the exact command the operator should run. It exits non-zero while a required tool is still missing, so a caller can rely on its status. The deploy keeps its own entry points, `make deploy`, `make global`, and `make update`, and the standing repo documentation stops presenting `install` as a third name for the deploy.
 
 The floor is declared in two parts, because the two have different audiences. The **runtime floor** is what `deployment/deployment.sh` needs when it runs on any machine it is deployed from: `jq`, `perl`, `rsync`, the stock Bash 3.2 interpreter, and the ordinary file and text utilities. The **development floor** is what the repository's own lint and test targets need. Splitting them lets the target report a machine as able to deploy while still missing test tooling, which is the common state on a machine that only consumes the artefacts.
 
@@ -25,7 +25,7 @@ The deploy script already aborts at startup when `jq`, `perl`, or `rsync` is mis
 
 The runtime extras are not all stock. `perl` ships on macOS and typical Linux. `rsync` ships on current macOS as openrsync (`/usr/bin/rsync`) and is a package on many Linux distributions. Current macOS also ships `jq` at `/usr/bin/jq` beside those two. The missing-`jq` case is Linux distributions that do not ship it, and macOS releases older than the bundled build. The sibling [bash 3.2 floor](archive/deployment_bash-32-floor.md) already landed, so the interpreter itself is the stock `/bin/bash`. The runtime check must list `jq`, `perl`, and `rsync` as required runtime tools. It must not claim that a stock machine always satisfies the runtime floor with no install, because `jq` is often absent on Linux. It must not brew-install `rsync` on a Mac whose `/usr/bin/rsync` already resolves.
 
-The development floor is not stock. `make lint` needs `markdownlint` and `shellcheck`, neither of which ships with the operating system, alongside `jq`. The test harnesses additionally reach for `python3`, `node`, and the agent CLI used to drive the skill evals. The repository's README states in prose that the lint targets use these tools and suggests a package manager on macOS, which is guidance a reader follows by hand rather than a declaration a target can act on.
+The development floor is not stock. `make lint` needs `markdownlint` and `shellcheck`, neither of which ships with the operating system, alongside `jq`. `make test` needs `python3`; the behavioural evals also need the agent CLI used to drive them. No tracked harness invokes `node`. The repository's README states in prose that the lint targets use these tools and suggests a package manager on macOS, which is guidance a reader follows by hand rather than a declaration a target can act on.
 
 The name collision is recorded in three places that move together. The Makefile defines `install: deploy` as an alias, and both standing repo instruction files carry the same sentence presenting `global` and `install` as aliases of `make deploy`. The README's target listing repeats it in the comment beside `make deploy`. Those four passages are the edit sites for freeing the name; the standing instruction files are named here because they are themselves the implementation target.
 
@@ -58,7 +58,7 @@ Keep the runtime and development floors separately reportable so an operator can
 
 ## Acceptance
 
-- A clone of this repository placed in a scratch directory, run with a shell environment where the non-stock development tools do not resolve, reaches a state where `make lint` succeeds after a single `make install`, and the run named every tool it installed to get there.
+- A clone of this repository placed in a scratch directory, run with a shell environment where the non-stock development tools do not resolve, reaches a state where `make lint` and `make test` succeed after a single `make install`, and the run named every tool it installed to get there.
 - The runtime-floor manifest records `jq`, `perl`, and `rsync` as required. On a machine where `perl` and `rsync` already resolve and `jq` does not, the runtime report lists `perl` and `rsync` as satisfied, lists `jq` as missing, prints `jq`'s install command before running it, and does not install `rsync` or `perl`.
 - A Linux machine whose PATH has no `rsync` reports `rsync` on the runtime floor as missing and uses the Linux install command from the manifest. A macOS machine whose `/usr/bin/rsync` resolves reports `rsync` as satisfied and does not run a Homebrew rsync install.
 - A tool whose manifest record declares a minimum version, resolved at a lower version, is reported under a status distinct from both absent and satisfied, naming the version found and the version required, and `make install` exits non-zero while it stays below the minimum.
@@ -68,7 +68,7 @@ Keep the runtime and development floors separately reportable so an operator can
 - `make install` run with a required development tool made unresolvable prints that tool as missing, prints the install command before running it, and exits non-zero if the tool is still unresolvable afterwards.
 - `make install` run with a tool whose manifest record carries no install command for the current platform names the tool and what the operator should do, without invoking an install.
 - `make install` reports the runtime floor as satisfied on a machine where only development tools are missing, and the two floors appear as separately labelled groups in its output.
-- `make install` no longer runs the deploy, and `make deploy` and `make global` both still deploy.
+- `make install` no longer runs the deploy, and `make deploy`, `make global`, and `make update` all still deploy.
 - `make help` lists `install` with its environment-preparation description.
 - Neither standing repo instruction file presents `install` as an alias of `make deploy`, the README's target listing names only `global` as the deploy alias, and the Makefile header comment matches.
 - The README passage that today tells the reader to install the lint tools by hand points at `make install` instead, and no remaining README passage instructs a manual install of a tool the manifest declares.

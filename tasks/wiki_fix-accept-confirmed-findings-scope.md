@@ -2,7 +2,7 @@
 description: Let wiki_fix hand its agent a user-approved list of confirmed findings as its scope, so auto_shaper_wiki checks each one again, fixes only those, and reports the outcome of each.
 scope: plugins/knowledge_management/skills/wiki_fix
 created: 2026-10-03T15:54:08
-updated: 2026-10-04T17:21:44
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -40,10 +40,10 @@ The list may come from any review the user ran, including a review of an earlier
    - The listed pages replace the derived working set. The agent reads each one in full, together with every source span its entries cite.
    - The agent re-derives each entry against the page and its source before any edit. Each entry leaves with exactly one disposition: fixed with the matching fix move, refuted with the span that refutes it, or surfaced through the contested-page protocol. A fix move is the repair that the agent's check prescribes for that kind of defect.
    - A defect the agent notices outside the list is reported as a new finding and left unfixed.
-   - The lint gate compares the final lint run with the run taken at the start of the assess phase. The run leaves no finding that its own edits introduced, and it reports pre-existing findings unfixed. Write this carve-out once in the block, and point `<lint_clean>` and `<relint_until_clean>` at it.
+   - The lint gate compares the final lint run with the run taken at the start of the assess phase. The run leaves no finding that its own edits introduced, and it reports pre-existing findings unfixed. The full-wiki criterion's existing exceptions survive the scoped run: the contested-page warns, the acknowledged insert-only locked-slot extensions, and the `log` rotation finding that `<fix_log_rotation>` clears. The report-only `citation` info findings stay report-only. Write this carve-out once in the block, and point `<lint_clean>` and `<relint_until_clean>` at it.
 4. **Report each entry.** Extend `<report_changes>` and `<verify_output>`, the two blocks that define the agent's change report, so a scoped run lists every entry with its disposition. A refuted entry carries its refuting span, and the report names each new finding the run left unfixed. Keep the shape of `<final_line>`, the report's closing line. Add the per-entry dispositions to the list of what `wiki_fix`'s `<surface_report>` relays back to the user.
 5. **Prove it on a staged wiki.** Add one layer-2 scenario, named for example `auto-shaper-fixes-approved-findings-only`, under the next id after the highest `AS-` id in `tests/wiki/layer2/evals.json`. Stage it with a `stage_<id>` function in `tests/wiki/layer2/setup_scenarios.sh`, and add the id to that script's `ALL_SCENARIOS` list. The staged sandbox holds these facts:
-   - The sandbox wiki sits in a git repository, and its `log.md` holds one prior `audit` entry that records a baseline.
+   - The sandbox wiki sits in a git repository, and its `log.md` holds one prior `audit` entry that records a baseline. Stage one initial commit after the wiki is staged, and record that commit's sha in the prior entry's `Audit baseline:` line, so the scenario has a real baseline to compare against.
    - A findings file outside the wiki lists two confirmed findings on two pages, plus one finding that its page already refutes.
    - A third page carries an off-taxonomy tag that the list does not name. An off-taxonomy tag is a tag outside the wiki's declared tag taxonomy.
    - The request asks `wiki_fix` to fix the approved findings in that file.
@@ -54,7 +54,7 @@ The list may come from any review the user ran, including a review of an earlier
 
 1. `<pass_through_user_scope>` in `plugins/knowledge_management/skills/wiki_fix/SKILL.md` names the confirmed-findings list as a form of user scope. It passes the list verbatim, by path for a file, and sends an unapproved list back to the user. Searching the file for the list form returns one statement. `<surface_report>` names the per-entry dispositions among what it relays, and the file still names none of the agent's checks.
 2. `<inputs>` in `auto_shaper_wiki.md` admits the confirmed-findings scope with its three entry fields: the page path, the defect, and the evidence. One block states the scoped-run behaviour that **Define the scoped run once** lists, and searching the agent for that behaviour returns one canonical statement.
-3. `<lint_clean>` and `<relint_until_clean>` point at the scoped lint carve-out instead of carrying a second copy. A run with no findings list keeps the full-wiki criterion unchanged. `<report_changes>` and `<verify_output>` carry the per-entry report, and `<final_line>` keeps its shape.
+3. `<lint_clean>` and `<relint_until_clean>` point at the scoped lint carve-out instead of carrying a second copy. A run with no findings list keeps the full-wiki criterion unchanged, including the contested-page warns, the acknowledged insert-only locked-slot extensions, the `log` rotation finding, and the report-only `citation` findings. `<report_changes>` and `<verify_output>` carry the per-entry report, and `<final_line>` keeps its shape.
 4. The new scenario passes on these sandbox facts:
    - Both confirmed findings are fixed on their pages.
    - The refuted entry's page is byte-identical to its staged copy. The grader checks this against a staging-time sha256 sidecar, a hash file written when the sandbox was staged.

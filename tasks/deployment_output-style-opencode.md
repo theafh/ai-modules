@@ -2,7 +2,7 @@
 description: Deploy the output style to OpenCode, choosing between the additive instructions list and a synthesized base-prompt swap on its default primary agent.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-10-17T13:50:32
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ OpenCode receives the repository's output style through its own configuration tr
 
 ## Context
 
-This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
+This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which shipped the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. This task adds one target and no new shared deploy machinery.
 
 The wiki records both routes on its [SST OpenCode](../wiki/entities/sst-opencode.md) page and in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md), read off the source rather than the documentation, which states none of it.
 
@@ -29,11 +29,11 @@ Both routes deploy into OpenCode's own configuration tree. Its discovery of the 
 
 Decide the route from the evidence in **Context** and record the decision with its reasoning in the implementation notes, then build only the selected one.
 
-**Open decision:** which route ships. The additive instructions list is the lower-risk option and the recommended default: it is a supported configuration key, it is idempotent by construction, it leaves the user's own rules intact, and it reaches subagents. Its cost is that the prose appends and therefore competes with OpenCode's base prompt rather than displacing it, which is weaker than what Claude gives. The replacing route delivers the stronger outcome and costs bundle extraction plus ownership of the default agent's definition, and it freezes the text across model switches because the per-model base prompt is never consulted once a prompt is set. An implementer with no further input takes the additive route.
+**Open decision:** which route ships. The additive instructions list is the lower-risk option and the recommended default: it is a supported configuration key, it is idempotent by construction, it leaves the user's own rules intact, and it reaches subagents. Its cost is that the prose appends and therefore competes with OpenCode's base prompt rather than displacing it, which is weaker than what Claude gives. The additive route builds the merged array from the existing file and passes it through `merge_json_key`'s prior capture, since no array-append helper exists. The replacing route delivers the stronger outcome and costs bundle extraction plus ownership of the default agent's definition, and it freezes the text across model switches because the per-model base prompt is never consulted once a prompt is set; it also needs a primary-mode agent generator because `generate_opencode_agent` hardcodes `mode: subagent`. An implementer with no further input takes the additive route.
 
 For the additive route, generate the variant, write it into a dedicated directory inside OpenCode's configuration tree, and add its path to the instructions list in the configuration file in that same tree. Resolve both from the script's existing OpenCode directory variable rather than a hardcoded path, so the route serves `--global` and `--project-dir` alike: OpenCode reads a project configuration and a project instructions entry the same way it reads the global pair, and a project entry adds to the contributor's own rules rather than displacing anything. For the replacing route, derive the base prompt for the target model, substitute its tone and formatting sections, write the result as the prompt file, and define the default primary agent to point at it.
 
-Generate rather than copy either way. Strip the Claude frontmatter, which this target does not implement, and rewrite the one clause in the style body naming Claude's `keep-coding-instructions` mechanism, using the per-tool substitution facility in `deployment/deployment.conf`.
+Generate rather than copy either way. Strip the Claude frontmatter, which this target does not implement, and rewrite the one clause in the style body naming Claude's `keep-coding-instructions` mechanism through the generator, following the Cursor style generator, because the source carries no `$VAR$` placeholder for the `replace:` facility.
 
 **Out of scope:**
 
@@ -44,12 +44,12 @@ Generate rather than copy either way. Strip the Claude frontmatter, which this t
 ## Acceptance
 
 - The selected route and the reasoning behind it are recorded in the implementation notes, naming which evidence in **Context** settled it.
-- A dry run restricted to the style type and the OpenCode target reports the writes the selected route implies, all inside OpenCode's own configuration tree and none in the Claude tree.
+- A dry run restricted to the style type and the OpenCode target reports the writes the selected route implies, all inside OpenCode's own configuration tree and none in the Claude tree; the global backup at `~/.opencode-config_<timestamp>` is explicitly excepted.
 - When the additive route is selected, a `--project-dir` dry run reports the same two writes resolved against that project's OpenCode tree and touches nothing under the home directory, and a real project deploy leaves the global configuration file unchanged.
 - When the replacing route is selected, a `--project-dir` run writes nothing and reports that the replacing route has no project scope.
-- A real deploy into a scratch configuration produces the generated file, and the configuration file parses as valid JSON afterwards.
+- A real deploy into a scratch configuration produces the generated file, and the configuration file parses as valid JSON or JSONC afterwards, editing the existing file that loads last.
 - Deploying twice in a row leaves one file and one configuration entry, with no duplicate entry in the instructions list.
 - Running the deploy against a scratch configuration that already carries unrelated instructions entries, then uninstalling, removes only the entry this deploy added and leaves the others in place.
 - The deployed file contains no Claude output-style frontmatter keys, verified by searching it for `keep-coding-instructions` and `force-for-plugin` and finding neither.
 - When the replacing route is selected, the derived base prompt's operating sections survive the substitution byte-for-byte, and a missing expected section heading fails the run with a message naming the heading rather than falling back to appending.
-- `deployment/README.md` gains an OpenCode row for the style type naming the selected route, its configuration key, and whether the result appends or replaces.
+- `deployment/README.md` gains an OpenCode row in the Generated Formats style section naming the selected route, its configuration key, and whether the result appends or replaces, and its existing Target Layout Styles cell for OpenCode no longer reads `not yet`.

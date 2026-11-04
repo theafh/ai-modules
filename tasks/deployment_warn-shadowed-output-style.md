@@ -2,7 +2,7 @@
 description: Warn on a style deploy when a settings file the run can read shadows the outputStyle just written, and state the override caveat on every global run for the repos it cannot read.
 scope: deployment
 created: 2026-08-10T11:56:32
-updated: 2026-10-03T14:55:53
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,11 +21,11 @@ The split exists because silence has to stay meaningless: a run that inspected o
 
 The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise.
 
-The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) rewrites the same arm's `STYLE_MAP` lookup into an indexed-array read, so whichever of the two lands second builds on the other's shape rather than the one quoted here.
+The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) has shipped and rewrote the same arm's `STYLE_MAP` lookup into an indexed-array read, so this task builds on that shipped shape rather than the one quoted here.
 
 `REPO_ROOT` is this repository's own checkout, not the operator's working directory. It starts from the script's own location and walks up until it finds a directory containing `plugins/`, under the comment beginning `Discover REPO_ROOT by walking up from SCRIPT_DIR`, so it resolves to the same checkout on every run whatever the cwd is. Anything keyed on it therefore inspects one fixed repository, which is why the global arm below is framed as a check of this checkout rather than as a scan of wherever the operator happens to be.
 
-The precedence fact this task rests on is recorded in the wiki on [Claude output styles](../wiki/concepts/claude-output-styles.md) under the heading `### Locations and activation`: project and local settings outrank the user-level key that the global mode sets, and running `/config` to choose an output style writes the pick to `.claude/settings.local.json` at local project scope. That asymmetry is the whole diagnostic gap: a style picked by hand sticks because the pick lands in the file that wins, while a deployed style looks ignored because its merge lands in the file that loses.
+The precedence fact this task rests on is recorded in the wiki on [Claude output styles](../wiki/concepts/claude-output-styles.md) under `### Locations` and on [Claude output style selection](../wiki/concepts/claude-output-style-selection.md) under `### The key and its precedence`: project and local settings outrank the user-level key that the global mode sets, and running `/config` to choose an output style writes the pick to `.claude/settings.local.json` at local project scope. That asymmetry is the whole diagnostic gap: a style picked by hand sticks because the pick lands in the file that wins, while a deployed style looks ignored because its merge lands in the file that loses.
 
 Reporting and exit behaviour are already in place. The `warn()` helper takes a short label and a message and prints without touching any counter, and the script ends with `print_summary` and no error accounting, so an added warning leaves the run's exit status alone.
 
@@ -46,16 +46,16 @@ Under `--global` the merge writes the user-level settings file, which every proj
 
 Read the key with `jq`, already a standing dependency of the script. Warn when a checked file exists, defines `outputStyle`, and holds a value differing from the style name just deployed; stay silent when the file is absent, carries no such key, or already agrees. Compose each warning so it carries four facts: the path of the shadowing file, the value it holds, the value just deployed, and the remedy of removing the key from that file or selecting the style through `/config`, which writes to the same local file and so takes effect immediately.
 
-Emit both forms under `--dry-run` as well as on a real deploy. The shadowing condition is readable without writing anything, and a dry run exists to preview what a real run would do, so suppressing the report there would hide the very outcome the preview is for.
+Emit both forms under `--dry-run` as well as on a real deploy. The shadowing condition is readable without writing anything, and a dry run exists to preview what a real run would do, so suppressing the report there would hide the very outcome the preview is for. The shipped `--update` mode replays a logged style deploy through the same arm, so it inherits these diagnostics automatically.
 
-Rewrite the `### Repo-root styles` section of `deployment/README.md` in place so it states the three-file precedence chain, the exact per-project check, the single-checkout reach of the global check, and the unconditional caveat, replacing the current description of the merge as unconditional activation rather than adding a second paragraph beside it. Naming the reach in the documentation is what stops a reader from mistaking the global check for full coverage.
+Rewrite the style-deploy passage of `deployment/README.md` in place — the sentence beginning "a style deploy activates that tracked style" and the style rows beneath it — so it states the three-file precedence chain, the exact per-project check, the single-checkout reach of the global check, and the unconditional caveat, replacing the current description of the merge as unconditional activation rather than adding a second paragraph beside it. Naming the reach in the documentation is what stops a reader from mistaking the global check for full coverage.
 
 **Out of scope:**
 
 - A configurable list of extra repositories to scan, such as a new `deployment.conf` directive naming them. The unconditional caveat, rather than a wider scan, is this task's answer for repositories the run cannot see, and the repo's standing rules keep new deployment-config surfaces to what a request explicitly asks for. This task settles the question as a rejection rather than leaving it for a sibling.
 - The user-level `~/.claude/settings.local.json` file, whose rank against the user-level `settings.json` no evidence behind this task establishes. The checked files are the project-level ones whose precedence over the merge target is documented on the wiki page named under **Context**.
 - A shadow check for the hooks merge that shares the `merge_json_key` path. Project hook settings add to user hooks rather than replacing them, so a differing value there is not a shadow and the same warning would misreport it.
-- Every non-Claude target inside the `style)` case, each of which reports that style deployment is not implemented and writes no settings key at all.
+- Every target other than Claude and Cursor inside the `style)` case, each of which reports that style deployment is not implemented and writes no settings key at all; Cursor generates a project rule file and writes no settings key.
 
 ## Acceptance
 
@@ -69,4 +69,4 @@ Every deploy item below runs under the isolation pattern the style harness alrea
 - A `--global` deploy run with a divergent `outputStyle` staged in this checkout's own `.claude/settings.local.json` (backed aside and restored on exit, in the pattern the harness already applies to the deploy log) additionally produces one warning naming that file and identifying it as the deploy's own repository; with the staged key removed, that warning is absent while the caveat line remains.
 - A `--dry-run` in each scope prints the same lines as the real run in that scope.
 - `tests/deployment/script_tests/style_run.sh` carries the scenarios above and passes.
-- `deployment/README.md` under `### Repo-root styles` states the three-file precedence chain, the exact per-project check, the single-checkout reach of the global check, and the unconditional caveat; no remaining `style` passage in that file describes the `outputStyle` merge as activation that always takes effect.
+- The style-deploy passage of `deployment/README.md`, including the rows beneath it, states the three-file precedence chain, the exact per-project check, the single-checkout reach of the global check, and the unconditional caveat; no remaining `style` passage in that file describes the `outputStyle` merge as activation that always takes effect.

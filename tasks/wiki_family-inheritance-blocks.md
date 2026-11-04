@@ -2,8 +2,8 @@
 description: "Give the wiki family one source of truth: a hub family block, an authority block per front end, cited rather than restated base rules, and one orientation log-read quantity."
 scope: plugins/knowledge_management
 created: 2026-08-11T18:49:52
-updated: 2026-10-29T06:02:01
-status: ready
+updated: 2026-11-04T10:11:30
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -54,20 +54,18 @@ marketplace repository it comes from in the sentence beginning
 artefact reference sibling artefacts by name instead, so the fix belongs with the
 family's other cross-reference work.
 
-The orientation log read is stated in several places with two incompatible
-idioms. The hub carries it twice: `<resuming_an_existing_wiki>` names "the last
-20 to 30 entries" beside a `tail -n 350 "$WIKI/log.md"` command, and
-`<searching>` shows a bare `tail -n 350 "$WIKI/log.md"` fence labelled
-`~last 20 log entries`. `wiki_wrapup` restates "roughly the last 350 lines of
-`log.md`" at both of its sites, its `<orient_first>` policy and its orientation
-step. `wiki_import` restates a fixed line count at three sites,
-`<orient_first_top>`, `<orient_first>`, and its orientation step.
+The hub already carries the canonical orientation log read:
+`<resuming_an_existing_wiki>` states the last 20 to 30 entries by entry boundary,
+and `<searching>` cites that block instead of a fixed line count. The two front
+ends still restate "roughly the last 350 lines of `log.md`" at their sites:
+`wiki_wrapup` at its `<orient_first>` policy and its orientation step, and
+`wiki_import` at `<orient_first_top>`, `<orient_first>`, and its orientation
+step.
 
-Co-edit: [wiki_log-rotation-and-retrieval.md](archive/wiki_log-rotation-and-retrieval.md)
-replaces the prescribed log-read idiom with an entry-based read, owns the
-entry-anchor retrieval recipe, and owns the `auto_shaper_wiki` agent's copy of
-the orientation log read, so the quantity this task settles and that sibling's
-entry-anchor idiom must land coherently whichever ships first.
+[wiki_log-rotation-and-retrieval.md](archive/wiki_log-rotation-and-retrieval.md)
+shipped the entry-anchor idiom and retired the hub's `tail -n 350` examples, so
+the hub statement this task cites is settled; the remaining work is to make the
+two front ends cite it.
 
 ## Approach
 
@@ -89,17 +87,14 @@ entry-anchor idiom must land coherently whichever ships first.
 3. Replace `wiki_import`'s two restated discipline blocks with citations of the
    hub's blocks by their verbatim tag names, keeping any genuinely
    import-specific detail that the hub's version does not carry.
-4. State the orientation log-read quantity once in the hub's
-   `<resuming_an_existing_wiki>` block as the last 20 to 30 entries retrieved
-   by entry boundary (not a fixed line count), keeping that statement coherent
-   with the entry-anchor idiom in `wiki_log-rotation-and-retrieval`, as
-   `## Context` records. `<searching>` is the one hub site this step leaves to `tasks/archive/wiki_log-rotation-and-retrieval.md`, which claims that rewrite in its own `## Context` ("Hub `<searching>` citation of `<resuming_an_existing_wiki>` after retiring its `tail -n 350` example stays this task's edit") and proves it in its own Acceptance; so this step retires the orientation-read idiom at `<resuming_an_existing_wiki>` and the two front ends, while the sibling retires the `<searching>` fence, and the hub's two statements read as one rule whichever ships first. Rewrite `<resuming_an_existing_wiki>` to hold that
-   canonical quantity. Leave the hub's `<orient_first>` pitfall as it stands: it already reads
-   "Read SCHEMA + index + recent log before any operation. *(see
-   `<resuming_an_existing_wiki>`)*", so it already cites the tag verbatim and
-   carries no quantity or `tail -n 350` to remove; this step needs no edit there. Have `wiki_import` and `wiki_wrapup` cite
-   `<resuming_an_existing_wiki>` by tag, superseding their `<orient_first_top>`,
-   `<orient_first>`, and orientation-step wording.
+4. Have `wiki_import` and `wiki_wrapup` cite `<resuming_an_existing_wiki>` by
+   tag, superseding their `<orient_first_top>`, `<orient_first>`, and
+   orientation-step wording, so the hub's entry-boundary quantity is stated
+   once. The hub block already holds that quantity and `<searching>` already
+   cites it, so this step edits only the two front ends. Leave the hub's
+   `<orient_first>` pitfall as it stands: it already cites
+   `<resuming_an_existing_wiki>` by its verbatim tag name and carries no
+   quantity or `tail -n 350` to remove.
 5. Rewrite the hub's `<role>` sentence so it identifies the skill without naming
    the plugin or the marketplace repository, keeping the authorship credit and the
    RAG contrast the block carries.
@@ -158,14 +153,6 @@ entry-anchor idiom must land coherently whichever ships first.
    run carries no blocking finding.
 7. Searching the hub's `<resuming_an_existing_wiki>` and pitfall `<orient_first>`,
    plus `wiki_import` and `wiki_wrapup`, for `350 lines` and `tail -n 350`
-   returns no match. With `tasks/archive/wiki_log-rotation-and-retrieval.md` read for
-   the entry-aware log-read idiom it prescribes, the hub
-   orientation-read statement and the cited front-end references name the same
-   entry bound the sibling prescribes when it has shipped, or the same entry
-   bound settled in Acceptance item 4 when it has not. Reading the hub's
-   `<searching>` block, it carries a log-read clause citing
-   `<resuming_an_existing_wiki>` and no `~last 20 log entries` fence once
-   `tasks/archive/wiki_log-rotation-and-retrieval.md` has shipped, and while that
-   sibling is unshipped the fence there is the sibling's edit named in the
-   task's `**Out of scope:**` block. So whichever ships
-   first, the quantity and idiom read as one coordinated rule.
+   returns no match. The hub orientation-read statement, the cited front-end
+   references, and the `<searching>` block's log-read clause name the same
+   entry bound, and `<searching>` carries no `~last 20 log entries` fence.

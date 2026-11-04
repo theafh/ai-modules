@@ -2,7 +2,7 @@
 description: Add harness_portability's references/delegation-surfaces.md, dated facts on how Claude Code, Cursor, and Codex run sub-agents, with a pointer to it and a sub-agent-only spawn rule.
 scope: plugins/ai_dev/skills/harness_portability
 created: 2026-10-03T15:54:08
-updated: 2026-10-04T17:23:28
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -43,14 +43,14 @@ Carry host measurements only as the figures `### Delivery and concurrency` names
 
 ### Facts to record
 
-A probe run below means one of the print-mode probe runs of 2026-10-04 on the builds the Context names. A row's source kind says what evidence backs it, such as a probe run or local agent transcripts.
+A probe run below means one of the print-mode probe runs of 2026-10-04 on the builds the Context names. A row's source kind says what evidence backs it, such as a probe run or local agent transcripts. Where the research note marks a row analyst observation alone or a local workflow record, that source kind governs the row.
 
 Claude Code:
 
 | Subsection | Fact | Observed | Source kind |
 | --- | --- | --- | --- |
 | Spawn surface | The spawn tool appears as `Task` in the session's init tool list and as `Agent` in the stream's `tool_use` records. The `Workflow` tool also spawns agents, so a session meant to run without spawning needs both tools withheld | 2026-10-04 | a probe run |
-| Spawn surface | A custom agent spawned through the Agent tool reached spawn depth 2 | 2026-09-05 | local agent transcripts |
+| Spawn surface | A custom agent spawned through the Agent tool reached spawn depth 2 | 2026-09-05 | analyst observation alone |
 | Registered roles and levers | A role file staged in the project's `.claude/agents/` directory appears in the init `agents` list and spawns by name, as `subagent_type: <name>` | 2026-10-04 | a probe run |
 | Registered roles and levers | Deployed user-level roles reach a sandboxed session: the init `agents` list includes the user's deployed `auto_*` roles | 2026-10-04 | a probe run |
 | Registered roles and levers | A role whose frontmatter `tools:` lists `Read, Grep, Glob` ran with exactly those tools. Its write and shell attempts found no tool, so the allowlist holds | 2026-10-04 | a probe run |
@@ -59,7 +59,7 @@ Claude Code:
 | Registered roles and levers | General-purpose helpers keep every tool. The Explore type keeps the shell and describes itself as a search role that does not review | 2026-09-05 | local agent transcripts |
 | Delivery and concurrency | A background Workflow run returns a task id at once while the main loop keeps running tools. Its completion notice carries the result inline, truncated in some sessions, and the full result sits in a task output file. That is notice delivery with the result, for the Workflow tool only. How a background spawn outside it delivers is unrecorded | 2026-09-05 to 2026-09-23 | local agent transcripts |
 | Delivery and concurrency | A spawned helper writes its own transcript, `subagents/agent-<id>.jsonl` inside the parent session's transcript directory. Its records carry `isSidechain` set to true and the helper's `agentId`. Their `message.content` lists each tool call as a `tool_use` block with `id`, `name`, and `input` | 2026-10-04 | local agent transcripts |
-| Delivery and concurrency | Helpers start with about 55,000 tokens of context | 2026-09-15, 2026-09-23 | local agent transcripts |
+| Delivery and concurrency | Helpers start with about 55,000 tokens of context | 2026-09-15, 2026-09-23 | analyst observation alone |
 | Delivery and concurrency | The Workflow pool ran at most 12 helpers at once, consistent with first-in-first-out queuing. A checker queued behind writers therefore starts only once the writers ahead of it have left the queue | 2026-09-05 | local agent transcripts |
 | Delivery and concurrency | The Workflow tool's description carries a default size guideline of keeping workflows under 10 agents, which the user's prompt may override | 2026-09-23 | local agent transcripts |
 | Delivery and concurrency | Outside the Workflow tool, seven background agents were in flight at once. Whether one message dispatched them is unrecorded | 2026-09-22 | local agent transcripts |
@@ -67,12 +67,12 @@ Claude Code:
 | Delivery and concurrency | Judging success by a state of `done` plus a filter that drops null results counts a schema-valid placeholder as a success | 2026-09-15, 2026-09-23 | local agent transcripts |
 | Delivery and concurrency | The workflow journal's result entries carry no label and arrive in completion order, and labels need not be unique | 2026-09-15 | local agent transcripts |
 | Delivery and concurrency | The workflow output file holds progress entries with truncated previews, and a plain read of it truncates. Each entry's token figure is the helper's final request context size, which differs from the fresh tokens it spent | 2026-09-05 | local agent transcripts |
-| Delivery and concurrency | A quiet-file interval, a stretch in which a watched file does not change, is not a completion signal | 2026-09-15 | local agent transcripts |
+| Delivery and concurrency | A quiet-file interval, a stretch in which a watched file does not change, is not a completion signal | 2026-09-15 | analyst observation alone |
 | Delivery and concurrency | A notice that completes during a blocking poll waits until the poll returns. A user message sent during an unbounded foreground wait never reached the model | 2026-09-15 | local agent transcripts |
-| Delivery and concurrency | The shell tool blocks foreground and chained sleeps and points to a monitor or a background run instead. It moves any command running past 600 seconds into the background, and blocking task-output waits time out at 600 seconds | 2026-09-15, 2026-09-16 | local agent transcripts |
+| Delivery and concurrency | The shell tool blocks foreground and chained sleeps and points to a monitor or a background run instead. It moves any command running past 600 seconds into the background. A blocking task-output wait given 600 seconds returned at that value; whether the tool caps the wait is unverified | 2026-09-15, 2026-09-16 | analyst observation alone |
 | Delivery and concurrency | A stop kills helpers in flight without results, and their edits persist. After a pause request, freed slots kept starting queued helpers, and whether the tool offers a pause is unverified | 2026-09-05, 2026-09-23 | local agent transcripts |
-| What a helper sees | Helpers receive the triggering request verbatim | 2026-09-15, 2026-09-23 | local agent transcripts |
-| What a helper sees | The skill listing helpers receive comes from deployed copies, which can lag the working tree | 2026-09-05 | local agent transcripts |
+| What a helper sees | Helpers receive the triggering request verbatim | 2026-09-15, 2026-09-23 | analyst observation alone |
+| What a helper sees | The skill listing helpers receive comes from deployed copies, which can lag the working tree | 2026-09-05 | analyst observation alone |
 | What a helper sees | Deployed user-level skills reach a sandboxed session: the init `skills` list includes the user's deployed skills | 2026-10-04 | a probe run |
 | What a helper sees | The shell snapshot, the captured shell setup the shell tool runs in, defines `grep` as a function running ugrep with `--ignore-files --hidden -I`. It omits the `./` prefix on results. It finds nothing inside a directory whose own `.gitignore` holds `*`, where the operating system's own `grep -rl` finds the file | 2026-09-06; 2026-09-27 | local agent transcripts; a command run |
 | Continuation | Two continuation aids exist. One is a fallback wake-up, which an orchestrator set as a stall guard while a background run worked. The other is a loop skill that reruns a prompt on an interval or at a self-chosen pace. No run has exercised the loop skill | 2026-09-05; skill listing read 2026-09-27 | local agent transcripts; a skill listing |
@@ -159,5 +159,5 @@ Add one `<rule>` to `<policy>`, directly after the rule beginning "Confirm where
 - Cursor's `### Registered roles and levers` records `readonly: true` twice, each with its mode and date. One is the IDE observation that left the shell callable. The other is the print-mode observation that refused both the file write and the shell.
 - Each host's `### Delivery and concurrency` states the delivery property, whether a notice carries the result, and the context window. It also states the fixed load per helper, the context-fill figure, the largest observed batch, and where a helper's own tool calls are recorded. Each appears as a recorded figure or as a statement that no record shows it.
 - A read of the reference finds no session count, per-session latency, writer count, or single-output size.
-- `git diff` of harness_portability's SKILL.md shows one added sentence inside `<where_snapshots_live>` naming `references/delegation-surfaces.md`, one added `<rule>` inside `<policy>`, and no other change. The rule names sub-agents of the host as the only helper route. For an absent surface or a failed spawn, it names degradation by the skill's own rules, with no agent CLI process launched in a helper's place.
+- `git diff` of harness_portability's SKILL.md shows one added sentence inside `<where_snapshots_live>` naming `references/delegation-surfaces.md`, one added `<rule>` inside `<policy>`, the required skill `version:` bump, and no other change. The rule names sub-agents of the host as the only helper route. For an absent surface or a failed spawn, it names degradation by the skill's own rules, with no agent CLI process launched in a helper's place.
 - Before commit, a manual read of every changed shipped file and this task's own diff finds no session, company, or project name, and no denylist is committed.

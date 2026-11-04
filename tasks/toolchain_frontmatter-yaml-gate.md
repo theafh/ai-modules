@@ -2,7 +2,7 @@
 description: Gate make lint on frontmatter that a strict YAML checker accepts, run skill_doctor's discovery check in place, and repair the files that fail today.
 scope: "repo toolchain"
 created: 2026-10-07T07:46:48
-updated: 2026-10-16T23:32:34
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -28,19 +28,22 @@ another harness compare a generated file with its source.
 
 No gate in the repository parses frontmatter as YAML today. `make lint` runs
 markdownlint, which skips frontmatter content, a `jq` syntax check, and shellcheck.
-The task linter, the wiki linter, and skill_doctor's `discovery_safety.py` each
-read frontmatter with their own lenient standard-library parser, and each runs
-only when its skill is invoked.
+The task linter now carries a blocking YAML-misread check for task files; the wiki
+linter and skill_doctor's `discovery_safety.py` still read frontmatter with their
+own lenient standard-library parser. The task linter runs only when the task skill
+is invoked and is absent from `make lint`.
 
 On 7 October 2026 a real YAML parser rejected 34 of the 308 tracked files outside
 `tests/` that open with frontmatter: the agent definitions `auto_gate_task` and
-`auto_shaper_task`, seven live tasks, and 25 archived tasks. Every rejection had
-one cause, a plain (unquoted) `description:` value containing a colon followed by
-a space, which YAML reads as the start of a nested mapping. The archived task
-`task-family_test-harness-consolidation` parses but loses the end of its
-description, because a `#` after whitespace inside a plain scalar starts a
-comment. Claude Code loads both agents anyway, so its parser tolerates the colon;
-whether the other harnesses do is unverified.
+`auto_shaper_task`, seven live tasks, and 25 archived tasks. Commit `87a161b`
+quoted all task descriptions, so today a strict YAML parser rejects 4 of 366
+tracked frontmatter files outside `tests/`, all agent definitions:
+`auto_dryrun_task`, `auto_gate_git`, `auto_gate_task`, and `auto_shaper_task`.
+Every rejection had one cause, a plain (unquoted) `description:` value containing
+a colon followed by a space, which YAML reads as the start of a nested mapping.
+The archived task `task-family_test-harness-consolidation` now parses whole after
+that commit. Claude Code loads both agents anyway, so its parser tolerates the
+colon; whether the other harnesses do is unverified.
 
 The repaired values have to suit the deploy generators. The Codex agent generator
 copies a quoted `description:` value into its TOML output with the quote
@@ -53,8 +56,9 @@ skill_doctor already checks this class of problem for skills.
 `parse_frontmatter_fields` in `discovery_safety.py` flags a plain value containing
 `:` and a value that starts with a YAML-significant character. The script exits 1
 on a blocking finding and prints a JSON report whose `blocking` list and
-`warning_count` carry the result. On the same date all 31 skills passed it, with
-one warning-tier finding. Calling the script in place from the repository's gate
+`warning_count` carry the result. On 7 October 2026 all 31 skills passed it, with
+one warning-tier finding; today 33 `SKILL.md` files return `blocking_count: 0`
+and one warning. Calling the script in place from the repository's gate
 gives the repository that coverage on every run, and because the gate runs the
 skill's own code, the two cannot drift apart. The dependency runs from the
 repository to the skill, so skill_doctor stays portable to repositories that have
@@ -65,7 +69,8 @@ single- and double-quoted scalars, flow sequences such as `tags: [a, b]`, one
 folded block scalar (`description: >`), and one block sequence under an empty
 key. It uses no nested mappings, flow mappings, anchors, or multi-document blocks.
 A prototype of the subset in Approach, run over the tree on the same date,
-rejected exactly the 35 files above and accepted every other one.
+rejected exactly the 35 files above and accepted every other one; a current run
+rejects the four agents above and no task file.
 
 The [toolchain floor task](toolchain_make-install-dependency-floor.md) declares
 the tools `make lint` needs and rewrites the README sentence this task also edits,
@@ -124,14 +129,12 @@ from `lint` the way `lint` runs `lint-md`, `lint-json`, and `lint-sh`, so
 `make lint` fails when it fails. Its output opens with a section header like the
 other lint sections and ends with the number of files and skills checked.
 
-**Repair.** Run the check on the tree and repair every file it reports. Reword the
-`description:` of each reported agent definition so it contains no colon followed
-by a space and stays unquoted, keeping its meaning, since the Codex generator
-still copies quote characters into its output. Wrap each reported task file's
-`description:` value in double quotes, escaping any `"` or `\` inside it, and
-apply the task skill's `<bump_updated>` rule to that edit. A file of any other
-kind follows the same test: reword a value the deploy generators read, and quote
-one they do not.
+**Repair.** Run the check on the tree and repair every file it reports. The task
+files were quoted in `87a161b`, so the remaining repair is the four agent
+definitions: reword each `description:` so it contains no colon followed by a
+space and stays unquoted, keeping its meaning, since the Codex generator still
+copies quote characters into its output. A file of any other kind follows the
+same test: reword a value the deploy generators read, and quote one they do not.
 
 **Documentation.** Rewrite in place each passage that says what `make lint` runs
 or needs, so it names the frontmatter check and Python 3:
@@ -148,8 +151,9 @@ List `scripts/` in the README's layout tree and in the `## Layout` block of
 `CLAUDE.md` and `AGENTS.md`.
 
 **Tests.** Add a script-test harness at `tests/lint_frontmatter/script_tests/run.sh`,
-register it as the `## Test Organization` section of `TESTING.md` requires, and
-stage every scenario in a temporary directory outside the checkout.
+add it to the `tests/README.md` `## Current harnesses` inventory, and stage every
+scenario in a temporary directory outside the checkout; `make test` /
+`bash tests/run_all.sh` discovers it automatically.
 
 **Out of scope:**
 
@@ -160,8 +164,8 @@ stage every scenario in a temporary directory outside the checkout.
 - Replacing the parsers inside the task linter, the wiki linter, or skill_doctor
   with this checker; the shipped linters keep their own parsers so they run in
   any repository.
-- How the task skills write and lint a `description:` value, owned by
-  [the description quoting task](archive/task-family_quote-frontmatter-descriptions.md).
+- How the task skills write and lint a `description:` value, shipped in `87a161b`;
+  the task linter now enforces the rule for task files.
 
 ## Acceptance
 
@@ -196,4 +200,4 @@ stage every scenario in a temporary directory outside the checkout.
   Python 3, and none still describes `make lint` as covering markdown, JSON, and
   shell alone.
 - The README layout tree and the `## Layout` blocks list `scripts/`, and the
-  testing inventory names the new harness.
+  `tests/README.md` `## Current harnesses` inventory names the new harness.

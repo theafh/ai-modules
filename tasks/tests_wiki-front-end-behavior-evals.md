@@ -2,7 +2,7 @@
 description: Prove the two wiki front-end promises the layer-2 scenarios claim but never assert, wiki_fix report fidelity and the pre-approval write boundary, and name the covered skills in the tree inventory.
 scope: "local test harnesses"
 created: 2026-08-11T18:59:52
-updated: 2026-10-09T18:10:40
+updated: 2026-11-04T10:11:30
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -54,12 +54,14 @@ every scenario in `layer2/evals.json` over that file's `passes` denominator. Tha
 selector stays true as the set grows, and it leaves a reader searching the
 inventory for a named front end with nothing to find.
 
-The capture as it stands cannot see the agent's report. The runner invokes each
-worker with the CLI's default text output and writes stdout to `response.txt`, so
-the sub-agent's own messages never reach an artifact, and the grader reads only
-that file and the structured `report.md` it falls back to. It implements no
-assertion type over a sub-agent's output. Closing the fidelity gap therefore
-extends the capture before it adds the assertion.
+The capture as it stands cannot see the agent's report. The shared worker helper
+already runs each worker with stream-json and parses the turn for tool-call
+provenance (`micro_deploy.run_worker`), but the runner writes only the parsed
+final message to `response.txt`; the `auto_shaper_wiki` sub-agent's own report is
+not extracted into an artifact, and the grader reads only `response.txt` and the
+structured `report.md` it falls back to. It implements no assertion type over a
+sub-agent's output. Closing the fidelity gap therefore extends the stream
+extraction before it adds the assertion.
 
 [task-family_test-harness-consolidation.md](archive/task-family_test-harness-consolidation.md)
 also edits the tree README's harness listing, so coordinate that one section.
@@ -67,13 +69,13 @@ also edits the tree README's harness listing, so coordinate that one section.
 ## Approach
 
 Capture the agent's report as its own per-pass artifact, then grade the returned
-response against it. Run the worker with the streaming output format the CLI
-offers in `--print` mode, extract the `auto_shaper_wiki` sub-agent's report from
-that stream into a per-pass file beside `response.txt`, and add a grader
-assertion type that compares the captured report against what the skill returned.
-Confirm the sub-agent's report is recoverable from the stream before building the
-assertion on it. Keep `response.txt` holding the worker's final assistant text
-across the format change, since the existing `response_text_*` assertions and the
+response against it. The shared worker helper already runs stream-json; extend
+its parse (or the runner's use of it) to extract the `auto_shaper_wiki`
+sub-agent's report from the stream into a per-pass file beside `response.txt`,
+and add a grader assertion type that compares the captured report against what
+the skill returned. Confirm the sub-agent's report is recoverable from the stream
+before building the assertion on it. Keep `response.txt` holding the worker's
+final assistant text, since the existing `response_text_*` assertions and the
 `report.md` fallback both read it. Add the assertion to the `AS-*` scenario that
 already puts `wiki_fix` under test, so `wiki_fix` coverage stays in one place.
 
@@ -103,9 +105,9 @@ selector as the statement of extent.
    `response.txt`, and that scenario grades the returned response against the
    captured report rather than against a keyword regex. The assertion passes on a
    run of that scenario.
-2. `response.txt` still holds the worker's final assistant text after the output
-   format change, so every existing `response_text_*` assertion and the
-   `report.md` fallback grade against what they read now.
+2. `response.txt` still holds the worker's final assistant text after the
+   stream-extraction change, so every existing `response_text_*` assertion and
+   the `report.md` fallback grade against what they read now.
 3. The fidelity assertion fails on a run whose scenario instruction is
    deliberately changed to summarise the agent's report instead of relaying it,
    demonstrated once before the instruction is restored, so the new check is

@@ -2,7 +2,7 @@
 description: Filter foreign configs out of the vscode hook route, ship a Copilot-schema hook config, and switch VS Code's Claude hook sources off so native delivery is the only route.
 scope: deployment
 created: 2026-08-09T20:07:35
-updated: 2026-10-17T13:50:32
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -102,14 +102,16 @@ structure.
 
 3. **Rewrite the command path on the copy route.** The merge routes already
    rewrite a relative `./hooks/` command to an absolute path under the target's
-   hook directory for global scope and to a project-relative path under
-   `--project-dir`. The Copilot file is written by a copy rather than a merge, so
-   extend that rewrite to the `vscode` copy path, keeping the committed file's
+   hook directory for global scope, and to a project-relative path under
+   `--project-dir` for Claude, Cursor, and Antigravity; Codex uses an absolute
+   path in both scopes. The Copilot file is written by a copy rather than a merge,
+   so extend that rewrite to the `vscode` copy path, keeping the committed file's
    command relative so no machine-specific path is ever committed.
 
 4. **Retract the four already-deployed strays** through the existing mechanism
    rather than new cleanup code. The deployed-artefacts log records each of them,
-   so `make uninstall` followed by a fresh deploy removes them. State that
+   so `./deployment/deployment.sh --uninstall --global` followed by a fresh global
+   deploy removes them. State that
    sequence in `deployment/README.md` beside the hook rows, since a plain redeploy
    leaves the strays in place and a hardcoded filename-removal list in the script
    would be exactly the machine-local assumption the standing repo rules keep out
@@ -126,11 +128,13 @@ structure.
    only route the guard arrives by. VS Code's `chat.hookFilesLocations` maps a path
    to a boolean and a `false` disables it even when it is a documented default, so
    merge `{".claude/settings.json": false, "~/.claude/settings.json": false}` into
-   the user's VS Code settings through the script's existing key-merge function.
-   That path already captures the prior value on first write and restores it on
-   uninstall, so the switch is reversible by the mechanism the repository
-   established for the `outputStyle` key. Narrow the merge to exactly the Claude
-   hook paths, leaving every other entry the user set untouched.
+   the user's VS Code settings through a nested settings-map entry merge shared
+   with the sibling that lands first; `merge_json_key` supplies only the prior
+   capture and restore log shape, since it writes the whole key. That path
+   captures the prior value on first write and restores it on uninstall, so the
+   switch is reversible by the mechanism the repository established for the
+   `outputStyle` key. Narrow the merge to exactly the Claude hook paths, leaving
+   every other entry the user set untouched.
 
 **Out of scope:**
 
@@ -189,11 +193,12 @@ have taken that trade in exchange for skipping one file.
    is gone rather than sitting beside the new text.
 7. A global dry run reports a `chat.hookFilesLocations` merge into the VS Code
    user settings file carrying `.claude/settings.json` and `~/.claude/settings.json`
-   set to `false`, and reports capturing the key's prior value, where it previously
-   reported no settings write for the `vscode` target at all.
+   set to `false`, where it previously reported no settings write for the
+   `vscode` target at all; a real deploy records the key's prior value for
+   uninstall.
 8. Running the uninstall path against a deploy log holding that merge restores the
    captured prior value, and removes the key outright when the recorded prior was
    the absent marker.
 9. An unrelated entry placed in `chat.hookFilesLocations` before the deploy
-   survives it, proving the merge narrowed to the two Claude paths rather than
-   replacing the key.
+   survives it, proving the nested entry merge narrowed to the two Claude paths
+   rather than replacing the key.

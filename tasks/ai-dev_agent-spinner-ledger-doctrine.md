@@ -2,7 +2,7 @@
 description: "Route every agent_spinner helper run through the run ledger: a new <start_here>, seven rewritten blocks, run-protocol.md, report shapes, new evals, and restaged fixtures."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T15:54:08
-updated: 2026-10-16T22:53:04
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -26,7 +26,7 @@ A new `references/run-protocol.md` carries the run protocol P1 to P6, the six nu
   - On 2026-10-04 the owner decided that helpers run only as sub-agents of the harness the orchestrator runs in. The owner dropped the planned headless-worker launcher, which would have run each helper as a separate process of the host's agent CLI. The tier table therefore has no headless-worker row.
 - **Prerequisites.**
   - [The run-ledger task](ai-dev_agent-spinner-run-ledger.md) ships `scripts/run_ledger.py` with its verb set, return contract, roster columns, close conditions, and script tests. This task documents them as shipped and cites no verb the ledger lacks.
-  - [The runner-modes task](tests_agent-spinner-runner-modes.md) gives the eval runner its inline-body mode, which hands the worker the skill body inline, and a second turn through each vendor CLI's resume path. It also adds per-eval role staging, which places agent definitions for one eval, and its withheld-tool rule, which says how a tool is kept from the worker. It also gives the runner a tool record of each turn's tool calls in `tool_calls.jsonl`. The evals below that use one of those modes need them, and `continuation_armed_once` reads each call's tool name from that record.
+  - [The runner-modes task](tests_agent-spinner-runner-modes.md) shipped and is audited. It gives the eval runner its inline-body mode, which hands the worker the skill body inline, and a second turn through each vendor CLI's resume path. It also adds per-eval role staging, which places agent definitions for one eval, and its withheld-tool rule, which says how a tool is kept from the worker. It also gives the runner a tool record of each turn's tool calls in `tool_calls.jsonl`. The evals below that use one of those modes need them, and `continuation_armed_once` reads each call's tool name from that record. The shipped withheld rule is class-based (`spawn` / `shell` / `write`, with `needs_real_absence`).
   - [The delegation-surfaces task](ai-dev_harness-portability-delegation-surfaces.md) ships harness_portability's `references/delegation-surfaces.md`. Its `### Delivery and concurrency` entry for each host records the delivery property, the context window, and the largest observed batch, each as a figure or as a statement that no record shows it. The delivery property says how a host hands back a spawned helper's result. The tier table and P1 read those facts, so this task lands after that task.
 - **Co-edited and following work.**
   - [The checking-doctrine task](ai-dev_agent-spinner-checking-doctrine.md) lands after this one. It rewrites the checking blocks of `SKILL.md` and ships two references beside them: `references/checks.md`, with the checks C1 to C10 that run-protocol.md points at, and `references/edit-mechanics.md`. It also rewrites `references/role-prompts.md` with the closing block, the fixed end of every brief, and extends three fixtures this task restages.
@@ -81,7 +81,7 @@ Put the verdict first, and keep three things apart. The opening sentence gives t
 </reporting>
 
 <coverage_tradeoff>
-Name every narrowing out loud, printed from the ledger. Every planned read, check, and step a governing skill mandates is a row before dispatch, and a row left unrun is marked skipped with its reason. Count a path as read only where tool evidence shows a full read. When the run answers inline, verifies a subset, or drops a phase, state in the same reply which checks go unrun and what would surface them. Proceed on the user's word where the narrowing removes a check the fuller shape would make. A repository's `CHARTER.md` coverage invariant is the authority this rule applies to the skill's own economy rules.
+Name every narrowing out loud, printed from the ledger. Every planned read, check, and step a governing skill mandates is a row before dispatch, and a row left unrun is dropped by a named narrowing through `dispose`, with its reason. Count a path as read only where tool evidence shows a full read. When the run answers inline, verifies a subset, or drops a phase, state in the same reply which checks go unrun and what would surface them. Proceed on the user's word where the narrowing removes a check the fuller shape would make. A repository's `CHARTER.md` coverage invariant is the authority this rule applies to the skill's own economy rules.
 </coverage_tradeoff>
 
 <run_economy>
@@ -174,7 +174,7 @@ Restage every fixture that stages helper returns. After the restage, each one st
 - report_rederivation adds the draft line "all checks verified" beside one check that never ran.
 - payload_cap adds a load-bearing item beyond the cap, which the orchestrator itself must read and dispose of.
 
-Two grader fixes keep existing evals honest once the ledger runs. First, grade.sh's brief readers skip the probe brief the ledger renders, because the brief checks of containment_one_path and depth_one_level mean item briefs. Second, the closing-report contract finds staged returns in the run directory as well as in `returns/`, so report_rederivation keeps its beyond-brief and own-authority checks. run.py's worker prompt, its state paths, and the payload cap stay unchanged.
+Two grader fixes keep existing evals honest once the ledger runs. First, grade.sh's brief readers skip the probe brief the ledger renders, because the brief checks of containment_one_path and depth_one_level mean item briefs. Second, the closing-report contract finds staged returns in the run directory as well as in `returns/`, so report_rederivation keeps its beyond-brief and own-authority checks. Keep run.py's four `.agent_spinner/` state paths unchanged; the shipped inline-body prompt adds `INLINE_STATE_STEP`, so keep its state paths aligned with the ledger's roster. The payload cap lives in `<aggregation>` and is unchanged.
 
 Add one row per new eval to the signal table in `tests/agent_spinner/evals/README.md`. Make every eval-count statement in that README, in `tests/agent_spinner/README.md`, in `tests/agent_spinner/run_all.sh`, and in `tests/agent_spinner/RUNBOOK.md` true for the enlarged set.
 

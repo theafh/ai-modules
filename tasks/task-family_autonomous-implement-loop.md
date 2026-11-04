@@ -2,7 +2,7 @@
 description: "Low-priority convenience loop task_auto_implement: implement then audit, re-implement on findings until the audit is clean, then auto-finish; off by default, single-shot readiness remains the aim."
 scope: plugins/ai_dev
 created: 2026-06-21T17:17:45
-updated: 2026-10-16T22:53:04
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -17,7 +17,7 @@ Add `task_auto_implement`, an opt-in convenience loop that carries a `ready` tas
 
 This sits alongside the other opt-in autonomy tiers: [`task_auto_check`](archive/task-family_autonomous-readiness-loop.md) uses `task_check` as its gate, and [`task_fix`](archive/task-family_autonomous-tree-shaper.md) can escalate whole-tree judgement calls to `auto_shaper_task` with `task_fix` / the linter as its gate. Here the gate is `task_audit`. The loop closes a task only when the audit confirms the built work matches the task with no findings, so the audit, not the loop, is what prevents finishing work that drifted from the task.
 
-It is low priority because single-shot readiness is the goal: a well-shaped `ready` task should implement correctly in one pass, so the re-implement cycle is a safety net for the occasional miss, not the expected path. It is also the highest-autonomy tier, which writes code and closes work, so it ships off by default and behind the core tiers. `task_auto_implement` is an invokable **skill** that orchestrates the existing `task_implement` / `task_audit` / `task_finish` skills and may spawn a worktree-isolated `auto_implementer_task` agent-function for the build step; spawned agents follow the repo's [agent-naming convention](archive/cross-repo_convention-and-wiki-rename.md) and are never manually invoked. Reuse `task_implement`, `task_audit`, `task_finish`, and the base `task` skill `<backward_move_guard>` by citation, never reimplementing them, and build it on the loop shape proven by the autonomous readiness loop.
+It is low priority because single-shot readiness is the goal: a well-shaped `ready` task should implement correctly in one pass, so the re-implement cycle is a safety net for the occasional miss, not the expected path. It is also the highest-autonomy tier in the task family, which writes code and closes work, so it ships off by default and behind the core tiers. `task_auto_implement` is an invokable **skill** that orchestrates the existing `task_implement` / `task_audit` / `task_finish` skills and may spawn an `auto_implementer_task` agent-function for the build step; spawned agents follow the repo's agent-naming convention and are never manually invoked. Cite the live `task_auto_check` loop (`<single_gate>`, `<loop_bounds>`, `<convergence>`, `<agent_failure_policy>`, `<relay>`) and `agent_spinner` as the loop and delegation models, and carry the hard `CHARTER.md` guardrail on every write step. `git_auto_review` is a separate opt-in loop in the git family; this loop does not call it. Reuse `task_implement`, `task_audit`, `task_finish`, and the base `task` skill `<backward_move_guard>` by citation, never reimplementing them.
 
 ## Approach
 
@@ -28,14 +28,14 @@ Run the per-task loop on a `ready` task:
 3. If the audit returns findings, re-run `task_implement` scoped to resolve exactly those findings, then re-audit. Repeat until the audit is clean or a hard iteration cap is hit.
 4. On a clean audit, run `task_finish` to close and archive the task (`finished`).
 
-The loop **stops** on a clean audit (→ `finished`) or at the iteration cap (→ leave the task in its current non-finished status and surface it for a human). Gate the whole loop behind an explicit opt-in and a `ready` precondition, and respect `<backward_move_guard>` on every status write. Keep it convenience-only: it adds no verification of its own. `task_audit` is the sole correctness gate, and the loop never lowers the audit bar to make work pass.
+The loop **stops** on a clean audit (→ `finished`) or at the iteration cap (→ leave the task in its current non-finished status and surface it for a human). Gate loop admission behind an explicit opt-in and a `ready` task; the re-implement pass runs on the `implemented` task carrying the audit's named gaps, per `task_implement`'s admission rule, and every status write respects `<backward_move_guard>`. Keep it convenience-only: it adds no verification of its own. `task_audit` is the sole correctness gate, and the loop never lowers the audit bar to make work pass.
 
-Non-goals: replacing single-shot implementation as the aim (this is a convenience net, not the expected path); inventing a correctness check separate from `task_audit`; running on a task that is not `ready`; and unbounded re-implementation (the iteration cap is mandatory). Keep the manual implement → audit → finish chain as the default.
+Non-goals: replacing single-shot implementation as the aim (this is a convenience net, not the expected path); inventing a correctness check separate from `task_audit`; admitting a task that is neither `ready` nor `implemented` with named audit gaps; and unbounded re-implementation (the iteration cap is mandatory). Keep the manual implement → audit → finish chain as the default.
 
 ## Acceptance
 
-- `task_auto_implement` runs only on a `ready` task and behind an explicit opt-in; on a staged ready task it runs `task_implement`, then `task_audit`, and on a clean audit runs `task_finish`, leaving the task `finished`.
+- `task_auto_implement` admits a `ready` task, or an `implemented` task carrying named audit gaps, behind an explicit opt-in; on a staged ready task it runs `task_implement`, then `task_audit`, and on a clean audit runs `task_finish`, leaving the task `finished`.
 - On a staged task whose first implementation has a planted gap, the audit returns findings and the loop re-runs `task_implement` scoped to those findings and re-audits, converging to a clean audit and then finishing, within a hard iteration cap.
 - The iteration cap is enforced: a staged task whose audit never clears stops at the cap, leaves the task in its current non-finished status, and surfaces it for a human rather than finishing on an audit with findings.
 - `task_audit` is the sole correctness gate: a grep confirms the loop cites `task_implement` / `task_audit` / `task_finish` and `<backward_move_guard>` rather than reimplementing them, and the loop never finishes a task on an audit with findings.
-- The skill ships off by default and the manual implement → audit → finish chain is unchanged (a check confirms it still runs without the loop). `make lint` passes and the skill is registered in the plugin README, metadata, and both marketplaces.
+- The skill ships off by default and the manual implement → audit → finish chain is unchanged (a check confirms it still runs without the loop). `make lint` passes and the skill is registered in `plugins/ai_dev/README.md`, both `plugin.json` files, the root `README.md`, both marketplaces, the base task `<family>` roster, and every sibling's family list, with a `tests/task_auto_implement/` harness reachable through `make test`.

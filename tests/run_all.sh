@@ -115,7 +115,8 @@ harness_files() {
     decl="$(declaration_path "$dir")"
     while IFS= read -r extra; do
         [ -n "$extra" ] || continue
-        if [ -f "$decl" ] && grep -qxF "$(basename "$extra")" "$decl"; then
+        if [ -n "$entry" ] && [ -f "$decl" ] \
+            && grep -qxF "$(basename "$extra")" "$decl"; then
             continue
         fi
         printf '%s\n' "$extra"

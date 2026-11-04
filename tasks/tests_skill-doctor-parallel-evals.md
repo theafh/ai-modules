@@ -2,7 +2,7 @@
 description: Run skill_doctor evals at default 4 workers through the shared helper, keep evals.json-derived ids, and prove isolation with a Cursor default run.
 scope: tests/skill_doctor/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-09T18:10:40
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -31,11 +31,15 @@ This task consumes [the shared Pattern A eval runner](archive/tests_shared-patte
 
 Rewrite `evals/run.py` onto the shared helper: `--workers` 4, per-job `TMPDIR`,
 evals.json-derived ids, and this runner's own `summary.json`, since the helper
-prints its graded summary to stdout and writes no summary file. Keep the
-checksum manifest `stage.sh` writes to `$target/.eval_checksums` as each eval's
-escape check: it covers only that eval's own sandbox, so overlapping evals need
-no staging marker or hook to keep their verdicts apart. Rewrite README / RUNBOOK
-sequential language.
+prints its graded summary to stdout and writes no summary file. Preserve the
+shipped vendor-resolved micro-deployment, verdict cache, `worker_isolation`
+sandbox roots, and read-provenance gate; replace only the serial dict
+comprehension with `eval_runner.run_jobs` / `add_workers_argument` and an
+`on_error` callback. Keep the checksum manifest `stage.sh` writes to
+`$target/.eval_checksums` as each eval's escape check and keep the micro-deploy
+read-integrity gate: the manifest covers only that eval's own sandbox, so
+overlapping evals need no staging marker or hook to keep their verdicts apart.
+Document the default 4-worker pool and `--workers` in README/RUNBOOK.
 
 **Out of scope:** Changing `resolve_scope.py` / `discovery_safety.py` script
 tests. Live-testing unshipped editorial plugin harnesses.
@@ -46,5 +50,7 @@ tests. Live-testing unshipped editorial plugin harnesses.
 - `python3 tests/skill_doctor/evals/run.py` at the default worker count
   prints a graded summary over every id in `evals.json`.
 - A `--workers 4 --force` run of at least two uncached evals overlaps in
-  `timing.json`, recorded under `tests/skill_doctor/results/`.
+  `tests/skill_doctor/workspace/run-<ts>/<id>/timing.json` through
+  `started_at` and `ended_at`, with a short overlap note recorded under
+  `tests/skill_doctor/results/`.
 - Default ids remain derived from `evals.json`, not a frozen list.

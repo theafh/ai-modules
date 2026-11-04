@@ -2,7 +2,7 @@
 description: Replace the diff-jargon term hunk with plain English across the auto_shaper_wiki agent, rename its two hunk tags, and update the Layer 1 contract test and live tasks that pin the old wording.
 scope: plugins/knowledge_management
 created: 2026-08-25T01:08:56
-updated: 2026-09-07T19:44:01
+updated: 2026-11-04T10:11:30
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -35,12 +35,12 @@ Two dependencies bound the sweep.
 
 The Layer 1 contract test `tests/wiki/layer1/agent_contract.py` pins the template-read rule by regular expression, inside its `main()` function, in the `require(...)` call whose failure message reads `template reads are not hunk-scoped`. The pinned pattern spans the wording `read the relevant template section only when a` and `diff hunk needs interpretation`. Rewriting the agent without updating that call fails the default `tests/wiki/run_all.sh` Layer 1 run, so the two changes land together. The standing repo rule that a change ships with the tests it needs governs here.
 
-Two live tasks quote the old tag names and are co-edited by this one. Take their set at implementation time from `grep -rlniE "\bhunk" tasks/*.md`, and refresh each hit rather than a list fixed at authoring time.
+One live task quotes the old tag names and is co-edited by this one. Take the set at implementation time from `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md`, and refresh each hit rather than a list fixed at authoring time; the broader `grep -rniE "\bhunk" tasks/*.md` also matches unrelated live tasks that use the word for their own diff vocabulary.
 
-- [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md) instructs rewriting `<hunk_classification>` and quotes it at several sites across its Approach and Acceptance. It is the heavier collision, and it edits the same agent file.
+- [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md) was the heavier collision and has shipped, so it is no longer a live edit target.
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) names the tag once, in the passage explaining that a declared growth pattern would otherwise survive on the tag's generic extends-the-canon fallback.
 
-Neither sibling imposes a build order on this task, and this task imposes none on them. Whichever lands second refreshes the names the first left behind, which is why the enumeration above is a search rather than a fixed list.
+The live sibling imposes no build order on this task, and this task imposes none on it. Whichever lands second refreshes the names the first left behind, which is why the enumeration above is a search rather than a fixed list.
 
 ## Approach
 
@@ -65,6 +65,6 @@ Neither sibling imposes a build order on this task, and this task imposes none o
 - The `require(...)` call in `tests/wiki/layer1/agent_contract.py` whose failure message read `template reads are not hunk-scoped` is superseded in place, so its pattern matches the rewritten agent wording and its failure message names the new vocabulary rather than the old.
 - The default `tests/wiki/run_all.sh` Layer 1 run passes against the rewritten agent, with the template-read contract among the checks that pass rather than skipped.
 - `grep -rniE "\bhunk" tests/wiki/` returns no match, so the Layer 1 harness carries neither the old pinned regex wording nor the old `hunk-scoped` failure message.
-- `grep -rlniE "\bhunk" tasks/*.md` returns no live task, so every live task that quoted the old tag names now quotes the new ones, and each file edited in that sweep carries a bumped `updated`.
+- `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md` returns no live task, so every live task that quoted the old tag names now quotes the new ones, and each file edited in that sweep carries a bumped `updated`. The broader `grep -rniE "\bhunk" tasks/*.md` may still match unrelated live tasks that use the word in their own diff vocabulary.
 - Every live task refreshed in that sweep keeps its `status` and its Goal, Approach, and Acceptance semantics unchanged, so the sweep reads as a rename and never as a re-scope.
 - The sweep stays bounded: the change's file set contains no path under `tasks/archive/` and does not contain `CHANGELOG.md`.

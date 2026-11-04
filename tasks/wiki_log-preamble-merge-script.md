@@ -2,7 +2,7 @@
 description: Bundle a wiki-skill log-preamble merge script that converges canonical units, preserves owner lines by construction, and never duplicates a unit; route `<fix_log_preamble_drift>` through it.
 scope: plugins/knowledge_management
 created: 2026-08-26T18:53:13
-updated: 2026-10-17T13:50:32
+updated: 2026-11-04T10:11:30
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -39,7 +39,7 @@ The script follows the skill's existing bundled-script conventions: it lives in 
 Two sibling tasks bound this one:
 
 - [wiki_log-scope-wiki-changes-only.md](archive/wiki_log-scope-wiki-changes-only.md) shipped the unit-scoped move; its acceptance defines the insert-missing, refresh-by-label, refresh-by-stem, and owner-line-preservation semantics this task mechanizes, and its measured residue is the motivation above.
-- [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md) has already shipped the linter side: the `check_verbatim_boilerplate` classification, the acknowledged report channel, and declared contradictions. An insert-only owner extension no longer warns, which removes most occasions for this merge to run; the script stays the remediation for a preamble whose canonical units actually drifted. That sibling already left `<fix_log_preamble_drift>` with leave-untouched wording for acknowledged locked-slot extensions and declared-slot regions, and with a still-live restore-instructing `boilerplate` warn as the structural signal for remove-or-rewrite drift. This task preserves that leave-untouched and live-warn-as-signal wording when it supersedes the hand-edit recipe, and settles the declare-and-honour gate once under Approach **Route the fix move through the script.**
+- [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md) has already shipped the linter side: the `check_verbatim_boilerplate` classification, the acknowledged report channel, and the `Declared boilerplate:` declaration mechanism. An insert-only owner extension no longer warns, which removes most occasions for this merge to run; the script stays the remediation for a preamble whose canonical units actually drifted. That sibling already left `<fix_log_preamble_drift>` with leave-untouched wording for acknowledged locked-slot extensions and declared-slot regions, and with a still-live restore-instructing `boilerplate` warn as the structural signal for remove-or-rewrite drift. This task preserves that leave-untouched and live-warn-as-signal wording when it supersedes the hand-edit recipe, and settles the declare-and-honour gate once under Approach **Route the fix move through the script.**
 
 ## Approach
 

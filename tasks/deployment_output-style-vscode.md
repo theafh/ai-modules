@@ -2,7 +2,7 @@
 description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
 created: 2026-08-07T23:39:03
-updated: 2026-10-17T13:50:32
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ GitHub Copilot in VS Code receives the repository's output style as a generated 
 
 ## Context
 
-This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which creates the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. Ship that first; this task adds one target and no new machinery.
+This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which shipped the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. This task adds one target.
 
 The wiki records the mechanism on its [GitHub Copilot in VS Code](../wiki/entities/github-copilot-vs-code.md) page and in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md). The essentials: instructions files combine rather than compete, the user-profile instructions root applies across every workspace and sits above repository and organization instructions in the documented precedence, and nothing has to be switched on for a file placed there to take effect. VS Code is append-only, so the deployed prose competes with default guidance rather than displacing it, which the docs should say plainly.
 
@@ -29,7 +29,7 @@ Confirm during implementation what each scope expects of the filename, since the
 
 Generate rather than copy. Strip the Claude frontmatter, which this target does not implement, and rewrite the one clause in the style body naming Claude's `keep-coding-instructions` mechanism, using the per-tool substitution facility in `deployment/deployment.conf` that the groundwork task's Claude path already leaves in place.
 
-Close the instructions adoption path in the same pass, so the deployed file is the only route this style reaches VS Code by. VS Code reads user-level instructions from `~/.claude/rules` as well as its own root, and `chat.instructionsFilesLocations` maps a path to a boolean where a `false` disables it even when it is a documented default. Merge `{"~/.claude/rules": false}` into the user's VS Code settings through the script's existing key-merge function, which captures the prior value on first write and restores it on uninstall, and narrow the merge to that one path so every other entry the user set survives. The hook counterpart of this switch, covering `.claude/settings.json` and `~/.claude/settings.json`, belongs to [deployment_vscode-hook-routing.md](deployment_vscode-hook-routing.md); the two tasks merge sibling keys into the same settings file, so whichever lands second reuses the first's merge helper rather than adding a second one.
+Close the instructions adoption path in the same pass, so the deployed file is the only route this style reaches VS Code by. VS Code reads user-level instructions from `~/.claude/rules` as well as its own root, and `chat.instructionsFilesLocations` maps a path to a boolean where a `false` disables it even when it is a documented default. Merge `{"~/.claude/rules": false}` into the user's VS Code settings through a nested settings-map entry merge shared with the hook-routing sibling; `merge_json_key` supplies only the prior capture and restore log shape, since it writes the whole key. That path captures the prior value on first write and restores it on uninstall, and narrows the merge to that one path so every other entry the user set survives. The hook counterpart of this switch, covering `.claude/settings.json` and `~/.claude/settings.json`, belongs to [deployment_vscode-hook-routing.md](deployment_vscode-hook-routing.md); the two tasks merge sibling keys into the same settings file, so whichever lands second reuses the first's merge helper rather than adding a second one.
 
 **Out of scope:**
 
@@ -45,5 +45,5 @@ Close the instructions adoption path in the same pass, so the deployed file is t
 - The deployed file contains no Claude output-style frontmatter keys, verified by searching it for `keep-coding-instructions` and `force-for-plugin` and finding neither.
 - The deployed body contains no reference to Claude's keep-coding-instructions mechanism, and the clause that named it reads correctly for a harness that only appends.
 - Uninstalling removes the deployed file and leaves any other instructions files in the same root untouched.
-- A global dry run reports a `chat.instructionsFilesLocations` merge setting `~/.claude/rules` to `false` and capturing the key's prior value, and an unrelated entry placed in that key beforehand survives the deploy.
+- A global dry run reports a `chat.instructionsFilesLocations` merge setting `~/.claude/rules` to `false`, a real deploy records the key's prior value for uninstall, and an unrelated entry placed in that key beforehand survives the deploy.
 - `deployment/README.md` gains a VS Code row for the style type naming the instructions root, stating that no activation key is needed, and stating that this target appends rather than replaces, so adherence is weaker than on Claude.

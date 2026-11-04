@@ -2,7 +2,7 @@
 description: Point language_humanizer's already-parallel, isolated pool at the shared eval-runner helper without changing the five-pass measurement.
 scope: tests/language_humanizer/evals
 created: 2026-10-04T22:11:10
-updated: 2026-10-09T18:10:40
+updated: 2026-11-04T11:49:57
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -13,23 +13,26 @@ reported-by: Andreas Hoffmann
 
 `tests/language_humanizer/evals/run.py` keeps its fixed-denominator concurrent
 passes at default 4 workers and drives them through the shared helper instead
-of a private `ThreadPoolExecutor`. Isolation, vendor, and judge behavior stay
-as the isolation task left them. The user-visible outcome: this harness remains
-the Pattern A parallel reference without a second copy of the pool.
+of a private `ThreadPoolExecutor`. The current isolation, micro-deployment,
+Cursor-default vendor, and judge behavior stay unchanged. The user-visible
+outcome: this harness remains the Pattern A parallel reference without a second
+copy of the pool.
 
 ## Context
 
 This runner already parallelizes (`vendor.DEFAULT_PARALLEL_WORKERS`) and
 deliberately skips the verdict cache because repeated draws are the
 measurement. [The isolation task](archive/tests_language-humanizer-worker-isolation.md)
-already runs each pass and the judge under `tests/lib/worker_isolation.py`, and
-[the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
+already runs each pass and the judge under `tests/lib/worker_isolation.py`; each
+pass now also runs through `tests/lib/micro_deploy.py` and records
+`checkout_unread`. [The shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
 shipped as `tests/lib/eval_runner.py`, so the pool can switch now.
 
-The `ai_editorial` plugin ships this skill, and the isolated five-pass Cursor
+The `ai_editorial` plugin ships this skill. The isolated five-pass Cursor
 measurement is recorded in
-`tests/language_humanizer/results/isolation-comparison.md`, so this task
-changes only how the pool runs.
+`tests/language_humanizer/results/isolation-comparison.md` and predates the
+2026-10-10 micro-deployment; the pool swap leaves that measurement unchanged,
+so this task changes only how the pool runs.
 
 ## Approach
 
@@ -39,7 +42,8 @@ the judge call. Do not add `eval_cache`. Rewrite the module docstring so the
 pool is the shared helper rather than a private executor.
 
 **Out of scope:** Changing grader rubrics, the five-pass contract, or plugin
-shipping. A five-pass live cursor re-measure, which the isolation task owns.
+shipping. A five-pass live Cursor re-measure, since the pool swap leaves the
+recorded measurement unchanged and the isolation task already shipped it.
 
 ## Acceptance
 
@@ -49,3 +53,6 @@ shipping. A five-pass live cursor re-measure, which the isolation task owns.
 - `python3 tests/lib/test_eval_runner.py` still passes after this import.
 - A `--passes 1 --workers 1` plumbing run of one scenario still writes
   `verdict.json` under the run dir.
+- The private-pool lists in `tests/CLAUDE.md` and `tests/AGENTS.md` move
+  `tests/language_humanizer/evals/run.py` to the `eval_runner` set, and
+  `tests/README.md`'s pointer to those lists stays accurate.

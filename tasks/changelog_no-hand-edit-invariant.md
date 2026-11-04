@@ -2,8 +2,8 @@
 description: Move the "changelog is committed-history-derived, never hand-edited" invariant into the update_changelog skill so the artifact owns it, then remove the duplicated standing repo rule.
 scope: plugins/ai_dev/skills/update_changelog
 created: 2026-06-21T13:25:38
-updated: 2026-10-29T22:57:51
-status: ready
+updated: 2026-11-04T11:49:57
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -15,9 +15,11 @@ State, inside the `update_changelog` skill itself, the load-bearing invariant th
 skill currently leaves implicit: a changelog records only **committed** git
 history, every entry is produced by running the skill over commits, and the file
 is never hand-authored or hand-edited. Committing the skill's generated output is
-how it is persisted. Today this invariant lives only as a standing repo
-instruction local to this repo, so any repo that installs the skill without that
-instruction inherits none of it. Make the shipped skill carry the invariant so it
+how it is persisted. The committed-history and working-tree provenance half
+already ships in the skill's `<run_scope>`; the never-hand-edit prohibition and
+the commit-the-output persistence rule live only as a standing repo instruction
+local to this repo, so any repo that installs the skill without that instruction
+inherits neither. Make the shipped skill carry the invariant so it
 travels with the artifact, then remove the now-duplicated standing repo rule once
 the skill states it.
 
@@ -26,8 +28,9 @@ the skill states it.
 - Skill: `plugins/ai_dev/skills/update_changelog/SKILL.md`. The `<policy>` block
   governs day ordering, entry granularity, date immutability, and summary style,
   and its `<run_scope>` clause states "Build each run from committed git history
-  only", scoped to which days a run rebuilds. No clause forbids hand-editing or
-  names committing the skill's output as how the file is persisted. The
+  only; ignore uncommitted and untracked working-tree state", mixing provenance
+  (the first sentence) with day selection (the second). No clause forbids
+  hand-editing or names committing the skill's output as how the file is persisted. The
   `<objective>` calls the file "derived from git commits" without making the
   never-hand-edit prohibition explicit.
 - The invariant currently lives as a standing repo instruction, mirrored in this
@@ -111,8 +114,9 @@ the skill states it.
 - The skill's `<policy>` carries a clause stating the changelog records committed
   git history only, entries are produced by running the skill, the file is never
   hand-authored or hand-edited, and committing the skill's output is how it is
-  persisted. (Today `<run_scope>` covers only committed-history run scope; the
-  hand-edit prohibition and output-persistence mechanics appear nowhere.)
+  persisted. (`<run_scope>` already carries committed-history and working-tree
+  provenance; the hand-edit prohibition and output-persistence mechanics appear
+  nowhere.)
 - The existing `<workflow_authority>` clause still states the skill is the source
   of truth for `/update_changelog` workflow, output format, and entry style, and
   the provenance invariant lives in a separate `<source_of_truth>` sibling rather
