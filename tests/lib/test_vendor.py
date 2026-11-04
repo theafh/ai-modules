@@ -413,7 +413,7 @@ def main() -> int:
     )
 
     # Test Integrity: superseded behaviour. The **Vendor parity** decision
-    # recorded in tasks/tests_trigger-evals-cursor-vendor.md removed the
+    # recorded in tasks/archive/tests_trigger-evals-cursor-vendor.md removed the
     # Cursor refusal this check used to pin, so it now proves the opposite:
     # Cursor reaches trigger_evals.
     vendor.require_vendor_allowed("cursor", "trigger_evals")

@@ -189,9 +189,6 @@ def normalize_eval_entry(entry: dict, target_skill: str) -> dict:
     raise ValueError(f"eval entry missing expected_skill / should_trigger: {entry}")
 
 
-_NO_DECISION = object()
-
-
 def _fresh_worker_dir() -> Path:
     """Create a worker directory outside the checkout and any git repository."""
 
@@ -678,7 +675,8 @@ def main() -> int:
         print(
             f"ERROR: skill '{args.skill}' is unavailable: not found under "
             f"{native_root}/. Deploy the skill (make deploy) or pass "
-            f"--force-uuid to use the UUID-proxy path deliberately.",
+            f"--vendor claude --force-uuid to use the UUID-proxy path "
+            f"deliberately.",
             file=sys.stderr,
         )
         return 2

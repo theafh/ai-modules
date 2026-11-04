@@ -298,7 +298,7 @@ check(calls["uuid"] == 0 and calls["deployed"] == 0,
 # Test Integrity: the case that used to assert "an explicit --vendor cursor
 # stops with an error before either mode runs" is superseded behaviour. The
 # **Vendor parity** decision recorded in
-# tasks/tests_trigger-evals-cursor-vendor.md made Cursor a supported vendor, so
+# tasks/archive/tests_trigger-evals-cursor-vendor.md made Cursor a supported vendor, so
 # the Cursor cases below replace it.
 
 STUB = r'''#!/usr/bin/env python3
