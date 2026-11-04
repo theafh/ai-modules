@@ -6,12 +6,15 @@ It drives the base `task` skill's `discover_tasks.sh`, `init_tasks.sh`, and
 `script_tests/run.sh` here tests the eval grader instead: each case stages an
 eval, installs a chosen task body under the sandbox's `tasks/`, and reads one
 `evals/grade.sh` check's verdict, which keeps the label forms recorded draws
-produced covered after their workspace runs are gone. There is no
-`run_all.sh`, so drive `script_tests/run.sh` directly.
+produced covered after their workspace runs are gone. `evals/test_run.py`
+pins the runner's parallel surface and its host guard. There is no
+`run_all.sh`, so drive `script_tests/run.sh` and `evals/test_run.py`
+directly.
 
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
 | Grader | `script_tests/` | `evals/grade.sh` verdicts on chosen task bodies: the one-label count reading only block-start lead-ins (heading-form labels included) and skipping a Context pointer to the Approach label, wrapped or not, the guardrail-bound why-open ground, both options named by uppercase markers or an either-or sentence, a non-`rich` styling path named by its substance, and an empty sandbox reporting zero files, each beside a control that still fails; plus every fixture's git identity and the eval runner's stop on a failed or empty stage through `tests/lib/check_stage_guard.py` | `bash tests/task_create/script_tests/run.sh` |
+| Runner surface | `evals/test_run.py` | the parallel contract (`--workers` defaults to 4, ids in `evals.json` file order, the `tests/task_create/workspace` run root, the `timing.json` fields the measurement reads, and `_execute` dispatching jobs through `tests/lib/eval_runner.run_jobs`), the runner's stop on a failed or empty stage, and a hermetic host-guard case whose two overlapping real jobs leave a temporary host mirror's `tasks/` tree untouched while a planted newer host file carrying one eval's fixture name fails that eval | `python3 tests/task_create/evals/test_run.py` |
 | Skill behavior | `evals/` | the base **Decide or label** rule and the `<prior_art>` Novel class as the create path applies them: reconcile silently, else label *and* surface; classify related-but-uncovering precedent as Novel and write the task (stage → agent → grade) | `python3 tests/task_create/evals/run.py` |
 
 The whole-family behavioral suite lives in `tests/task/evals/` and keeps its
@@ -60,12 +63,14 @@ and the worker's reply carries only the decision under test.
 
 ```bash
 bash tests/task_create/script_tests/run.sh
+python3 tests/task_create/evals/test_run.py
 python3 tests/task_create/evals/run.py
 ```
 
-The script tests run in seconds and start no worker. The evals consume LLM
-tokens. See `evals/README.md` for the stage → agent → grade recipe, the
-verdict cache, and how the surfaced half of the obligation is graded.
+The script tests and the runner unit tests run in seconds and start no worker.
+The evals consume LLM tokens. See `evals/README.md` for the stage → agent →
+grade recipe, the verdict cache, and how the surfaced half of the obligation is
+graded.
 
 ## Trigger evals
 

@@ -215,8 +215,16 @@ files.
   tests the grader instead: each case stages an eval, installs a chosen task
   body, and reads one `evals/grade.sh` check's verdict. It also checks every
   fixture's git identity and the eval runner's stop on a failed or empty
-  stage. There is no `run_all.sh`, so run
-  `bash tests/task_create/script_tests/run.sh` directly. Four
+  stage. `evals/test_run.py` pins the parallel surface: `--workers` defaults
+  to 4, ids come from `evals.json` in file order, the run root is
+  `tests/task_create/workspace`, `timing.json` carries the fields the
+  measurement reads, and `_execute` dispatches jobs through
+  `tests/lib/eval_runner.run_jobs`; a hermetic host-guard case runs two real
+  jobs against a temporary host mirror and proves overlapping sandbox-only
+  work leaves its `tasks/` tree untouched while a planted newer host file
+  carrying one eval's fixture name fails that eval. There is no `run_all.sh`,
+  so run `bash tests/task_create/script_tests/run.sh` and
+  `python3 tests/task_create/evals/test_run.py` directly. Four
   staged evals over the base **Decide or label** rule and the `<prior_art>`
   Novel class as the create path applies them: `reconcile-recorded`
   (evidence-settled fork, no label), `labeled-why-open` (no tier settles it),
