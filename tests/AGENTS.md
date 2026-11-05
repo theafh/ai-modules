@@ -200,7 +200,8 @@ timeouts, not faster wall-clock.
 
 The Pattern A runners on `eval_runner` at `vendor.DEFAULT_PARALLEL_WORKERS`
 are `tests/task_auto_check/evals/run.py`, `tests/task/evals/run.py`,
-`tests/task_create/evals/run.py`, `tests/git_checkout/evals/run.py`,
+`tests/task_create/evals/run.py`, `tests/task_fix/evals/run.py`,
+`tests/git_checkout/evals/run.py`,
 `tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`,
 `tests/git_review/evals/run.py`, and
 `tests/git_auto_review/evals/run.py`. `task_auto_check` runs its serial
@@ -219,7 +220,10 @@ eval stages its own sandbox root and runs in the pool. Every `git_checkout`,
 `git_refresh`, and
 `git_commit` eval stages its own sandbox root, so the whole suite runs in the
 pool. `git_commit`'s worker and `grade.sh` both receive the job's `TMPDIR`, so
-the grader's straggler scan reads only that job's context files.
+the grader's straggler scan reads only that job's context files. Every
+`task_fix` eval stages its own sandbox root and its host `tasks/` guard
+compares only the sandbox's fixture names, so the whole suite runs in the
+pool.
 
 The helper runs a harness's before and after hooks around each job, one hook
 call at a time, so two escape-guard snapshots never interleave. The hooks
@@ -246,9 +250,6 @@ helper (private pools, not yet on `eval_runner`):
 Pattern A runners that stay sequential until their sibling conversion tasks
 wire them onto `eval_runner` (plus permanent isolation exceptions):
 
-- `task_fix` — still serial until its parallel-worker task lands. The host
-  guard compares an isolated temp copy and only the sandbox's fixture names, so
-  an unrelated live backlog edit no longer fails it.
 - `agent_spinner` brackets each eval with a host-checkout `git status`, which
   sees every overlapping eval's changes, so it stays serial until its guard
   compares only the names each eval owns.

@@ -41,7 +41,7 @@ documents under the heading "Host `tasks/` during a task-family run".
 This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
 Sibling harnesses with the same fail-safe are
 [task_create](tests_task-create-parallel-evals.md) and
-[task_fix](../tests_task-fix-parallel-evals.md).
+[task_fix](tests_task-fix-parallel-evals.md).
 
 ## Approach
 

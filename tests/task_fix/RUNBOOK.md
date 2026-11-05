@@ -6,9 +6,12 @@
 python3 tests/task_fix/evals/run.py
 ```
 
-Runs every id in `evals/evals.json` on the default Cursor worker, one at a time,
-and prints a per-eval PASS/FAIL plus a tally. Exit code is 0 only when every
-worker completed cleanly *and* its deterministic grade passed.
+Runs every id in `evals/evals.json` on the default Cursor worker, four at a
+time, each job with its own `TMPDIR`, and prints a per-eval PASS/FAIL plus a
+tally. The host `tasks/` guard stays per-eval: it compares only the fixture
+names that job's sandbox staged, so overlapping jobs never fail one another's
+check. Pass `--workers 1` to serialize. Exit code is 0 only when every worker
+completed cleanly *and* its deterministic grade passed.
 
 ## One eval
 

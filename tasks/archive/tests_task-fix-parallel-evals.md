@@ -2,9 +2,11 @@
 description: Run task_fix evals at default 4 workers with per-eval host-tasks fail-safes that stay correct under overlap, using the shared Pattern A helper.
 scope: tests/task_fix/evals
 created: 2026-10-04T22:11:10
-updated: 2026-11-03T11:36:17
-status: ready
+updated: 2026-11-05T08:02:13
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize the task_fix behavioral evals without mixing host-tree fail-safes
@@ -29,8 +31,8 @@ dirs include `os.getpid()` in the folder name. The shared helper resolves only
 the workspace root (`resolve_workspace`), so run-dir naming stays with this
 runner.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
-The fail-safe contract matches [the task-hub parallel task](archive/tests_task-hub-parallel-evals.md).
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
+The fail-safe contract matches [the task-hub parallel task](tests_task-hub-parallel-evals.md).
 
 ## Approach
 
