@@ -23,7 +23,7 @@ through a generated variant instead.
 
 ## Current state of knowledge
 
-### Two tolerance categories, and a third held open
+### Three tolerance categories, with occupancy marked separately
 
 Before sharing one file across targets, classify each one.
 
