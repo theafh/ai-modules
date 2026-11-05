@@ -1811,9 +1811,9 @@ generate_antigravity_agent() {
 # `permission` object with ordered rules. `edit` gates `edit`, `write`, and
 # `patch` alike, and `shell` replaced V1's `bash`. Agent rules are appended
 # after global rules and the last match wins, so these deny entries override a
-# broader allow. A writer agent gets explicit `allow` rules for `edit` and
-# `shell` instead: an absent rule list now falls to V2's no-match default of
-# `ask`, where V1's absent `permission` object meant unrestricted, and a
+# broader allow. A writer agent gets explicit `allow` rules for every action it
+# calls instead, because an unmatched action now falls to V2's no-match default
+# of `ask`, where V1's absent `permission` object meant unrestricted, and a
 # spawned writer has nobody to answer the prompt. See opencode.ai/v2/docs/agents
 # and /v2/docs/permissions.
 # ---------------------------------------------------------------------------
@@ -1831,7 +1831,7 @@ generate_opencode_agent() {
   rewrite_agent_frontmatter "$source" "$tmp_rewritten" "$target_id" true
 
   local in_frontmatter=false frontmatter_done=false in_body=false
-  local skip_block=false body="" line key value
+  local skip_block=false body="" line key value action
   local description="" model="" readonly="" tools=""
 
   while IFS= read -r line || [[ -n "$line" ]]; do
@@ -1904,12 +1904,11 @@ generate_opencode_agent() {
       fi
     else
       printf '%s\n' 'permissions:'
-      printf '%s\n' '  - action: edit'
-      printf '%s\n' '    resource: "*"'
-      printf '%s\n' '    effect: allow'
-      printf '%s\n' '  - action: shell'
-      printf '%s\n' '    resource: "*"'
-      printf '%s\n' '    effect: allow'
+      for action in read glob grep edit shell skill subagent; do
+        printf '  - action: %s\n' "$action"
+        printf '%s\n' '    resource: "*"'
+        printf '%s\n' '    effect: allow'
+      done
     fi
     printf '%s\n\n' '---'
     printf '%s\n' "$body"

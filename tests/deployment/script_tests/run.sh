@@ -150,8 +150,9 @@ assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^mode: suba
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^description:'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^model:'
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^permissions:$'
-assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^  - action: edit$'
-assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^  - action: shell$'
+for action in read glob grep edit shell skill subagent; do
+  assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" "^  - action: ${action}\$"
+done
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^    effect: allow$'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^    effect: deny$'
 
