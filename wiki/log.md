@@ -1321,3 +1321,11 @@ pre-existing, and the size infos stay advisory; the one on
   `tool_call` record, and the documented user-level and compatibility skill
   roots, each dated with its CLI version and source kind; the page's `updated`
   date moves to 2026-11-04)
+
+## [2026-11-05 15:45] update | OpenCode V2 agent frontmatter and plugin contract
+
+- entities/sst-opencode.md (a Version boundary section splits the V1 and V2 generations; the agent-definitions section is rewritten for the V2 schema, the one-file-one-generation rule, the ordered `permissions` rule list, the `shell`/`subagent`/`edit` action renames, the deprecated `temperature` and `name` fields, and the reasoning-variant `provider/model#variant` form; the hooks section is rewritten for V2's setup-context hook domains and the `permission.evaluate` skip on configured denies; the page's `updated` date moves to 2026-11-05)
+- concepts/agent-definition-portability.md (the tolerance taxonomy becomes two categories plus a third held open, with OpenCode moved from pass-through to ignore-unknown and the category kept defined rather than collapsed; the tool-vocabulary, read-only-lever, and variant paragraphs take the V2 names; the open-questions section records both empty categories as dated observations; the page's `updated` date moves to 2026-11-05)
+- concepts/hook-surface-portability.md (OpenCode's V1 plugin contract is marked as replaced in V2, the signalling-contract paragraph drops the throw-based block, the guarantee paragraph gains `permission.evaluate`'s asymmetry and its subagent caveat, and the open questions name the V2 plugin contract as the dependency; the page's `updated` date moves to 2026-11-05)
+- concepts/deployment-model.md (the generated-formats passage names OpenCode's `permissions` rule list instead of its former permission object)
+- index.md (the SST OpenCode summary line names the V1-to-V2 frontmatter boundary and the ordered rule list instead of pass-through frontmatter)

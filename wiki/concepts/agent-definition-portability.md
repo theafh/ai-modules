@@ -1,7 +1,7 @@
 ---
 title: Agent definition portability
 created: 2026-08-08
-updated: 2026-10-28
+updated: 2026-11-05
 type: concept
 tags: [agent, frontmatter, portability, claude, codex, cursor, opencode, antigravity, verification-gap]
 sources: [raw/notes/agent-delegation-host-observations-2026-09.md, raw/notes/delegation-probes-2026-10-04.md]
@@ -23,31 +23,52 @@ through a generated variant instead.
 
 ## Current state of knowledge
 
-### Three tolerance categories, not two
+### Two tolerance categories, and a third held open
 
 Before sharing one file across targets, classify each one.
 
 Ignore-unknown targets tolerate foreign keys.
 [Claude](../entities/anthropic-claude-code.md) and
 [Cursor](../entities/cursor.md) are both in this group, which is what makes the
-union-of-native-fields pattern work at all.
+union-of-native-fields pattern work at all. Since OpenCode V2 that group also
+holds [OpenCode](../entities/sst-opencode.md), which rejects nothing and
+forwards nothing: its agent schema sets `additionalProperties: false`, and a
+recognised key in the file decides the generation while the rest are dropped
+with an `ignored unsupported agent fields` log warning.
+
+[Antigravity](../entities/google-antigravity.md)'s tolerance is unconfirmed and
+the evidence leans tolerant, so it is classified as pending verification rather
+than as strict, and that pending state decides how aggressively its generated
+variant filters keys.
 
 Strict-schema targets reject a single unrecognised key and leave the agent
 unloaded while the harness keeps running. No live target sits here today, which
 matters: the category has to be defined on its own terms rather than through
 whichever product last occupied it.
 
-Pass-through targets are the third category and the reason two is not enough.
-[OpenCode](../entities/sst-opencode.md) passes any unrecognised frontmatter
-option directly to the provider as a model option, so a stray `version:` or
-`effort:` is neither ignored nor rejected but injected into the provider call as
-a bogus parameter. Like a strict target, it cannot safely read a shared
-multi-harness file, but for the opposite reason.
+Pass-through targets are the third category, and no live target occupies it
+today either. A pass-through target neither ignores nor rejects an unrecognised
+key but forwards it to its model provider as an option, which is harmful in its
+own way: a stray `version:` or `effort:` arrives in the provider call as a bogus
+parameter rather than being dropped. OpenCode held this category until V2, and
+the [OpenCode page](../entities/sst-opencode.md) records the correction with its
+5 November 2026 evidence.
 
-[Antigravity](../entities/google-antigravity.md)'s tolerance is unconfirmed and
-the evidence leans tolerant, so it is classified as pending verification rather
-than as strict, and that pending state decides how aggressively its generated
-variant filters keys.
+The category stays defined for a reason worth stating plainly. Both the strict
+and the pass-through categories force a generated variant, while the
+ignore-unknown category permits a shared file, so the taxonomy is what decides
+the design rather than merely describing it. A category that empties does not
+merge into its neighbours: a future target can land in either one, and a
+classification that has to be re-derived from scratch invites the same
+inference error this correction fixed. Keep both defined and record occupancy
+as the dated observation it is.
+
+The practical consequence for this repository is that OpenCode is no longer a
+forced generated-variant target. It stays one, on a different ground: V2 ignores
+V1 frontmatter and its own native keys are not the ones the other harnesses read,
+so a shared file would load with the OpenCode half discarded rather than with
+foreign keys harmlessly present. That is a correctness argument, not a tolerance
+argument, and it is the one to cite.
 
 ### Tool vocabularies are disjoint
 
@@ -58,9 +79,10 @@ carries at most one harness's tools field and reaches the others through their
 own.
 
 Codex offers no per-agent allowlist at all. Cursor exposes no tools field, though
-it has its own identifiers. OpenCode replaced its boolean tools map with a
-`permission` object keyed by capability, and its own page carries the version
-that boundary falls on.
+it has its own identifiers. OpenCode replaced its boolean tools map with an
+ordered `permissions` rule list keyed by action, where `shell` replaced `bash`
+and `edit` gates `edit`, `write`, and `patch` alike, and its own page carries
+the version that boundary falls on.
 
 The failure modes differ in severity, which is why a generator drops rather than
 guesses. An unmapped name on Antigravity may hang the subagent process at
@@ -90,10 +112,11 @@ Each harness has its own role-level lever, which confines one role rather than a
 whole session, and whether it holds depends on the host and the role's mode.
 Antigravity needs both halves of its lever: a `tools` array holding only
 read-only names, and `commandExecutionPolicy` set to `off`, or to `sandbox` where
-the role still needs contained execution. OpenCode uses a `permission` object
-with `edit: deny`, plus `bash: deny` where no shell is needed, because its `edit`
-key gates all file modification, and a generator writes that object as a block
-mapping or the client rejects the whole configuration
+the role still needs contained execution. OpenCode uses a `permissions` rule list
+with an `edit` deny, plus a `shell` deny where no shell is needed, because its
+`edit` action gates all file modification, and a generator writes those rules in
+native V2 form because V2 reads a file carrying `permissions` as V2 and then
+discards any V1 field beside it
 ([SST OpenCode](../entities/sst-opencode.md)). Runs have observed only the
 levers below.
 
@@ -159,7 +182,8 @@ keys: Claude reads frontmatter `effort`, the Codex TOML key is
 side in one Markdown file while a generated OpenCode variant strips both.
 
 That union reaches only those two harnesses. OpenCode's per-agent `variant`
-takes effect only beside a pinned `model`, so a model-agnostic role there runs at
+takes effect only beside a pinned `model`, and V2 writes that pair as
+`provider/model#variant`, so a model-agnostic role there runs at
 the level of the session that spawned it, as the
 [OpenCode page](../entities/sst-opencode.md) records with its 27 October 2026
 evidence. [Cursor](../entities/cursor.md) showed no effect from effort keys,
@@ -199,6 +223,13 @@ while a strict one would not. It is also what sets this page's confidence: the
 Claude, Cursor, Codex, and OpenCode classifications rest on documentation and
 source, while the three-category model is only as sound as the one category
 still assigned by inference.
+
+Two category memberships are now dated observations rather than stable facts.
+Both the strict and the pass-through categories are empty as of 5 November 2026,
+and OpenCode moved out of pass-through when V2 stopped forwarding unrecognised
+keys. Re-derive a target's category from a probe before relying on a recorded
+one, because a harness can change category in a release and the change arrives
+as silence rather than as an error.
 
 ## Related concepts
 

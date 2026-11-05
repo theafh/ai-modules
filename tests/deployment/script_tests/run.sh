@@ -130,24 +130,30 @@ assert_file "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md"
 
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^mode: subagent$'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^model:'
-assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^permission:$'
-assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^  edit: deny$'
-assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^  bash: deny$'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^permissions:$'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^  - action: edit$'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^    effect: deny$'
+assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" 'action: shell'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^tools:'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^write:'
-assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^(name|version|background|effort|model_reasoning_effort):'
+assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^(name|version|background|effort|model_reasoning_effort|temperature):'
+assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^permission:'
 
 for agent in auto_reviewer_task auto_verifier_task; do
-  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^permission:$'
-  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^  edit: deny$'
-  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^  bash: deny$'
+  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^permissions:$'
+  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^  - action: edit$'
+  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^  - action: shell$'
+  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^    effect: deny$'
 done
 
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^mode: subagent$'
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^description:'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^model:'
-assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^permission:'
-assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" 'edit: deny|bash: deny'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^permissions:$'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^  - action: edit$'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^  - action: shell$'
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^    effect: allow$'
+assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^    effect: deny$'
 
 "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --target opencode --uninstall >/dev/null
 

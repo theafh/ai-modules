@@ -1,7 +1,7 @@
 ---
 title: Hook surface portability
 created: 2026-08-08
-updated: 2026-10-29
+updated: 2026-11-05
 type: concept
 tags: [hook, portability, claude, codex, opencode, antigravity, copilot, plugin]
 sources: []
@@ -46,7 +46,9 @@ a workspace or global directory or be bundled inside its plugin package.
 
 OpenCode has no declarative hook configuration at all. A hook there is a
 JavaScript or TypeScript plugin run by the embedded Bun runtime, which makes it a
-different review and trust proposition from a Markdown or JSON component.
+different review and trust proposition from a Markdown or JSON component. V2
+replaced V1's plugin contract outright, so a V1 plugin does not run there and a
+bridge has to target V2's setup-context hook domains.
 
 A four-harness plugin therefore ships four hook configurations over one shared
 script, and reaches OpenCode through a thin bridge plugin that builds the
@@ -64,7 +66,7 @@ free target for a script already written for Claude; its considered decision is 
 `permissionDecision` of `allow`, `deny`, or `ask` nested under
 `hookSpecificOutput`, and it is fail-closed on `PreToolUse`, so a crash denies the
 call. Antigravity reads a camelCase envelope and expects a JSON `decision` on
-stdout. OpenCode blocks by throwing inside the plugin.
+stdout. OpenCode blocks from inside a plugin.
 
 A script that only ever exits non-zero therefore fails open silently on
 Antigravity. Matching event names make this worse rather than better: Antigravity
@@ -94,11 +96,16 @@ matcher groups, parse errors beside valid hooks, or stale cached plugin files.
 
 ### Guarantees differ by harness
 
-A hook's guarantee is only as strong as its interception point. On OpenCode,
-`tool.execute.before` does not intercept tool calls made by task-tool subagents,
-so a before-hook guard is bypassable by delegation and gives a weaker guarantee
-than the same guard on Claude or Codex. Its `permission.ask` hook is defined but
-never fired, so interception has to use the before hook regardless.
+A hook's guarantee is only as strong as its interception point. On OpenCode the
+reach depends on which V2 hook domain carries the policy, and the permission
+domain has an asymmetry worth stating: `permission.evaluate` runs after configured
+rules are evaluated and before the action or a prompt, and it can set `effect` to
+`allow`, `ask`, or `deny`, but it runs only for `allow` and `ask` decisions. An
+explicit configured `deny` is final and never invokes the hook, so a guard that
+must observe every attempt starts from an `ask` or `allow` rule instead. A guard
+mounted on the tool or shell domain sees the call before execution but must reach
+the subagent case, which remains the weaker guarantee
+([SST OpenCode](../entities/sst-opencode.md)).
 
 Where a harness offers a declarative permission model, that model can cover
 simple path protection without a hook at all, but it cannot express conditional
@@ -116,10 +123,12 @@ restart.
 ## Open questions
 
 Two coverage decisions are unsettled. Whether an OpenCode bridge is worth its
-experimental dependency is open work. And Cursor is now the only target whose
-hook contract is unworked here, which is what stops the shared script claiming a
-uniform guarantee across every tree it lands in; its deploy branch matches on a
-Cursor-named configuration file that nobody has been able to write.
+dependency on V2's plugin contract is open work, and the V2 hook API is young
+enough that its own `experimental`-named surfaces should be pinned. And Cursor is
+now the only target whose hook contract is unworked here, which is what stops the
+shared script claiming a uniform guarantee across every tree it lands in; its
+deploy branch matches on a Cursor-named configuration file that nobody has been
+able to write.
 
 One question the Copilot research raised is settled rather than open. Both Copilot
 products read `~/.claude/settings.json` for hooks, so a Claude hook merged there

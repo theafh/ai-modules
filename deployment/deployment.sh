@@ -1791,10 +1791,31 @@ generate_antigravity_agent() {
 # ---------------------------------------------------------------------------
 # Generate an OpenCode agent from a vendor-rewritten .md agent
 #
-# OpenCode passes unrecognized frontmatter options through to the provider as
-# model options (opencode.ai/docs/agents, verified July 2026), so this bridge
-# emits only OpenCode schema keys and drops repo-maintenance fields such as
-# version, background, effort, model_reasoning_effort, and name.
+# This bridge emits only native V2 schema keys and drops repo-maintenance
+# fields such as version, background, effort, model_reasoning_effort, and name.
+#
+# OpenCode V2 reads an agent file as one format, decided by its keys: a file
+# carrying any of `permissions`, `request`, `system`, or `disabled` is read as
+# V2 and its V1 fields are ignored with a warning; a file carrying only V1
+# fields is still translated from V1. Both paths resolve the same read-only
+# policy today, but V1 frontmatter is deprecated, so the bridge writes V2.
+#
+# Two consequences follow from emitting V2 keys. `temperature` is a V1 field
+# with no V2 behaviour, so it is dropped rather than emitted into a file that
+# would then discard it; V2 preserves the value but does not send it with model
+# requests, and per-agent sampling belongs on a model variant instead. `name`
+# is dropped because a V2 agent's id comes from its filename, and the deployed
+# filename already carries the agent name.
+#
+# Read-only maps to a `permissions` rule list, because V2 replaced the V1
+# `permission` object with ordered rules. `edit` gates `edit`, `write`, and
+# `patch` alike, and `shell` replaced V1's `bash`. Agent rules are appended
+# after global rules and the last match wins, so these deny entries override a
+# broader allow. A writer agent gets explicit `allow` rules for `edit` and
+# `shell` instead: an absent rule list now falls to V2's no-match default of
+# `ask`, where V1's absent `permission` object meant unrestricted, and a
+# spawned writer has nobody to answer the prompt. See opencode.ai/v2/docs/agents
+# and /v2/docs/permissions.
 # ---------------------------------------------------------------------------
 generate_opencode_agent() {
   local source="$1" dest="$2" target_id="$3" artifact_type="$4"
@@ -1811,7 +1832,7 @@ generate_opencode_agent() {
 
   local in_frontmatter=false frontmatter_done=false in_body=false
   local skip_block=false body="" line key value
-  local description="" model="" temperature="" readonly="" tools=""
+  local description="" model="" readonly="" tools=""
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     if ! $frontmatter_done && [[ "$line" == "---" ]]; then
@@ -1838,7 +1859,6 @@ generate_opencode_agent() {
         case "$key" in
           description) [[ -z "$description" ]] && description="$value" ;;
           model) [[ -z "$model" ]] && model="$value" ;;
-          temperature) [[ -z "$temperature" ]] && temperature="$value" ;;
           readonly) [[ -z "$readonly" ]] && readonly="$value" ;;
           tools) [[ -z "$tools" ]] && tools="$value" ;;
         esac
@@ -1872,13 +1892,24 @@ generate_opencode_agent() {
     if [[ -n "$model" ]] && ! is_model_inherit_value "$model"; then
       printf 'model: %s\n' "$model"
     fi
-    [[ -n "$temperature" ]] && printf 'temperature: %s\n' "$temperature"
     if [[ "$readonly" == "true" ]]; then
-      printf '%s\n' 'permission:'
-      printf '%s\n' '  edit: deny'
+      printf '%s\n' 'permissions:'
+      printf '%s\n' '  - action: edit'
+      printf '%s\n' '    resource: "*"'
+      printf '%s\n' '    effect: deny'
       if [[ ",${tools// /}," != *",Bash,"* ]]; then
-        printf '%s\n' '  bash: deny'
+        printf '%s\n' '  - action: shell'
+        printf '%s\n' '    resource: "*"'
+        printf '%s\n' '    effect: deny'
       fi
+    else
+      printf '%s\n' 'permissions:'
+      printf '%s\n' '  - action: edit'
+      printf '%s\n' '    resource: "*"'
+      printf '%s\n' '    effect: allow'
+      printf '%s\n' '  - action: shell'
+      printf '%s\n' '    resource: "*"'
+      printf '%s\n' '    effect: allow'
     fi
     printf '%s\n\n' '---'
     printf '%s\n' "$body"

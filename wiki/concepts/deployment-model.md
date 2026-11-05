@@ -72,7 +72,7 @@ The style directive lives here rather than in the style file, and
 A target receives a generated file rather than a copy wherever it reads a
 different format. Codex agents are generated as TOML, Antigravity agents with its
 own frontmatter and a mapped [tool vocabulary](antigravity-tool-vocabulary.md),
-OpenCode agents with its permission object, and Cursor's output style as an
+OpenCode agents with its `permissions` rule list, and Cursor's output style as an
 always-apply `.mdc` rule. Antigravity also takes a per-class
 fan-out rather than one write, because its
 [global roots](antigravity-global-roots.md) diverge by artefact class. Hook

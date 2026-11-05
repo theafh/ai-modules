@@ -1,7 +1,7 @@
 ---
 title: SST OpenCode
 created: 2026-08-08
-updated: 2026-10-28
+updated: 2026-11-05
 type: entity
 tags: [opencode, skill, agent, hook, system-prompt, frontmatter, discovery]
 sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]
@@ -16,8 +16,9 @@ OpenCode is SST's coding agent. It is a full target for skills, agents,
 commands, and hooks, and it diverges from the other harnesses in four ways worth
 holding in mind at once: its configuration tree is `~/.config/opencode` rather
 than `~/.opencode`, it discovers artefacts from other harnesses' directories, its
-hooks are code rather than configuration, and it passes unrecognised agent
-frontmatter through to the model provider instead of ignoring or rejecting it.
+hooks are code rather than configuration, and it defines each agent file's
+frontmatter under a schema that drops keys it does not know and logs an
+`ignored unsupported agent fields` warning.
 
 Much of what is known about it was read off its source rather than its
 documentation, which states none of the prompt-assembly behaviour. That makes
@@ -27,12 +28,23 @@ evidence in use anywhere in this wiki, and they describe internals that move
 faster than a documented contract would. Re-verify by the date below rather than
 by discounting the claims.
 
+## Version boundary
+
+The harness has two incompatible configuration generations under the same
+`opencode` command. **V1** (through 1.19.x, the last desktop release of that
+line) is the generation every fact on this page described before November 2026.
+**V2** (2.x, verified on 2.2.5) changes the agent frontmatter schema, the plugin
+API, and the server API, and it reads V1 artefacts through a compatibility
+translation rather than rejecting them.
+
 Facts below were verified in July 2026 against `opencode.ai/docs` and the issue
-tracker, and on 7 August 2026 against
+tracker, on 7 August 2026 against
 `packages/opencode/src/session/instruction.ts`, `.../llm/request.ts`,
 `.../prompt.ts`, and `.../system.ts` on the `dev` branch of
 `github.com/sst/opencode`, cross-checked against the OpenCode desktop bundle
-installed on that date. Re-verify before relying on any of them.
+installed on that date, and on 5 November 2026 against OpenCode V2 2.2.5 through
+its `--standalone` server's `/api/agent` and `/openapi.json` responses plus the
+V2 documentation set. Re-verify before relying on any of them.
 
 ## Key facts and dates
 
@@ -80,48 +92,85 @@ stroke.
 ### Agent definitions
 
 Agents are Markdown under `.opencode/agents/` and `~/.config/opencode/agents/`.
+V2 also still discovers the V1 `agent/`, `mode/`, and `modes/` directories, and
+treats files under `mode/` or `modes/` as primary agents. An agent's id comes
+from its path relative to the agents directory, so a nested
+`.opencode/agents/team/reviewer.md` registers as `team/reviewer`.
+
 The frontmatter uses `mode` with values `primary`, `subagent`, or `all`, where
-only `subagent` or `all` registers a spawnable subagent, plus `description`,
-`model` as `provider/model-id` inheriting the session model when omitted,
-`temperature`, `prompt`, and a `permission` object.
+only `subagent` or `all` registers a spawnable subagent. A new custom agent
+defaults to `primary`. V2's recognised keys are `description`, `mode`, `model`,
+`system`, `permissions`, `steps`, `hidden`, `color`, `disabled`, and `request`;
+the schema sets `additionalProperties: false`.
 
-`permission` maps lowercase capability keys to `allow`, `ask`, or `deny`. The
-documented keys include `read`, `edit`, `glob`, `grep`, `bash`, `task`, `skill`,
-`lsp`, `question`, `webfetch`, `websearch`, `external_directory`, and
-`doom_loop`. The `edit` key gates all file modification, covering the `write`,
-`edit`, and `patch` tools, so no separate `write` key exists. The older boolean
-`tools` object is deprecated as of v1.1.1 and merged into `permission`.
+#### One file is read as one generation
 
-The `permission` value has to be written as a block mapping, with each
-capability key on its own indented line. A one-line flow mapping such as
-`permission: { edit: deny }` reaches the configuration schema as a plain
-string, which satisfies neither branch of the schema's action-or-object union,
-so the whole configuration is rejected with `ConfigInvalidError` and the client
-refuses to start. The bundled agent documentation writes the markdown form with
-indented keys and the JSON form as a real object, and the schema accepts a bare
-`allow`, `ask`, or `deny` string only as a blanket action. Read off the desktop
-bundle's own documentation and configuration schema on 28 October 2026 against
-desktop 1.19.5, which produced that error on a flow mapping.
+V2 decides an agent file's format by its keys, not by a version marker. A file
+carrying any of `permissions`, `request`, `system`, or `disabled` is read as V2,
+and any V1 field in that same file is then ignored with an
+`ignored unsupported agent fields` warning in the log. A file carrying only V1
+fields is still translated from V1. Mixing the two formats in one file therefore
+silently discards the V1 half rather than erroring, which is why a generated
+variant writes one generation's keys only.
 
-Unrecognised frontmatter is neither ignored nor rejected. The agents
-documentation states that any unrecognised option is passed through directly to
-the provider as a model option, so a stray `version:` or `effort:` arrives in the
-provider call as a bogus model parameter. That is why OpenCode always needs a
-generated variant rather than a shared multi-harness file.
+This was verified on 2.2.5 by deploying three files and reading the resolved
+rules back from the standalone server's `/api/agent`. A V1-only file and a
+V2-native file resolved to the same effective read-only policy, and a mixed file
+logged the warning and kept only its V2 half.
 
-A subagent's reasoning level follows its model. The task tool runs a spawned
+#### Permissions
+
+V2 replaced V1's `permission` object with an ordered `permissions` list of
+`action` / `resource` / `effect` rules. `effect` is `allow`, `deny`, or `ask`,
+and a rule matches by whole-value wildcards where `*` spans any character
+including `/` and `?` matches exactly one. Rules combine in order and **the last
+match wins**, so a broad rule is written first and its specific exceptions after
+it. Lower-priority configuration loads first, then global rules, then agent
+rules, so an agent rule overrides a broader global allow. When no rule matches
+the default is `ask`, and an operation touching several resources denies if any
+one resource denies.
+
+The action names changed with the schema. `shell` replaced `bash`, `subagent`
+replaced `task`, and `edit` gates `edit`, `write`, and `patch` alike, so no
+separate `write` action exists. The built-in actions are `read`, `edit`, `glob`,
+`grep`, `shell`, `subagent`, `skill`, `question`, `webfetch`, `websearch`,
+`experimental_image_generate`, `external_directory`, and `execute`, plus one
+`<server>_<tool>` action per MCP tool. `doom_loop` and `lsp` are not V2 Core
+permission actions.
+
+`execute` is the newest surface and it changes what a shell deny means. A deny on
+`execute` removes Code Mode and the tools reachable only through it, while tools
+nested inside Code Mode still enforce their own rules.
+
+#### Deprecated and dropped fields
+
+`temperature` is a V1 field with no V2 behaviour. V2 preserves the value but its
+session runner does not send it with model requests, so per-agent sampling
+belongs on a model variant instead. `name` is likewise not a V2 agent key,
+because the id is derived from the filename. V2 logs
+`ignored unsupported agent fields` for each key it drops, naming the file, so a
+deploy that emits a V1 key is visible in the log rather than silent.
+
+V1 `permission` maps onto the V2 list faithfully enough that both spellings
+resolve to the same policy on 2.2.5, but V1 frontmatter is deprecated. A file
+written for the long term carries `permissions`.
+
+#### Reasoning level
+
+A subagent's reasoning level follows its model. The subagent tool runs a spawned
 subagent on its definition's `model` when one is set and otherwise on the
 parent message's model, and it passes the parent's `variant` only in the second
 case, so a subagent without a model of its own inherits both the parent's model
 and its variant. A definition's own `variant` takes effect only beside a
-`model`, and the desktop client's resolver ignores a variant name the model does
-not offer. Both read off
+`model`, and the client's resolver ignores a variant name the model does not
+offer. Both read off
 the installed desktop bundle's task tool and configuration loader on
 27 October 2026, and the session store of a 26 October run showed every helper
 on the parent's `max` variant
 ([run observations](../raw/notes/auto-check-open-weight-run-observations-2026-10-27.md)).
 A model-agnostic helper therefore runs at whatever level the operator starts the
-session with.
+session with. V2 joins the pair in configuration as
+`model: provider/model#variant`.
 
 That level can starve a helper's answer. On 26 October 2026, five helper calls
 on `deepseek/deepseek-v4.1-flash` at `max` each ended with finish reason
@@ -178,21 +227,40 @@ has.
 ### Hooks
 
 There is no declarative hook configuration. A hook is a JavaScript or TypeScript
-plugin loaded from `.opencode/plugins/` or `~/.config/opencode/plugins/` at
-startup and run by OpenCode's embedded Bun runtime, so a local `.ts` plugin needs
-no npm publish and no build step. The plugin exports an async function returning
-a hooks object; `tool.execute.before` fires before a tool runs, may mutate the
-arguments, and aborts by throwing.
+plugin run by OpenCode's embedded Bun runtime, loaded from `.opencode/plugins/`
+or `~/.config/opencode/plugins/` at startup, so a local `.ts` plugin needs no npm
+publish and no build step. The V2 loader discovers direct `.ts` and `.js` files
+and immediate package directories under a `plugins/` directory. A configured
+local plugin path must name a directory; a path to a single file is skipped.
 
-Three limits are worth encoding. `tool.execute.before` does not intercept tool
-calls made by task-tool subagents (issue #5894), so a before-hook guard is
-bypassable by delegation. The `permission.ask` plugin hook is defined but never
-fired (issue #7006). Tool names are lowercase, `edit`, `write`, `bash`, with no
-`apply_patch`.
+V1's plugin contract does not run in V2. V1 exported an async function returning
+a hooks object and blocked by throwing from `tool.execute.before`. V2 registers
+hooks on a domain through a setup context instead, and one package can serve both
+generations by default-exporting an object with a V1 `server()` and a V2
+`setup()`. V2 reads the default export's id and setup.
 
-An `experimental.chat.system.transform` hook fires on the assembled system array
-and lets a plugin mutate it in place. It carries `experimental` in its own name,
-so any dependency on it should be pinned to a tested version.
+The V2 hook domains are `session` (`prompt`, `context`, `compaction`, `retry`,
+and native HTTP), `permission` (`evaluate`), `shell` (`create.before`), and
+`tool` (`execute.before`, `execute.after`). `ctx.tool.hook("execute.before")`
+sees the tool name and input before execution; `ctx.shell.hook("create.before")`
+sees the command, cwd, timeout, shell, and environment before a shell call runs.
+
+`permission.evaluate` is the better fit for a policy that inspects a path or
+command. It runs after configured rules are evaluated and before the action or a
+prompt, and it can set `effect` to `allow`, `ask`, or `deny` plus a `message`.
+One asymmetry governs the design: the hook runs for `allow` and `ask` decisions
+but **an explicit configured `deny` is final and never invokes the hook**. A
+guard that must see every attempt therefore starts from an `ask` or `allow` rule
+rather than a `deny`.
+
+Three limits carry over from V1 and are worth encoding. Tool names are lowercase,
+`edit`, `write`, `bash`, with no `apply_patch`. A before-hook guard remains
+bypassable by delegation wherever the host does not run hooks inside spawned
+subagents. And an `experimental`-named surface should be pinned to a tested
+version.
+
+The trust proposition differs from a Markdown or JSON component in kind, not
+degree: a hook here is executable code with the plugin's full runtime reach.
 
 ## Relationships to other entities
 
