@@ -236,7 +236,17 @@ files.
 - **`task_fix/`**: Pattern A. The skill drives the base `task` skill's
   scripts, covered under `task/script_tests/`, so `script_tests/run.sh` here
   tests the grader instead, grading staged fixtures against chosen responses,
-  plus the eval runner's stop on a failed or empty stage (no `run_all.sh`). Four staged
+  plus the eval runner's stop on a failed or empty stage. `evals/test_run.py`
+  pins the parallel surface: `--workers` defaults to 4, ids come from
+  `evals.json` in file order, the run root is `tests/task_fix/workspace`,
+  `timing.json` carries the fields the measurement reads, and `_execute`
+  dispatches jobs through `tests/lib/eval_runner.run_jobs`; it also checks the
+  runner's stop on a failed or empty stage, and a hermetic host-guard case runs
+  two real jobs against a temporary host mirror and proves overlapping
+  sandbox-only work leaves its `tasks/` tree untouched while a planted newer
+  host file carrying one eval's fixture name fails that eval. There is no
+  `run_all.sh`, so run `bash tests/task_fix/script_tests/run.sh` and
+  `python3 tests/task_fix/evals/test_run.py` directly. Four staged
   evals over the base `<lint>` **Repeated-link react protocol** as the inline
   `task_fix` path applies it: `regroup_live_skip_archived` (gather the live
   account, leave the archived body quiet), `regroup_state_and_edit_site` (a reference
