@@ -1199,11 +1199,15 @@ def _unresolved_fragment_in_set(
     fragment itself cannot be placed. When everything before that variable
     lies inside the deployment, the fragment names a deployed path and stays
     in set; a vendor-layout path whose prefix is unknown or outside the roots
-    still fails closed.
+    still fails closed. Text after the variable that carries a ``..`` segment
+    climbs back out of the deployment, so that fragment fails closed too.
     """
 
     prefix = _unresolved_prefix(path)
     if not prefix or "/" not in prefix:
+        return False
+    match = _UNEXPANDED_RE.search(path)
+    if match and ".." in path[match.start():].split("/"):
         return False
     resolved = _resolve_worker_path(prefix, base)
     return any(_is_under(resolved, root) for root in roots)

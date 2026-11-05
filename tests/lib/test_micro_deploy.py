@@ -983,9 +983,15 @@ def test_classifier_cases() -> None:
             "unexpanded fragment inside the sandbox project stays in set",
             not flagged(str(proj / ".cursor/skills/wiki/$f")),
         )
+        # The same in-set prefix followed by a climb names a path outside the
+        # deployment, so the fragment fails closed rather than staying in set.
+        check(
+            "unexpanded fragment whose tail climbs out of the roots fails closed",
+            flagged(str(home / ".cursor/skills/wiki/$f/../../../etc/.claude/skills/x/SKILL.md")),
+        )
         check(
             "unexpanded vendor path outside the roots still fails closed",
-            flagged("$D/.claude/skills/x/SKILL.md"),
+            flagged("/elsewhere/vendor/$D/.claude/skills/x/SKILL.md"),
         )
         check(
             "grok skill directory outside the roots is out of set",
