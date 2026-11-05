@@ -2,9 +2,11 @@
 description: Run guardrail_audit evals at default 4 workers through the shared helper, derive ids from evals.json, and prove isolation with a Cursor default run.
 scope: tests/guardrail_audit/evals
 created: 2026-10-04T22:11:10
-updated: 2026-11-02T22:38:49
-status: ready
+updated: 2026-11-05T23:29:16
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize the guardrail_audit behavioral evals at default four workers
@@ -25,7 +27,7 @@ proven concurrent evals yet." Each eval already stages its own sandbox through
 byte-identity plus response markers, so they share no TMPDIR scan with
 `git_commit`.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
 
 ## Approach
 

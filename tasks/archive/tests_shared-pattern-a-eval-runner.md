@@ -54,7 +54,7 @@ Live siblings consume this helper rather than inventing a second pool:
 - [task_fix parallel evals](tests_task-fix-parallel-evals.md)
 - [task_auto_check parallel evals](tests_task-auto-check-parallel-evals.md)
 - [agent_spinner parallel evals](../tests_agent-spinner-parallel-evals.md)
-- [guardrail_audit parallel evals](../tests_guardrail-audit-parallel-evals.md)
+- [guardrail_audit parallel evals](tests_guardrail-audit-parallel-evals.md)
 - [skill_doctor parallel evals](../tests_skill-doctor-parallel-evals.md)
 - [wiki layer-2 runner dedup](../tests_wiki-layer2-runner-dedup.md)
 - [language_humanizer shared pool](../tests_language-humanizer-shared-pool.md)

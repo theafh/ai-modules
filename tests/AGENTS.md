@@ -203,7 +203,7 @@ are `tests/task_auto_check/evals/run.py`, `tests/task/evals/run.py`,
 `tests/task_create/evals/run.py`, `tests/task_fix/evals/run.py`,
 `tests/git_checkout/evals/run.py`,
 `tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`,
-`tests/git_review/evals/run.py`, and
+`tests/git_review/evals/run.py`, `tests/guardrail_audit/evals/run.py`, and
 `tests/git_auto_review/evals/run.py`. `task_auto_check` runs its serial
 nested-loop set, the list above, one job at a time after the isolated pool.
 `tests/task/evals/run.py` runs its Approach serial nested-loop set
@@ -253,8 +253,8 @@ wire them onto `eval_runner` (plus permanent isolation exceptions):
 - `agent_spinner` brackets each eval with a host-checkout `git status`, which
   sees every overlapping eval's changes, so it stays serial until its guard
   compares only the names each eval owns.
-- `guardrail_audit`, `skill_doctor` — still serial; no isolation sweep
-  has proven concurrent evals yet.
+- `skill_doctor` — still serial; no isolation sweep has proven concurrent
+  evals yet.
 
 Do not put this default in `TESTING.md`. That file is methodology.
 Operator knobs live in this file and its twin guide, plus the runner

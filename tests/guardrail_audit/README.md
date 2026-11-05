@@ -33,3 +33,8 @@ tests/guardrail_audit/
   checked when a `response.txt` is supplied. Sandbox git is pinned with
   `GIT_DIR` / `GIT_WORK_TREE`; a blocked or failed `git init` aborts
   instead of walking up to the host repo.
+- **workers**: the runner derives its default id set from `evals.json` and
+  runs through `tests/lib/eval_runner` at `--workers` (default 4), each job
+  with its own `TMPDIR`. Every eval stages its own sandbox root and
+  `grade.sh` compares only that sandbox's staged tree, so overlapping jobs
+  stay isolated. Run output lands under `tests/guardrail_audit/workspace/`.

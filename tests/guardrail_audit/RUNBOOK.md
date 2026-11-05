@@ -19,10 +19,19 @@ to this repo. That parent-walk is what produced the accidental
 `stage presence_gate` host commit.
 
 ```bash
-python3 tests/guardrail_audit/evals/run.py                 # all six
+python3 tests/guardrail_audit/evals/run.py                 # all six, 4 workers
 python3 tests/guardrail_audit/evals/run.py doc_vs_doc      # one
 python3 tests/guardrail_audit/evals/run.py --force         # bypass cache
+python3 tests/guardrail_audit/evals/run.py --workers 1     # serialize
 ```
+
+The default id set comes from `evals.json`; the runner stages and grades
+through `tests/lib/eval_runner` at `--workers` (default 4). Each job gets
+its own `TMPDIR` and its own sandbox root, and `grade.sh` compares only that
+sandbox's staged tree. Run directories land under
+`tests/guardrail_audit/workspace/run-<timestamp>-<pid>/`; each uncached
+eval's `timing.json` records `started_at` and `ended_at` beside
+`duration_s`.
 
 Manual three-phase path:
 
