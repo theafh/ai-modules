@@ -21,7 +21,7 @@ set -euo pipefail
 #
 # Features:
 #   --global         Deploy into global config dirs (explicit mode)
-#   --type TYPES     Filter by artifact type (command,skill,agent,hook,style)
+#   --type TYPES     Filter by artifact type (command,skill,agent,hook,style,plugin)
 #   --target TARGETS Filter by deploy target (vscode,claude,cursor,codex,antigravity,opencode)
 #   --only NAMES     Deploy exactly the named artefacts (comma-separated name
 #                    fields from discover_artifacts: skill directory basename,
@@ -100,7 +100,7 @@ pass --global explicitly.
 Options:
   --global          Deploy into global config dirs. This is the previous default
                     behavior of running the script with no arguments.
-  --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook,style.
+  --type TYPES      Comma-separated artifact types to deploy: command,skill,agent,hook,style,plugin.
                     Requires --global or --project-dir unless used with --uninstall
                     or --update.
   --target TARGETS  Comma-separated deploy targets: vscode,claude,cursor,codex,antigravity,opencode
@@ -250,6 +250,7 @@ if [[ "$REPO_ROOT" == "/" ]]; then
 fi
 
 PLUGINS_ROOT="${REPO_ROOT}/plugins"
+HARNESS_PLUGINS_ROOT="${REPO_ROOT}/harness-plugins"
 STYLES_ROOT="${REPO_ROOT}/styles"
 
 # ---------------------------------------------------------------------------
@@ -608,7 +609,7 @@ get_matching_replacements() {
 # ---------------------------------------------------------------------------
 # Validate flags
 # ---------------------------------------------------------------------------
-VALID_TYPES="command,skill,agent,hook,style"
+VALID_TYPES="command,skill,agent,hook,style,plugin"
 VALID_TARGETS="vscode,claude,cursor,codex,antigravity,opencode"
 
 if [[ -n "$TYPE_FILTER" ]]; then
@@ -750,13 +751,16 @@ target_is_active() {
 }
 
 # ---------------------------------------------------------------------------
-# Autodiscovery from two roots
+# Autodiscovery from three roots
 #
 # 1. plugins/<plugin>/<asset-folder>/ where the asset-folder name
 #    (agents/, commands/, skills/, hooks/) determines the artifact type.
 #    For skills: each subdirectory containing SKILL.md is one skill artifact.
 #    For others: each file in the folder is one artifact.
-# 2. repo-root styles/ — each top-level *.md file is one style artifact.
+# 2. harness-plugins/<harness>/ — each immediate subdirectory is one plugin
+#    artifact, a self-contained package the harness loads as a plugin
+#    directory. The type is "plugin".
+# 3. repo-root styles/ — each top-level *.md file is one style artifact.
 # ---------------------------------------------------------------------------
 discover_artifacts() {
   local discovered=()
@@ -802,6 +806,32 @@ discover_artifacts() {
             discovered+=("${name_no_ext}|${art_type}|${rel_path}")
           done
         fi
+      done
+    done
+  fi
+
+  # Harness plugin packages — each immediate subdirectory of a harness
+  # directory is one plugin artifact, deployed as a whole package directory.
+  #
+  # A subdirectory counts as a plugin only when it carries a package manifest.
+  # That is what makes it an installable package rather than a vendor tree: a
+  # `node_modules` directory sits beside the plugins and must never be
+  # discovered as one.
+  if matches_filter "plugin" "$TYPE_FILTER" && [[ -d "$HARNESS_PLUGINS_ROOT" ]]; then
+    local harness_dir
+    for harness_dir in "$HARNESS_PLUGINS_ROOT"/*/; do
+      [[ -d "$harness_dir" ]] || continue
+      local harness_name
+      harness_name="$(basename "$harness_dir")"
+      local plugin_dir
+      for plugin_dir in "$harness_dir"*/; do
+        [[ -d "$plugin_dir" ]] || continue
+        local plugin_bname
+        plugin_bname="$(basename "$plugin_dir")"
+        [[ "$plugin_bname" == .* ]] && continue
+        [[ -f "${plugin_dir}package.json" ]] || continue
+        local rel_path="harness-plugins/${harness_name}/${plugin_bname}"
+        discovered+=("${plugin_bname}|plugin|${rel_path}")
       done
     done
   fi
@@ -926,6 +956,26 @@ prune_python_bytecode() {
 
   find "$target" -type d -name '__pycache__' -prune -exec rm -rf {} +
   find "$target" -type f -name '*.pyc' -exec rm -f {} +
+}
+
+# ---------------------------------------------------------------------------
+# Strip a vendored dependency tree from a freshly copied plugin package.
+#
+# A plugin package is copied as a whole directory, so a `node_modules` tree
+# left behind by a local `bun install` would travel into the plugin discovery
+# root with it. The deployed copy must not carry one: the harness supplies the
+# plugin API from its own runtime, so the deployed package resolves the same
+# modules with no dependency tree of its own.
+#
+# Pruning also keeps a later `replace:` rule from walking every file of a
+# dependency tree, which `apply_replacements_to_path` would otherwise do.
+# ---------------------------------------------------------------------------
+prune_plugin_vendor_tree() {
+  local target="$1"
+
+  [[ -d "$target" ]] || return 0
+
+  find "$target" -type d -name 'node_modules' -prune -exec rm -rf {} +
 }
 
 copy_path_with_replacements() {
@@ -2251,6 +2301,20 @@ install_for_app() {
           ;;
         *)
           info "skip" "[$name] Hook deployment not implemented for $app_id"
+          ;;
+      esac
+      ;;
+    plugin)
+      case "$app_id" in
+        opencode)
+          local dest_dir="${app_dir}/plugins"
+          ensure_dir "$dest_dir"
+          local dest_path="${dest_dir}/${name}"
+          copy_path_with_replacements "$source_abs" "$dest_path" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
+          prune_plugin_vendor_tree "$dest_path"
+          ;;
+        *)
+          info "skip" "[$name] plugin deployment not implemented for $app_id"
           ;;
       esac
       ;;

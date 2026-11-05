@@ -290,6 +290,112 @@ assert_no_bytecode "$DIRTY_DEST"
 [[ ! -e "$DIRTY_DEST/scripts/stale.pyc" ]] || fail "redeploy left a stale .pyc in place"
 
 # ---------------------------------------------------------------------------
+# Harness plugin packages deploy as whole directories, to OpenCode only.
+#
+# A plugin artifact is a self-contained package directory under
+# harness-plugins/<harness>/<name>/, not a file in an asset folder. It deploys
+# as one directory into the OpenCode plugin discovery root and is skipped for
+# every other target, because only OpenCode has a plugin directory concept.
+# ---------------------------------------------------------------------------
+PLUGIN_PROJECT_DIR="${SCRATCH}/plugin-project"
+PLUGIN_HARNESS_ROOT="${REPO_ROOT}/harness-plugins/__plugin_deploy_test"
+PLUGIN_SRC="${PLUGIN_HARNESS_ROOT}/__plugin_fixture"
+# The fixture root sits at a fixed repo path rather than under SCRATCH, so an
+# earlier aborted run can leave a tree behind. Clear it before writing, so a
+# leftover vendor tree or renamed component cannot fail this run for the wrong
+# reason.
+rm -rf "$PLUGIN_HARNESS_ROOT"
+mkdir -p "$PLUGIN_SRC/src" "$PLUGIN_SRC/test" "$PLUGIN_PROJECT_DIR"
+
+cat > "$PLUGIN_SRC/package.json" <<'PKG'
+{
+  "name": "opencode-plugin-fixture",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": { ".": "./index.ts" }
+}
+PKG
+cat > "$PLUGIN_SRC/index.ts" <<'PLUGIN'
+export { default } from "./src/index.js"
+PLUGIN
+cat > "$PLUGIN_SRC/src/index.ts" <<'PLUGIN'
+export default { id: "__plugin_fixture" }
+PLUGIN
+cat > "$PLUGIN_SRC/README.md" <<'PLUGIN'
+# __plugin_fixture
+
+This package exists only while the deployment plugin regression test runs.
+PLUGIN
+
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PLUGIN_PROJECT_DIR" --target opencode --type plugin >/dev/null
+
+PLUGIN_DEST="$PLUGIN_PROJECT_DIR/.opencode/plugins/__plugin_fixture"
+assert_dir "$PLUGIN_DEST"
+assert_file "$PLUGIN_DEST/package.json"
+assert_file "$PLUGIN_DEST/index.ts"
+assert_file "$PLUGIN_DEST/src/index.ts"
+assert_file "$PLUGIN_DEST/README.md"
+
+# The deployed package is byte-identical to its source: a plugin directory is
+# copied wholesale, with no per-file transform.
+diff <(snapshot_tree "$PLUGIN_SRC") <(snapshot_tree "$PLUGIN_DEST") ||
+  fail "deployed plugin package diverged from its source"
+
+# Plugin discovery is separate from the asset-folder roots, so a plugin
+# package never leaks into the skill, agent, command, or hook deploys.
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PLUGIN_PROJECT_DIR" --target opencode --type skill >/dev/null
+[[ ! -e "$PLUGIN_PROJECT_DIR/.opencode/skills/__plugin_fixture" ]] ||
+  fail "plugin package leaked into the skill deploy"
+
+# The log records one entry for the directory, and --uninstall removes it.
+printf '%s\t%s\t%s\t%s\n' "$PLUGIN_DEST" opencode plugin "$PLUGIN_SRC" >> "$DEPLOY_LOG"
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PLUGIN_PROJECT_DIR" --uninstall >/dev/null
+[[ ! -e "$PLUGIN_DEST" ]] || fail "--uninstall left the deployed plugin directory in place"
+
+# A vendor tree beside the plugins is not a plugin. Only a directory carrying a
+# package manifest is discovered, so `bun install` leaving node_modules under
+# the harness root cannot turn a dependency tree into a deployed artifact.
+mkdir -p "${PLUGIN_HARNESS_ROOT}/node_modules/some-dependency"
+printf '{"name":"some-dependency"}\n' > "${PLUGIN_HARNESS_ROOT}/node_modules/some-dependency/package.json"
+PLUGIN_DISCOVERY="$("$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PLUGIN_PROJECT_DIR" --target opencode --type plugin --dry-run)"
+[[ "$PLUGIN_DISCOVERY" != *"node_modules"* ]] ||
+  fail "a vendor tree under the harness root was discovered as a plugin"
+
+# A vendor tree inside a plugin package never reaches the deployed copy: the
+# harness supplies the plugin API, so the package needs no dependencies of its
+# own at the target.
+mkdir -p "$PLUGIN_SRC/node_modules/inner-dependency"
+printf '{"name":"inner-dependency"}\n' > "$PLUGIN_SRC/node_modules/inner-dependency/package.json"
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PLUGIN_PROJECT_DIR" --target opencode --type plugin >/dev/null
+[[ ! -e "$PLUGIN_DEST/node_modules" ]] ||
+  fail "a plugin's vendor tree was copied into the plugin discovery root"
+assert_file "$PLUGIN_DEST/package.json"
+rm -rf "$PLUGIN_SRC/node_modules" "${PLUGIN_HARNESS_ROOT}/node_modules"
+
+# A redeploy replaces the package rather than merging over it, so a component
+# removed or renamed upstream disappears from the target.
+printf 'stale\n' > "$PLUGIN_SRC/src/obsolete.ts"
+mkdir -p "$PLUGIN_SRC/legacy"
+printf 'stale\n' > "$PLUGIN_SRC/legacy/old.ts"
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PLUGIN_PROJECT_DIR" --target opencode --type plugin >/dev/null
+assert_file "$PLUGIN_DEST/src/obsolete.ts"
+
+rm -f "$PLUGIN_SRC/src/obsolete.ts"
+mv "$PLUGIN_SRC/legacy" "$PLUGIN_SRC/renamed"
+"$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PLUGIN_PROJECT_DIR" --target opencode --type plugin >/dev/null
+[[ ! -e "$PLUGIN_DEST/src/obsolete.ts" ]] ||
+  fail "a file removed upstream survived the redeploy"
+[[ ! -e "$PLUGIN_DEST/legacy" ]] ||
+  fail "a directory renamed upstream survived the redeploy"
+assert_file "$PLUGIN_DEST/renamed/old.ts"
+
+# The package on the target still matches its source exactly after the redeploy.
+diff <(snapshot_tree "$PLUGIN_SRC") <(snapshot_tree "$PLUGIN_DEST") ||
+  fail "redeployed plugin package diverged from its source"
+
+rm -rf "$PLUGIN_HARNESS_ROOT" "$PLUGIN_PROJECT_DIR"
+
+# ---------------------------------------------------------------------------
 # Backup copy skips sockets and FIFOs instead of aborting.
 # ---------------------------------------------------------------------------
 BACKUP_HOME="${SCRATCH}/backup-home"
@@ -907,6 +1013,7 @@ scope_helper_assert "repeated suffix" "$SCOPE_P1/.claude" \
 printf 'OpenCode deployment regression passed\n'
 printf 'Antigravity deployment regression passed\n'
 printf 'Python bytecode exclusion regression passed\n'
+printf 'Harness plugin directory deploy regression passed\n'
 printf 'Backup skip of sockets and FIFOs regression passed\n'
 printf 'Backup vanished-file rsync exit handling regression passed\n'
 printf 'Startup gate for jq, perl, and rsync regression passed\n'

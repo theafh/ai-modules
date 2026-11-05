@@ -90,6 +90,18 @@ human operator explicitly asks for a Claude run, which happens from time to
 time; an agent never runs Claude tests in the background. Pin the worker for a
 run so results stay comparable, and keep grading on the model-free grader.
 
+### Harness plugin packages
+
+`harness-plugins/` holds Bun packages, and Bun is their own runner: `bun test`
+for the unit tests and `tsc --noEmit` for type checking. That toolchain stays
+inside the plugin packages rather than joining the repository's floor, so
+`make test` keeps running on Make, shell, and Python alone and a machine
+without Bun still reaches a clean gate. `make plugin-test` is the one entry
+point: it installs from the committed lockfile, runs both packages' unit tests,
+and type-checks both. Run it when a change touches a plugin package, and treat
+the deployment-side behaviour (discovery, the copy, the log entry, uninstall)
+as covered by `tests/deployment/`, which needs no Bun at all.
+
 ## Coverage Expectations
 
 A change to a shipped component lands with the **deterministic** surfaces that

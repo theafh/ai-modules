@@ -1,0 +1,14 @@
+{
+  "name": "opencode-v2-plugins",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "request-concurrency-queue",
+    "slash-skill-autocomplete"
+  ],
+  "scripts": {
+    "test": "bun run --cwd request-concurrency-queue test && bun run --cwd slash-skill-autocomplete test",
+    "typecheck": "bun run --cwd request-concurrency-queue typecheck && bun run --cwd slash-skill-autocomplete typecheck"
+  }
+}

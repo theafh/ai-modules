@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-11-03
+updated: 2026-11-05
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -29,7 +29,7 @@ is the path that does.
 
 ## Current state of knowledge
 
-### Discovery has two roots
+### Discovery has three roots
 
 Most artefacts live under `plugins/<plugin>/<asset-folder>/`, and the folder name
 selects the type: `agents/` and `commands/` take each top-level Markdown file,
@@ -46,7 +46,21 @@ empty source. The instruction files pin the word down, since "command" otherwise
 reads as a shell command or any slash-invocable skill, which makes the deprecation
 sound broader than it is.
 
-The second root is repo-root `styles/`, where each top-level Markdown file is one
+The second root is `harness-plugins/<harness>/`, where each immediate
+subdirectory carrying a `package.json` is one artefact of the `plugin` type: a
+self-contained package that a harness loads as a plugin rather than as a set of
+asset files. The manifest is the membership test, so a `node_modules` tree
+beside the packages is never discovered as one. Discovery treats the package as
+one unit, so a plugin is copied whole and keeps its own `package.json`, `src/`,
+`test/`, and README. This root exists because a harness plugin's unit of
+distribution is the package, not the individual asset, and because plugin
+packages carry their own build and test story that the asset folders have no
+place for. Today only OpenCode has a plugin directory concept, so the type
+deploys there and is skipped for every other target. Why a deployed OpenCode
+plugin directory needs no `node_modules`, and how its `setup` receives
+configuration, is on [OpenCode plugin loading](opencode-plugin-loading.md).
+
+The third root is repo-root `styles/`, where each top-level Markdown file is one
 artefact of the `style` type. It is the first
 asset source outside the plugin tree, which made it a structural change rather
 than a configuration one, and it is why the type name and the discovery root

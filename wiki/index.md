@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-11-03 | Total pages: 36
+> Last updated: 2026-11-05 | Total pages: 39
 
 ## Entities
 
@@ -32,6 +32,8 @@
 - [Interpreter and tool-path portability](concepts/interpreter-and-tool-path-portability.md): stock macOS bash 3.2 as the bundled-script floor, the licence reason it stays, the stock python3, the login-shell PATH trap, the constructs verified to fail on that build, the empty-array abort and the EXIT trap that hides a `set -u` abort's status there, and the zsh constructs and special parameters (`status`, `path`) that misfire in commands and snippets an agent runs directly.
 - [Orchestration failure families](concepts/orchestration-failure-families.md): the run evidence behind the recipes proposed for agent_spinner, with 23 failure families and their counts, the base rates, a register of 16 cases under neutral labels, the mechanisms observed together, the families seen in the cases each recipe rests on, and a map from each run-protocol step and check to the families it answers.
 - [Output style delivery design](concepts/output-style-delivery-design.md): the decision record behind the `styles/` source, the per-target delivery matrix including Cursor's project-only `.mdc` write, the marked-block write, and the scope rejections.
+- [OpenCode plugin loading](concepts/opencode-plugin-loading.md): the two discovery roots and the `plugins` array beside them, the server part as the shared surface across TUI and desktop, options arriving only through the `plugins` array, the directory-resolution failure mode under Bun, and why a deployed plugin directory needs no `node_modules`.
+- [Request concurrency queue](concepts/request-concurrency-queue.md): one FIFO semaphore per provider, request-level rather than session-level counting, the `http.request` / `http.response` bracket with its retry and idle fallbacks, the no-timeout rule, and the per-provider config precedence.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md): why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md): naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.
@@ -57,5 +59,6 @@
 - [Deciding where knowledge belongs](procedures/deciding-where-knowledge-belongs.md): the three genres, their three homes, and the travels-or-not test that routes between them.
 - [Isolating Cursor from foreign harness config](procedures/isolating-cursor-from-foreign-config.md): the one settings toggle, how to confirm it in the state database, and what it takes away with the skills.
 - [Isolating OpenCode from foreign harness config](procedures/isolating-opencode-from-foreign-config.md): picking the narrowest variable, and the three placements that reach a GUI application when a shell profile cannot.
+- [Install a local OpenCode plugin](procedures/install-a-local-opencode-plugin.md): deploying a plugin package into the OpenCode plugin discovery root, the config-file channel a deployed directory needs, the restart requirement, and the manual `.ts` entry fallback.
 - [Isolating VS Code from foreign harness config](procedures/isolating-vs-code-from-foreign-config.md): per-path location maps, the agent switch, and the separate lever for the aggregated session list.
 - [Splitting a shipped skill](procedures/splitting-a-shipped-skill.md): move the reference material out, audit the split in three directions, and repair the inbound references.

@@ -1335,3 +1335,35 @@ pre-existing, and the size infos stay advisory; the one on
 - concepts/agent-definition-portability.md (the tolerance section's heading now
   reads three categories with occupancy marked separately, matching the three
   categories and the "third category" prose the body already defines)
+
+## [2026-11-05 20:14] import | OpenCode 2 plugin knowledge
+
+- concepts/opencode-plugin-loading.md (new page: the two discovery roots and
+  the `plugins` array beside them, the server part as the shared surface across
+  TUI and desktop, options arriving only through the `plugins` array, the
+  directory-resolution failure mode under Bun, and why a deployed plugin
+  directory needs no `node_modules`)
+- concepts/request-concurrency-queue.md (new page: one FIFO semaphore per
+  provider, request-level rather than session-level counting, the
+  `http.request` / `http.response` bracket with its retry and idle fallbacks,
+  the no-timeout rule, and the per-provider config precedence)
+- procedures/install-a-local-opencode-plugin.md (new page: deploying a plugin
+  package into the OpenCode plugin discovery root, the config-file channel a
+  deployed directory needs, the restart requirement, and the manual `.ts`
+  entry fallback)
+- concepts/deployment-model.md (the discovery section becomes three roots and
+  gains the `harness-plugins/<harness>/` plugin package root with its
+  one-unit-per-package rule and its OpenCode-only target; the page's `updated`
+  date moves to 2026-11-05)
+- index.md (the two concept pages and the procedure page are listed, and Last
+  updated moves to 2026-11-05)
+
+## [2026-11-05 20:58] update | Name the restart command in the plugin install procedure
+
+- procedures/install-a-local-opencode-plugin.md (the restart step and its
+  pitfall now name `opencode service restart`, and the confirmation step names
+  `opencode plugin list` and states that it reports the service's in-memory
+  plugin set rather than rescanning the disk, so a plugin missing from it after
+  a deploy reads as an unrestarted service first)
+- concepts/deployment-model.md (the plugin root's membership test is the
+  package manifest, so a vendor tree beside the packages is not discovered)

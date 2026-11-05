@@ -90,6 +90,8 @@ ai-modules/
 │           └── language_humanizer/
 ├── styles/                  # tracked output styles (Claude format; deployed, not a plugin component)
 │   └── natural-language.md
+├── harness-plugins/         # harness plugin packages, one self-contained package per directory
+│   └── opencode_v2/         # OpenCode 2 plugins (deployed as plugin directories)
 ├── deployment/              # deployment script for installing artefacts globally or per-project
 │   ├── deployment.sh
 │   ├── deployment.conf
@@ -190,8 +192,10 @@ the bundled Claude Code marketplace; copy it into vendor config dirs globally
 with `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Google
 Antigravity, OpenCode); copy it into a single repo's local config with
 `--project-dir`; or use it in place from a checkout. The deployment script finds
-artefacts under two roots: the plugin layout (`plugins/<plugin>/<asset-folder>/`)
-and repo-root `styles/` for the `style` type. A per-tool `style:<name>` line in
+artefacts under three roots: the plugin layout (`plugins/<plugin>/<asset-folder>/`),
+`harness-plugins/<harness>/` for the `plugin` type (one self-contained package
+per directory), and repo-root `styles/` for the `style` type. A per-tool
+`style:<name>` line in
 `deployment/deployment.conf` names the active style; Claude deploy copies that
 file into `output-styles/` and merges `outputStyle` into settings. Uninstall of
 a merged settings key restores the first-recorded prior value (or deletes the

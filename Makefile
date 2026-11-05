@@ -6,11 +6,13 @@
 #   make uninstall                   remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 #   make clean                       remove managed deployment backups
 #   make test                        run every deterministic test surface
+#   make plugin-test                 run the OpenCode plugin unit tests and typecheck
 #   make lint                        report lint issues across md/json/sh
 #   make fix                         auto-fix lint issues where possible
 #   make help                        list targets
 #
 # Tooling required for lint/fix: markdownlint-cli, jq, shellcheck.
+# Tooling required for plugin-test: bun.
 
 .DEFAULT_GOAL := help
 
@@ -24,6 +26,7 @@
 # stays out of git scope and out of lint scope alike, sitting beside the
 # `tests/.gitignore` mirror the other prunes follow.
 EXCLUDE     := -path ./.git -prune -o \
+               -name node_modules -prune -o \
                -path './deployment/.deploy-backup-*' -prune -o \
                -name workspace -prune -o \
                -name scratch -prune -o \
@@ -44,7 +47,7 @@ SH_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.sh' -print)
 
 .PHONY: help \
         deploy global install update uninstall clean \
-        test \
+        test plugin-test \
         lint lint-md lint-json lint-sh \
         fix fix-md
 
@@ -68,6 +71,9 @@ clean: ## Remove managed deployment backups (--clear-backups).
 
 test: ## Run every deterministic test surface (tests/run_all.sh).
 	bash tests/run_all.sh
+
+plugin-test: ## Run the OpenCode plugin unit tests and typecheck (bun).
+	cd harness-plugins/opencode_v2 && bun install --frozen-lockfile && bun run test && bun run typecheck
 
 lint: ## Run all linters and report issues across md/json/sh.
 	@rc=0; \

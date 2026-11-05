@@ -17,6 +17,7 @@ plugins/<plugin>/
   README.md                       # plugin overview + skill list
   skills/<skill>/SKILL.md         # skill definition with YAML frontmatter
 styles/                           # tracked output styles (repo-root; not a plugin component)
+harness-plugins/<harness>/        # harness plugin packages (one self-contained package per directory)
 deployment/                       # deploy script + per-tool config
 tests/                            # regression harnesses (authored files tracked; run output gitignored)
 Makefile                          # task entry point
@@ -85,6 +86,49 @@ Task files stay agent-harness agnostic. When a task needs standing repo instruct
 1. Create `plugins/<new_plugin>/` with `.codex-plugin/plugin.json` (set `"skills": "./skills/"`), `.claude-plugin/plugin.json`, `README.md`, and a `skills/` directory.
 2. Register the plugin in the marketplace files under `plugins[]`.
 3. Update the root `README.md` layout tree and **Plugins** bullet list.
+
+A **harness plugin package** is a different artefact with a different layout:
+it lives at `harness-plugins/<harness>/<name>/` as one self-contained package
+with its own `package.json`, entry file, `src/`, `test/`, and README, and it is
+not registered in any marketplace. Follow **Harness plugin packages** below, add
+it to the harness workspace's `workspaces` list, and add a row to the harness
+README's plugin table. The deployer discovers it from its `package.json` and
+installs the package whole.
+
+## Harness plugin packages
+
+`harness-plugins/<harness>/` holds self-contained packages a harness loads as a
+plugin, separate from the `plugins/<plugin>/` asset layout above.
+
+- **Target the harness plugin API.** An OpenCode 2 plugin targets
+  `@opencode/plugin` and default-exports a server part built with
+  `Plugin.define({ id, setup })`.
+- **Keep the plugin ID identical to the package directory name.** The
+  directory name is the ID the harness resolves and the name the deploy log
+  records.
+- **Export the server part from the package root.** Every client reads the
+  server's command list, so the server part is the one surface that reaches
+  the terminal UI, the desktop app, and a headless run alike. Add a `./tui` or
+  `./gui-experimental` part only for something a single client alone can do.
+- **Keep the package root's `exports` pointing at the entry file**, so a
+  deployed directory resolves without the harness reading a subpath it cannot
+  find.
+- **Keep domain logic in its own module, apart from the hook wiring**, so it
+  tests as a data transform without the harness runtime.
+- **Use TypeScript in strict mode**, `bun test` for unit tests, and
+  `tsc --noEmit` for type checking.
+- **Keep Bun inside the plugin packages.** Bun is the plugin packages' own
+  runner and does not join the repository's toolchain floor: `make plugin-test`
+  runs both packages' tests and type checks, and `make test` stays on Make,
+  shell, and Python alone.
+- **Never log prompts, message content, API keys, or tool arguments.** Log
+  identifiers and counts, never the payload they describe.
+- **The request concurrency queue never times out.** A request waits until a
+  slot is released or the request is aborted.
+- **Release every acquired slot exactly once**, on response completion,
+  failure, retry, session idle, session deletion, or plugin disposal. A slot
+  released twice corrupts the count; a slot released never stalls the queue
+  behind it.
 
 ## Regression test harnesses
 

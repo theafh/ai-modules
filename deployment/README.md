@@ -62,6 +62,10 @@ Repo-relative paths for plugin artifacts (e.g. for `deployment.conf` rules and t
 
 The `style` type is discovered from repo-root `styles/`: each top-level `*.md` file is one style artifact, with repo-relative path `styles/<file>.md`. Styles are not plugin components and are not registered under any plugin's `output-styles/` folder.
 
+### Harness plugin packages
+
+The `plugin` type is discovered from `harness-plugins/<harness>/`: each immediate subdirectory is one plugin artifact, with repo-relative path `harness-plugins/<harness>/<name>`. A plugin artifact is a self-contained package the harness loads as a plugin directory rather than as a set of asset files, so it is copied whole, with no per-file transform. OpenCode is the only target with a plugin directory concept today, so the type deploys there and is skipped for every other target.
+
 The script walks up from its own location until it finds a directory containing a `plugins/` folder, so it works regardless of where it lives in the tree.
 
 ## Per-Tool Configuration (`deployment.conf`)
@@ -81,14 +85,14 @@ The current config disallows any path matching `*legacy*` for every target, so a
 
 The table below shows global-mode paths. Project-dir mode replaces `~` with `<project>/` and uses each IDE's native project-level path.
 
-| Target | Commands | Skills | Agents | Hooks | Styles |
-| --- | --- | --- | --- | --- | --- |
-| VS Code Copilot | `~/Library/Application Support/Code/User/prompts/<name>.prompt.md` (macOS) or `~/.config/Code/User/prompts/<name>.prompt.md` (Linux), copied | `~/.copilot/skills/<name>` copied | `~/.copilot/agents/<name>.agent.md`, frontmatter rewritten | `~/.copilot/hooks/<file>` copied | not yet |
-| Cursor | `~/.cursor/commands/<name>.md` copied | `~/.cursor/skills/<name>` copied | `~/.cursor/agents/<name>.md`, frontmatter rewritten | `~/.cursor/hooks.json` entry merge (from `cursor-hooks*.json`) and `~/.cursor/hooks/<file>` for shell scripts | project `.cursor/rules/<name>.mdc` with `alwaysApply: true`; `--global` has no injecting file write |
-| Claude Code | `~/.claude/commands/<name>.md` copied | `~/.claude/skills/<name>` copied | `~/.claude/agents/<name>.md`, frontmatter rewritten | `hooks` entries merged one by one into `~/.claude/settings.json` (from `claude-code-hooks*.json`); shell scripts copied to `~/.claude/hooks/<file>` | file copied to `~/.claude/output-styles/<name>.md`; `outputStyle` merged from `style:<name>` in `deployment.conf` |
-| OpenAI Codex | `~/.codex/prompts/<name>.md` copied | `~/.codex/skills/<name>` copied (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | `hooks` entries merged one by one into `~/.codex/hooks.json` (from `codex-custom-deploy-hooks.json`); shell scripts copied to `~/.codex/hooks/<file>` | not yet |
-| Antigravity | not deployed, since the repo ships no commands | fan-out copied to `~/.gemini/config/skills/<name>`, `~/.gemini/antigravity/skills/<name>`, and `~/.gemini/antigravity-cli/skills/<name>` | `~/.gemini/config/agents/<name>.md` generated with Antigravity frontmatter and tool-name mapping | `charter_guardrail` key merged into `~/.gemini/config/hooks.json`; shell scripts copied to `~/.gemini/config/hooks/<file>` | not yet |
-| OpenCode | `~/.config/opencode/commands/<name>.md` copied | `~/.config/opencode/skills/<name>` copied | `~/.config/opencode/agents/<name>.md` generated with OpenCode frontmatter and permission mapping | not implemented | not yet |
+| Target | Commands | Skills | Agents | Hooks | Styles | Plugins |
+| --- | --- | --- | --- | --- | --- | --- |
+| VS Code Copilot | `~/Library/Application Support/Code/User/prompts/<name>.prompt.md` (macOS) or `~/.config/Code/User/prompts/<name>.prompt.md` (Linux), copied | `~/.copilot/skills/<name>` copied | `~/.copilot/agents/<name>.agent.md`, frontmatter rewritten | `~/.copilot/hooks/<file>` copied | not yet | not deployed |
+| Cursor | `~/.cursor/commands/<name>.md` copied | `~/.cursor/skills/<name>` copied | `~/.cursor/agents/<name>.md`, frontmatter rewritten | `~/.cursor/hooks.json` entry merge (from `cursor-hooks*.json`) and `~/.cursor/hooks/<file>` for shell scripts | project `.cursor/rules/<name>.mdc` with `alwaysApply: true`; `--global` has no injecting file write | not deployed |
+| Claude Code | `~/.claude/commands/<name>.md` copied | `~/.claude/skills/<name>` copied | `~/.claude/agents/<name>.md`, frontmatter rewritten | `hooks` entries merged one by one into `~/.claude/settings.json` (from `claude-code-hooks*.json`); shell scripts copied to `~/.claude/hooks/<file>` | file copied to `~/.claude/output-styles/<name>.md`; `outputStyle` merged from `style:<name>` in `deployment.conf` | not deployed |
+| OpenAI Codex | `~/.codex/prompts/<name>.md` copied | `~/.codex/skills/<name>` copied (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | `hooks` entries merged one by one into `~/.codex/hooks.json` (from `codex-custom-deploy-hooks.json`); shell scripts copied to `~/.codex/hooks/<file>` | not yet | not deployed |
+| Antigravity | not deployed, since the repo ships no commands | fan-out copied to `~/.gemini/config/skills/<name>`, `~/.gemini/antigravity/skills/<name>`, and `~/.gemini/antigravity-cli/skills/<name>` | `~/.gemini/config/agents/<name>.md` generated with Antigravity frontmatter and tool-name mapping | `charter_guardrail` key merged into `~/.gemini/config/hooks.json`; shell scripts copied to `~/.gemini/config/hooks/<file>` | not yet | not deployed |
+| OpenCode | `~/.config/opencode/commands/<name>.md` copied | `~/.config/opencode/skills/<name>` copied | `~/.config/opencode/agents/<name>.md` generated with OpenCode frontmatter and permission mapping | not implemented | not yet | `~/.config/opencode/plugins/<name>` copied whole |
 
 Project-dir mode uses each tool's project path, including `<project>/.agents/` for Antigravity and `<project>/.opencode/` for OpenCode.
 

@@ -17,3 +17,6 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+
+# Bun/TypeScript — harness plugin packages
+harness-plugins/*/node_modules/

@@ -1,0 +1,26 @@
+{
+  "name": "opencode-slash-skill-autocomplete",
+  "version": "0.2.0",
+  "description": "Registers every OpenCode 2 skill as a /name command on the server, so the TUI, the desktop app, and `opencode run` all list it.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./server.ts"
+  },
+  "files": [
+    "server.ts",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode/plugin": "2.2.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.9.0"
+  }
+}
