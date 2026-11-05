@@ -1329,3 +1329,9 @@ pre-existing, and the size infos stay advisory; the one on
 - concepts/hook-surface-portability.md (OpenCode's V1 plugin contract is marked as replaced in V2, the signalling-contract paragraph drops the throw-based block, the guarantee paragraph gains `permission.evaluate`'s asymmetry and its subagent caveat, and the open questions name the V2 plugin contract as the dependency; the page's `updated` date moves to 2026-11-05)
 - concepts/deployment-model.md (the generated-formats passage names OpenCode's `permissions` rule list instead of its former permission object)
 - index.md (the SST OpenCode summary line names the V1-to-V2 frontmatter boundary and the ordered rule list instead of pass-through frontmatter)
+
+## [2026-11-05 17:42] update | count three tolerance categories in the portability heading
+
+- concepts/agent-definition-portability.md (the tolerance section's heading now
+  reads three categories with occupancy marked separately, matching the three
+  categories and the "third category" prose the body already defines)
