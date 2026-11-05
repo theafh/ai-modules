@@ -2,8 +2,8 @@
 description: "Release only the retried primary request's slot and stop gating auxiliary model requests, so a retry cannot free a sibling's slot and an auxiliary failure cannot stall the primary."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-05T22:29:54
-updated: 2026-11-05T22:29:54
-status: open
+updated: 2026-11-05T23:05:21
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -31,9 +31,10 @@ The README's Behavior section and `wiki/concepts/request-concurrency-queue.md` c
 ## Approach
 
 - In the `http.request` hook, return before acquiring unless `event.kind === "primary"`, so title, compaction, and generate requests never acquire or hold a slot. This is the deadlock-free rule the runtime supports: it gives no per-request failure signal for auxiliary requests, and a pre-response auxiliary failure otherwise holds a slot with no release path.
-- Keep an entry's `kind` and make the `retry` hook release only the session's primary entry for `event.model.providerID`. Keep the session idle, execution failure, deletion, interruption, and dispose releases as the fallback.
+- In the `http.response` hook, return before resolving an entry unless `event.kind === "primary"`, so an auxiliary response cannot fall through to `firstEntry(bySession.get(event.sessionID))` and release the session's primary slot while the primary body is still streaming. Keep that `firstEntry` fallback for primary responses, which covers a primary whose response arrives with a `Request` the hook did not record.
+- Keep an entry's `kind` and make the `retry` hook release only the session's oldest unreleased primary entry for `event.model.providerID`, so a retry frees the stale failed attempt and never a newer request's slot. Keep the session idle, execution failure, deletion, interruption, and dispose releases as the fallback.
 - Rewrite the README Behavior bullet and the wiki concept page so the gate reads as primary-request-only, naming auxiliary requests as outside the provider cap.
-- Extend `test/plugin.test.ts`: the `requestHook` helper passes `kind: "primary"` by default; add a title-bypass test, a retry test proving a second session's primary slot survives another session's retry, and a test that a title request acquires no slot at `maxConcurrency: 1`.
+- Extend `test/plugin.test.ts`: the `requestHook` and `responseHook` helpers pass `kind: "primary"` by default and accept a `kind` override; add a test that a title request acquires no slot at `maxConcurrency: 1`, a test that a title response arriving while a primary holds the slot leaves that slot held, and a retry test proving a second session's primary slot survives another session's retry.
 - Keep the queue's FIFO order and no-timeout behavior unchanged.
 
 **Out of scope:** Adding a queue timeout or revisiting the no-timeout decision; changing the OpenCode V2 plugin API or filing an upstream request for request identity on `SessionRetry`; the GUI status panel owned by `tasks/plugin_gui-concurrency-status-panel.md`.
@@ -41,7 +42,9 @@ The README's Behavior section and `wiki/concepts/request-concurrency-queue.md` c
 ## Acceptance
 
 - `rg -n 'event.kind !== "primary"' harness-plugins/opencode_v2/request-concurrency-queue/src/index.ts` matches, and a `kind: "title"` request acquires no slot at `maxConcurrency: 1` (unit test).
-- The `retry` hook releases only the retrying session's primary entry: with `maxConcurrency: 2`, a primary for session A and a primary for session B hold both slots, a retry on session A lets a new request acquire, and a further request still queues behind session B's held slot (unit test).
+- The `retry` hook releases only the retrying session's primary entry (a regression guard, since the current `releaseSession` already filters by session): with `maxConcurrency: 2`, a primary for session A and a primary for session B hold both slots, a retry on session A lets a new request acquire, a further request still queues behind session B's held slot, and ending session B's response body lets that queued request acquire, proving the retry released session A's slot and left session B's held (unit test).
+- The `retry` hook releases the older of two primary entries for one session and provider: with `maxConcurrency: 2`, a session's two primary entries hold both slots, a retry on that session lets a queued request from another session acquire, a further request still queues behind the session's newer entry, and ending that newer entry's response body lets the further request acquire, proving the retry left the newer entry held (unit test).
 - A title request that fails before its response headers does not block a primary request: with `maxConcurrency: 1`, the title event acquires no slot and the next primary acquires immediately (unit test).
-- `harness-plugins/opencode_v2/request-concurrency-queue/README.md`'s Behavior section states that primary model requests acquire a slot and auxiliary requests do not, and no longer says "Every model request ... acquires a slot"; `wiki/concepts/request-concurrency-queue.md` carries the same statement.
+- A title response arriving while a primary holds the slot leaves that slot held: with `maxConcurrency: 1`, a primary acquires, a `kind: "title"` response for the same session is fully read, and a second session's primary is still queued until the first primary's response body ends (unit test).
+- `harness-plugins/opencode_v2/request-concurrency-queue/README.md`'s Behavior section states that primary model requests acquire a slot and auxiliary requests do not, and no longer says "Every model request ... acquires a slot"; `wiki/concepts/request-concurrency-queue.md` states the same primary-only gate and supersedes its stale passages, so the page no longer carries the passage saying each model request acquires a slot before it is sent and releases it when the response body ends, when the request fails and is retried, nor the phrase `bracket each request`, leaving one canonical primary-only statement.
 - `cd harness-plugins/opencode_v2/request-concurrency-queue && bun test` and `bun run typecheck` pass, and `make plugin-test` passes.
