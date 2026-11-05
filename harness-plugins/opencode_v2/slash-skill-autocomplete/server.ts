@@ -15,7 +15,7 @@ import { buildSkillCommands, promptText, reservedNames } from "./src/skills.js"
 export default Plugin.define({
   id: "slash-skill-autocomplete",
   async setup(context) {
-    const log = (context.options.log as boolean | undefined) ?? false
+    const log = (context.options?.log as boolean | undefined) ?? false
     const debug = (message: string) => {
       if (log) console.log("[slash-skill-autocomplete]", message)
     }

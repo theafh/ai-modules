@@ -26,8 +26,9 @@ request.
 
 ## Configuration
 
-OpenCode's config file is `opencode.json(c)`. The plugin has no separate config
-file. There are three installation paths, and they expose options differently.
+OpenCode's config file is `opencode.json(c)`. The plugin reads its own JSON
+config file rather than a section of `opencode.json(c)`. There are three
+installation paths, and they expose options differently.
 
 ### Package install
 
