@@ -40,10 +40,10 @@ if ! $LAYER2; then
     cat <<'EOF'
 
 ================================================================
-  Layer 2 (skill-level via Claude subagents)
+  Layer 2 (skill-level via the vendor worker, Cursor by default)
 ================================================================
-Layer 2 is not run by default because it spawns Claude subagents and
-takes several minutes. Choose one:
+Layer 2 is not run by default because it spawns vendor workers
+(`agent -p` on Cursor by default) and consumes tokens. Choose one:
 
   (a) Standalone (CLI):
       python3 tests/wiki/layer2/run.py

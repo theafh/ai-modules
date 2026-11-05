@@ -2,8 +2,10 @@
 description: Align the wiki harness entrypoint's Layer 2 footer with the vendor-worker run it actually starts, matching the file header and the two operator docs.
 scope: "local test harnesses"
 created: 2026-11-04T20:48:40
-updated: 2026-11-04T20:48:40
-status: open
+updated: 2026-11-05T22:56:08
+status: finished
+implemented-by: Andreas Hoffmann
+design-extended: false
 reported-by: Andreas Hoffmann
 ---
 
@@ -31,7 +33,7 @@ sees after `make test` contradicts the file's own header and both docs. Commit
 Rewrite the footer heading and sentence in place to name the vendor worker
 with Cursor as the default, matching the header and the two operator docs, and
 drop the "takes several minutes" duration rather than replacing it with another
-frozen figure. Keep the three numbered options and their commands unchanged.
+frozen figure. Keep the two numbered options and their commands unchanged.
 
 **Out of scope:**
 
