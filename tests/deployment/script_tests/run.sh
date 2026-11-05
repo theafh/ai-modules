@@ -133,7 +133,10 @@ assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^model:'
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^permissions:$'
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^  - action: edit$'
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^    effect: deny$'
-assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" 'action: shell'
+for action in read glob grep shell; do
+  assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" "^  - action: ${action}\$"
+done
+assert_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^    effect: allow$'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^tools:'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^write:'
 assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^(name|version|background|effort|model_reasoning_effort|temperature):'
@@ -142,8 +145,11 @@ assert_not_contains "$PROJECT_DIR/.opencode/agents/auto_drift_task.md" '^permiss
 for agent in auto_reviewer_task auto_verifier_task; do
   assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^permissions:$'
   assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^  - action: edit$'
-  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^  - action: shell$'
+  for action in read glob grep shell; do
+    assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" "^  - action: ${action}\$"
+  done
   assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^    effect: deny$'
+  assert_contains "$PROJECT_DIR/.opencode/agents/$agent.md" '^    effect: allow$'
 done
 
 assert_contains "$PROJECT_DIR/.opencode/agents/auto_shaper_task.md" '^mode: subagent$'
