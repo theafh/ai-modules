@@ -167,6 +167,42 @@ describe("subscribeStatus", () => {
     expect(seen).toEqual([])
   })
 
+  test("a throwing onChange escapes the fetch guard instead of being swallowed", async () => {
+    const statusModule = new URL("../src/status.ts", import.meta.url).href
+    const script = `
+      let escaped = null
+      process.on("unhandledRejection", (reason) => {
+        escaped = reason
+      })
+      const { subscribeStatus } = await import(${JSON.stringify(statusModule)})
+      const client = {
+        status: async () => ({ providers: [] }),
+        events: { on: () => () => {} },
+      }
+      const unsubscribe = subscribeStatus(() => client, () => {
+        throw new Error("render blew up")
+      })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      unsubscribe()
+      if (escaped instanceof Error && escaped.message === "render blew up") {
+        console.log("escaped")
+        process.exit(0)
+      }
+      console.error("swallowed")
+      process.exit(1)
+    `
+    const child = Bun.spawn([process.execPath, "-e", script], { stdout: "pipe", stderr: "pipe" })
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ])
+
+    expect(exitCode).toBe(0)
+    expect(stdout.trim()).toBe("escaped")
+    expect(stderr).not.toContain("swallowed")
+  })
+
   test("drops a snapshot that resolves after unsubscribe", async () => {
     let resolveStatus!: (value: StatusSnapshot) => void
     const pending = new Promise<StatusSnapshot>((resolve) => {
@@ -188,5 +224,39 @@ describe("subscribeStatus", () => {
     await settle()
 
     expect(seen).toEqual([])
+  })
+
+  test("drops an older snapshot that resolves after a newer one", async () => {
+    const pending: Array<(value: StatusSnapshot) => void> = []
+    let fire: () => void | Promise<void> = () => {}
+    const client: StatusClient = {
+      status: () =>
+        new Promise<StatusSnapshot>((resolve) => {
+          pending.push(resolve)
+        }),
+      events: {
+        on: (_name, handler) => {
+          fire = handler
+          return () => {}
+        },
+      },
+    }
+    const seen: number[] = []
+
+    const unsubscribe = subscribeStatus(() => client, (next) => {
+      seen.push(next.providers[0].active)
+    })
+
+    expect(pending.length).toBe(1)
+    await fire()
+    expect(pending.length).toBe(2)
+
+    pending[1](snapshot(provider({ providerID: "acme", active: 2, queued: 0, max: 4 })))
+    await settle()
+    pending[0](snapshot(provider({ providerID: "acme", active: 1, queued: 0, max: 4 })))
+    await settle()
+
+    expect(seen).toEqual([2])
+    unsubscribe()
   })
 })

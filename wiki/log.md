@@ -1367,3 +1367,11 @@ pre-existing, and the size infos stay advisory; the one on
   a deploy reads as an unrestarted service first)
 - concepts/deployment-model.md (the plugin root's membership test is the
   package manifest, so a vendor tree beside the packages is not discovered)
+
+## [2026-11-06 11:02] update | Record the shipped status RPC and GUI panel on the concurrency queue page
+
+- concepts/request-concurrency-queue.md (the `log` flag passage now points to a
+  structured read-only status RPC with its per-provider snapshot and `changed`
+  events; the panel passage moves from proposed to shipped, naming the
+  `./gui-experimental` bundle, the pinned session-side tab, and the
+  green/amber/red row rules; the `updated` date moves to 2026-11-06)

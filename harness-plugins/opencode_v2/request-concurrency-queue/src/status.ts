@@ -55,7 +55,9 @@ export function subscribeStatus(
 ): () => void {
   const client = getClient()
   let cancelled = false
+  let latest = 0
   const publish = async (): Promise<void> => {
+    const request = ++latest
     let snapshot: StatusSnapshot
     try {
       snapshot = await client.status({})
@@ -63,7 +65,8 @@ export function subscribeStatus(
       // A failed fetch keeps the last snapshot; the next changed event retries.
       return
     }
-    if (!cancelled) onChange(snapshot)
+    // A response older than the newest one started must not overwrite it.
+    if (!cancelled && request === latest) onChange(snapshot)
   }
   void publish()
   const unsubscribe = client.events.on("changed", () => {
