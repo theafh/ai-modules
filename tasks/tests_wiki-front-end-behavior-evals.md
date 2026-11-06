@@ -2,7 +2,7 @@
 description: Prove the two wiki front-end promises the layer-2 scenarios claim but never assert, wiki_fix report fidelity and the pre-approval write boundary, and name the covered skills in the tree inventory.
 scope: "local test harnesses"
 created: 2026-08-11T18:59:52
-updated: 2026-11-06T00:07:54
+updated: 2026-11-06T13:19:09
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -74,11 +74,17 @@ file beside `response.txt` for every pass whose run yields one, and add a
 grader assertion type that compares the captured report against what the skill
 returned. Read that report from the spawn `ToolRecord` whose `helper` is
 `auto_shaper_wiki` (`micro_deploy.run_worker` already returns it, with
-`result_text` populated on both vendors), and fall back to the helper's
-assistant text blocks in its chat transcript JSONL under the scratch home —
-located by the `agentId` in the parent's Task result, under
-`_CURSOR_TRANSCRIPT_ROOTS` — when `result_text` is empty, a refusal, a bare
-`success` marker, or a bare JSON rendering. That comparison is
+`result_text` populated on both vendors). On Claude that `result_text` is the
+report as written; on Cursor `_render_cursor_result` renders it as a JSON
+object, so take that object's `conversationSteps` field, the helper's final
+text only, as the report. Fall back to the helper transcript's final assistant
+message — the `text` blocks of its last `role: assistant` line, taken alone
+rather than concatenated with the narration and tool preambles on earlier
+lines — in its chat transcript JSONL under the scratch home, located by the
+`agentId` in the parent's Task result, under `_CURSOR_TRANSCRIPT_ROOTS`, only
+when the selected source carries no report text: an empty `result_text`, a
+refusal, a bare `success` marker, or a Cursor rendering whose
+`conversationSteps` is empty. That comparison is
 whitespace-collapsed verbatim containment: read both the captured report and
 `response.txt` with runs of whitespace collapsed to a single space, and pass
 the assertion when the collapsed report appears in the collapsed response in
@@ -88,8 +94,7 @@ omits, and a pass that captures no report at all fails with the named evidence
 `no sub-agent report captured`, so it cannot pass on an empty capture. Keep `response.txt` holding the worker's
 final assistant text, since the existing `response_text_*` assertions and the
 `report.md` fallback both read it. Add the assertion to `AS-2` alone, the one `AS-*` scenario that already grades
-the surfacing with `A4_surfacing_mentioned_in_response`; the other 18 `AS-*`
-entries carry `skill_name` `wiki_fix` as well, so naming `AS-2` is what keeps
+the surfacing with `A4_surfacing_mentioned_in_response`; the remaining `AS-*` entries carry `skill_name` `wiki_fix` as well, so naming `AS-2` is what keeps
 `wiki_fix` coverage in one place. Rewrite `AS-2`'s `extra_constraints` line
 "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts" to "Invoke the
 `auto_shaper_wiki` agent and run its audit flow through it", matching the
@@ -124,11 +129,17 @@ selector as the statement of extent.
 - Adding scenarios for front-end behaviour the current set does not reach. This
   task proves promises the existing scenarios already claim and leaves the
   scenario inventory as it stands.
+- A full layer-2 suite re-run as a done bar. This task proves the change's reach
+  over the four evals it touches; a full-suite run stays an optional operator
+  measurement, not this task's acceptance gate.
 
 ## Acceptance
 
-1. Every pass whose run yields an `auto_shaper_wiki` report writes it as its own
-   per-pass artifact beside `response.txt`, and `AS-2` grades the returned
+1. Every pass whose run yields an `auto_shaper_wiki` report — the spawn
+   `ToolRecord`'s `result_text` (the `conversationSteps` field of its Cursor
+   rendering), else the `text` blocks of the helper transcript's last assistant
+   message — writes it as its own per-pass artifact
+   beside `response.txt`, and `AS-2` grades the returned
    response against the captured report rather than against a keyword regex. The
    assertion passes on a run of `AS-2`, and a pass that captures no
    `auto_shaper_wiki` report fails it with the named evidence `no sub-agent
@@ -152,6 +163,13 @@ selector as the statement of extent.
    names `wiki_fix`, `wiki_import`, and `wiki_wrapup` as skills its layer-2
    scenarios cover, and keeps the `layer2/evals.json` selector as its statement
    of extent.
-6. A full-suite layer-2 run on the default vendor passes every assertion after
-   the changes, so the new assertion, the output format change, and the restored
-   staging leave the suite green.
+6. A scoped layer-2 re-run on the default vendor over the four evals the change
+   reaches — `AS-2` (the new fidelity assertion and the stream-extraction
+   change), `AS-21` (an independent `response_text_*` consumer of
+   `response.txt`), and `WI-1` and `WU-1` (the restored pre-approval staging) —
+   passes every assertion in those scenarios, and every assertion they carried
+   before the change still passes. That set proves the change's reach: the new
+   assertion grades green, the `response.txt` format still satisfies its
+   existing readers, and the restored staging leaves those four evals green. A
+   failing assertion inside that set is diagnosed and fixed as part of this
+   task; every eval outside it keeps its already-recorded verdict.
