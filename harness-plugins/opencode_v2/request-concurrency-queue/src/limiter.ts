@@ -13,7 +13,10 @@ export class FifoLimiter {
   private active = 0
   private readonly waiters: Waiter[] = []
 
-  constructor(private readonly max: number) {
+  constructor(
+    private readonly max: number,
+    private readonly onChange: () => void = () => {},
+  ) {
     if (!Number.isInteger(max) || max < 1) {
       throw new Error(`maxConcurrency must be a positive integer, got ${String(max)}`)
     }
@@ -32,6 +35,7 @@ export class FifoLimiter {
 
     if (this.active < this.max) {
       this.active += 1
+      this.onChange()
       return Promise.resolve(this.createSlot())
     }
 
@@ -41,13 +45,17 @@ export class FifoLimiter {
       if (signal) {
         waiter.onAbort = () => {
           const index = this.waiters.indexOf(waiter)
-          if (index !== -1) this.waiters.splice(index, 1)
+          if (index !== -1) {
+            this.waiters.splice(index, 1)
+            this.onChange()
+          }
           reject(abortError())
         }
         signal.addEventListener("abort", waiter.onAbort, { once: true })
       }
 
       this.waiters.push(waiter)
+      this.onChange()
     })
   }
 
@@ -66,6 +74,7 @@ export class FifoLimiter {
     const next = this.waiters.shift()
     if (!next) {
       this.active -= 1
+      this.onChange()
       return
     }
 
@@ -73,6 +82,7 @@ export class FifoLimiter {
       next.signal.removeEventListener("abort", next.onAbort)
     }
     next.resolve(this.createSlot())
+    this.onChange()
   }
 }
 

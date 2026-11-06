@@ -1,27 +1,33 @@
 {
   "name": "opencode-request-concurrency-queue",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A process-wide FIFO concurrency limiter for OpenCode 2 model requests.",
   "type": "module",
   "license": "MIT",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./gui-experimental": "./dist/gui.cjs"
   },
   "files": [
     "index.ts",
     "src",
+    "dist",
     "config.example.json",
     "README.md"
   ],
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:gui": "vite build"
   },
   "dependencies": {
     "@opencode/plugin": "2.2.5"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",
-    "typescript": "^5.9.0"
+    "solid-js": "^1.9.17",
+    "typescript": "^5.9.0",
+    "vite": "^7.3.7",
+    "vite-plugin-solid": "^2.11.10"
   }
 }

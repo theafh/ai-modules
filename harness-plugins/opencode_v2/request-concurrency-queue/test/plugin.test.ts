@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import plugin, { loadConfigFile, resolveProviderLimits } from "../src/index.js"
+import type { StatusSnapshot } from "../src/rpc.js"
 
 process.env.OPENCODE_REQUEST_CONCURRENCY_CONFIG = "/nonexistent/request-concurrency-queue.json"
 
@@ -64,12 +65,21 @@ function makeEventStream(): EventStream {
   return { push, close, iterator }
 }
 
+interface TestRpc {
+  definition: () => any
+  handlers: () => any
+  registration: () => any
+  /** How many `changed` events the registration has emitted. */
+  emitCount: () => number
+}
+
 interface TestContext {
   hooks: Map<string, Hook>
   /** Emits one server event, as the real subscription would deliver it. */
   emit: (type: string, sessionID: string) => Promise<void>
   /** The type filter and abort signal the plugin passed to `subscribe`. */
   subscriptions: Array<{ types: readonly string[]; signal?: AbortSignal }>
+  rpc: TestRpc
   cleanup: () => Promise<void>
 }
 
@@ -77,10 +87,36 @@ function makeContext(options: Record<string, unknown>): any {
   const hooks = new Map<string, Hook>()
   const stream = makeEventStream()
   const subscriptions: Array<{ types: readonly string[]; signal?: AbortSignal }> = []
+  const emits: Array<{ name: string; data: unknown }> = []
+  let definition: unknown
+  let handlers: unknown
+  let registration: unknown
+  const rpc = {
+    register: async (nextDefinition: unknown, nextHandlers: unknown) => {
+      definition = nextDefinition
+      handlers = nextHandlers
+      registration = {
+        events: {
+          emit: async (name: string, data: unknown) => {
+            emits.push({ name, data })
+          },
+        },
+        dispose: async () => {},
+      }
+      return registration
+    },
+  }
   return {
     options,
     hooks,
     subscriptions,
+    rpc: {
+      register: rpc.register,
+      definition: () => definition,
+      handlers: () => handlers,
+      registration: () => registration,
+      emitCount: () => emits.length,
+    },
     emit: (type: string, sessionID: string) => stream.push(type, sessionID),
     session: {
       hook: async (name: string, callback: Hook) => {
@@ -109,6 +145,7 @@ async function setup(options: Record<string, unknown>): Promise<TestContext> {
   return {
     hooks: ctx.hooks,
     subscriptions: ctx.subscriptions,
+    rpc: ctx.rpc,
     emit: async (type: string, sessionID: string) => {
       ctx.emit(type, sessionID)
       // The plugin's loop body runs on the microtask queue after the value is
@@ -155,6 +192,12 @@ async function responseHook(
   return event.response
 }
 
+async function statusSnapshot(rpc: TestRpc): Promise<StatusSnapshot> {
+  const handlers = rpc.handlers()
+  if (!handlers?.status) throw new Error("missing status handler")
+  return handlers.status()
+}
+
 describe("request-concurrency-queue plugin", () => {
   test("limits concurrent requests and releases when the response body ends", async () => {
     const { hooks, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
@@ -190,6 +233,103 @@ describe("request-concurrency-queue plugin", () => {
 
     const cResponse = await responseHook(hooks, "c", c, "c-body")
     expect(await cResponse.text()).toBe("c-body")
+
+    await cleanup()
+  })
+
+  test("the status snapshot follows acquire, queue, and release", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    expect(await statusSnapshot(rpc)).toEqual({
+      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, utilization: 0, demand: 0 }],
+    })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({
+      active: 1,
+      queued: 0,
+      max: 1,
+      utilization: 1,
+      demand: 1,
+    })
+
+    const b = request("https://example.test/b")
+    let bAcquired = false
+    const bPromise = requestHook(hooks, "b", b).then(() => {
+      bAcquired = true
+    })
+    await tick()
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({
+      active: 1,
+      queued: 1,
+      max: 1,
+      utilization: 1,
+      demand: 2,
+    })
+
+    const aResponse = await responseHook(hooks, "a", a, "a-body")
+    await aResponse.text()
+    await bPromise
+    expect(bAcquired).toBe(true)
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ active: 1, queued: 0 })
+
+    const bResponse = await responseHook(hooks, "b", b, "b-body")
+    await bResponse.text()
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ active: 0, queued: 0 })
+
+    await cleanup()
+  })
+
+  test("the status snapshot omits providers with no configured limit", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    await requestHook(hooks, "a", request("https://example.test/a"))
+    await requestHook(hooks, "other", request("https://example.test/other"), "other")
+
+    const snapshot = await statusSnapshot(rpc)
+    expect(snapshot.providers.map((provider) => provider.providerID)).toEqual(["acme"])
+
+    await cleanup()
+  })
+
+  test("emits changed exactly once per count-changing transition", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    const assertOneEmit = (step: string, previous: number): number => {
+      const current = rpc.emitCount()
+      expect({ step, emits: current - previous }).toEqual({ step, emits: 1 })
+      return current
+    }
+
+    let count = rpc.emitCount()
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    count = assertOneEmit("free-slot acquire", count)
+
+    const bController = new AbortController()
+    const b = request("https://example.test/b", bController.signal)
+    const bPromise = requestHook(hooks, "b", b)
+    await tick()
+    count = assertOneEmit("join wait queue", count)
+
+    bController.abort()
+    await expect(bPromise).rejects.toThrow("aborted")
+    count = assertOneEmit("queued-request abort", count)
+
+    const c = request("https://example.test/c")
+    const cPromise = requestHook(hooks, "c", c)
+    await tick()
+    count = assertOneEmit("third request queues", count)
+
+    const aResponse = await responseHook(hooks, "a", a, "a-body")
+    await aResponse.text()
+    await cPromise
+    count = assertOneEmit("release hands off to the waiter", count)
+
+    const cResponse = await responseHook(hooks, "c", c, "c-body")
+    await cResponse.text()
+    assertOneEmit("release frees a slot with no waiter", count)
 
     await cleanup()
   })

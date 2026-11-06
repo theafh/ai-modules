@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { FifoLimiter, type Slot } from "./limiter.js"
+import { statusRpc, type ProviderStatus, type StatusSnapshot } from "./rpc.js"
 
 export interface RequestConcurrencyQueueOptions {
   maxConcurrency?: number
@@ -36,8 +37,14 @@ export default Plugin.define({
     const options = (ctx.options ?? {}) as RequestConcurrencyQueueOptions
     const fileConfig = loadConfigFile()
     const limits = new Map<string, ProviderLimit>()
+    const registration = await ctx.rpc.register(statusRpc, {
+      status: async () => snapshot(limits),
+    })
     for (const [providerID, maxConcurrency] of resolveProviderLimits(options, fileConfig)) {
-      limits.set(providerID, { maxConcurrency, limiter: new FifoLimiter(maxConcurrency) })
+      limits.set(providerID, {
+        maxConcurrency,
+        limiter: new FifoLimiter(maxConcurrency, () => void registration.events.emit("changed", {})),
+      })
     }
 
     const bySession = new Map<string, Set<Entry>>()
@@ -183,6 +190,7 @@ export default Plugin.define({
       controller.abort()
       for (const sessionID of [...bySession.keys()]) releaseSession(sessionID, "dispose")
       await eventLoop.catch(() => {})
+      await registration.dispose()
     }
   },
 })
@@ -275,6 +283,23 @@ export function envProviders(): string[] | Record<string, number> | undefined {
     result[providerID] = max
   }
   return result
+}
+
+function snapshot(limits: Map<string, ProviderLimit>): StatusSnapshot {
+  const providers = [...limits].map(([providerID, limit]): ProviderStatus => {
+    const active = limit.limiter.activeCount
+    const queued = limit.limiter.queuedCount
+    const max = limit.maxConcurrency
+    return {
+      providerID,
+      active,
+      queued,
+      max,
+      utilization: max === 0 ? 0 : active / max,
+      demand: max === 0 ? 0 : (active + queued) / max,
+    }
+  })
+  return { providers }
 }
 
 function firstEntry(entries: Set<Entry> | undefined): Entry | undefined {

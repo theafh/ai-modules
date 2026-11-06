@@ -2,9 +2,11 @@
 description: "Show per-provider request concurrency state in the OpenCode desktop side region with queue depth, utilization, demand, and color states."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-05T15:19:13
-updated: 2026-11-05T23:56:21
-status: ready
+updated: 2026-11-06T05:07:52
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Add a GUI concurrency status panel
@@ -30,9 +32,9 @@ server. The server plugin already keeps one `FifoLimiter` per
 provider and exposes `activeCount` and `queuedCount` on each limiter.
 
 The queue semantics are documented in
-[Request concurrency queue](../../wiki/concepts/request-concurrency-queue.md).
+[Request concurrency queue](../../../wiki/concepts/request-concurrency-queue.md).
 The plugin loading and package layout are documented in
-[OpenCode plugin loading](../../wiki/concepts/opencode-plugin-loading.md).
+[OpenCode plugin loading](../../../wiki/concepts/opencode-plugin-loading.md).
 
 ## Approach
 

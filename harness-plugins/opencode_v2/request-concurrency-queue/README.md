@@ -167,12 +167,21 @@ The `log` flag is only debug logging. It prints one line when the plugin
 initializes and one line per acquire and release, including the provider ID and
 that provider's active and queued counts. It is off by default.
 
-The plugin does not yet expose a structured state API. A future OpenCode
-desktop GUI panel can read `active`, `queued`, and `max` per provider and render
-utilization as `active / max` and demand as `(active + queued) / max`. A useful
-color model is green when `active < max` and `queued == 0`, amber when the
-provider is at capacity with no queue, and red when `queued > 0` because demand
-exceeds the configured capacity. The GUI panel is tracked separately.
+The plugin serves a read-only status snapshot over the shared
+`request-concurrency-queue` RPC definition. The snapshot reports one record per
+configured provider with `providerID`, `active`, `queued`, `max`, utilization
+(`active / max`), and demand (`(active + queued) / max`). Providers with no
+configured limit do not appear. The server emits a `changed` event on every
+count-changing transition: a free slot acquired, a request joining the wait
+queue, a queued request aborted, a release that frees a slot, and a release that
+hands the slot to the next waiter.
+
+The desktop GUI part ships as the prebuilt `./gui-experimental` bundle and adds
+a pinned **Concurrency** tab to the session side region. Each provider gets one
+row with its in-flight count, configured maximum, and queue depth as absolute
+numbers, and its utilization and demand as percentages. The row is green while
+`active < max` and no request waits, amber when `active == max` and nothing
+waits, and red when a queue exists.
 
 ## Development
 
@@ -180,6 +189,7 @@ exceeds the configured capacity. The GUI panel is tracked separately.
 bun install
 bun test
 bun run typecheck
+bun run build:gui
 ```
 
 ## Limitations

@@ -37,7 +37,7 @@ The README's Behavior section and `wiki/concepts/request-concurrency-queue.md` c
 - Extend `test/plugin.test.ts`: the `requestHook` and `responseHook` helpers pass `kind: "primary"` by default and accept a `kind` override; add a test that a title request acquires no slot at `maxConcurrency: 1`, a test that a title response arriving while a primary holds the slot leaves that slot held, and a retry test proving a second session's primary slot survives another session's retry.
 - Keep the queue's FIFO order and no-timeout behavior unchanged.
 
-**Out of scope:** Adding a queue timeout or revisiting the no-timeout decision; changing the OpenCode V2 plugin API or filing an upstream request for request identity on `SessionRetry`; the GUI status panel owned by `tasks/plugin_gui-concurrency-status-panel.md`.
+**Out of scope:** Adding a queue timeout or revisiting the no-timeout decision; changing the OpenCode V2 plugin API or filing an upstream request for request identity on `SessionRetry`; the GUI status panel owned by `tasks/archive/plugin_gui-concurrency-status-panel.md` (archived).
 
 ## Acceptance
 
