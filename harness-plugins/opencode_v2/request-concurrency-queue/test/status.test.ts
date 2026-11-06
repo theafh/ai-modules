@@ -29,7 +29,7 @@ function provider(overrides: Partial<ProviderStatus> & Pick<ProviderStatus, "pro
 }
 
 function snapshot(...providers: ProviderStatus[]): StatusSnapshot {
-  return { providers }
+  return { providers, transitions: [] }
 }
 
 /** Narrows a delivered value to the successful snapshot these tests expect. */

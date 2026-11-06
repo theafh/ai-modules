@@ -90,16 +90,25 @@ The `log` flag is debug logging only. It prints initialization, acquire, and
 release events with the provider ID and that provider's active and queued
 counts. Structured state comes from the separate read-only status RPC below.
 
+The desktop sidecar sends the plugin's stdout to `/dev/null`, so `log` output
+never reaches `opencode.log` or the panel. The panel feed is the desktop
+observability surface: the Concurrency tab lists recent transitions, while
+`log` remains for terminal runs. The feed records identifiers and counts only,
+never prompts, message content, API keys, or tool arguments.
+
 The plugin serves a read-only status snapshot over the shared
 `request-concurrency-queue` RPC definition. Every location's handler reads the
 process-wide registry, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `active`,
 `queued`, `max`, utilization (`active / max`), and demand
 (`(active + queued) / max`). Providers with no configured limit do not appear.
-The server emits a `changed` event on every count-changing transition: a free
-slot acquired, a request joining the wait queue, a queued request aborted, a
-release that frees a slot, and a release that hands the slot to the next
-waiter.
+It also carries the most recent 50 transitions, oldest first, each with a
+timestamp, provider ID, kind (`acquired`, `queued`, `released`, `dequeued`),
+session ID, active count, and queued count. A release handoff records
+`released` for the releasing session then `acquired` for the waiter. The server
+emits a `changed` event on every count-changing transition: a free slot
+acquired, a request joining the wait queue, a queued request aborted, a release
+that frees a slot, and a release that hands the slot to the next waiter.
 
 A desktop GUI part ships as the prebuilt `./gui-experimental` bundle. It adds a
 pinned Concurrency tab to the session side region and reads the routed
@@ -109,9 +118,11 @@ refetches on every `changed` event and on a slow interval, so a missed event
 recovers. Each provider row shows its in-flight count, configured maximum, and
 queue depth as absolute numbers, and its utilization and demand as percentages.
 The row is green while `active < max` and nothing waits, amber when
-`active == max` and nothing waits, and red when a queue exists. When a status
-fetch fails, the panel shows `Status unavailable` and no provider rows until a
-later fetch succeeds.
+`active == max` and nothing waits, and red when a queue exists. Below the
+provider rows, a compact monospace feed lists the recent transitions newest
+first with their timestamp, kind, provider, session, and counts; it renders the
+newest 20 and scrolls. When a status fetch fails, the panel shows
+`Status unavailable` and no provider rows until a later fetch succeeds.
 
 The queue does not address token-budget limits such as a provider's
 `burst_protection`, nor request-size rejections such as

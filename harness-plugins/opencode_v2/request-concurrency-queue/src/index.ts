@@ -139,7 +139,7 @@ export default Plugin.define({
       if (event.kind !== "primary") return
       const limit = limits.get(event.model.providerID)
       if (!limit) return
-      const slot = await limit.limiter.acquire(event.request.signal)
+      const slot = await limit.limiter.acquire(event.sessionID, event.request.signal)
       addEntry(event.sessionID, event.model.providerID, event.kind, slot, event.request)
     })
 

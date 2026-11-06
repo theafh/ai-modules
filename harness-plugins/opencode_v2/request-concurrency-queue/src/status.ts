@@ -1,4 +1,4 @@
-import type { ProviderStatus, StatusSnapshot } from "./rpc.js"
+import type { ProviderStatus, StatusSnapshot, TransitionKind, TransitionRecord } from "./rpc.js"
 
 /** The three color states a provider row can show. */
 export type StatusColor = "green" | "amber" | "red"
@@ -65,6 +65,47 @@ export function providerRows(snapshot: StatusSnapshot): ProviderRow[] {
   return snapshot.providers.map(providerRow)
 }
 
+/** The newest transitions the panel renders; the store keeps more history. */
+export const PANEL_TRANSITION_LIMIT = 20
+
+/** One recent transition as the panel renders it. */
+export interface TransitionRow {
+  /** Local clock time, `HH:MM:SS`. */
+  readonly time: string
+  readonly providerID: string
+  readonly kind: TransitionKind
+  readonly sessionID: string
+  readonly active: number
+  readonly queued: number
+}
+
+/**
+ * Turns the snapshot's recent transitions into rendered rows, newest first.
+ * The rendered window is capped so a long history scrolls instead of growing
+ * the panel without bound.
+ */
+export function transitionRows(
+  snapshot: StatusSnapshot,
+  limit = PANEL_TRANSITION_LIMIT,
+): TransitionRow[] {
+  return snapshot.transitions
+    .slice(-limit)
+    .reverse()
+    .map(transitionRow)
+}
+
+/** Turns one transition record into its rendered row. */
+export function transitionRow(transition: TransitionRecord): TransitionRow {
+  return {
+    time: formatClock(transition.timestamp),
+    providerID: transition.providerID,
+    kind: transition.kind,
+    sessionID: transition.sessionID,
+    active: transition.active,
+    queued: transition.queued,
+  }
+}
+
 /**
  * Reads a fresh snapshot, then refetches on every `changed` event and on a
  * slow interval. The returned function is that registration's unsubscribe
@@ -122,4 +163,10 @@ function colorFor(provider: ProviderStatus): StatusColor {
 
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`
+}
+
+function formatClock(timestamp: number): string {
+  const date = new Date(timestamp)
+  const pad = (value: number): string => String(value).padStart(2, "0")
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }

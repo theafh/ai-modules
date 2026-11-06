@@ -179,12 +179,23 @@ The `log` flag is only debug logging. It prints one line when the plugin
 initializes and one line per acquire and release, including the provider ID and
 that provider's active and queued counts. It is off by default.
 
+The desktop sidecar sends the plugin's stdout to `/dev/null`, so `log` output
+never reaches `opencode.log` or the panel. The panel feed is the desktop
+observability surface: it shows recent concurrency transitions in the
+Concurrency tab, and `log` remains for terminal runs. The feed records
+identifiers and counts only; it never carries prompts, message content, API
+keys, or tool arguments.
+
 The plugin serves a read-only status snapshot over the shared
 `request-concurrency-queue` RPC definition. Every location's handler reads the
 same process-wide queue, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `providerID`,
 `active`, `queued`, `max`, utilization (`active / max`), and demand
 (`(active + queued) / max`). Providers with no configured limit do not appear.
+The snapshot also carries the most recent 50 transitions, oldest first, each
+with a timestamp, provider ID, kind (`acquired`, `queued`, `released`,
+`dequeued`), session ID, active count, and queued count. A release handoff
+records `released` for the releasing session and then `acquired` for the waiter.
 The server emits a `changed` event on every count-changing transition: a free
 slot acquired, a request joining the wait queue, a queued request aborted, a
 release that frees a slot, and a release that hands the slot to the next
@@ -198,9 +209,11 @@ every `changed` event, and also refetches on a slow interval so a missed event
 recovers. Each provider gets one row with its in-flight count, configured
 maximum, and queue depth as absolute numbers, and its utilization and demand as
 percentages. The row is green while `active < max` and no request waits, amber
-when `active == max` and nothing waits, and red when a queue exists. When a
-status fetch fails, the panel shows `Status unavailable` and no provider rows
-until a later fetch succeeds.
+when `active == max` and nothing waits, and red when a queue exists. Below the
+provider rows, a compact monospace feed lists the recent transitions newest
+first with their timestamp, kind, provider, session, and counts; it renders the
+newest 20 and scrolls. When a status fetch fails, the panel shows
+`Status unavailable` and no provider rows until a later fetch succeeds.
 
 ## Development
 

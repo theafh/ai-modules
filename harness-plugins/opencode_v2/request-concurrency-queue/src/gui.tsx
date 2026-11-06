@@ -1,7 +1,14 @@
 import { For, Show, createEffect, createSignal, onCleanup } from "solid-js"
 import { Panel, Plugin, type PanelProps, type PanelTab } from "@opencode/plugin/gui"
-import { statusRpc } from "./rpc.js"
-import { providerRows, subscribeStatus, type ProviderRow, type StatusClient } from "./status.js"
+import { statusRpc, type StatusSnapshot } from "./rpc.js"
+import {
+  providerRows,
+  subscribeStatus,
+  transitionRows,
+  type ProviderRow,
+  type StatusClient,
+  type TransitionRow,
+} from "./status.js"
 
 const statusTab: PanelTab = {
   id: "status",
@@ -12,24 +19,33 @@ const statusTab: PanelTab = {
 /** The text the panel shows when the status fetch fails. */
 export const STATUS_UNAVAILABLE = "Status unavailable"
 
-/** What the panel body shows: the outage notice, or the last provider rows. */
+/** The snapshot the panel shows before the first fetch resolves. */
+const EMPTY_SNAPSHOT: StatusSnapshot = { providers: [], transitions: [] }
+
+/** What the panel body shows: the outage notice, or the last delivered state. */
 export interface StatusBodyState {
   readonly unavailable: boolean
   readonly rows: ProviderRow[]
+  readonly transitions: TransitionRow[]
 }
 
 /**
  * Decides the panel body's state. `null` means the status fetch failed, so the
  * body reports that instead of showing silent zeros; a later successful fetch
- * replaces it with provider rows.
+ * replaces it with provider rows and the recent transition feed.
  */
-export function statusBodyState(rows: ProviderRow[] | null): StatusBodyState {
-  return rows === null ? { unavailable: true, rows: [] } : { unavailable: false, rows }
+export function statusBodyState(snapshot: StatusSnapshot | null): StatusBodyState {
+  if (snapshot === null) return { unavailable: true, rows: [], transitions: [] }
+  return {
+    unavailable: false,
+    rows: providerRows(snapshot),
+    transitions: transitionRows(snapshot),
+  }
 }
 
 /** Renders the panel body from the last delivered snapshot. */
-export function StatusBody(props: { rows: ProviderRow[] | null }) {
-  const state = () => statusBodyState(props.rows)
+export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
+  const state = () => statusBodyState(props.snapshot)
   return (
     <div class="request-concurrency-status">
       <Show
@@ -47,14 +63,32 @@ export function StatusBody(props: { rows: ProviderRow[] | null }) {
             </div>
           )}
         </For>
+        <Show when={state().transitions.length > 0}>
+          <div
+            class="request-concurrency-feed"
+            style={{ "font-family": "monospace", "max-height": "12em", "overflow-y": "auto" }}
+          >
+            <For each={state().transitions}>
+              {(transition) => (
+                <div class="request-concurrency-feed-row">
+                  <span class="request-concurrency-feed-time">{transition.time}</span>
+                  <span class="request-concurrency-feed-kind">{transition.kind}</span>
+                  <span class="request-concurrency-feed-provider">{transition.providerID}</span>
+                  <span class="request-concurrency-feed-session">{transition.sessionID}</span>
+                  <span class="request-concurrency-feed-counts">{`${transition.active} active / ${transition.queued} queued`}</span>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
       </Show>
     </div>
   )
 }
 
-/** One row per configured provider, with its absolute counts and percentages. */
+/** One row per configured provider plus the recent transition feed. */
 function StatusView(props: PanelProps) {
-  const [rows, setRows] = createSignal<ProviderRow[] | null>([])
+  const [snapshot, setSnapshot] = createSignal<StatusSnapshot | null>(EMPTY_SNAPSHOT)
 
   createEffect(() => {
     // The reactive reads below re-run this effect on a session switch, and the
@@ -63,13 +97,13 @@ function StatusView(props: PanelProps) {
     const directory = props.session.directory
     const unsubscribe = subscribeStatus(
       () => client.rpc(statusRpc) as unknown as StatusClient,
-      (snapshot) => setRows(snapshot === null ? null : providerRows(snapshot)),
+      (next) => setSnapshot(next),
       { directory },
     )
     onCleanup(unsubscribe)
   })
 
-  return <StatusBody rows={rows()} />
+  return <StatusBody snapshot={snapshot()} />
 }
 
 /** The pinned status tab in the desktop side region. */

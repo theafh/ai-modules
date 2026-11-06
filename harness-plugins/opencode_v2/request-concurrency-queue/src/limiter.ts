@@ -1,10 +1,26 @@
+import type { TransitionKind } from "./rpc.js"
+
 export interface Slot {
   release(): void
 }
 
+/** One transition a limiter site reports, carrying the affected session ID. */
+export interface LimiterTransition {
+  readonly kind: TransitionKind
+  readonly sessionID: string
+}
+
+/**
+ * Receives one notification per count-changing transition. A handoff reports
+ * both of its buffer entries in a single call, so a listener still emits one
+ * `changed` event and the releasing and acquiring sessions both appear.
+ */
+export type TransitionListener = (transitions: readonly LimiterTransition[]) => void
+
 interface Waiter {
   resolve(slot: Slot): void
   reject(error: Error): void
+  readonly sessionID: string
   signal?: AbortSignal
   onAbort?: () => void
 }
@@ -15,7 +31,7 @@ export class FifoLimiter {
 
   constructor(
     private readonly max: number,
-    private readonly onChange: () => void = () => {},
+    private readonly onChange: TransitionListener = () => {},
   ) {
     if (!Number.isInteger(max) || max < 1) {
       throw new Error(`maxConcurrency must be a positive integer, got ${String(max)}`)
@@ -30,24 +46,24 @@ export class FifoLimiter {
     return this.waiters.length
   }
 
-  acquire(signal?: AbortSignal): Promise<Slot> {
+  acquire(sessionID: string, signal?: AbortSignal): Promise<Slot> {
     if (signal?.aborted) return Promise.reject(abortError())
 
     if (this.active < this.max) {
       this.active += 1
-      this.onChange()
-      return Promise.resolve(this.createSlot())
+      this.onChange([{ kind: "acquired", sessionID }])
+      return Promise.resolve(this.createSlot(sessionID))
     }
 
     return new Promise<Slot>((resolve, reject) => {
-      const waiter: Waiter = { resolve, reject, signal }
+      const waiter: Waiter = { resolve, reject, sessionID, signal }
 
       if (signal) {
         waiter.onAbort = () => {
           const index = this.waiters.indexOf(waiter)
           if (index !== -1) {
             this.waiters.splice(index, 1)
-            this.onChange()
+            this.onChange([{ kind: "dequeued", sessionID }])
           }
           reject(abortError())
         }
@@ -55,34 +71,39 @@ export class FifoLimiter {
       }
 
       this.waiters.push(waiter)
-      this.onChange()
+      this.onChange([{ kind: "queued", sessionID }])
     })
   }
 
-  private createSlot(): Slot {
+  private createSlot(sessionID: string): Slot {
     let released = false
     return {
       release: () => {
         if (released) return
         released = true
-        this.release()
+        this.release(sessionID)
       },
     }
   }
 
-  private release(): void {
+  private release(sessionID: string): void {
     const next = this.waiters.shift()
     if (!next) {
       this.active -= 1
-      this.onChange()
+      this.onChange([{ kind: "released", sessionID }])
       return
     }
 
     if (next.signal && next.onAbort) {
       next.signal.removeEventListener("abort", next.onAbort)
     }
-    next.resolve(this.createSlot())
-    this.onChange()
+    next.resolve(this.createSlot(next.sessionID))
+    // One notification carries both entries: the releasing session frees the
+    // slot and the waiter takes it, while the active count stays the same.
+    this.onChange([
+      { kind: "released", sessionID },
+      { kind: "acquired", sessionID: next.sessionID },
+    ])
   }
 }
 

@@ -12,9 +12,34 @@ export interface ProviderStatus {
   readonly demand: number
 }
 
+/**
+ * The count-changing transitions the limiter records. One buffer entry carries
+ * one kind; a release handoff records a `released` entry for the releasing
+ * session and an `acquired` entry for the waiter.
+ */
+export type TransitionKind = "acquired" | "queued" | "released" | "dequeued"
+
+/**
+ * One recent count-changing transition. It holds identifiers and counts only:
+ * a session ID is an identifier, never prompt, message, or tool payload.
+ */
+export interface TransitionRecord {
+  /** Milliseconds since the Unix epoch, from `Date.now()`. */
+  readonly timestamp: number
+  readonly providerID: string
+  readonly kind: TransitionKind
+  readonly sessionID: string
+  /** The provider's active count after the transition. */
+  readonly active: number
+  /** The provider's queued count after the transition. */
+  readonly queued: number
+}
+
 /** The status snapshot the server part serves and the GUI reads. */
 export interface StatusSnapshot {
   readonly providers: readonly ProviderStatus[]
+  /** Recent transitions in append order, oldest first. */
+  readonly transitions: readonly TransitionRecord[]
 }
 
 const providerStatusSchema = {
@@ -28,6 +53,20 @@ const providerStatusSchema = {
     demand: { type: "number", minimum: 0 },
   },
   required: ["providerID", "active", "queued", "max", "utilization", "demand"],
+  additionalProperties: false,
+} as const
+
+const transitionSchema = {
+  type: "object",
+  properties: {
+    timestamp: { type: "integer", minimum: 0 },
+    providerID: { type: "string" },
+    kind: { type: "string", enum: ["acquired", "queued", "released", "dequeued"] },
+    sessionID: { type: "string" },
+    active: { type: "integer", minimum: 0 },
+    queued: { type: "integer", minimum: 0 },
+  },
+  required: ["timestamp", "providerID", "kind", "sessionID", "active", "queued"],
   additionalProperties: false,
 } as const
 
@@ -52,8 +91,9 @@ export const statusRpc = {
         type: "object",
         properties: {
           providers: { type: "array", items: providerStatusSchema },
+          transitions: { type: "array", items: transitionSchema },
         },
-        required: ["providers"],
+        required: ["providers", "transitions"],
         additionalProperties: false,
       },
     },

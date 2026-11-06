@@ -1,5 +1,27 @@
 import { FifoLimiter } from "./limiter.js"
-import type { ProviderStatus, StatusSnapshot } from "./rpc.js"
+import type { ProviderStatus, StatusSnapshot, TransitionRecord } from "./rpc.js"
+
+/** How many recent transitions the process-wide store keeps. */
+export const TRANSITION_LIMIT = 50
+
+/**
+ * A bounded ring buffer of the most recent transitions. Appending past the
+ * limit drops the oldest entry, so memory stays constant however long the
+ * process runs.
+ */
+export class TransitionBuffer {
+  private readonly entries: TransitionRecord[] = []
+
+  append(entry: TransitionRecord): void {
+    this.entries.push(entry)
+    if (this.entries.length > TRANSITION_LIMIT) this.entries.shift()
+  }
+
+  /** The retained entries in append order, oldest first, as a copy. */
+  recent(): TransitionRecord[] {
+    return [...this.entries]
+  }
+}
 
 /**
  * One provider's shared limit. Every plugin instance in the process, one per
@@ -24,6 +46,8 @@ export interface Store {
   readonly fingerprint: string
   readonly providers: Map<string, ProviderLimit>
   readonly subscribers: Set<() => void>
+  /** Recent transitions shared by every location's status handler. */
+  readonly transitions: TransitionBuffer
   refcount: number
 }
 
@@ -43,13 +67,24 @@ export function createStore(limits: Map<string, number>): Store {
     fingerprint: fingerprintOf(limits),
     providers: new Map(),
     subscribers: new Set(),
+    transitions: new TransitionBuffer(),
     refcount: 0,
   }
   for (const [providerID, maxConcurrency] of limits) {
-    store.providers.set(providerID, {
-      maxConcurrency,
-      limiter: new FifoLimiter(maxConcurrency, () => publish(store)),
+    const limiter = new FifoLimiter(maxConcurrency, (changes) => {
+      for (const change of changes) {
+        store.transitions.append({
+          timestamp: Date.now(),
+          providerID,
+          kind: change.kind,
+          sessionID: change.sessionID,
+          active: limiter.activeCount,
+          queued: limiter.queuedCount,
+        })
+      }
+      publish(store)
     })
+    store.providers.set(providerID, { maxConcurrency, limiter })
   }
   return store
 }
@@ -147,7 +182,7 @@ export function snapshotOf(store: Store): StatusSnapshot {
       demand: max === 0 ? 0 : (active + queued) / max,
     }
   })
-  return { providers }
+  return { providers, transitions: store.transitions.recent() }
 }
 
 function registry(): Record<symbol, Store | undefined> {

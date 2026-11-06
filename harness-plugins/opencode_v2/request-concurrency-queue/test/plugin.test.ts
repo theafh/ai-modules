@@ -255,6 +255,7 @@ describe("request-concurrency-queue plugin", () => {
 
     expect(await statusSnapshot(rpc)).toEqual({
       providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, utilization: 0, demand: 0 }],
+      transitions: [],
     })
 
     const a = request("https://example.test/a")
@@ -345,6 +346,147 @@ describe("request-concurrency-queue plugin", () => {
     assertOneEmit("release frees a slot with no waiter", count)
 
     await cleanup()
+  })
+
+  test("records each count-changing transition with the mapped kind and one changed emit", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    const entries = async (): Promise<string[]> =>
+      (await statusSnapshot(rpc)).transitions.map((transition) => `${transition.kind}:${transition.sessionID}`)
+
+    let before = rpc.emitCount()
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    expect(await entries()).toEqual(["acquired:a"])
+    expect(rpc.emitCount() - before).toBe(1)
+
+    before = rpc.emitCount()
+    const controller = new AbortController()
+    const b = request("https://example.test/b", controller.signal)
+    const bPromise = requestHook(hooks, "b", b)
+    await tick()
+    expect(await entries()).toEqual(["acquired:a", "queued:b"])
+    expect(rpc.emitCount() - before).toBe(1)
+
+    // A queued-request abort is `dequeued`, never `released` or `acquired`.
+    before = rpc.emitCount()
+    controller.abort()
+    await expect(bPromise).rejects.toThrow("aborted")
+    expect(await entries()).toEqual(["acquired:a", "queued:b", "dequeued:b"])
+    expect(rpc.emitCount() - before).toBe(1)
+
+    before = rpc.emitCount()
+    const c = request("https://example.test/c")
+    const cPromise = requestHook(hooks, "c", c)
+    await tick()
+    expect(await entries()).toEqual(["acquired:a", "queued:b", "dequeued:b", "queued:c"])
+    expect(rpc.emitCount() - before).toBe(1)
+
+    // Handoff stays one transition site: one changed emit, two buffer entries.
+    before = rpc.emitCount()
+    const aResponse = await responseHook(hooks, "a", a, "a-body")
+    await aResponse.text()
+    await cPromise
+    expect(await entries()).toEqual([
+      "acquired:a",
+      "queued:b",
+      "dequeued:b",
+      "queued:c",
+      "released:a",
+      "acquired:c",
+    ])
+    expect(rpc.emitCount() - before).toBe(1)
+
+    before = rpc.emitCount()
+    const cResponse = await responseHook(hooks, "c", c, "c-body")
+    await cResponse.text()
+    expect((await entries()).at(-1)).toBe("released:c")
+    expect(rpc.emitCount() - before).toBe(1)
+
+    await cleanup()
+  })
+
+  test("each retained transition carries provider, counts, and session alongside its kind", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    const controller = new AbortController()
+    const bPromise = requestHook(hooks, "b", request("https://example.test/b", controller.signal))
+    await tick()
+    controller.abort()
+    await expect(bPromise).rejects.toThrow("aborted")
+
+    const c = request("https://example.test/c")
+    const cPromise = requestHook(hooks, "c", c)
+    await tick()
+    const aResponse = await responseHook(hooks, "a", a, "a-body")
+    await aResponse.text()
+    await cPromise
+    const cResponse = await responseHook(hooks, "c", c, "c-body")
+    await cResponse.text()
+
+    const transitions = (await statusSnapshot(rpc)).transitions
+    expect(new Set(transitions.map((transition) => transition.kind))).toEqual(
+      new Set(["acquired", "queued", "released", "dequeued"]),
+    )
+    for (const transition of transitions) {
+      expect(Object.keys(transition).sort()).toEqual([
+        "active",
+        "kind",
+        "providerID",
+        "queued",
+        "sessionID",
+        "timestamp",
+      ])
+      expect(transition.providerID).toBe("acme")
+      expect(transition.sessionID.length).toBeGreaterThan(0)
+      expect(Number.isInteger(transition.active)).toBe(true)
+      expect(Number.isInteger(transition.queued)).toBe(true)
+      expect(Number.isInteger(transition.timestamp)).toBe(true)
+    }
+
+    await cleanup()
+  })
+
+  test("the status snapshot holds only identifiers and counts, never payload fields", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    await requestHook(hooks, "a", request("https://example.test/a"))
+
+    const snapshot = await statusSnapshot(rpc)
+    expect(Object.keys(snapshot).sort()).toEqual(["providers", "transitions"])
+    for (const transition of snapshot.transitions) {
+      expect(Object.keys(transition).sort()).toEqual([
+        "active",
+        "kind",
+        "providerID",
+        "queued",
+        "sessionID",
+        "timestamp",
+      ])
+    }
+    const serialized = JSON.stringify(snapshot).toLowerCase()
+    for (const forbidden of ["prompt", "message", "content", "tool", "arguments"]) {
+      expect(serialized).not.toContain(forbidden)
+    }
+
+    await cleanup()
+  })
+
+  test("the status RPC output schema carries the transition array", async () => {
+    const { rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    try {
+      const output = rpc.definition().methods.status.output
+      expect(output.required).toEqual(["providers", "transitions"])
+      expect(output.properties.transitions).toMatchObject({ type: "array" })
+      expect(output.properties.transitions.items.properties.kind.enum).toEqual([
+        "acquired",
+        "queued",
+        "released",
+        "dequeued",
+      ])
+    } finally {
+      await cleanup()
+    }
   })
 
   test("does not gate providers outside the filter", async () => {
