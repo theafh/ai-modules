@@ -6,6 +6,14 @@ function tick(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
+/**
+ * Drains pending microtasks without arming a timer, so a rejected publish is
+ * reported by the runner instead of being held open by a pending timer.
+ */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 10; i += 1) await Promise.resolve()
+}
+
 function provider(overrides: Partial<ProviderStatus> & Pick<ProviderStatus, "providerID">): ProviderStatus {
   const active = overrides.active ?? 0
   const queued = overrides.queued ?? 0
@@ -137,5 +145,48 @@ describe("subscribeStatus", () => {
     expect(seen).toEqual(["first:1", "second:2", "second:2"])
 
     secondUnsubscribe()
+  })
+
+  test("a rejecting status writes no snapshot and raises no unhandled rejection", async () => {
+    const client: StatusClient = {
+      status: async () => {
+        throw new Error("status unavailable")
+      },
+      events: {
+        on: () => () => {},
+      },
+    }
+    const seen: StatusSnapshot[] = []
+
+    const unsubscribe = subscribeStatus(() => client, (next) => {
+      seen.push(next)
+    })
+    await settle()
+    unsubscribe()
+
+    expect(seen).toEqual([])
+  })
+
+  test("drops a snapshot that resolves after unsubscribe", async () => {
+    let resolveStatus!: (value: StatusSnapshot) => void
+    const pending = new Promise<StatusSnapshot>((resolve) => {
+      resolveStatus = resolve
+    })
+    const client: StatusClient = {
+      status: () => pending,
+      events: {
+        on: () => () => {},
+      },
+    }
+    const seen: StatusSnapshot[] = []
+
+    const unsubscribe = subscribeStatus(() => client, (next) => {
+      seen.push(next)
+    })
+    unsubscribe()
+    resolveStatus(snapshot(provider({ providerID: "acme", active: 1, queued: 0, max: 4 })))
+    await settle()
+
+    expect(seen).toEqual([])
   })
 })

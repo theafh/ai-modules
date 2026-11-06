@@ -8,7 +8,7 @@ export interface ProviderStatus {
   readonly max: number
   /** `active / max`, as a number from 0 to 1; 0 when `max` is 0. */
   readonly utilization: number
-  /** `(active + queued) / max`, as a number from 0 to 1; 0 when `max` is 0. */
+  /** `(active + queued) / max`, an unbounded load factor; 0 when `max` is 0. */
   readonly demand: number
 }
 
@@ -25,7 +25,7 @@ const providerStatusSchema = {
     queued: { type: "integer", minimum: 0 },
     max: { type: "integer", minimum: 0 },
     utilization: { type: "number", minimum: 0, maximum: 1 },
-    demand: { type: "number", minimum: 0, maximum: 1 },
+    demand: { type: "number", minimum: 0 },
   },
   required: ["providerID", "active", "queued", "max", "utilization", "demand"],
   additionalProperties: false,

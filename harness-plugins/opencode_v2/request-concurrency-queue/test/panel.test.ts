@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test"
-import { existsSync, readFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { build } from "vite"
 import { panel } from "../src/gui.tsx"
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -67,4 +70,48 @@ describe("concurrency status panel", () => {
     expect(imported.exitCode).toBe(0)
     expect(JSON.parse(imported.stdout.trim())).toEqual({ setup: "function", panel: true })
   })
+
+  /**
+   * The desktop runs `dist/gui.cjs`, never the plugin's source, so a source
+   * edit that skips `bun run build:gui` ships stale code that the load check
+   * above cannot see. Rebuilding with the package's own `vite.config.ts` and
+   * comparing bytes turns that drift into a failure here.
+   */
+  test(
+    "rebuilds the GUI bundle from source and matches the committed bundle",
+    async () => {
+      const outDir = mkdtempSync(resolve(tmpdir(), "opencode-gui-build-"))
+      try {
+        await build({
+          configFile: resolve(packageDir, "vite.config.ts"),
+          root: packageDir,
+          logLevel: "silent",
+          // The package's `gui()` plugin names `dist/gui.cjs`. This post
+          // `config` hook wins the merge and redirects the build into the
+          // scratch directory, so the committed bundle is never rewritten.
+          plugins: [
+            {
+              name: "redirect-gui-build-output",
+              enforce: "post",
+              config: () => ({ build: { outDir } }),
+            },
+          ],
+        })
+
+        const rebuilt = readFileSync(resolve(outDir, "gui.cjs"))
+        const committed = readFileSync(resolve(packageDir, "dist/gui.cjs"))
+        if (!rebuilt.equals(committed)) {
+          const digest = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex")
+          throw new Error(
+            "dist/gui.cjs does not match a fresh build of src/gui.tsx; run `bun run build:gui` and commit the result.\n" +
+              `  rebuilt:   ${digest(rebuilt)}\n` +
+              `  committed: ${digest(committed)}`,
+          )
+        }
+      } finally {
+        rmSync(outDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
 })

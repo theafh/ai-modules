@@ -54,13 +54,25 @@ export function subscribeStatus(
   onChange: (snapshot: StatusSnapshot) => void,
 ): () => void {
   const client = getClient()
+  let cancelled = false
   const publish = async (): Promise<void> => {
-    onChange(await client.status({}))
+    let snapshot: StatusSnapshot
+    try {
+      snapshot = await client.status({})
+    } catch {
+      // A failed fetch keeps the last snapshot; the next changed event retries.
+      return
+    }
+    if (!cancelled) onChange(snapshot)
   }
   void publish()
-  return client.events.on("changed", () => {
+  const unsubscribe = client.events.on("changed", () => {
     void publish()
   })
+  return () => {
+    cancelled = true
+    unsubscribe()
+  }
 }
 
 function colorFor(provider: ProviderStatus): StatusColor {
