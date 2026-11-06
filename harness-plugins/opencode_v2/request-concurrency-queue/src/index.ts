@@ -91,6 +91,31 @@ export default Plugin.define({
       return entry
     }
 
+    // A response error releases the failed attempt's own slot, and the runtime
+    // reports the retry afterwards. Record that release per session and
+    // provider so the retry spends it instead of freeing a newer entry that
+    // belongs to a request still in flight.
+    const retryCredits = new Map<string, Map<string, number>>()
+
+    const recordRetryCredit = (sessionID: string, providerID: string): void => {
+      let byProvider = retryCredits.get(sessionID)
+      if (!byProvider) {
+        byProvider = new Map()
+        retryCredits.set(sessionID, byProvider)
+      }
+      byProvider.set(providerID, (byProvider.get(providerID) ?? 0) + 1)
+    }
+
+    const consumeRetryCredit = (sessionID: string, providerID: string): boolean => {
+      const byProvider = retryCredits.get(sessionID)
+      const count = byProvider?.get(providerID) ?? 0
+      if (!byProvider || count === 0) return false
+      if (count === 1) byProvider.delete(providerID)
+      else byProvider.set(providerID, count - 1)
+      if (byProvider.size === 0) retryCredits.delete(sessionID)
+      return true
+    }
+
     const releaseEntry = (entry: Entry, reason: string): void => {
       if (entry.released) return
       entry.released = true
@@ -100,6 +125,10 @@ export default Plugin.define({
       if (entries) {
         entries.delete(entry)
         if (entries.size === 0) bySession.delete(entry.sessionID)
+      }
+
+      if (entry.kind === "primary" && reason === "response-error") {
+        recordRetryCredit(entry.sessionID, entry.providerID)
       }
 
       const limit = limits.get(entry.providerID)
@@ -113,15 +142,21 @@ export default Plugin.define({
     }
 
     const releaseSession = (sessionID: string, reason: string): void => {
+      // Credits belong to a live session's in-flight retry, so they never
+      // outlive the session that earned them.
+      retryCredits.delete(sessionID)
       const entries = bySession.get(sessionID)
       if (!entries) return
       for (const entry of [...entries]) releaseEntry(entry, reason)
     }
 
     // A retry names only the session and provider, so it releases that
-    // session's oldest unreleased primary entry: the attempt that failed. A
-    // newer request's slot, including one queued behind it, stays held.
+    // session's oldest unreleased primary entry: the attempt that failed. When
+    // that attempt already released its slot on a response error, the retry
+    // spends the recorded release and touches nothing. A newer request's slot,
+    // including one queued behind it, stays held either way.
     const releaseRetried = (sessionID: string, providerID: string, reason: string): void => {
+      if (consumeRetryCredit(sessionID, providerID)) return
       const entries = bySession.get(sessionID)
       if (!entries) return
       for (const entry of entries) {

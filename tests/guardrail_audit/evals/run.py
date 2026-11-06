@@ -202,12 +202,10 @@ def run_one(
             ended_at=ended_at,
         )
 
-        grade_env = dict(env)
-        grade_env["RESPONSE_FILE"] = str(eval_dir / "response.txt")
         grade = subprocess.run(
             ["bash", str(GRADE), eval_id, workdir,
              str(eval_dir / "response.txt")],
-            capture_output=True, text=True, env=grade_env,
+            capture_output=True, text=True, env=dict(env),
         )
         (eval_dir / "grading.txt").write_text(grade.stdout + grade.stderr)
         print(grade.stdout, end="", flush=True)
