@@ -2,8 +2,8 @@
 description: Gate make lint on frontmatter that a strict YAML checker accepts, run skill_doctor's discovery check in place, and repair the files that fail today.
 scope: "repo toolchain"
 created: 2026-10-07T07:46:48
-updated: 2026-11-04T11:49:57
-status: open
+updated: 2026-11-06T20:55:25
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -36,13 +36,15 @@ is invoked and is absent from `make lint`.
 On 7 October 2026 a real YAML parser rejected 34 of the 308 tracked files outside
 `tests/` that open with frontmatter: the agent definitions `auto_gate_task` and
 `auto_shaper_task`, seven live tasks, and 25 archived tasks. Commit `87a161b`
-quoted all task descriptions, so today a strict YAML parser rejects 4 of 366
-tracked frontmatter files outside `tests/`, all agent definitions:
-`auto_dryrun_task`, `auto_gate_git`, `auto_gate_task`, and `auto_shaper_task`.
+moved the task skills to quoted `description:` values and taught the task linter
+to block an unquoted value YAML would misread, so every task file parses whole
+today. The tracked files a strict parser still rejects outside `tests/` are the
+agent definitions whose plain `description:` contains a colon followed by a
+space, and the check this task adds reports them by path on its first run.
 Every rejection had one cause, a plain (unquoted) `description:` value containing
 a colon followed by a space, which YAML reads as the start of a nested mapping.
 The archived task `task-family_test-harness-consolidation` now parses whole after
-that commit. Claude Code loads both agents anyway, so its parser tolerates the
+that commit. Claude Code loads these agents anyway, so its parser tolerates the
 colon; whether the other harnesses do is unverified.
 
 The repaired values have to suit the deploy generators. The Codex agent generator
@@ -70,7 +72,7 @@ folded block scalar (`description: >`), and one block sequence under an empty
 key. It uses no nested mappings, flow mappings, anchors, or multi-document blocks.
 A prototype of the subset in Approach, run over the tree on the same date,
 rejected exactly the 35 files above and accepted every other one; a current run
-rejects the four agents above and no task file.
+rejects the agent definitions whose plain `description:` contains a colon followed by a space, and no task file.
 
 The [toolchain floor task](toolchain_make-install-dependency-floor.md) declares
 the tools `make lint` needs and rewrites the README sentence this task also edits,
@@ -87,7 +89,10 @@ user's request, which this check has.
 ending in `.md` or `.mdc` whose first line is exactly `---`, leaving out files
 under `tests/`, since a test fixture may carry broken frontmatter on purpose. It
 also accepts explicit file paths, which the script tests use and which lets
-another harness check files it generates.
+another harness check files it generates. Its skill set is every tracked
+`SKILL.md` outside `tests/`, plus any `SKILL.md` named explicitly, independent
+of that first-line filter, so a skill whose `SKILL.md` has no frontmatter still
+reaches `discovery_safety.py`.
 
 **Accepted subset.** The script accepts a block that closes with a `---` line and
 whose lines all take one of these shapes, and it reports every other line as a
@@ -104,9 +109,9 @@ finding that names the path, the line, and the key where one applies:
 - a `|` or `>` block scalar with an optional `-` or `+` chomping indicator,
   followed by its indented continuation lines;
 - a flow sequence on one line, such as `[a, b]`, whose items are quoted values or
-  plain values free of `,`, `[`, `]`, `{`, and `}`;
-- an empty value followed by indented `- item` lines, each item a plain or quoted
-  value.
+  plain values as defined above, additionally free of `,`, `[`, `]`, `{`, and `}`;
+- an empty value followed by indented `- item` lines, each item a plain value as
+  defined above or a quoted value.
 
 Whatever the subset accepts parses as YAML to the value its author wrote. A
 repository that needs a new shape widens the subset by editing the checker.
@@ -114,24 +119,32 @@ repository that needs a new shape widens the subset by editing the checker.
 **Values.** With `--values`, the script prints the decoded top-level values of
 each file it is given as JSON keyed by path: quoting undone, escapes resolved, and
 block scalars joined by the literal or folded rule with the chomping indicator
-applied.
+applied. Under `--values` the script prints that JSON alone — no section header,
+no file or skill counts, no skill finding, and no warning count — so the output
+parses as JSON.
 
 **Skill check.** The script also runs skill_doctor's `discovery_safety.py` in
 place, resolving its path inside the repository from the script's own location,
-in one call over every `SKILL.md` in its file set with the repository root as
-`--root`. It fails on that script's blocking findings and prints each one's code,
-path, and message, and it reports the warning count without failing. When the
-script is missing from that path, the check fails and names the path, so a moved
-skill surfaces as a failure.
+in one call over every file in its skill set with the repository root as
+`--root`. When the skill set holds no `SKILL.md`, which every explicit-path run
+over non-skill fixtures does, it skips that call, because `discovery_safety.py`
+requires at least one path. It fails on that script's blocking findings and
+prints each one's code, path, and message, and it reports the warning count
+without failing. The missing-script check runs on every invocation, the
+no-`SKILL.md` case included: when the script is missing from that path, the
+check fails and names the path, so a moved skill surfaces as a failure.
 
 **Make wiring.** Add a `lint-frontmatter` target that runs the script, and run it
 from `lint` the way `lint` runs `lint-md`, `lint-json`, and `lint-sh`, so
-`make lint` fails when it fails. Its output opens with a section header like the
-other lint sections and ends with the number of files and skills checked.
+`make lint` fails when it fails. The script prints a section header like `lint-md`, `lint-json`, and `lint-sh`
+do and ends with the number of files and skills it checked, counted from the
+same file and skill sets it checks, so the `lint-frontmatter` target only runs
+it and adds nothing to its output.
 
 **Repair.** Run the check on the tree and repair every file it reports. The task
-files were quoted in `87a161b`, so the remaining repair is the four agent
-definitions: reword each `description:` so it contains no colon followed by a
+files parse whole after `87a161b`, so the remaining repair is the agent
+definitions the check reports: reword each `description:` so it contains no
+colon followed by a
 space and stays unquoted, keeping its meaning, since the Codex generator still
 copies quote characters into its output. A file of any other kind follows the
 same test: reword a value the deploy generators read, and quote one they do not.
@@ -145,7 +158,11 @@ or needs, so it names the frontmatter check and Python 3:
   manifest when that task has already replaced the sentence;
 - the `make lint` / `make fix` bullet under `## Common tasks` in `CLAUDE.md` and
   `AGENTS.md`;
-- the `make lint` line in the `## Running Tests` block of `TESTING.md`.
+- the `make lint` line in the `## Running Tests` block of `TESTING.md`;
+- the `make lint` sentence under `### Toolchain` in
+  `wiki/summaries/ai-modules-repository.md`;
+- the `make lint` passes list in the "Repair a lint finding wherever it appears"
+  paragraph under `## Committing` in `CLAUDE.md` and `AGENTS.md`.
 
 List `scripts/` in the README's layout tree and in the `## Layout` block of
 `CLAUDE.md` and `AGENTS.md`.
@@ -172,32 +189,38 @@ scenario in a temporary directory outside the checkout; `make test` /
 - `make lint` on the repaired tree prints a frontmatter section that reports the
   files and skills it checked and exits 0, `make -n lint` shows `lint` running
   `lint-frontmatter`, and `python3 scripts/lint_frontmatter.py` run alone reports
-  no finding.
+  no blocking finding and exits 0, with warning-tier findings reported and left
+  in place rather than cleared.
 - The harness passes and shows the check failing, with a finding that names the
   file, on each of these staged cases:
   - plain values that contain a colon followed by a space, end with a colon,
     contain a `#` after whitespace, or start with a backtick;
   - a single-quoted value holding a lone `'`, and a double-quoted value holding
     an unescaped `"`;
-  - a flow-sequence item containing a brace;
+  - a flow-sequence item containing a brace, one containing a colon followed by a
+    space, and one containing a `#` after whitespace;
   - a key that appears twice, a nested mapping line, and a block with no closing
     `---`;
   - a `SKILL.md` with no `name:`, which `discovery_safety.py` blocks;
+  - a `SKILL.md` with no frontmatter at all, which `discovery_safety.py` blocks,
+    where the finding appears even though the file has no opening `---`;
   - a staged copy of the check whose `discovery_safety.py` path is missing, where
     the finding names that path.
 - The same harness shows every accepted shape passing, including a quoted value
   that contains a colon followed by a space, and it shows a `SKILL.md` whose only
   finding is warning-tier passing, a file without frontmatter skipped, and a
   broken file under `tests/` left out of the default file set and reported when
-  passed as an explicit path.
+  passed as an explicit path, and an explicit non-skill file passing with the
+  skill check skipped for lack of a `SKILL.md`.
 - `--values` run on a fixture that holds each accepted scalar form prints the
   expected text the harness states for it: `''` collapsed in a single-quoted
   value, escapes resolved in a double-quoted value, and folded and literal block
-  scalars joined by their rules with each chomping indicator applied.
+  scalars joined by their rules with each chomping indicator applied. Its output
+  parses as JSON alone, with no section header, count, or skill finding.
 - No agent definition under `plugins/*/agents/` carries a quoted `description:`
   value or a plain one containing a colon followed by a space.
 - Every passage the Documentation step names states the frontmatter check and
-  Python 3, and none still describes `make lint` as covering markdown, JSON, and
-  shell alone.
+  Python 3, and none of them still describes `make lint` as covering markdown,
+  JSON, and shell alone.
 - The README layout tree and the `## Layout` blocks list `scripts/`, and the
   `tests/README.md` `## Current harnesses` inventory names the new harness.

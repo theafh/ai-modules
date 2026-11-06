@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, refresh a stale task against the current codebase, or run an autonomous readiness loop without implementing the task. A task whose premise the code invalidates stops the loop and surfaces deferral as the user's option.
-version: 1.0.25
+version: 1.0.26
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -76,7 +76,7 @@ Apply one pointer-only prompt rule to every helper call, including each dry-run 
 - A dry-run prompt names the task path, the base `task` skill path, the project root, and `frozen-intent.txt`.
 - A gate prompt names the task path, the `task_check` skill path, the base `task` skill path, the project root, `frozen-intent.txt`, and that round's `r<N>-dryrun.txt`. A gate re-invocation with refuted citations also names `r<N>-refuted-citations.txt`.
 - A reviewer prompt names the task path, the gate return, its issue number or the `freeze-lint.txt` finding, `frozen-intent.txt`, the assigned stance name, and the base repair rule name the stance cites.
-- A proposal-mode verifier prompt names the task path, the gate return, every reviewer return, `frozen-intent.txt`, and `frozen-task.txt`.
+- A proposal-mode verifier prompt names the task path, the live `tasks/` tree, the gate return, every reviewer return, `frozen-intent.txt`, and `frozen-task.txt`.
 - A citation-mode verifier prompt names the gate return, `frozen-intent.txt`, and `frozen-task.txt` only. The verifier reads the `clean` content-lens citations, and on a scoped verdict the `resolved:` citations, from the gate return in place.
 - A delta-mode verifier prompt names the task path, `r<N>-apply.diff.txt`, that round's proposal-mode verifier return, `r<N>-lint.txt`, and `frozen-task.txt`.
 - From round 2 on, every dry-run and gate prompt also names the scoped re-check inputs of `<convergence>`: the accepted gate return the last applied repairs answered (the isolation replacement or refuted-citation re-gate when one replaced or followed that round's first gate call) and that round's `r<M>-apply.diff.txt` as it stood after its clean `<audit_delta>`. Round 1 names neither.

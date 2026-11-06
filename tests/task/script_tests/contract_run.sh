@@ -157,6 +157,27 @@ for sibling in "$task_check_skill" "$task_auto_check_skill" "$task_implement_ski
     "sibling keeps no copy of the base rule's ordered evidence base ($sibling)"
 done
 
+# Live-task ordering forks: a shared-surface collision between live tasks is
+# classified through the whole <dependency_signals> block before the fork is
+# called open, so a ship order the block already settles is reconciled rather
+# than surfaced as an open preference.
+assert_contains "$task_skill" 'A shared-surface collision between two live tasks is classified through `<dependency_signals>` as a whole before the fork is called open' \
+  "Interaction scan classifies a live-task shared-surface collision through the whole dependency_signals block"
+assert_contains "$task_skill" 'never by directional evidence alone' \
+  "Interaction scan refuses a directional-evidence-only classification of a live-task collision"
+assert_count "$task_skill" 'never by directional evidence alone' 1 \
+  "base skill keeps one canonical whole-block classification statement"
+assert_contains "$task_skill" 'read that block'"'"'s prerequisite rule, every signal, both directions, and its hard-versus-soft split' \
+  "Interaction scan reads the prerequisite rule, every signal, both directions, and the hard-versus-soft split"
+assert_contains "$task_skill" 'a collision the block reads as a hard ordering dependency — from explicit ordering prose, a forward reference, or directional evidence — is reconciled to that ship order rather than surfaced' \
+  "Interaction scan reconciles a hard ordering dependency from any of its signals"
+assert_contains "$task_skill" "only one the block reads as a soft companion relationship stays open to surface as the user's call" \
+  "Interaction scan leaves only a soft companion relationship open to surface"
+assert_contains "$task_skill" 'where related live siblings are read through `<dependency_signals>` for any ordering or ownership fork' \
+  "Decide or label tier (d) reads related live siblings through dependency_signals for an ordering or ownership fork"
+assert_not_contains "$task_skill" '(d) related and older tasks, both linked live siblings and archived precedent;' \
+  "Decide or label tier (d) supersedes the bare archived-precedent wording"
+
 assert_contains "$task_skill" 'When `FEATURES.md` and/or `ARCHITECTURE.md` exist at the project root, read them before the prior-art codebase scan' \
   "task_create inherited create flow reads FEATURES.md and ARCHITECTURE.md when present"
 assert_contains "$task_skill" 'When `CHARTER.md` exists at the project root, validate the task content against its boundaries and invariants' \

@@ -35,7 +35,7 @@ contributed through the GUI host's `Style` registry, which takes a CSS string
 with `ctx.add(Style, css)`.
 
 The panel's state model and the side-region tab are described in
-[Request concurrency queue](../../../wiki/concepts/request-concurrency-queue.md).
+[Request concurrency queue](../../wiki/concepts/request-concurrency-queue.md).
 
 ## Approach
 

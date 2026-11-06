@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { renderToString } from "solid-js/web"
 import { build, createServer, type ViteDevServer } from "vite"
-import { STATUS_UNAVAILABLE, panel, statusBodyState } from "../src/gui.tsx"
+import gui, { STATUS_UNAVAILABLE, panel, statusBodyState } from "../src/gui.tsx"
 import type { StatusSnapshot, TransitionRecord } from "../src/rpc.js"
 import {
   PANEL_TRANSITION_LIMIT,
@@ -28,6 +28,7 @@ let vite: ViteDevServer
 let viteCacheDir: string
 let panelModule: {
   StatusBody: (props: { snapshot: StatusSnapshot | null }) => unknown
+  StatusBarBody: (props: { snapshot: StatusSnapshot | null; onOpen: () => void }) => unknown
 }
 
 beforeAll(async () => {
@@ -50,6 +51,10 @@ afterAll(async () => {
 
 function renderPanel(snapshot: StatusSnapshot | null): string {
   return renderToString(() => panelModule.StatusBody({ snapshot }) as never)
+}
+
+function renderBar(snapshot: StatusSnapshot | null): string {
+  return renderToString(() => panelModule.StatusBarBody({ snapshot, onOpen: () => {} }) as never)
 }
 
 function tick(): Promise<void> {
@@ -169,6 +174,31 @@ describe("concurrency status panel body", () => {
     expect(html.match(/request-concurrency-feed-row/g)).toHaveLength(PANEL_TRANSITION_LIMIT)
   })
 
+  test("renders the window-bottom bar with per-provider load and an open action", () => {
+    const html = renderBar(snapshot())
+
+    expect(html).toContain("request-concurrency-bar")
+    expect(html).toContain(">Concurrency<")
+    expect(html).toContain(">acme<")
+    expect(html).toContain(">1/2<")
+    expect(html).toContain(">0 queued<")
+    expect(html).toContain("Open concurrency details")
+    expect(html).toMatch(/style="color:hsl\(/)
+  })
+
+  test("reports an unavailable status in the bar", () => {
+    const html = renderBar(null)
+
+    expect(html).toContain("request-concurrency-bar")
+    expect(html).toContain(STATUS_UNAVAILABLE)
+  })
+
+  test("hides the bar when no provider is configured", () => {
+    const html = renderBar({ providers: [], transitions: [] })
+
+    expect(html).not.toContain("request-concurrency-bar")
+  })
+
   test("updates the rendered feed when a changed event delivers a new snapshot", async () => {
     let current = snapshot([transition(0, { kind: "acquired" })])
     const handlers = new Set<() => void | Promise<void>>()
@@ -214,10 +244,16 @@ describe("concurrency status panel", () => {
     expect(tabs[0]).toMatchObject({ id: "status", pinned: true })
   })
 
-  test("exports no Slot part", async () => {
-    const gui = await import("../src/gui.tsx")
-    expect("Slot" in gui).toBe(false)
-    expect("slot" in gui).toBe(false)
+  test("contributes a window-bottom status bar slot", () => {
+    const added: Array<{ item: unknown }> = []
+    gui.setup!({
+      add: (_registry: unknown, item: unknown) => {
+        added.push({ item })
+        return () => {}
+      },
+    } as never)
+
+    expect(added.some((entry) => (entry.item as { at?: string }).at === "window.bottom")).toBe(true)
   })
 
   test("publishes the prebuilt GUI bundle beside the server entry", () => {

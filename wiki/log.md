@@ -1389,3 +1389,20 @@ pre-existing, and the size infos stay advisory; the one on
   per-location plugin instantiation and the location-routed RPC route)
 - index.md (the concurrency queue summary names the process-wide shared queue
   and the registry, and Last updated moves to 2026-11-06)
+
+## [2026-11-06 16:53] update | Replace the concurrency panel's row colours with the load scale on the concept page
+
+- concepts/request-concurrency-queue.md (the panel passage's three-state
+  green/amber/red row sentence becomes the green-yellow-orange-red load scale,
+  naming the `active / max` load the active count and utilization follow and the
+  `(active + queued) / max` load the queued count and demand follow)
+
+## [2026-11-06 20:08] update | Add the window-bottom status bar to the concurrency concept page
+
+- concepts/request-concurrency-queue.md (the desktop GUI passage now names the
+  window-bottom status bar beside the side tab, its global placement including
+  Home, its built-in-server read, its hidden-until-loaded and no-provider
+  behaviour, and the dialog it opens; the open-questions paragraph names the
+  `window.bottom` slot contribution beside the tab's `Panel` API)
+- index.md (the concurrency queue summary names the desktop side tab and
+  window-bottom status bar over a shared status RPC)

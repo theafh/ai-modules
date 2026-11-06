@@ -411,6 +411,25 @@ s15_convergence_and_robust_returns() {
   $ok
 }
 
+# A live-task ordering fork grounded in <dependency_signals> directional
+# evidence is repository evidence, so the verifier reconciles it instead of
+# rejecting it as a bare preference. The verifier reads the live tasks/ tree
+# itself, and the proposal-mode prompt hands that tree to it by name.
+s17_live_task_ordering_fork() {
+  local ok=true verifier="$AGENTS_DIR/auto_verifier_task.md"
+  assert_contains "verifier counts directional evidence as repository evidence" "$verifier" \
+    'Treat a stated ship order grounded in `<dependency_signals>` directional evidence as repository evidence' || ok=false
+  assert_contains "verifier refuses a sibling lifecycle stage alone as counter-evidence" "$verifier" \
+    "a sibling's lifecycle stage alone as no evidence against that order" || ok=false
+  assert_contains "verifier proposal inputs name the live tasks tree" "$verifier" \
+    'the live `tasks/` tree as a readable input' || ok=false
+  assert_contains "proposal-mode verifier prompt names the live tasks tree" "$SKILL" \
+    'A proposal-mode verifier prompt names the task path, the live `tasks/` tree, the gate return' || ok=false
+  assert_not_contains_re "proposal-mode verifier prompt supersedes the tree-less wording" "$SKILL" \
+    'A proposal-mode verifier prompt names the task path, the gate return' || ok=false
+  $ok
+}
+
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "task_check remains the single readiness gate" s2_gate_is_task_check
 scenario s3 "reviewer/verifier roles are separated and intent-safe" s3_reviewer_and_verifier_boundaries
@@ -441,6 +460,7 @@ s16_inert_worker_probe_pin() {
 
 scenario s15 "blocking bar, scoped rounds, stall and compaction stops, and robust returns are pinned" s15_convergence_and_robust_returns
 scenario s16 "inert worker: no eval grades PASS on an empty response" s16_inert_worker_probe_pin
+scenario s17 "live-task ordering forks resolve through dependency_signals evidence" s17_live_task_ordering_fork
 
 log ""
 log "================================================================"

@@ -115,14 +115,20 @@ pinned Concurrency tab to the session side region and reads the routed
 session's server through the shared status definition, passing the session's
 directory as the RPC location so the call reaches that location's instance. It
 refetches on every `changed` event and on a slow interval, so a missed event
-recovers. Each provider row shows its in-flight count, configured maximum, and
+recovers. A full-width status bar in the window's bottom slot shows the same
+per-provider counts in every window, including Home, and opens a larger
+Concurrency dialog on click; it reads the built-in server because the queue is
+process-wide, and hides until the first fetch settles or when no provider is
+configured. Each provider row shows its in-flight count, configured maximum, and
 queue depth as absolute numbers, and its utilization and demand as percentages.
-The row is green while `active < max` and nothing waits, amber when
-`active == max` and nothing waits, and red when a queue exists. Below the
-provider rows, a compact monospace feed lists the recent transitions newest
-first with their timestamp, kind, provider, session, and counts; it renders the
-newest 20 and scrolls. When a status fetch fails, the panel shows
-`Status unavailable` and no provider rows until a later fetch succeeds.
+The numbers are coloured on a load scale: green at 0%, yellow at 100%, orange
+at 200%, and red from 300% on, interpolated between those anchors. The active
+count and utilization follow the `active / max` load, while the queued count
+and demand follow `(active + queued) / max`. Below the provider rows, a compact
+monospace feed lists the recent transitions newest first with their timestamp,
+kind, provider, session, and counts; it renders the newest 20 and scrolls. When
+a status fetch fails, the panel shows `Status unavailable` and no provider rows
+until a later fetch succeeds.
 
 The queue does not address token-budget limits such as a provider's
 `burst_protection`, nor request-size rejections such as
@@ -140,12 +146,13 @@ directory and documenting the `.ts` file entry as a manual alternative covers
 both paths. See [OpenCode plugin loading](opencode-plugin-loading.md) and
 [Install a local OpenCode plugin](../procedures/install-a-local-opencode-plugin.md).
 
-A desktop status panel ships through the V2 GUI plugin `Panel` API. The
-plugin's `./gui-experimental` bundle contributes a pinned tab to the session
-side region and reads the server's per-provider state through the shared status
-RPC definition rather than a GUI-side IPC contract. The panel uses no `Slot`
-variant, so a `session.panel` menu item and a `ctx.layout.open` call are not
-needed to make the tab appear.
+A desktop status view ships through the V2 GUI plugin `Panel` and `Slot` APIs.
+The plugin's `./gui-experimental` bundle contributes a pinned tab to the
+session side region and a window-bottom status bar, and both read the server's
+per-provider state through the shared status RPC definition rather than a
+GUI-side IPC contract. The tab uses no `Slot` variant, so a `session.panel`
+menu item and a `ctx.layout.open` call are not needed to make it appear; the
+status bar is the plugin's `window.bottom` slot contribution.
 
 ## Related concepts
 

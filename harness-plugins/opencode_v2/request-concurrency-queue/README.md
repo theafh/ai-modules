@@ -203,20 +203,29 @@ waiter. Every instance forwards the shared queue's transitions, so the panel
 sees them whichever location emitted them.
 
 The desktop GUI part ships as the prebuilt `./gui-experimental` bundle and adds
-a pinned **Concurrency** tab to the session side region. It reads the routed
-session's server with the session's directory as the RPC location, refetches on
-every `changed` event, and also refetches on a slow interval so a missed event
-recovers. Each provider gets one row with its in-flight count, configured maximum, and queue
-depth as absolute numbers, and its utilization and demand as percentages. A
-header labels the columns, and the counts are right-aligned in tabular figures so
-a row reads as one line. The numbers are coloured on a load scale: green at 0%,
-yellow at 100%, orange at 200%, and red from 300% on, interpolated between those
-anchors. The active count and utilization use the `active / max` load, while the
-queued count and demand use `(active + queued) / max`. Below the provider rows, a
-compact monospace feed lists the recent transitions newest first with their
-timestamp, kind, provider, session, and counts; it renders the newest 20 and
-scrolls. When a status fetch fails, the panel shows `Status unavailable` and no
-provider rows until a later fetch succeeds.
+a pinned **Concurrency** tab to the session side region, plus a full-width
+status bar in the window's bottom slot. The status bar is visible in every
+window, including Home, and shows each provider's `active / max` count and queue
+depth in the same load colours; clicking it opens a larger **Concurrency** dialog
+with the provider table and the activity feed. The bar hides itself when no
+provider is configured and until the first status fetch settles. It reads the
+built-in server, because the queue is process-wide and every location returns
+the same snapshot.
+
+The side tab reads the routed session's server with the session's directory as
+the RPC location, refetches on every `changed` event, and also refetches on a
+slow interval so a missed event recovers. Each provider gets one row with its
+in-flight count, configured maximum, and queue depth as absolute numbers, and
+its utilization and demand as percentages. A header labels the columns, and the
+counts are right-aligned in tabular figures so a row reads as one line. The
+numbers are coloured on a load scale: green at 0%, yellow at 100%, orange at
+200%, and red from 300% on, interpolated between those anchors. The active count
+and utilization use the `active / max` load, while the queued count and demand
+use `(active + queued) / max`. Below the provider rows, a compact monospace feed
+lists the recent transitions newest first with their timestamp, kind, provider,
+session, and counts; it renders the newest 20 and scrolls. When a status fetch
+fails, the panel shows `Status unavailable` and no provider rows until a later
+fetch succeeds.
 
 ## Development
 
