@@ -2,7 +2,7 @@
 description: Run agent_spinner evals at default 4 workers with a per-eval host git-status escape guard that stays attributable under overlap, using the shared helper.
 scope: tests/agent_spinner/evals
 created: 2026-10-04T22:11:10
-updated: 2026-11-05T23:56:43
+updated: 2026-11-06T22:40:12
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -80,9 +80,9 @@ remove the `agent_spinner` bullet from the sequential list, and delete the
 block's opening whole-host clause "and an escape guard that reads the whole host
 checkout, such as `agent_spinner`'s `git status`", with its leading comma, so
 the sequential-subset list ends at the `task` Approach serial set and the block
-reads one guard story. Leave the block's other entries as they are, the
-`skill_doctor` bullet included, because [the skill_doctor
-task](tests_skill-doctor-parallel-evals.md) owns that bullet and removes it.
+reads one guard story. Leave the block's other entries as they are; the
+`skill_doctor` bullet was already removed by [the archived skill_doctor
+task](archive/tests_skill-doctor-parallel-evals.md).
 
 Prove with a hermetic hook test from the shared helper plus a Cursor default
 run whose overlapping `timing.json` windows carry `started_at` / `ended_at` and

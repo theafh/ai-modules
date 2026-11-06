@@ -2,9 +2,11 @@
 description: Run skill_doctor evals at default 4 workers through the shared helper, keep evals.json-derived ids, and prove isolation with a Cursor default run.
 scope: tests
 created: 2026-10-04T22:11:10
-updated: 2026-11-05T23:20:35
-status: ready
+updated: 2026-11-06T22:40:12
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize the skill_doctor behavioral evals at default four workers
@@ -25,7 +27,7 @@ silently skipped new evals. `WORKSPACE` is already `tests/skill_doctor/workspace
 checksum manifests still prove the check-only contract. The runner already
 writes `summary.json`.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
 
 ## Approach
 

@@ -2,7 +2,7 @@
 description: Ship one Pattern A eval-runner helper (default 4 workers, per-job isolation) and lockstep the CLAUDE.md/AGENTS.md/README.md parallel-workers rule with the vendor.py comment.
 scope: tests/lib
 created: 2026-10-04T22:11:10
-updated: 2026-10-19T19:52:34
+updated: 2026-11-06T22:40:12
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -55,7 +55,7 @@ Live siblings consume this helper rather than inventing a second pool:
 - [task_auto_check parallel evals](tests_task-auto-check-parallel-evals.md)
 - [agent_spinner parallel evals](../tests_agent-spinner-parallel-evals.md)
 - [guardrail_audit parallel evals](tests_guardrail-audit-parallel-evals.md)
-- [skill_doctor parallel evals](../tests_skill-doctor-parallel-evals.md)
+- [skill_doctor parallel evals](tests_skill-doctor-parallel-evals.md)
 - [wiki layer-2 runner dedup](../tests_wiki-layer2-runner-dedup.md)
 - [language_humanizer shared pool](../tests_language-humanizer-shared-pool.md)
 - [git checkout and refresh runners](tests_git-eval-runner-parity.md)

@@ -124,5 +124,7 @@ tests/skill_doctor/
   `lint` task and a `.pre-commit-config.yaml`, and grades that the
   verification summary names those two commands and reaches for no entry
   point the repo never exposed. Run by `evals/run.py` (one vendor worker
-  per eval, Cursor by default, deterministic `grade.sh` on top). See
+  per eval, Cursor by default, deterministic `grade.sh` on top) at the
+  default 4-worker pool: every eval is one job with its own `TMPDIR`, so the
+  staged fixtures overlap. Pass `--workers 1` to serialize. See
   `evals/README.md`; `run_all.sh` drives only the script tests.

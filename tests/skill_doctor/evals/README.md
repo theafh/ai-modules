@@ -22,6 +22,11 @@ python3 tests/skill_doctor/evals/run.py
 honors the shared verdict cache (`--force` to resample, `--no-cache` to
 bypass) and writes `summary.json` into the run directory.
 
+Evals run in the shared `eval_runner` pool at 4 concurrent jobs by default
+(`tests/lib/vendor.py` `DEFAULT_PARALLEL_WORKERS`), each job with its own
+`TMPDIR`. Pass `--workers 1` to serialize, or another count to widen the
+pool; `run.py` prints the worker count in its run header.
+
 Single eval, or a fresh draw on unchanged inputs:
 
 ```bash

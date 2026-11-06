@@ -18,7 +18,9 @@ python3 tests/skill_doctor/evals/run.py
 
 One vendor worker per eval, the Cursor `agent -p` worker by default, graded deterministically by
 `evals/grade.sh`, with the shared verdict cache on by default (`--force`
-resamples, `--no-cache` bypasses). Results land in
+resamples, `--no-cache` bypasses). Evals run in the shared `eval_runner`
+pool at 4 concurrent jobs by default (`--workers`, each job with its own
+`TMPDIR`); pass `--workers 1` to serialize. Results land in
 `workspace/run-<ts>/`, and `summary.json` there is the verdict of record.
 
 `evals/README.md` carries the manual stage-run-grade path and explains why
