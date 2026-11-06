@@ -168,10 +168,11 @@ async function requestHook(
   sessionID: string,
   req: Request,
   providerID = "acme",
+  kind = "primary",
 ): Promise<void> {
   const hook = hooks.get("http.request")
   if (!hook) throw new Error("missing http.request hook")
-  await hook({ sessionID, model: { providerID, id: "test" }, request: req })
+  await hook({ sessionID, model: { providerID, id: "test" }, kind, request: req })
 }
 
 async function responseHook(
@@ -180,12 +181,14 @@ async function responseHook(
   req: Request,
   body: string,
   providerID = "acme",
+  kind = "primary",
 ): Promise<Response> {
   const hook = hooks.get("http.response")
   if (!hook) throw new Error("missing http.response hook")
   const event = {
     sessionID,
     model: { providerID, id: "test" },
+    kind,
     request: req,
     response: new Response(body),
   }
@@ -376,6 +379,159 @@ describe("request-concurrency-queue plugin", () => {
     await requestHook(hooks, "b", b)
     const bResponse = await responseHook(hooks, "b", b, "body")
     await bResponse.text()
+    await cleanup()
+  })
+
+  test("a retry releases only the retrying session's slot", async () => {
+    const { hooks, cleanup } = await setup({ maxConcurrency: 2, providers: ["acme"] })
+    const a = request("https://example.test/a")
+    const b = request("https://example.test/b")
+    const c = request("https://example.test/c")
+    const d = request("https://example.test/d")
+
+    // Two sessions hold the provider's two slots.
+    await requestHook(hooks, "a", a)
+    await requestHook(hooks, "b", b)
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: {},
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    // The retry frees session A's slot, so a new request acquires.
+    let cAcquired = false
+    const cPromise = requestHook(hooks, "c", c).then(() => {
+      cAcquired = true
+    })
+    await tick()
+    expect(cAcquired).toBe(true)
+
+    // Session B's slot stays held, so a further request still waits.
+    let dAcquired = false
+    const dPromise = requestHook(hooks, "d", d).then(() => {
+      dAcquired = true
+    })
+    await tick()
+    expect(dAcquired).toBe(false)
+
+    const bResponse = await responseHook(hooks, "b", b, "b-body")
+    await bResponse.text()
+    await dPromise
+    expect(dAcquired).toBe(true)
+
+    await cPromise
+    await cleanup()
+  })
+
+  test("a retry releases the older of two primary entries for the session", async () => {
+    const { hooks, cleanup } = await setup({ maxConcurrency: 2, providers: ["acme"] })
+    const first = request("https://example.test/first")
+    const second = request("https://example.test/second")
+    const other = request("https://example.test/other")
+    const further = request("https://example.test/further")
+
+    // One session's two primary entries hold both slots.
+    await requestHook(hooks, "a", first)
+    await requestHook(hooks, "a", second)
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: {},
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    // The retry frees the older entry, so another session's request acquires.
+    let otherAcquired = false
+    const otherPromise = requestHook(hooks, "b", other).then(() => {
+      otherAcquired = true
+    })
+    await otherPromise
+    expect(otherAcquired).toBe(true)
+
+    // The session's newer entry stays held, so a further request waits.
+    let furtherAcquired = false
+    const furtherPromise = requestHook(hooks, "c", further).then(() => {
+      furtherAcquired = true
+    })
+    await tick()
+    expect(furtherAcquired).toBe(false)
+
+    const secondResponse = await responseHook(hooks, "a", second, "second-body")
+    await secondResponse.text()
+    await furtherPromise
+    expect(furtherAcquired).toBe(true)
+
+    await cleanup()
+  })
+
+  test("a title request acquires no slot", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    await requestHook(hooks, "a", request("https://example.test/title"), "acme", "title")
+
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ active: 0, queued: 0 })
+    await cleanup()
+  })
+
+  test("a title request that fails before its response headers does not block a primary request", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    // A title request that dies before its response headers fires neither
+    // `http.response` nor `retry`, so it must not have taken a slot.
+    await requestHook(hooks, "a", request("https://example.test/title"), "acme", "title")
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ active: 0 })
+
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ active: 1 })
+
+    const response = await responseHook(hooks, "a", primary, "primary-body")
+    await response.text()
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ active: 0 })
+
+    await cleanup()
+  })
+
+  test("a title response leaves the primary slot held", async () => {
+    const { hooks, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    const primary = request("https://example.test/primary")
+    const other = request("https://example.test/other")
+
+    await requestHook(hooks, "a", primary)
+
+    // The title response arrives for the same session while the primary body
+    // is still streaming, and must not release the primary's slot.
+    const titleResponse = await responseHook(
+      hooks,
+      "a",
+      request("https://example.test/title"),
+      "title-body",
+      "acme",
+      "title",
+    )
+    expect(await titleResponse.text()).toBe("title-body")
+
+    let otherAcquired = false
+    const otherPromise = requestHook(hooks, "b", other).then(() => {
+      otherAcquired = true
+    })
+    await tick()
+    expect(otherAcquired).toBe(false)
+
+    const primaryResponse = await responseHook(hooks, "a", primary, "primary-body")
+    await primaryResponse.text()
+    await otherPromise
+    expect(otherAcquired).toBe(true)
+
     await cleanup()
   })
 

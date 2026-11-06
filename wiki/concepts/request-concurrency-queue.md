@@ -22,11 +22,16 @@ OpenCode server process. Every open location (project) gates its requests
 through those same semaphores, so a provider's configured maximum caps
 concurrent requests across the process instead of once per location.
 
-Each model request acquires a slot before it is sent and releases it when the
-response body ends, when the request fails and is retried, or when the session
-becomes idle, fails, or is deleted. A request that finds every slot taken waits
-in the queue; the oldest waiter is served first. The plugin has no timeout: a
-request waits until a slot is released or the request is aborted.
+Primary model requests (the agent loop) acquire a slot before they are sent and
+release it when the response body ends, when the attempt fails and is retried,
+or when the session becomes idle, fails, or is deleted. Auxiliary model requests
+— title, compaction, and generate — acquire no slot and sit outside the provider
+cap: the runtime gives no per-request failure signal for them, so a slot held by
+an auxiliary request that failed before its response headers would have no
+release path and could stall the session's primary request. A request that finds
+every slot taken waits in the queue; the oldest waiter is served first. The
+plugin has no timeout: a request waits until a slot is released or the request
+is aborted.
 
 The queue counts in-flight requests, not sessions. A session that is running a
 tool or waiting for a subagent is not consuming a provider slot. This matters
@@ -35,11 +40,13 @@ waste the configured capacity.
 
 ## Current state of knowledge
 
-The V2 implementation uses the `http.request` and `http.response` hooks to
-bracket each request. The response hook replaces the response body with a
-wrapped stream so the slot is released only when the stream ends. The `retry`
-hook and the `experimental.idle` hook provide release fallbacks, and the event
-stream covers session idle, deletion, failure, and interruption.
+The V2 implementation uses the `http.request` and `http.response` hooks. The
+response hook replaces the response body with a wrapped stream so the slot is
+released only when the stream ends. A retry releases the session's oldest
+unreleased primary entry for the retrying provider, so it frees the attempt that
+failed and never a newer request's slot. The `retry` hook and the
+`experimental.idle` hook provide release fallbacks, and the event stream covers
+session idle, deletion, failure, and interruption.
 
 The plugin is configured with a provider map, so each provider has its own
 queue and maximum: `{ "myprovider": 2, "openrouter": 4 }`. The provider-list

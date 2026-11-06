@@ -2,9 +2,11 @@
 description: "Release only the retried primary request's slot and stop gating auxiliary model requests, so a retry cannot free a sibling's slot and an auxiliary failure cannot stall the primary."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-05T22:29:54
-updated: 2026-11-05T23:05:21
-status: ready
+updated: 2026-11-06T15:13:25
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Release only the retried primary request's slot in the concurrency queue

@@ -13,11 +13,16 @@ request.
 - One FIFO queue per configured provider is shared by the whole OpenCode server
   process. The configured maximum caps concurrent requests across every open
   location (project), not once per location.
-- Every model request to a configured provider acquires a slot before it is
-  sent.
-- The slot is released when the response body finishes, when the request fails
+- Primary model requests (the agent loop) to a configured provider acquire a
+  slot before they are sent. Auxiliary model requests (title, compaction, and
+  generate) acquire no slot and are outside the provider cap: the runtime gives
+  no per-request failure signal for them, so a slot held by an auxiliary request
+  that failed before its response headers would have no release path.
+- The slot is released when the response body finishes, when the attempt fails
   and is retried, when the session goes idle, or when the session is deleted or
   interrupted.
+- A retry releases only the slot of the attempt that failed, so a concurrent
+  request's slot stays held.
 - When no slot is free, the request waits in a FIFO queue. The oldest waiting
   request is served first.
 - There is no timeout. A request waits until a slot is released or the request
@@ -212,8 +217,9 @@ bun run build:gui
   `burst_protection`, nor request-size rejections such as
   `cold_request_too_large`. Those are separate from concurrency.
 - The queue is in memory. A server restart clears it.
-- A request that never completes holds its slot until the user aborts the
-  session or the session fails. This is intentional: the plugin has no timeout.
+- A primary request that never completes holds its slot until the user aborts
+  the session or the session fails. This is intentional: the plugin has no
+  timeout.
 
 ## License
 

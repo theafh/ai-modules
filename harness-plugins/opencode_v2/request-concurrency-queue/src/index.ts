@@ -18,9 +18,12 @@ export interface RequestConcurrencyQueueFileConfig {
   log?: boolean
 }
 
+type RequestKind = "primary" | "compaction" | "title" | "generate"
+
 interface Entry {
   readonly sessionID: string
   readonly providerID: string
+  readonly kind: RequestKind
   readonly slot: Slot
   released: boolean
 }
@@ -62,8 +65,14 @@ export default Plugin.define({
       providers: Object.fromEntries([...limits].map(([providerID, limit]) => [providerID, limit.maxConcurrency])),
     })
 
-    const addEntry = (sessionID: string, providerID: string, slot: Slot, request: Request): Entry => {
-      const entry: Entry = { sessionID, providerID, slot, released: false }
+    const addEntry = (
+      sessionID: string,
+      providerID: string,
+      kind: RequestKind,
+      slot: Slot,
+      request: Request,
+    ): Entry => {
+      const entry: Entry = { sessionID, providerID, kind, slot, released: false }
       let entries = bySession.get(sessionID)
       if (!entries) {
         entries = new Set()
@@ -109,14 +118,35 @@ export default Plugin.define({
       for (const entry of [...entries]) releaseEntry(entry, reason)
     }
 
+    // A retry names only the session and provider, so it releases that
+    // session's oldest unreleased primary entry: the attempt that failed. A
+    // newer request's slot, including one queued behind it, stays held.
+    const releaseRetried = (sessionID: string, providerID: string, reason: string): void => {
+      const entries = bySession.get(sessionID)
+      if (!entries) return
+      for (const entry of entries) {
+        if (entry.released || entry.kind !== "primary" || entry.providerID !== providerID) continue
+        releaseEntry(entry, reason)
+        return
+      }
+    }
+
     await ctx.session.hook("http.request", async (event) => {
+      // Auxiliary requests (title, compaction, generate) acquire no provider
+      // slot. The runtime reports no failure signal for one that dies before
+      // its response headers, so a held slot would have no release path and
+      // could stall the session's primary request.
+      if (event.kind !== "primary") return
       const limit = limits.get(event.model.providerID)
       if (!limit) return
       const slot = await limit.limiter.acquire(event.request.signal)
-      addEntry(event.sessionID, event.model.providerID, slot, event.request)
+      addEntry(event.sessionID, event.model.providerID, event.kind, slot, event.request)
     })
 
     await ctx.session.hook("http.response", async (event) => {
+      // An auxiliary response must not fall through to the session's primary
+      // entry while that primary body is still streaming.
+      if (event.kind !== "primary") return
       const entry = byRequest.get(event.request) ?? firstEntry(bySession.get(event.sessionID))
       if (!entry) return
 
@@ -164,7 +194,7 @@ export default Plugin.define({
     })
 
     await ctx.session.hook("retry", async (event) => {
-      releaseSession(event.sessionID, "retry")
+      releaseRetried(event.sessionID, event.model.providerID, "retry")
     })
 
     await ctx.session.hook("experimental.idle", async (event) => {
