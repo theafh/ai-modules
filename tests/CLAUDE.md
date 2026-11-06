@@ -55,7 +55,7 @@ files.
 | `task_auto_check/` | `task_auto_check` | Pattern A (skill-creator-aligned) | `script_tests/` static contract checks, parallel-runner checks, the runner's stop on a failed or empty stage among them, and the inert-worker grader pin, + `evals/` over the autonomous readiness loop (repair-to-ready, frozen commitments, isolated re-gates, last-call citation refutation, gate/verifier/drift stops, mechanical lint cleanup). |
 | `guardrail_audit/` | `guardrail_audit` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md and registration contract + `evals/` over six staged fixtures with byte-identity grading. |
 | `skill_doctor/` | `skill_doctor` | Pattern A (skill-creator-aligned) | `script_tests/` over `resolve_scope.py` and `discovery_safety.py` plus the static contract and the eval runner's stop on a failed or empty stage + `evals/` over six staged fixtures. |
-| `agent_spinner/` | `agent_spinner` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md / references / grep / registration contract, the eval runner's plumbing test, + `evals/` over 26 staged evals. Each behavioural eval stages one behaviour and the `smoke_*` evals check the runner's modes; the runner withholds tools under its withheld-tool rule and brackets each eval with a host-checkout `git status`. |
+| `agent_spinner/` | `agent_spinner` | Pattern A (prose-only skill) | `script_tests/` static SKILL.md / references / grep / registration contract, the eval runner's plumbing test, + `evals/` over every id in `evals.json` (26 today). Each behavioural eval stages one behaviour and the `smoke_*` evals check the runner's modes; the runner withholds tools under its withheld-tool rule and brackets each eval with a per-eval owned-name host guard in the shared `tests/lib/eval_runner` pool at the default 4 workers. |
 | `git_refresh/` | `git_refresh` | Pattern A (skill-creator-aligned) | `script_tests/` over the bundled `refresh_repo.sh` on staged repositories, plus the eval runner's stop on a failed or empty stage, eval 3's grade reading the gated order from the helper log, eval 4's grade reading the helper log and response, and the inert-worker grader pin + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker behind a logging shim around the deployed helper → grade) in the shared `tests/lib/eval_runner` pool. |
 | `ai_instruction_writing/` | `ai_instruction_writing` | Pattern A (script-only) | `script_tests/` asserts the static prose contract of a skill that ships no bundled scripts. |
 | `charter_guardrail/` | `guardrail` | Pattern A (script-only) | `script_tests/` exercises the `charter_guardrail.sh` hook that protects `CHARTER.md`: its block and allow decisions for Claude, Codex, and Antigravity tool calls and for shell commands that read or write the charter, the `guardrail/charter-*` branch exception, and its behavior without `jq`. It also checks the hook registrations, the Codex deploy wiring, and how the docs and wiki describe Codex plugin-hook trust; no `run_all.sh`, so drive `script_tests/run.sh` directly. |
@@ -192,8 +192,7 @@ isolate. Today those subsets are the `task_auto_check` serial nested-loop set
 `tests/task/evals/run.py`'s Approach serial nested-loop set
 (`auto_check_boundary`, `fix_coherence_reconcile_escalated`,
 `fix_coherence_reconcile_inline_staleness`), which also runs one id at a
-time after the isolated pool, and an escape guard that reads the whole host
-checkout, such as `agent_spinner`'s `git status`. The rest of the
+time after the isolated pool. The rest of the
 `task_auto_check` suite and the rest of the `task` hub suite use the default
 4 workers. Raising the default past 4 mostly buys model contention and
 timeouts, not faster wall-clock.
@@ -204,7 +203,7 @@ are `tests/task_auto_check/evals/run.py`, `tests/task/evals/run.py`,
 `tests/git_checkout/evals/run.py`,
 `tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`,
 `tests/git_review/evals/run.py`, `tests/guardrail_audit/evals/run.py`,
-`tests/skill_doctor/evals/run.py`, and
+`tests/skill_doctor/evals/run.py`, `tests/agent_spinner/evals/run.py`, and
 `tests/git_auto_review/evals/run.py`. `task_auto_check` runs its serial
 nested-loop set, the list above, one job at a time after the isolated pool.
 `tests/task/evals/run.py` runs its Approach serial nested-loop set
@@ -227,6 +226,9 @@ compares only the sandbox's fixture names, so the whole suite runs in the
 pool. Every `skill_doctor` eval stages its own sandbox root and its checksum
 manifest covers only that sandbox, so overlapping evals keep their verdicts
 apart; its `stage.sh`, worker, and `grade.sh` all run under the job's
+`TMPDIR`. Every `agent_spinner` eval stages its own sandbox root and its host
+guard compares only the basenames that sandbox owns, so overlapping evals stay
+attributable; its `stage.sh`, worker, and `grade.sh` all run under the job's
 `TMPDIR`.
 
 The helper runs a harness's before and after hooks around each job, one hook
@@ -250,13 +252,6 @@ helper (private pools, not yet on `eval_runner`):
 - `tests/natural_language/evals/run.py` — one sandbox per pass.
 - `tests/trigger_evals/run.py` — one fresh worker directory per query run,
   outside the checkout and any git repository.
-
-Pattern A runners that stay sequential until their sibling conversion tasks
-wire them onto `eval_runner` (plus permanent isolation exceptions):
-
-- `agent_spinner` brackets each eval with a host-checkout `git status`, which
-  sees every overlapping eval's changes, so it stays serial until its guard
-  compares only the names each eval owns.
 
 Do not put this default in `TESTING.md`. That file is methodology.
 Operator knobs live in this file and its twin guide, plus the runner

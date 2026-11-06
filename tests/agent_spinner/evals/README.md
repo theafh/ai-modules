@@ -1,13 +1,16 @@
 # agent_spinner behavioral evals
 
-Twenty-six staged evals. Each behavioural eval stages one behaviour; the
-`smoke_*` evals check the runner's modes, so a failing eval names one behaviour
-rather than a conjoined verdict. The static body and grep items stay under
-`script_tests/`.
+Every id in `evals.json` (twenty-six today). Each behavioural eval stages one
+behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
+names one behaviour rather than a conjoined verdict. The static body and grep
+items stay under `script_tests/`.
 
 Run them with `python3 tests/agent_spinner/evals/run.py`; `RUNBOOK.md` has the
-flags and the cheap-first staging probe. The runner's plumbing test runs
-without a live worker: `python3 tests/agent_spinner/evals/test_run.py`.
+flags and the cheap-first staging probe. The runner runs one job per eval in
+the shared `tests/lib/eval_runner` pool at the default 4 workers, each job
+with its own `TMPDIR`, and its owned-name host guard keeps an escape
+attributable while siblings overlap. The runner's plumbing test runs without a
+live worker: `python3 tests/agent_spinner/evals/test_run.py`.
 
 ## The two axes every eval is graded on
 
@@ -151,27 +154,28 @@ the default vendor.
 
 | Eval | Result | Run |
 | --- | --- | --- |
-| `smoke_inline_body` | pass | `workspace/run-20261103-003235` |
-| `smoke_second_turn` | pass | `workspace/run-20261103-003235` |
-| `smoke_staged_agent` | pass | `workspace/run-20261103-003235` |
-| `smoke_withheld_shell` | pass | `workspace/run-20261103-000611` |
-| `smoke_withheld_write` | pass | `workspace/run-20261103-000611` |
-| `probe_definitions_no_spawn` | pass | `workspace/run-20261102-234332` |
-| `inline_floor` | pass | `workspace/run-20261102-234332` |
-| `governed_stop` | pass | `workspace/run-20261102-234332` |
-| `failure_taxonomy` | pass | `workspace/run-20261102-234332` |
-| `unreturned_bound` | pass | `workspace/run-20261102-234332` |
-| `uncited_clean_reroute` | pass | `workspace/run-20261102-233850` |
-| `duplicate_finding_union` | pass | `workspace/run-20261102-234332` |
-| `confirmation_provenance` | pass | `workspace/run-20261102-234332` |
-| `payload_cap` | pass | `workspace/run-20261102-234332` |
-| `report_rederivation` | pass | `workspace/run-20261102-234332` |
+| `smoke_inline_body` | pass | `../workspace/run-20261103-003235` |
+| `smoke_second_turn` | pass | `../workspace/run-20261103-003235` |
+| `smoke_staged_agent` | pass | `../workspace/run-20261103-003235` |
+| `smoke_withheld_shell` | pass | `../workspace/run-20261103-000611` |
+| `smoke_withheld_write` | pass | `../workspace/run-20261103-000611` |
+| `probe_definitions_no_spawn` | pass | `../workspace/run-20261102-234332` |
+| `inline_floor` | pass | `../workspace/run-20261102-234332` |
+| `governed_stop` | pass | `../workspace/run-20261102-234332` |
+| `failure_taxonomy` | pass | `../workspace/run-20261102-234332` |
+| `unreturned_bound` | pass | `../workspace/run-20261102-234332` |
+| `uncited_clean_reroute` | pass | `../workspace/run-20261102-233850` |
+| `duplicate_finding_union` | pass | `../workspace/run-20261102-234332` |
+| `confirmation_provenance` | pass | `../workspace/run-20261102-234332` |
+| `payload_cap` | pass | `../workspace/run-20261102-234332` |
+| `report_rederivation` | pass | `../workspace/run-20261102-234332` |
 
 Two defects surfaced in the first live pass. Cursor 2026.10.22 records a named
 role as `subagentType: {"custom": {"name": "<role>"}}`; `_helper_name` now reads
 that shape as well as the earlier string, so `smoke_staged_agent`'s spawn record
 names `smoke_replier`. `smoke_second_turn`'s first failure was the host-checkout
-guard seeing unrelated task-file edits made during the run; it passed on a
-stable tree, and the guard is unchanged. `uncited_clean_reroute` now stages a
-true clean verdict, so the missing citation is the only reason to route back;
-its checks are unchanged.
+guard seeing unrelated task-file edits made during the run; the owned-name
+guard now blames only the host paths an eval's own sandbox names, so an
+unrelated live edit stays outside that eval's verdict. `uncited_clean_reroute`
+now stages a true clean verdict, so the missing citation is the only reason to
+route back; its checks are unchanged.

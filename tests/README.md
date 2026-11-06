@@ -298,12 +298,14 @@ files.
   tags, the per-harness greps that must return nothing, the reference set,
   registration lockstep, and the eval runner's stop on a failed or empty
   stage); `evals/test_run.py` proves the runner's wiring against a stub
-  worker; `evals/` holds 26 staged evals. Each behavioural eval stages one
-  behaviour and the `smoke_*` evals check the runner's modes, driven by
-  `evals/run.py` on the default Cursor worker with a deterministic
-  `grade.sh`. The runner withholds tools under its withheld-tool rule and
-  brackets every eval with a host-checkout `git status` so a sandbox escape
-  fails the eval that caused it. See `evals/README.md` for the signal each
+  worker; `evals/` holds every id in `evals.json` (26 today). Each
+  behavioural eval stages one behaviour and the `smoke_*` evals check the
+  runner's modes, driven by `evals/run.py` on the default Cursor worker in
+  the shared `tests/lib/eval_runner` pool at the default 4 workers, with a
+  deterministic `grade.sh`. The runner withholds tools under its
+  withheld-tool rule and brackets every eval with a per-eval owned-name
+  host guard, so a sandbox escape fails the eval whose sandbox names it
+  even while siblings overlap. See `evals/README.md` for the signal each
   eval uses and the `## Runner modes` section.
 - **`git_refresh/`**: Pattern A. `script_tests/` covers the bundled
   `refresh_repo.sh` over staged repositories, plus two eval-harness

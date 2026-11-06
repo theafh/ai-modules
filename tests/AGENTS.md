@@ -192,8 +192,7 @@ isolate. Today those subsets are the `task_auto_check` serial nested-loop set
 `tests/task/evals/run.py`'s Approach serial nested-loop set
 (`auto_check_boundary`, `fix_coherence_reconcile_escalated`,
 `fix_coherence_reconcile_inline_staleness`), which also runs one id at a
-time after the isolated pool, and an escape guard that reads the whole host
-checkout, such as `agent_spinner`'s `git status`. The rest of the
+time after the isolated pool. The rest of the
 `task_auto_check` suite and the rest of the `task` hub suite use the default
 4 workers. Raising the default past 4 mostly buys model contention and
 timeouts, not faster wall-clock.
@@ -204,7 +203,7 @@ are `tests/task_auto_check/evals/run.py`, `tests/task/evals/run.py`,
 `tests/git_checkout/evals/run.py`,
 `tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`,
 `tests/git_review/evals/run.py`, `tests/guardrail_audit/evals/run.py`,
-`tests/skill_doctor/evals/run.py`, and
+`tests/skill_doctor/evals/run.py`, `tests/agent_spinner/evals/run.py`, and
 `tests/git_auto_review/evals/run.py`. `task_auto_check` runs its serial
 nested-loop set, the list above, one job at a time after the isolated pool.
 `tests/task/evals/run.py` runs its Approach serial nested-loop set
@@ -227,6 +226,9 @@ compares only the sandbox's fixture names, so the whole suite runs in the
 pool. Every `skill_doctor` eval stages its own sandbox root and its checksum
 manifest covers only that sandbox, so overlapping evals keep their verdicts
 apart; its `stage.sh`, worker, and `grade.sh` all run under the job's
+`TMPDIR`. Every `agent_spinner` eval stages its own sandbox root and its host
+guard compares only the basenames that sandbox owns, so overlapping evals stay
+attributable; its `stage.sh`, worker, and `grade.sh` all run under the job's
 `TMPDIR`.
 
 The helper runs a harness's before and after hooks around each job, one hook
@@ -250,13 +252,6 @@ helper (private pools, not yet on `eval_runner`):
 - `tests/natural_language/evals/run.py` — one sandbox per pass.
 - `tests/trigger_evals/run.py` — one fresh worker directory per query run,
   outside the checkout and any git repository.
-
-Pattern A runners that stay sequential until their sibling conversion tasks
-wire them onto `eval_runner` (plus permanent isolation exceptions):
-
-- `agent_spinner` brackets each eval with a host-checkout `git status`, which
-  sees every overlapping eval's changes, so it stays serial until its guard
-  compares only the names each eval owns.
 
 Do not put this default in `TESTING.md`. That file is methodology.
 Operator knobs live in this file and its twin guide, plus the runner

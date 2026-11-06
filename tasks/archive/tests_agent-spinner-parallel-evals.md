@@ -2,9 +2,11 @@
 description: Run agent_spinner evals at default 4 workers with a per-eval host git-status escape guard that stays attributable under overlap, using the shared helper.
 scope: tests/agent_spinner/evals
 created: 2026-10-04T22:11:10
-updated: 2026-11-06T22:40:12
-status: ready
+updated: 2026-11-06T23:28:09
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Parallelize the agent_spinner behavioral evals with an attributable escape guard
@@ -29,7 +31,7 @@ come from `evals.json`. The shipped runner modes (resume, inline body, tool-call
 record) and Cursor spawn-tool withholding stay as they are; this task preserves
 them while changing only how the pool runs.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md),
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md),
 including its serialized host-status hooks. The helper runs each before/after
 pair one call at a time on that job's own thread, but serialization cannot
 attribute a change: an after hook also sees what a still-running sibling
@@ -82,14 +84,14 @@ checkout, such as `agent_spinner`'s `git status`", with its leading comma, so
 the sequential-subset list ends at the `task` Approach serial set and the block
 reads one guard story. Leave the block's other entries as they are; the
 `skill_doctor` bullet was already removed by [the archived skill_doctor
-task](archive/tests_skill-doctor-parallel-evals.md).
+task](tests_skill-doctor-parallel-evals.md).
 
 Prove with a hermetic hook test from the shared helper plus a Cursor default
 run whose overlapping `timing.json` windows carry `started_at` / `ended_at` and
 sit next to a clean host `git status` recorded in `tests/agent_spinner/results/`.
 
 **Out of scope:** New runner modes (resume, inline body, tool-call record),
-which [the runner-modes task](tests_agent-spinner-runner-modes.md) shipped and
+which [the runner-modes task](../tests_agent-spinner-runner-modes.md) shipped and
 audited. Live-testing unshipped editorial plugin harnesses.
 
 ## Acceptance

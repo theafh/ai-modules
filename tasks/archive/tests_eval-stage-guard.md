@@ -126,7 +126,7 @@ runner's `evals/run.py`, the `script_tests/run.sh` of each harness the Context
 selector yields, the README of each such harness, and the stage-guard rows in
 `tests/README.md` and `tests/CLAUDE.md`. Rebase over every live task the grep
 names. [The agent_spinner parallel-evals
-task](../tests_agent-spinner-parallel-evals.md) rewrites
+task](tests_agent-spinner-parallel-evals.md) rewrites
 `tests/agent_spinner/evals/run.py` onto the shared helper and may rewrite its
 `stage()` call; whichever lands second keeps this task's failure path. [The
 agent_spinner runner-modes task](../tests_agent-spinner-runner-modes.md) adds

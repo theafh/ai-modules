@@ -28,6 +28,7 @@ REPO_ROOT = THIS.parents[2]
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 sys.path.insert(0, str(THIS))
 import eval_cache  # noqa: E402
+import eval_runner  # noqa: E402
 import micro_deploy  # noqa: E402
 import run  # noqa: E402
 import vendor  # noqa: E402
@@ -47,7 +48,7 @@ def check(label: str, cond: bool, detail: str = "") -> None:
 
 
 STUB = r'''#!/usr/bin/env python3
-import json, os, pathlib, subprocess, sys
+import fcntl, json, os, pathlib, subprocess, sys, time
 
 args = sys.argv[1:]
 stub_dir = pathlib.Path(os.environ["STUB_DIR"])
@@ -57,12 +58,26 @@ if "--version" in args:
     print(version.read_text().strip() if version.exists() else "stub-1.0")
     raise SystemExit(0)
 
+# Two overlapping jobs share this counter, so take an exclusive lock before
+# reading it. Each call then gets its own reply slot.
 count_path = stub_dir / "count"
-count = int(count_path.read_text()) if count_path.exists() else 0
-count += 1
-count_path.write_text(str(count))
+with (stub_dir / "count.lock").open("a") as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    count = int(count_path.read_text()) if count_path.exists() else 0
+    count += 1
+    count_path.write_text(str(count))
+    fcntl.flock(lock, fcntl.LOCK_UN)
+
+sleep_s = float(os.environ.get("STUB_SLEEP", "0"))
+if sleep_s:
+    time.sleep(sleep_s)
 
 cwd = pathlib.Path.cwd()
+
+escape_name = os.environ.get("STUB_ESCAPE_NAME", "")
+if escape_name and (cwd / escape_name).exists():
+    host_root = pathlib.Path(os.environ["STUB_HOST_ROOT"])
+    (host_root / escape_name).write_text("escaped from the sandbox\n")
 
 
 def agent_names(path):
@@ -77,10 +92,15 @@ git_status = subprocess.run(
 ).stdout
 marker_name = os.environ.get("STUB_MARKER_NAME", "")
 claude_config = os.environ.get("CLAUDE_CONFIG_DIR", "")
+eval_marker = cwd / "eval_id.txt"
 entry = {
     "argv": args,
     "cwd": str(cwd),
     "home": os.environ.get("HOME"),
+    "tmpdir": os.environ.get("TMPDIR"),
+    "eval_marker": eval_marker.read_text().strip() if eval_marker.is_file() else "",
+    "started_at": time.time() - sleep_s,
+    "ended_at": time.time(),
     "claude_config": claude_config,
     "marker": bool(marker_name) and (cwd / marker_name).exists(),
     "git_status": git_status,
@@ -164,6 +184,7 @@ def patched(
     resume: tuple[bool, str] = (True, ""),
     grade: pathlib.Path | None = None,
     cache=None,
+    stage=None,
     extra_env: dict[str, str] | None = None,
 ):
     saved = {
@@ -172,6 +193,7 @@ def patched(
         "preflight_auth": run.micro_deploy.preflight_auth,
         "preflight_resume": run.preflight_resume,
         "GRADE": run.GRADE,
+        "stage": run.stage,
         "EvalCache": run.eval_cache.EvalCache,
     }
     env_keys = {"STUB_DIR": str(stub_dir)}
@@ -184,6 +206,8 @@ def patched(
     run.preflight_resume = lambda *args, **kwargs: resume
     if grade is not None:
         run.GRADE = grade
+    if stage is not None:
+        run.stage = stage
     if cache is not None:
         run.eval_cache.EvalCache = lambda path: cache
     os.environ.update(env_keys)
@@ -195,6 +219,7 @@ def patched(
         run.micro_deploy.preflight_auth = saved["preflight_auth"]
         run.preflight_resume = saved["preflight_resume"]
         run.GRADE = saved["GRADE"]
+        run.stage = saved["stage"]
         run.eval_cache.EvalCache = saved["EvalCache"]
         for key, value in old_env.items():
             if value is None:
@@ -220,6 +245,61 @@ def passing_grade(root: pathlib.Path) -> pathlib.Path:
     script.write_text("#!/usr/bin/env bash\nexit 0\n")
     script.chmod(0o755)
     return script
+
+
+def logging_grade(root: pathlib.Path) -> pathlib.Path:
+    """A passing grader that records its eval id and TMPDIR."""
+    script = root / "logging-grade.sh"
+    script.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s %s\\n' \"$1\" \"${TMPDIR:-}\" >> \"$GRADE_LOG\"\n"
+        "exit 0\n"
+    )
+    script.chmod(0o755)
+    return script
+
+
+def fake_stage(extra_for=None):
+    """A stage seam that writes a probe sandbox without running a fixture.
+
+    `extra_for(eval_id)` returns extra files for that eval's project, so a
+    case can give one eval a name its sibling does not own.
+    """
+
+    def stage(eval_id, target, env=None):
+        root = pathlib.Path(target)
+        proj = root / "proj"
+        proj.mkdir(parents=True, exist_ok=True)
+        (proj / "eval_id.txt").write_text(f"{eval_id}\n")
+        for name, text in (extra_for(eval_id) if extra_for else {}).items():
+            (proj / name).write_text(text)
+        return {
+            "sandbox_proj": str(proj),
+            "sandbox_target": str(root),
+            "skill_path": str(THIS / "stage.sh"),
+            "prompt": f"probe prompt for {eval_id}",
+        }
+
+    return stage
+
+
+def host_mirror(root: pathlib.Path) -> pathlib.Path:
+    """A clean throwaway git checkout the guard can watch."""
+    mirror = root / "host"
+    mirror.mkdir()
+    (mirror / "tracked.txt").write_text("host checkout\n")
+    for args in (
+        ["init", "-q"],
+        ["config", "user.email", "evals@example.invalid"],
+        ["config", "user.name", "Evals"],
+        ["add", "."],
+        ["commit", "-qm", "host"],
+    ):
+        subprocess.run(
+            ["git", "-C", str(mirror), *args],
+            check=True, capture_output=True, text=True,
+        )
+    return mirror
 
 
 def cursor_stream(*, read: str, session: str, final: str,
@@ -655,6 +735,9 @@ def case_withheld(vendor_name: str) -> None:
                 "smoke_withheld_shell", "smoke_withheld_write",
                 "--vendor", vendor_name,
                 "--worker-bin", str(worker), "--no-cache",
+                # This case reads the stub log by position, so serialize the
+                # two ids to keep each tool class on its own record.
+                "--workers", "1",
             ])
         check(f"{vendor_name} withheld run exits 0", rc == 0, output)
         log = stub_log(stub_dir)
@@ -1328,6 +1411,181 @@ def case_eval_vendor_export() -> None:
             )
 
 
+def case_default_ids() -> None:
+    print("default run set and worker count")
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        worker, stub_dir = make_worker(root)
+        workspace = root / "workspace"
+        captured: dict = {}
+
+        def fake_execute(specs, ids, **kwargs):
+            captured["ids"] = list(ids)
+            captured["workers"] = kwargs.get("workers")
+            return [(eval_id, True, False) for eval_id in ids]
+
+        saved_execute = run._execute
+        run._execute = fake_execute
+        try:
+            with patched(real_specs(), workspace, stub_dir):
+                rc, output = invoke(["--worker-bin", str(worker), "--no-cache"])
+        finally:
+            run._execute = saved_execute
+        expected = eval_runner.load_eval_ids(run.EVALS)
+        check(
+            "a bare run takes every id in evals.json, in file order",
+            captured.get("ids") == expected,
+            str(captured.get("ids")),
+        )
+        check(
+            "a bare run uses the default 4 workers",
+            captured.get("workers") == vendor.DEFAULT_PARALLEL_WORKERS,
+            str(captured.get("workers")),
+        )
+        check(
+            "a bare run prints a graded summary over every id",
+            f"graded: {len(expected)}/{len(expected)} evals passed" in output
+            and all(f"  {eval_id}: PASS" in output for eval_id in expected),
+            output,
+        )
+        summary = json.loads((latest_run(workspace) / "summary.json").read_text())
+        check(
+            "a bare run writes summary.json for every id",
+            summary["total"] == len(expected)
+            and set(summary["results"]) == set(expected),
+        )
+
+
+def case_parallel_tmpdir() -> None:
+    print("per-job TMPDIR across two overlapping jobs")
+    ids = ("phase_plan_announcement", "diagnostic_inline")
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        worker, stub_dir = make_worker(root)
+        for index in (1, 2):
+            queue(stub_dir, index, json.dumps(
+                {"type": "result", "result": "stub reply", "session_id": "s1"}
+            ))
+        grade_log = root / "grade.log"
+        specs = {eval_id: real_specs()[eval_id] for eval_id in ids}
+        workspace = root / "workspace"
+        with patched(
+            specs, workspace, stub_dir,
+            grade=logging_grade(root),
+            stage=fake_stage(),
+            extra_env={"GRADE_LOG": str(grade_log), "STUB_SLEEP": "1"},
+        ):
+            rc, output = invoke([
+                *ids, "--worker-bin", str(worker), "--no-cache",
+                "--workers", "2",
+            ])
+        check("the two-job parallel run exits 0", rc == 0, output)
+        log = stub_log(stub_dir)
+        check(
+            "the parallel run makes two worker calls",
+            len(log) == 2,
+            str(len(log)),
+        )
+        windows = sorted(
+            (entry["started_at"], entry["ended_at"]) for entry in log
+        )
+        check(
+            "the two worker windows overlap",
+            len(windows) == 2 and windows[0][1] > windows[1][0],
+            str(windows),
+        )
+        worker_tmp = {entry["eval_marker"]: entry["tmpdir"] for entry in log}
+        grade_tmp = {}
+        for line in grade_log.read_text().splitlines():
+            eval_id, _, tmpdir = line.partition(" ")
+            grade_tmp[eval_id] = tmpdir
+        check(
+            "each job carries its own eval marker",
+            set(worker_tmp) == set(ids),
+            str(worker_tmp),
+        )
+        check(
+            "the two jobs get distinct worker TMPDIRs",
+            len(set(worker_tmp.values())) == 2,
+            str(worker_tmp),
+        )
+        check(
+            "each job's grade env carries the same TMPDIR as its worker env",
+            worker_tmp == grade_tmp,
+            f"{worker_tmp} != {grade_tmp}",
+        )
+
+
+def case_escape_guard() -> None:
+    print("owned-name host escape guard")
+    ids = ("phase_plan_announcement", "diagnostic_inline")
+    canary = "escape_canary.txt"
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        worker, stub_dir = make_worker(root)
+        for index in (1, 2):
+            queue(stub_dir, index, json.dumps(
+                {"type": "result", "result": "stub reply", "session_id": "s1"}
+            ))
+        mirror = host_mirror(root)
+        specs = {eval_id: real_specs()[eval_id] for eval_id in ids}
+        workspace = root / "workspace"
+        saved_repo = run.REPO_ROOT
+        run.REPO_ROOT = mirror
+        try:
+            with patched(
+                specs, workspace, stub_dir,
+                grade=passing_grade(root),
+                stage=fake_stage(
+                    lambda eval_id: {canary: "own name\n"}
+                    if eval_id == ids[0] else {}
+                ),
+                extra_env={
+                    "STUB_ESCAPE_NAME": canary,
+                    "STUB_HOST_ROOT": str(mirror),
+                    "STUB_SLEEP": "1",
+                },
+            ):
+                rc, output = invoke([
+                    *ids, "--worker-bin", str(worker), "--no-cache",
+                    "--workers", "2",
+                ])
+        finally:
+            run.REPO_ROOT = saved_repo
+        log = stub_log(stub_dir)
+        windows = sorted(
+            (entry["started_at"], entry["ended_at"]) for entry in log
+        )
+        check(
+            "the escaping run made two overlapping worker calls",
+            len(windows) == 2 and windows[0][1] > windows[1][0],
+            str(windows),
+        )
+        check("the host mirror gained the canary", (mirror / canary).is_file())
+        check("an escaped eval fails the run", rc == 1, output)
+        check(
+            "only the eval whose sandbox owns the canary fails",
+            f"[{ids[0]}] FAIL" in output
+            and f"[{ids[1]}] PASS" in output
+            and f"[{ids[1]}] FAIL" not in output,
+            output,
+        )
+        check(
+            "the escape message names the owned path and the sandbox escape",
+            canary in output and "sandbox escape" in output,
+            output,
+        )
+        summary = json.loads(
+            (latest_run(workspace) / "summary.json").read_text()
+        )
+        check(
+            "summary.json records only the escaping eval as failed",
+            summary["results"][ids[0]]["passed"] is False
+            and summary["results"][ids[1]]["passed"] is True,
+            json.dumps(summary["results"]),
+        )
+
+
 def main() -> int:
     print("test_run")
     case_inline_body()
@@ -1362,6 +1620,9 @@ def main() -> int:
     case_invalid_class()
     case_no_mode()
     case_eval_vendor_export()
+    case_default_ids()
+    case_parallel_tmpdir()
+    case_escape_guard()
     print(f"\n{PASS} passed, {FAIL} failed")
     return 0 if FAIL == 0 else 1
 

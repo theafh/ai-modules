@@ -33,10 +33,10 @@ tests/agent_spinner/
   page, and `script_tests/` proves the eval runner's stop on a failed or
   empty stage through `tests/lib/check_stage_guard.py`. `evals/test_run.py`
   proves the runner's modes and wiring against a stub worker.
-- **evals**: 26 staged evals. Each behavioural eval stages one behaviour, and
-  the `smoke_*` evals check the runner's modes. Every compound acceptance
-  bullet was split into its own eval, so a failure names one behaviour rather
-  than a conjoined verdict.
+- **evals**: every id in `evals.json` (26 today). Each behavioural eval
+  stages one behaviour, and the `smoke_*` evals check the runner's modes. Every
+  compound acceptance bullet was split into its own eval, so a failure names
+  one behaviour rather than a conjoined verdict.
 
 ## How a no-delegation-surface fixture stays honest
 
@@ -51,8 +51,14 @@ modes` section of `evals/README.md` holds the full account.
 
 Every fixture stages two trees: `proj/`, which the worker runs in, and
 `outside/`, a canary tree the run has no reason to touch. `grade.sh` hashes
-both, and `run.py` additionally brackets each eval with a `git status
---porcelain` of the host checkout, failing the eval that changed it. The
-run's own instrumentation output under `proj/.agent_spinner/` is excluded from
-the `proj/` inventory on both sides, so writing a roster never reads as editing
+both, and `run.py` brackets each eval with an owned-name host-status guard
+through `tests/lib/eval_runner.py`'s before/after hooks: the before hook
+snapshots the host checkout's `git status --porcelain`, and the after hook
+blames the eval only for new host paths whose basename appears in that eval's
+preserved sandbox copy. The evals run at the default 4 workers, so
+overlapping siblings stay attributable: an escape fails the eval whose sandbox
+names it, and a sibling's own work never does. The run set is every id in
+`evals.json` (26 today), derived at startup rather than frozen. The run's own
+instrumentation output under `proj/.agent_spinner/` is excluded from the
+`proj/` inventory on both sides, so writing a roster never reads as editing
 the corpus.

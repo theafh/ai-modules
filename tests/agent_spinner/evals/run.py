@@ -26,42 +26,59 @@ applied, and an eval marked `needs_real_absence` reports when its expected
 behaviour rests on that declaration. The runner records each turn's stream
 tool calls to `tool_calls.jsonl` when the eval sets `tool_record`.
 
-Every run is bracketed by a `git status --porcelain` of the host checkout, so
-an escape from the sandbox fails the eval that caused it.
+Every eval is one job in the shared pool from `tests/lib/eval_runner.py`
+(`--workers`, default `vendor.DEFAULT_PARALLEL_WORKERS`, each job with its own
+TMPDIR). The default ids are every id in `evals.json`, in file order.
+
+A host-status guard brackets each job through the helper's before/after hooks.
+The before hook stores the full `git status --porcelain` of the host checkout;
+the after hook reads the eval's preserved sandbox copy and blames only the new
+host paths whose basename that copy owns. Overlapping evals therefore stay
+attributable: an escape fails the eval whose sandbox names it, and a sibling's
+own work never does.
 
 Usage:
     python3 tests/agent_spinner/evals/run.py [eval_id ...]
+      # default: every `id` in evals.json, derived at startup
       [--vendor claude|cursor] [--model sonnet|auto|'']
-      [--timeout 420] [--worker-bin <bin>]
+      [--workers 4] [--timeout 420] [--worker-bin <bin>]
       [--force] [--no-cache]
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import datetime
 import json
-import os
 import pathlib
 import shlex
 import subprocess
 import sys
 import time
 import uuid
+from collections.abc import Mapping
 
 THIS = pathlib.Path(__file__).resolve().parent
 STAGE = THIS / "stage.sh"
 GRADE = THIS / "grade.sh"
 EVALS = THIS / "evals.json"
-WORKSPACE = THIS / "workspace"
 FIXTURES = THIS / "fixtures"
 REPO_ROOT = THIS.parents[2]
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
 import eval_cache  # noqa: E402
+import eval_runner  # noqa: E402  (shared Pattern A job pool)
 import micro_deploy  # noqa: E402
 import vendor  # noqa: E402
 import worker_isolation  # noqa: E402  (shared sandbox-root helper)
+
+# The sole run root: tests/agent_spinner/workspace, beside evals/.
+WORKSPACE = eval_runner.resolve_workspace(THIS)
+
+# Every id in evals.json, in file order — the default run set. Derived rather
+# than frozen, so a newly added eval is covered the moment it is staged.
+DEFAULT_IDS = eval_runner.load_eval_ids(EVALS)
 
 ISOLATION_PREFIX = "agent_spinner_"
 
@@ -307,7 +324,106 @@ def host_status() -> str:
     ).stdout
 
 
-def stage(eval_id: str, target: pathlib.Path) -> dict:
+def status_paths(status: str) -> set[str]:
+    """The paths one `git status --porcelain` record names.
+
+    A rename line carries both sides; the target side is the path the run
+    now owns. Quoted paths are unquoted for the basename comparison.
+    """
+    paths: set[str] = set()
+    for line in status.splitlines():
+        if len(line) < 4:
+            continue
+        rest = line[3:]
+        if " -> " in rest:
+            rest = rest.split(" -> ", 1)[1]
+        rest = rest.strip().strip('"')
+        if rest:
+            paths.add(rest)
+    return paths
+
+
+def sandbox_names(path: pathlib.Path) -> set[str]:
+    """Every basename an eval's preserved sandbox copy holds."""
+    names: set[str] = set()
+    if not path.is_dir():
+        return names
+    for entry in path.rglob("*"):
+        names.add(entry.name)
+    return names
+
+
+class HostEscapeGuard:
+    """Blame only the host paths an eval's own sandbox names own.
+
+    The shared helper runs ``before`` and ``after`` one call at a time around
+    each job. The lock orders the snapshots but cannot attribute a change, so
+    ``after`` compares its own snapshot with the current status and keeps only
+    the new paths whose basename appears in that eval's preserved sandbox
+    copy, the copy ``worker_isolation.preserve_sandbox_copy`` leaves behind in
+    the job's ``finally``. An eval with no sandbox copy owns no names and
+    stays green, and a still-running sibling's own work never fails it.
+    """
+
+    def __init__(self, run_dir: pathlib.Path, eval_ids: list[str]):
+        self.run_dir = pathlib.Path(run_dir)
+        self.eval_ids = list(eval_ids)
+        self.snapshots: dict[int, str] = {}
+        self.blamed: dict[int, list[str]] = {}
+
+    def before(self, index: int) -> str:
+        snapshot = host_status()
+        self.snapshots[index] = snapshot
+        return snapshot
+
+    def after(self, index: int, before_state: str | None) -> list[str]:
+        before = before_state if before_state is not None else ""
+        new_paths = status_paths(host_status()) - status_paths(before)
+        owned = sandbox_names(self.run_dir / self.eval_ids[index] / "sandbox")
+        blamed = sorted(
+            path for path in new_paths if pathlib.Path(path).name in owned
+        )
+        self.blamed[index] = blamed
+        return blamed
+
+
+@dataclasses.dataclass
+class EvalOutcome:
+    """One eval's verdict, carried from its job to the post-guard summary.
+
+    The host-escape verdict is decided by the after hook, after the job has
+    returned, so the job carries everything the summary, the escape blame,
+    and the cache record need instead of printing and caching inside itself.
+    """
+
+    eval_id: str
+    passed: bool
+    cached: bool
+    completed: bool = False
+    suffix: str = ""
+    verdict_note: str = ""
+    escape: list[str] = dataclasses.field(default_factory=list)
+    cache_key: str | None = None
+    model: str = ""
+    duration_s: float = 0.0
+    worker_rc: int = 0
+    grading_output: str = ""
+    response_excerpt: str = ""
+
+
+def _apply_job_temp(deploy_env: dict[str, str], job_env: Mapping[str, str]) -> None:
+    """Point the worker at this job's TMPDIR, TEMP, and TMP."""
+    for key in ("TMPDIR", "TEMP", "TMP"):
+        value = job_env.get(key)
+        if value:
+            deploy_env[key] = value
+
+
+def stage(
+    eval_id: str,
+    target: pathlib.Path,
+    env: Mapping[str, str] | None = None,
+) -> dict:
     """Run stage.sh and read back the staged values.
 
     stage.sh prints printf-%q-quoted `name=value` lines meant to be `eval`'d in
@@ -315,7 +431,8 @@ def stage(eval_id: str, target: pathlib.Path) -> dict:
     script captures stage.sh's output before evaluating it and exits with
     stage.sh's status when it fails, so a failed stage raises here. An empty or
     missing sandbox_proj raises too, because pathlib.Path("") is the current
-    directory and the worker would otherwise start in the checkout.
+    directory and the worker would otherwise start in the checkout. A caller
+    that supplies `env` stages under that job's own TMPDIR.
     """
     emit = (
         f'out="$(bash {shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
@@ -324,7 +441,10 @@ def stage(eval_id: str, target: pathlib.Path) -> dict:
         '"$sandbox_proj" "$sandbox_target" "$skill_path" "$prompt"'
     )
     result = subprocess.run(
-        ["bash", "-c", emit], capture_output=True, text=True
+        ["bash", "-c", emit],
+        capture_output=True,
+        text=True,
+        env=dict(env) if env is not None else None,
     )
     if result.returncode != 0:
         raise RuntimeError(
@@ -524,6 +644,7 @@ def preflight_resume(
 
 
 def run_one(
+    index: int,
     eval_id: str,
     spec: dict,
     run_dir: pathlib.Path,
@@ -533,7 +654,9 @@ def run_one(
     force: bool,
     resume_preflight: tuple[bool, str] | None,
     worker_version: str,
-):
+    env: Mapping[str, str],
+) -> EvalOutcome:
+    """Run one eval inside the caller's job, under that job's TMPDIR."""
     eval_dir = run_dir / eval_id
     eval_dir.mkdir(parents=True, exist_ok=True)
 
@@ -542,7 +665,6 @@ def run_one(
         resolved.vendor, harness.get("disallowed_tools") or []
     )
     second_turn = harness.get("second_turn")
-    needs_real_absence = bool(harness.get("needs_real_absence"))
     suffix = withheld_suffix(plan, harness)
     modes = {
         "inline_body": bool(harness.get("inline_body")),
@@ -550,17 +672,19 @@ def run_one(
         "tool_record": bool(harness.get("tool_record")),
         "agents": list(harness.get("agents") or []),
     }
+    outcome = EvalOutcome(eval_id=eval_id, passed=False, cached=False,
+                          suffix=suffix)
 
     root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
     try:
         try:
-            staged = stage(eval_id, root)
+            staged = stage(eval_id, root, env)
             plugin_agents, fixture_agents = split_agent_files(harness)
         except (RuntimeError, FileNotFoundError) as exc:
             message = str(exc)
             (eval_dir / "stderr.txt").write_text(f"{message}\n")
-            print(f"  [{eval_id}] FAIL — {message}{suffix}\n", flush=True)
-            return False, False
+            outcome.verdict_note = message
+            return outcome
         workdir = staged["sandbox_proj"]
         model_label = resolved.worker_model or "<inherit>"
         staged_agent_names = [
@@ -599,7 +723,10 @@ def run_one(
                         f"{resolved.config.label}{suffix}; --force to re-run\n",
                         flush=True,
                     )
-                    return hit["passed"], True
+                    outcome.passed = bool(hit["passed"])
+                    outcome.cached = True
+                    return outcome
+        outcome.cache_key = key
 
         if second_turn and resume_preflight is not None and not resume_preflight[0]:
             message = (
@@ -607,16 +734,15 @@ def run_one(
                 f"{resume_preflight[1]}"
             )
             (eval_dir / "stderr.txt").write_text(f"{message}\n")
-            print(f"  [{eval_id}] FAIL — {message}{suffix}\n", flush=True)
-            return False, False
+            outcome.verdict_note = message
+            return outcome
 
-        host_before = host_status()
         print(
             f"  [{eval_id}] running {resolved.config.label} "
             f"(model={model_label}{suffix}) ...",
             flush=True,
         )
-        start = time.time()
+        started_at = time.time()
         turns: list[micro_deploy.WorkerRunResult] = []
         turn_timings: list[dict] = []
         try:
@@ -624,6 +750,7 @@ def run_one(
                 resolved.vendor, artefacts_for(harness), pathlib.Path(workdir),
                 preflight=False,
             ) as md:
+                _apply_job_temp(md.env, env)
                 if resolved.vendor == "cursor":
                     vendor.write_cursor_deny_entries(workdir, plan.deny_entries)
                 if fixture_agents:
@@ -724,10 +851,10 @@ def run_one(
         except RuntimeError as exc:
             message = str(exc)
             (eval_dir / "stderr.txt").write_text(f"{message}\n")
-            print(f"  [{eval_id}] FAIL — {message}{suffix}\n", flush=True)
-            return False, False
-        duration_s = time.time() - start
-        host_after = host_status()
+            outcome.verdict_note = message
+            return outcome
+        ended_at = time.time()
+        duration_s = ended_at - started_at
 
         last = turns[-1]
         rc, stdout = last.returncode, last.stdout
@@ -742,6 +869,8 @@ def run_one(
         (eval_dir / "stderr.txt").write_text(stderr)
         (eval_dir / "timing.json").write_text(json.dumps({
             "eval_id": eval_id,
+            "started_at": started_at,
+            "ended_at": ended_at,
             "duration_s": duration_s,
             "worker_rc": rc,
             "claude_rc": rc,
@@ -761,7 +890,7 @@ def run_one(
                 [(entry["turn"], worker) for entry, worker in zip(turn_timings, turns)],
             )
 
-        grade_env = os.environ.copy()
+        grade_env = dict(env)
         grade_env["EVAL_VENDOR"] = resolved.vendor
         grade = subprocess.run(
             ["bash", str(GRADE), eval_id, workdir, str(eval_dir / "response.txt")],
@@ -771,68 +900,151 @@ def run_one(
         print(grade.stdout, end="", flush=True)
         grade_passed = grade.returncode == 0
 
-        host_clean = host_before == host_after
-        if not host_clean:
-            print(
-                f"  [{eval_id}] FAIL — the host checkout changed during this "
-                f"eval; the run escaped its sandbox{suffix}\n",
-                flush=True,
-            )
-
         completed = worker_completed(rc, stdout)
         passed = (
-            grade_passed and completed and host_clean
+            grade_passed and completed
             and micro_deploy.read_checks_passed(integrity, checkout_unread)
         )
+
+        outcome.completed = completed
+        outcome.passed = passed
+        outcome.model = model_label
+        outcome.duration_s = duration_s
+        outcome.worker_rc = rc
+        outcome.grading_output = grade.stdout + grade.stderr
+        outcome.response_excerpt = stdout[:eval_cache.RESPONSE_EXCERPT_CHARS]
 
         if not completed:
             why = ("timeout" if "[TIMEOUT" in stderr
                    else "empty response" if not stdout.strip()
                    else f"worker rc={rc}")
-            print(
-                f"  [{eval_id}] FAIL — worker did not complete ({why}){suffix}\n",
-                flush=True,
-            )
+            outcome.verdict_note = f"worker did not complete ({why})"
         else:
             fail = micro_deploy.read_checks_fail_message(
                 integrity, checkout_unread, vendor=resolved.vendor
             )
             if fail:
-                print(f"  [{eval_id}] FAIL — {fail}{suffix}", flush=True)
-            elif host_clean:
-                print(
-                    f"  [{eval_id}] {'PASS' if passed else 'FAIL'} "
-                    f"(worker rc={rc}{suffix})",
-                    flush=True,
-                )
-
-        if cache is not None and completed and key is not None:
-            cache.record(
-                eval_id,
-                key,
-                passed=passed,
-                model=model_label,
-                duration_s=duration_s,
-                worker_rc=rc,
-                grading_output=grade.stdout + grade.stderr,
-                response_excerpt=stdout[:eval_cache.RESPONSE_EXCERPT_CHARS],
-            )
-        return passed, False
+                outcome.verdict_note = fail
+        return outcome
     finally:
         worker_isolation.preserve_sandbox_copy(root, eval_dir / "sandbox")
+
+
+def _print_outcome(outcome: EvalOutcome) -> None:
+    """Print one eval's verdict line once the escape guard has reported."""
+    suffix = outcome.suffix
+    if outcome.escape:
+        paths = ", ".join(outcome.escape)
+        print(
+            f"  [{outcome.eval_id}] FAIL — the host checkout gained {paths}, "
+            f"which this eval's sandbox owns (a sandbox escape){suffix}\n",
+            flush=True,
+        )
+    elif outcome.verdict_note:
+        print(
+            f"  [{outcome.eval_id}] FAIL — {outcome.verdict_note}{suffix}\n",
+            flush=True,
+        )
+    else:
+        print(
+            f"  [{outcome.eval_id}] "
+            f"{'PASS' if outcome.passed else 'FAIL'} "
+            f"(worker rc={outcome.worker_rc}{suffix})",
+            flush=True,
+        )
+
+
+def _execute(
+    specs: dict,
+    eval_ids: list[str],
+    *,
+    run_dir: pathlib.Path,
+    resolved: vendor.Resolved,
+    timeout: int,
+    cache: eval_cache.EvalCache | None,
+    force: bool,
+    resume_preflight: tuple[bool, str] | None,
+    worker_version: str,
+    workers: int,
+) -> list[tuple[str, bool, bool]]:
+    """Run eval_ids through the shared pool. Results follow eval_ids.
+
+    The escape guard brackets every job, so an eval whose sandbox names reach
+    the host checkout is blamed after its job returns and before its verdict
+    is printed or cached.
+    """
+
+    if not eval_ids:
+        return []
+
+    guard = HostEscapeGuard(run_dir, eval_ids)
+
+    def make_job(index: int, eval_id: str) -> eval_runner.JobFn:
+        def job(env: Mapping[str, str]) -> EvalOutcome:
+            return run_one(
+                index, eval_id, specs[eval_id], run_dir, resolved, timeout,
+                cache, force, resume_preflight, worker_version, env,
+            )
+
+        return job
+
+    jobs = [make_job(index, eval_id) for index, eval_id in enumerate(eval_ids)]
+
+    def on_error(index: int, exc: Exception) -> EvalOutcome:
+        eval_id = eval_ids[index]
+        eval_dir = run_dir / eval_id
+        eval_dir.mkdir(parents=True, exist_ok=True)
+        (eval_dir / "stderr.txt").write_text(f"{exc}\n")
+        return EvalOutcome(
+            eval_id=eval_id, passed=False, cached=False,
+            verdict_note=str(exc),
+        )
+
+    raw = eval_runner.run_jobs(
+        jobs,
+        workers=workers,
+        on_error=on_error,
+        before=guard.before,
+        after=guard.after,
+    )
+
+    rows: list[tuple[str, bool, bool]] = []
+    for index, eval_id in enumerate(eval_ids):
+        outcome = raw[index]
+        blamed = guard.blamed.get(index) or []
+        if blamed:
+            outcome.escape = list(blamed)
+            outcome.passed = False
+        if not outcome.cached:
+            _print_outcome(outcome)
+        if outcome.completed and outcome.cache_key is not None:
+            eval_runner.cache_record(
+                cache,
+                eval_id,
+                outcome.cache_key,
+                passed=outcome.passed,
+                model=outcome.model,
+                duration_s=outcome.duration_s,
+                worker_rc=outcome.worker_rc,
+                grading_output=outcome.grading_output,
+                response_excerpt=outcome.response_excerpt,
+            )
+        rows.append((eval_id, outcome.passed, outcome.cached))
+    return rows
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("ids", nargs="*", default=None)
     vendor.add_vendor_arguments(parser)
+    eval_runner.add_workers_argument(parser)
     parser.add_argument("--timeout", type=int, default=420)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-cache", action="store_true")
     args = parser.parse_args()
 
     specs = load_evals()
-    ids = args.ids if args.ids else list(specs)
+    ids = list(args.ids) if args.ids else list(DEFAULT_IDS)
     unknown = [i for i in ids if i not in specs]
     if unknown:
         print("unknown eval id(s):", ", ".join(unknown))
@@ -858,7 +1070,7 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}"
+        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
     )
 
     resume_preflight: tuple[bool, str] | None = None
@@ -875,14 +1087,34 @@ def main() -> int:
                 f"{resolved.config.label}) — {resume_preflight[1]}"
             )
 
-    failures = []
-    for eval_id in ids:
-        ok, _cached = run_one(
-            eval_id, specs[eval_id], run_dir, resolved, args.timeout, cache,
-            args.force, resume_preflight, worker_version,
-        )
-        if not ok:
-            failures.append(eval_id)
+    rows = _execute(
+        specs,
+        ids,
+        run_dir=run_dir,
+        resolved=resolved,
+        timeout=args.timeout,
+        cache=cache,
+        force=args.force,
+        resume_preflight=resume_preflight,
+        worker_version=worker_version,
+        workers=args.workers,
+    )
+    eval_runner.print_summary(rows)
+
+    # The helper prints the graded summary to stdout and writes no file, so
+    # this runner keeps its own summary.json as the run's verdict of record.
+    summary = {
+        "run_dir": str(run_dir),
+        "model": model_label,
+        "workers": args.workers,
+        "passed": sum(1 for _id, passed, _cached in rows if passed),
+        "total": len(rows),
+        "results": {
+            eval_id: {"passed": passed, "cached": was_cached}
+            for eval_id, passed, was_cached in rows
+        },
+    }
+    (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
 
     declared = [
         eval_id for eval_id in ids
@@ -894,6 +1126,7 @@ def main() -> int:
             f"declaration): {', '.join(declared)}"
         )
 
+    failures = [eval_id for eval_id, passed, _cached in rows if not passed]
     if failures:
         print("FAILED:", ", ".join(failures))
         return 1
