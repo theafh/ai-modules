@@ -2,8 +2,8 @@
 description: Prove the two wiki front-end promises the layer-2 scenarios claim but never assert, wiki_fix report fidelity and the pre-approval write boundary, and name the covered skills in the tree inventory.
 scope: "local test harnesses"
 created: 2026-08-11T18:59:52
-updated: 2026-11-04T10:11:30
-status: open
+updated: 2026-11-06T00:07:54
+status: checked
 reported-by: Andreas Hoffmann
 ---
 
@@ -69,20 +69,47 @@ also edits the tree README's harness listing, so coordinate that one section.
 ## Approach
 
 Capture the agent's report as its own per-pass artifact, then grade the returned
-response against it. The shared worker helper already runs stream-json; extend
-its parse (or the runner's use of it) to extract the `auto_shaper_wiki`
-sub-agent's report from the stream into a per-pass file beside `response.txt`,
-and add a grader assertion type that compares the captured report against what
-the skill returned. Confirm the sub-agent's report is recoverable from the stream
-before building the assertion on it. Keep `response.txt` holding the worker's
+response against it. The shared worker helper already runs stream-json; have the runner write the `auto_shaper_wiki` sub-agent's report to a per-pass
+file beside `response.txt` for every pass whose run yields one, and add a
+grader assertion type that compares the captured report against what the skill
+returned. Read that report from the spawn `ToolRecord` whose `helper` is
+`auto_shaper_wiki` (`micro_deploy.run_worker` already returns it, with
+`result_text` populated on both vendors), and fall back to the helper's
+assistant text blocks in its chat transcript JSONL under the scratch home —
+located by the `agentId` in the parent's Task result, under
+`_CURSOR_TRANSCRIPT_ROOTS` — when `result_text` is empty, a refusal, a bare
+`success` marker, or a bare JSON rendering. That comparison is
+whitespace-collapsed verbatim containment: read both the captured report and
+`response.txt` with runs of whitespace collapsed to a single space, and pass
+the assertion when the collapsed report appears in the collapsed response in
+order, so the parent's framing around the report block does not fail it. The
+failure message names the first span of the captured report the response
+omits, and a pass that captures no report at all fails with the named evidence
+`no sub-agent report captured`, so it cannot pass on an empty capture. Keep `response.txt` holding the worker's
 final assistant text, since the existing `response_text_*` assertions and the
-`report.md` fallback both read it. Add the assertion to the `AS-*` scenario that
-already puts `wiki_fix` under test, so `wiki_fix` coverage stays in one place.
+`report.md` fallback both read it. Add the assertion to `AS-2` alone, the one `AS-*` scenario that already grades
+the surfacing with `A4_surfacing_mentioned_in_response`; the other 18 `AS-*`
+entries carry `skill_name` `wiki_fix` as well, so naming `AS-2` is what keeps
+`wiki_fix` coverage in one place. Rewrite `AS-2`'s `extra_constraints` line
+"Run the auto_shaper_wiki audit flow the wiki_fix skill fronts" to "Invoke the
+`auto_shaper_wiki` agent and run its audit flow through it", matching the
+`wiki_fix` skill's `<delegate>` directive: a worker that runs the flow inline
+would leave no sub-agent report to capture. This edits one existing scenario's
+constraint text and neither adds nor removes a scenario, so the `**Out of
+scope:**` entry that leaves the scenario inventory as it stands still holds.
+Demonstrate the new check's teeth by changing `AS-2`'s instruction to summarise
+the agent's report instead of relaying it, running it once, recording the
+per-assertion `FAIL` in `tests/wiki/results/SUMMARY.md` beside the pre-approval
+record, then restoring the instruction.
 
-Prove the pre-approval assertions bite by staging a run that writes the guarded
-page before approval, confirming `WI-1`'s and `WU-1`'s `path_does_not_exist`
-assertions fail on it, then reverting the staging and recording the outcome where
-the harness keeps its results so the proof is not re-litigated later.
+Prove the pre-approval assertions bite by temporarily rewriting `WI-1`'s and
+`WU-1`'s `user_request` and their matching `extra_constraints` stop line in
+`layer2/evals.json` so the worker is instructed to write
+`HOME/proj/wiki/concepts/transformer.md` before approval, running each scenario,
+and confirming its `path_does_not_exist` assertion reports `FAIL` on that run.
+Restore both scenarios' request text and restage their sandboxes afterwards,
+then record the failing run and its per-assertion evidence where the harness
+keeps its results so the proof is not re-litigated later.
 
 Rewrite the wiki entry under `## Current harnesses` so it names the skills the
 layer-2 set covers alongside the selector it already carries, keeping that
@@ -100,22 +127,27 @@ selector as the statement of extent.
 
 ## Acceptance
 
-1. Each pass of the `AS-*` scenario carrying `skill_name` `wiki_fix` writes the
-   `auto_shaper_wiki` sub-agent's report as its own artifact beside
-   `response.txt`, and that scenario grades the returned response against the
-   captured report rather than against a keyword regex. The assertion passes on a
-   run of that scenario.
+1. Every pass whose run yields an `auto_shaper_wiki` report writes it as its own
+   per-pass artifact beside `response.txt`, and `AS-2` grades the returned
+   response against the captured report rather than against a keyword regex. The
+   assertion passes on a run of `AS-2`, and a pass that captures no
+   `auto_shaper_wiki` report fails it with the named evidence `no sub-agent
+   report captured`.
 2. `response.txt` still holds the worker's final assistant text after the
    stream-extraction change, so every existing `response_text_*` assertion and
    the `report.md` fallback grade against what they read now.
 3. The fidelity assertion fails on a run whose scenario instruction is
    deliberately changed to summarise the agent's report instead of relaying it,
    demonstrated once before the instruction is restored, so the new check is
-   known to have teeth.
+   known to have teeth. The failing run is recorded in
+   `tests/wiki/results/SUMMARY.md` beside Acceptance 4's record, naming the
+   scenario, the changed instruction, and the assertion that failed, so a later
+   reader and `task_audit` find the proof in the tree.
 4. `WI-1`'s and `WU-1`'s `path_does_not_exist` assertions each fail on a run
-   staged to write the guarded page before approval, and the outcome is recorded
-   where the harness keeps its results, so a later reader finds the proof without
-   repeating the exercise.
+   whose `user_request` and `extra_constraints` stop line are temporarily
+   changed to instruct the write of the guarded page before approval, and the
+   outcome is recorded where the harness keeps its results, so a later reader
+   finds the proof without repeating the exercise.
 5. The wiki entry under `## Current harnesses` in the tests tree's `README.md`
    names `wiki_fix`, `wiki_import`, and `wiki_wrapup` as skills its layer-2
    scenarios cover, and keeps the `layer2/evals.json` selector as its statement

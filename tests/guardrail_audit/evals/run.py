@@ -280,6 +280,9 @@ def _execute(
 
     def on_error(index: int, exc: Exception) -> tuple[bool, bool]:
         eval_id = eval_ids[index]
+        eval_dir = run_dir / eval_id
+        eval_dir.mkdir(parents=True, exist_ok=True)
+        (eval_dir / "stderr.txt").write_text(f"{exc}\n")
         print(f"  [{eval_id}] FAIL — {exc}\n", flush=True)
         return False, False
 
