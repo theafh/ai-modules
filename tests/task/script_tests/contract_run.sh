@@ -171,10 +171,10 @@ assert_contains "$task_skill" 'read that block'"'"'s prerequisite rule, every si
   "Interaction scan reads the prerequisite rule, every signal, both directions, and the hard-versus-soft split"
 assert_contains "$task_skill" 'a collision the block reads as a hard ordering dependency — from explicit ordering prose, a forward reference, or directional evidence — is reconciled to that ship order rather than surfaced' \
   "Interaction scan reconciles a hard ordering dependency from any of its signals"
-assert_contains "$task_skill" "only one the block reads as a soft companion relationship stays open to surface as the user's call" \
-  "Interaction scan leaves only a soft companion relationship open to surface"
-assert_contains "$task_skill" 'where related live siblings are read through `<dependency_signals>` for any ordering or ownership fork' \
-  "Decide or label tier (d) reads related live siblings through dependency_signals for an ordering or ownership fork"
+assert_contains "$task_skill" 'only one the block reads as a soft companion relationship stays open to surface as the user'"'"'s call on its ordering dimension, while that collision'"'"'s ownership dimension is disposed through the `<backlog_coherence>` shared-surface ownership lens' \
+  "Interaction scan leaves only a soft companion relationship open to surface on its ordering dimension and disposes the ownership dimension through the backlog_coherence shared-surface ownership lens"
+assert_contains "$task_skill" 'where related live siblings are read through `<dependency_signals>` for any ordering fork, and an ownership fork is read through the `<backlog_coherence>` shared-surface ownership lens' \
+  "Decide or label tier (d) reads related live siblings through dependency_signals for an ordering fork and points an ownership fork at the backlog_coherence shared-surface ownership lens"
 assert_not_contains "$task_skill" '(d) related and older tasks, both linked live siblings and archived precedent;' \
   "Decide or label tier (d) supersedes the bare archived-precedent wording"
 
