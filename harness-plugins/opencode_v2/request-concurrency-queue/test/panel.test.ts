@@ -5,7 +5,8 @@ import { tmpdir } from "node:os"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { build } from "vite"
-import { panel } from "../src/gui.tsx"
+import { STATUS_UNAVAILABLE, panel, statusBodyState } from "../src/gui.tsx"
+import { providerRow } from "../src/status.js"
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 
@@ -34,6 +35,23 @@ function importGuiBundle(path: string): { exitCode: number; stdout: string; stde
     stderr: result.stderr.toString(),
   }
 }
+
+describe("concurrency status panel body", () => {
+  test("reports an unavailable status and no provider rows after a failed fetch", () => {
+    const state = statusBodyState(null)
+
+    expect(state).toEqual({ unavailable: true, rows: [] })
+    expect(STATUS_UNAVAILABLE).toBe("Status unavailable")
+  })
+
+  test("carries one row per provider when a snapshot is present", () => {
+    const rows = [
+      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, utilization: 0.5, demand: 0.5 }),
+    ]
+
+    expect(statusBodyState(rows)).toEqual({ unavailable: false, rows })
+  })
+})
 
 describe("concurrency status panel", () => {
   test("is a side-region panel with one pinned tab", () => {

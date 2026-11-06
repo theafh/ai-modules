@@ -2,8 +2,9 @@ import { Plugin } from "@opencode/plugin"
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { FifoLimiter, type Slot } from "./limiter.js"
-import { statusRpc, type ProviderStatus, type StatusSnapshot } from "./rpc.js"
+import type { Slot } from "./limiter.js"
+import { statusRpc } from "./rpc.js"
+import { adoptStore, releaseStore, snapshotOf, subscribeStore } from "./store.js"
 
 export interface RequestConcurrencyQueueOptions {
   maxConcurrency?: number
@@ -15,11 +16,6 @@ export interface RequestConcurrencyQueueFileConfig {
   maxConcurrency?: number
   providers?: string[] | Record<string, number>
   log?: boolean
-}
-
-interface ProviderLimit {
-  readonly maxConcurrency: number
-  readonly limiter: FifoLimiter
 }
 
 interface Entry {
@@ -36,23 +32,31 @@ export default Plugin.define({
   async setup(ctx) {
     const options = (ctx.options ?? {}) as RequestConcurrencyQueueOptions
     const fileConfig = loadConfigFile()
-    const limits = new Map<string, ProviderLimit>()
-    const registration = await ctx.rpc.register(statusRpc, {
-      status: async () => snapshot(limits),
-    })
-    for (const [providerID, maxConcurrency] of resolveProviderLimits(options, fileConfig)) {
-      limits.set(providerID, {
-        maxConcurrency,
-        limiter: new FifoLimiter(maxConcurrency, () => void registration.events.emit("changed", {})),
-      })
-    }
-
-    const bySession = new Map<string, Set<Entry>>()
-    const byRequest = new WeakMap<Request, Entry>()
     const logEnabled = options.log ?? fileConfig?.log ?? envLog()
     const log = logEnabled
       ? (...args: unknown[]) => console.log("[request-concurrency-queue]", ...args)
       : () => {}
+
+    // One limiter set per server process, shared by every location. The first
+    // instance creates it; a later instance with a different configuration
+    // keeps the existing set and logs the mismatch instead of reconfiguring
+    // the process behind the other locations.
+    const store = adoptStore(resolveProviderLimits(options, fileConfig), (existing, configured) => {
+      log("config mismatch: keeping the process-wide store", { existing, configured })
+    })
+    const limits = store.providers
+
+    const registration = await ctx.rpc.register(statusRpc, {
+      status: async () => snapshotOf(store),
+    })
+    // A transition anywhere in the process must reach every location's event
+    // stream, so each instance forwards the shared store's changes.
+    const unsubscribeStore = subscribeStore(store, () => {
+      void Promise.resolve(registration.events.emit("changed", {})).catch(() => {})
+    })
+
+    const bySession = new Map<string, Set<Entry>>()
+    const byRequest = new WeakMap<Request, Entry>()
 
     log("initialized", {
       providers: Object.fromEntries([...limits].map(([providerID, limit]) => [providerID, limit.maxConcurrency])),
@@ -190,7 +194,9 @@ export default Plugin.define({
       controller.abort()
       for (const sessionID of [...bySession.keys()]) releaseSession(sessionID, "dispose")
       await eventLoop.catch(() => {})
+      unsubscribeStore()
       await registration.dispose()
+      releaseStore(store)
     }
   },
 })
@@ -283,23 +289,6 @@ export function envProviders(): string[] | Record<string, number> | undefined {
     result[providerID] = max
   }
   return result
-}
-
-function snapshot(limits: Map<string, ProviderLimit>): StatusSnapshot {
-  const providers = [...limits].map(([providerID, limit]): ProviderStatus => {
-    const active = limit.limiter.activeCount
-    const queued = limit.limiter.queuedCount
-    const max = limit.maxConcurrency
-    return {
-      providerID,
-      active,
-      queued,
-      max,
-      utilization: max === 0 ? 0 : active / max,
-      demand: max === 0 ? 0 : (active + queued) / max,
-    }
-  })
-  return { providers }
 }
 
 function firstEntry(entries: Set<Entry> | undefined): Entry | undefined {

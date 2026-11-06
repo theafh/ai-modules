@@ -1,9 +1,10 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import plugin, { loadConfigFile, resolveProviderLimits } from "../src/index.js"
 import type { StatusSnapshot } from "../src/rpc.js"
+import { clearGlobalStore, globalStore } from "../src/store.js"
 
 process.env.OPENCODE_REQUEST_CONCURRENCY_CONFIG = "/nonexistent/request-concurrency-queue.json"
 
@@ -192,11 +193,20 @@ async function responseHook(
   return event.response
 }
 
-async function statusSnapshot(rpc: TestRpc): Promise<StatusSnapshot> {
+async function statusSnapshot(
+  rpc: TestRpc,
+  options?: { location?: { directory: string } },
+): Promise<StatusSnapshot> {
   const handlers = rpc.handlers()
   if (!handlers?.status) throw new Error("missing status handler")
-  return handlers.status()
+  return handlers.status({}, options)
 }
+
+// Every test must start and end with no process-wide store, so one test's
+// shared state cannot decide another's result.
+afterEach(() => {
+  clearGlobalStore()
+})
 
 describe("request-concurrency-queue plugin", () => {
   test("limits concurrent requests and releases when the response body ends", async () => {
@@ -573,6 +583,131 @@ describe("request-concurrency-queue plugin", () => {
     await cleanup()
 
     expect(signal?.aborted).toBe(true)
+  })
+})
+
+describe("process-wide store", () => {
+  test("two setups with the same config share one limiter per provider", async () => {
+    const first = await setup({ maxConcurrency: 2, providers: ["acme"] })
+    const second = await setup({ maxConcurrency: 2, providers: ["acme"] })
+    try {
+      const a = request("https://example.test/a")
+      await requestHook(first.hooks, "a", a)
+
+      // The slot acquired through the first instance is visible in the
+      // second instance's snapshot, because both read the same limiter.
+      expect((await statusSnapshot(second.rpc)).providers[0]).toMatchObject({
+        providerID: "acme",
+        active: 1,
+        queued: 0,
+        max: 2,
+      })
+
+      const b = request("https://example.test/b")
+      await requestHook(first.hooks, "b", b)
+
+      // At the shared maximum, a request through the other instance queues
+      // instead of taking the combined active count past the configured cap.
+      let cAcquired = false
+      const cPromise = requestHook(second.hooks, "c", request("https://example.test/c")).then(() => {
+        cAcquired = true
+      })
+      await tick()
+      expect(cAcquired).toBe(false)
+      expect((await statusSnapshot(second.rpc)).providers[0]).toMatchObject({ active: 2, queued: 1, max: 2 })
+
+      // A release through the first instance serves the second's waiter.
+      const aResponse = await responseHook(first.hooks, "a", a, "a-body")
+      await aResponse.text()
+      await cPromise
+      expect(cAcquired).toBe(true)
+    } finally {
+      await first.cleanup()
+      await second.cleanup()
+    }
+  })
+
+  test("a status call with no location and one with a location return the same snapshot", async () => {
+    const first = await setup({ maxConcurrency: 2, providers: ["acme"] })
+    const second = await setup({ maxConcurrency: 2, providers: ["acme"] })
+    try {
+      await requestHook(first.hooks, "a", request("https://example.test/a"))
+
+      const noLocation = await statusSnapshot(second.rpc)
+      const withLocation = await statusSnapshot(first.rpc, { location: { directory: "/work/other-project" } })
+
+      expect(noLocation).toEqual(withLocation)
+      expect(noLocation.providers[0]).toMatchObject({ active: 1 })
+    } finally {
+      await first.cleanup()
+      await second.cleanup()
+    }
+  })
+
+  test("keeps the status RPC input as the empty object", async () => {
+    const { rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    try {
+      expect(rpc.definition().methods.status.input).toEqual({
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      })
+    } finally {
+      await cleanup()
+    }
+  })
+
+  test("a later setup with a different config keeps the registry and logs the mismatch", async () => {
+    const messages: string[] = []
+    const original = console.log
+    console.log = (...args: unknown[]) => {
+      messages.push(args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "))
+    }
+    try {
+      const first = await setup({ maxConcurrency: 1, providers: ["acme"], log: true })
+      const second = await setup({ maxConcurrency: 2, providers: ["acme", "other"], log: true })
+      try {
+        // The first instance's provider set and maximum stay authoritative.
+        expect((await statusSnapshot(second.rpc)).providers).toEqual([
+          { providerID: "acme", active: 0, queued: 0, max: 1, utilization: 0, demand: 0 },
+        ])
+        expect(messages.some((message) => message.includes("config mismatch"))).toBe(true)
+      } finally {
+        await first.cleanup()
+        await second.cleanup()
+      }
+    } finally {
+      console.log = original
+    }
+  })
+
+  test("disposing one instance leaves the shared limiters for the other, and the last clears the registry", async () => {
+    const first = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    const second = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    await requestHook(first.hooks, "a", request("https://example.test/a"))
+    await first.cleanup()
+
+    // The surviving instance still gates through the shared limiter.
+    expect(globalStore()).toBeDefined()
+    await requestHook(second.hooks, "b", request("https://example.test/b"))
+    expect((await statusSnapshot(second.rpc)).providers[0]).toMatchObject({ active: 1, max: 1 })
+
+    await second.cleanup()
+    expect(globalStore()).toBeUndefined()
+  })
+
+  test("a transition under one instance notifies the other instance's changed subscribers", async () => {
+    const first = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    const second = await setup({ maxConcurrency: 1, providers: ["acme"] })
+    try {
+      const before = second.rpc.emitCount()
+      await requestHook(first.hooks, "a", request("https://example.test/a"))
+      expect(second.rpc.emitCount()).toBe(before + 1)
+    } finally {
+      await first.cleanup()
+      await second.cleanup()
+    }
   })
 })
 

@@ -1375,3 +1375,17 @@ pre-existing, and the size infos stay advisory; the one on
   events; the panel passage moves from proposed to shipped, naming the
   `./gui-experimental` bundle, the pinned session-side tab, and the
   green/amber/red row rules; the `updated` date moves to 2026-11-06)
+
+## [2026-11-06 14:47] update | Make the concurrency queue process-wide across locations
+
+- concepts/request-concurrency-queue.md (the definition now says one FIFO
+  semaphore per provider is shared by the whole server process and every open
+  location, so a maximum caps requests process-wide; new passages describe the
+  versioned `globalThis` registry, the first-instance-wins mismatch rule, the
+  per-instance `changed` forwarding, and the refcounted dispose; the status
+  snapshot is the same from every location; the panel now names the session
+  directory as the RPC location, the slow refetch interval, and the `Status
+  unavailable` failure state; dated 2026-11-06 verified facts record the
+  per-location plugin instantiation and the location-routed RPC route)
+- index.md (the concurrency queue summary names the process-wide shared queue
+  and the registry, and Last updated moves to 2026-11-06)

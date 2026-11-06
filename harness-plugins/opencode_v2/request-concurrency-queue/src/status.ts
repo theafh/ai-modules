@@ -16,16 +16,36 @@ export interface ProviderRow {
   readonly color: StatusColor
 }
 
+/** The `location` option the status RPC accepts, selecting the routed instance. */
+export interface StatusCallOptions {
+  readonly location?: { readonly directory: string }
+}
+
 /**
  * The part of a routed server's RPC client that status reads. It mirrors
  * `client.rpc(statusRpc)` without pulling the GUI bundle into this module.
  */
 export interface StatusClient {
-  status(input: unknown): Promise<StatusSnapshot>
+  status(input: unknown, options?: StatusCallOptions): Promise<StatusSnapshot>
   readonly events: {
     on(name: "changed", handler: () => void | Promise<void>): () => void
   }
 }
+
+/** How `subscribeStatus` reads and refreshes the shared snapshot. */
+export interface SubscribeStatusOptions {
+  /**
+   * The mounted session's workspace directory, sent as the RPC location so the
+   * call reaches that location's instance. The shared store makes every
+   * instance return the same snapshot.
+   */
+  readonly directory?: string
+  /** How often to refetch even without a `changed` event. */
+  readonly refetchIntervalMs?: number
+}
+
+/** Slow refetch that recovers a snapshot when a `changed` event was missed. */
+export const DEFAULT_REFETCH_INTERVAL_MS = 5000
 
 /** Turns one provider's snapshot record into its rendered row. */
 export function providerRow(provider: ProviderStatus): ProviderRow {
@@ -46,23 +66,31 @@ export function providerRows(snapshot: StatusSnapshot): ProviderRow[] {
 }
 
 /**
- * Reads a fresh snapshot, then refetches on every `changed` event. The
- * returned function is that registration's unsubscribe function.
+ * Reads a fresh snapshot, then refetches on every `changed` event and on a
+ * slow interval. The returned function is that registration's unsubscribe
+ * function.
+ *
+ * A successful fetch delivers a `StatusSnapshot`. A rejected fetch delivers
+ * `null`, so the panel reports that status is unavailable instead of leaving
+ * stale or zeroed rows on screen; a later successful fetch restores the rows.
  */
 export function subscribeStatus(
   getClient: () => StatusClient,
-  onChange: (snapshot: StatusSnapshot) => void,
+  onChange: (snapshot: StatusSnapshot | null) => void,
+  options: SubscribeStatusOptions = {},
 ): () => void {
   const client = getClient()
+  const interval = options.refetchIntervalMs ?? DEFAULT_REFETCH_INTERVAL_MS
   let cancelled = false
   let latest = 0
   const publish = async (): Promise<void> => {
     const request = ++latest
     let snapshot: StatusSnapshot
     try {
-      snapshot = await client.status({})
+      snapshot = await client.status({}, locationOption(options.directory))
     } catch {
-      // A failed fetch keeps the last snapshot; the next changed event retries.
+      // A failed fetch reports the outage; the next event or interval retries.
+      if (!cancelled && request === latest) onChange(null)
       return
     }
     // A response older than the newest one started must not overwrite it.
@@ -72,10 +100,18 @@ export function subscribeStatus(
   const unsubscribe = client.events.on("changed", () => {
     void publish()
   })
+  const timer = setInterval(() => {
+    void publish()
+  }, interval)
   return () => {
     cancelled = true
+    clearInterval(timer)
     unsubscribe()
   }
+}
+
+function locationOption(directory: string | undefined): StatusCallOptions | undefined {
+  return directory === undefined ? undefined : { location: { directory } }
 }
 
 function colorFor(provider: ProviderStatus): StatusColor {

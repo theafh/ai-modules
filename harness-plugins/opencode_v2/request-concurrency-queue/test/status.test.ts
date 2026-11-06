@@ -32,6 +32,12 @@ function snapshot(...providers: ProviderStatus[]): StatusSnapshot {
   return { providers }
 }
 
+/** Narrows a delivered value to the successful snapshot these tests expect. */
+function present(next: StatusSnapshot | null): StatusSnapshot {
+  if (next === null) throw new Error("expected a status snapshot")
+  return next
+}
+
 interface FakeClient {
   client: StatusClient
   fire(): Promise<void>
@@ -99,7 +105,7 @@ describe("subscribeStatus", () => {
     const seen: number[] = []
 
     const unsubscribe = subscribeStatus(() => fake.client, (next) => {
-      seen.push(next.providers[0].active)
+      seen.push(present(next).providers[0].active)
     })
 
     await tick()
@@ -123,7 +129,8 @@ describe("subscribeStatus", () => {
     const seen: string[] = []
 
     const firstUnsubscribe = subscribeStatus(() => current, (next) => {
-      seen.push(`${next.providers[0].providerID}:${next.providers[0].active}`)
+      const value = present(next)
+      seen.push(`${value.providers[0].providerID}:${value.providers[0].active}`)
     })
     await tick()
     expect(seen).toEqual(["first:1"])
@@ -131,7 +138,8 @@ describe("subscribeStatus", () => {
     firstUnsubscribe()
     current = second.client
     const secondUnsubscribe = subscribeStatus(() => current, (next) => {
-      seen.push(`${next.providers[0].providerID}:${next.providers[0].active}`)
+      const value = present(next)
+      seen.push(`${value.providers[0].providerID}:${value.providers[0].active}`)
     })
     await tick()
     expect(seen).toEqual(["first:1", "second:2"])
@@ -147,7 +155,7 @@ describe("subscribeStatus", () => {
     secondUnsubscribe()
   })
 
-  test("a rejecting status writes no snapshot and raises no unhandled rejection", async () => {
+  test("a rejected fetch delivers null and raises no unhandled rejection", async () => {
     const client: StatusClient = {
       status: async () => {
         throw new Error("status unavailable")
@@ -156,7 +164,7 @@ describe("subscribeStatus", () => {
         on: () => () => {},
       },
     }
-    const seen: StatusSnapshot[] = []
+    const seen: Array<StatusSnapshot | null> = []
 
     const unsubscribe = subscribeStatus(() => client, (next) => {
       seen.push(next)
@@ -164,7 +172,103 @@ describe("subscribeStatus", () => {
     await settle()
     unsubscribe()
 
-    expect(seen).toEqual([])
+    expect(seen).toEqual([null])
+  })
+
+  test("sends the empty body and the session directory as the call location", async () => {
+    const calls: Array<{ input: unknown; options: unknown }> = []
+    const client: StatusClient = {
+      status: async (input, options) => {
+        calls.push({ input, options })
+        return snapshot(provider({ providerID: "acme" }))
+      },
+      events: {
+        on: () => () => {},
+      },
+    }
+
+    const unsubscribe = subscribeStatus(() => client, () => {}, { directory: "/work/project-a" })
+    await tick()
+    unsubscribe()
+
+    expect(calls).toEqual([{ input: {}, options: { location: { directory: "/work/project-a" } } }])
+  })
+
+  test("re-subscribes with the new session's directory on a switch", async () => {
+    const directories: string[] = []
+    const makeClient = (directory: string): StatusClient => ({
+      status: async (_input, options) => {
+        directories.push(options?.location?.directory ?? "")
+        return snapshot(provider({ providerID: directory }))
+      },
+      events: {
+        on: () => () => {},
+      },
+    })
+    const first = makeClient("/work/first")
+    const second = makeClient("/work/second")
+
+    const firstUnsubscribe = subscribeStatus(() => first, () => {}, { directory: "/work/first" })
+    await tick()
+    firstUnsubscribe()
+
+    const secondUnsubscribe = subscribeStatus(() => second, () => {}, { directory: "/work/second" })
+    await tick()
+    secondUnsubscribe()
+
+    expect(directories).toEqual(["/work/first", "/work/second"])
+  })
+
+  test("refetches on its interval even without a changed event", async () => {
+    let calls = 0
+    const client: StatusClient = {
+      status: async () => snapshot(provider({ providerID: "acme", active: ++calls })),
+      events: {
+        on: () => () => {},
+      },
+    }
+    const seen: number[] = []
+
+    const unsubscribe = subscribeStatus(
+      () => client,
+      (next) => {
+        if (next) seen.push(next.providers[0].active)
+      },
+      { refetchIntervalMs: 10 },
+    )
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    unsubscribe()
+
+    expect(seen.length).toBeGreaterThan(1)
+  })
+
+  test("recovers from a failed fetch on the next successful refetch", async () => {
+    let fail = true
+    const client: StatusClient = {
+      status: async () => {
+        if (fail) throw new Error("status unavailable")
+        return snapshot(provider({ providerID: "acme", active: 3, max: 4 }))
+      },
+      events: {
+        on: () => () => {},
+      },
+    }
+    const seen: Array<StatusSnapshot | null> = []
+
+    const unsubscribe = subscribeStatus(
+      () => client,
+      (next) => {
+        seen.push(next)
+      },
+      { refetchIntervalMs: 10 },
+    )
+    await new Promise((resolve) => setTimeout(resolve, 25))
+    fail = false
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    unsubscribe()
+
+    expect(seen[0]).toBeNull()
+    expect(seen.some((next) => next !== null)).toBe(true)
   })
 
   test("a throwing onChange escapes the fetch guard instead of being swallowed", async () => {
@@ -217,7 +321,7 @@ describe("subscribeStatus", () => {
     const seen: StatusSnapshot[] = []
 
     const unsubscribe = subscribeStatus(() => client, (next) => {
-      seen.push(next)
+      if (next) seen.push(next)
     })
     unsubscribe()
     resolveStatus(snapshot(provider({ providerID: "acme", active: 1, queued: 0, max: 4 })))
@@ -244,7 +348,7 @@ describe("subscribeStatus", () => {
     const seen: number[] = []
 
     const unsubscribe = subscribeStatus(() => client, (next) => {
-      seen.push(next.providers[0].active)
+      seen.push(present(next).providers[0].active)
     })
 
     expect(pending.length).toBe(1)

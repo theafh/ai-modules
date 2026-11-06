@@ -1,7 +1,7 @@
 # request-concurrency-queue
 
 An OpenCode 2 plugin that limits concurrent model requests per provider through
-a process-wide FIFO queue.
+one process-wide FIFO queue shared by every open location.
 
 It is built for providers that reject excess concurrent requests instead of
 queueing them. The plugin keeps OpenCode from exceeding a provider's
@@ -10,6 +10,9 @@ request.
 
 ## Behavior
 
+- One FIFO queue per configured provider is shared by the whole OpenCode server
+  process. The configured maximum caps concurrent requests across every open
+  location (project), not once per location.
 - Every model request to a configured provider acquires a slot before it is
   sent.
 - The slot is released when the response body finishes, when the request fails
@@ -21,8 +24,12 @@ request.
   is aborted.
 - The queue counts in-flight requests, not sessions. A session that is running
   a tool or waiting for a subagent does not hold a slot.
-- The queue is process-wide. It does not coordinate separate OpenCode server
-  processes or other applications using the same provider key.
+- The queue spans one server process. A separate OpenCode server process, or
+  another application using the same provider key, keeps its own queue.
+- The first plugin instance in the process fixes the provider set and maximums
+  for the process. A later instance configured differently keeps the existing
+  queue and logs the mismatch (with `log` enabled), so one location cannot
+  change another location's cap.
 
 ## Configuration
 
@@ -168,20 +175,27 @@ initializes and one line per acquire and release, including the provider ID and
 that provider's active and queued counts. It is off by default.
 
 The plugin serves a read-only status snapshot over the shared
-`request-concurrency-queue` RPC definition. The snapshot reports one record per
-configured provider with `providerID`, `active`, `queued`, `max`, utilization
-(`active / max`), and demand (`(active + queued) / max`). Providers with no
-configured limit do not appear. The server emits a `changed` event on every
-count-changing transition: a free slot acquired, a request joining the wait
-queue, a queued request aborted, a release that frees a slot, and a release that
-hands the slot to the next waiter.
+`request-concurrency-queue` RPC definition. Every location's handler reads the
+same process-wide queue, so the snapshot is the same whichever location serves
+it. The snapshot reports one record per configured provider with `providerID`,
+`active`, `queued`, `max`, utilization (`active / max`), and demand
+(`(active + queued) / max`). Providers with no configured limit do not appear.
+The server emits a `changed` event on every count-changing transition: a free
+slot acquired, a request joining the wait queue, a queued request aborted, a
+release that frees a slot, and a release that hands the slot to the next
+waiter. Every instance forwards the shared queue's transitions, so the panel
+sees them whichever location emitted them.
 
 The desktop GUI part ships as the prebuilt `./gui-experimental` bundle and adds
-a pinned **Concurrency** tab to the session side region. Each provider gets one
-row with its in-flight count, configured maximum, and queue depth as absolute
-numbers, and its utilization and demand as percentages. The row is green while
-`active < max` and no request waits, amber when `active == max` and nothing
-waits, and red when a queue exists.
+a pinned **Concurrency** tab to the session side region. It reads the routed
+session's server with the session's directory as the RPC location, refetches on
+every `changed` event, and also refetches on a slow interval so a missed event
+recovers. Each provider gets one row with its in-flight count, configured
+maximum, and queue depth as absolute numbers, and its utilization and demand as
+percentages. The row is green while `active < max` and no request waits, amber
+when `active == max` and nothing waits, and red when a queue exists. When a
+status fetch fails, the panel shows `Status unavailable` and no provider rows
+until a later fetch succeeds.
 
 ## Development
 
