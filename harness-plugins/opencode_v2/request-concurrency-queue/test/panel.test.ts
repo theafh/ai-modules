@@ -119,6 +119,24 @@ describe("concurrency status panel body", () => {
     expect(state.transitions).toEqual([])
   })
 
+  test("renders labelled, separated columns with a colour for each load value", () => {
+    const html = renderPanel(snapshot())
+
+    for (const label of ["Provider", "Active", "Queued", "Util", "Demand"]) {
+      expect(html).toContain(`>${label}<`)
+    }
+    expect(html).toContain(">acme<")
+    expect(html).toContain(">50%<")
+    expect(html).toMatch(/style="color:hsl\(/)
+  })
+
+  test("labels each feed row's kind and keeps its counts on one line", () => {
+    const html = renderPanel(snapshot([transition(0, { kind: "queued", active: 2, queued: 1 })]))
+
+    expect(html).toContain("request-concurrency-feed-kind is-queued")
+    expect(html).toContain("2 active · 1 queued")
+  })
+
   test("renders the feed newest first below the provider rows", () => {
     const html = renderPanel(
       snapshot([

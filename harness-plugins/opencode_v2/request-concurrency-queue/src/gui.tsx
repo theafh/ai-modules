@@ -1,5 +1,6 @@
 import { For, Show, createEffect, createSignal, onCleanup } from "solid-js"
-import { Panel, Plugin, type PanelProps, type PanelTab } from "@opencode/plugin/gui"
+import { Panel, Plugin, Style, type PanelProps, type PanelTab } from "@opencode/plugin/gui"
+import { PANEL_STYLE } from "./panel-style.js"
 import { statusRpc, type StatusSnapshot } from "./rpc.js"
 import {
   providerRows,
@@ -52,30 +53,74 @@ export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
         when={!state().unavailable}
         fallback={<div class="request-concurrency-status-unavailable">{STATUS_UNAVAILABLE}</div>}
       >
+        <Show when={state().rows.length > 0}>
+          <div class="request-concurrency-status-header" aria-hidden="true">
+            <span>Provider</span>
+            <span>Active</span>
+            <span>Queued</span>
+            <span>Util</span>
+            <span>Demand</span>
+          </div>
+        </Show>
         <For each={state().rows}>
           {(row) => (
-            <div class={`request-concurrency-status-row is-${row.color}`}>
-              <span class="request-concurrency-status-provider">{row.providerID}</span>
-              <span class="request-concurrency-status-active">{`${row.active} / ${row.max} active`}</span>
-              <span class="request-concurrency-status-queued">{`${row.queued} queued`}</span>
-              <span class="request-concurrency-status-utilization">{`utilization ${row.utilization}`}</span>
-              <span class="request-concurrency-status-demand">{`demand ${row.demand}`}</span>
+            <div
+              class="request-concurrency-status-row"
+              style={{ "border-left-color": row.demandColor }}
+            >
+              <span class="request-concurrency-status-provider" title={row.providerID}>
+                {row.providerID}
+              </span>
+              <span
+                class="request-concurrency-status-active"
+                title={`${row.active} of ${row.max} slots in use`}
+              >
+                <span style={{ color: row.utilizationColor }}>{row.active}</span>
+                <span class="request-concurrency-status-max">{` / ${row.max}`}</span>
+              </span>
+              <span
+                class="request-concurrency-status-queued"
+                style={{ color: row.demandColor }}
+                title={`${row.queued} waiting`}
+              >
+                {row.queued}
+              </span>
+              <span
+                class="request-concurrency-status-utilization"
+                style={{ color: row.utilizationColor }}
+                title="Utilization: active / max"
+              >
+                {row.utilization}
+              </span>
+              <span
+                class="request-concurrency-status-demand"
+                style={{ color: row.demandColor }}
+                title="Demand: (active + queued) / max"
+              >
+                {row.demand}
+              </span>
             </div>
           )}
         </For>
         <Show when={state().transitions.length > 0}>
-          <div
-            class="request-concurrency-feed"
-            style={{ "font-family": "monospace", "max-height": "12em", "overflow-y": "auto" }}
-          >
+          <div class="request-concurrency-feed">
+            <div class="request-concurrency-feed-title">Recent activity</div>
             <For each={state().transitions}>
               {(transition) => (
                 <div class="request-concurrency-feed-row">
                   <span class="request-concurrency-feed-time">{transition.time}</span>
-                  <span class="request-concurrency-feed-kind">{transition.kind}</span>
-                  <span class="request-concurrency-feed-provider">{transition.providerID}</span>
-                  <span class="request-concurrency-feed-session">{transition.sessionID}</span>
-                  <span class="request-concurrency-feed-counts">{`${transition.active} active / ${transition.queued} queued`}</span>
+                  <span class={`request-concurrency-feed-kind is-${transition.kind}`}>
+                    {transition.kind}
+                  </span>
+                  <span class="request-concurrency-feed-provider" title={transition.providerID}>
+                    {transition.providerID}
+                  </span>
+                  <span class="request-concurrency-feed-session" title={transition.sessionID}>
+                    {transition.sessionID}
+                  </span>
+                  <span class="request-concurrency-feed-counts">
+                    {`${transition.active} active · ${transition.queued} queued`}
+                  </span>
                 </div>
               )}
             </For>
@@ -117,5 +162,6 @@ export const panel: Panel = {
 export default Plugin.define({
   setup(ctx) {
     ctx.add(Panel, panel)
+    ctx.add(Style, PANEL_STYLE)
   },
 })

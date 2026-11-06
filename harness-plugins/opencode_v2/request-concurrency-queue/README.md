@@ -206,14 +206,17 @@ The desktop GUI part ships as the prebuilt `./gui-experimental` bundle and adds
 a pinned **Concurrency** tab to the session side region. It reads the routed
 session's server with the session's directory as the RPC location, refetches on
 every `changed` event, and also refetches on a slow interval so a missed event
-recovers. Each provider gets one row with its in-flight count, configured
-maximum, and queue depth as absolute numbers, and its utilization and demand as
-percentages. The row is green while `active < max` and no request waits, amber
-when `active == max` and nothing waits, and red when a queue exists. Below the
-provider rows, a compact monospace feed lists the recent transitions newest
-first with their timestamp, kind, provider, session, and counts; it renders the
-newest 20 and scrolls. When a status fetch fails, the panel shows
-`Status unavailable` and no provider rows until a later fetch succeeds.
+recovers. Each provider gets one row with its in-flight count, configured maximum, and queue
+depth as absolute numbers, and its utilization and demand as percentages. A
+header labels the columns, and the counts are right-aligned in tabular figures so
+a row reads as one line. The numbers are coloured on a load scale: green at 0%,
+yellow at 100%, orange at 200%, and red from 300% on, interpolated between those
+anchors. The active count and utilization use the `active / max` load, while the
+queued count and demand use `(active + queued) / max`. Below the provider rows, a
+compact monospace feed lists the recent transitions newest first with their
+timestamp, kind, provider, session, and counts; it renders the newest 20 and
+scrolls. When a status fetch fails, the panel shows `Status unavailable` and no
+provider rows until a later fetch succeeds.
 
 ## Development
 

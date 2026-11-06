@@ -1,8 +1,5 @@
 import type { ProviderStatus, StatusSnapshot, TransitionKind, TransitionRecord } from "./rpc.js"
 
-/** The three color states a provider row can show. */
-export type StatusColor = "green" | "amber" | "red"
-
 /** One provider row as the panel renders it. */
 export interface ProviderRow {
   readonly providerID: string
@@ -13,7 +10,51 @@ export interface ProviderRow {
   readonly utilization: string
   /** Demand as a whole-percent string, e.g. `75%`. */
   readonly demand: string
-  readonly color: StatusColor
+  /** CSS color for the active count and utilization, by `active / max`. */
+  readonly utilizationColor: string
+  /** CSS color for the queued count and demand, by `(active + queued) / max`. */
+  readonly demandColor: string
+}
+
+/**
+ * The load scale's anchor points: green at zero, yellow near 100%, orange near
+ * 200%, and red from 300% on. Between anchors the color is interpolated, so a
+ * row warms up as its load climbs instead of snapping between bands.
+ */
+const LOAD_ANCHORS = [
+  { percent: 0, hue: 145, saturation: 65, lightness: 50 },
+  { percent: 100, hue: 48, saturation: 95, lightness: 55 },
+  { percent: 200, hue: 28, saturation: 95, lightness: 58 },
+  { percent: 300, hue: 0, saturation: 80, lightness: 62 },
+] as const
+
+/**
+ * The color for a load percentage on the green-to-red scale. A value below
+ * zero or one that is not a number reads as no load; a value past 300% stays
+ * red.
+ */
+export function loadColor(percent: number): string {
+  const value = Number.isFinite(percent) ? Math.max(0, percent) : 0
+  const last = LOAD_ANCHORS[LOAD_ANCHORS.length - 1]
+  if (value >= last.percent) return anchorColor(last)
+  for (let index = 1; index < LOAD_ANCHORS.length; index += 1) {
+    const lower = LOAD_ANCHORS[index - 1]
+    const upper = LOAD_ANCHORS[index]
+    if (value > upper.percent) continue
+    const progress = (value - lower.percent) / (upper.percent - lower.percent)
+    return `hsl(${Math.round(lerp(lower.hue, upper.hue, progress))} ${Math.round(
+      lerp(lower.saturation, upper.saturation, progress),
+    )}% ${Math.round(lerp(lower.lightness, upper.lightness, progress))}%)`
+  }
+  return anchorColor(last)
+}
+
+function anchorColor(anchor: (typeof LOAD_ANCHORS)[number]): string {
+  return `hsl(${anchor.hue} ${anchor.saturation}% ${anchor.lightness}%)`
+}
+
+function lerp(from: number, to: number, progress: number): number {
+  return from + (to - from) * progress
 }
 
 /** The `location` option the status RPC accepts, selecting the routed instance. */
@@ -56,7 +97,8 @@ export function providerRow(provider: ProviderStatus): ProviderRow {
     max: provider.max,
     utilization: percent(provider.utilization),
     demand: percent(provider.demand),
-    color: colorFor(provider),
+    utilizationColor: loadColor(provider.utilization * 100),
+    demandColor: loadColor(provider.demand * 100),
   }
 }
 
@@ -153,12 +195,6 @@ export function subscribeStatus(
 
 function locationOption(directory: string | undefined): StatusCallOptions | undefined {
   return directory === undefined ? undefined : { location: { directory } }
-}
-
-function colorFor(provider: ProviderStatus): StatusColor {
-  if (provider.queued > 0) return "red"
-  if (provider.active === provider.max) return "amber"
-  return "green"
 }
 
 function percent(value: number): string {

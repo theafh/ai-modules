@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { ProviderStatus, StatusSnapshot } from "../src/rpc.js"
-import { providerRows, subscribeStatus, type StatusClient } from "../src/status.js"
+import { loadColor, providerRows, subscribeStatus, type StatusClient } from "../src/status.js"
 
 function tick(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -77,24 +77,43 @@ describe("providerRows", () => {
         max: 4,
         utilization: "50%",
         demand: "75%",
-        color: "red",
+        utilizationColor: loadColor(50),
+        demandColor: loadColor(75),
       },
     ])
   })
 
-  test("colors green while there is headroom and no queue", () => {
-    const [row] = providerRows(snapshot(provider({ providerID: "acme", active: 1, queued: 0, max: 2 })))
-    expect(row.color).toBe("green")
+  test("colors the active count by utilization and the queue by demand", () => {
+    const [row] = providerRows(snapshot(provider({ providerID: "acme", active: 2, queued: 1, max: 4 })))
+
+    expect(row.utilizationColor).toBe(loadColor(50))
+    expect(row.demandColor).toBe(loadColor(75))
+  })
+})
+
+describe("loadColor", () => {
+  test("anchors green at zero, yellow at 100, orange at 200, and red at 300", () => {
+    expect(loadColor(0)).toBe("hsl(145 65% 50%)")
+    expect(loadColor(100)).toBe("hsl(48 95% 55%)")
+    expect(loadColor(200)).toBe("hsl(28 95% 58%)")
+    expect(loadColor(300)).toBe("hsl(0 80% 62%)")
   })
 
-  test("colors amber at capacity with no queue", () => {
-    const [row] = providerRows(snapshot(provider({ providerID: "acme", active: 2, queued: 0, max: 2 })))
-    expect(row.color).toBe("amber")
+  test("warms continuously as the load climbs between anchors", () => {
+    const hue = (percent: number): number => Number(loadColor(percent).match(/^hsl\((\d+)/)?.[1])
+
+    expect(hue(0)).toBeGreaterThan(hue(50))
+    expect(hue(50)).toBeGreaterThan(hue(100))
+    expect(hue(100)).toBeGreaterThan(hue(150))
+    expect(hue(150)).toBeGreaterThan(hue(200))
+    expect(hue(200)).toBeGreaterThan(hue(250))
+    expect(hue(250)).toBeGreaterThan(hue(300))
   })
 
-  test("colors red whenever a queue exists", () => {
-    const [row] = providerRows(snapshot(provider({ providerID: "acme", active: 2, queued: 1, max: 2 })))
-    expect(row.color).toBe("red")
+  test("stays red past 300 and treats a negative or missing load as zero", () => {
+    expect(loadColor(450)).toBe(loadColor(300))
+    expect(loadColor(-10)).toBe(loadColor(0))
+    expect(loadColor(Number.NaN)).toBe(loadColor(0))
   })
 })
 
