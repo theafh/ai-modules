@@ -2,8 +2,8 @@
 description: Prove the two wiki front-end promises the layer-2 scenarios claim but never assert, wiki_fix report fidelity and the pre-approval write boundary, and name the covered skills in the tree inventory.
 scope: "local test harnesses"
 created: 2026-08-11T18:59:52
-updated: 2026-11-06T13:19:09
-status: checked
+updated: 2026-11-06T13:29:29
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
