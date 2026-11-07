@@ -6,12 +6,13 @@ Prior run: `run-20261107-091338` (superseded scoped run, predates the final extr
 
 ## Status: clean
 
-- Layer 1: **124/124** scenarios pass (script-level discovery / init / lint, deterministic)
-- Layer 2 (this run): the 10 `auto_shaper_wiki` scenarios the log-scope change
-  touches — `AS-8`–`AS-11` plus the new `AS-13`–`AS-18` — pass at **2 passes
-  each, 20/20 runs clean**, with **0 regressions** against the prior run.
-  The `L2-*`, `WI-*`, `WU-*`, and `AS-1`–`AS-5` scenarios were not re-run in
-  this subset.
+- Layer 1: **153/153** scenarios pass (script-level discovery / init / lint, deterministic)
+- Layer 2 (`run-20260822-172921`): the 10 `auto_shaper_wiki` scenarios the
+  log-scope change touches — `AS-8`–`AS-11` plus the new `AS-13`–`AS-18` — pass
+  at **2 passes each, 20/20 runs clean**, with **0 regressions** against the
+  prior run. The `L2-*`, `WI-*`, `WU-*`, and `AS-1`–`AS-5` scenarios were not
+  re-run in that subset; the four-eval scoped run behind `Latest run` is
+  recorded below.
 - No filesystem leak: `~/wiki` was never created; all writes stayed in sandboxes
 
 The per-surface tables below describe the original baseline and have not been
@@ -265,7 +266,8 @@ run.
 ### 4. Final scoped run (Acceptance 6 evidence) — `run-20261107-095238`
 
 `--scenario AS-2,AS-21,WI-1,WU-1` at the file's default 2 passes, run after
-every extraction and prompt edit in this change. All 8 passes passed every
+every extraction and prompt edit in this change up to the `### raw/` heading
+fix; the inline-code mask followed it (see below). All 8 passes passed every
 assertion (exit 0):
 
 ```text
@@ -275,15 +277,34 @@ assertion (exit 0):
 [PASS] WU-1 pass-1: 100.0%   [PASS] WU-1 pass-2: 100.0%
 ```
 
-This run postdates the final `tests/lib/micro_deploy.py` edit, so it is the
-Acceptance 6 evidence. `run-20261107-091338` was recorded before that edit and
-does not prove the shipped extraction code. The final extraction edit makes
-`_report_body` ignore a `##` marker that is part of a longer `#` run, so a narration
-mention like `` `### raw/ Frontmatter` `` no longer starts the captured report;
+This run postdates the `_report_body` extraction edit that stops a `##` marker
+inside a longer `#` run from starting the captured report, so a narration
+mention like `` `### raw/ Frontmatter` `` no longer truncates it;
 `run-20261107-094450` exposed that truncation with two AS-2 relay failures
-before the fix.
+before the fix, and `run-20261107-091338` predates the fix and so does not
+prove the shipped extraction code. That `_report_body` edit is the last one
+this run proves: the inline-code mask in `_inline_heading_start` landed after
+the run, so no layer-2 pass exercises it, and
+`tests/lib/test_micro_deploy.py` pins it with unit cases rather than a layer-2
+run.
 
 `A7_sub_agent_report_relayed` passed on both AS-2 passes with the captured
 report relayed verbatim (3680 and 2987 whitespace-collapsed characters), and
 both passes wrote `sub_agent_report.md` beside `response.txt`. `AS-21`, `WI-1`,
 and `WU-1` kept every assertion they carried before the change.
+
+The shared prompt edit reaches every layer-2 eval: all 37 prompts in
+`evals.json` are assembled by `build_prompt.py`, so each carries the
+"Final report — MANDATORY" block this change rewrites. Its two added sentences
+only restore text to the final response — the TEST REPORT block is now required
+in text even when the `Write` to `report.md` succeeds, and writing the file no
+longer stands in for it — so they cannot remove anything an assertion reads. The
+only assertions that read response prose are positive matches: `AS-2`'s
+`A4_surfacing_mentioned_in_response` and `A7_sub_agent_report_relayed`, and
+`AS-21`'s `A73_response_names_template_candidate`. Every other eval reads
+`report.md`, which this change leaves untouched wherever the worker writes it,
+and whose `response.txt` fallback only gains a block it previously lacked. An
+additive sentence cannot flip any of those checks from pass to fail, so
+`TESTING.md`'s blast-radius rule is discharged by this property rather than by a
+full-suite run, and every eval outside the four-eval run keeps its recorded
+verdict.

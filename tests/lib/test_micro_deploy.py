@@ -2225,6 +2225,67 @@ def test_sub_agent_report_extraction() -> None:
             report == "## Assess output\n\nFinding two.",
         )
 
+        cursor_backticked_heading = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps(
+                {
+                    "conversationSteps": [
+                        {
+                            "assistantMessage": {
+                                "text": (
+                                    "I'll audit the wiki, then report under "
+                                    "`## Assess output`, `## Remediate output`, "
+                                    "and `## Verify output`.\n"
+                                    "## Assess output\n\n**Discovery:** exit 0."
+                                )
+                            }
+                        }
+                    ],
+                    "agentId": "chat-backticked-heading",
+                }
+            ),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_backticked_heading),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "a backticked `## heading` mention in narration does not start the report",
+            report == "## Assess output\n\n**Discovery:** exit 0.",
+        )
+
+        cursor_double_backticked_heading = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps(
+                {
+                    "conversationSteps": [
+                        {
+                            "assistantMessage": {
+                                "text": (
+                                    "I'll audit the wiki, then report under "
+                                    "``## Assess output``.\n"
+                                    "## Assess output\n\n**Discovery:** exit 0."
+                                )
+                            }
+                        }
+                    ],
+                    "agentId": "chat-double-backticked-heading",
+                }
+            ),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_double_backticked_heading),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "a double-backticked ``## heading`` mention in narration does not start the report",
+            report == "## Assess output\n\n**Discovery:** exit 0.",
+        )
+
         write_transcript(
             "chat-c",
             [

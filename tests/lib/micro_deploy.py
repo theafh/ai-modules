@@ -891,6 +891,24 @@ _PARENT_HARNESS_SECTION_RE = re.compile(
     re.IGNORECASE,
 )
 _TRAILING_RULE_RE = re.compile(r"\n\s*-{3,}\s*\Z")
+# A markdown inline code span opens with a run of N backticks and closes at the
+# next run of the same length, so a two- or three-backtick span is one span
+# rather than a pair of empty one-backtick spans with its text left exposed.
+_INLINE_CODE_RE = re.compile(r"(`+)(?!`)[^\n]*?(?<!`)\1(?!`)")
+
+
+def _inline_heading_start(text: str) -> int | None:
+    """Where a mid-line ``## `` heading starts, ignoring inline code spans.
+
+    A narration line may quote a report heading in backticks before appending
+    the real heading after it. A ``## `` inside such a span is a mention, not
+    the report start, so the span is blanked before the search; blanking keeps
+    every later offset, so a match's start is the original position.
+    """
+
+    masked = _INLINE_CODE_RE.sub(lambda match: " " * len(match.group(0)), text)
+    match = re.search(r"(?<!#)## ", masked)
+    return match.start() if match else None
 
 
 def _report_body(text: str) -> str:
@@ -907,12 +925,13 @@ def _report_body(text: str) -> str:
         return ""
     starts = [match.start() for match in re.finditer(r"(?m)^#{1,6}\s", text)]
     # A heading appended to the narration on the same line still marks the
-    # report start, but a `## ` that is part of a longer run of `#` is a
-    # mention inside narration (e.g. `` `### raw/ Frontmatter` ``), not a
-    # heading, so it must not cut the report there.
-    inline = re.search(r"(?<!#)## ", text)
-    if inline:
-        starts.append(inline.start())
+    # report start, but a `## ` that is part of a longer run of `#` or sits
+    # inside an inline code span (e.g. `` `### raw/ Frontmatter` `` or a quoted
+    # `` `## Assess output` ``) is a mention inside narration, not a heading,
+    # so it must not cut the report there.
+    inline_start = _inline_heading_start(text)
+    if inline_start is not None:
+        starts.append(inline_start)
     body = text[min(starts):] if starts else text
     cut = _PARENT_HARNESS_SECTION_RE.search(body)
     if cut:
