@@ -4513,9 +4513,1066 @@ PY
     return 0
 }
 
+# G4: layer2/grade.py records the remediation mechanism a report declares,
+# and aggregate.py carries it into the benchmark per pass and the markdown
+# report. The task's measurement records script-vs-hand-edit on every pass.
+g4_grade_records_remediation_mechanism() {
+    local home run pass
+    home=$(fresh_scratch g4)
+    run="$home/run"
+    pass="$run/AS-14/pass-1"
+    mkdir -p "$pass"
+    cat > "$pass/report.md" <<'EOF'
+==== TEST REPORT ====
+discovery_invoked: yes
+discovery_exit: 0
+discovery_resolved_path: /tmp/wiki
+ambiguity_presented_to_user: no
+init_invoked: no
+init_target: n/a
+files_created: none
+files_modified: none
+linted: yes
+lint_findings: 0 blocking, 0 warn, 0 info
+log_preamble_units_ensured: yes
+remediation_mechanism: script
+final_action_summary: ran the bundled convergence script
+==== END REPORT ====
+EOF
+    : > "$pass/response.txt"
+    printf '%s\n' '{"claude_rc": 0, "duration_ms": 1, "total_tokens": 1}' > "$pass/timing.json"
+    python3 "$SCRIPT_DIR/../layer2/grade.py" "$run" >/dev/null 2>&1 || true
+    if ! python3 - "$pass/grading.json" <<'PY'
+import json
+import sys
+
+grading = json.load(open(sys.argv[1]))
+assert grading.get("remediation_mechanism") == "script", grading.get(
+    "remediation_mechanism"
+)
+PY
+    then
+        log "    [grading.json did not record remediation_mechanism: script]"
+        return 1
+    fi
+    python3 "$SCRIPT_DIR/../layer2/aggregate.py" "$run" >/dev/null 2>&1 || true
+    if ! python3 - "$run/benchmark.json" "$run/benchmark.md" <<'PY'
+import json
+import pathlib
+import sys
+
+benchmark = json.load(open(sys.argv[1]))
+per_pass = benchmark["scenarios"][0]["per_pass"][0]
+assert per_pass.get("remediation_mechanism") == "script", per_pass
+markdown = pathlib.Path(sys.argv[2]).read_text()
+assert "Remediation mechanism per pass" in markdown, "section missing"
+assert "| AS-14 | pass-1 | script |" in markdown, markdown
+PY
+    then
+        log "    [benchmark did not carry the per-pass remediation mechanism]"
+        return 1
+    fi
+    return 0
+}
+
 scenario g1  "layer2 grade fails an empty-delivery pass"      g1_grade_empty_delivery_exits_nonzero
 scenario g2  "layer2 compare names baseline and warns"        g2_aggregate_names_baseline_and_warns_on_narrowing
 scenario g3  "layer2 report-relay assertion has three outcomes" g3_grade_sub_agent_report_relayed_outcomes
+scenario g4  "layer2 records per-pass remediation mechanism"   g4_grade_records_remediation_mechanism
+
+###############################################################################
+# merge_log_preamble.py scenarios
+#
+# The convergence script owns the canonical unit identity table. These
+# fixtures exercise each distribution case and guard from the task:
+#   insert a missing labeled unit, refresh a drifted labeled unit, refresh a
+#   drifted unlabeled unit, refresh through a prior alias, owner-line
+#   preservation as an invariant, the ambiguous near-match refusal, duplicate
+#   and template/table refusals, idempotence, byte-identical entries below the
+#   preamble, and the live-boilerplate-warn path.
+###############################################################################
+
+MERGE="$WIKI_SKILL/scripts/merge_log_preamble.py"
+TEMPLATE_LOG="$WIKI_SKILL/references/template_log.md"
+
+# _merge_preamble <log.md> <template> <spec>...
+# Rewrite log.md's preamble from the canonical template, applying one fixture
+# mutation per spec, and leave the entries below untouched.
+# Specs: drop-group|||<Label>, drop-line|||<stem>,
+#        reword-group|||<Label>|||<text>, reword-line|||<stem>|||<text>,
+#        add-owner|||<text>                      (blockquote, appended at end)
+#        add-owner-after|||<anchor>|||<text>     (blockquote, no blank)
+#        add-blank-owner-after|||<anchor>|||<text> (blank, then blockquote)
+#        add-plain|||<text>                      (plain line, appended at end)
+#        add-plain-after|||<anchor>|||<text>     (plain line, no blank)
+#        add-blank-plain-after|||<anchor>|||<text> (blank, then plain line)
+#        insert-in-group|||<Label>|||<text>       (line inserted inside a unit)
+_merge_preamble() {
+    python3 - "$@" <<'PREAMBLEPY'
+import re
+import sys
+import pathlib
+
+log = pathlib.Path(sys.argv[1])
+template = pathlib.Path(sys.argv[2])
+specs = sys.argv[3:]
+
+LABEL_RE = re.compile(r"^> ([A-Z][A-Za-z]*): ")
+UNLABELED_STEMS = ("Chronological record", "When this file exceeds")
+
+
+def preamble_of(text):
+    i = text.find("\n## ")
+    return (text[:i] if i != -1 else text).rstrip("\n") + "\n"
+
+
+def is_boundary(line):
+    return bool(LABEL_RE.match(line)) or any(
+        line.startswith("> " + stem) for stem in UNLABELED_STEMS
+    )
+
+
+canonical = preamble_of(template.read_text()).splitlines()
+first = next(n for n, ln in enumerate(canonical) if is_boundary(ln))
+header, body = canonical[:first], canonical[first:]
+
+units = []
+for line in body:
+    if is_boundary(line) or not units:
+        units.append([line])
+    else:
+        units[-1].append(line)
+
+
+def find(pred):
+    for n, unit in enumerate(units):
+        if pred(unit[0]):
+            return n
+    raise SystemExit(f"fixture error: no preamble unit matched in {template}")
+
+
+def insert_after(anchor, inserted):
+    position = find(lambda ln, a=anchor: ln.startswith(a)) + 1
+    units[position:position] = inserted
+
+
+for spec in specs:
+    op, *args = spec.split("|||")
+    if op == "drop-group":
+        del units[find(lambda ln, a=args[0]: ln.startswith(f"> {a}: "))]
+    elif op == "drop-line":
+        del units[find(lambda ln, a=args[0]: ln.startswith(f"> {a}"))]
+    elif op == "reword-group":
+        units[find(lambda ln, a=args[0]: ln.startswith(f"> {a}: "))] = [
+            f"> {args[0]}: {args[1]}"
+        ]
+    elif op == "reword-line":
+        units[find(lambda ln, a=args[0]: ln.startswith(f"> {a}"))] = [f"> {args[1]}"]
+    elif op == "add-owner":
+        units.append([f"> {args[0]}"])
+    elif op == "add-owner-after":
+        insert_after(args[0], [[f"> {args[1]}"]])
+    elif op == "add-blank-owner-after":
+        insert_after(args[0], [[""], [f"> {args[1]}"]])
+    elif op == "add-plain":
+        units.append([args[0]])
+    elif op == "add-plain-after":
+        insert_after(args[0], [[args[1]]])
+    elif op == "add-blank-plain-after":
+        insert_after(args[0], [[""], [args[1]]])
+    elif op == "insert-in-group":
+        units[find(lambda ln, a=args[0]: ln.startswith(f"> {a}: "))].insert(
+            1, args[1]
+        )
+    else:
+        raise SystemExit(f"fixture error: unknown preamble op {op!r}")
+
+rebuilt = "\n".join(header + [ln for unit in units for ln in unit]) + "\n"
+existing = log.read_text()
+i = existing.find("\n## ")
+log.write_text(rebuilt + (existing[i:] if i != -1 else ""))
+PREAMBLEPY
+}
+
+# _merge_fixture <id> <spec>... -> echoes the staged log.md path.
+_merge_fixture() {
+    local id=$1
+    shift
+    local home; home=$(fresh_scratch "$id")
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    _merge_preamble "$log" "$TEMPLATE_LOG" "$@"
+    printf '%s' "$log"
+}
+
+# run_merge <log> -> echoes "<exit>|<stdout+stderr>".
+run_merge() {
+    local log=$1 out rc
+    out=$(python3 "$MERGE" "$log" 2>&1) && rc=0 || rc=$?
+    printf '%s|%s' "$rc" "$out"
+}
+
+# _merge_invariants <before> <after> <template>
+# Asserts the task's cross-fixture invariant without going through the merge
+# script's parser or classifier:
+#   * every line the fixture added to the template preamble (a line-level
+#     difflib insert) survives byte-identical and in order;
+#   * every canonical template unit appears exactly once as a contiguous block
+#     in the output preamble, so a refresh cannot leave a stale duplicate;
+#   * every output preamble line is either a canonical template line or a line
+#     the fixture inserted, so a stale canonical line replaced into the output
+#     cannot pass;
+#   * everything from the first `##` heading onward is byte-identical.
+# Owner lines are derived from the template diff, not from the script's
+# `_parse_region`/`_resolve`, so a parser blind spot cannot hide a deletion.
+_merge_invariants() {
+    python3 - "$@" <<'INVARIANTPY'
+import difflib
+import pathlib
+import re
+import sys
+
+before = pathlib.Path(sys.argv[1]).read_text()
+after = pathlib.Path(sys.argv[2]).read_text()
+template = pathlib.Path(sys.argv[3]).read_text()
+
+LABEL_RE = re.compile(r"^> ([A-Z][A-Za-z0-9_-]*): ")
+UNLABELED_STEMS = ("Chronological record", "When this file exceeds")
+
+
+def split_at(text):
+    i = text.find("\n## ")
+    if i == -1:
+        return text.splitlines(), ""
+    return text[:i].splitlines(), text[i:]
+
+
+def is_boundary(line):
+    return bool(LABEL_RE.match(line)) or any(
+        line.startswith("> " + stem) for stem in UNLABELED_STEMS
+    )
+
+
+tpl_lines, _ = split_at(template)
+before_lines, before_tail = split_at(before)
+after_lines, after_tail = split_at(after)
+
+start = next(
+    (n for n, line in enumerate(tpl_lines) if is_boundary(line)),
+    len(tpl_lines),
+)
+template_units = []
+for line in tpl_lines[start:]:
+    if is_boundary(line) or not template_units:
+        template_units.append([line])
+    else:
+        template_units[-1].append(line)
+
+fails = []
+
+# Owner lines: the lines the fixture inserted relative to the canonical
+# template. Replacements and deletions are canonical drift, not owner content.
+owner_lines = []
+for tag, _i1, _i2, j1, j2 in difflib.SequenceMatcher(
+    None, tpl_lines, before_lines, autojunk=False
+).get_opcodes():
+    if tag == "insert":
+        owner_lines.extend(before_lines[j1:j2])
+
+cursor = 0
+for line in owner_lines:
+    while cursor < len(after_lines) and after_lines[cursor] != line:
+        cursor += 1
+    if cursor >= len(after_lines):
+        fails.append(f"owner line missing or changed: {line!r}")
+        break
+    cursor += 1
+
+# Every output line must be a canonical template line, a line the fixture
+# inserted relative to the template, or a line from a fixture unit that carries
+# no canonical anchor. A stale canonical line that survived a refresh belongs
+# to a canonical unit on the fixture side, so it is in none of those sets and
+# this check fails — the defect an insert/deletion-only invariant cannot see.
+def anchor_key(line):
+    match = LABEL_RE.match(line)
+    if match:
+        return ("label", f"{match.group(1)}:")
+    for stem in UNLABELED_STEMS:
+        if line.startswith("> " + stem):
+            return ("stem", stem)
+    return None
+
+
+template_line_set = set(tpl_lines)
+inserted_line_set = set(owner_lines)
+template_anchor_keys = {anchor_key(unit[0]) for unit in template_units}
+# Optional extra anchor tokens name canonical units a fixture ships under a
+# prior alias (m4's template rename), so the alias unit stays canonical rather
+# than being mistaken for owner content.
+for token in sys.argv[4:]:
+    template_anchor_keys.add(("label", token))
+before_start = next(
+    (n for n, line in enumerate(before_lines) if is_boundary(line)),
+    len(before_lines),
+)
+before_units = []
+for line in before_lines[before_start:]:
+    if is_boundary(line) or not before_units:
+        before_units.append([line])
+    else:
+        before_units[-1].append(line)
+
+owner_unit_lines = []
+for unit in before_units:
+    key = anchor_key(unit[0])
+    if key is None or key not in template_anchor_keys:
+        owner_unit_lines.extend(unit)
+
+allowed_lines = template_line_set | inserted_line_set | set(owner_unit_lines)
+for line in after_lines:
+    if line in allowed_lines:
+        continue
+    fails.append(
+        "output carries a line that is neither canonical template text nor "
+        f"owner content (stale canonical wording?): {line!r}"
+    )
+    break
+
+for line in owner_unit_lines:
+    if line in inserted_line_set or line in after_lines:
+        continue
+    fails.append(f"owner unit line missing from the output: {line!r}")
+    break
+
+
+# Canonical template lines must appear exactly once and in order. Owner lines
+# may sit between them (a mid-unit owner insert), so a contiguous block is too
+# strict; each line's occurrence count plus an in-order walk over the whole
+# preamble still catches a stale duplicate or a reordering.
+for unit in template_units:
+    for line in unit:
+        seen = sum(1 for candidate in after_lines if candidate == line)
+        if seen != 1:
+            fails.append(
+                f"canonical template line {line!r} appears {seen} times"
+            )
+            break
+
+cursor = 0
+for unit in template_units:
+    for line in unit:
+        while cursor < len(after_lines) and after_lines[cursor] != line:
+            cursor += 1
+        if cursor >= len(after_lines):
+            fails.append(
+                f"canonical template line {line!r} missing or out of order"
+            )
+            break
+        cursor += 1
+    else:
+        continue
+    break
+
+if before_tail != after_tail:
+    fails.append("entries below the preamble are not byte-identical")
+
+if fails:
+    for line in fails:
+        print(f"    {line}", file=sys.stderr)
+    sys.exit(1)
+print("invariants OK")
+INVARIANTPY
+}
+
+# m1: insert a missing labeled unit at its canonical position.
+m1_insert_missing_labeled() {
+    local log; log=$(_merge_fixture m1 "drop-group|||Scope")
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    if ! grep -q '^> Scope: an entry records changes to this wiki, and only those\. Name the files$' "$log"; then
+        log "    [missing inserted Scope group]"; ok=false
+    fi
+    # Scope sits between Repair and Body, its canonical position.
+    python3 - "$log" <<'PY' || ok=false
+import sys, pathlib
+lines = pathlib.Path(sys.argv[1]).read_text().splitlines()
+pos = {ln.split(':',1)[0]: n for n, ln in enumerate(lines) if ln.startswith('> ') and ':' in ln}
+if not (pos['> Repair'] < pos['> Scope'] < pos['> Body']):
+    print(f"    [Scope not at canonical position: {pos}]", file=sys.stderr)
+    sys.exit(1)
+PY
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    $ok
+}
+
+# m2: refresh a drifted labeled unit in place.
+m2_refresh_drifted_labeled() {
+    local log; log=$(_merge_fixture m2 \
+        "reword-group|||Entries|||every operation that creates or updates wiki files appends one entry.")
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    grep -q '^> Entries: an operation that creates or updates wiki files appends one entry; an$' "$log" \
+        || { log "    [Entries not refreshed to template text]"; ok=false; }
+    if grep -q '^> Entries: every operation that creates' "$log"; then
+        log "    [stale Entries wording survives]"; ok=false
+    fi
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    $ok
+}
+
+# m3: refresh a drifted unlabeled unit through its committed stem.
+m3_refresh_drifted_unlabeled() {
+    local log; log=$(_merge_fixture m3 \
+        "reword-line|||Chronological record|||Chronological record of changes to this wiki.")
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    grep -q '^> Chronological record of wiki changes\. Append-only\.$' "$log" \
+        || { log "    [unlabeled opener not refreshed]"; ok=false; }
+    if grep -q '^> Chronological record of changes to this wiki\.$' "$log"; then
+        log "    [stale unlabeled wording survives]"; ok=false
+    fi
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    $ok
+}
+
+# m4: a prior alias recorded in the identity table refreshes the renamed unit
+# through the CLI without leaving a duplicate. The fixture ships the rename the
+# way a template edit would: the current anchor becomes `Logformat:`, the old
+# `Format:` is recorded as the alias, and the downstream wiki still carries the
+# old form. The alias must be a single-token label, because LABEL_RE only
+# treats `> Label:` as a unit boundary; `> Log format:` would be absorbed into
+# the preceding unit and the test would pass for the wrong reason.
+m4_refresh_through_alias() {
+    local home; home=$(fresh_scratch m4)
+    cp -R "$WIKI_SKILL" "$home/skill"
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    cp "$log" "$log.before"
+    local ok=true
+    if ! python3 - "$home/skill" "$log" <<'ALIASPY'
+import pathlib
+import sys
+
+skill = pathlib.Path(sys.argv[1])
+log = pathlib.Path(sys.argv[2])
+
+template_path = skill / "references/template_log.md"
+template_path.write_text(
+    template_path.read_text().replace("> Format:", "> Logformat:", 1)
+)
+script_path = skill / "scripts/merge_log_preamble.py"
+script = script_path.read_text()
+old = 'CanonicalUnit("format", "labeled", "Format:")'
+new = 'CanonicalUnit("format", "labeled", "Logformat:", ("Format:",))'
+if old not in script:
+    print(f"    [fixture error: identity table entry not found: {old}]", file=sys.stderr)
+    sys.exit(1)
+script_path.write_text(script.replace(old, new, 1))
+
+# Prove the live unit resolves to `format` through the alias before merging.
+sys.path.insert(0, str(skill / "scripts"))
+import merge_log_preamble as m
+
+live = m.extract_h1_prelude(log.read_text())
+_, units = m._parse_region(live, m.CANONICAL_UNITS)
+format_units = [u for u in units if m._resolve(u, m.CANONICAL_UNITS) == "format"]
+if len(format_units) != 1:
+    print(f"    [live preamble has {len(format_units)} format units]", file=sys.stderr)
+    sys.exit(1)
+if not format_units[0][0].startswith("> Format:"):
+    print(f"    [live format unit does not carry the alias: {format_units[0][0]!r}]", file=sys.stderr)
+    sys.exit(1)
+print("alias resolution OK")
+ALIASPY
+    then
+        ok=false
+    fi
+
+    local out rc
+    out=$(python3 "$home/skill/scripts/merge_log_preamble.py" "$log" 2>&1) && rc=0 || rc=$?
+    assert_eq "exit" "$rc" "0" || ok=false
+    local logformat_count format_count
+    logformat_count=$(grep -c '^> Logformat:' "$log" || true)
+    format_count=$(grep -c '^> Format:' "$log" || true)
+    assert_eq "one current-anchor unit" "$logformat_count" "1" || ok=false
+    assert_eq "no stale alias unit" "$format_count" "0" || ok=false
+    _merge_invariants "$log.before" "$log" "$home/skill/references/template_log.md" "Format:" >/dev/null || ok=false
+    $ok
+}
+
+# m5: owner-line preservation holds across every distribution fixture.
+_merge_owner_matrix_case() {
+    local id=$1
+    shift
+    local log; log=$(_merge_fixture "$id" "$@" \
+        "add-owner|||Local: this vault names the tenant alongside every rollout entry.")
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*}
+    if [[ "$rc" -ne 0 ]]; then
+        log "    [$id merge exited $rc]"
+        printf '%s\n' "${ret#*|}" | indent
+        return 1
+    fi
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null
+}
+
+m5_owner_preservation_invariant() {
+    local ok=true
+    _merge_owner_matrix_case m5a "drop-group|||Scope" || ok=false
+    _merge_owner_matrix_case m5b \
+        "reword-group|||Entries|||every operation that creates or updates wiki files appends one entry." \
+        || ok=false
+    _merge_owner_matrix_case m5c \
+        "reword-line|||Chronological record|||Chronological record of changes to this wiki." \
+        || ok=false
+    _merge_owner_matrix_case m5d "drop-line|||When this file exceeds" || ok=false
+    $ok
+}
+
+# m6: a missing canonical unit plus an owner line that closely resembles it is
+# refused loudly, and nothing is written.
+m6_ambiguous_near_match_refused() {
+    local home; home=$(fresh_scratch m6)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    python3 - "$log" "$TEMPLATE_LOG" "$WIKI_SKILL/scripts" <<'AMBIGPY'
+import pathlib
+import sys
+
+log, template, scripts = sys.argv[1], pathlib.Path(sys.argv[2]), sys.argv[3]
+sys.path.insert(0, scripts)
+import merge_log_preamble as m
+
+template_units = m.validate_template(
+    m.extract_h1_prelude(template.read_text()), m.CANONICAL_UNITS
+)
+scope = next(
+    u for s, u in zip(m.CANONICAL_UNITS, template_units) if s.id == "scope"
+)
+body = " ".join(line[2:] if line.startswith("> ") else line for line in scope)
+
+text = template.read_text()
+i = text.find("\n## ")
+out = []
+skip = False
+for line in text[:i].splitlines():
+    if line.startswith("> Scope:"):
+        skip = True
+        continue
+    if skip and line.startswith("> ") and not m.LABEL_RE.match(line) \
+            and not line.startswith("> When this file exceeds"):
+        continue
+    skip = False
+    out.append(line)
+out.append("> Local: " + body)
+pathlib.Path(log).write_text("\n".join(out) + text[i:])
+AMBIGPY
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    if ! cmp -s "$log" "$log.before"; then
+        log "    [file changed on an ambiguous local rewrite]"; ok=false
+    fi
+    if ! grep -q "ambiguous local rewrite" <<<"$out" || ! grep -q "scope" <<<"$out"; then
+        log "    [refusal did not name the ambiguous unit]"; ok=false
+        printf '%s\n' "$out" | indent
+    fi
+    $ok
+}
+
+# m7: a duplicated canonical unit is refused loudly, and nothing is written.
+m7_duplicate_unit_refused() {
+    local home; home=$(fresh_scratch m7)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    python3 - "$log" <<'DUPPY'
+import pathlib
+import sys
+
+p = pathlib.Path(sys.argv[1])
+lines = p.read_text().splitlines()
+out = []
+for line in lines:
+    if line.startswith("> Repair:"):
+        out.append("> Entries: a stale duplicate entry rule.")
+    out.append(line)
+p.write_text("\n".join(out) + "\n")
+DUPPY
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    if ! cmp -s "$log" "$log.before"; then
+        log "    [file changed on a duplicate canonical unit]"; ok=false
+    fi
+    if ! grep -q "duplicate canonical unit 'entries'" <<<"$out"; then
+        log "    [refusal did not name the duplicated unit]"; ok=false
+        printf '%s\n' "$out" | indent
+    fi
+    $ok
+}
+
+# m8: a template region the parse validation rejects fails loudly and writes
+# nothing. The copied skill tree lets the script resolve a deliberately broken
+# template beside itself, exactly as a bad in-repo edit would.
+m8_table_rejecting_template_refused() {
+    local home; home=$(fresh_scratch m8)
+    cp -R "$WIKI_SKILL" "$home/skill"
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    python3 - "$home/skill/references/template_log.md" <<'BADTPL'
+import pathlib
+import sys
+
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace("> Format:", "> Log format:", 1))
+BADTPL
+    cp "$log" "$log.before"
+    local out rc
+    out=$(python3 "$home/skill/scripts/merge_log_preamble.py" "$log" 2>&1) && rc=0 || rc=$?
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    if ! cmp -s "$log" "$log.before"; then
+        log "    [file changed on a rejected template]"; ok=false
+    fi
+    if ! grep -qE "resolves to no identity entry|template carries|template unit order" <<<"$out"; then
+        log "    [rejection did not name the template/table mismatch]"; ok=false
+        printf '%s\n' "$out" | indent
+    fi
+    $ok
+}
+
+# m9: a second run over the converged file reports no change and exits 0.
+m9_idempotent() {
+    local log; log=$(_merge_fixture m9 "drop-group|||Scope")
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*}
+    local ok=true
+    assert_eq "first exit" "$rc" "0" || ok=false
+    cp "$log" "$log.after-first"
+    ret=$(run_merge "$log"); rc=${ret%%|*} local out=${ret#*|}
+    assert_eq "second exit" "$rc" "0" || ok=false
+    if ! grep -q "no change" <<<"$out"; then
+        log "    [second run did not report no change]"; ok=false
+        printf '%s\n' "$out" | indent
+    fi
+    if ! cmp -s "$log" "$log.after-first"; then
+        log "    [second run changed the converged file]"; ok=false
+    fi
+    $ok
+}
+
+# m10: entries below the preamble stay byte-identical, including a distinctive
+# entry body that a region restore would have to preserve exactly.
+m10_entries_byte_identical() {
+    local home; home=$(fresh_scratch m10)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    cat >> "$log" <<'ENTRIES'
+
+## [2026-07-01 12:00] update | KEEP ENTRY A
+
+- concepts/alpha.md: KEEP BULLET A
+
+## [2026-07-02 13:00] query | KEEP ENTRY B
+
+- KEEP BULLET B
+ENTRIES
+    _merge_preamble "$log" "$TEMPLATE_LOG" "drop-group|||Scope"
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    if ! grep -q 'KEEP ENTRY A' "$log" || ! grep -q 'KEEP BULLET B' "$log"; then
+        log "    [entry content lost]"; ok=false
+    fi
+    $ok
+}
+
+# m11: a live restore-instructing boilerplate warn plus an unmatched owner
+# line: the script preserves the owner line through the unmatched-owner path
+# and the lint warn clears (the owner line becomes an acknowledged insert-only
+# extension, not a live warn).
+m11_live_warn_owner_preserved() {
+    local wiki; wiki=$(stage_fresh_wiki m11)
+    local log="$wiki/log.md"
+    _merge_preamble "$log" "$TEMPLATE_LOG" \
+        "drop-group|||Scope" \
+        "add-owner|||Local: this vault names the tenant alongside every rollout entry."
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    local ok=true
+    assert_lint_finding "live boilerplate warn before merge" "$out" warn "boilerplate" || ok=false
+    cp "$log" "$log.before"
+    ret=$(run_merge "$log"); local rc=${ret%%|*}
+    assert_eq "merge exit" "$rc" "0" || ok=false
+    grep -q '^> Local: this vault names the tenant alongside every rollout entry\.$' "$log" \
+        || { log "    [owner line not preserved]"; ok=false; }
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    ret=$(run_lint "$wiki"); out=${ret#*|}
+    assert_no_lint_category "no live boilerplate warn after merge" "$out" "boilerplate" || ok=false
+    $ok
+}
+
+# m12: the merge script imports the linter's region extractor, so both share
+# one definition of the preamble.
+m12_shares_extractor() {
+    local ok=true
+    if ! grep -q 'from lint import extract_h1_prelude' "$MERGE"; then
+        log "    [merge script does not import extract_h1_prelude from lint]"; ok=false
+    fi
+    if ! grep -q 'extract_h1_prelude(' "$MERGE"; then
+        log "    [merge script does not call extract_h1_prelude]"; ok=false
+    fi
+    $ok
+}
+
+# m13: validate_template rejects a template whose current anchor is absent even
+# when the missing anchor is recorded as an alias. Aliases exist for live units
+# a rename left behind; the canonical template must carry current anchors only.
+m13_template_alias_drift_rejected() {
+    python3 - "$WIKI_SKILL/scripts" "$TEMPLATE_LOG" <<'ALIASDRIFTPY'
+import pathlib
+import sys
+
+sys.path.insert(0, sys.argv[1])
+import merge_log_preamble as m
+
+specs = tuple(
+    m.CanonicalUnit(s.id, s.kind, s.anchor, s.aliases + ("Logformat:",))
+    if s.id == "format"
+    else s
+    for s in m.CANONICAL_UNITS
+)
+drifted = pathlib.Path(sys.argv[2]).read_text().replace(
+    "> Format:", "> Logformat:", 1
+)
+try:
+    m.validate_template(m.extract_h1_prelude(drifted), specs)
+except m.MergeError as exc:
+    print(f"template alias drift rejected: {exc}")
+    raise SystemExit(0)
+print(
+    "    [validate_template accepted a template whose current anchor is absent]",
+    file=sys.stderr,
+)
+raise SystemExit(1)
+ALIASDRIFTPY
+}
+
+# m14: owner content the parser could absorb into a canonical unit survives.
+# Each case drops a canonical unit so the merge must rewrite the region, then
+# places owner content where a continuation-absorbing parser would lose it: a
+# plain blockquote line at the end, blank-separated, a plain paragraph at the
+# end (with and without a blank line), and a plain line after the opener. The
+# invariant is asserted by a line-level diff against the template, not through
+# the script's parser.
+_merge_absorbed_owner_case() {
+    local id=$1
+    shift
+    local log; log=$(_merge_fixture "$id" "$@")
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*}
+    if [[ "$rc" -ne 0 ]]; then
+        log "    [$id merge exited $rc]"
+        printf '%s\n' "${ret#*|}" | indent
+        return 1
+    fi
+    if ! grep -qF 'Our wiki keeps tenant names in entries.' "$log"; then
+        log "    [$id owner line was absorbed and replaced]"
+        return 1
+    fi
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null
+}
+
+m14_absorbed_owner_lines_preserved() {
+    local ok=true
+    _merge_absorbed_owner_case m14a \
+        "drop-group|||Scope" \
+        "add-owner|||Our wiki keeps tenant names in entries." || ok=false
+    _merge_absorbed_owner_case m14b \
+        "drop-group|||Scope" \
+        "add-blank-owner-after|||> When this file exceeds|||Our wiki keeps tenant names in entries." || ok=false
+    _merge_absorbed_owner_case m14c \
+        "drop-group|||Scope" \
+        "add-plain|||Our wiki keeps tenant names in entries." || ok=false
+    _merge_absorbed_owner_case m14d \
+        "drop-group|||Scope" \
+        "add-blank-plain-after|||> When this file exceeds|||Our wiki keeps tenant names in entries." || ok=false
+    _merge_absorbed_owner_case m14e \
+        "drop-group|||Scope" \
+        "add-plain-after|||> Chronological record|||Our wiki keeps tenant names in entries." || ok=false
+    $ok
+}
+
+# m15: the live-warn variant of m14 — a live restore-instructing boilerplate
+# warn plus an owner blockquote line that a continuation-absorbing parser
+# would swallow. The merge preserves it and the live warn clears.
+m15_absorbed_owner_live_warn() {
+    local wiki; wiki=$(stage_fresh_wiki m15)
+    local log="$wiki/log.md"
+    _merge_preamble "$log" "$TEMPLATE_LOG" \
+        "drop-group|||Scope" \
+        "add-owner|||Our wiki keeps tenant names in entries."
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    local ok=true
+    assert_lint_finding "live boilerplate warn before merge" "$out" warn "boilerplate" || ok=false
+    cp "$log" "$log.before"
+    ret=$(run_merge "$log"); local rc=${ret%%|*}
+    assert_eq "merge exit" "$rc" "0" || ok=false
+    grep -qF '> Our wiki keeps tenant names in entries.' "$log" \
+        || { log "    [owner blockquote line not preserved]"; ok=false; }
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    ret=$(run_lint "$wiki"); out=${ret#*|}
+    assert_no_lint_category "no live boilerplate warn after merge" "$out" "boilerplate" || ok=false
+    $ok
+}
+
+# _replace_unit <log> <anchor-prefix> <replacement-file>
+# Replace the preamble unit whose first line starts with <anchor-prefix> with
+# the lines in <replacement-file>, leaving everything below the preamble and
+# every other unit untouched. Continuation lines are blockquote lines that
+# carry no label anchor.
+_replace_unit() {
+    python3 - "$1" "$2" "$3" <<'REPLACEUNITPY'
+import pathlib
+import re
+import sys
+
+log, prefix, replacement = sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3])
+LABEL_RE = re.compile(r"^> ([A-Z][A-Za-z0-9_-]*): ")
+
+text = pathlib.Path(log).read_text()
+i = text.find("\n## ")
+pre, tail = text[:i], text[i:]
+out: list[str] = []
+skip = False
+for line in pre.splitlines():
+    if line.startswith(prefix):
+        skip = True
+        out.extend(replacement.read_text().splitlines())
+        continue
+    if skip:
+        if line.startswith("> ") and not LABEL_RE.match(line):
+            continue
+        skip = False
+    out.append(line)
+pathlib.Path(log).write_text("\n".join(out) + "\n" + tail)
+REPLACEUNITPY
+}
+
+# m16: a drifted labeled unit that grew past the template's line count is
+# canonical drift, not owner content. The whole unit refreshes, so no stale
+# canonical tail survives beside the current rule.
+m16_grown_drifted_labeled() {
+    local home; home=$(fresh_scratch m16)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    cat > "$home/drifted" <<'DRIFT'
+> Entries: each operation that writes wiki files records exactly one entry here;
+> a run that writes nothing records none, except that lint and audit runs always
+> record their outcome. That includes a zero-change audit, which is still a
+> process record worth keeping for the next cold walk. Owners also keep this
+> older sentence about how entries were once scoped to a single file, which the
+> template no longer says anywhere.
+DRIFT
+    _replace_unit "$log" "> Entries:" "$home/drifted"
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    local count
+    count=$(grep -c '^> Entries: an operation that creates or updates wiki files appends one entry; an$' "$log" || true)
+    assert_eq "one current Entries block" "$count" "1" || ok=false
+    if grep -q 'older sentence about how entries were once scoped' "$log"; then
+        log "    [stale drifted Entries wording survives]"; ok=false
+    fi
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    $ok
+}
+
+# m17: the same defect for an unlabeled unit: a drifted rotation rule that grew
+# past the template's one line refreshes whole, leaving no stale tail.
+m17_grown_drifted_unlabeled() {
+    local home; home=$(fresh_scratch m17)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    cat > "$home/drifted" <<'DRIFT'
+> When this file exceeds 500 entries, rotate: rename the log and start fresh.
+> The old rule also said to keep an archive copy beside the log, which the
+> current template no longer asks for and downstream wikis copied verbatim.
+DRIFT
+    _replace_unit "$log" "> When this file exceeds" "$home/drifted"
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    local count
+    count=$(grep -c '^> When this file exceeds 500 entries, rotate: rename to log-YYYY.md' "$log" || true)
+    assert_eq "one current rotation block" "$count" "1" || ok=false
+    if grep -q 'keep an archive copy beside the log' "$log"; then
+        log "    [stale drifted rotation wording survives]"; ok=false
+    fi
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    $ok
+}
+
+# m18: an owner blockquote line inserted inside a canonical unit survives
+# byte-identically. The line-count split used to fold it into the refreshed
+# prefix and delete it; the line alignment must keep it.
+m18_mid_unit_owner_line_survives() {
+    local log; log=$(_merge_fixture m18 \
+        "insert-in-group|||Body|||> Tenant names appear in entries.")
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    grep -qxF '> Tenant names appear in entries.' "$log" \
+        || { log "    [mid-unit owner line was deleted]"; ok=false; }
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    # A second run must leave the preserved line in place (idempotence).
+    cp "$log" "$log.after-first"
+    ret=$(run_merge "$log"); rc=${ret%%|*}
+    assert_eq "second exit" "$rc" "0" || ok=false
+    if ! cmp -s "$log" "$log.after-first"; then
+        log "    [second run changed the preserved owner line]"; ok=false
+    fi
+    $ok
+}
+
+# m19: drift that both rewords canonical text and adds lines is undecidable —
+# the extra lines could be owner content or stale canonical wording — so the
+# merge refuses loudly, names the unit, and writes nothing.
+m19_mixed_drift_refused() {
+    local home; home=$(fresh_scratch m19)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    cat > "$home/drifted" <<'DRIFT'
+> Entries: each operation that writes wiki files records one entry; an
+> operation that changes no file appends none. Lint and audit runs are the
+> exception. Each records its outcome, including a zero-change one, as a
+> process record.
+> Owners keep this extra line about tenants.
+DRIFT
+    _replace_unit "$log" "> Entries:" "$home/drifted"
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    if ! cmp -s "$log" "$log.before"; then
+        log "    [file changed on undecidable mixed drift]"; ok=false
+    fi
+    if ! grep -q "undecidable drift in canonical unit 'entries'" <<<"$out"; then
+        log "    [refusal did not name the undecidable unit]"; ok=false
+        printf '%s\n' "$out" | indent
+    fi
+    $ok
+}
+
+# m20: a mid-unit owner line keeps its offset, not just its bytes. The merge
+# rewrites the region (Scope is dropped), and the owner line inserted between
+# two canonical Body lines must stay between those same two lines rather than
+# being relocated to the end of the unit.
+m20_mid_unit_owner_line_keeps_offset() {
+    local log; log=$(_merge_fixture m20 \
+        "drop-group|||Scope" \
+        "insert-in-group|||Body|||> Tenant names appear in entries.")
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    python3 - "$log" <<'POSITIONPY' || ok=false
+import pathlib
+import sys
+
+lines = pathlib.Path(sys.argv[1]).read_text().splitlines()
+try:
+    at = lines.index("> Tenant names appear in entries.")
+except ValueError:
+    print("    [mid-unit owner line was deleted]", file=sys.stderr)
+    raise SystemExit(1)
+before = lines[at - 1]
+after = lines[at + 1]
+if not before.startswith(
+    "> Body: list only files actually created or updated. Skip files that were"
+):
+    print(f"    [owner line moved; preceding line is {before!r}]", file=sys.stderr)
+    raise SystemExit(1)
+if not after.startswith(
+    "> inspected, considered, or deliberately left unchanged, and do not narrate"
+):
+    print(f"    [owner line moved; following line is {after!r}]", file=sys.stderr)
+    raise SystemExit(1)
+POSITIONPY
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    $ok
+}
+
+# m21: a mid-unit owner line that precedes a later unmatched owner unit. The
+# self-check walks owner units with one forward cursor, so building the list as
+# "all unmatched units, then all mid-unit extras" reports the mid-unit line as
+# missing even though the merge emitted it in place. Both lines must survive.
+m21_mid_unit_before_later_owner_unit() {
+    local log; log=$(_merge_fixture m21 \
+        "insert-in-group|||Body|||> Tenant names appear in entries." \
+        "add-owner|||Local: this vault names the tenant alongside every rollout entry.")
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    if ! grep -qxF '> Tenant names appear in entries.' "$log"; then
+        log "    [mid-unit owner line was deleted]"; ok=false
+    fi
+    if ! grep -qxF '> Local: this vault names the tenant alongside every rollout entry.' "$log"; then
+        log "    [later owner unit was deleted]"; ok=false
+    fi
+    python3 - "$log" <<'ORDERPY' || ok=false
+import pathlib
+import sys
+
+lines = pathlib.Path(sys.argv[1]).read_text().splitlines()
+try:
+    mid = lines.index("> Tenant names appear in entries.")
+    later = lines.index(
+        "> Local: this vault names the tenant alongside every rollout entry."
+    )
+except ValueError:
+    raise SystemExit(1)
+if mid >= later:
+    print("    [owner lines are out of order]", file=sys.stderr)
+    raise SystemExit(1)
+ORDERPY
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    $ok
+}
+
+scenario m1  "merge inserts a missing labeled unit"           m1_insert_missing_labeled
+scenario m2  "merge refreshes a drifted labeled unit"        m2_refresh_drifted_labeled
+scenario m3  "merge refreshes a drifted unlabeled unit"      m3_refresh_drifted_unlabeled
+scenario m4  "merge refreshes through a prior alias"         m4_refresh_through_alias
+scenario m5  "merge preserves owner lines across fixtures"   m5_owner_preservation_invariant
+scenario m6  "merge refuses an ambiguous near-match"         m6_ambiguous_near_match_refused
+scenario m7  "merge refuses a duplicate canonical unit"      m7_duplicate_unit_refused
+scenario m8  "merge refuses a table-rejecting template"      m8_table_rejecting_template_refused
+scenario m9  "merge is idempotent on a converged file"       m9_idempotent
+scenario m10 "merge leaves entries byte-identical"           m10_entries_byte_identical
+scenario m11 "merge preserves owner line on live warn"       m11_live_warn_owner_preserved
+scenario m12 "merge imports the linter's prelude extractor"  m12_shares_extractor
+scenario m13 "merge rejects a template drifted onto an alias" m13_template_alias_drift_rejected
+scenario m14 "merge preserves absorbed owner lines"           m14_absorbed_owner_lines_preserved
+scenario m15 "merge preserves absorbed owner line on warn"    m15_absorbed_owner_live_warn
+scenario m16 "merge refreshes a grown drifted labeled unit"   m16_grown_drifted_labeled
+scenario m17 "merge refreshes a grown drifted unlabeled unit" m17_grown_drifted_unlabeled
+scenario m18 "merge keeps a mid-unit owner line"              m18_mid_unit_owner_line_survives
+scenario m19 "merge refuses undecidable mixed drift"          m19_mixed_drift_refused
+scenario m20 "merge keeps a mid-unit owner line's offset"     m20_mid_unit_owner_line_keeps_offset
+scenario m21 "merge keeps a mid-unit line before later owner" m21_mid_unit_before_later_owner_unit
 
 log ""
 log "==================================="

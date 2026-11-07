@@ -473,6 +473,10 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
         "scenario_id": scenario["id"],
         "scenario_name": scenario["name"],
         "report_parsed": parsed is not None,
+        # The remediation mechanism a scenario's report declares (script,
+        # hand-edit, or none). Recorded on every pass so the benchmark carries
+        # how the move was executed, not only whether its postconditions held.
+        "remediation_mechanism": (parsed or {}).get("remediation_mechanism"),
         "worker_ok": worker_ok,
         "worker_rc": worker_rc,
         "artefacts_read_from_micro_deployment": integrity,

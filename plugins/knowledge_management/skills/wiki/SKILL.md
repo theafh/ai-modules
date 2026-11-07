@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.13
+version: 1.24.14
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -958,7 +958,8 @@ because Bash output alone does not satisfy `Edit`'s precondition.
 have modified wiki files.** Mutations that invalidate the harness's
 "file-has-been-read" state include `git mv`, `mv`, `sed -i`, the linter when
 run in auto-fix mode, helper scripts under `skills/wiki/scripts/`
-(`compute_sha256.py`, `init_wiki.sh`, `lint.py` with side effects), a
+(`compute_sha256.py`, `init_wiki.sh`, `merge_log_preamble.py`, `lint.py`
+with side effects), a
 subagent that performed edits during this session, and any external command
 that touches the working tree. A stale Read causes the next `Edit` or
 `Write` to fail with `<tool_use_error>File has not been read yet. Read it

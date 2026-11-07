@@ -1826,9 +1826,10 @@
       "expected_resolved_path_subpath": "HOME/proj/wiki",
       "extra_report_fields": [
         "log_preamble_restored: yes|no",
-        "log_entries_edited: yes|no"
+        "log_entries_edited: yes|no",
+        "remediation_mechanism: script|hand-edit|none"
       ],
-      "extra_report_field_doc": "- `log_preamble_restored`: `yes` if you changed the log.md preamble (the region above the first `##` heading) so it carries the canonical template text — inserting an absent canonical unit or refreshing a drifted one both count; `no` otherwise.\n- `log_entries_edited`: `yes` if you changed any `## [` entry heading or entry body in log.md other than appending a new entry; `no` otherwise.",
+      "extra_report_field_doc": "- `log_preamble_restored`: `yes` if you changed the log.md preamble (the region above the first `##` heading) so it carries the canonical template text — inserting an absent canonical unit or refreshing a drifted one both count; `no` otherwise.\n- `log_entries_edited`: `yes` if you changed any `## [` entry heading or entry body in log.md other than appending a new entry; `no` otherwise.\n- `remediation_mechanism`: `script` if you reconciled the log.md preamble by running the bundled `merge_log_preamble.py`; `hand-edit` if you edited the preamble lines yourself; `none` if you changed nothing.",
       "assertions": [
         {
           "id": "A1_discovery_invoked",
@@ -1885,6 +1886,14 @@
         {
           "id": "A10_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A72_remediation_mechanism_script",
+          "type": "report_field_in",
+          "field": "remediation_mechanism",
+          "expected": [
+            "script"
+          ]
         }
       ]
     },
@@ -2315,9 +2324,10 @@
       ],
       "expected_resolved_path_subpath": "HOME/proj/wiki",
       "extra_report_fields": [
-        "log_preamble_units_ensured: yes|no"
+        "log_preamble_units_ensured: yes|no",
+        "remediation_mechanism: script|hand-edit|none"
       ],
-      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.",
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `remediation_mechanism`: `script` if you reconciled the log.md preamble by running the bundled `merge_log_preamble.py`; `hand-edit` if you edited the preamble lines yourself; `none` if you changed nothing.",
       "assertions": [
         {
           "id": "A1_discovery_invoked",
@@ -2362,6 +2372,14 @@
         {
           "id": "A91_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A72_remediation_mechanism_script",
+          "type": "report_field_in",
+          "field": "remediation_mechanism",
+          "expected": [
+            "script"
+          ]
         }
       ]
     },
@@ -2382,9 +2400,10 @@
       "expected_resolved_path_subpath": "HOME/proj/wiki",
       "extra_report_fields": [
         "log_preamble_units_ensured: yes|no",
-        "owner_preamble_line_preserved: yes|no"
+        "owner_preamble_line_preserved: yes|no",
+        "remediation_mechanism: script|hand-edit|none"
       ],
-      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.",
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.\n- `remediation_mechanism`: `script` if you reconciled the log.md preamble by running the bundled `merge_log_preamble.py`; `hand-edit` if you edited the preamble lines yourself; `none` if you changed nothing.",
       "assertions": [
         {
           "id": "A1_discovery_invoked",
@@ -2435,6 +2454,14 @@
         {
           "id": "A91_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A72_remediation_mechanism_script",
+          "type": "report_field_in",
+          "field": "remediation_mechanism",
+          "expected": [
+            "script"
+          ]
         }
       ]
     },
@@ -2454,9 +2481,10 @@
       ],
       "expected_resolved_path_subpath": "HOME/proj/wiki",
       "extra_report_fields": [
-        "log_preamble_units_ensured: yes|no"
+        "log_preamble_units_ensured: yes|no",
+        "remediation_mechanism: script|hand-edit|none"
       ],
-      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.",
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `remediation_mechanism`: `script` if you reconciled the log.md preamble by running the bundled `merge_log_preamble.py`; `hand-edit` if you edited the preamble lines yourself; `none` if you changed nothing.",
       "assertions": [
         {
           "id": "A1_discovery_invoked",
@@ -2495,6 +2523,14 @@
         {
           "id": "A91_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A72_remediation_mechanism_script",
+          "type": "report_field_in",
+          "field": "remediation_mechanism",
+          "expected": [
+            "script"
+          ]
         }
       ]
     },
@@ -2515,9 +2551,10 @@
       "expected_resolved_path_subpath": "HOME/proj/wiki",
       "extra_report_fields": [
         "log_preamble_units_ensured: yes|no",
-        "owner_preamble_line_preserved: yes|no"
+        "owner_preamble_line_preserved: yes|no",
+        "remediation_mechanism: script|hand-edit|none"
       ],
-      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.",
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.\n- `remediation_mechanism`: `script` if you reconciled the log.md preamble by running the bundled `merge_log_preamble.py`; `hand-edit` if you edited the preamble lines yourself; `none` if you changed nothing.",
       "assertions": [
         {
           "id": "A1_discovery_invoked",
@@ -2568,13 +2605,21 @@
         {
           "id": "A91_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A72_remediation_mechanism_script",
+          "type": "report_field_in",
+          "field": "remediation_mechanism",
+          "expected": [
+            "script"
+          ]
         }
       ]
     },
     {
       "id": "AS-18",
       "name": "auto-shaper-refreshes-drifted-unlabeled-preamble-unit",
-      "description": "auto_shaper_wiki (via wiki_fix) refreshes a DRIFTED unlabeled canonical unit: the chronological-record opener is present but reworded, and an owner-added line sits in the same region. The move must match the unit by its greppable stem, rewrite it to current template text, and leave the owner's line byte-identical. Only the log.md postconditions are graded; the owner insert-only line is an acknowledged locked-slot extension with no live `boilerplate` warn for that class. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: refresh-by-stem without wholesale region restore).",
+      "description": "auto_shaper_wiki (via wiki_fix) refreshes a DRIFTED unlabeled canonical unit: the chronological-record opener is present with a reworded body while keeping its committed stem, and an owner-added line sits in the same region. The move must match the unit by its greppable stem, rewrite it to current template text, and leave the owner's line byte-identical. Only the log.md postconditions are graded; the owner insert-only line is an acknowledged locked-slot extension with no live `boilerplate` warn for that class. Graded out-of-band against the top-level passes denominator (wiki_log-scope-wiki-changes-only, Acceptance: refresh-by-stem without wholesale region restore).",
       "skill_name": "wiki_fix",
       "sandbox_path": "AS-18",
       "fake_home_subpath": "HOME",
@@ -2588,9 +2633,10 @@
       "expected_resolved_path_subpath": "HOME/proj/wiki",
       "extra_report_fields": [
         "log_preamble_units_ensured: yes|no",
-        "owner_preamble_line_preserved: yes|no"
+        "owner_preamble_line_preserved: yes|no",
+        "remediation_mechanism: script|hand-edit|none"
       ],
-      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.",
+      "extra_report_field_doc": "- `log_preamble_units_ensured`: `yes` if you inserted or refreshed one or more canonical units in the log.md preamble (the region above the first `##` heading) so it carries the current template text; `no` otherwise.\n- `owner_preamble_line_preserved`: `yes` if every line in the log.md preamble region that the canonical template does not carry is still byte-identical to how you found it; `no` if you changed or removed one.\n- `remediation_mechanism`: `script` if you reconciled the log.md preamble by running the bundled `merge_log_preamble.py`; `hand-edit` if you edited the preamble lines yourself; `none` if you changed nothing.",
       "assertions": [
         {
           "id": "A1_discovery_invoked",
@@ -2608,7 +2654,7 @@
           "id": "A3_stale_opener_wording_gone",
           "type": "glob_file_absent_content",
           "pattern": "HOME/proj/wiki/log.md",
-          "regex": "Chronological log of changes to this wiki"
+          "regex": "Chronological record of changes to this wiki"
         },
         {
           "id": "A4_owner_line_byte_identical",
@@ -2641,6 +2687,14 @@
         {
           "id": "A91_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A72_remediation_mechanism_script",
+          "type": "report_field_in",
+          "field": "remediation_mechanism",
+          "expected": [
+            "script"
+          ]
         }
       ]
     },

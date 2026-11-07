@@ -83,6 +83,7 @@ def aggregate_scenario(scen_dir: pathlib.Path, scenario_id: str, scenario_name: 
                 "pass": name,
                 "pass_rate": p["grading"].get("pass_rate", 0.0),
                 "passed": p["grading"].get("passed", False),
+                "remediation_mechanism": p["grading"].get("remediation_mechanism"),
                 "duration_ms": p["timing"].get("duration_ms"),
                 "total_tokens": p["timing"].get("total_tokens"),
             }
@@ -141,6 +142,21 @@ def build_markdown(benchmark: dict, regressions: list[str]) -> str:
             f"| {s['scenario_id']} {s['scenario_name']} | {s['n_passes']} | "
             f"{fmt(pr, '.1%')} | {fmt(d, '.1f')} | {fmt(t, '.0f')} |"
         )
+
+    mechanism_rows = [
+        (s["scenario_id"], p["pass"], p.get("remediation_mechanism"), p["pass_rate"])
+        for s in benchmark["scenarios"]
+        for p in s["per_pass"]
+        if p.get("remediation_mechanism") is not None
+    ]
+    if mechanism_rows:
+        lines.append("")
+        lines.append("## Remediation mechanism per pass")
+        lines.append("")
+        lines.append("| Scenario | Pass | Mechanism | Pass rate |")
+        lines.append("| --- | --- | --- | --- |")
+        for sid, pass_name, mechanism, rate in mechanism_rows:
+            lines.append(f"| {sid} | {pass_name} | {mechanism} | {rate:.1%} |")
 
     lines.append("")
     lines.append("## Per-assertion pass rate (across all passes)")

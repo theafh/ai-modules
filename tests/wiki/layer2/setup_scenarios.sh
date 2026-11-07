@@ -1237,11 +1237,14 @@ stage_AS-17() {
 
 stage_AS-18() {
     # AS-18 (same task, Acceptance: refresh-by-stem): the unlabeled
-    # chronological-record opener is present but reworded, and an owner-added
-    # line sits in the same region. The move must refresh the unlabeled unit by
-    # its greppable stem while leaving the owner's line byte-identical. Only the
-    # log.md postconditions are graded; the owner insert-only line is an
-    # acknowledged locked-slot extension with no live `boilerplate` warn.
+    # chronological-record opener keeps its committed stem but carries a reworded
+    # body, and an owner-added line sits in the same region. The move must
+    # refresh the unlabeled unit by its greppable stem while leaving the owner's
+    # line byte-identical. The stem stays present by design: a reword that also
+    # drops the stem is the ambiguous local-rewrite case the convergence script
+    # refuses, not a refresh case. Only the log.md postconditions are graded;
+    # the owner insert-only line is an acknowledged locked-slot extension with
+    # no live `boilerplate` warn.
     _assert_template_log_contains \
         "> Chronological record of wiki changes. Append-only."
     local sb
@@ -1251,7 +1254,7 @@ stage_AS-18() {
     "$INIT" "$sb/HOME/proj/wiki" >/dev/null
     local wiki="$sb/HOME/proj/wiki"
     _stage_log_preamble "$wiki/log.md" "$WIKI_SKILL/references/template_log.md" \
-        "reword-line|||Chronological record|||Chronological log of changes to this wiki." \
+        "reword-line|||Chronological record|||Chronological record of changes to this wiki." \
         "add-owner|||Local: this vault names the tenant alongside every rollout entry."
     _set_log_entries "$wiki/log.md" \
         "## [2026-06-17 09:14] create | Wiki initialized|||- Domain: widget delivery" \

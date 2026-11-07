@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.8
+version: 1.11.9
 model: inherit
 background: false
 effort: high
@@ -132,9 +132,11 @@ exists so the SCHEMA read is never skipped or deferred.
   </wiki_path>
   <bundled_tools>
     The skill's bundled tools at `$WIKI_SKILL/scripts/`:
-    `discover_wiki.sh`, `init_wiki.sh`, `lint.py`, and `compute_sha256.py`
-    (the canonical helper for writing or refreshing body-only `sha256:`
-    in raw frontmatter; never reinvent its logic inline).
+    `discover_wiki.sh`, `init_wiki.sh`, `lint.py`, `merge_log_preamble.py`
+    (the log-preamble convergence script `<fix_log_preamble_drift>` runs),
+    and `compute_sha256.py` (the canonical helper for writing or refreshing
+    body-only `sha256:` in raw frontmatter; never reinvent its logic
+    inline).
   </bundled_tools>
   <reference_docs>
     The skill's reference docs: `references/lint_checks.md` (severity
@@ -1224,50 +1226,48 @@ affect the same file so each file is opened, read, and rewritten once.
     </fix_index_scaffold_drift>
 
     <fix_log_preamble_drift>
-      Ensure every canonical preamble unit from
-      `$WIKI_SKILL/references/template_log.md` is present at current
-      template text, and change nothing else in that region. The
-      region is everything above the first `##` heading. Read the
-      template and take its units from it rather than from this list:
-      the labeled blockquote groups (`Format:` with the timestamped
-      `## [YYYY-MM-DD HH:MM] action | subject` entry format,
-      `Actions:`, `Entries:`, `Repair:` with the repair-not-rewrite
-      carve-out, `Scope:` with the wiki-only subject rule, and `Body:`)
-      plus the unlabeled lines (the `Chronological record` opener and
-      the `When this file exceeds 500 entries` rotation rule).
+      Reconcile the `log.md` preamble — everything above the first
+      `##` heading — with the canonical units in
+      `$WIKI_SKILL/references/template_log.md` by running the bundled
+      convergence script. The script owns the unit inventory and its
+      identity table, so this move does not re-derive the matching by
+      hand.
 
-      Work unit by unit, additively:
+      Invoke the script only when lint reports a still-live
+      restore-instructing `boilerplate` warn for the `log.md` slot:
 
-      - **Insert an absent unit.** A canonical unit with no
-        counterpart in the live preamble is added verbatim from the
-        template, at its canonical position relative to the units
-        already there.
-      - **Refresh a drifted unit.** A unit whose counterpart is
-        present but not byte-identical to the template is rewritten to
-        the current template text. Match a labeled group by its label
-        (`Entries:`, `Scope:`, …) and an unlabeled line by its
-        greppable stem (`Chronological record`,
-        `When this file exceeds`), so a reword of a shared unit
-        propagates here on the next pass.
-      - **Leave every wiki-only line alone.** A line in the preamble
-        region matching no canonical unit is the owner's; it stays
-        byte-identical where it sits. The same hold applies to an
-        acknowledged locked-slot extension and to any declared-slot
-        region: leave those untouched.
+      ```bash
+      python3 "$WIKI_SKILL/scripts/merge_log_preamble.py" "$WIKI/log.md"
+      ```
 
-      **Never wholesale-delete or wholesale-replace the region.** A
-      full-region restore takes an owner's added line with it, which
-      loses meaning and so fails the `<remediation_contract>` test for
-      a safe fix, the reason this move is unit-scoped rather than a
-      verbatim overwrite. Confirm both the insert and the refresh
-      landed by re-reading the preamble after the edit rather than
-      assuming one write covered every unit. Existing log entries
-      below the preamble stay as-is.
+      The script guarantees the unit-scoped behaviour this move used
+      to prescribe. It **inserts** an absent canonical unit verbatim
+      at its canonical position, **refreshes** a drifted unit to
+      current template text by matching a labeled group on its
+      `Label:` anchor and an unlabeled line on its committed stem, and
+      **preserves** every wiki-only line byte-identical where it sits.
+      It preserves owner content by construction because it has no
+      delete operation, and it never leaves two copies of one
+      canonical unit: a duplicate canonical unit, a template/table
+      mismatch, or an undecidable local anchor rewrite makes it exit
+      non-zero and write nothing. Treat those as guarantees the script
+      holds, not as instructions for the agent to re-check unit by
+      unit.
 
-      A still-live restore-instructing `boilerplate` warn for
-      remove-or-rewrite drift remains the structural signal after this
-      move. An acknowledged insert-only extension leaves no live warn
-      and is not chased.
+      On exit 0, confirm the insert and refresh landed by re-reading
+      the preamble after the run rather than assuming one write
+      covered every unit. On a non-zero exit, surface the script's
+      message as a finding for the user and stop; do not fall back to
+      hand-editing the units. Existing log entries below the preamble
+      stay byte-identical.
+
+      Leave an acknowledged locked-slot extension and any
+      declared-slot region untouched: an acknowledged insert-only
+      extension carries no live warn, so the script is not invoked for
+      it, and a matching `- Declared boilerplate:` bullet keeps the
+      region wiki-owned. A still-live restore-instructing `boilerplate`
+      warn for remove-or-rewrite drift remains the structural signal
+      after this move.
     </fix_log_preamble_drift>
 
     <fix_log_heading_duplicate>
