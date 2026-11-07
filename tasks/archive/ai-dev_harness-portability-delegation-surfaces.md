@@ -2,9 +2,11 @@
 description: Add harness_portability's references/delegation-surfaces.md, dated facts on how Claude Code, Cursor, and Codex run sub-agents, with a pointer to it and a sub-agent-only spawn rule.
 scope: plugins/ai_dev/skills/harness_portability
 created: 2026-10-03T15:54:08
-updated: 2026-11-06T20:40:51
-status: ready
+updated: 2026-11-07T21:09:36
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Record how Claude Code, Cursor, and Codex run sub-agents, and the sub-agent spawn rule, in harness_portability
@@ -149,7 +151,7 @@ Add one `<rule>` to `<policy>`, directly after the rule beginning "Confirm where
 
 **Out of scope:**
 
-- Building the eval runner's resume, inline-body, role-staging, and withheld-tool modes, which [the runner-modes task](tests_agent-spinner-runner-modes.md) owns.
+- Building the eval runner's resume, inline-body, role-staging, and withheld-tool modes, which [the runner-modes task](../tests_agent-spinner-runner-modes.md) owns.
 - A print-mode CLI subsection, since the CLI flags and stream shapes go to the wiki.
 - Running any probe, or recording a host beyond Claude Code, Cursor, and Codex, since the reference holds facts already observed and dated.
 - Worker command templates for headless workers, since helpers run only as sub-agents.
