@@ -176,6 +176,7 @@ that shape as well as the earlier string, so `smoke_staged_agent`'s spawn record
 names `smoke_replier`. `smoke_second_turn`'s first failure was the host-checkout
 guard seeing unrelated task-file edits made during the run; the owned-name
 guard now blames only the host paths an eval's own sandbox names, so an
-unrelated live edit stays outside that eval's verdict. `uncited_clean_reroute`
+unrelated live edit whose basename no sandbox copy carries stays outside that
+eval's verdict. `uncited_clean_reroute`
 now stages a true clean verdict, so the missing citation is the only reason to
 route back; its checks are unchanged.

@@ -399,6 +399,7 @@ class EvalOutcome:
     eval_id: str
     passed: bool
     cached: bool
+    cached_detail: str = ""
     completed: bool = False
     suffix: str = ""
     verdict_note: str = ""
@@ -715,16 +716,13 @@ def run_one(
                     timing["withheld_by"] = dict(plan.withheld_by)
                     timing["withheld_classes"] = list(plan.classes)
                     timing_path.write_text(json.dumps(timing, indent=2))
-                    verdict = "PASS" if hit["passed"] else "FAIL"
-                    print(
-                        f"  [{eval_id}] CACHED {verdict} "
-                        f"(graded {hit.get('graded_at', '?')}, "
-                        f"model={hit.get('model', '?')}) — skipped "
-                        f"{resolved.config.label}{suffix}; --force to re-run\n",
-                        flush=True,
-                    )
                     outcome.passed = bool(hit["passed"])
                     outcome.cached = True
+                    outcome.cached_detail = (
+                        f"(graded {hit.get('graded_at', '?')}, "
+                        f"model={hit.get('model', '?')}) — skipped "
+                        f"{resolved.config.label}; --force to re-run"
+                    )
                     return outcome
         outcome.cache_key = key
 
@@ -933,16 +931,26 @@ def run_one(
 def _print_outcome(outcome: EvalOutcome) -> None:
     """Print one eval's verdict line once the escape guard has reported."""
     suffix = outcome.suffix
+    cached = (
+        f"; cache hit {outcome.cached_detail}" if outcome.cached else ""
+    )
     if outcome.escape:
         paths = ", ".join(outcome.escape)
         print(
             f"  [{outcome.eval_id}] FAIL — the host checkout gained {paths}, "
-            f"which this eval's sandbox owns (a sandbox escape){suffix}\n",
+            f"which this eval's sandbox owns (a sandbox escape){cached}{suffix}\n",
             flush=True,
         )
     elif outcome.verdict_note:
         print(
             f"  [{outcome.eval_id}] FAIL — {outcome.verdict_note}{suffix}\n",
+            flush=True,
+        )
+    elif outcome.cached:
+        print(
+            f"  [{outcome.eval_id}] CACHED "
+            f"{'PASS' if outcome.passed else 'FAIL'} "
+            f"{outcome.cached_detail}{suffix}\n",
             flush=True,
         )
     else:
@@ -1015,8 +1023,7 @@ def _execute(
         if blamed:
             outcome.escape = list(blamed)
             outcome.passed = False
-        if not outcome.cached:
-            _print_outcome(outcome)
+        _print_outcome(outcome)
         if outcome.completed and outcome.cache_key is not None:
             eval_runner.cache_record(
                 cache,

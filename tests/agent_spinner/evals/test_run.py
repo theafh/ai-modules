@@ -22,6 +22,7 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import time
 
 THIS = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = THIS.parents[2]
@@ -74,8 +75,11 @@ if sleep_s:
 
 cwd = pathlib.Path.cwd()
 
+# STUB_ESCAPE_UNOWNED lets a job escape a name its own sandbox does not hold,
+# so a sibling can write a path only another eval's sandbox owns.
 escape_name = os.environ.get("STUB_ESCAPE_NAME", "")
-if escape_name and (cwd / escape_name).exists():
+escape_unowned = bool(os.environ.get("STUB_ESCAPE_UNOWNED"))
+if escape_name and (escape_unowned or (cwd / escape_name).exists()):
     host_root = pathlib.Path(os.environ["STUB_HOST_ROOT"])
     (host_root / escape_name).write_text("escaped from the sandbox\n")
 
@@ -998,12 +1002,15 @@ def case_cache_key() -> None:
 
 
 class FakeCache:
-    def __init__(self, entry: dict):
+    def __init__(self, entry: dict, only: str | None = None):
         self.entry = entry
+        self.only = only
         self.lookups: list[tuple[str, str]] = []
 
     def lookup(self, eval_id: str, key: str):
         self.lookups.append((eval_id, key))
+        if self.only is not None and eval_id != self.only:
+            return None
         return self.entry
 
     def record(self, *args, **kwargs) -> None:
@@ -1053,6 +1060,112 @@ def case_cache_hit() -> None:
         check(
             "a replayed timing.json records withheld_by",
             timing["withheld_by"] == {"spawn": "declared-absence"},
+        )
+
+
+def case_cached_escape() -> None:
+    print("blamed cached eval prints one FAIL line with its cache-hit detail")
+    cached_id = "phase_plan_announcement"
+    sibling_id = "diagnostic_inline"
+    canary = "escape_canary.txt"
+    entry = {
+        "passed": True,
+        "graded_at": "2026-01-01T00:00:00",
+        "model": "auto",
+        "duration_s": 1.0,
+        "response_excerpt": "cached reply",
+        "grading_output": "cached grade",
+    }
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        worker, stub_dir = make_worker(root)
+        queue(stub_dir, 1, json.dumps(
+            {"type": "result", "result": "stub reply", "session_id": "s1"}
+        ))
+        mirror = host_mirror(root)
+        specs = {
+            eval_id: real_specs()[eval_id]
+            for eval_id in (cached_id, sibling_id)
+        }
+        workspace = root / "workspace"
+        base_stage = fake_stage(
+            lambda eval_id: {canary: "own name\n"} if eval_id == cached_id else {}
+        )
+
+        def stage(eval_id, target, env=None):
+            """Stage the probe sandbox; hold the cached eval open until its
+            sibling has escaped the name, so its after hook always sees it."""
+            staged = base_stage(eval_id, target, env)
+            if eval_id == cached_id:
+                deadline = time.time() + 10
+                while not (mirror / canary).is_file() and time.time() < deadline:
+                    time.sleep(0.05)
+            return staged
+
+        saved_repo = run.REPO_ROOT
+        run.REPO_ROOT = mirror
+        try:
+            with patched(
+                specs, workspace, stub_dir,
+                grade=passing_grade(root),
+                cache=FakeCache(entry, only=cached_id),
+                stage=stage,
+                extra_env={
+                    "STUB_ESCAPE_NAME": canary,
+                    "STUB_ESCAPE_UNOWNED": "1",
+                    "STUB_HOST_ROOT": str(mirror),
+                },
+            ):
+                rc, output = invoke([
+                    cached_id, sibling_id,
+                    "--worker-bin", str(worker), "--workers", "2",
+                ])
+        finally:
+            run.REPO_ROOT = saved_repo
+        cached_lines = [
+            line for line in output.splitlines() if f"[{cached_id}]" in line
+        ]
+        check(
+            "the blamed cached eval prints exactly one verdict line",
+            len(cached_lines) == 1,
+            repr(cached_lines),
+        )
+        check(
+            "that line is a FAIL carrying the sandbox-escape blame",
+            bool(cached_lines)
+            and "FAIL" in cached_lines[0]
+            and "sandbox escape" in cached_lines[0]
+            and canary in cached_lines[0],
+            repr(cached_lines),
+        )
+        check(
+            "that line carries the cache-hit detail",
+            bool(cached_lines)
+            and "cache hit" in cached_lines[0]
+            and entry["graded_at"] in cached_lines[0]
+            and f"model={entry['model']}" in cached_lines[0],
+            repr(cached_lines),
+        )
+        check(
+            "no CACHED line stands in for the blamed cached eval's verdict",
+            not any("CACHED" in line for line in cached_lines),
+            repr(cached_lines),
+        )
+        check(
+            "the escaping sibling, which owns no such name, stays green",
+            rc == 1
+            and f"[{sibling_id}] PASS" in output
+            and f"[{sibling_id}] FAIL" not in output,
+            output,
+        )
+        summary = json.loads(
+            (latest_run(workspace) / "summary.json").read_text()
+        )
+        check(
+            "summary.json records the blamed cached eval as failed and cached",
+            summary["results"][cached_id] == {"passed": False, "cached": True}
+            and summary["results"][sibling_id] == {"passed": True, "cached": False},
+            json.dumps(summary["results"]),
         )
 
 
@@ -1612,6 +1725,7 @@ def main() -> int:
     )
     case_cache_key()
     case_cache_hit()
+    case_cached_escape()
     for vendor_name in ("claude", "cursor"):
         case_tool_record(vendor_name)
     case_tool_record_stream_only()
