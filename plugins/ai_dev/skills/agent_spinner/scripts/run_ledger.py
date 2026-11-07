@@ -235,7 +235,9 @@ def git_status(root):
         code = entry[:2]
         path = entry[3:]
         if code[:1] in ("R", "C") and i < len(parts):
-            path = parts[i]
+            # The following NUL field is the rename or copy source. Consume it
+            # so it is not read as another entry, and keep the new path the
+            # entry already carries so the change is measured where it landed.
             i += 1
         entries.append((code, path))
     return entries
@@ -2003,6 +2005,7 @@ def cmd_search(args):
 def cmd_stop(args):
     led = Ledger(require_run=False)
     os.makedirs(led.run_dir, exist_ok=True)
+    atomic_write(os.path.join(led.run_dir, ".gitignore"), "*\n")
     atomic_write(led.path("STOP"), now_utc() + "\n")
     print("STOP created")
     return 0

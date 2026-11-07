@@ -1373,11 +1373,23 @@ scenario_phase_count() {
     printf 'Phase 1: plan\nPhase 2: run\nPhase 3: check\nPhase 4: report\n' > "$dir/four.txt"
     printf 'Phase 1: plan\n' > "$dir/one.txt"
     printf 'Phase 1: a\nPhase 2: b\nPhase 3: c\nPhase 4: d\nPhase 5: e\n' > "$dir/five.txt"
+    printf 'I will work through three phases: discovery, dispatch, and synthesis.\n' > "$dir/prose.txt"
+    printf '%s\n' 'Phases:' '- Discovery' '- Dispatch' '- Synthesis' > "$dir/bullets.txt"
+    printf '%s\n' 'I will work through three phases:' '- Discovery' '- Dispatch' '- Synthesis' > "$dir/sentence-bullets.txt"
+    printf '%s\n' '## Phases' '- Discovery' '- Dispatch' '- Synthesis' > "$dir/heading-bullets.txt"
+    printf '%s\n' 'I will inspect the repository.' '- run the tests' '- read the docs' '- report back' > "$dir/unrelated-bullets.txt"
+    printf '%s\n' 'This is one phase of the work.' '- alpha' '- beta' '- gamma' > "$dir/mention-bullets.txt"
     phase="$REPO_ROOT/tests/agent_spinner/evals/phase_plan.py"
     if "$PY" "$phase" "$dir/two.txt" >/dev/null 2>&1; then ok "phase count accepts two phases"; else bad "phase count accepts two phases"; fi
     if "$PY" "$phase" "$dir/four.txt" >/dev/null 2>&1; then ok "phase count accepts four phases"; else bad "phase count accepts four phases"; fi
+    if "$PY" "$phase" "$dir/prose.txt" >/dev/null 2>&1; then ok "phase count accepts a prose three-phase sentence"; else bad "phase count accepts a prose three-phase sentence"; fi
+    if "$PY" "$phase" "$dir/bullets.txt" >/dev/null 2>&1; then ok "phase count accepts a bulleted phase list"; else bad "phase count accepts a bulleted phase list"; fi
     if "$PY" "$phase" "$dir/one.txt" >/dev/null 2>&1; then bad "phase count rejects one phase"; else ok "phase count rejects one phase"; fi
     if "$PY" "$phase" "$dir/five.txt" >/dev/null 2>&1; then bad "phase count rejects five phases"; else ok "phase count rejects five phases"; fi
+    if "$PY" "$phase" "$dir/sentence-bullets.txt" >/dev/null 2>&1; then ok "phase count accepts a colon-ended sentence over a bullet list"; else bad "phase count accepts a colon-ended sentence over a bullet list"; fi
+    if "$PY" "$phase" "$dir/heading-bullets.txt" >/dev/null 2>&1; then ok "phase count accepts a markdown heading over a bullet list"; else bad "phase count accepts a markdown heading over a bullet list"; fi
+    if "$PY" "$phase" "$dir/unrelated-bullets.txt" >/dev/null 2>&1; then bad "phase count rejects an unrelated bullet list"; else ok "phase count rejects an unrelated bullet list"; fi
+    if "$PY" "$phase" "$dir/mention-bullets.txt" >/dev/null 2>&1; then bad "phase count rejects a bare phase mention over a bullet list"; else ok "phase count rejects a bare phase mention over a bullet list"; fi
 }
 
 scenario_exclude_prune() {

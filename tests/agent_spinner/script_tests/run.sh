@@ -251,6 +251,11 @@ printf '\ndef _stateful(root):\n    return subprocess.run(["git", "-C", root, "a
 check "the git guard fails on a state-changing git call" \
   not python3 "$HERE/git_guard.py" "$SCRATCH/stateful_git.py"
 
+cp "$LEDGER" "$SCRATCH/stateful_helper.py"
+printf '\ndef _stateful(root):\n    return git(["commit", "-m", "x"], root)\n' >> "$SCRATCH/stateful_helper.py"
+check "the git guard fails on a state-changing call through the git helper" \
+  not python3 "$HERE/git_guard.py" "$SCRATCH/stateful_helper.py"
+
 # --- references -------------------------------------------------------------
 check "references/role-prompts.md exists" test -f "$REFS/role-prompts.md"
 check "references/report-shapes.md exists" test -f "$REFS/report-shapes.md"
