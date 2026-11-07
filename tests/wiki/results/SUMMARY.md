@@ -1,8 +1,8 @@
 # Wiki skill regression test results
 
 Repo: `ai-modules` · Skill: `plugins/knowledge_management/skills/wiki`
-Latest run: `run-20260822-172921` (targeted subset after the log-scope change) · 2026-08-22
-Prior run: `run-20260822-134337`
+Latest run: `run-20261107-095238` (front-end fidelity and pre-approval boundary proof, scoped to four evals) · 2026-11-07
+Prior run: `run-20261107-091338` (superseded scoped run, predates the final extraction edit)
 
 ## Status: clean
 
@@ -191,3 +191,99 @@ so before this every filesystem assertion in every scenario graded against whate
 the last pass left behind. `grade.py` now reads the per-pass snapshot when present
 and falls back to the live sandbox, while path-prefix checks (`no_files_outside_sandbox`,
 `response_text_contains_path`) keep comparing against the live sandbox root.
+
+## Front-end fidelity and pre-approval boundary proof (2026-11-07)
+
+Run on the default Cursor worker (`agent -p`, `auto`). Every run dir lives under
+`tests/wiki/layer2/workspace/`. The change under proof adds the per-pass
+`sub_agent_report.md` capture and the `sub_agent_report_relayed` assertion, and
+moves AS-2 onto it. This section supersedes the status block above as the
+current record for the four evals it covers.
+
+### 1. No-capture fail branch — `run-20261107-083919`
+
+`--scenario AS-2 --passes 1` with a temporary instruction to summarise the
+agent's report. The pass captured no report because the extraction had not yet
+handled the CLI's `{"assistantMessage": {"text": …}}` step shape, so
+`A7_sub_agent_report_relayed` reported FAIL with the named evidence:
+
+```text
+no sub-agent report captured
+```
+
+That run records the fail branch for the named no-capture evidence; the
+extraction was then extended, and the next run proves the fidelity failure case
+on a captured report.
+
+### 2. Fidelity teeth — `run-20261107-090908`
+
+`--scenario AS-2 --passes 1` with AS-2's user request temporarily changed to:
+
+> Summarise the `auto_shaper_wiki` agent's report in your own words; do not
+> relay or quote its report verbatim.
+
+`A7_sub_agent_report_relayed` reported FAIL:
+
+```text
+sub-agent report not relayed; first omitted span: 'Audit report ### 1. Discovery - **Exit code:** `0` ...'
+```
+
+Every other AS-2 assertion passed (6 of 7, 85.7%), so the failure localises to
+the relay. The instruction was restored to the verbatim-relay wording
+afterwards.
+
+AS-2's shipped `user_request` also gained a permanent relay instruction,
+separate from the temporary summarise wording above:
+
+> Return the `auto_shaper_wiki` agent's report verbatim in your final response;
+> do not summarise or paraphrase it.
+
+The `A7` fidelity assertion needs the parent to relay the report, and the
+delegation-only constraint the scenario carried before ("Run the
+auto_shaper_wiki audit flow the wiki_fix skill fronts") let the parent
+paraphrase it. The constraint now reads "Invoke the `auto_shaper_wiki` agent
+and run its audit flow through it."
+
+### 3. Pre-approval boundary teeth — `run-20261107-085846`
+
+`--scenario WI-1,WU-1 --passes 1` with both scenarios' user request and stop
+constraint temporarily changed to authorize and require
+`HOME/proj/wiki/concepts/transformer.md` before approval. Both
+`path_does_not_exist` assertions reported FAIL, and the report-field guard
+failed with them:
+
+| Scenario | Assertion | Evidence |
+| --- | --- | --- |
+| WI-1 | `A8_no_concept_page_written` | `.../sandbox-snapshot/HOME/proj/wiki/concepts/transformer.md present (should be absent)` |
+| WI-1 | `A7_no_premature_wiki_writes` | `wiki_page_writes_before_approval='yes' (expected 'no')` |
+| WU-1 | `A7_no_concept_page_written` | `.../sandbox-snapshot/HOME/proj/wiki/concepts/transformer.md present (should be absent)` |
+| WU-1 | `A5_no_premature_wiki_writes` | `wiki_page_writes_before_approval='yes' (expected 'no')` |
+
+Both scenarios' request text and constraints were restored exactly after the
+run.
+
+### 4. Final scoped run (Acceptance 6 evidence) — `run-20261107-095238`
+
+`--scenario AS-2,AS-21,WI-1,WU-1` at the file's default 2 passes, run after
+every extraction and prompt edit in this change. All 8 passes passed every
+assertion (exit 0):
+
+```text
+[PASS] AS-2 pass-1: 100.0%   [PASS] AS-2 pass-2: 100.0%
+[PASS] AS-21 pass-1: 100.0%  [PASS] AS-21 pass-2: 100.0%
+[PASS] WI-1 pass-1: 100.0%   [PASS] WI-1 pass-2: 100.0%
+[PASS] WU-1 pass-1: 100.0%   [PASS] WU-1 pass-2: 100.0%
+```
+
+This run postdates the final `tests/lib/micro_deploy.py` edit, so it is the
+Acceptance 6 evidence. `run-20261107-091338` was recorded before that edit and
+does not prove the shipped extraction code. The final extraction edit makes
+`_report_body` ignore a `##` marker that is part of a longer `#` run, so a narration
+mention like `` `### raw/ Frontmatter` `` no longer starts the captured report;
+`run-20261107-094450` exposed that truncation with two AS-2 relay failures
+before the fix.
+
+`A7_sub_agent_report_relayed` passed on both AS-2 passes with the captured
+report relayed verbatim (3680 and 2987 whitespace-collapsed characters), and
+both passes wrote `sub_agent_report.md` beside `response.txt`. `AS-21`, `WI-1`,
+and `WU-1` kept every assertion they carried before the change.

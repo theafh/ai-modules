@@ -32,6 +32,7 @@ tests/wiki/layer2/workspace/run-<timestamp>/
   L2-*/pass-N/                         # per scenario × pass
     prompt.md      response.txt
     report.md      timing.json
+    sub_agent_report.md                # auto_shaper_wiki's own report, when captured
     grading.json   sandbox-snapshot/
   grading_summary.json
   benchmark.json   benchmark.md        # regression compare lives here

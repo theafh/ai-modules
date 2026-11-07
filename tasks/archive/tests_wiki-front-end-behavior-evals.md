@@ -2,9 +2,11 @@
 description: Prove the two wiki front-end promises the layer-2 scenarios claim but never assert, wiki_fix report fidelity and the pre-approval write boundary, and name the covered skills in the tree inventory.
 scope: "local test harnesses"
 created: 2026-08-11T18:59:52
-updated: 2026-11-06T13:29:29
-status: ready
+updated: 2026-11-07T10:11:22
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Close the unproven promises in the wiki front-end scenario coverage
@@ -63,7 +65,7 @@ structured `report.md` it falls back to. It implements no assertion type over a
 sub-agent's output. Closing the fidelity gap therefore extends the stream
 extraction before it adds the assertion.
 
-[task-family_test-harness-consolidation.md](archive/task-family_test-harness-consolidation.md)
+[task-family_test-harness-consolidation.md](task-family_test-harness-consolidation.md)
 also edits the tree README's harness listing, so coordinate that one section.
 
 ## Approach

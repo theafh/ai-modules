@@ -179,6 +179,17 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
             )
             rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
             integrity, checkout_unread = micro_deploy.provenance_records(worker)
+            # Capture the helper's own report while the scratch home (and so
+            # its Cursor transcripts) still exists. response.txt keeps holding
+            # the worker's final assistant text, as its readers expect.
+            sub_report = micro_deploy.sub_agent_report(
+                worker,
+                "auto_shaper_wiki",
+                vendor_name=resolved.vendor,
+                scratch_home=md.scratch_home,
+            )
+            if sub_report:
+                (pass_dir / "sub_agent_report.md").write_text(sub_report)
         fail = micro_deploy.read_checks_fail_message(
             integrity, checkout_unread, vendor=resolved.vendor
         )

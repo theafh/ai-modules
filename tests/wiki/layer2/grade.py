@@ -105,9 +105,37 @@ ALLOWED_FIELDS = {
 # Assertion checks
 # -----------------------------------------------------------------------------
 
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def collapse_whitespace(text: str) -> str:
+    """Collapse every run of whitespace to one space, for wrap-free matching."""
+
+    return _WHITESPACE_RE.sub(" ", text).strip()
+
+
+def first_omitted_span(report: str, response: str, limit: int = 120) -> str:
+    """The first span of a report a response omits.
+
+    Finds the longest prefix of the report that the response carries, then
+    returns the text starting where that prefix ends, so a failure names what
+    the response left out rather than only that something was missing.
+    """
+
+    low, high = 0, len(report)
+    while low < high:
+        middle = (low + high + 1) // 2
+        if report[:middle] in response:
+            low = middle
+        else:
+            high = middle - 1
+    span = report[low:low + limit].strip()
+    return span or report[:limit]
+
 
 def check(assertion: dict, ctx: dict) -> tuple[bool, str]:
     """Return (passed, evidence). evidence is a one-line explanation."""
+
     t = assertion["type"]
     fields = ctx["report"] or {}
     # `sandbox` is where filesystem state is READ from — the per-pass snapshot
@@ -330,6 +358,23 @@ def check(assertion: dict, ctx: dict) -> tuple[bool, str]:
         ok = full in response
         return ok, f"{full} {'mentioned' if ok else 'NOT mentioned in response'}"
 
+    if t == "sub_agent_report_relayed":
+        # Fidelity: the parent returns the helper's own report rather than a
+        # paraphrase. Both sides read wrap-collapsed, and containment tolerates
+        # the parent's framing around the report block.
+        report = ctx.get("sub_agent_report", "")
+        if not report.strip():
+            return False, "no sub-agent report captured"
+        collapsed_report = collapse_whitespace(report)
+        collapsed_response = collapse_whitespace(response)
+        if collapsed_report in collapsed_response:
+            return True, (
+                "captured sub-agent report relayed verbatim "
+                f"({len(collapsed_report)} chars)"
+            )
+        span = first_omitted_span(collapsed_report, collapsed_response)
+        return False, f"sub-agent report not relayed; first omitted span: {span!r}"
+
     return False, f"unknown assertion type: {t}"
 
 
@@ -385,6 +430,11 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
         "sandbox": sandbox,
         "sandbox_root": sandbox_root,
         "response": response_text,
+        "sub_agent_report": (
+            (pass_dir / "sub_agent_report.md").read_text()
+            if (pass_dir / "sub_agent_report.md").is_file()
+            else ""
+        ),
     }
 
     # Worker-completion gate. A pass is trustworthy only if the vendor worker

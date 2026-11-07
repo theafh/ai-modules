@@ -4415,8 +4415,107 @@ PY
     return 0
 }
 
+# G3: layer2/grade.py's `sub_agent_report_relayed` assertion has three
+# outcomes, each pinned here against the grader's own `check()`:
+#   (a) PASS when the captured report is contained in the response after
+#       whitespace collapse, even when the two wrap their lines differently;
+#   (b) FAIL with a message naming the first omitted span when the response
+#       paraphrases the report instead of relaying it;
+#   (c) FAIL with the exact evidence `no sub-agent report captured` when the
+#       pass captured no report at all.
+# `check()` is imported directly so this stays a deterministic data-transform
+# test with no worker: the ctx carries exactly the keys the grader builds.
+g3_grade_sub_agent_report_relayed_outcomes() {
+    local home rc
+    home=$(fresh_scratch g3)
+    python3 - "$SCRIPT_DIR/../layer2/grade.py" "$home" <<'PY' && rc=0 || rc=$?
+import importlib.util
+import pathlib
+import sys
+
+spec = importlib.util.spec_from_file_location("wiki_layer2_grade", sys.argv[1])
+grade = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(grade)
+
+sandbox = pathlib.Path(sys.argv[2])
+assertion = {"id": "A7", "type": "sub_agent_report_relayed"}
+report = (
+    "Audit report\n\n"
+    "### 1. Discovery\n\n"
+    "- Exit code: `0`\n"
+    "- Resolved wiki: `HOME/proj/wiki`\n\n"
+    "### 2. Lint\n\n"
+    "- Blocking findings: 0\n"
+    "- Warnings: 1 (orphan page `entities/transformer.md`)\n"
+)
+
+
+def ctx(sub_agent_report, response):
+    return {
+        "report": {},
+        "sandbox": sandbox,
+        "sandbox_root": sandbox,
+        "response": response,
+        "sub_agent_report": sub_agent_report,
+    }
+
+
+failures = []
+
+# (a) Relayed verbatim, wrapped differently from the captured report.
+response_relayed = (
+    "Here is the agent's report verbatim:\n\n"
+    "Audit report\n\n"
+    "### 1.\n"
+    "Discovery\n\n"
+    "- Exit code: `0`\n"
+    "- Resolved wiki:\n"
+    "  `HOME/proj/wiki`\n\n"
+    "### 2. Lint\n\n"
+    "- Blocking findings: 0\n"
+    "- Warnings: 1\n"
+    "  (orphan page `entities/transformer.md`)\n\n"
+    "End of report."
+)
+passed, evidence = grade.check(assertion, ctx(report, response_relayed))
+if not passed:
+    failures.append(f"(a) relayed report did not pass: {evidence}")
+
+# (b) Paraphrased instead of relayed: FAIL, naming the first omitted span.
+response_paraphrased = (
+    "The audit came back clean: discovery exited 0 and the wiki resolved to "
+    "HOME/proj/wiki, with no blocking lint findings and one orphan-page warning."
+)
+passed, evidence = grade.check(assertion, ctx(report, response_paraphrased))
+if passed:
+    failures.append("(b) paraphrased response unexpectedly passed")
+elif "first omitted span:" not in evidence:
+    failures.append(f"(b) failure did not name an omitted span: {evidence}")
+elif "Audit report" not in evidence:
+    failures.append(f"(b) omitted span did not quote the report: {evidence}")
+
+# (c) No capture: FAIL with the named evidence.
+passed, evidence = grade.check(assertion, ctx("", response_relayed))
+if passed:
+    failures.append("(c) empty capture unexpectedly passed")
+elif evidence != "no sub-agent report captured":
+    failures.append(f"(c) evidence is not the named no-capture text: {evidence}")
+
+if failures:
+    for line in failures:
+        print(f"    {line}", file=sys.stderr)
+    sys.exit(1)
+PY
+    if [[ "$rc" -ne 0 ]]; then
+        log "    layer2 grade.py check() did not match the three expected outcomes"
+        return 1
+    fi
+    return 0
+}
+
 scenario g1  "layer2 grade fails an empty-delivery pass"      g1_grade_empty_delivery_exits_nonzero
 scenario g2  "layer2 compare names baseline and warns"        g2_aggregate_names_baseline_and_warns_on_narrowing
+scenario g3  "layer2 report-relay assertion has three outcomes" g3_grade_sub_agent_report_relayed_outcomes
 
 log ""
 log "==================================="

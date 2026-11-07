@@ -61,7 +61,7 @@ tests tree's `CLAUDE.md` and the post-merge task-family bullets under
 [tests_trigger-eval-unavailable-skill-guard.md](tests_trigger-eval-unavailable-skill-guard.md)
 owns the zero-recall guidance in the trigger harness's own `## tests/trigger_evals/`
 section of that `CLAUDE.md`, which this task leaves untouched.
-[tests_wiki-front-end-behavior-evals.md](../tests_wiki-front-end-behavior-evals.md)
+[tests_wiki-front-end-behavior-evals.md](tests_wiki-front-end-behavior-evals.md)
 owns the wiki harness bullet under `## Current harnesses`. This task is verify-only
 on those sibling-owned passages and co-edits the shared inventory/README surfaces
 in that ownership order.

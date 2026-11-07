@@ -1518,9 +1518,9 @@
       "sandbox_path": "AS-2",
       "fake_home_subpath": "HOME",
       "cwd_subpath": "HOME/proj",
-      "user_request": "Audit my wiki end to end and fix every issue you can safely fix; surface anything that contradicts the canonical conventions and needs my decision.",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely fix; surface anything that contradicts the canonical conventions and needs my decision. Return the `auto_shaper_wiki` agent's report verbatim in your final response; do not summarise or paraphrase it.",
       "extra_constraints": [
-        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Invoke the `auto_shaper_wiki` agent and run its audit flow through it.",
         "A SCHEMA customization that contradicts canonical semantics is surfaced for the user, not silently preserved as a customization."
       ],
       "expected_resolved_path_subpath": "HOME/proj/wiki",
@@ -1552,6 +1552,10 @@
           "id": "A4_surfacing_mentioned_in_response",
           "type": "response_text_matches",
           "regex": "(?i)(raw/\\s*frontmatter|source_url:?\\s*file://|superseded|contradict)"
+        },
+        {
+          "id": "A7_sub_agent_report_relayed",
+          "type": "sub_agent_report_relayed"
         },
         {
           "id": "A5_no_leak_outside_sandbox",

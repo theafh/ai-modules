@@ -848,6 +848,221 @@ def cursor_transcript_tools(scratch_home: pathlib.Path) -> list[ToolRecord]:
     return tools
 
 
+_UNUSABLE_REPORT_MARKERS = {"success", "true", "ok", "error"}
+
+
+def _usable_report(text: str | None) -> str | None:
+    """A report string, or ``None`` when the text carries no report.
+
+    A refusal, a bare success marker, an error rendering, and an empty result
+    all name no report the parent could relay.
+    """
+
+    if not text:
+        return None
+    stripped = text.strip()
+    if not stripped:
+        return None
+    if stripped.startswith(("permissionDenied:", "writePermissionDenied:")):
+        return None
+    if stripped.lower() in _UNUSABLE_REPORT_MARKERS:
+        return None
+    return stripped
+
+
+def _cursor_spawn_payload(result_text: str) -> dict[str, Any]:
+    """The ``success`` object behind a Cursor spawn result's rendering."""
+
+    try:
+        payload = json.loads(result_text)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    for key in ("success", "result"):
+        nested = payload.get(key)
+        if isinstance(nested, dict):
+            return nested
+    return payload
+
+
+_PARENT_HARNESS_SECTION_RE = re.compile(
+    r"(?ms)^#{1,6}[^\n]*\bparent harness\b[^\n]*\n.*\Z",
+    re.IGNORECASE,
+)
+_TRAILING_RULE_RE = re.compile(r"\n\s*-{3,}\s*\Z")
+
+
+def _report_body(text: str) -> str:
+    """The user-facing report inside a Cursor helper's final text.
+
+    A Cursor helper's ``conversationSteps`` text opens with the helper's own
+    process narration and may close with a section addressed to the parent
+    harness. The report the front end returns to the user is the markdown body
+    between them: from the first heading through any trailing parent-harness
+    section. Text that carries no heading stays whole.
+    """
+
+    if not text:
+        return ""
+    starts = [match.start() for match in re.finditer(r"(?m)^#{1,6}\s", text)]
+    # A heading appended to the narration on the same line still marks the
+    # report start, but a `## ` that is part of a longer run of `#` is a
+    # mention inside narration (e.g. `` `### raw/ Frontmatter` ``), not a
+    # heading, so it must not cut the report there.
+    inline = re.search(r"(?<!#)## ", text)
+    if inline:
+        starts.append(inline.start())
+    body = text[min(starts):] if starts else text
+    cut = _PARENT_HARNESS_SECTION_RE.search(body)
+    if cut:
+        body = body[:cut.start()]
+    body = _TRAILING_RULE_RE.sub("", body)
+    return body.strip()
+
+
+def _report_from_steps(value: Any) -> str | None:
+    """The helper's report from a ``conversationSteps`` value.
+
+    The field arrives as a string or as a list. A list item is a string, a
+    ``text``-holding mapping, or the Cursor CLI's
+    ``{"assistantMessage": {"text": ...}}`` shape.
+    """
+
+    if isinstance(value, str):
+        return _usable_report(_report_body(value))
+    if isinstance(value, dict):
+        return _usable_report(_report_body(_step_text(value)))
+    if not isinstance(value, list):
+        return None
+    parts = [_step_text(item) for item in value]
+    joined = "\n".join(part for part in parts if part.strip())
+    return _usable_report(_report_body(joined))
+
+
+def _step_text(item: Any) -> str:
+    """The text one ``conversationSteps`` item carries, or an empty string."""
+
+    if isinstance(item, str):
+        return item
+    if isinstance(item, list):
+        return "\n".join(
+            part for part in (_step_text(entry) for entry in item) if part
+        )
+    if not isinstance(item, dict):
+        return ""
+    if isinstance(item.get("text"), str):
+        return item["text"]
+    for key in ("assistantMessage", "message"):
+        nested = item.get(key)
+        if isinstance(nested, dict):
+            text = _step_text(nested)
+            if text:
+                return text
+    content = item.get("content")
+    if isinstance(content, list):
+        return "\n".join(
+            block["text"]
+            for block in content
+            if isinstance(block, dict)
+            and isinstance(block.get("text"), str)
+            and block["text"].strip()
+        )
+    return ""
+
+
+def _cursor_transcript_last_assistant(
+    scratch_home: pathlib.Path, agent_id: str
+) -> str | None:
+    """The last assistant message's text blocks in one Cursor chat transcript.
+
+    The helper's final assistant line is taken alone, so earlier narration and
+    tool preambles never join the report. A newer CLI nests a helper's
+    transcript under its parent chat's ``subagents/`` directory, so the chat id
+    is matched by filename wherever it sits under the transcript roots.
+    """
+
+    for root in sorted(pathlib.Path(scratch_home).glob(_CURSOR_TRANSCRIPT_ROOTS)):
+        exact = root / agent_id / f"{agent_id}.jsonl"
+        if exact.is_file():
+            candidates = [exact]
+        else:
+            candidates = sorted(root.rglob(f"{agent_id}.jsonl"))
+        for transcript in candidates:
+            try:
+                text = transcript.read_text(errors="replace")
+            except OSError:
+                continue
+            last: dict[str, Any] | None = None
+            for raw_line in text.splitlines():
+                line = raw_line.strip()
+                if not line.startswith("{"):
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(entry, dict) and entry.get("role") == "assistant":
+                    last = entry
+            if last is None:
+                continue
+            message = last.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
+            parts = [
+                block["text"]
+                for block in (content if isinstance(content, list) else [])
+                if isinstance(block, dict)
+                and block.get("type") == "text"
+                and isinstance(block.get("text"), str)
+                and block["text"].strip()
+            ]
+            return _usable_report(_report_body("\n".join(parts)))
+    return None
+
+
+def sub_agent_report(
+    worker: WorkerRunResult,
+    helper_name: str,
+    *,
+    vendor_name: str,
+    scratch_home: pathlib.Path,
+) -> str | None:
+    """The named helper's final report from one worker turn, or ``None``.
+
+    Reads the spawn ``ToolRecord`` whose ``helper`` is ``helper_name``. On
+    Claude its ``result_text`` is the report as written. On Cursor that text is
+    the rendering of the spawn's ``success`` object, so the report is its
+    ``conversationSteps`` field, taken as a string or joined from a list. When
+    a Cursor record carries no usable report — an empty field, a refusal, a
+    bare success marker, or a failed call — the helper's own chat transcript
+    supplies the last assistant message's text blocks, located by the
+    ``agentId`` in the spawn result. Claude keeps no such transcript, so it has
+    no fallback. The most recent spawn of the helper wins.
+    """
+
+    records = worker.stream_tools or worker.tools
+    matches = [record for record in records if record.helper == helper_name]
+    for record in reversed(matches):
+        if vendor_name != "cursor":
+            if record.failed:
+                continue
+            report = _usable_report(record.result_text)
+            if report:
+                return report
+            continue
+        payload = _cursor_spawn_payload(record.result_text)
+        if not record.failed:
+            report = _report_from_steps(payload.get("conversationSteps"))
+            if report:
+                return report
+        agent_id = payload.get("agentId")
+        if isinstance(agent_id, str) and agent_id:
+            report = _cursor_transcript_last_assistant(scratch_home, agent_id)
+            if report:
+                return report
+    return None
+
+
 def expand_worker_vars(
     text: str,
     env: dict[str, str] | None,

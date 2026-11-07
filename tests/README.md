@@ -105,7 +105,9 @@ files.
 - **`wiki/`**: Pattern B. Full Layer 1 (deterministic, `layer1/run.sh`
   prints its own scenario tally) + Layer 2 (every scenario in
   `layer2/evals.json`, each over that file's top-level `passes`
-  denominator). Mature, working.
+  denominator). The layer-2 scenarios cover the `wiki_fix`, `wiki_import`,
+  and `wiki_wrapup` front ends beside the hub `wiki` skill, and
+  `layer2/evals.json` stays the statement of extent. Mature, working.
 - **`git_commit/`**: Pattern A. `script_tests/` implemented (31
   bundled-script scenarios, four of which run through an explicit
   `/bin/bash` to prove both scripts at the bash 3.2 floor: empty staged

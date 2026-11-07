@@ -180,7 +180,7 @@ python3 ./tests/wiki/layer2/run.py --vendor cursor --scenario L2-2
 Each Layer 2 run produces, under
 `tests/wiki/layer2/workspace/run-<ts>/`:
 
-- `<scenario>/pass-N/{prompt.md, response.txt, report.md, timing.json, grading.json, sandbox-snapshot/}`
+- `<scenario>/pass-N/{prompt.md, response.txt, report.md, sub_agent_report.md, timing.json, grading.json, sandbox-snapshot/}`
 - `grading_summary.json`: flat list of (scenario × pass) PASS/FAIL
 - `benchmark.json`: per-scenario stats (mean ± sd of pass rate, duration, tokens) + per-assertion pass rate + regression list
 - `benchmark.md`: human-readable summary
@@ -241,7 +241,11 @@ here. When a run shows 100% across every scenario it covers, it means:
    surfaces out-of-wiki log subjects and duplicate headings without rewriting
    them on a routine pass, applies the two-pass normalisation, and preserves
    acknowledged or declared template deviations while reporting a template
-   candidate.
+   candidate. `AS-2` also establishes report fidelity: the front end returns
+   the agent's own report verbatim, graded as the captured
+   `sub_agent_report.md` contained in the worker's response. Its `user_request`
+   asks for the report verbatim because the assertion needs the parent to
+   relay it; a delegation-only constraint let the parent paraphrase.
 5. **`MP` — `wiki_fix` exercising `auto_shaper_wiki` on meta-prose.** A clean
    run establishes that an oversized custom todo page that trips the page-size
    info finding does not acquire page-convention or lint-sanction prose in its
@@ -292,6 +296,9 @@ file with helpers (`fresh_scratch`, `run_discover`,
      include both, the cheap fail-safes)
    - `response_text_contains`, `response_text_matches`,
      `response_text_does_not_match`, `response_text_contains_path`
+   - `sub_agent_report_relayed` (the pass's captured
+     `sub_agent_report.md` appears wrap-collapsed and verbatim inside
+     `response.txt`; a pass that captured no report fails it)
 3. Declare any scenario-specific report field in both
    `extra_report_fields` and `extra_report_field_doc`; `parse_report`
    reads a `key: value` line as a field only when the key is declared.
@@ -375,7 +382,7 @@ tests/wiki/
     ├── L2-1/ ...                   # optional bare setup_scenarios.sh staging
     └── workspace/
         └── run-<ts>/
-            ├── L2-*/pass-N/{prompt, response, report, timing, grading, sandbox-snapshot}/
+            ├── L2-*/pass-N/{prompt, response, report, sub_agent_report, timing, grading, sandbox-snapshot}/
             │                         # each pass stages under create_sandbox_root,
             │                         # then keeps sandbox-snapshot/ after teardown
             ├── grading_summary.json

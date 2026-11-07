@@ -2041,6 +2041,328 @@ def test_library_unlinked_before_removal() -> None:
         )
 
 
+def worker_with_tools(*tools: micro_deploy.ToolRecord) -> micro_deploy.WorkerRunResult:
+    """A completed worker result carrying the given stream tool records."""
+
+    return micro_deploy.WorkerRunResult(
+        returncode=0,
+        stdout="parent response",
+        stderr="",
+        read_paths=[],
+        out_of_set_paths=[],
+        stream_tools=list(tools),
+    )
+
+
+def spawn_record(
+    helper: str | None, result_text: str, *, failed: bool = False
+) -> micro_deploy.ToolRecord:
+    """A spawn ToolRecord as ``run_worker`` yields it."""
+
+    return micro_deploy.ToolRecord(
+        name="Task",
+        tool_class="spawn",
+        helper=helper,
+        result_text=result_text,
+        failed=failed,
+    )
+
+
+def test_sub_agent_report_extraction() -> None:
+    """The helper's report survives each vendor's delivery shape.
+
+    Claude carries it as the spawn's ``result_text``. Cursor carries its
+    ``conversationSteps``, as a string or a list, and falls back to the
+    helper's transcript when that field is empty, a refusal, or a bare success
+    marker. A turn that never spawned the named helper yields no report.
+    """
+
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+
+        def write_transcript(agent_id: str, lines: list[dict]) -> None:
+            path = (
+                root
+                / ".cursor/projects/proj-slug/agent-transcripts"
+                / agent_id
+                / f"{agent_id}.jsonl"
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("\n".join(json.dumps(line) for line in lines) + "\n")
+
+        def assistant(*blocks: dict) -> dict:
+            return {"role": "assistant", "message": {"content": list(blocks)}}
+
+        def text(value: str) -> dict:
+            return {"type": "text", "text": value}
+
+        claude = spawn_record("auto_shaper_wiki", "## Audit report\n\nFixed 2 pages.")
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(claude),
+            "auto_shaper_wiki",
+            vendor_name="claude",
+            scratch_home=root,
+        )
+        check(
+            "claude spawn result_text is the report",
+            report == "## Audit report\n\nFixed 2 pages.",
+        )
+
+        cursor_string = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps(
+                {"conversationSteps": "Cursor report body.", "agentId": "chat-a"}
+            ),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_string),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check("cursor conversationSteps string is the report", report == "Cursor report body.")
+
+        cursor_list = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps(
+                {
+                    "conversationSteps": ["First line.", {"text": "Second line."}],
+                    "agentId": "chat-b",
+                }
+            ),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_list),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "cursor conversationSteps list joins its text items",
+            report == "First line.\nSecond line.",
+        )
+
+        cursor_nested = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps(
+                {
+                    "conversationSteps": [
+                        {"assistantMessage": {"text": "Nested report body."}}
+                    ],
+                    "agentId": "chat-n",
+                }
+            ),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_nested),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "cursor assistantMessage steps carry the report",
+            report == "Nested report body.",
+        )
+
+        cursor_narration = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps(
+                {
+                    "conversationSteps": [
+                        {
+                            "assistantMessage": {
+                                "text": (
+                                    "I'll start the audit.Step two done."
+                                    "## Assess output\n\nFinding one.\n\n"
+                                    "---\n\n### Operational facts (parent harness)\n"
+                                    "- discovery_invoked: yes"
+                                )
+                            }
+                        }
+                    ],
+                    "agentId": "chat-narration",
+                }
+            ),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_narration),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "cursor narration and parent-harness section are trimmed from the report",
+            report == "## Assess output\n\nFinding one.",
+        )
+
+        cursor_heading_mention = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps(
+                {
+                    "conversationSteps": [
+                        {
+                            "assistantMessage": {
+                                "text": (
+                                    "Preserving the `### raw/ Frontmatter` block. "
+                                    "Running lint next."
+                                    "## Assess output\n\nFinding two."
+                                )
+                            }
+                        }
+                    ],
+                    "agentId": "chat-heading-mention",
+                }
+            ),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_heading_mention),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "a `### heading` mention in narration does not start the report",
+            report == "## Assess output\n\nFinding two.",
+        )
+
+        write_transcript(
+            "chat-c",
+            [
+                {"role": "user", "message": {"content": [text("audit my wiki")]}},
+                assistant(text("Narration before the work.")),
+                assistant(text("Final report line one."), text("Final report line two.")),
+                {"type": "turn_ended", "status": "success"},
+            ],
+        )
+        cursor_empty = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps({"conversationSteps": [], "agentId": "chat-c"}),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_empty),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "empty conversationSteps falls back to the last assistant message alone",
+            report == "Final report line one.\nFinal report line two.",
+        )
+
+        write_transcript(
+            "chat-d",
+            [
+                assistant(text("Narration.")),
+                assistant(text("Transcript report after a refusal.")),
+            ],
+        )
+        cursor_refusal = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps(
+                {
+                    "conversationSteps": "permissionDenied: write blocked",
+                    "agentId": "chat-d",
+                }
+            ),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_refusal),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "a refusal in conversationSteps falls back to the transcript",
+            report == "Transcript report after a refusal.",
+        )
+
+        cursor_success_marker = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps({"conversationSteps": "success", "agentId": "chat-c"}),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_success_marker),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "a bare success marker falls back to the transcript",
+            report == "Final report line one.\nFinal report line two.",
+        )
+
+        nested_transcript = (
+            root
+            / ".cursor/projects/proj-slug/agent-transcripts/parent-chat/subagents"
+            / "chat-e.jsonl"
+        )
+        nested_transcript.parent.mkdir(parents=True, exist_ok=True)
+        nested_transcript.write_text(
+            json.dumps(assistant(text("Subagent-dir report."))) + "\n"
+        )
+        cursor_nested_transcript = spawn_record(
+            "auto_shaper_wiki",
+            json.dumps({"conversationSteps": [], "agentId": "chat-e"}),
+        )
+        report = micro_deploy.sub_agent_report(
+            worker_with_tools(cursor_nested_transcript),
+            "auto_shaper_wiki",
+            vendor_name="cursor",
+            scratch_home=root,
+        )
+        check(
+            "a nested subagents transcript is found by chat id",
+            report == "Subagent-dir report.",
+        )
+
+        check(
+            "a turn with no spawn yields no report",
+            micro_deploy.sub_agent_report(
+                worker_with_tools(),
+                "auto_shaper_wiki",
+                vendor_name="claude",
+                scratch_home=root,
+            )
+            is None,
+        )
+
+        other_helper = spawn_record("other_helper", "Another helper's report.")
+        check(
+            "a spawn of another helper is ignored",
+            micro_deploy.sub_agent_report(
+                worker_with_tools(other_helper),
+                "auto_shaper_wiki",
+                vendor_name="claude",
+                scratch_home=root,
+            )
+            is None,
+        )
+
+        check(
+            "claude has no transcript fallback",
+            micro_deploy.sub_agent_report(
+                worker_with_tools(spawn_record("auto_shaper_wiki", "")),
+                "auto_shaper_wiki",
+                vendor_name="claude",
+                scratch_home=root,
+            )
+            is None,
+        )
+
+        check(
+            "a failed claude spawn yields no report",
+            micro_deploy.sub_agent_report(
+                worker_with_tools(
+                    spawn_record("auto_shaper_wiki", "boom", failed=True)
+                ),
+                "auto_shaper_wiki",
+                vendor_name="claude",
+                scratch_home=root,
+            )
+            is None,
+        )
+
+
 def main() -> int:
     print("test_micro_deploy")
     test_layouts_and_path_map()
@@ -2059,6 +2381,7 @@ def main() -> int:
     test_run_worker_returns_checkout_reads()
     test_auth_preflight_failure_surfaces_cli_message()
     test_library_unlinked_before_removal()
+    test_sub_agent_report_extraction()
     print(f"\n{PASS} passed, {FAIL} failed")
     return 0 if FAIL == 0 else 1
 

@@ -161,7 +161,7 @@ file's top-level `skill_name`.
   through `micro_deploy.preflight_auth`.
 - The tree-level harness inventory in the tests tree's own `README.md`, whose
   listing live siblings already co-edit, including
-  [tests_wiki-front-end-behavior-evals.md](../tests_wiki-front-end-behavior-evals.md).
+  [tests_wiki-front-end-behavior-evals.md](tests_wiki-front-end-behavior-evals.md).
 - Adding scenarios, assertions, or coverage of untested harness behaviour; this
   task changes what a run reports about itself and what the docs say, and leaves
   the scenario set as it stands.

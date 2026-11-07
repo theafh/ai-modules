@@ -84,9 +84,9 @@ HOME={fake_home} python3 {WIKI_SKILL_PATH}/scripts/compute_sha256.py <raw-file>
 
 ## Final report — MANDATORY
 
-The parent harness reads the TEST REPORT block from your final response. Your final response MUST contain ONE TEST REPORT block in the exact format below — and nothing else after it. Do not narrate harness behavior, do not apologize for blocked Writes, do not summarize. The report block IS your final answer.
+The parent harness reads the TEST REPORT block from your final response. Your final response MUST contain ONE TEST REPORT block in the exact format below — and nothing else after it. Do not narrate harness behavior, do not apologize for blocked Writes, do not summarize. The report block IS your final answer, and writing a file never replaces it.
 
-If you can use the Write tool, ALSO write the same block to `{report_path}` (the parent normalizes either source). If Write is blocked, no problem — just emit the block in text.
+If you can use the Write tool, ALSO write the same block to `{report_path}` as a backup. Emit the block in text even when that Write succeeds. If Write is blocked, no problem — just emit the block in text.
 
 ### Report field rules (strict)
 
