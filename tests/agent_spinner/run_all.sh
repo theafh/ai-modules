@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Top-level agent_spinner regression entrypoint.
 #
-# agent_spinner ships no bundled scripts, so the deterministic surface here is
-# the static contract plus the eval runner's plumbing test: SKILL.md budgets and
-# blocks, the reference set, the per-harness greps that must stay empty,
-# registration lockstep, and the runner's wiring against a stub worker.
+# agent_spinner bundles one program, scripts/run_ledger.py, so the deterministic
+# surface here is three runners: the static contract (SKILL.md budgets and
+# blocks, the reference set, the per-harness greps that must stay empty, and the
+# ledger's stdlib-only and read-only-git contract), the ledger's own script
+# tests, and the eval runner's plumbing test against a stub worker.
 #
 # The behavioral evals under evals/ are intentionally not run from here. They
 # spawn vendor workers (`agent -p` by default) and consume tokens; see evals/README.md.
@@ -19,8 +20,9 @@ for arg in "$@"; do
             cat <<USAGE
 Usage: $0
 
-Runs the static contract checks (script_tests/run.sh) and the eval runner's
-plumbing test (evals/test_run.py), with one aggregated exit code.
+Runs the static contract checks (script_tests/run.sh), the ledger script tests
+(script_tests/ledger_run.sh), and the eval runner's plumbing test
+(evals/test_run.py), with one aggregated exit code.
 
 For the behavioral evals, see tests/agent_spinner/evals/README.md.
 USAGE
@@ -35,6 +37,12 @@ echo "================================================================"
 echo "  agent_spinner skill regression — static contract"
 echo "================================================================"
 "$SCRIPT_DIR/script_tests/run.sh" || RC=1
+
+echo
+echo "================================================================"
+echo "  agent_spinner run ledger — script tests"
+echo "================================================================"
+"$SCRIPT_DIR/script_tests/ledger_run.sh" || RC=1
 
 echo
 echo "================================================================"

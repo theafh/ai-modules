@@ -2,9 +2,11 @@
 description: Bundle scripts/run_ledger.py in agent_spinner, a standard-library program that keeps a helper run's records and launches no helper, with its tests, check fixes, lint prune, and docs.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T15:54:08
-updated: 2026-11-07T08:46:10
-status: ready
+updated: 2026-11-07T19:12:34
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Bundle the run ledger in agent_spinner
@@ -17,7 +19,7 @@ The program ships proven by its own script tests. The skill's static contract, o
 
 ## Context
 
-The owner approved bundling the ledger on 2026-10-03. For this one script, that decision reverses two items of [the archived agent_spinner task](archive/ai-dev_agent-spinner-skill.md): the Goal sentence "Ship it prose-only", and the Out of scope item "A bundled runtime script, workflow runner, or scheduler, which the standing repo rules keep out of the toolchain". The workflow-runner and scheduler exclusions stay in force inside agent_spinner. The archived task stays unedited as the decision record. Its stated reason no longer holds, because the standing repo rules and `CHARTER.md` now accept Python 3 as a standing dependency. They also place a skill's helper script inside the skill, under `scripts/`.
+The owner approved bundling the ledger on 2026-10-03. For this one script, that decision reverses two items of [the archived agent_spinner task](ai-dev_agent-spinner-skill.md): the Goal sentence "Ship it prose-only", and the Out of scope item "A bundled runtime script, workflow runner, or scheduler, which the standing repo rules keep out of the toolchain". The workflow-runner and scheduler exclusions stay in force inside agent_spinner. The archived task stays unedited as the decision record. Its stated reason no longer holds, because the standing repo rules and `CHARTER.md` now accept Python 3 as a standing dependency. They also place a skill's helper script inside the skill, under `scripts/`.
 
 The owner approved three further rules the same day, and this task implements them in code:
 
@@ -45,7 +47,7 @@ Current state, verified on 2026-10-03:
 - In `tests/agent_spinner/evals/grade.sh`, the eval grader, `PHASE_PLAN='phase|pass 1|phases:'` passes on any mention of a phase. The inline_floor and phase_plan_announcement evals both expect a plan of two to four named phases, which `<phase_plan>` in `SKILL.md` requires today.
 - The Makefile builds `MD_FILES`, `JSON_FILES`, and `SH_FILES` with `find .` under `EXCLUDE`, which prunes no `.agent_spinner`. `fix-md` runs `markdownlint --fix` over `MD_FILES`. The comment above `EXCLUDE` says its prunes mirror `tests/.gitignore` and gives the shipped `.git_auto_review` prune its own review-and-fix rationale, and the standing repo rules change the two lists together so lint scope matches git scope. `lint-sh` already enforces the bash 3.2 construct floor, which allows only shell constructs bash 3.2 supports, over every shell file in scope.
 - `WORKER_PROMPT` in `tests/agent_spinner/evals/run.py`, the eval runner, asks the worker to keep `announcement.txt`, `roster.tsv`, `briefs/<label>.txt`, and `report.md` under `.agent_spinner/`. The ledger keeps those paths, so the runner's prompt and state paths stay unchanged. The shipped inline-body mode adds `INLINE_STATE_STEP`; keep its four state paths aligned with the ledger's roster.
-- [tests_agent-spinner-runner-modes](tests_agent-spinner-runner-modes.md) has shipped and is audited. It edited the same agent_spinner row in `tests/CLAUDE.md` and the same agent_spinner bullet in `tests/README.md`, including the clause about denying the spawn tool. This task rewrites only the remaining clause calling the skill prose-only and re-applies its README/RUNBOOK edits over the shipped runner-modes text.
+- [tests_agent-spinner-runner-modes](../tests_agent-spinner-runner-modes.md) has shipped and is audited. It edited the same agent_spinner row in `tests/CLAUDE.md` and the same agent_spinner bullet in `tests/README.md`, including the clause about denying the spawn tool. This task rewrites only the remaining clause calling the skill prose-only and re-applies its README/RUNBOOK edits over the shipped runner-modes text.
 
 ## Approach
 
@@ -176,9 +178,9 @@ A placeholder is an empty or whitespace-only required text, an ellipsis, a lone 
 
 **Out of scope:**
 
-- The command reference in `references/run-protocol.md`, the `SKILL.md` blocks that cite the ledger, and the ledger evals, the behavioural evals that prove the skill's use of the ledger, which [ai-dev_agent-spinner-ledger-doctrine](ai-dev_agent-spinner-ledger-doctrine.md) owns.
-- The `<role>` sentence naming `scripts/` and the concept page's one-way routing paragraph, which [ai-dev_agent-spinner-routing](ai-dev_agent-spinner-routing.md) owns.
-- The markers check over the ledger's own rows, the checklist-to-acceptance lint, decision packets rendered from the ledger, and the helper-log audit, which [ai-dev_agent-spinner-ledger-phase-2](ai-dev_agent-spinner-ledger-phase-2.md) owns.
+- The command reference in `references/run-protocol.md`, the `SKILL.md` blocks that cite the ledger, and the ledger evals, the behavioural evals that prove the skill's use of the ledger, which [ai-dev_agent-spinner-ledger-doctrine](../ai-dev_agent-spinner-ledger-doctrine.md) owns.
+- The `<role>` sentence naming `scripts/` and the concept page's one-way routing paragraph, which [ai-dev_agent-spinner-routing](../ai-dev_agent-spinner-routing.md) owns.
+- The markers check over the ledger's own rows, the checklist-to-acceptance lint, decision packets rendered from the ledger, and the helper-log audit, which [ai-dev_agent-spinner-ledger-phase-2](../ai-dev_agent-spinner-ledger-phase-2.md) owns.
 - Launching any helper, which the orchestrator does through the host's own sub-agent surface.
 - A `--run-dir` option, since one working root holds one open run and `init` names `attach` instead.
 

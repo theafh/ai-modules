@@ -20,11 +20,15 @@
 # backup directories, and every regenerated subtree under `tests/` (committed
 # lint should not scan transient sandboxes). The authored harness under
 # `tests/` is committed, so it IS linted; the prunes below mirror
-# `tests/.gitignore`, and the two lists are changed together. The
-# `.git_auto_review` prune covers a review-and-fix run this repo leaves in its
-# own root: its `.git_auto_review/.gitignore` holds `*`, so that run directory
-# stays out of git scope and out of lint scope alike, sitting beside the
-# `tests/.gitignore` mirror the other prunes follow.
+# `tests/.gitignore`, and the two lists are changed together. Two
+# run-directory prunes cover directories that keep their own `.gitignore`
+# holding `*`, so they stay out of git scope and out of lint scope alike:
+# `.agent_spinner`, the agent_spinner run directory, and the shipped
+# `.git_auto_review` review-and-fix run. The `.git_auto_review` prune covers a
+# review-and-fix run this repo leaves in its own root: its
+# `.git_auto_review/.gitignore` holds `*`, so that run directory stays out of
+# git scope and out of lint scope alike, sitting beside the `tests/.gitignore`
+# mirror the other prunes follow. `.agent_spinner` follows the same model.
 EXCLUDE     := -path ./.git -prune -o \
                -name node_modules -prune -o \
                -path './deployment/.deploy-backup-*' -prune -o \
@@ -33,6 +37,7 @@ EXCLUDE     := -path ./.git -prune -o \
                -name .eval_cache -prune -o \
                -name .vendor_probe -prune -o \
                -name __pycache__ -prune -o \
+               -name .agent_spinner -prune -o \
                -name .git_auto_review -prune -o \
                -path './tests/wiki/layer2/AS-*' -prune -o \
                -path './tests/wiki/layer2/L2-*' -prune -o \

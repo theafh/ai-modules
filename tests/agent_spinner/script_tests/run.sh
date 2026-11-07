@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # script_tests/run.sh — static contract checks for agent_spinner.
 #
-# agent_spinner ships no bundled scripts, so this surface covers the
-# filesystem and grep acceptance items instead: frontmatter and size budgets,
-# one block per named contract, the six shape tags and their four elements,
-# the per-harness-fact greps that must stay empty, the reference set, the
-# trigger eval set, and registration lockstep.
+# agent_spinner ships one bundled program, scripts/run_ledger.py, so this
+# surface covers the filesystem and grep acceptance items: frontmatter and
+# size budgets, one block per named contract, the six shape tags and their four
+# elements, the per-harness-fact greps that must stay empty, the reference set,
+# the ledger's stdlib-only and read-only-git contract, the trigger eval set,
+# and registration lockstep.
 #
-# The behavioural items live in evals/, driven by evals/run.py.
+# The behavioural items live in evals/, driven by evals/run.py. The ledger's
+# own scenarios live in script_tests/ledger_run.sh.
 
 set -euo pipefail
 
@@ -16,6 +18,9 @@ REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
 SKILL_DIR="$REPO_ROOT/plugins/ai_dev/skills/agent_spinner"
 SKILL="$SKILL_DIR/SKILL.md"
 REFS="$SKILL_DIR/references"
+SCRIPTS="$SKILL_DIR/scripts"
+LEDGER="$SCRIPTS/run_ledger.py"
+SCRATCH="$HERE/scratch"
 TRIGGERS="$REPO_ROOT/tests/trigger_evals/agent_spinner.json"
 
 pass=0
@@ -77,6 +82,35 @@ product_hits_cite_portability() {
   hits="$(grep -REin 'claude|codex|cursor|antigravity|opencode|copilot|gemini|anthropic|openai' "$dir" || true)"
   [[ -z "$hits" ]] && return 0
   ! printf '%s\n' "$hits" | grep -qv 'harness_portability'
+}
+
+not() { ! "$@"; }
+
+scripts_exactly_ledger() {
+  [[ -d "$1" ]] && [[ "$(ls -1A "$1")" == "run_ledger.py" ]]
+}
+
+oldest_python3() {
+  {
+    type -a -p python3 2>/dev/null || true
+    command -v python3 2>/dev/null || true
+    for candidate in /usr/bin/python3 /bin/python3 /usr/local/bin/python3 /opt/homebrew/bin/python3; do
+      if [ -x "$candidate" ]; then
+        printf '%s\n' "$candidate"
+      fi
+    done
+  } | while IFS= read -r candidate; do
+    if [ -x "$candidate" ]; then
+      version="$("$candidate" -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' 2>/dev/null)" || continue
+      printf '%s %s\n' "$version" "$candidate"
+    fi
+  done | sort -t. -k1,1n -k2,2n -k3,3n | head -1 | cut -d' ' -f2-
+}
+
+oldest_python_help() {
+  oldest="$(oldest_python3)"
+  [[ -n "$oldest" ]] || return 1
+  "$oldest" -B "$LEDGER" --help >/dev/null 2>&1
 }
 
 # shellcheck source=../../lib/plugin_version.sh
@@ -182,8 +216,40 @@ check "knowledge_management does not cite agent_spinner" \
   tree_lacks "$REPO_ROOT/plugins/knowledge_management" 'agent_spinner'
 check "the skill bundles no agent definitions" \
   bash -c "[[ ! -d '$SKILL_DIR/agents' ]]"
-check "the skill bundles no runtime scripts" \
-  bash -c "[[ ! -d '$SKILL_DIR/scripts' ]]"
+# Test Integrity: superseded behaviour. The archived agent_spinner task's
+# "ships no bundled scripts" decision was reversed by the owner on 2026-10-03,
+# recorded in tasks/ai-dev_agent-spinner-run-ledger.md and in the archived
+# ai-dev_agent-spinner-skill.md. These checks pin the bundled ledger instead.
+check "scripts/ holds exactly run_ledger.py" scripts_exactly_ledger "$SCRIPTS"
+check "run_ledger.py imports only the standard library" \
+  python3 "$HERE/import_check.py" "$LEDGER"
+check "run_ledger.py answers --help under the oldest python3" oldest_python_help
+check "run_ledger.py runs no state-changing git subcommand" \
+  python3 "$HERE/git_guard.py" "$LEDGER"
+
+# The same assertions fail on a scratch copy holding one violation, so a green
+# run proves the check can fail rather than passing vacuously.
+rm -rf "$SCRATCH"
+mkdir -p "$SCRATCH/extra-scripts"
+cp "$LEDGER" "$SCRATCH/extra-scripts/run_ledger.py"
+touch "$SCRATCH/extra-scripts/extra.py"
+check "the scripts check fails on an extra file" not scripts_exactly_ledger "$SCRATCH/extra-scripts"
+
+cp "$LEDGER" "$SCRATCH/third_party.py"
+printf '\nimport requests\n' >> "$SCRATCH/third_party.py"
+check "the import check fails on a third-party import" \
+  not python3 "$HERE/import_check.py" "$SCRATCH/third_party.py"
+
+cp "$LEDGER" "$SCRATCH/newer_syntax.py"
+printf '\nmatch 1:\n    case 1:\n        pass\n' >> "$SCRATCH/newer_syntax.py"
+oldest="$(oldest_python3)"
+check "the oldest python3 rejects newer syntax" \
+  not bash -c "'$oldest' -B -m py_compile '$SCRATCH/newer_syntax.py'"
+
+cp "$LEDGER" "$SCRATCH/stateful_git.py"
+printf '\ndef _stateful(root):\n    return subprocess.run(["git", "-C", root, "add", "."])\n' >> "$SCRATCH/stateful_git.py"
+check "the git guard fails on a state-changing git call" \
+  not python3 "$HERE/git_guard.py" "$SCRATCH/stateful_git.py"
 
 # --- references -------------------------------------------------------------
 check "references/role-prompts.md exists" test -f "$REFS/role-prompts.md"

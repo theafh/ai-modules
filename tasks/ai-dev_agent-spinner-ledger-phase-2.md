@@ -22,7 +22,7 @@ harness_portability's delegation reference gains a log-format description for Cl
 
 ## Context
 
-- **Current state.** [The run-ledger task](ai-dev_agent-spinner-run-ledger.md) is open and plans `scripts/run_ledger.py` and its script tests in `tests/agent_spinner/script_tests/ledger_run.sh`; neither exists yet. These parts of that program matter here:
+- **Current state.** [The run-ledger task](archive/ai-dev_agent-spinner-run-ledger.md) is open and plans `scripts/run_ledger.py` and its script tests in `tests/agent_spinner/script_tests/ledger_run.sh`; neither exists yet. These parts of that program matter here:
   - `init`, the verb that opens a run, records which targets carry a stamp or marker, together with the owning family's gate. Each helper assignment is a row in the roster, the ledger's table of helpers, and the roster has a stamp owner column.
   - `close` exits 0 only when every condition on its list holds. No condition asks whether a changed stamped path was routed.
   - `dispose`, the verb that records what became of each record, records applied, refuted, surfaced with a packet id, and deferred dispositions.

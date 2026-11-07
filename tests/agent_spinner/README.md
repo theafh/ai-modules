@@ -1,15 +1,19 @@
 # tests/agent_spinner
 
-Local Pattern A harness for the `agent_spinner` skill. The skill is prose-only
-and bundles no scripts, so `script_tests/` covers the static contract instead
-of a bundled-script surface.
+Local Pattern A harness for the `agent_spinner` skill. The skill bundles one
+program, `plugins/ai_dev/skills/agent_spinner/scripts/run_ledger.py`, the run
+ledger that keeps a run's records on disk and launches no helper.
+`script_tests/` covers both the static contract and the ledger's own scenarios.
 
 ```text
 tests/agent_spinner/
 ├── README.md
 ├── RUNBOOK.md
-├── run_all.sh                   # static contract entrypoint
+├── run_all.sh                   # drives run.sh, ledger_run.sh, and test_run.py
 ├── script_tests/run.sh          # SKILL.md, references, greps, registration
+├── script_tests/ledger_run.sh   # run_ledger.py scenarios under oldest/newest python3
+├── script_tests/import_check.py # stdlib-only import guard
+├── script_tests/git_guard.py    # read-only git guard
 ├── evals/
 │   ├── README.md                # the signal each eval uses, and the runner modes
 │   ├── evals.json
@@ -33,6 +37,11 @@ tests/agent_spinner/
   page, and `script_tests/` proves the eval runner's stop on a failed or
   empty stage through `tests/lib/check_stage_guard.py`. `evals/test_run.py`
   proves the runner's modes and wiring against a stub worker.
+- **ledger_run.sh**: the bundled ledger's scenarios under the oldest and newest
+  python3 the machine offers, each staged in its own repository. It covers the
+  frozen verb set and `--help`, the run-directory contract, roster and return
+  contracts, every close condition, the no-helper audit-hook proof, and the
+  hostile-git and repository-safety checks.
 - **evals**: every id in `evals.json` (26 today). Each behavioural eval
   stages one behaviour, and the `smoke_*` evals check the runner's modes. Every
   compound acceptance bullet was split into its own eval, so a failure names

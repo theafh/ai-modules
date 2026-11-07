@@ -140,7 +140,7 @@ task-hub parallel-evals task](tests_task-hub-parallel-evals.md) changes
 `tests/task/evals/run.py`'s `stage` signature and its `evals/test_run.py`, which
 is the same declaration/stage-guard surface, though a different harness from
 the three this task touches. [The agent_spinner run-ledger
-task](../ai-dev_agent-spinner-run-ledger.md) replaces the check "the skill bundles
+task](ai-dev_agent-spinner-run-ledger.md) replaces the check "the skill bundles
 no runtime scripts" in `tests/agent_spinner/script_tests/run.sh` — the same
 suite tail this task appends its `check_stage_guard.py` case to — and rewrites
 in place the `agent_spinner/` bullet in `tests/README.md` that the operator-docs

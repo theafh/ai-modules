@@ -212,6 +212,26 @@ announcement_has() {
   fi
 }
 
+# Test Integrity: a grader fix. The old PHASE_PLAN pattern asserted surface
+# form: any mention of "phase", "phases:", or "pass 1" passed. Both the
+# inline_floor and phase_plan_announcement evals state a plan of two to four
+# named phases, so the assertion now counts distinct phase names and fails on
+# one phase or five. Evidence: `phase_plan.py`'s staged two/four pass and
+# one/five fail cases in `script_tests/ledger_run.sh`.
+announces_two_to_four_phases() {
+  local tmp rc
+  if have_announcement; then
+    python3 "$PHASE_PLAN_SCRIPT" "$ANNOUNCE" >/dev/null 2>&1
+    return $?
+  fi
+  tmp="$(mktemp)"
+  run_text > "$tmp"
+  python3 "$PHASE_PLAN_SCRIPT" "$tmp" >/dev/null 2>&1
+  rc=$?
+  rm -f "$tmp"
+  return "$rc"
+}
+
 NEGATED='(^|[^a-z])(no|not|never|nor|neither)([^a-z]|$)|without|rather than|instead of|refus|declin|avoid|n'"'"'t|do(es)? not|cannot'
 
 # A response legitimately *names* a move in order to say it does not apply.
@@ -247,7 +267,7 @@ YIELD='yield|cost more than it returned|helpers? (dispatched )?for [0-9]+'
 THREE_LISTS_A='established'
 THREE_LISTS_B='beyond (its|their|the) brief|nothing .{0,30}beyond'
 THREE_LISTS_C='own authority|nothing (was )?decided'
-PHASE_PLAN='phase|pass 1|phases:'
+PHASE_PLAN_SCRIPT="$HERE/phase_plan.py"
 BOUND='[0-9]+ ?(m|min|minute|s|sec|second)'
 NO_AGREEMENT_COUNTING='majority|quorum|consensus|[0-9] of [0-9] agree|both agree.{0,20}so it is|vote'
 # The reviewing pass's coverage record. The contract obliges the pass to report
@@ -426,7 +446,7 @@ case "$eval_id" in
     check "sandbox tree byte-identical" tree_unchanged
     if have_response; then
       check "opening sentence names the inline floor tier" announcement_has "$TIER_FLOOR"
-      check "states a phase plan" announcement_has "$PHASE_PLAN"
+      check "states a two-to-four-phase plan" announces_two_to_four_phases
       check "states the item count" announcement_has '5 items|five items|items: 5|5 of 8|five of eight'
       check "states a per-helper wall-clock bound" announcement_has "bound.{0,40}$BOUND|$BOUND.{0,40}(bound|per (helper|pass))"
       check "names at least two excluded candidates with a reason each" \
@@ -440,7 +460,7 @@ case "$eval_id" in
   phase_plan_announcement)
     check "sandbox tree byte-identical" tree_unchanged
     if have_response; then
-      check "announces a phase sequence" announcement_has "$PHASE_PLAN"
+      check "announces a two-to-four-phase sequence" announces_two_to_four_phases
       check "states the item count as five" announcement_has '5 items|five items|items: 5|5 of 8|five of eight'
       check "states a per-helper wall-clock bound" announcement_has "bound.{0,40}$BOUND|$BOUND.{0,40}(bound|per (helper|pass))"
       check "names the five included pages" \

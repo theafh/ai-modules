@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-11-06 | Total pages: 39
+> Last updated: 2026-11-07 | Total pages: 39
 
 ## Entities
 
@@ -18,7 +18,7 @@
 ## Concepts
 
 - [Agent definition portability](concepts/agent-definition-portability.md): three tolerance categories, disjoint tool vocabularies, the read-only levers that confine one role or a whole session and how far each held by host and mode, the two harnesses an effort pin reaches, and when a generated variant is required.
-- [Agent-delegated automation](concepts/agent-delegated-automation.md): how a thin front-end skill delegates a whole-artifact audit-and-repair job to spawned agents, with read fan-out for coverage, one serialized writer for integrity, refute-by-default verification, frozen intent, judgement calls routed to the human, and where the general, harness-independent form of the rule now ships as a skill.
+- [Agent-delegated automation](concepts/agent-delegated-automation.md): how a thin front-end skill delegates a whole-artifact audit-and-repair job to spawned agents, with read fan-out for coverage, one serialized writer for integrity, refute-by-default verification, frozen intent, judgement calls routed to the human, and where the general, harness-independent form of the rule now ships as a skill with a bundled run ledger.
 - [Antigravity global configuration roots](concepts/antigravity-global-roots.md): the two artefact classes that split across its three products, what that costs a global deploy, and the output tree that is not a root.
 - [Antigravity tool vocabulary](concepts/antigravity-tool-vocabulary.md): the two incomplete name lists, the missing canonical registry, and why a wrong name hangs instead of failing.
 - [Claude Code delegation surfaces](concepts/claude-delegation-surfaces.md): how the Workflow and Agent tools delegated to helpers in desktop sessions in September 2026, the pool's ceiling on helpers running at once and its queue, schema-bound returns, resume and stop, completion notices that carry the result, the spawn surface print mode offered in probes of October 2026, the shell tool and its grep function, and the print-mode CLI flags a headless worker relies on, with their observed behaviour and stream events.

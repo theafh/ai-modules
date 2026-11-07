@@ -1406,3 +1406,12 @@ pre-existing, and the size infos stay advisory; the one on
   `window.bottom` slot contribution beside the tab's `Panel` API)
 - index.md (the concurrency queue summary names the desktop side tab and
   window-bottom status bar over a shared status RPC)
+
+## [2026-11-07 16:45] update | Name the bundled run ledger on the agent-delegated automation page
+
+- concepts/agent-delegated-automation.md (the section on where the general rule
+  ships now names the bundled `scripts/run_ledger.py`, a standard-library
+  program that keeps a run's records on disk and launches no helper; the
+  Derived from entry carries the same description)
+- index.md (the agent-delegated automation summary names the bundled run
+  ledger, and Last updated moves to 2026-11-07)

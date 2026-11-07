@@ -295,11 +295,13 @@ files.
   a failed or empty stage. `evals/` has six
   staged fixtures driven by `run.py` on the default Cursor worker with a
   deterministic `grade.sh`; `run_all.sh` drives only the script tests.
-- **`agent_spinner/`**: Pattern A, prose-only skill. `script_tests/`
-  covers the static contract (SKILL.md budgets and blocks, the six shape
-  tags, the per-harness greps that must return nothing, the reference set,
-  registration lockstep, and the eval runner's stop on a failed or empty
-  stage); `evals/test_run.py` proves the runner's wiring against a stub
+- **`agent_spinner/`**: Pattern A, bundled ledger. `script_tests/` covers the
+  static contract (SKILL.md budgets and blocks, the six shape tags, the
+  per-harness greps that must return nothing, the reference set, registration
+  lockstep, the ledger's stdlib-only and read-only-git checks, and the eval
+  runner's stop on a failed or empty stage), and `script_tests/ledger_run.sh`
+  exercises the bundled `scripts/run_ledger.py` under the oldest and newest
+  python3; `evals/test_run.py` proves the runner's wiring against a stub
   worker; `evals/` holds every id in `evals.json` (26 today). Each
   behavioural eval stages one behaviour and the `smoke_*` evals check the
   runner's modes, driven by `evals/run.py` on the default Cursor worker in

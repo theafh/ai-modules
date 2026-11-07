@@ -1,7 +1,7 @@
 ---
 title: Agent-delegated automation
 created: 2026-08-29
-updated: 2026-10-30
+updated: 2026-11-07
 type: concept
 tags: [skill, agent, authoring, repo-structure]
 sources: [raw/notes/agent-spinner-run-evidence-2026-09.md]
@@ -164,7 +164,9 @@ is the reasoning behind it. The harness-independent form of the rule ships
 separately, as the `agent_spinner` skill under
 `plugins/ai_dev/skills/agent_spinner/`, with its prompt templates, worked
 report shapes, degradation examples, and lower-frequency variants in that
-skill's `references/`. The split follows this wiki's own dividing test: a rule
+skill's `references/`, and with one bundled standard-library program,
+`scripts/run_ledger.py`, the run ledger, which keeps a run's records on disk
+and launches no helper. The split follows this wiki's own dividing test: a rule
 an agent needs while working in another repository has to travel with the
 artefact, because the wiki travels nowhere else.
 
@@ -219,8 +221,10 @@ gates keep a fresh readiness assessment from inheriting an earlier conclusion.
 
 ## Derived from
 
-- The `agent_spinner` skill and its `references/`, which carry the general,
-  harness-independent form of the rule this page reasons about.
+- The `agent_spinner` skill, its `references/`, and its bundled
+  `scripts/run_ledger.py`, which carry the general, harness-independent form of
+  the rule this page reasons about. The ledger is a standard-library program
+  that keeps a run's records on disk and launches no helper.
 - The `task_auto_check`, `task_fix`, and `wiki_fix` front-end skills, and the
   `auto_drift_task`, `auto_gate_task`, `auto_reviewer_task`,
   `auto_verifier_task`, `auto_shaper_task`, and `auto_shaper_wiki` agents under
