@@ -312,7 +312,7 @@ case "$eval_id" in
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
     report "the working tree carries no path the run did not account for" \
       "$(clean_after_run "$root" "$repo" report.py && echo yes || echo no)"
-    report "the stop line names the no-qualifying-finding condition" \
+    report "the final-state block stop field names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     report "the per-round record label line is present" \
       "$(has_line "$text" "per-round record" && echo yes || echo no)"
@@ -348,7 +348,7 @@ case "$eval_id" in
       "$([[ "$(cat "$repo/legacy.py" 2>/dev/null)" == "unrelated pre-existing defect" ]] && echo yes || echo no)"
     report "the report lists the finding as a follow-up proposal" \
       "$(has "$text" "legacy.py" && echo yes || echo no)"
-    report "the stop line names the no-qualifying-finding condition" \
+    report "the final-state block stop field names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     ;;
   lists_scope_extension)
@@ -371,25 +371,25 @@ case "$eval_id" in
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
     report "the working tree carries no path the run did not account for" \
       "$(clean_after_run "$root" "$repo" report.py notes.md && echo yes || echo no)"
-    report "the stop line names the no-qualifying-finding condition" \
+    report "the final-state block stop field names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   routes_decision)
     report "report.py is byte-identical" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
-    report "the stop line names the decision-pending condition" \
+    report "the final-state block stop field names the decision-pending condition" \
       "$(has "$text" "decision is pending" && echo yes || echo no)"
     report "the not-applied record holds the finding under the pending decision" \
       "$(has_line "$text" "report.py:3" "decision-pending" && echo yes || echo no)"
-    report "the final-state block carries the pending decision wording" \
+    report "the final-state block's pending-decisions field carries the pending decision wording" \
       "$(has_line "$text" "pending-decisions" "adjustment" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_clean_first_gate)
     report "the working tree matches its pre-run state" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
-    report "the stop line names the no-qualifying-finding condition" \
+    report "the final-state block stop field names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     report "the per-round record label line is present" \
       "$(has_line "$text" "per-round record" && echo yes || echo no)"
@@ -407,7 +407,7 @@ case "$eval_id" in
          [[ -z "${sd:-}" || ! -f "${sd:-}/fixer-r1.txt" ]] && echo yes || echo no)"
     ;;
   stops_on_empty_approved_triage)
-    report "the stop line names the empty-approved condition" \
+    report "the final-state block stop field names the empty-approved condition" \
       "$(has "$text" "approved set is empty" && echo yes || echo no)"
     report "the report lists the not-approved finding" \
       "$(has "$text" "report.py" && echo yes || echo no)"
@@ -418,34 +418,34 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_failure)
-    report "the stop line names the contract-violating class" \
+    report "the final-state block stop field names the contract-violating class" \
       "$(has "$text" "contract-violating" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_spawn_failure)
-    report "the stop line names the spawn-failure class" \
+    report "the final-state block stop field names the spawn-failure class" \
       "$(has "$text" "spawn-failure" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_mid_run_death)
-    report "the stop line names the mid-run-death class" \
+    report "the final-state block stop field names the mid-run-death class" \
       "$(has "$text" "mid-run-death" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_inability)
-    report "the stop line names the declared-inability class" \
+    report "the final-state block stop field names the declared-inability class" \
       "$(has "$text" "declared-inability" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_script_failure)
-    report "the stop line names the helper-script class" \
+    report "the final-state block stop field names the helper-script class" \
       "$(has "$text" "helper-script" && echo yes || echo no)"
     report "the working tree matches its pre-run state" \
       "$(file_matches "$repo/report.py" "$root/post-failure-report.py" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_script_failure_relay)
-    report "the stop line names the helper-script class" \
+    report "the final-state block stop field names the helper-script class" \
       "$(has "$text" "helper-script" && echo yes || echo no)"
     report "the working tree matches its pre-run state" \
       "$(file_matches "$repo/report.py" "$root/.report.before" && echo yes || echo no)"
@@ -454,25 +454,25 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_script_failure_restore)
-    report "the stop line names the helper-script class" \
+    report "the final-state block stop field names the helper-script class" \
       "$(has "$text" "helper-script" && echo yes || echo no)"
-    report "the stop line does not name the ledger class" \
+    report "the final-state block stop field does not name the ledger class" \
       "$(has "$text" "ledger" && echo no || echo yes)"
-    report "the stop line does not name the unmapped-hunk class" \
+    report "the final-state block stop field does not name the unmapped-hunk class" \
       "$(has "$text" "unmapped" && echo no || echo yes)"
     report "the post-stop working tree equals the recorded baseline" \
       "$(file_matches "$repo/report.py" "$root/.post_failure.report.py" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_concurrent_modification)
-    report "the stop line names the concurrent-modification stop" \
+    report "the final-state block stop field names the concurrent-modification stop" \
       "$(has "$text" "concurrent" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_charter_refusal)
     report "report.py is byte-identical" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
-    report "the stop line names the CHARTER-before-write condition" \
+    report "the final-state block stop field names the CHARTER-before-write condition" \
       "$(has "$text" "CHARTER" && echo yes || echo no)"
     report "the report lists the refused finding" \
       "$(has "$text" "charter-set-refused" && echo yes || echo no)"
@@ -500,7 +500,7 @@ case "$eval_id" in
       "$(file_matches "$repo/helper.py" "$root/.helper.before" && echo yes || echo no)"
     report "the report lists the finding as a follow-up proposal with no fix" \
       "$(has_line "$text" "helper.py" "working-tree lane" "follow-up" && echo yes || echo no)"
-    report "the stop line names the no-qualifying-finding condition" \
+    report "the final-state block stop field names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
@@ -579,7 +579,7 @@ case "$eval_id" in
       "$(reproductions_in_relay "$(stem_dir || true)" && echo yes || echo no)"
     report "the working tree carries no path the run did not account for" \
       "$(clean_after_run "$root" "$repo" report.py && echo yes || echo no)"
-    report "the stop line names the no-qualifying-finding condition" \
+    report "the final-state block stop field names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     ;;
   gate_reviews_branch_and_worktree)
@@ -658,7 +658,7 @@ case "$eval_id" in
       "$(block_lane "$text" "file_b.py:2" "local-commits lane" && echo yes || echo no)"
     ;;
   honours_round_cap)
-    report "the stop line names the round cap" \
+    report "the final-state block stop field names the round cap" \
       "$(has "$text" "round cap" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
@@ -674,7 +674,7 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_second_ledger_fail)
-    report "the stop line names a second-ledger-failure condition" \
+    report "the final-state block stop field names a second-ledger-failure condition" \
       "$(has "$text" "ledger" && echo yes || echo no)"
     report "the not-applied record holds the unlanded finding under stop-unlanded" \
       "$(has_line "$text" "alpha.py:2" "stop-unlanded" && echo yes || echo no)"
@@ -708,7 +708,7 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_second_unmapped_hunk)
-    report "the stop line names an unmapped-hunk condition" \
+    report "the final-state block stop field names an unmapped-hunk condition" \
       "$(has "$text" "unmapped" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;

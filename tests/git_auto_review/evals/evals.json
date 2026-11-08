@@ -14,7 +14,7 @@
         "report.py no longer adds a constant, restoring the plain sum.",
         "The regression ledger holds one reproduction whose path is a reproduction-r<round>-finding-<id> file directly in the run's ignored .git_auto_review folder.",
         "The reproduction fails on the fixture's original report.py change.",
-        "report.txt's stop line names the no-qualifying-finding condition, not the round cap.",
+        "report.txt's final-state block stop field names the no-qualifying-finding condition, not the round cap.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -45,7 +45,7 @@
       "expectations": [
         "legacy.py is byte-identical after the run.",
         "report.txt lists the finding as a follow-up task proposal.",
-        "report.txt's stop line names the no-qualifying-finding condition."
+        "report.txt's final-state block stop field names the no-qualifying-finding condition."
       ]
     },
     {
@@ -73,7 +73,7 @@
         "report.py no longer adds a constant, restoring the plain sum.",
         "notes.md names ledger.txt instead of report.txt.",
         "The regression ledger holds one reproduction per finding.",
-        "report.txt's stop line names the no-qualifying-finding condition.",
+        "report.txt's final-state block stop field names the no-qualifying-finding condition.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -87,8 +87,8 @@
       ],
       "expectations": [
         "report.py is byte-identical after the run.",
-        "report.txt's stop line names the decision-pending condition.",
-        "report.txt carries the pending decision wording.",
+        "report.txt's final-state block stop field names the decision-pending condition.",
+        "report.txt's final-state block pending-decisions field carries the pending decision wording.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -103,7 +103,7 @@
       "expectations": [
         "No auto_fixer_git write happened.",
         "The working tree matches its pre-run state.",
-        "The returned text carries report.txt's stop line naming the no-qualifying-finding condition.",
+        "The returned text carries report.txt's final-state block stop field naming the no-qualifying-finding condition.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -116,7 +116,7 @@
         "evals/fixtures/stops_on_empty_approved_triage/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the empty-approved condition.",
+        "report.txt's final-state block stop field names the empty-approved condition.",
         "report.txt lists the not-approved finding with its reason.",
         "The working tree matches its pre-run state with no auto_fixer_git write.",
         "The stem directory holds no gate-r2.txt.",
@@ -132,7 +132,7 @@
         "evals/fixtures/stops_on_helper_failure/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the helper-failure class.",
+        "report.txt's final-state block stop field names the helper-failure class.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -145,7 +145,7 @@
         "evals/fixtures/stops_on_helper_inability/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the declared-inability class.",
+        "report.txt's final-state block stop field names the declared-inability class.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -158,7 +158,7 @@
         "evals/fixtures/stops_on_helper_spawn_failure/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the spawn-failure class.",
+        "report.txt's final-state block stop field names the spawn-failure class.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -171,7 +171,7 @@
         "evals/fixtures/stops_on_helper_mid_run_death/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the mid-run-death class rather than the contract-violating one.",
+        "report.txt's final-state block stop field names the mid-run-death class rather than the contract-violating one.",
         "no unverified helper text is applied.",
         "git rev-parse HEAD is unchanged."
       ]
@@ -185,7 +185,7 @@
         "evals/fixtures/stops_on_helper_script_failure/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the helper-script class.",
+        "report.txt's final-state block stop field names the helper-script class.",
         "The working tree matches its pre-run state.",
         "git rev-parse HEAD is unchanged."
       ],
@@ -195,12 +195,12 @@
       "id": "stops_on_helper_script_failure_relay",
       "skill": "git_auto_review",
       "prompt": "Auto-review and fix my uncommitted changes. Environment note: in this harness, run_relay.sh exits non-zero at init. Do not invoke run_relay.sh; treat its invocation as already failed with a non-zero exit under the helper-script class of the skill's agent-failure policy, and follow that policy from there. All other helpers work normally.",
-      "expected_output": "The relay initialise step fails before any working-tree write, so the run stops under the agent-failure policy's helper-script class with report.txt's stop line naming that class, creates no relay directory, and leaves the working tree and HEAD unchanged.",
+      "expected_output": "The relay initialise step fails before any working-tree write, so the run stops under the agent-failure policy's helper-script class with report.txt's final-state block stop field naming that class, creates no relay directory, and leaves the working tree and HEAD unchanged.",
       "files": [
         "evals/fixtures/stops_on_helper_script_failure_relay/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the helper-script class.",
+        "report.txt's final-state block stop field names the helper-script class.",
         "The working tree matches its pre-run state.",
         "git rev-parse HEAD is unchanged."
       ]
@@ -214,7 +214,7 @@
         "evals/fixtures/stops_on_helper_script_failure_restore/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the helper-script class rather than the ledger or unmapped-hunk class.",
+        "report.txt's final-state block stop field names the helper-script class rather than the ledger or unmapped-hunk class.",
         "The post-stop working tree equals the recorded post-failure baseline.",
         "git rev-parse HEAD is unchanged."
       ]
@@ -228,7 +228,7 @@
         "evals/fixtures/stops_on_concurrent_modification/setup.sh"
       ],
       "expectations": [
-        "report.txt's stop line names the concurrent-modification stop.",
+        "report.txt's final-state block stop field names the concurrent-modification stop.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -242,7 +242,7 @@
       ],
       "expectations": [
         "report.py is byte-identical after the run.",
-        "report.txt's stop line names the CHARTER-before-write condition.",
+        "report.txt's final-state block stop field names the CHARTER-before-write condition.",
         "report.txt lists each refused finding with the charter-set-refused class.",
         "git rev-parse HEAD is unchanged."
       ]
@@ -286,7 +286,7 @@
       "expectations": [
         "helper.py is byte-identical after the run.",
         "report.txt lists the finding as a follow-up task proposal with no fix.",
-        "report.txt's stop line names the no-qualifying-finding condition.",
+        "report.txt's final-state block stop field names the no-qualifying-finding condition.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -377,7 +377,7 @@
         "report.py no longer adds a constant, restoring the plain sum.",
         "The fix is uncommitted: git diff HEAD shows the report.py change.",
         "The regression ledger holds one reproduction whose path is a reproduction-r<round>-finding-<id> file directly in the run's ignored .git_auto_review folder.",
-        "report.txt's stop line names the no-qualifying-finding condition, not the round cap.",
+        "report.txt's final-state block stop field names the no-qualifying-finding condition, not the round cap.",
         "git rev-parse HEAD and refs/heads/feature are unchanged."
       ]
     },
@@ -468,7 +468,7 @@
       "timeout": 1800,
       "expectations": [
         "The working tree matches the round's pre-fix state.",
-        "report.txt's stop line names the second-ledger-failure condition.",
+        "report.txt's final-state block stop field names the second-ledger-failure condition.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -513,7 +513,7 @@
       "timeout": 1800,
       "expectations": [
         "The working tree matches the round's pre-fix state.",
-        "report.txt's stop line names the second-unmapped-hunk condition.",
+        "report.txt's final-state block stop field names the second-unmapped-hunk condition.",
         "git rev-parse HEAD is unchanged."
       ]
     },
