@@ -6,8 +6,8 @@
 # an ignored text file in `__pycache__/`, and an ignored binary file there too.
 # The round diff reports all three, the delta audit marks them unmapped, and
 # the restore removes them together with the folders they created while the
-# pre-existing ignored file `ignored/keep.txt` survives. Round 2 tags the
-# finding closed so the retry stops clean.
+# pre-existing ignored file `ignored/keep.txt` survives. Round 2 re-lists the
+# finding as settled by a decision, so the retry stops clean.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

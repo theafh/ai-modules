@@ -225,6 +225,9 @@ s4_convergence_labels_single_source() {
   assert_contains "second ledger failure stop" "$skill" "second **Regression ledger.** failure" || ok=false
   assert_contains "second unmapped stop" "$skill" "second \`<audit_delta>\` unmapped-hunk result" || ok=false
   assert_contains "self-written consecutive stop" "$skill" "two consecutive rounds whose qualifying findings all sit in code the loop wrote in an earlier round" || ok=false
+  for label in "per-round record" "not-applied record" "final-state block" "earlier-fix" "decision-pending" "stop-unlanded"; do
+    assert_contains "report record token $label" "$skill" "$label" || ok=false
+  done
   $ok
 }
 
@@ -238,6 +241,13 @@ s5_carryover_blocks() {
   assert_contains "path resolution sibling form" "$skill" "git_review/" || ok=false
   assert_contains "path resolution agents dir" "$skill" "../../agents/" || ok=false
   assert_contains "charter refused class" "$skill" "charter-set-refused" || ok=false
+  assert_contains "output contract states plain text, one record per line" "$skill" \
+    "plain text with one record per line" || ok=false
+  assert_contains "output contract states the entry separator" "$skill" \
+    "the \`;\` separator between entries within a field" || ok=false
+  assert_contains "per-round example qualifying list" "$skill" "qualifying 1,2" || ok=false
+  assert_contains "per-round example triage entries" "$skill" "triage 1=approved;2=approved" || ok=false
+  assert_contains "per-round example fixes entries" "$skill" "fixes 1=report.py;2=notes.md" || ok=false
   $ok
 }
 

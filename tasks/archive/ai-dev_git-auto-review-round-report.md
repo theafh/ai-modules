@@ -2,9 +2,11 @@
 description: "Rework git_auto_review's report.txt into per-round outcomes, not-applied findings with reasons, and the final state, so a finding fixed earlier is never reported as unfixed."
 scope: plugins/ai_dev/skills/git_auto_review
 created: 2026-11-04T14:19:14
-updated: 2026-11-07T22:30:00
-status: ready
+updated: 2026-11-08T11:28:02
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Make git_auto_review's report.txt state each round's outcome, what was left unapplied and why, and the final state
@@ -15,11 +17,11 @@ reported-by: Andreas Hoffmann
 
 ## Context
 
-The confusing output has two sources in the skill's report contract. The `<relay>` paragraph at [the git_auto_review skill](../../plugins/ai_dev/skills/git_auto_review/SKILL.md) says `report.txt` carries "one line per finding the run did not fix", while `<convergence>`'s reporting sentence in the same file requires every gate-listed finding that does not qualify, a tag-excluded `closed` or `settled by a decision` finding included, to be listed with its lane and no fix. A finding fixed in round 1 and re-tagged `closed` by round 2's delta gate therefore lands under a "did not fix" heading even though the run fixed it. The report has no per-round record to say so.
+The confusing output has two sources in the skill's report contract. The `<relay>` paragraph at [the git_auto_review skill](../../../plugins/ai_dev/skills/git_auto_review/SKILL.md) says `report.txt` carries "one line per finding the run did not fix", while `<convergence>`'s reporting sentence in the same file requires every gate-listed finding that does not qualify, a tag-excluded `closed` or `settled by a decision` finding included, to be listed with its lane and no fix. A finding fixed in round 1 and re-tagged `closed` by round 2's delta gate therefore lands under a "did not fix" heading even though the run fixed it. The report has no per-round record to say so.
 
 The same contract prescribes no format. `<output_contract>` says the deliverable is `report.txt` "written to the relay and reprinted to the caller", and the `<report>` step says to reprint it, while `auto_gate_git` returns its gate report as Markdown. The loop's own report inherits Markdown-looking output without a stated choice.
 
-The deterministic harness reads this file: [grade.sh](../../tests/git_auto_review/evals/grade.sh) resolves `report.txt` and asserts properties on it, and [evals.json](../../tests/git_auto_review/evals/evals.json) names the report assertions each scenario checks.
+The deterministic harness reads this file: [grade.sh](../../../tests/git_auto_review/evals/grade.sh) resolves `report.txt` and asserts properties on it, and [evals.json](../../../tests/git_auto_review/evals/evals.json) names the report assertions each scenario checks.
 
 ## Approach
 

@@ -229,22 +229,26 @@ that followed.
 
 | Eval | Result | Date |
 | :--- | :--- | :--- |
-| `fixes_in_scope_bug` | PASS (all behaviours) | 2026-10-27 |
-| `stops_on_clean_first_gate` | PASS (all behaviours) | 2026-10-27 |
+| `fixes_in_scope_bug` | PASS (all behaviours, including the per-round, not-applied, and final-state records) | 2026-11-08 |
+| `stops_on_clean_first_gate` | PASS (all behaviours, including the round-1 record and the omitted not-applied record) | 2026-11-08 |
 | `fixes_inferred_and_should_fix_findings` | PASS (all behaviours), 3/3 runs on `auto` (Cursor) | 2026-10-30 |
 | `triage_reports_status_and_reason` | PASS (all behaviours), 3/3 runs on `auto` (Cursor) | 2026-10-30 |
 | `stops_on_empty_approved_triage` | PASS (all behaviours) | 2026-10-27 |
 | `stops_on_helper_failure` | PASS (all behaviours) | 2026-10-27 |
-| `routes_decision` | Behaviours PASS; worker-provenance check FAIL | 2026-10-27 |
+| `routes_decision` | PASS (all behaviours, including the `decision-pending` record and `pending-decisions` field) | 2026-11-08 |
+| `stops_on_second_ledger_fail` | PASS (all behaviours, including the `stop-unlanded` record and the absent per-round record) | 2026-11-08 |
+| `restores_stray_fixer_path` | PASS (all behaviours, including the `settled by a decision` earlier-fix record) | 2026-11-08 |
 | `honours_task_scope_anchor` | PASS (all behaviours) | 2026-10-28 |
 | `honours_task_scope_anchor_no_task` | PASS (all behaviours) | 2026-10-28 |
 
 `routes_decision` graded every authored behaviour as passing (decision-pending
 stop, pending-decision wording carried, `report.py` byte-identical, HEAD
 unchanged) but the runner's read-path integrity check flagged the worker for
-reading this checkout's own harness files. That is a worker-hygiene signal, not
-a loop-behaviour signal, so the eval is inconclusive rather than failing on its
-authored assertions. Re-run it with `--force` and re-grade.
+reading this checkout's own harness files on 2026-10-27. That is a
+worker-hygiene signal, not a loop-behaviour signal, so that eval was
+inconclusive rather than failing on its authored assertions. The forced re-run
+recorded above passed all behaviours with a clean worker, so the eval now
+carries a recorded pass.
 
 Vendor: Cursor (`agent -p`, model `auto`), no `--vendor` flag, per the standing
 repo rules. Command: `python3 tests/git_auto_review/evals/run.py --workers 4

@@ -38,13 +38,13 @@ the sandbox target. Those evals measure the gate itself, not the loop around it.
 
 | Eval | Evidence graded |
 | :--- | :--- |
-| `fixes_in_scope_bug` | `report.py` restored, a reproduction landed in the ledger, the delta finding outside the Scope anchor listed without a fix, and a clean stop under "no qualifying finding remains" |
+| `fixes_in_scope_bug` | `report.py` restored, a reproduction landed in the ledger, the delta finding outside the Scope anchor listed without a fix, a clean stop under "no qualifying finding remains", a `per-round record` naming the round-1 fix and the round-2 stop, a `not-applied record` re-listing the fixed finding as `tag-excluded (closed)` with `earlier-fix round 1`, and a `final-state block` naming the stop condition and `report.py` |
 | `fixes_critical_heading_finding` | One "What is critical" finding fixed, its reproduction landed, and a clean stop |
 | `lists_preexisting_issue` | The pre-existing defect's file byte-identical and the finding listed as a follow-up proposal |
 | `lists_scope_extension` | The untouched feature file byte-identical and the finding listed as a follow-up proposal |
 | `fixes_inferred_and_should_fix_findings` | The inferred bug and the should-fix text defect both fixed, one ledger reproduction per finding, and a clean stop |
-| `routes_decision` | The decision-pending stop, no fixer write, and the decision wording carried in the report |
-| `stops_on_clean_first_gate` | No fixer write, the pre-run tree intact, and the no-qualifying stop named |
+| `routes_decision` | The decision-pending stop, no fixer write, a `not-applied record` line carrying `report.py:3` and `decision-pending`, and a `final-state block` carrying the pending decision wording under `pending-decisions` |
+| `stops_on_clean_first_gate` | No fixer write, the pre-run tree intact, the no-qualifying stop named, a `per-round record` with the round-1 stop, a `final-state block`, and no `not-applied record` or empty placeholder |
 | `stops_on_empty_approved_triage` | The empty-approved stop, the not-approved reason listed, and no second gate round |
 | `stops_on_helper_failure` | The contract-violating return stop |
 | `stops_on_helper_inability` | The declared-inability stop distinct from the contract-violating one |
@@ -68,11 +68,11 @@ the sandbox target. Those evals measure the gate itself, not the loop around it.
 | `classifies_lanes_from_evidence` | Each finding's lane and location matching the skill's case rules |
 | `honours_round_cap` | The round-cap stop for the override and default runs |
 | `retries_once_on_ledger_fail` | The ledger restore-and-retry leaving the reproduction passing |
-| `stops_on_second_ledger_fail` | The second-ledger-failure stop with the pre-fix tree restored |
+| `stops_on_second_ledger_fail` | The second-ledger-failure stop with the pre-fix tree restored, a `not-applied record` line carrying `alpha.py:2` and `stop-unlanded`, and no `per-round record` because the round stopped before Close |
 | `stops_on_self_written_code` | The self-written stop with `authored.txt` holding the cumulative hunks |
 | `retries_once_on_unmapped_hunk` | The unmapped-hunk restore-and-retry leaving the delta audit clean |
 | `stops_on_second_unmapped_hunk` | The second-unmapped-hunk stop with the pre-fix tree restored |
-| `restores_stray_fixer_path` | The round diff reporting a stray untracked file and a fixer-added ignored text and binary file, the first delta audit marking them unmapped (the binary one as a path-only entry), the restore removing them with the folders they created, the pre-existing ignored file kept, and a clean retry |
+| `restores_stray_fixer_path` | The round diff reporting a stray untracked file and a fixer-added ignored text and binary file, the first delta audit marking them unmapped (the binary one as a path-only entry), the restore removing them with the folders they created, the pre-existing ignored file kept, a clean retry, and a `not-applied record` re-listing the earlier-fixed finding as `tag-excluded (settled by a decision)` with `earlier-fix round 1` |
 
 `eval_runner.load_eval_ids` derives `DEFAULT_IDS` from `evals.json`, so new
 entries join the ordinary suite automatically.

@@ -314,6 +314,20 @@ case "$eval_id" in
       "$(clean_after_run "$root" "$repo" report.py && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
+    report "the per-round record label line is present" \
+      "$(has_line "$text" "per-round record" && echo yes || echo no)"
+    report "the round-1 record names the review, decision, qualifying finding, triage, fix, ledger, and delta audit" \
+      "$(has_line "$text" "round 1" "review first" "decision continue" "qualifying 1" "triage 1=approved" "fixes 1=report.py" "ledger pass" "delta-audit pass" && echo yes || echo no)"
+    report "the round-2 record names the delta review and the stop decision" \
+      "$(has_line "$text" "round 2" "review delta" "decision stop" && echo yes || echo no)"
+    report "the not-applied record label line is present" \
+      "$(has_line "$text" "not-applied record" && echo yes || echo no)"
+    report "the not-applied record re-lists the earlier-fixed finding as closed with its earlier-fix round" \
+      "$(has_line "$text" "tag-excluded (closed)" "earlier-fix round 1" && echo yes || echo no)"
+    report "the final-state block label line is present" \
+      "$(has_line "$text" "final-state block" && echo yes || echo no)"
+    report "the final-state block names the stop condition and the changed files" \
+      "$(has_line "$text" "no qualifying finding remains" "files-changed" "report.py" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   fixes_critical_heading_finding)
@@ -366,8 +380,10 @@ case "$eval_id" in
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "the stop line names the decision-pending condition" \
       "$(has "$text" "decision is pending" && echo yes || echo no)"
-    report "the report carries the pending decision wording" \
-      "$(has "$text" "adjustment" && echo yes || echo no)"
+    report "the not-applied record holds the finding under the pending decision" \
+      "$(has_line "$text" "report.py:3" "decision-pending" && echo yes || echo no)"
+    report "the final-state block carries the pending decision wording" \
+      "$(has_line "$text" "pending-decisions" "adjustment" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_clean_first_gate)
@@ -375,6 +391,16 @@ case "$eval_id" in
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "the stop line names the no-qualifying-finding condition" \
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
+    report "the per-round record label line is present" \
+      "$(has_line "$text" "per-round record" && echo yes || echo no)"
+    report "the round-1 record names the empty-qualifying stop" \
+      "$(has_line "$text" "round 1" "review first" "decision stop" && echo yes || echo no)"
+    report "the final-state block label line is present" \
+      "$(has_line "$text" "final-state block" && echo yes || echo no)"
+    report "the report carries no not-applied record" \
+      "$(has "$text" "not-applied record" && echo no || echo yes)"
+    report "the report prints no empty-block placeholder" \
+      "$(has "$text" "None." && echo no || echo yes)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     report "no fixer record was written" \
       "$(sd="$(stem_dir)" || true
@@ -650,6 +676,10 @@ case "$eval_id" in
   stops_on_second_ledger_fail)
     report "the stop line names a second-ledger-failure condition" \
       "$(has "$text" "ledger" && echo yes || echo no)"
+    report "the not-applied record holds the unlanded finding under stop-unlanded" \
+      "$(has_line "$text" "alpha.py:2" "stop-unlanded" && echo yes || echo no)"
+    report "the report carries no per-round record, since the round stopped before Close" \
+      "$(has "$text" "per-round record" && echo no || echo yes)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_self_written_code)
@@ -703,6 +733,8 @@ case "$eval_id" in
       "$(verifier_path_only_unmapped "$verifier_file" "__pycache__/blob.bin" && echo yes || echo no)"
     report "the working tree carries no path the run did not account for" \
       "$(clean_after_run "$root" "$repo" report.py && echo yes || echo no)"
+    report "the not-applied record re-lists the earlier-fixed finding as settled with its earlier-fix round" \
+      "$(has_line "$text" "tag-excluded (settled by a decision)" "earlier-fix round 1" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   *)
