@@ -1,6 +1,6 @@
 # agent_spinner behavioral evals
 
-Every id in `evals.json` (twenty-six today). Each behavioural eval stages one
+Every id in `evals.json` (forty-seven today). Each behavioural eval stages one
 behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
 names one behaviour rather than a conjoined verdict. The static body and grep
 items stay under `script_tests/`.
@@ -65,6 +65,27 @@ having taken it.
 | `smoke_staged_agent` | `tool_calls.jsonl` plus `smoke.txt` | The staged agent's token sits where the worker can read it, so the spawn call is the witness: it names the agent, carries no token in its input, did not fail, and returned the token. Results: `## Runner modes`. |
 | `smoke_withheld_shell` | `tool_calls.jsonl` plus marker absence | The shell class is withheld, so the marker stays absent and the record shows the class missing from the offered tools or every shell attempt failed. Results: `## Runner modes`. |
 | `smoke_withheld_write` | `tool_calls.jsonl` plus marker absence | The write class is withheld, so the marker stays absent and the record shows the class missing from the offered tools or every write attempt failed. Results: `## Runner modes`. |
+| `decision_items_past_line_100` | ledger records + report | Three long returns each carry one decision item past line 100 and a self-tally that misses it, so the ledger record and the report count are the ground truth the self-tallies cannot supply. |
+| `beyond_brief_defect_reported` | ledger record + report | A beyond-brief record is the run's own classification; the report's beyond-brief part is where its path and quote must land. |
+| `labelled_forks_all_relayed` | ledger records + report | Three fork records prove the import, and the report proves none was dropped. |
+| `unlabelled_returns_joined_by_id` | report | Joining by arrival order is a synthesis decision, so the echoed id or the missing-id list is the witness. |
+| `hollow_plan_blocks_writes` | file hashes + roster | Five byte-identical files prove nothing was written from a placeholder plan, and the roster state proves the contract violation. |
+| `changed_false_still_checked` | briefs + report | The diff is the authority, so the check brief and the report's changed list are the facts a helper's changed flag cannot override. |
+| `lint_warning_delta_reported` | ledger gate lines + report | The two gate outputs are the measured values; the report's move and its refusal to call the lint clean are the prose half. |
+| `verdict_waits_for_open_checker` | file hash + report opening | The artifact's status field is the file half; the opening's pending-row name is the placement half. |
+| `aborted_writer_settled_from_diff` | ledger records + report | The diff names the modified file, and the check row before any re-dispatch is the ordering fact. |
+| `twelve_files_twelve_rows` | roster + briefs | Twelve rows and twelve one-page briefs are the width rule's filesystem witness. |
+| `declared_shape_switch_named` | ledger record + report | A narrowing record with its dropped checks is the switch's record; the report names it. |
+| `mandated_step_listed` | roster/briefs + report | The mandated lint step must be a row before dispatch, and the report must say it ran or why it did not. |
+| `readonly_checker_returns_by_message` | roster source + report | The checker's final message is the only channel, so the relayed source tag and the report's named relay are the witness. |
+| `completion_turn_advances_phase` | ledger records + turn-two reply | Only a resumed turn can accept the between-turn return, so the accepted row and the next dispatch or gate are the advance. |
+| `verifier_rows_from_findings` | ledger records + roster | `row_source` records prove the rows came from the findings, and the roster proves three check rows exist before a verifier brief. |
+| `attached_body_opens_and_closes_ledger` | run directory + report | A closed run and the tally block in `report.md` prove the attached body reached the ledger end to end. |
+| `skipped_close_reported` | run state + report opening | The still-open run is the fact; the opening's no-clean-close sentence is the reporting half. |
+| `ledger_unavailable_by_hand` | hand-kept files + report | The roster, briefs, and returns are the files a by-hand run keeps; the unenforced labels are its honest report. |
+| `gate_scope_checked_before_dispatch` | run gate record + ledger | The gate's known-positive result and the dropped run-directory findings are the scope facts; the auto-fix refusal is recorded beside them. |
+| `pause_request_stops_dispatch` | ledger dispatches + report | No second-wave dispatch is the stop fact, and the three row lists are the stop report. |
+| `continuation_armed_once` | tool record + announcement | Cursor's goal tool is the vendor-specific feature: exactly one goal creation with the run directory in its objective. On Claude, the absence of a goal tool is proven by no goal, `ScheduleWakeup`, or cron call, and the announcement names re-entry through `status` and `attach`. |
 
 Seven evals additionally run the shared closing-report contract: the opening
 verdict with its tier and dispatched-against-returned count, the yield clause,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# duplicate_finding_union: two passes raise the same finding. The run sends it
-# through its own refute-by-default check and counts no agreement.
+# duplicate_finding_union: two lens passes raise the same finding. The run
+# sends it through its own refute-by-default check and counts no agreement.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,7 +10,6 @@ THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 target="${1:?target dir required}"
 proj="$(new_project "$target")"
 mkdir -p "$proj/docs" "$proj/bin"
-helper_returns "$proj"
 
 printf '#!/usr/bin/env bash\necho "verify --strict"\n' > "$proj/bin/tool.sh"
 chmod +x "$proj/bin/tool.sh"
@@ -22,23 +21,31 @@ Run `tool.sh verify --strict`.
 Add `--fail-fast` to stop at the first failure.
 DOC
 
-cat > "$proj/returns/lens-accuracy.txt" <<'R'
-lens:accuracy — 1 finding.
-  [major] docs/verify.md documents --fail-fast; bin/tool.sh accepts --strict only.
-    "Add `--fail-fast` to stop at the first failure."
-    docs/verify.md, under "# verify"
-    confidence: high
-  Examined and cleared: the heading, the --strict example.
-R
+commit_tree "$proj"
+run_ledger "$proj" init --phase lens --bound 240 \
+  --unit lens:accuracy --unit lens:completeness >/dev/null
+for label in lens:accuracy lens:completeness; do
+  stage_row "$proj" "$label" "Read docs/verify.md against bin/tool.sh under the ${label#lens:} lens."
+done
 
-cat > "$proj/returns/lens-completeness.txt" <<'R'
-lens:completeness — 1 finding.
-  [major] docs/verify.md documents --fail-fast, which the command does not accept.
-    "Add `--fail-fast` to stop at the first failure."
-    docs/verify.md, under "# verify"
-    confidence: high
-  Examined and cleared: the heading, the flag list.
-R
+write_return "$proj" lens:accuracy "done" pass '{
+  "_prose": "lens:accuracy — 1 finding.",
+  "findings": [
+    {"claim": "docs/verify.md documents --fail-fast; bin/tool.sh accepts --strict only.",
+     "severity": "major",
+     "quote": "Add `--fail-fast` to stop at the first failure.",
+     "anchor": "docs/verify.md, under \"# verify\""}
+  ]
+}'
+write_return "$proj" lens:completeness "done" pass '{
+  "_prose": "lens:completeness — 1 finding.",
+  "findings": [
+    {"claim": "docs/verify.md documents --fail-fast; bin/tool.sh accepts --strict only.",
+     "severity": "major",
+     "quote": "Add `--fail-fast` to stop at the first failure.",
+     "anchor": "docs/verify.md, under \"# verify\""}
+  ]
+}'
 
-seal "$target" "$proj"
+seal_open_run "$target" "$proj"
 echo "duplicate_finding_union sandbox staged at $proj"

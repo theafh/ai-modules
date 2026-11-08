@@ -86,6 +86,25 @@ product_hits_cite_portability() {
 
 not() { ! "$@"; }
 
+# start_here_first_step_is_status <skill.md> — the new opening block's first
+# numbered step must run the ledger's status, so an open run is found before
+# anything else happens.
+start_here_first_step_is_status() {
+  awk '/^<start_here>/{inside=1} inside{print} /^<\/start_here>/{inside=0}' "$1" \
+    | grep -Eq '^1\..*`status`'
+}
+
+# ledger_paths_qualified <skill_dir> — every mention of run_ledger.py in
+# SKILL.md or references/ must be the skill-relative form. A bare
+# `scripts/run_ledger.py` resolves against the working root, not the skill, and
+# finds the wrong file or nothing.
+ledger_paths_qualified() {
+  local dir="$1" total qualified
+  total="$(grep -Ro 'run_ledger\.py' "$dir/SKILL.md" "$dir/references" 2>/dev/null | wc -l | tr -d ' ')"
+  qualified="$(grep -Ro '<skill dir>/scripts/run_ledger\.py' "$dir/SKILL.md" "$dir/references" 2>/dev/null | wc -l | tr -d ' ')"
+  [[ "$total" -eq "$qualified" ]]
+}
+
 scripts_exactly_ledger() {
   [[ -d "$1" ]] && [[ "$(ls -1A "$1")" == "run_ledger.py" ]]
 }
@@ -149,6 +168,15 @@ CONTRACTS=(
 for tag in "${CONTRACTS[@]}"; do
   check "block <$tag> present" file_has "$SKILL" "<$tag>"
 done
+
+# --- the ledger doctrine's opening block ------------------------------------
+check "<start_here> block present" file_has "$SKILL" '^<start_here>$'
+check "<start_here> first numbered step runs the ledger's status" \
+  start_here_first_step_is_status "$SKILL"
+check "<start_here> sits directly after </role>" \
+  bash -c "awk 'BEGIN{seen=0} /^<\\/role>/{getline; if (\$0 == \"\") {getline}; print; exit}' '$SKILL' | grep -qx '<start_here>'"
+check "every run_ledger.py path is skill-relative" \
+  ledger_paths_qualified "$SKILL_DIR"
 
 # --- the six shapes, each with its four elements ----------------------------
 SHAPES=(
@@ -256,11 +284,48 @@ printf '\ndef _stateful(root):\n    return git(["commit", "-m", "x"], root)\n' >
 check "the git guard fails on a state-changing call through the git helper" \
   not python3 "$HERE/git_guard.py" "$SCRATCH/stateful_helper.py"
 
+# The two ledger-doctrine checks must fail on a scratch copy holding one
+# violation, so a green run proves they can fail rather than passing vacuously.
+mkdir -p "$SCRATCH/no-status"
+cp "$SKILL" "$SCRATCH/no-status/SKILL.md"
+python3 - "$SCRATCH/no-status/SKILL.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace("1. Run the ledger's `status`.", "1. Run the ledger's `attach`.", 1)
+open(path, "w").write(text)
+PY
+check "the start_here check fails when its first step lacks status" \
+  not start_here_first_step_is_status "$SCRATCH/no-status/SKILL.md"
+
+mkdir -p "$SCRATCH/bare-path/references"
+cp "$SKILL" "$SCRATCH/bare-path/SKILL.md"
+printf 'Run `python3 scripts/run_ledger.py status` first.\n' \
+  > "$SCRATCH/bare-path/references/probe.md"
+check "the bare-path check fails on a bare scripts/run_ledger.py" \
+  not ledger_paths_qualified "$SCRATCH/bare-path"
+
 # --- references -------------------------------------------------------------
+check "references/run-protocol.md exists" test -f "$REFS/run-protocol.md"
 check "references/role-prompts.md exists" test -f "$REFS/role-prompts.md"
 check "references/report-shapes.md exists" test -f "$REFS/report-shapes.md"
 check "references/degradation-examples.md exists" test -f "$REFS/degradation-examples.md"
 check "references/variants.md exists" test -f "$REFS/variants.md"
+for part in 'P1, open the run' 'P2, render every brief from files' \
+  'P3, return files and the acceptance gate' \
+  'P4, completion, waves, stop, and resume' 'P5, keep shared state still' \
+  'P6, the findings ledger, decision packets, and the report'; do
+  check "run-protocol.md carries the $part section" \
+    file_has "$REFS/run-protocol.md" "^## $part$"
+done
+check "run-protocol.md carries the capability tier table" \
+  file_has "$REFS/run-protocol.md" '^## Capability tier table$'
+check "run-protocol.md carries the run-directory section" \
+  file_has "$REFS/run-protocol.md" '^## Run directory$'
+check "run-protocol.md carries the ledger-floor section" \
+  file_has "$REFS/run-protocol.md" '^## Ledger floor$'
+check "run-protocol.md carries the command reference" \
+  file_has "$REFS/run-protocol.md" '^## Command reference$'
 for role in 'Producing pass' 'Lens pass' 'Checking pass' 'Synthesis pass'; do
   check "role-prompts.md carries the $role template" \
     file_has "$REFS/role-prompts.md" "^## $role$"

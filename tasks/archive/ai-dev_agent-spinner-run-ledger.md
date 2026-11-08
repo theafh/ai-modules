@@ -178,7 +178,7 @@ A placeholder is an empty or whitespace-only required text, an ellipsis, a lone 
 
 **Out of scope:**
 
-- The command reference in `references/run-protocol.md`, the `SKILL.md` blocks that cite the ledger, and the ledger evals, the behavioural evals that prove the skill's use of the ledger, which [ai-dev_agent-spinner-ledger-doctrine](../ai-dev_agent-spinner-ledger-doctrine.md) owns.
+- The command reference in `references/run-protocol.md`, the `SKILL.md` blocks that cite the ledger, and the ledger evals, the behavioural evals that prove the skill's use of the ledger, which [ai-dev_agent-spinner-ledger-doctrine](ai-dev_agent-spinner-ledger-doctrine.md) owns.
 - The `<role>` sentence naming `scripts/` and the concept page's one-way routing paragraph, which [ai-dev_agent-spinner-routing](../ai-dev_agent-spinner-routing.md) owns.
 - The markers check over the ledger's own rows, the checklist-to-acceptance lint, decision packets rendered from the ledger, and the helper-log audit, which [ai-dev_agent-spinner-ledger-phase-2](../ai-dev_agent-spinner-ledger-phase-2.md) owns.
 - Launching any helper, which the orchestrator does through the host's own sub-agent surface.

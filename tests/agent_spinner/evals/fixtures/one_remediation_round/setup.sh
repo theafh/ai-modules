@@ -11,7 +11,6 @@ THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 target="${1:?target dir required}"
 proj="$(new_project "$target")"
 mkdir -p "$proj/docs" "$proj/bin"
-helper_returns "$proj"
 
 printf '#!/usr/bin/env bash\necho "verify --strict"\n' > "$proj/bin/tool.sh"
 chmod +x "$proj/bin/tool.sh"
@@ -19,23 +18,36 @@ printf '# verify\n\nRun `tool.sh verify --strict`.\n\nAdd `--fail-fast` to stop 
   > "$proj/docs/verify.md"
 printf '# status\n\nRun `tool.sh status`.\n' > "$proj/docs/status.md"
 
-cat > "$proj/returns/check-verify.txt" <<'R'
-check:verify — FAIL.
+commit_tree "$proj"
+run_ledger "$proj" init --phase check --bound 240 \
+  --unit check:verify --unit check:status >/dev/null
 
-1. Documented flags match the command: fail.
-   "Add `--fail-fast` to stop early." — docs/verify.md, under "# verify".
-   bin/tool.sh echoes "verify --strict" and accepts no --fail-fast.
-2. Heading matches the subcommand: pass. "# verify" — docs/verify.md line 1.
+stage_row "$proj" check:verify "Check docs/verify.md against bin/tool.sh." \
+  --checker --target docs/verify.md
+write_return "$proj" check:verify "done" fail '{
+  "_prose": "check:verify — FAIL.",
+  "examined": [{"path": "docs/verify.md", "how": "full", "receipt": "Add `--fail-fast`"}],
+  "checklist": [
+    {"verdict": "fail", "span": "Add `--fail-fast` to stop early."},
+    {"verdict": "pass", "span": "# verify"}
+  ],
+  "findings": [
+    {"claim": "docs/verify.md documents --fail-fast, which bin/tool.sh does not accept.",
+     "severity": "major",
+     "quote": "Add `--fail-fast` to stop early.",
+     "anchor": "docs/verify.md, under \"# verify\""}
+  ]
+}'
 
-Verdict: docs/verify.md needs repair.
-R
+stage_row "$proj" check:status "Check docs/status.md against bin/tool.sh." \
+  --checker --target docs/status.md
+write_return "$proj" check:status "done" pass '{
+  "_prose": "check:status — PASS.",
+  "examined": [{"path": "docs/status.md", "how": "full", "receipt": "Run `tool.sh status`"}],
+  "checklist": [
+    {"verdict": "pass", "span": "Run `tool.sh status`."}
+  ]
+}'
 
-cat > "$proj/returns/check-status.txt" <<'R'
-check:status — PASS.
-
-1. Documented flags match the command: pass. "Run `tool.sh status`." —
-   docs/status.md, under "# status". bin/tool.sh takes no status flags.
-R
-
-seal "$target" "$proj"
+seal_open_run "$target" "$proj"
 echo "one_remediation_round sandbox staged at $proj"

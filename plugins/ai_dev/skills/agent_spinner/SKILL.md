@@ -18,7 +18,7 @@ description: >
   request naming the task backlog to the task_* family and a request naming the
   wiki to wiki_fix, which are worked instances of this shape that keep their
   own contracts. Per-harness facts stay with harness_portability.
-version: 1.0.3
+version: 1.0.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -30,6 +30,14 @@ license: MIT
 <role>
 agent_spinner is the orchestration doctrine an agent reads before it runs helper agents. It owns one question: given a job and whatever delegation the host offers, how do helpers spin off, stay contained, cross-check each other, fail, report, and get aggregated into one answer. It owns no artifact class and writes no domain state, so it stays advisory over any run that a domain skill already governs. Every guarantee below is written to hold at the inline floor, where the same passes run in one context, so the quality contract reads the same whether the host fans helpers out or not.
 </role>
+
+<start_here>
+Build every path to `scripts/` and `references/` from the directory of the loaded SKILL.md, and invoke the ledger by that absolute path. On a missing-file error, re-resolve the path once before treating the ledger as unavailable. The command is `python3 -B <skill dir>/scripts/run_ledger.py <verb>`. Then, in order:
+
+1. Run the ledger's `status`. Where it reports an open run, run `attach` and continue that run from its status.
+2. Match the ask's shape, then its recipe, per `<selector>`, and read a matched recipe in full. A job a governing skill owns follows `<invocation_boundary>`, and an ask answered inline stops here.
+3. Open the run per P1, which governs the probe, the orient rows, the inventory validation, the pre-dispatch gates, the pilot, the written plan, and its announcement.
+</start_here>
 
 <when_to_activate>
 Activate when the orchestration decision belongs to the orchestrator:
@@ -109,7 +117,7 @@ The library. Each shape states its trigger condition, its width rule, its prompt
 </shapes>
 
 <width>
-Derive breadth from the enumerated list. The helper count equals the length of a list the orchestrator wrote out before dispatch, never a round number and never a merge of items taken to save calls. Per-artifact fan-out takes one helper per file path. A lens panel takes three to five named lenses over the identical corpus, each told that siblings cover the other angles so depth beats breadth. Reserve replication of one identical prompt for a single indivisible factual or arithmetic claim. Test each entry as you write it: an entry whose own work is a list you have not enumerated is not one item, so return it per `<delegation_depth>` instead of counting it into the width.
+Derive breadth from the ledger: one row per enumerated unit (a file, source, page, or issue-and-stance pair) written before dispatch, and one helper per row, never a round number and never a merge of rows taken to save calls. Rows for a later phase come from accepted records: `rows` creates one per finding, repair, or gap unit, so a finding-sized phase keeps its width equal to its rows. Replicate one identical prompt only for a single indivisible factual or arithmetic claim, stating the count first. A declared shape binds, and a mid-run switch is a ledger event naming the checks it drops, reported as a narrowing and put to the user when it removes a check.
 </width>
 
 <phase_plan>
@@ -119,11 +127,11 @@ Label every helper `role:item` from a stable per-item slug rather than a propert
 </phase_plan>
 
 <run_economy>
-Close every run with its yield in one clause: the helpers dispatched against the decisions or edits they produced. Say plainly when a run cost more than it returned.
+Close every run with its yield: helpers dispatched against the decisions or edits they produced, the estimate beside the actual count, and per checking stage what it surfaced that the gates had not. Say plainly when a run or a stage cost more than it returned.
 </run_economy>
 
 <coverage_tradeoff>
-Name every narrowing out loud. When the run answers inline rather than fanning out, verifies a subset rather than every finding, or drops a phase for cost, state in the same reply which checks go unrun and what would surface them, then proceed on the user's word where the narrowing removes a check the fuller shape would have made. A repository's `CHARTER.md` coverage invariant, where one exists, is the authority this rule applies to the skill's own economy rules.
+Name every narrowing out loud, printed from the ledger. Every planned read, check, and step a governing skill mandates is a row before dispatch, and a row left unrun is dropped by a named narrowing through `dispose`, with its reason. Count a path as read only where tool evidence shows a full read. When the run answers inline, verifies a subset, or drops a phase, state in the same reply which checks go unrun and what would surface them. Proceed on the user's word where the narrowing removes a check the fuller shape would make. A repository's `CHARTER.md` coverage invariant is the authority this rule applies to the skill's own economy rules.
 </coverage_tradeoff>
 
 <containment>
@@ -157,15 +165,15 @@ Record how a finding survived. A finding the checking pass was shown and did not
 </confirmation_provenance>
 
 <helper_failure>
-Classify a non-result before acting on it.
+Classify a non-result before acting on it, and record the class on its ledger row.
 
-- A **deliberate self-reported inability** is a completed result: record its stated reason, spend no retry, and route it to the user.
-- A **spawn glitch**, meaning a near-instant return with no tool use whose whole output is host boilerplate, earns one identical-prompt re-invocation.
-- A **spawn failure, mid-run death, or contract-violating shape** earns the same single re-invocation.
+- A **deliberate self-reported inability** is a completed result: record its reason, spend no retry, and route it to the user.
+- A **spawn glitch** (a near-instant return with no tool use and only host boilerplate), a **spawn failure or mid-run death**, and a **contract violation**, meaning a return `accept` rejects, each earn one identical-prompt re-invocation.
+- A helper the user aborted, or one past its bound that may have written, has its paths settled from the diff before anything is re-dispatched over them.
 
-When a re-invocation fails again, mark the item failed against the roster and report it; take a degraded path such as an inline redo only after the user chooses it. This skill owns that one identical-prompt re-invocation for runs the orchestrator owns outright. `task_auto_check`'s `<agent_failure_policy>` is the worked instance of the inability / glitch / failure classification; its retry counts stay authoritative inside its own loop under `<invocation_boundary>`.
+A helper that may write files writes its return file, and its final message is its END line. A helper whose read-only lever or brief withholds file writes ends with its return block and END line as its final message, and never writes through a shell. Relay that message verbatim to `accept --stdin`, which records the return as relayed.
 
-A helper that passes its stated wall-clock bound with no return stops being waited on and earns the same single re-invocation, because an absent return and a mid-run death are the same state from outside. Mark the item unreturned against the roster and report it as such when that re-invocation passes the bound with no return either, because a hung helper and a helper that found nothing are otherwise indistinguishable. A helper whose depth pin the provider rejected can die quietly, so state verifier rigour as a behavioural contract in the prompt rather than buying it with a knob. Guard every downstream step against a dead upstream before reading its output.
+Completion is an accepted return. A notice, a quiet interval, or a tree predicate is only a hint to run `status`. Wait inside the turn in bounded `accept --wait` polls until every row of the wave is terminal or past its bound. While a foreground batch blocks you, record each bound and mark a row that returned late as over its bound. A row past its bound is unreturned, earns the same single re-invocation, and then stays unreturned, distinct from a helper that found nothing. When a re-invocation fails again, mark the item failed and report it, and take a degraded path such as an inline redo only after the user chooses it. Guard every step against a dead or rejected upstream.
 </helper_failure>
 
 <remediation>
@@ -173,21 +181,15 @@ One round, never loop until pass. Only the items that failed verification enter 
 </remediation>
 
 <run_state>
-Keep the roster outside your own context. Write the dispatch roster to a scratch file before the first helper, one line per item carrying its identifier, its assigned path or lens, and its state, and update the state as each result lands.
-
-When the run stops early for any reason, report from that roster which artifacts were modified, which were untouched, and which are in an unknown state, and settle the unknown ones by reading the files rather than by trusting a helper's return or a completion notice.
+Keep the run in `.agent_spinner/` through the ledger, and query it only through the verbs `references/run-protocol.md` documents. `init` records the baseline: the commit, in-scope hashes with untracked files, and each named gate's output. Change rows only through the ledger. Derive the check set, the changed and untouched lists, and attribution from the net diff against the baseline, never from a helper's changed flag. State tool results as baseline-to-final deltas. Any turn that finds an open run, whether a completion notice, a user message, or a fresh session, runs `status`, accepts every pending return, and continues the run until a user gate opens or `close` exits 0. End a turn with the closing report after a clean `close`, or with the interim report while helpers are out or a gate is open. Where the session offers a goal tool, arm one goal per run, with the run directory in its objective and `close` exiting 0 as its completion condition. Where it offers none, re-entry through `status` and `attach` carries the run. After a stop, pause, abort, or resume, mark in-flight rows unknown, and settle them by reading the files and the diff before re-dispatching. Report the modified, untouched, and unknown rows, and reuse a return only when its brief hash matches. On a stop or pause request, run `stop` at once. Its STOP file halts new dispatch and lets running helpers finish. Before the report, run `close`, which prints the tally block the report carries verbatim and exits non-zero while any row, record, fork, or written path is open. The ledger cannot force you to call `close`; its close conditions bind when you run `close`, so a report on a run with no clean `close` says so in its opening sentence. Where the host cannot run python3, or asks approval for each command, keep the same files by hand, perform the same checks against the roster, and report each check as unenforced.
 </run_state>
 
 <aggregation>
-Merge cited findings, never count agreement. Two helpers raising the same item is shared priors rather than confirmation, so union the proposals and send each through its own refute-by-default check. The orchestrator does the arithmetic, the partitioning, and the joining in the open, keyed by the stable per-item identifier rather than by arrival order. Discarded findings survive into the report with their one-line reason.
-
-Cap any payload pasted into a downstream prompt at a stated size. Tell that pass its material may be cut and that anything load-bearing gets re-read from the source, and list the identifiers of every item whose detail was trimmed.
+Merge cited findings, never count agreement. The ledger imports every return in full. Read through `show`, in full, every record that needs your judgement: forks, decide-class findings, contradictions, beyond-brief finds, incidents, and own-authority calls. Dispose of the rest by id pattern, and never read a return through slices or keyword searches. Give each record one disposition: applied, refuted with its reason, surfaced to the user, or deferred with a durable pointer. Two helpers raising the same item is shared priors, so union the proposals and check each. Join by the echoed identifier and stop the merge when one is missing. Every number the report states comes from the ledger. Cap any payload pasted downstream at a stated size, tell that pass its material may be cut and that load-bearing detail gets re-read from the source, and list every trimmed identifier.
 </aggregation>
 
 <reporting>
-Verdict first, three things kept apart. The opening sentence gives the answer, the tier reached, and the helpers dispatched against returned. The body then distinguishes what the run established, what a helper found beyond its brief, and what a helper decided on its own authority that the user should review. Name all three parts on every run and write `none` under a part with no members, so a reader tells an empty bucket from a forgotten one. Helper return shapes stay internal to the run.
-
-Before writing the report, identify the single claim the verdict rests on and check it against the artifact rather than against a helper's report. Name what was re-derived and what was taken on a helper's word, and report a verdict that resisted re-derivation as the helpers' finding rather than as the run's conclusion.
+Put the verdict first, and keep three things apart. The opening sentence gives the answer, the tier, helpers dispatched against returned, and whether `close` exited 0. The body separates what the run established, what a helper found beyond its brief, and what a helper or you decided on your own authority for the user to review, with `none` under an empty part. A sentence in a report, reply, or log entry that asserts verification, independence, completion, or coverage cites its ledger row or check output and says whether it was measured, re-derived, or taken on a helper's word. Read repository state from version control at report time. Check the single claim the verdict rests on against the artifact, and report a verdict that resisted re-derivation as the helpers' finding. Re-read an earlier deliverable before conceding it lacks something, and fix a conceded false premise in every open draft. Helper return shapes stay internal.
 </reporting>
 
 <judgement>
@@ -197,8 +199,9 @@ Route the real forks to the user. Removing most of a body, deleting a load-beari
 <references>
 Load a reference when the run needs its detail:
 
+- `references/run-protocol.md`: the capability tier table, the run directory, the ledger floor, the P1 to P6 run procedure, and the ledger's command reference.
 - `references/role-prompts.md`: the producing, lens, checking, and synthesis prompt templates.
-- `references/report-shapes.md`: worked opening sentences, digests, and closing reports.
+- `references/report-shapes.md`: the opening, interim, stop, completion-notice, and closing report shapes, the provenance tags, and a digest keyed by ledger record ids.
 - `references/degradation-examples.md`: the same job worked at the inline floor and at full fan-out.
 - `references/variants.md`: information isolation between concurrent helpers, and replicated draws returned unreduced.
 </references>

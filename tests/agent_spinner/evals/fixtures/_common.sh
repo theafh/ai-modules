@@ -131,6 +131,96 @@ helper_returns() {
   mkdir -p "$1/returns"
 }
 
+# --- ledger-staged runs -----------------------------------------------------
+#
+# A fixture that stages helper returns builds an open run with the shipped
+# ledger's own verbs, so the brief tokens and roster match what `accept`
+# checks. The return files carry the return contract: prose, one fenced JSON
+# block, and the END line.
+
+FIXTURES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENT_SPINNER_REPO="$(cd "$FIXTURES_DIR/../../../.." && pwd)"
+LEDGER="$AGENT_SPINNER_REPO/plugins/ai_dev/skills/agent_spinner/scripts/run_ledger.py"
+
+# run_ledger <proj> <verb> [args...] — the ledger runs in the sandbox root.
+run_ledger() {
+  local proj="$1"; shift
+  ( cd "$proj" && python3 -B "$LEDGER" "$@" )
+}
+
+# ledger_token <proj> <label> — the brief token the return must repeat.
+ledger_token() {
+  python3 - "$1/.agent_spinner/run.json" "$2" <<'PY'
+import json, sys
+run = json.load(open(sys.argv[1]))
+print(run["brief_tokens"][sys.argv[2]])
+PY
+}
+
+# commit_tree <proj> — commit the staged corpus before the ledger records its
+# baseline, so the run's baseline commit is a real commit.
+commit_tree() {
+  local proj="$1"
+  ensure_sandbox_git "$proj"
+  sandbox_git "$proj" add -A
+  sandbox_git "$proj" commit -q -m "stage fixture"
+}
+
+# seal_open_run <target> <proj> — record both inventories without committing
+# again, for a fixture that already committed before building its ledger run.
+seal_open_run() {
+  local target="$1" proj="$2"
+  ensure_sandbox_git "$proj"
+  record_tree_hashes "$proj" "$target/.tree_sha256"
+  record_outside_hashes "$target" "$target/.outside_sha256"
+}
+
+# stage_row <proj> <label> <body> [brief args...] — write the brief and record
+# the dispatch, so a return file for that label can be accepted.
+stage_row() {
+  local proj="$1" label="$2" body="$3"
+  shift 3
+  run_ledger "$proj" brief "$label" --body "$body" "$@" >/dev/null
+  run_ledger "$proj" dispatch "$label" >/dev/null
+}
+
+# write_return <proj> <label> <status> <verdict> <extras-json> — write one
+# return file through the shared return writer.
+write_return() {
+  local proj="$1" label="$2" status="$3" verdict="$4" extras="$5"
+  local token
+  token="$(ledger_token "$proj" "$label")"
+  python3 "$FIXTURES_DIR/_return.py" \
+    "$proj/.agent_spinner/returns/$label.md" \
+    "$label" "$token" "$status" "$verdict" "$extras"
+}
+
+# ledger_set_state <proj> <label> <state> [dispatched-at] — the one row fact a
+# fixture sets directly: a row already past its bound. The ledger reaches the
+# same state through `accept --wait`; the fixture stages it without the wait.
+ledger_set_state() {
+  python3 - "$1/.agent_spinner/roster.tsv" "$2" "$3" "${4:-}" <<'PY'
+import csv, sys
+COLUMNS = [
+    "label", "phase", "role", "item", "path", "kind", "state", "attempts",
+    "brief_hash", "input_versions", "helper_id", "spawn_route", "model_req",
+    "effort_req", "model_obs", "effort_obs", "dispatched_at",
+    "start_marker_time", "returned_at", "source", "stamp_owner",
+]
+path, label, state, dispatched = sys.argv[1:5]
+with open(path, newline="", encoding="utf-8") as fh:
+    rows = list(csv.reader(fh, delimiter="\t"))
+for row in rows:
+    if row and row[0] == label:
+        row[COLUMNS.index("state")] = state
+        if dispatched:
+            row[COLUMNS.index("dispatched_at")] = dispatched
+with open(path, "w", newline="", encoding="utf-8") as fh:
+    writer = csv.writer(fh, delimiter="\t", lineterminator="\n")
+    writer.writerows(rows)
+PY
+}
+
 # stage_docs_corpus <proj> — the eight-candidate docs corpus three fixtures
 # share, so "the same job at a different tier" is a real comparison rather
 # than two similar-looking jobs. Five candidates document a real command in

@@ -11,7 +11,6 @@ THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 target="${1:?target dir required}"
 proj="$(new_project "$target")"
 mkdir -p "$proj/docs" "$proj/bin"
-helper_returns "$proj"
 
 printf '#!/usr/bin/env bash\necho "verify --strict"\n' > "$proj/bin/tool.sh"
 chmod +x "$proj/bin/tool.sh"
@@ -23,25 +22,34 @@ Run `tool.sh verify --strict`.
 Add `--fail-fast` to stop at the first failure.
 DOC
 
-cat > "$proj/returns/survey-verify.txt" <<'R'
-survey:verify — 1 finding, raised from my own read of docs/verify.md and
-bin/tool.sh. I was shown no prior report.
-  [major] docs/verify.md documents --fail-fast; bin/tool.sh accepts --strict only.
-    "Add `--fail-fast` to stop at the first failure."
-    docs/verify.md, under "# verify"
-    confidence: high
-R
+commit_tree "$proj"
+run_ledger "$proj" init --phase check --bound 240 \
+  --unit survey:verify --unit check:verify-check >/dev/null
 
-cat > "$proj/returns/check-verify.txt" <<'R'
-check:verify — I was handed survey:verify's report verbatim and checked it.
+stage_row "$proj" survey:verify "Read docs/verify.md against bin/tool.sh."
+write_return "$proj" survey:verify "done" pass '{
+  "_prose": "survey:verify — 1 finding, raised from my own read of docs/verify.md and bin/tool.sh. I was shown no prior report.",
+  "findings": [
+    {"claim": "docs/verify.md documents --fail-fast; bin/tool.sh accepts --strict only.",
+     "severity": "major",
+     "quote": "Add `--fail-fast` to stop at the first failure.",
+     "anchor": "docs/verify.md, under \"# verify\""}
+  ]
+}'
+run_ledger "$proj" accept survey:verify >/dev/null
 
-1. Is the quoted line present in docs/verify.md? Yes:
-   "Add `--fail-fast` to stop at the first failure."
-2. Does bin/tool.sh accept --fail-fast? No; it echoes "verify --strict".
+run_ledger "$proj" brief check:verify-check --checker --relay survey:verify \
+  --body "You were handed survey:verify's report verbatim. Check it and report what you find." >/dev/null
+run_ledger "$proj" dispatch check:verify-check >/dev/null
+write_return "$proj" check:verify-check "done" pass '{
+  "_prose": "check:verify-check — I was handed survey:verify'\''s report verbatim and checked it. I do not refute the finding; I did not surface it myself.",
+  "findings": [
+    {"claim": "docs/verify.md documents --fail-fast; bin/tool.sh accepts --strict only.",
+     "severity": "major",
+     "quote": "Add `--fail-fast` to stop at the first failure.",
+     "anchor": "docs/verify.md, under \"# verify\""}
+  ]
+}'
 
-I do not refute the finding. I did not surface it myself; it was put in front
-of me.
-R
-
-seal "$target" "$proj"
+seal_open_run "$target" "$proj"
 echo "confirmation_provenance sandbox staged at $proj"

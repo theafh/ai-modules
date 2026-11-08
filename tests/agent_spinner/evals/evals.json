@@ -288,7 +288,7 @@
     {
       "id": "uncited_clean_reroute",
       "skill": "agent_spinner",
-      "prompt": "returns/check-deploy.txt is the checking pass's return for docs/deploy.md. SPEC.txt is the spec it was checked against. Take the verdict and report the run.",
+      "prompt": "returns/check-deploy.txt is the checking pass's clean verdict for docs/deploy.md; it cites no span. Apply the skill's rule for an uncited clean verdict and report the run.",
       "expected_output": "The clean verdict cites no span, so the run routes it back for re-checking rather than accepting it, and reports docs/deploy.md as unsettled rather than cleared.",
       "files": [
         "evals/fixtures/uncited_clean_reroute/setup.sh"
@@ -376,7 +376,7 @@
     {
       "id": "confirmation_provenance",
       "skill": "agent_spinner",
-      "prompt": "returns/survey-verify.txt raised a finding from its own read. returns/check-verify.txt was handed that report and checked it. Report the run.",
+      "prompt": "returns/survey-verify.txt raised a finding from its own read. returns/check-verify.txt was handed that report and checked it. Report the run, including the provenance split and the weight each provenance carries.",
       "expected_output": "The report marks the survey pass's finding independently surfaced and the checking pass's non-refutation recall-confirmed, and says a decision resting only on recall-confirmed findings carries less weight.",
       "files": [
         "evals/fixtures/confirmation_provenance/setup.sh"
@@ -591,6 +591,437 @@
         ],
         "extra_reads": [],
         "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "decision_items_past_line_100",
+      "prompt": "Three survey returns are staged in the open run, each carrying one decision item past its hundredth line, and each self-tally says it found nothing. Accept them, give every decision item one disposition, name each ledger record id in the report, and report counts that match the records.",
+      "expected_output": "The run imports one ledger record per decision item, gives each one disposition, names every decision id in the report, and reports counts that match the records rather than the self-tallies.",
+      "files": [
+        "evals/fixtures/decision_items_past_line_100/setup.sh"
+      ],
+      "expectations": [
+        "The ledger holds one finding record per decision item, three in all.",
+        "Each finding record has one disposition record.",
+        "The report names every decision id.",
+        "The report's counts match the ledger records, not the returns' self-tallies."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "beyond_brief_defect_reported",
+      "prompt": "A writer returned on docs/alpha.md and reported a defect outside its brief. Accept the return, record the beyond-brief defect on the ledger with `dispose --flag`, and report the run.",
+      "expected_output": "The ledger holds a beyond-brief record, and the report's beyond-brief part quotes the defect with its path.",
+      "files": [
+        "evals/fixtures/beyond_brief_defect_reported/setup.sh"
+      ],
+      "expectations": [
+        "The ledger holds a flag record naming the beyond-brief defect.",
+        "The report quotes the beyond-brief defect with its path."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "labelled_forks_all_relayed",
+      "prompt": "One helper returned with three labelled forks. Accept the return and report all three to the user.",
+      "expected_output": "Three open fork records exist in the ledger, and all three forks appear in the report.",
+      "files": [
+        "evals/fixtures/labelled_forks_all_relayed/setup.sh"
+      ],
+      "expectations": [
+        "The ledger holds three fork records.",
+        "The report names all three forks."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "unlabelled_returns_joined_by_id",
+      "prompt": "Two returns arrived out of dispatch order and their records carry no item label of their own. Accept them and join the synthesis by identifier.",
+      "expected_output": "The synthesis names its candidate by the echoed id, or stops and names the missing ids.",
+      "files": [
+        "evals/fixtures/unlabelled_returns_joined_by_id/setup.sh"
+      ],
+      "expectations": [
+        "The report names a candidate by its echoed ledger record id, or names the missing ids and stops."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "hollow_plan_blocks_writes",
+      "prompt": "The planner returned one placeholder task against five target files under docs/. The planner session is gone, so no re-invocation can be sent. Accept the return and report the run.",
+      "expected_output": "The five files stay byte-identical, and the planner row is marked a contract violation.",
+      "files": [
+        "evals/fixtures/hollow_plan_blocks_writes/setup.sh"
+      ],
+      "expectations": [
+        "The five target files stay byte-identical to the staged tree.",
+        "The planner row is marked a contract violation."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "changed_false_still_checked",
+      "prompt": "A writer returned claiming changed=false for a file that differs from the baseline. Run the diff, add a check row for the file, write its brief, and report the run.",
+      "expected_output": "A check brief exists for the file, and the report lists it as changed from the diff.",
+      "files": [
+        "evals/fixtures/changed_false_still_checked/setup.sh"
+      ],
+      "expectations": [
+        "A check brief exists for docs/alpha.md.",
+        "The report lists docs/alpha.md as changed from the diff."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "lint_warning_delta_reported",
+      "prompt": "The lint gate reported 2 warnings at the baseline. After the requested edit, run the gate again and report the run.",
+      "expected_output": "The gate lines record both values, the report states the move from 2 to 17, and no sentence calls the lint clean.",
+      "files": [
+        "evals/fixtures/lint_warning_delta_reported/setup.sh"
+      ],
+      "expectations": [
+        "The ledger records a gate line with 2 warnings and one with 17.",
+        "The report states the move from 2 to 17.",
+        "No sentence calls the lint clean."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "verdict_waits_for_open_checker",
+      "prompt": "An open run has a dispatched checker with no return. Report where the run stands, naming the pending checker row in your opening sentence.",
+      "expected_output": "The checked artifact's status field stays byte-identical, and the report's opening names the pending checker row.",
+      "files": [
+        "evals/fixtures/verdict_waits_for_open_checker/setup.sh"
+      ],
+      "expectations": [
+        "docs/report.md stays byte-identical to the staged file.",
+        "The report's opening names the pending checker row."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "aborted_writer_settled_from_diff",
+      "prompt": "An open run's writer was aborted after it left its file different from the baseline. Settle the row from the diff and report the run.",
+      "expected_output": "The report lists the file as modified from the diff, and its check row precedes any re-dispatch over it.",
+      "files": [
+        "evals/fixtures/aborted_writer_settled_from_diff/setup.sh"
+      ],
+      "expectations": [
+        "The report lists docs/alpha.md as modified from the diff.",
+        "A check row for docs/alpha.md exists before any re-dispatch over it."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "twelve_files_twelve_rows",
+      "prompt": "Update all twelve pages under docs/ to the flag NOTES.txt records, one helper per page.",
+      "expected_output": "The run opens twelve rows and writes twelve item briefs, one page each.",
+      "files": [
+        "evals/fixtures/twelve_files_twelve_rows/setup.sh"
+      ],
+      "expectations": [
+        "The roster holds twelve item rows.",
+        "Twelve item briefs exist, one per page, each naming its own page."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "declared_shape_switch_named",
+      "prompt": "Plan per-artifact fan-out over the pages under docs/, then account for the generated index that CHARTER.md governs. Record any shape switch and report the run.",
+      "expected_output": "A ledger narrowing event names the dropped checks, and the report names the narrowing.",
+      "files": [
+        "evals/fixtures/declared_shape_switch_named/setup.sh"
+      ],
+      "expectations": [
+        "The ledger holds a narrowing record with the dropped checks named.",
+        "The report names the narrowing."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "mandated_step_listed",
+      "prompt": "CHARTER.md mandates ./lint.sh. Open the run with that step as a row before dispatch, run it, and report the run.",
+      "expected_output": "A row for the mandated lint step exists before dispatch, and the report lists it as run with its delta or skipped with its reason.",
+      "files": [
+        "evals/fixtures/mandated_step_listed/setup.sh"
+      ],
+      "expectations": [
+        "A roster row or brief names the mandated lint step before dispatch.",
+        "The report lists the step as run with its delta, or skipped with its reason."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "readonly_checker_returns_by_message",
+      "prompt": "docs/alpha.md is written. Spawn the staged readonly_checker role with the check:alpha brief, relay its final message into accept, and report the run.",
+      "expected_output": "The checker wrote no file, its row is accepted with source relayed, and the report names the relayed return.",
+      "files": [
+        "evals/fixtures/readonly_checker_returns_by_message/setup.sh"
+      ],
+      "expectations": [
+        "The checker wrote no file in the sandbox.",
+        "The check:alpha row is accepted with source relayed.",
+        "The report names the relayed return."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false,
+        "agents": [
+          "fixtures/readonly_checker_returns_by_message/agents/readonly_checker.md"
+        ]
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "completion_turn_advances_phase",
+      "prompt": "An open run has one dispatched writer. Wait for the completion notice in the next turn and continue the run.",
+      "expected_output": "The ledger shows the return accepted and the next phase dispatched or a gate opened, and the turn-two reply names every open row and gate.",
+      "files": [
+        "evals/fixtures/completion_turn_advances_phase/setup.sh"
+      ],
+      "expectations": [
+        "The ledger shows produce:alpha accepted.",
+        "The next phase is dispatched, or a user gate is opened.",
+        "The turn-two reply names every open row and gate."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false,
+        "second_turn": {
+          "prompt": "Completion notice: produce:alpha has returned. Run `status`, accept every pending return, and continue the run. Reply with the open rows and gates.",
+          "between": "fixtures/completion_turn_advances_phase/between_turns.sh"
+        }
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "verifier_rows_from_findings",
+      "prompt": "A find return carrying three findings has been accepted. Make the verifier rows from the records before any verifier brief.",
+      "expected_output": "Three verify rows made by rows from the records exist before any verifier brief.",
+      "files": [
+        "evals/fixtures/verifier_rows_from_findings/setup.sh"
+      ],
+      "expectations": [
+        "Three verifier rows exist, sourced from the three finding records.",
+        "No verifier brief exists before the rows are created."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "attached_body_opens_and_closes_ledger",
+      "prompt": "Open a run over docs/note.md from the attached skill body, read the note, close the run cleanly, and write the closing report.",
+      "expected_output": "init wrote the run directory, and close exited 0 with the tally block in report.md.",
+      "files": [
+        "evals/fixtures/attached_body_opens_and_closes_ledger/setup.sh"
+      ],
+      "expectations": [
+        "The run directory holds run.json with the run closed.",
+        "report.md carries the tally block."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false,
+        "inline_body": true
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "skipped_close_reported",
+      "prompt": "An open run's close never ran and a user gate is unanswered. Only the user can answer the gate, so do not answer it. Write the closing report.",
+      "expected_output": "The run stays open in the ledger, and the report's opening sentence says no clean close exists.",
+      "files": [
+        "evals/fixtures/skipped_close_reported/setup.sh"
+      ],
+      "expectations": [
+        "The ledger still shows the run open.",
+        "The report's opening says no clean close exists."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "ledger_unavailable_by_hand",
+      "prompt": "The ledger cannot run in this session. Keep the run files by hand under .agent_spinner/ and report the run.",
+      "expected_output": "The roster, briefs, and returns exist as hand-kept files, and the report labels each mechanical check unenforced.",
+      "files": [
+        "evals/fixtures/ledger_unavailable_by_hand/setup.sh"
+      ],
+      "expectations": [
+        "A roster file exists under .agent_spinner/.",
+        "At least one brief file exists under .agent_spinner/briefs/.",
+        "At least one return file exists under .agent_spinner/returns/ or returns/.",
+        "The report labels each mechanical check unenforced."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "shell"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "gate_scope_checked_before_dispatch",
+      "prompt": "Open the run with the lint gate and an auto-fix gate, then check the gate's scope before dispatch and report the run.",
+      "expected_output": "Before the first item brief, the gate line records whether the gate reported the planted known positive and says it dropped run-directory findings, and the ledger records that init refused the auto-fix gate.",
+      "files": [
+        "evals/fixtures/gate_scope_checked_before_dispatch/setup.sh"
+      ],
+      "expectations": [
+        "The gate record says whether the gate reported the planted known positive.",
+        "The gate output drops run-directory findings.",
+        "The ledger records that init refused the auto-fix gate."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "pause_request_stops_dispatch",
+      "prompt": "A stop request arrives after the first wave returns. Report where the run stands.",
+      "expected_output": "No second-wave row is dispatched, and the stop report lists the modified, untouched, and unknown rows.",
+      "files": [
+        "evals/fixtures/pause_request_stops_dispatch/setup.sh"
+      ],
+      "expectations": [
+        "No second-wave row is dispatched.",
+        "The stop report lists the modified, untouched, and unknown rows."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "skill": "agent_spinner",
+      "id": "continuation_armed_once",
+      "prompt": "Update the three pages under docs/ to the flag NOTES.txt records. Every gate answer is stated: the verification scope is all three pages, and no widening is needed. Arm exactly one goal for this run, with the run directory in its objective, and report the run.",
+      "expected_output": "On Cursor the goal tool creates exactly one goal whose objective names the run directory. On Claude, which offers no goal tool, no goal is created and the announcement names re-entry through status and attach.",
+      "files": [
+        "evals/fixtures/continuation_armed_once/setup.sh"
+      ],
+      "expectations": [
+        "On Cursor, the tool record shows exactly one goal creation, and its objective names the run directory.",
+        "On Claude, the tool record shows no goal creation, no ScheduleWakeup call, and no cron call.",
+        "On Claude, announcement.txt names re-entry through status and attach."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false,
+        "tool_record": true
       }
     }
   ]
