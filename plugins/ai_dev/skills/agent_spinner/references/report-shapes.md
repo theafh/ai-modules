@@ -86,15 +86,16 @@ not run.
 ## Stop report
 
 Built from `close --stopped`, which prints the tally block and the three row
-lists.
+lists. While any row is non-terminal it prints them and refuses, exiting
+non-zero, so the stop report says so in its opening sentence.
 
 ```text
 Stopped after 2 of 4 writers, at the spawned-roles tier, 2 dispatched against
-2 returned. `close --stopped` exited 0.
+2 returned. `close --stopped` exited 3, refusing while 2 rows were pending.
 
 Modified: docs/setup.md, docs/deploy.md.
 Untouched: docs/upgrade.md, docs/rollback.md.
-Unknown at stop, now settled by reading: none.
+Unknown at stop, now settled by reading: docs/upgrade.md, docs/rollback.md.
 
 **Established.** Both modified pages carry the flag NOTES.txt records,
 re-derived from the files after the stop.

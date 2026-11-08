@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # beyond_brief_defect_reported: a writer return carries a defect outside its
-# brief. The run records it as a beyond-brief record and the report quotes it
-# with its path.
+# brief. The run records it as a flag record and the report quotes it with its
+# path.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -651,11 +651,11 @@ case "$eval_id" in
         item_section_has beta 'one (identical-prompt )?(inline )?re-?invocation|re-?invoke.{0,20}once|1 re-?invocation|single re-?invocation'
       check "allows one re-invocation for gamma" \
         item_section_has gamma 'one (identical-prompt )?(inline )?re-?invocation|re-?invoke.{0,20}once|1 re-?invocation|single re-?invocation'
-      check "reports the three separately in the arithmetic" response_has "$DISPATCH_ARITH"
+      check "reports the four separately in the arithmetic" response_has "$DISPATCH_ARITH"
       check "the placeholder return is a rejected row" \
         ledger_has '"label": "survey:delta".*"type": "accept_reject"'
     else
-      note_agent_attest "three non-results classified separately with their own retry budgets"
+      note_agent_attest "four non-results classified separately with their own retry budgets"
     fi
     ;;
 

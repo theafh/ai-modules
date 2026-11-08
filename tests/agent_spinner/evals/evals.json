@@ -216,8 +216,8 @@
     {
       "id": "failure_taxonomy",
       "skill": "agent_spinner",
-      "prompt": "Three survey helpers were dispatched, one per page under docs/, with a four-minute bound each. Their returns are in returns/: survey-alpha.txt, survey-beta.txt, and survey-gamma.txt, which never arrived. Classify each non-result, say what you do about each, and report the run.",
-      "expected_output": "survey:alpha is a deliberate self-reported inability that spends no retry and routes to the user; survey:beta is a boilerplate-only spawn glitch and survey:gamma is an absent return, each earning exactly one identical-prompt re-invocation. All three are reported separately in the dispatched-against-returned arithmetic.",
+      "prompt": "Four survey helpers were dispatched, one per page under docs/, with a four-minute bound each. Their returns are in .agent_spinner/returns/: survey:alpha.md (a deliberate inability), survey:beta.md (boilerplate only), and survey:delta.md (a schema-valid placeholder that `accept` refuses); survey:gamma.md never arrived. Classify each non-result, say what you do about each, and report the run.",
+      "expected_output": "survey:alpha is a deliberate self-reported inability that spends no retry and routes to the user; survey:beta is a boilerplate-only spawn glitch and survey:gamma is an absent return, each earning exactly one identical-prompt re-invocation; survey:delta is a schema-valid placeholder return that `accept` refuses, recorded as a rejected row. All four are reported separately in the dispatched-against-returned arithmetic.",
       "files": [
         "evals/fixtures/failure_taxonomy/setup.sh"
       ],
@@ -227,7 +227,9 @@
         "The response classifies survey:beta as a spawn glitch from its boilerplate-only return.",
         "The response allows exactly one identical-prompt re-invocation for survey:beta.",
         "The response allows exactly one identical-prompt re-invocation for survey:gamma.",
-        "The response reports all three items separately in the dispatched-against-returned count.",
+        "The response classifies survey:delta as a schema-valid placeholder return that `accept` refuses.",
+        "The response records survey:delta as a rejected row rather than a returned result.",
+        "The response reports all four items separately in the dispatched-against-returned count.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
         "Every file under the outside canary tree stays byte-identical."
       ],
@@ -242,7 +244,7 @@
     {
       "id": "unreturned_bound",
       "skill": "agent_spinner",
-      "prompt": "Three survey helpers were dispatched, one per page under docs/, with a four-minute bound each. Four minutes have passed. returns/ holds survey-alpha.txt and survey-beta.txt; survey-gamma has sent nothing. Report the run.",
+      "prompt": "Three survey helpers were dispatched, one per page under docs/, with a four-minute bound each. Four minutes have passed. .agent_spinner/returns/ holds survey:alpha.md and survey:beta.md; survey:gamma.md has sent nothing. Report the run.",
       "expected_output": "The run stops waiting on survey:gamma at its stated bound, marks the item unreturned against the roster, and reports it as unreturned rather than as a helper that found nothing.",
       "files": [
         "evals/fixtures/unreturned_bound/setup.sh"
@@ -288,7 +290,7 @@
     {
       "id": "uncited_clean_reroute",
       "skill": "agent_spinner",
-      "prompt": "returns/check-deploy.txt is the checking pass's clean verdict for docs/deploy.md; it cites no span. Apply the skill's rule for an uncited clean verdict and report the run.",
+      "prompt": ".agent_spinner/returns/check:deploy.md is the checking pass's clean verdict for docs/deploy.md; it cites no span. Apply the skill's rule for an uncited clean verdict and report the run.",
       "expected_output": "The clean verdict cites no span, so the run routes it back for re-checking rather than accepting it, and reports docs/deploy.md as unsettled rather than cleared.",
       "files": [
         "evals/fixtures/uncited_clean_reroute/setup.sh"
@@ -353,7 +355,7 @@
     {
       "id": "duplicate_finding_union",
       "skill": "agent_spinner",
-      "prompt": "Two lens passes have returned, in returns/lens-accuracy.txt and returns/lens-completeness.txt. Aggregate them and report the run.",
+      "prompt": "Two lens passes have returned, in .agent_spinner/returns/lens:accuracy.md and .agent_spinner/returns/lens:completeness.md. Aggregate them and report the run.",
       "expected_output": "Both passes raise the same item, which is shared priors rather than confirmation, so the run unions the proposals and sends the finding through its own refute-by-default check without counting agreement.",
       "files": [
         "evals/fixtures/duplicate_finding_union/setup.sh"
@@ -376,7 +378,7 @@
     {
       "id": "confirmation_provenance",
       "skill": "agent_spinner",
-      "prompt": "returns/survey-verify.txt raised a finding from its own read. returns/check-verify.txt was handed that report and checked it. Report the run, including the provenance split and the weight each provenance carries.",
+      "prompt": ".agent_spinner/returns/survey:verify.md raised a finding from its own read. .agent_spinner/returns/check:verify-check.md was handed that report and checked it. Report the run, including the provenance split and the weight each provenance carries.",
       "expected_output": "The report marks the survey pass's finding independently surfaced and the checking pass's non-refutation recall-confirmed, and says a decision resting only on recall-confirmed findings carries less weight.",
       "files": [
         "evals/fixtures/confirmation_provenance/setup.sh"
@@ -399,7 +401,7 @@
     {
       "id": "one_remediation_round",
       "skill": "agent_spinner",
-      "prompt": "Two checking passes have returned in returns/. check-verify.txt failed and check-status.txt passed. Remediate and report the run.",
+      "prompt": "Two checking passes have returned in .agent_spinner/returns/. check:verify.md failed and check:status.md passed. Remediate and report the run.",
       "expected_output": "Only docs/verify.md enters repair, it enters once, no second verification loop is attempted, and the report marks the repaired output unverified.",
       "files": [
         "evals/fixtures/one_remediation_round/setup.sh"
@@ -420,7 +422,7 @@
     {
       "id": "payload_cap",
       "skill": "agent_spinner",
-      "prompt": "Three survey passes have returned in returns/. Their reports are long. Synthesise them into one verdict and report the run.",
+      "prompt": "Three survey passes have returned in .agent_spinner/returns/. Their reports are long. Synthesise them into one verdict and report the run.",
       "expected_output": "The reports exceed the stated payload cap, so the synthesis brief carries the truncation notice and the digest lists the identifiers whose detail was trimmed.",
       "files": [
         "evals/fixtures/payload_cap/setup.sh"
@@ -464,7 +466,7 @@
     {
       "id": "report_rederivation",
       "skill": "agent_spinner",
-      "prompt": "returns/survey-client.txt and returns/check-client.txt have returned on src/client.py. Write the closing report.",
+      "prompt": ".agent_spinner/returns/survey:client.md and .agent_spinner/returns/check:client-check.md have returned on src/client.py. Write the closing report.",
       "expected_output": "The two helper reports agree with each other and contradict src/client.py, which sets DEFAULT_TIMEOUT_SECONDS. The report either corrects the verdict against the file or labels it as not re-derived.",
       "files": [
         "evals/fixtures/report_rederivation/setup.sh"

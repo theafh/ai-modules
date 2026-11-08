@@ -18,7 +18,7 @@ description: >
   request naming the task backlog to the task_* family and a request naming the
   wiki to wiki_fix, which are worked instances of this shape that keep their
   own contracts. Per-harness facts stay with harness_portability.
-version: 1.0.4
+version: 1.0.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
