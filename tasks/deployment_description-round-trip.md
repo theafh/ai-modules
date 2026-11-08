@@ -47,7 +47,7 @@ where raw newlines are legal.
 The deploy script runs on a runtime floor of Bash 3.2, `jq`, `perl`, and `rsync`,
 so decoding has to happen in shell or perl. The tests can use Python: `tomllib`
 (Python 3.11 or newer) reads the Codex output, and the frontmatter check that
-[the frontmatter gate task](toolchain_frontmatter-yaml-gate.md) adds prints each
+[the frontmatter gate task](archive/toolchain_frontmatter-yaml-gate.md) adds prints each
 file's decoded top-level values as JSON through its `--values` mode, which reads a
 fixture source and a generated YAML file alike. This task uses that mode, so it
 lands after the gate task.

@@ -102,6 +102,13 @@ on its `evals/evals.json` where it does not; eval counts come from that
 `ls tests/<harness>/evals/fixtures` lists beside that harness's shared helper
 files.
 
+- **`lint_frontmatter/`**: Pattern A script tests. `script_tests/run.sh`
+  stages every fixture in a temporary directory outside the checkout and
+  proves the strict YAML-subset gate at `scripts/lint_frontmatter.py`: the
+  rejected and accepted frontmatter shapes, `--values` decoding, the
+  `tests/` exclusion from the default file set, the `SKILL.md` hand-off to
+  skill_doctor's `discovery_safety.py`, the missing-script failure, and the
+  `make lint` wiring.
 - **`wiki/`**: Pattern B. Full Layer 1 (deterministic, `layer1/run.sh`
   prints its own scenario tally) + Layer 2 (every scenario in
   `layer2/evals.json`, each over that file's top-level `passes`

@@ -7,11 +7,11 @@
 #   make clean                       remove managed deployment backups
 #   make test                        run every deterministic test surface
 #   make plugin-test                 run the OpenCode plugin unit tests and typecheck
-#   make lint                        report lint issues across md/json/sh
+#   make lint                        report lint issues across md/json/sh/frontmatter
 #   make fix                         auto-fix lint issues where possible
 #   make help                        list targets
 #
-# Tooling required for lint/fix: markdownlint-cli, jq, shellcheck.
+# Tooling required for lint/fix: markdownlint-cli, jq, shellcheck, Python 3.
 # Tooling required for plugin-test: bun.
 
 .DEFAULT_GOAL := help
@@ -53,7 +53,7 @@ SH_FILES    := $(shell find . $(EXCLUDE) -type f -name '*.sh' -print)
 .PHONY: help \
         deploy global install update uninstall clean \
         test plugin-test \
-        lint lint-md lint-json lint-sh \
+        lint lint-md lint-json lint-sh lint-frontmatter \
         fix fix-md
 
 help: ## Show this help.
@@ -80,11 +80,12 @@ test: ## Run every deterministic test surface (tests/run_all.sh).
 plugin-test: ## Run the OpenCode plugin unit tests and typecheck (bun).
 	cd harness-plugins/opencode_v2 && bun install --frozen-lockfile && bun run test && bun run typecheck
 
-lint: ## Run all linters and report issues across md/json/sh.
+lint: ## Run all linters and report issues across md/json/sh/frontmatter (Python 3).
 	@rc=0; \
-	$(MAKE) --no-print-directory lint-md   || rc=1; \
-	$(MAKE) --no-print-directory lint-json || rc=1; \
-	$(MAKE) --no-print-directory lint-sh   || rc=1; \
+	$(MAKE) --no-print-directory lint-md           || rc=1; \
+	$(MAKE) --no-print-directory lint-json         || rc=1; \
+	$(MAKE) --no-print-directory lint-sh           || rc=1; \
+	$(MAKE) --no-print-directory lint-frontmatter  || rc=1; \
 	exit $$rc
 
 lint-md:
@@ -133,6 +134,12 @@ lint-sh:
 	floor_hit "printf '%(fmt)T'" '%[(][^)]*[)]T'; \
 	[ "$$status" -eq 0 ] || rc=1; \
 	exit $$rc
+
+# Every tracked .md/.mdc outside tests/ that opens with `---` is checked
+# against a strict YAML subset, and skill_doctor's discovery_safety.py runs in
+# place over every tracked SKILL.md. Python 3 is the only dependency.
+lint-frontmatter:
+	@python3 scripts/lint_frontmatter.py
 
 fix: fix-md ## Auto-fix lint issues where possible (markdown only).
 	@echo

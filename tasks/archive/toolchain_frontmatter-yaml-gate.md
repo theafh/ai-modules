@@ -2,9 +2,11 @@
 description: Gate make lint on frontmatter that a strict YAML checker accepts, run skill_doctor's discovery check in place, and repair the files that fail today.
 scope: "repo toolchain"
 created: 2026-10-07T07:46:48
-updated: 2026-11-06T20:55:25
-status: ready
+updated: 2026-11-08T08:10:31
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Check every tracked frontmatter block in `make lint`
@@ -74,7 +76,7 @@ A prototype of the subset in Approach, run over the tree on the same date,
 rejected exactly the 35 files above and accepted every other one; a current run
 rejects the agent definitions whose plain `description:` contains a colon followed by a space, and no task file.
 
-The [toolchain floor task](toolchain_make-install-dependency-floor.md) declares
+The [toolchain floor task](../toolchain_make-install-dependency-floor.md) declares
 the tools `make lint` needs and rewrites the README sentence this task also edits,
 so whichever of the two lands second adapts that passage.
 
@@ -175,7 +177,7 @@ scenario in a temporary directory outside the checkout; `make test` /
 **Out of scope:**
 
 - Checking what the deploy generators write, owned by
-  [the description round-trip task](deployment_description-round-trip.md).
+  [the description round-trip task](../deployment_description-round-trip.md).
 - A git pre-commit hook; `make lint`, which the standing repo rules run before
   every commit, is the enforcement point.
 - Replacing the parsers inside the task linter, the wiki linter, or skill_doctor

@@ -1,7 +1,7 @@
 ---
 name: auto_gate_git
-description: Runs git_review as the review gate for git_auto_review, keeping that skill's review criteria, headings, labels, and tags verbatim while forbidding its mutation paths, then derives a structured verdict from the report: one block per finding carrying id, heading, label, non_blocking, location, lane, Fix, and tag, plus the open decisions. Assigns each finding's lane and location by loading and applying the skill's lane-classification block, assigns each finding's id as the consecutive positive integers in report order, and on a delta re-review takes the prior gate return as the prior findings set, tagging every prior finding closed, open, open and not acknowledged, settled by a decision, or regressed, and tagging a defect first seen in the delta new.
-version: 1.0.2
+description: Runs git_review as the review gate for git_auto_review, keeping that skill's review criteria, headings, labels, and tags verbatim while forbidding its mutation paths, then derives a structured verdict from the report. Each block carries one finding's id, heading, label, non_blocking, location, lane, Fix, and tag, plus the open decisions. Assigns each finding's lane and location by loading and applying the skill's lane-classification block, assigns each finding's id as the consecutive positive integers in report order, and on a delta re-review takes the prior gate return as the prior findings set, tagging every prior finding closed, open, open and not acknowledged, settled by a decision, or regressed, and tagging a defect first seen in the delta new.
+version: 1.0.3
 model: inherit
 background: false
 effort: max

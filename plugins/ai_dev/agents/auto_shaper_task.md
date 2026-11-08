@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_task
-description: Resolves task_fix's escalated whole-tree judgement calls as the single serialized writer: verifies splits, body-framing reframes, scope relocations, link repairs, repeated-link regroups, and the backlog-coherence repairs task_fix's default assessment surfaced and the user accepted, all against frozen task goals and optional CHARTER.md boundaries, then re-lints the tasks tree to a clean fixed point.
-version: 1.0.9
+description: Resolves task_fix's escalated whole-tree judgement calls as the single serialized writer. It verifies splits, body-framing reframes, scope relocations, link repairs, repeated-link regroups, and the backlog-coherence repairs task_fix's default assessment surfaced and the user accepted, all against frozen task goals and optional CHARTER.md boundaries, then re-lints the tasks tree to a clean fixed point.
+version: 1.0.10
 model: inherit
 background: false
 effort: max

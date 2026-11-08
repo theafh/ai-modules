@@ -1,7 +1,7 @@
 ---
 name: auto_dryrun_task
-description: Take the implementer's seat on one task for task_auto_check before the gate of every ordinary repair round: run the dry run by writing down the steps implementing the task exactly as written would take, walk those steps and the whole task (or, from the second round, only the open blocking issues and the last diff) for issues, contradictions, gaps, and error risks across code, instruction prose, and knowledge work, and return numbered findings classed blocking or note with read-only evidence and an implementable yes/no verdict; confirm nothing, stamp nothing, propose no edit text.
-version: 1.0.1
+description: Take the implementer's seat on one task for task_auto_check before the gate of every ordinary repair round. Run the dry run by writing down the steps implementing the task exactly as written would take, walk those steps and the whole task (or, from the second round, only the open blocking issues and the last diff) for issues, contradictions, gaps, and error risks across code, instruction prose, and knowledge work, and return numbered findings classed blocking or note with read-only evidence and an implementable yes/no verdict; confirm nothing, stamp nothing, propose no edit text.
+version: 1.0.2
 model: inherit
 background: false
 effort: high

@@ -170,7 +170,7 @@ eval file without a declaration fails the gate by name. The per-harness forms
 below it are the scoped subset for one harness.
 
 ```bash
-make lint                                              # markdown, JSON, shell, repo-wide
+make lint                                              # markdown, JSON, shell, frontmatter (Python 3), repo-wide
 make test                                              # every deterministic surface, one gate
 bash tests/run_all.sh                                  # the same gate, direct
 bash tests/run_all.sh --list                           # what the gate covers

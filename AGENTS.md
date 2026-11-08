@@ -20,6 +20,7 @@ styles/                           # tracked output styles (repo-root; not a plug
 harness-plugins/<harness>/        # harness plugin packages (one self-contained package per directory)
 deployment/                       # deploy script + per-tool config
 tests/                            # regression harnesses (authored files tracked; run output gitignored)
+scripts/                          # repo-wide tooling (strict frontmatter gate)
 Makefile                          # task entry point
 .markdownlint.jsonc               # markdown lint config (MD033 off, pseudo-XML is intentional)
 ```
@@ -48,7 +49,7 @@ Makefile                          # task entry point
 ## Common tasks
 
 - `make help`: list every target.
-- `make lint` / `make fix`: runs `markdownlint`, `jq` syntax check, `shellcheck`. `fix` auto-fixes markdown only.
+- `make lint` / `make fix`: runs `markdownlint`, `jq` syntax check, `shellcheck`, and the Python 3 frontmatter gate (`scripts/lint_frontmatter.py`, which also runs skill_doctor's `discovery_safety.py` over every tracked `SKILL.md`). `fix` auto-fixes markdown only.
 - `make deploy`: copy components into vendor config dirs. Aliases: `global`, `install`. **Run only when the user asks for it.**
 - `make update`: redeploy every scope the deployment log records, from this checkout, with its recorded targets, types, and artefacts. **Run only when the user asks for it.**
 - `make uninstall`: remove deployed artefacts via the deployment log. A scope flag limits it to that scope (pass `--global` or `--project-dir DIR` to the script); a scopeless run covers every scope.
@@ -73,7 +74,7 @@ Task files stay agent-harness agnostic. When a task needs standing repo instruct
 
 **Lint clean before every commit.** Run `make lint` before creating any commit. When it flags something, run `make fix` for the auto-fixable markdown and correct the rest by hand, then re-run `make lint`, repeating until it passes with no issues. Create the commit only after that clean pass.
 
-**Repair a lint finding wherever it appears, including outside your change.** A red lint run is the repo's gate, not a report about the files you happened to edit: a finding in another session's file leaves the tree unable to reach a clean pass, and reporting it as "unrelated" hands the next agent a tree that cannot commit. That covers every lint surface the repo runs, not markdown alone — `make lint`'s `markdownlint`, `jq`, and `shellcheck` passes, the pseudo-XML linter, the bundled Python linters, and any other check a task or harness names. Fix every finding the run names, taking the tool's own auto-fix first where it has one (`make fix` for markdown) and correcting the rest by hand, then re-run that surface to a clean pass. Name what you repaired and where in your report, so a reader can tell your change from the repair. The one exception is a finding whose fix would cross a scope boundary the task declares: surface that finding to the operator with the file and rule instead of repairing it.
+**Repair a lint finding wherever it appears, including outside your change.** A red lint run is the repo's gate, not a report about the files you happened to edit: a finding in another session's file leaves the tree unable to reach a clean pass, and reporting it as "unrelated" hands the next agent a tree that cannot commit. That covers every lint surface the repo runs, not markdown alone — `make lint`'s `markdownlint`, `jq`, `shellcheck`, and Python 3 frontmatter (`scripts/lint_frontmatter.py`, including skill_doctor's `discovery_safety.py`) passes, the pseudo-XML linter, the bundled Python linters, and any other check a task or harness names. Fix every finding the run names, taking the tool's own auto-fix first where it has one (`make fix` for markdown) and correcting the rest by hand, then re-run that surface to a clean pass. Name what you repaired and where in your report, so a reader can tell your change from the repair. The one exception is a finding whose fix would cross a scope boundary the task declares: surface that finding to the operator with the file and rule instead of repairing it.
 
 ## Editing a skill
 

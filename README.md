@@ -96,6 +96,7 @@ ai-modules/
 │   ├── deployment.sh
 │   ├── deployment.conf
 │   └── README.md
+├── scripts/                 # repo-wide tooling (strict frontmatter gate)
 ├── tasks/                   # this repo's own backlog, kept with the shipped task skill
 │   └── archive/             # finished and deferred tasks
 ├── wiki/                    # this repo's own knowledge base, kept with the shipped wiki skill
@@ -218,7 +219,7 @@ make deploy      # deploy artefacts to global config dirs (aliases: global, inst
 make update      # refresh every scope the deploy log records from this checkout
 make uninstall   # remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 make clean       # remove managed deployment backups
-make lint        # report lint issues across md / json / sh
+make lint        # report lint issues across md / json / sh / frontmatter (Python 3)
 make fix         # auto-fix lint issues where possible (markdown only)
 ```
 
@@ -226,6 +227,6 @@ For finer-grained control, call `deployment/deployment.sh` directly. See [deploy
 
 ### Linting tools
 
-`make lint` and `make fix` use `markdownlint-cli`, `jq`, and `shellcheck` (install via Homebrew on macOS).
+`make lint` and `make fix` use `markdownlint-cli`, `jq`, `shellcheck`, and Python 3 (install the first three via Homebrew on macOS; Python 3 ships with the Xcode command line tools and most Linux distributions). The frontmatter check is `scripts/lint_frontmatter.py`, which also runs skill_doctor's `discovery_safety.py` in place over every tracked `SKILL.md`.
 
 Markdown rules live in [.markdownlint.jsonc](.markdownlint.jsonc). Inline-HTML checks (`MD033`) are off, because skill prompts use pseudo-XML on purpose.

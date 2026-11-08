@@ -89,7 +89,9 @@ contributors often still install `jq` or `rsync`. Python is not a footnote to
 the list: inside the plugins tree it carries more executable code than shell
 does, and shell only leads repo-wide because the deploy script is written in it.
 
-`make lint` runs `markdownlint`, a `jq` syntax check, and `shellcheck`; `make
+`make lint` runs `markdownlint`, a `jq` syntax check, `shellcheck`, and a
+Python 3 frontmatter gate (`scripts/lint_frontmatter.py`, which also runs
+skill_doctor's `discovery_safety.py` over every tracked `SKILL.md`); `make
 fix` auto-fixes Markdown only; `make deploy` installs; `make uninstall` reverses
 a deploy from its log. New languages, package managers, and build steps get added
 only when the maintainer asks for them, which keeps the repository readable by
