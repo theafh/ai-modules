@@ -275,6 +275,73 @@ def _owner_inserts(
     return []
 
 
+def _reconcile_header(
+    live_header: list[str], template_header: list[str]
+) -> tuple[list[str], list[str]]:
+    """Reconcile the live H1 block against the canonical one.
+
+    The canonical H1 line and the blank line beneath it come from
+    ``template_header``. The H1 slot is the live line byte-equal to the
+    canonical H1 when one exists, so an owner ``# `` heading that sits above
+    the canonical H1 keeps its position and its bytes. Only when no live line
+    matches and exactly one live ``# `` line exists does that single line take
+    the slot, which converges a reworded H1. Every other live ``# `` header
+    line is owner content: it keeps its bytes and its order, so an owner's
+    extra heading survives while a reworded H1 or a missing blank line beneath
+    it converges. Returns ``(header, owner_lines)``.
+
+    When no live line is byte-equal to the canonical H1 and more than one live
+    ``# `` line exists, the shape is undecidable: an owner heading above a
+    reworded H1 is indistinguishable from a reworded H1 above an owner
+    heading, and picking the first would silently delete the owner line.
+    Raises ``MergeError`` naming the ambiguous header in that case.
+    """
+    canonical_h1 = template_header[:1]
+    canonical_blank = template_header[1:]
+
+    live_h1: int | None = None
+    if canonical_h1:
+        live_h1 = next(
+            (
+                index
+                for index, line in enumerate(live_header)
+                if line == canonical_h1[0]
+            ),
+            None,
+        )
+    if live_h1 is None:
+        heading_lines = [
+            index
+            for index, line in enumerate(live_header)
+            if line.startswith("# ")
+        ]
+        if canonical_h1 and len(heading_lines) > 1:
+            raise MergeError(
+                f"ambiguous header: no live heading line equals the canonical "
+                f"H1 {canonical_h1[0]!r} and the preamble carries "
+                f"{len(heading_lines)} live '# ' lines "
+                f"({[live_header[index] for index in heading_lines]!r}); "
+                f"refusing to guess which one is the H1"
+            )
+        live_h1 = heading_lines[0] if heading_lines else None
+    if live_h1 is None:
+        return list(template_header), []
+
+    header = list(live_header)
+    header[live_h1 : live_h1 + 1] = canonical_h1
+    if (
+        header[live_h1 + 1 : live_h1 + 1 + len(canonical_blank)]
+        != canonical_blank
+    ):
+        header[live_h1 + 1 : live_h1 + 1] = canonical_blank
+    owner_lines = [
+        line
+        for index, line in enumerate(live_header)
+        if index != live_h1 and line.startswith("# ")
+    ]
+    return header, owner_lines
+
+
 def _serialize(header: list[str], units: list[list[str]]) -> str:
     lines = list(header)
     for unit in units:
@@ -345,18 +412,25 @@ def _unit_text(unit: list[str]) -> str:
 
 def merge(
     live_region: str,
+    template_header: list[str],
     template_units: list[list[str]],
     specs: tuple[CanonicalUnit, ...],
 ) -> tuple[str, list[list[str]]]:
     """Merge a live preamble against the canonical units.
 
-    Returns ``(merged_region, owner_units)``. Owner units are the unmatched
-    live units plus any owner lines inserted inside a canonical unit, kept so
-    the caller can self-check their preservation. Raises ``MergeError`` on a
-    duplicate canonical unit, an ambiguous local rewrite, or undecidable drift
-    inside a canonical unit.
+    Returns ``(merged_region, owner_units)``. The canonical H1 line and the
+    blank line beneath it come from ``template_header``, not from the live
+    region, so the header is reconciled like every other canonical line: a live
+    preamble that differs from canonical in its H1 or the blank line beneath it
+    converges instead of merging to itself and reporting ``no change``. Any
+    further live ``# `` header line is owner content and keeps its position.
+    Owner units are the unmatched live units plus any owner lines inserted
+    inside a canonical unit, kept so the caller can self-check their
+    preservation. Raises ``MergeError`` on a duplicate canonical unit, an
+    ambiguous local rewrite, or undecidable drift inside a canonical unit.
     """
-    header, live_units = _parse_region(live_region, specs)
+    live_header, live_units = _parse_region(live_region, specs)
+    header, owner_header = _reconcile_header(live_header, template_header)
     positions = {spec.id: position for position, spec in enumerate(specs)}
 
     live_resolved: list[str | None] = []
@@ -392,6 +466,10 @@ def merge(
     # keeps ``self_check``'s single forward cursor valid when a mid-unit owner
     # line precedes a later unmatched owner unit.
     owner_units: list[list[str]] = []
+    # A preserved owner `# ` header line sits above every unit, so it opens the
+    # owner-unit list and keeps the self-check's forward cursor valid.
+    if owner_header:
+        owner_units.append(owner_header)
     for unit, rid, extras in zip(live_units, live_resolved, owner_extras):
         if rid is None:
             owner_units.append(unit)
@@ -542,14 +620,17 @@ def main(argv: list[str]) -> int:
         return 2
 
     try:
-        template_units = validate_template(
-            extract_h1_prelude(TEMPLATE_LOG.read_text(encoding="utf-8")),
-            CANONICAL_UNITS,
+        template_region = extract_h1_prelude(
+            TEMPLATE_LOG.read_text(encoding="utf-8")
         )
+        template_units = validate_template(template_region, CANONICAL_UNITS)
+        template_header, _ = _parse_region(template_region, CANONICAL_UNITS)
         text = log_path.read_text(encoding="utf-8")
         live_region = extract_h1_prelude(text)
         tail = text[len(live_region):]
-        merged, owner_units = merge(live_region, template_units, CANONICAL_UNITS)
+        merged, owner_units = merge(
+            live_region, template_header, template_units, CANONICAL_UNITS
+        )
         self_check(merged, template_units, CANONICAL_UNITS, owner_units)
     except MergeError as exc:
         print(f"merge_log_preamble: {exc}", file=sys.stderr)
@@ -558,6 +639,15 @@ def main(argv: list[str]) -> int:
     if merged == live_region:
         print("merge_log_preamble: no change")
         return 0
+
+    # The template separates its region from the first ``##`` heading with a
+    # blank line, and ``extract_h1_prelude`` strips that separation out of the
+    # region into ``tail``. Restore it whenever the live tail does not carry
+    # it: an empty or H1-less preamble leaves ``tail`` opening at the heading
+    # itself, so without this the canonical region would be appended to the
+    # heading and destroy it.
+    if tail and not tail.startswith("\n\n"):
+        tail = "\n\n" + tail.lstrip("\n")
 
     log_path.write_text(merged + tail, encoding="utf-8")
     print("merge_log_preamble: converged")

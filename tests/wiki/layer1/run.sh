@@ -5552,6 +5552,258 @@ ORDERPY
     $ok
 }
 
+# m22: a log.md that begins directly with its first entry carries no preamble
+# at all — exactly the hand-written log whose missing preamble makes lint warn.
+# The merge must emit the canonical H1 block and keep the entry's heading as a
+# heading, separated from the region by the blank line the template carries,
+# rather than appending the region to the heading.
+m22_empty_preamble_emits_header() {
+    local home; home=$(fresh_scratch m22)
+    local log="$home/log.md"
+    printf '## [2026-01-01 00:00] create | Wiki initialized\n\n- Domain: x\n' > "$log"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    if [[ "$(head -n 1 "$log")" != "# Wiki Log" ]]; then
+        log "    [canonical H1 header not emitted]"; ok=false
+    fi
+    python3 - "$log" "$TEMPLATE_LOG" <<'EMPTYPREAMBLEPY' || ok=false
+import pathlib
+import sys
+
+log = pathlib.Path(sys.argv[1]).read_text()
+template = pathlib.Path(sys.argv[2]).read_text()
+heading = "## [2026-01-01 00:00] create | Wiki initialized"
+
+def prelude(text):
+    i = text.find("\n## ")
+    return text[:i] if i != -1 else text
+
+lines = log.splitlines()
+try:
+    at = lines.index(heading)
+except ValueError:
+    print("    [first entry heading was destroyed]", file=sys.stderr)
+    raise SystemExit(1)
+if at == 0 or lines[at - 1] != "":
+    print("    [entry heading is not blank-line separated from the region]", file=sys.stderr)
+    raise SystemExit(1)
+if prelude(log) != prelude(template):
+    print("    [canonical preamble did not land]", file=sys.stderr)
+    raise SystemExit(1)
+if not log.endswith("- Domain: x\n"):
+    print("    [entry content below the preamble was lost]", file=sys.stderr)
+    raise SystemExit(1)
+EMPTYPREAMBLEPY
+    # A second run is a no-op on the converged file.
+    cp "$log" "$log.after-first"
+    ret=$(run_merge "$log"); rc=${ret%%|*} out=${ret#*|}
+    assert_eq "second exit" "$rc" "0" || ok=false
+    if ! grep -q "no change" <<<"$out"; then
+        log "    [second run did not report no change]"; ok=false
+    fi
+    if ! cmp -s "$log" "$log.after-first"; then
+        log "    [second run changed the converged file]"; ok=false
+    fi
+    $ok
+}
+
+# m23: a preamble whose only drift is its H1 block converges to the template
+# header instead of merging to itself and reporting `no change`. Both drift
+# shapes are exercised at once: a reworded H1 and the missing blank line
+# beneath it. A second run must report `no change` and leave the file alone.
+m23_header_drift_converges() {
+    local home; home=$(fresh_scratch m23)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    python3 - "$log" <<'HEADERDRIFTPY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+lines = path.read_text().splitlines()
+if lines[0] != "# Wiki Log" or lines[1] != "":
+    raise SystemExit("fixture error: template H1 block is not as expected")
+lines[0] = "# Vault Change Log"
+del lines[1]
+path.write_text("\n".join(lines) + "\n")
+HEADERDRIFTPY
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    if ! grep -q "converged" <<<"$out"; then
+        log "    [first run did not report convergence]"; ok=false
+    fi
+    if [[ "$(head -n 1 "$log")" != "# Wiki Log" ]]; then
+        log "    [reworded H1 did not converge to the template]"; ok=false
+    fi
+    if [[ "$(sed -n 2p "$log")" != "" ]]; then
+        log "    [blank line under the H1 was not restored]"; ok=false
+    fi
+    python3 - "$log" "$TEMPLATE_LOG" <<'HEADERPRELUDEY' || ok=false
+import pathlib
+import sys
+
+log = pathlib.Path(sys.argv[1]).read_text()
+template = pathlib.Path(sys.argv[2]).read_text()
+
+def prelude(text):
+    i = text.find("\n## ")
+    return text[:i] if i != -1 else text
+
+if prelude(log) != prelude(template):
+    print("    [preamble did not converge to the template]", file=sys.stderr)
+    raise SystemExit(1)
+HEADERPRELUDEY
+    cp "$log" "$log.after-first"
+    ret=$(run_merge "$log"); rc=${ret%%|*} out=${ret#*|}
+    assert_eq "second exit" "$rc" "0" || ok=false
+    if ! grep -q "no change" <<<"$out"; then
+        log "    [second run did not report no change]"; ok=false
+    fi
+    if ! cmp -s "$log" "$log.after-first"; then
+        log "    [second run changed the converged file]"; ok=false
+    fi
+    $ok
+}
+
+# m24: a live `# ` header line beyond the canonical H1 is owner content. The
+# merge takes the H1 and the blank line beneath it from the template and keeps
+# the owner heading byte-identically, so it survives a converging run and a
+# second run is a no-op.
+m24_owner_header_line_survives() {
+    local log; log=$(_merge_fixture m24 \
+        "reword-group|||Actions|||ingest, update, query, lint, create, archive, delete, audit, import, session-wrapup, rotate, publish")
+    python3 - "$log" <<'OWNERHEADERPY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+lines = path.read_text().splitlines()
+if lines[0] != "# Wiki Log" or lines[1] != "":
+    raise SystemExit("fixture error: template H1 block is not as expected")
+lines[2:2] = ["# Appendix", ""]
+path.write_text("\n".join(lines) + "\n")
+OWNERHEADERPY
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    if ! grep -qxF '# Appendix' "$log"; then
+        log "    [owner header line was deleted]"; ok=false
+    fi
+    if [[ "$(head -n 1 "$log")" != "# Wiki Log" ]]; then
+        log "    [canonical H1 is not first]"; ok=false
+    fi
+    if ! grep -q '^> Actions: ingest, update, query, lint, create, archive, delete, audit, import, session-wrapup, rotate$' "$log"; then
+        log "    [drifted Actions unit did not converge]"; ok=false
+    fi
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    cp "$log" "$log.after-first"
+    ret=$(run_merge "$log"); rc=${ret%%|*} out=${ret#*|}
+    assert_eq "second exit" "$rc" "0" || ok=false
+    if ! grep -q "no change" <<<"$out"; then
+        log "    [second run did not report no change]"; ok=false
+    fi
+    if ! cmp -s "$log" "$log.after-first"; then
+        log "    [second run changed the preserved owner header line]"; ok=false
+    fi
+    $ok
+}
+
+# m25: an owner `# ` header line above the canonical H1 is owner content. The
+# merge must take the H1 slot at the live line byte-equal to the canonical H1,
+# not at the first live `# ` line, so the owner heading above it survives
+# byte-identically in its position and the canonical H1 is never duplicated.
+m25_owner_header_above_h1_survives() {
+    local home; home=$(fresh_scratch m25)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    python3 - "$log" <<'ABOVEH1PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+lines = path.read_text().splitlines()
+if lines[0] != "# Wiki Log" or lines[1] != "":
+    raise SystemExit("fixture error: template H1 block is not as expected")
+lines[0:0] = ["# Appendix", ""]
+path.write_text("\n".join(lines) + "\n")
+ABOVEH1PY
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    if ! grep -qxF '# Appendix' "$log"; then
+        log "    [owner header line was deleted]"; ok=false
+    fi
+    python3 - "$log" <<'ABOVEH1CHECKPY' || ok=false
+import pathlib
+import sys
+
+lines = pathlib.Path(sys.argv[1]).read_text().splitlines()
+expected = ["# Appendix", "", "# Wiki Log", ""]
+if lines[:4] != expected:
+    print(
+        f"    [owner header above the H1 was not preserved: {lines[:4]!r}]",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+count = lines.count("# Wiki Log")
+if count != 1:
+    print(f"    [canonical H1 appears {count} times]", file=sys.stderr)
+    raise SystemExit(1)
+ABOVEH1CHECKPY
+    _merge_invariants "$log.before" "$log" "$TEMPLATE_LOG" >/dev/null || ok=false
+    cp "$log" "$log.after-first"
+    ret=$(run_merge "$log"); rc=${ret%%|*} out=${ret#*|}
+    assert_eq "second exit" "$rc" "0" || ok=false
+    if ! grep -q "no change" <<<"$out"; then
+        log "    [second run did not report no change]"; ok=false
+    fi
+    if ! cmp -s "$log" "$log.after-first"; then
+        log "    [second run changed the preserved owner header line]"; ok=false
+    fi
+    $ok
+}
+
+# m26: an owner `# ` header line above a reworded H1 is undecidable. With no
+# live line byte-equal to the canonical H1 and more than one live `# ` line,
+# the merge cannot tell which heading is the H1, so it must refuse loudly with
+# exit 1 and write nothing rather than delete the owner line by picking the
+# first heading as the H1 slot.
+m26_owner_above_reworded_h1_refused() {
+    local home; home=$(fresh_scratch m26)
+    local log="$home/log.md"
+    cp "$TEMPLATE_LOG" "$log"
+    python3 - "$log" <<'REWORDEDH1PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+lines = path.read_text().splitlines()
+if lines[0] != "# Wiki Log" or lines[1] != "":
+    raise SystemExit("fixture error: template H1 block is not as expected")
+lines[0] = "# Vault Change Log"
+lines[0:0] = ["# Appendix", ""]
+path.write_text("\n".join(lines) + "\n")
+REWORDEDH1PY
+    cp "$log" "$log.before"
+    local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    if ! grep -q "ambiguous header" <<<"$out"; then
+        log "    [refusal did not name the ambiguous header]"; ok=false
+    fi
+    if ! grep -qF '# Appendix' <<<"$out"; then
+        log "    [refusal did not name the live '# ' lines]"; ok=false
+    fi
+    if ! cmp -s "$log" "$log.before"; then
+        log "    [refused run still wrote to the file]"; ok=false
+    fi
+    $ok
+}
+
 scenario m1  "merge inserts a missing labeled unit"           m1_insert_missing_labeled
 scenario m2  "merge refreshes a drifted labeled unit"        m2_refresh_drifted_labeled
 scenario m3  "merge refreshes a drifted unlabeled unit"      m3_refresh_drifted_unlabeled
@@ -5573,6 +5825,11 @@ scenario m18 "merge keeps a mid-unit owner line"              m18_mid_unit_owner
 scenario m19 "merge refuses undecidable mixed drift"          m19_mixed_drift_refused
 scenario m20 "merge keeps a mid-unit owner line's offset"     m20_mid_unit_owner_line_keeps_offset
 scenario m21 "merge keeps a mid-unit line before later owner" m21_mid_unit_before_later_owner_unit
+scenario m22 "merge emits the header for an empty preamble"   m22_empty_preamble_emits_header
+scenario m23 "merge converges a drifted H1 block"             m23_header_drift_converges
+scenario m24 "merge keeps an owner header line above the units" m24_owner_header_line_survives
+scenario m25 "merge keeps an owner header line above the H1"   m25_owner_header_above_h1_survives
+scenario m26 "merge refuses owner header above a reworded H1"  m26_owner_above_reworded_h1_refused
 
 log ""
 log "==================================="

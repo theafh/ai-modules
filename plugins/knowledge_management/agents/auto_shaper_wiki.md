@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.9
+version: 1.11.10
 model: inherit
 background: false
 effort: high
@@ -772,7 +772,8 @@ affect the same file so each file is opened, read, and rewritten once.
     next whenever the previous group invoked any operation that may
     have modified wiki files**: `git mv`, `mv`, `sed -i`, helper
     scripts under `$WIKI_SKILL/scripts/` (`compute_sha256.py`,
-    `lint.py` with side effects), a spawned subagent that edited files,
+    `merge_log_preamble.py`, `lint.py` with side effects), a spawned
+    subagent that edited files,
     or any other external command that touched the tree. The harness
     invalidates the "file-has-been-read" state on detected
     modifications, and a stale Read causes the next `Edit` or `Write`
