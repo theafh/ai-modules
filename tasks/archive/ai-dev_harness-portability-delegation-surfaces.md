@@ -151,7 +151,7 @@ Add one `<rule>` to `<policy>`, directly after the rule beginning "Confirm where
 
 **Out of scope:**
 
-- Building the eval runner's resume, inline-body, role-staging, and withheld-tool modes, which [the runner-modes task](../tests_agent-spinner-runner-modes.md) owns.
+- Building the eval runner's resume, inline-body, role-staging, and withheld-tool modes, which [the runner-modes task](tests_agent-spinner-runner-modes.md) owns.
 - A print-mode CLI subsection, since the CLI flags and stream shapes go to the wiki.
 - Running any probe, or recording a host beyond Claude Code, Cursor, and Codex, since the reference holds facts already observed and dated.
 - Worker command templates for headless workers, since helpers run only as sub-agents.

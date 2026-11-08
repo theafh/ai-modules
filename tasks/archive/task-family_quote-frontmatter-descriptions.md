@@ -47,7 +47,7 @@ malformed frontmatter in the blocking bucket, and an unquoted value that YAML
 misreads is malformed frontmatter. The task skills ship into other repositories,
 where this linter is the only check on task frontmatter.
 
-[The frontmatter gate task](../toolchain_frontmatter-yaml-gate.md) makes `make lint`
+[The frontmatter gate task](toolchain_frontmatter-yaml-gate.md) makes `make lint`
 reject the same values in this repository and repairs the files it finds there.
 Its accepted subset defines which unquoted values are safe, and the linter check
 here flags the same unquoted cases. Whichever of the two tasks lands first

@@ -91,7 +91,7 @@ run whose overlapping `timing.json` windows carry `started_at` / `ended_at` and
 sit next to a clean host `git status` recorded in `tests/agent_spinner/results/`.
 
 **Out of scope:** New runner modes (resume, inline body, tool-call record),
-which [the runner-modes task](../tests_agent-spinner-runner-modes.md) shipped and
+which [the runner-modes task](tests_agent-spinner-runner-modes.md) shipped and
 audited. Live-testing unshipped editorial plugin harnesses.
 
 ## Acceptance

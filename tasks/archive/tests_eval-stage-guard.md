@@ -129,7 +129,7 @@ names. [The agent_spinner parallel-evals
 task](tests_agent-spinner-parallel-evals.md) rewrites
 `tests/agent_spinner/evals/run.py` onto the shared helper and may rewrite its
 `stage()` call; whichever lands second keeps this task's failure path. [The
-agent_spinner runner-modes task](../tests_agent-spinner-runner-modes.md) adds
+agent_spinner runner-modes task](tests_agent-spinner-runner-modes.md) adds
 `tests/agent_spinner/evals/test_run.py` and a case in
 `tests/agent_spinner/script_tests/run.sh`, so both edit that suite's tail. [The
 guardrail_audit parallel-evals task](tests_guardrail-audit-parallel-evals.md)
