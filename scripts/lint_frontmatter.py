@@ -44,7 +44,7 @@ FRONTMATTER_OPEN = "---"
 KEY_RE = re.compile(r"^([A-Za-z0-9_-]+):(.*)$")
 BLOCK_HEADER_RE = re.compile(r"^([|>])([-+]?)$")
 FLOW_RE = re.compile(r"^\[(.*)\]$")
-BLOCK_ITEM_RE = re.compile(r"^[ \t]+-[ \t]+(.*)$")
+BLOCK_ITEM_RE = re.compile(r"^ +- +(.*)$")
 INDENTED_RE = re.compile(r"^[ \t]")
 
 # YAML indicator characters. A plain scalar may not begin with any of them.
@@ -351,8 +351,15 @@ def chomp(text, indicator):
     return body + "\n" if body else ""
 
 
-def decode_block(content, style, chomp_indicator):
-    """Decode a `|` or `>` block scalar body."""
+def decode_block(content, style, chomp_indicator, findings, key, first_line):
+    """Decode a `|` or `>` block scalar body, reporting shapes YAML rejects.
+
+    The block's own indent is set by its first non-blank line. A tab anywhere
+    in a content line's indentation, and a non-blank content line indented
+    less than that indent, both fall outside the accepted subset: a YAML
+    parser rejects each, so both are reported rather than folded into the
+    value.
+    """
     indent = None
     for line in content:
         if line.strip():
@@ -361,13 +368,36 @@ def decode_block(content, style, chomp_indicator):
     if indent is None:
         indent = 0
     stripped = []
-    for line in content:
-        if line == "":
+    for offset, line in enumerate(content):
+        if not line.strip():
             stripped.append("")
-        elif len(line) >= indent:
-            stripped.append(line[indent:])
-        else:
+            continue
+        leading = line[: len(line) - len(line.lstrip(" \t"))]
+        if "\t" in leading:
+            findings.append(
+                Finding(
+                    "",
+                    first_line + offset,
+                    key,
+                    "block scalar content is indented with a tab; YAML "
+                    "requires spaces",
+                )
+            )
+            stripped.append(line.lstrip(" \t"))
+            continue
+        if len(leading) < indent:
+            findings.append(
+                Finding(
+                    "",
+                    first_line + offset,
+                    key,
+                    "block scalar content line is indented less than the "
+                    f"block's own indent of {indent} spaces",
+                )
+            )
             stripped.append(line.lstrip())
+            continue
+        stripped.append(line[indent:])
     text = "\n".join(stripped) if style == "|" else fold_lines(stripped)
     return chomp(text, chomp_indicator)
 
@@ -492,12 +522,20 @@ def parse_block(block, path):
             chomp_indicator = block_match.group(2)
             content = []
             index += 1
+            content_start = index
             while index < total and (
                 block[index] == "" or INDENTED_RE.match(block[index])
             ):
                 content.append(block[index])
                 index += 1
-            fields[key] = decode_block(content, style, chomp_indicator)
+            fields[key] = decode_block(
+                content,
+                style,
+                chomp_indicator,
+                findings,
+                key,
+                content_start + 2,
+            )
             continue
 
         if raw.startswith("["):
@@ -612,7 +650,17 @@ def run_discovery_safety(skill_paths, stream):
         "--root",
         str(REPO_ROOT),
     ] + [str(path) for path in skill_paths]
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    # The child resolves a relative skill path against its own working
+    # directory, so anchor it at the repository root: the default run passes
+    # repo-relative tracked paths, and the gate must report the same result
+    # from any directory the caller runs it in.
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(REPO_ROOT),
+    )
     try:
         report = json.loads(result.stdout)
     except json.JSONDecodeError:
@@ -664,8 +712,12 @@ def run_default(explicit_paths):
             lines = read_lines(Path(display))
             if lines is None or has_frontmatter(lines):
                 files.append(display)
+        # An explicit path is relative to the caller's working directory, so
+        # resolve it here before the child runs from the repository root.
         skills = [
-            path for path in explicit_paths if path.endswith("SKILL.md")
+            str(Path(path).resolve())
+            for path in explicit_paths
+            if path.endswith("SKILL.md")
         ]
     else:
         tracked = tracked_files()
