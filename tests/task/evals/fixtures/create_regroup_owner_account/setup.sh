@@ -43,8 +43,8 @@ cat > "$proj/tasks/cli_output-format-registry.md" <<'EOF'
 ---
 description: Add an output-format registry to the report command so each output flag registers one writer, and ship the --yaml writer as its first format.
 scope: src/report
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Evals
 ---

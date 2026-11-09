@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, refresh a stale task against the current codebase, or run an autonomous readiness loop without implementing the task. A task whose premise the code invalidates stops the loop and surfaces deferral as the user's option.
-version: 1.0.27
+version: 1.0.28
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -195,7 +195,7 @@ Invoke `auto_verifier_task` through the proposal-mode path set in `<relay>`. Kee
 <apply_repairs>
 Before writing, honor `<concurrent_modification_guard>` and save the current target byte for byte as `r<N>-pre-apply.txt`. Resolve the project root through the base task discovery step; when `CHARTER.md` exists at that root, validate the approved edits against its boundaries and invariants. On a charter conflict, stop without writing, report the conflict, and leave the task file byte-for-byte unchanged.
 
-Apply each approved edit in id order as one anchored replacement: replace its exact anchor in the current text with its exact replacement text, requiring one match. Preserve frontmatter except for the `updated` timestamp; stamp `updated` from the base `task` skill's `<frontmatter>` timestamp command in the same edit group. Run the base task linter with `--quiet`, save the output the apply step acts on as `r<N>-lint.txt`, and fix only findings in the base `<lint>` mechanically fixable finding set.
+Apply each approved edit in id order as one anchored replacement: replace its exact anchor in the current text with its exact replacement text, requiring one match. Preserve frontmatter except for the `updated` timestamp; stamp `updated` from the base `task` skill's `<frontmatter>` timestamp command in the same edit group, except that a UTC timestamp normalization that preserves the instant leaves `updated` un-bumped under the base `<bump_updated>` timestamp-normalization exception. Run the base task linter with `--quiet`, save the output the apply step acts on as `r<N>-lint.txt`, and fix only findings in the base `<lint>` mechanically fixable finding set.
 </apply_repairs>
 
 <audit_delta>
@@ -213,7 +213,7 @@ Keep this path separate from the body-repair reviewer/verifier path: do not spaw
 
 Surface judgement-call findings instead of guessing: an oversized task that needs a split, a broken link with no determinable target, an unclear frontmatter value, an ambiguous wikilink or footnote conversion, and any finding outside the base mechanically fixable set. Apply the `<mechanical_lint_boundary>` **Repeated-link disposition filter** to the `repeated-link` findings among them, so only a finding this run regrouped leaves the surfaced-but-not-fixed line and the stuck channel to its own disposition line. Use `<structural_split_boundary>` as the reporting model, and compose with the intent-drift boundary by leaving human-owned or drift-sensitive changes untouched.
 
-Before writing, honor `<concurrent_modification_guard>` by re-reading the target and stopping if it diverged from the loop's last-established state, then resolve the project root through the base task discovery step; when `CHARTER.md` exists at that root, validate the mechanical edit group against its boundaries and invariants. Stamp `updated` from the base `task` skill's `<frontmatter>` timestamp command exactly once when the mechanical edit group changes the file; leave `updated` unchanged when there is no mechanical edit. Re-run the directory-wide linter after the edit and confirm the target file has no remaining fixable mechanical findings before reporting.
+Before writing, honor `<concurrent_modification_guard>` by re-reading the target and stopping if it diverged from the loop's last-established state, then resolve the project root through the base task discovery step; when `CHARTER.md` exists at that root, validate the mechanical edit group against its boundaries and invariants. Stamp `updated` from the base `task` skill's `<frontmatter>` timestamp command exactly once when the mechanical edit group changes the file, except that a UTC timestamp normalization that preserves the instant leaves `updated` un-bumped under the base `<bump_updated>` timestamp-normalization exception; leave `updated` unchanged when there is no mechanical edit. Re-run the directory-wide linter after the edit and confirm the target file has no remaining fixable mechanical findings before reporting.
 </finalize_mechanical_lint>
 
 <iterate>

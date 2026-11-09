@@ -712,7 +712,14 @@ case "$eval_id" in
       [[ -f "$TASKS/archive/api_misfiled.md" ]] \
         && [[ "$(fm_field "$TASKS/archive/api_misfiled.md" status)" == "finished" ]]
     }
-    baddate_normalised() { [[ "$(fm_field "$TASKS/api_baddate.md" created)" =~ $ISO_RE ]]; }
+    # A UTC-clean `created` carries the `Z` designator or is date-only; the
+    # linter warns on any naive or non-zero-offset value, so this proves the
+    # run reached the clean bar rather than merely an ISO-shaped value.
+    baddate_normalised() {
+      local v
+      v="$(fm_field "$TASKS/api_baddate.md" created)"
+      [[ "$v" == *Z || "$v" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+    }
     huge_not_split() {
       [[ -f "$TASKS/api_huge.md" ]] \
         && (( $(wc -l < "$TASKS/api_huge.md") > 300 ))

@@ -43,7 +43,7 @@ TASK_NAME="report_grader-case.md"
 # body is the named body file.
 install_task() {
   local dest=$1 body=$2 stamp
-  stamp="$(date +%Y-%m-%dT%H:%M:%S)"
+  stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   {
     printf -- '---\n'
     printf 'description: "Grader case body for the task_create script tests."\n'
