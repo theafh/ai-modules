@@ -1,8 +1,8 @@
 ---
 description: Stop prepare_changelog_day.sh from overflowing the tool buffer — write the blob to a file and add a git_commit-style paginated-consume protocol.
 scope: plugins/ai_dev/skills/update_changelog
-created: 2026-06-02T20:06:20
-updated: 2026-06-23T22:17:43
+created: 2026-06-02T18:06:20Z
+updated: 2026-06-23T20:17:43Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Ship a decoupled ai_dev skill that maintains a root FEATURES.md behavior ledger from the codebase, analogous to update_changelog - independent of the task system, optional, used if present.
 scope: plugins/ai_dev
-created: 2026-06-21T15:17:35
-updated: 2026-11-04T11:49:57
+created: 2026-06-21T13:17:35Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

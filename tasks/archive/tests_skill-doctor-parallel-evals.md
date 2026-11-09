@@ -1,8 +1,8 @@
 ---
 description: Run skill_doctor evals at default 4 workers through the shared helper, keep evals.json-derived ids, and prove isolation with a Cursor default run.
 scope: tests
-created: 2026-10-04T22:11:10
-updated: 2026-11-06T22:40:12
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-06T21:40:12Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

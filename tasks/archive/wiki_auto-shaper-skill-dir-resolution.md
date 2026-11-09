@@ -1,8 +1,8 @@
 ---
 description: Make auto_shaper_wiki resolve $WIKI_SKILL and $WIKI as run-local paths before bundled tool calls, avoiding stale environment or hook state.
 scope: plugins/knowledge_management
-created: 2026-05-28T20:05:29
-updated: 2026-06-15T23:15:13
+created: 2026-05-28T18:05:29Z
+updated: 2026-06-15T21:15:13Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Run git_review evals at default 4 workers through the shared helper, isolate per-eval temp files, and treat model contention as a timeout-tuning problem rather than a serial requirement.
 scope: tests/git_review/evals
-created: 2026-10-04T22:11:10
-updated: 2026-11-01T09:47:07
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-01T08:47:07Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

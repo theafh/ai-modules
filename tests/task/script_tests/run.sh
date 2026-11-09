@@ -33,10 +33,11 @@
 #      probe, `git mv` on a tracked file, plain `mv` on a non-zero probe.
 #      Mechanical command semantics rather than model behavior; the prose
 #      an agent reads is graded in tests/task/evals/.
-#   n*/f*/loc*/prov*/col*/md*/sc*/sz*/c* lint.py's remaining checks: filename
+#   n*/f*/loc*/prov*/col*/md*/sc*/sz*/c*/tz* lint.py's remaining checks: filename
 #      naming, frontmatter completeness/validity, provenance,
 #      status↔location, archive migration, cross open+archive name collisions, standard-markdown
-#      (footnotes/wikilinks), scope resolution, page size, clean tree.
+#      (footnotes/wikilinks), scope resolution, page size, UTC timestamp
+#      normalization, clean tree.
 #
 # Each scenario stages a throwaway tasks/ tree under
 # tests/task/script_tests/scratch/<id>/. The d*/i* scenarios stage
@@ -120,7 +121,7 @@ EOF
 # behaviour under test.
 write_linking_task() {
     local tasks=$1 filename=$2 link_target=$3 now
-    now=$(date +%Y-%m-%dT%H:%M:%S)
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/$filename" <<EOF
 ---
 description: link-resolution harness fixture
@@ -273,7 +274,7 @@ l3_sibling_task_link_resolves() {
     local tasks; tasks=$(fresh_tasks l3)
     # A relative link to a sibling task in the same dir keeps resolving
     # against the task's own directory (the original, non-fallback path).
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "test_sibling.md" "$now"
     write_linking_task "$tasks" "test_linker.md" "test_sibling.md"
     local ret; ret=$(run_lint "$tasks")
@@ -319,7 +320,7 @@ l5_non_task_md_never_read() {
     # wikilinks, position claims, repeated links, and links draw no finding.
     local tasks; tasks=$(fresh_tasks l5)
     local root; root=$(dirname "$tasks")
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "test_anchor.md" "$now"
     cat > "$root/notes.md" <<'EOF'
 # Notes
@@ -347,7 +348,7 @@ l6_existing_target_kinds_resolve() {
     # archived task draws no finding; a missing non-.md target blocks.
     local tasks; tasks=$(fresh_tasks l6)
     local root; root=$(dirname "$tasks")
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     mkdir -p "$root/scripts" "$root/docs/chapter"
     : > "$root/scripts/helper.sh"
     write_task "$tasks" "test_live-target.md" "$now"
@@ -388,7 +389,7 @@ l7_outbound_targets_silent() {
     # climb-past-root stay silent. A non-existing leading-/ path is
     # repo-root-relative (see l26) and is not this silence case.
     local tasks; tasks=$(fresh_tasks l7)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     local abs_existing=/tmp
     [[ -e "$abs_existing" ]] || abs_existing=/
     cat > "$tasks/test_outbound.md" <<EOF
@@ -435,7 +436,7 @@ l26_leading_slash_repo_root_relative() {
     # root resolves cleanly.
     local tasks; tasks=$(fresh_tasks l26)
     local root; root=$(dirname "$tasks")
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     : > "$root/present-at-root.md"
     emit "$tasks/test_leading-slash.md" <<EOF
 ---
@@ -481,7 +482,7 @@ l11_file_scope_ignores_other_task() {
 
 l12_fenced_link_ignored() {
     local tasks; tasks=$(fresh_tasks l12)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_fence.md" <<EOF
 ---
 description: fenced-link silence fixture
@@ -523,7 +524,7 @@ EOF
 
 l13_inline_code_link_ignored() {
     local tasks; tasks=$(fresh_tasks l13)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_inline.md" <<EOF
 ---
 description: inline-code-link silence fixture
@@ -621,7 +622,7 @@ l18_reference_links_existing_and_missing() {
     local tasks; tasks=$(fresh_tasks l18)
     local root; root=$(dirname "$tasks")
     : > "$root/existing-reference.md"
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_reference-links.md" <<EOF
 ---
 description: reference-link extraction fixture
@@ -658,7 +659,7 @@ l19_reference_syntax_escapes_and_entities() {
     local root; root=$(dirname "$tasks")
     : > "$root/existing&entity.md"
     : > "$root/existing[escape].md"
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_reference-controls.md" <<EOF
 ---
 description: reference syntax and escape controls
@@ -703,7 +704,7 @@ EOF
 
 l20_nested_image_descriptions_are_excluded() {
     local tasks; tasks=$(fresh_tasks l20)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_nested-images.md" <<EOF
 ---
 description: nested image description exclusion controls
@@ -751,7 +752,7 @@ EOF
 
 l21_reference_definition_title_lines_are_excluded() {
     local tasks; tasks=$(fresh_tasks l21)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_reference-title-lines.md" <<EOF
 ---
 description: reference definition title line controls
@@ -807,7 +808,7 @@ l22_url_spelled_destinations_normalize() {
     local root; root=$(dirname "$tasks")
     : > "$root/existing file.md"
     : > "$root/existing.md"
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_url-spelled.md" <<EOF
 ---
 description: percent-encoded and query destination controls
@@ -842,7 +843,7 @@ EOF
 
 l23_literal_raw_constructs_ignored() {
     local tasks; tasks=$(fresh_tasks l23)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_literal-raw.md" <<EOF
 ---
 description: autolink and raw HTML controls
@@ -877,7 +878,7 @@ l28_leading_inline_code_keeps_link() {
     # A paragraph line that opens with an inline code span still has its
     # links checked: the blanked span must not read as indented code.
     local tasks; tasks=$(fresh_tasks l28)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_leading-code-span.md" <<EOF
 ---
 description: leading inline code span control
@@ -904,7 +905,7 @@ l29_indented_list_content_keeps_links() {
     # Four-column-indented list content after a blank line is list
     # content, not an indented code block, so its links are checked.
     local tasks; tasks=$(fresh_tasks l29)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_indented-list-links.md" <<EOF
 ---
 description: indented list content controls
@@ -940,7 +941,7 @@ l30_list_nested_fences_scrubbed() {
     # list ends, a four-space-indented tilde line is no fence and its link
     # stays live.
     local tasks; tasks=$(fresh_tasks l30)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     cat > "$tasks/test_list-nested-fences.md" <<EOF
 ---
 description: list-nested fence controls
@@ -1161,7 +1162,7 @@ emit() { cat > "$1"; }
 
 n1_bad_filename_blocks() {
     local tasks; tasks=$(fresh_tasks n1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/BadName.md" <<EOF
 ---
 description: bad filename fixture
@@ -1200,7 +1201,7 @@ EOF
 
 f2_missing_required_field_blocks() {
     local tasks; tasks=$(fresh_tasks f2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_nostatus.md" <<EOF
 ---
 description: missing status fixture
@@ -1221,7 +1222,7 @@ EOF
 
 f3_invalid_status_blocks() {
     local tasks; tasks=$(fresh_tasks f3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_badstatus.md" <<EOF
 ---
 description: invalid status fixture
@@ -1244,7 +1245,7 @@ EOF
 
 f4_non_iso_datetime_warns() {
     local tasks; tasks=$(fresh_tasks f4)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_baddate.md" <<EOF
 ---
 description: non-ISO datetime fixture
@@ -1267,7 +1268,7 @@ EOF
 
 f5_missing_h1_warns() {
     local tasks; tasks=$(fresh_tasks f5)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_noh1.md" <<EOF
 ---
 description: missing H1 fixture
@@ -1290,7 +1291,7 @@ EOF
 
 loc1_archived_non_terminal_silent_by_default() {
     local tasks; tasks=$(fresh_tasks loc1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/archive/test_misplaced.md" <<EOF
 ---
 description: legacy implemented task under archive fixture
@@ -1314,7 +1315,7 @@ EOF
 
 loc2_finished_in_root_blocks() {
     local tasks; tasks=$(fresh_tasks loc2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_done.md" <<EOF
 ---
 description: finished task left in tasks root fixture
@@ -1340,7 +1341,7 @@ EOF
 
 loc3_ready_in_root_clean() {
     local tasks; tasks=$(fresh_tasks loc3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_ready.md" <<EOF
 ---
 description: ready task fixture
@@ -1363,7 +1364,7 @@ EOF
 
 loc4_archived_non_terminal_migrates_in_archive_mode() {
     local tasks; tasks=$(fresh_tasks loc4)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/archive/test_legacy.md" <<EOF
 ---
 description: legacy implemented archive fixture
@@ -1394,7 +1395,7 @@ prov1_missing_reported_by_blocks() {
     local root; root=$(dirname "$tasks")
     git -C "$root" init -q
     git -C "$root" config user.name "Configured User"
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_missing-reporter.md" <<EOF
 ---
 description: missing reporter fixture
@@ -1420,7 +1421,7 @@ prov2_implemented_requires_implemented_by() {
     local root; root=$(dirname "$tasks")
     git -C "$root" init -q
     git -C "$root" config user.name "Implementer User"
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_implemented.md" <<EOF
 ---
 description: implemented task missing implementer fixture
@@ -1445,7 +1446,7 @@ EOF
 
 prov3_deferred_without_implemented_by_clean() {
     local tasks; tasks=$(fresh_tasks prov3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/archive/test_deferred.md" <<EOF
 ---
 description: deferred task fixture
@@ -1470,7 +1471,7 @@ prov4_reported_by_uses_first_commit_author() {
     local tasks; tasks=$(fresh_tasks prov4)
     local root; root=$(dirname "$tasks")
     git -C "$root" init -q
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_history-reporter.md" <<EOF
 ---
 description: tracked task missing reporter fixture
@@ -1496,7 +1497,7 @@ prov5_archived_finished_implemented_by_uses_rename_author() {
     local tasks; tasks=$(fresh_tasks prov5)
     local root; root=$(dirname "$tasks")
     git -C "$root" init -q
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_done.md" <<EOF
 ---
 description: task that will be archived without implementer
@@ -1526,7 +1527,7 @@ EOF
 
 col1_duplicate_name_across_roots_blocks() {
     local tasks; tasks=$(fresh_tasks col1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_dup.md" <<EOF
 ---
 description: open copy fixture
@@ -1562,7 +1563,7 @@ EOF
 
 md1_footnote_blocks() {
     local tasks; tasks=$(fresh_tasks md1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_footnote.md" <<EOF
 ---
 description: footnote fixture
@@ -1589,7 +1590,7 @@ EOF
 
 md2_wikilink_blocks() {
     local tasks; tasks=$(fresh_tasks md2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_wikilink.md" <<'EOF'
 ---
 description: wikilink fixture
@@ -1619,7 +1620,7 @@ sc1_unquoted_scope_real_dir_clean() {
     local tasks; tasks=$(fresh_tasks sc1)
     local root; root=$(dirname "$tasks")
     mkdir -p "$root/src"   # project-root-relative dir the scope points at
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/src_real-scope.md" <<EOF
 ---
 description: unquoted scope pointing at a real dir
@@ -1642,7 +1643,7 @@ EOF
 
 sc2_unquoted_scope_missing_blocks() {
     local tasks; tasks=$(fresh_tasks sc2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_badscope.md" <<EOF
 ---
 description: unquoted scope pointing nowhere
@@ -1665,7 +1666,7 @@ EOF
 
 sc3_unquoted_scope_escape_blocks() {
     local tasks; tasks=$(fresh_tasks sc3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_escape.md" <<EOF
 ---
 description: scope escaping the project root
@@ -1688,7 +1689,7 @@ EOF
 
 sc4_quoted_empty_scope_blocks() {
     local tasks; tasks=$(fresh_tasks sc4)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_emptyscope.md" <<EOF
 ---
 description: quoted-but-empty scope
@@ -1711,7 +1712,7 @@ EOF
 
 sz1_oversized_page_warns() {
     local tasks; tasks=$(fresh_tasks sz1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     {
         cat <<EOF
 ---
@@ -1793,7 +1794,7 @@ EOF
 
 lo1_archived_body_prose_checks_stay_quiet() {
     local tasks; tasks=$(fresh_tasks lo1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     archived_task "$tasks" "link_target.md" "finished"
     write_oversized_task "$tasks/archive/big_oversized.md" "finished" "$now"
     write_twice_linker "$tasks/archive/twice_linker.md" "finished" "$now" "link_target.md"
@@ -1811,7 +1812,7 @@ lo1_archived_body_prose_checks_stay_quiet() {
 
 lo2_live_body_prose_fixtures_still_warn() {
     local tasks; tasks=$(fresh_tasks lo2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "link_target.md" "$now"
     write_oversized_task "$tasks/big_oversized.md" "open" "$now"
     write_twice_linker "$tasks/twice_linker.md" "open" "$now" "link_target.md"
@@ -1829,7 +1830,7 @@ lo2_live_body_prose_fixtures_still_warn() {
 
 lo3_live_linking_archived_target_still_warns() {
     local tasks; tasks=$(fresh_tasks lo3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     archived_task "$tasks" "link_target.md" "finished"
     write_twice_linker "$tasks/live_archive-linker.md" "open" "$now" "archive/link_target.md"
     local ret; ret=$(run_lint "$tasks")
@@ -1844,7 +1845,7 @@ lo3_live_linking_archived_target_still_warns() {
 
 lo4_archive_mode_still_reports_mechanical() {
     local tasks; tasks=$(fresh_tasks lo4)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/archive/defect_badstatus.md" <<EOF
 ---
 description: archived page with a blocking defect
@@ -1868,7 +1869,7 @@ EOF
 
 lo5_live_and_archive_inclusive_body_prose_match() {
     local tasks; tasks=$(fresh_tasks lo5)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "live_target.md" "$now"
     write_oversized_task "$tasks/live_big.md" "open" "$now"
     write_twice_linker "$tasks/live_twice.md" "open" "$now" "live_target.md"
@@ -1901,7 +1902,7 @@ lo5_live_and_archive_inclusive_body_prose_match() {
 # so the quiet half of this scenario fails against that gate.
 lo6_status_gate_quiets_completed_live_tasks() {
     local tasks; tasks=$(fresh_tasks lo6)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "link_target.md" "$now"
     local st
     for st in implemented audited checked ready; do
@@ -1940,7 +1941,7 @@ lo6_status_gate_quiets_completed_live_tasks() {
 # half of this scenario fails against that gate.
 lo7_archived_live_status_reports_only_migration() {
     local tasks; tasks=$(fresh_tasks lo7)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     archived_task "$tasks" "link_target.md" "finished"
     local st
     for st in open checked ready; do
@@ -1974,7 +1975,7 @@ lo7_archived_live_status_reports_only_migration() {
 
 c1_fully_valid_task_is_clean() {
     local tasks; tasks=$(fresh_tasks c1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_good.md" <<EOF
 ---
 description: a fully valid task
@@ -2003,7 +2004,7 @@ EOF
 # tilde prose claims, path-then-tilde, and a parenthesized tilde range.
 sp1_position_claims_warn() {
     local tasks; tasks=$(fresh_tasks sp1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_position.md" <<EOF
 ---
 description: line-number position claim fixture
@@ -2045,7 +2046,7 @@ EOF
 # proving fence-skip. None may produce a soft-pointer finding.
 sp2_silent_shapes_stay_quiet() {
     local tasks; tasks=$(fresh_tasks sp2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_quiet.md" <<EOF
 ---
 description: soft-pointer false-positive guard fixture
@@ -2075,7 +2076,7 @@ EOF
 
 sp3_tilde_range_warns_but_size_extent_stays_quiet() {
     local tasks; tasks=$(fresh_tasks sp3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_tilde-size.md" <<EOF
 ---
 description: tilde soft-pointer and size extent fixture
@@ -2107,7 +2108,7 @@ EOF
 
 rl1_two_links_one_target_warns() {
     local tasks; tasks=$(fresh_tasks rl1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_once.md" <<EOF
 ---
 description: single-link sibling for repeated-link floor fixture
@@ -2150,7 +2151,7 @@ EOF
 
 rl2_one_link_stays_quiet() {
     local tasks; tasks=$(fresh_tasks rl2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_once.md" <<EOF
 ---
 description: single-link target for repeated-link floor fixture
@@ -2187,7 +2188,7 @@ EOF
 
 rl3_seven_links_stronger_hint() {
     local tasks; tasks=$(fresh_tasks rl3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_once.md" <<EOF
 ---
 description: seven-link target for repeated-link strength fixture
@@ -2230,7 +2231,7 @@ EOF
 rl4_normalized_path_prefixes_collapse() {
     local tasks; tasks=$(fresh_tasks rl4)
     local root; root=$(dirname "$tasks")
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     mkdir -p "$root/shared"
     emit "$root/shared/target.md" <<EOF
 # Shared target
@@ -2264,7 +2265,7 @@ EOF
 rl5_every_target_kind_counts() {
     local tasks; tasks=$(fresh_tasks rl5)
     local root; root=$(dirname "$tasks")
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     mkdir -p "$root/plugins/demo/skills/demo/scripts" "$root/wiki"
     emit "$tasks/test_sibling.md" <<EOF
 ---
@@ -2325,7 +2326,7 @@ EOF
 
 rl6_nine_distinct_targets_stay_quiet() {
     local tasks; tasks=$(fresh_tasks rl6)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     local i
     for i in 1 2 3 4 5 6 7 8 9; do
         emit "$tasks/test_t${i}.md" <<EOF
@@ -2366,7 +2367,7 @@ EOF
 
 rl7_fenced_links_do_not_count() {
     local tasks; tasks=$(fresh_tasks rl7)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_once.md" <<EOF
 ---
 description: fenced-only target for fence-skip fixture
@@ -2406,7 +2407,7 @@ EOF
 
 rl8_external_and_mailto_skipped() {
     local tasks; tasks=$(fresh_tasks rl8)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_external.md" <<EOF
 ---
 description: https and mailto repeats produce no repeated-link warn
@@ -2436,7 +2437,7 @@ EOF
 
 de1_absent_design_extended_is_clean() {
     local tasks; tasks=$(fresh_tasks de1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_live.md" <<EOF
 ---
 description: implemented task predating the design-extended field
@@ -2473,7 +2474,7 @@ EOF
 
 de2_non_boolean_design_extended_blocks() {
     local tasks; tasks=$(fresh_tasks de2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_bad.md" <<EOF
 ---
 description: implemented task with a non-boolean design-extended value
@@ -2498,7 +2499,7 @@ EOF
 
 de3_boolean_design_extended_is_clean() {
     local tasks; tasks=$(fresh_tasks de3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_true.md" <<EOF
 ---
 description: implemented task recording a positive design verdict
@@ -2539,7 +2540,7 @@ am1_tracked_move_records_a_rename() {
     local tasks; tasks=$(fresh_tasks am1)
     local root; root=$(dirname "$tasks")
     git -C "$root" init -q
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "test_tracked-close-out.md" "$now"
     git_commit_fixture "$root" "Origin Author" "seed: tracked task file"
     local branch
@@ -2561,7 +2562,7 @@ am2_untracked_move_takes_the_fallback() {
     local tasks; tasks=$(fresh_tasks am2)
     local root; root=$(dirname "$tasks")
     git -C "$root" init -q
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "test_never-committed.md" "$now"
     local branch rc
     branch=$(archive_move "$root" "tasks/test_never-committed.md" "tasks/archive/test_never-committed.md"); rc=$?
@@ -2583,7 +2584,7 @@ am3_probe_fails_outside_a_repository() {
     fi
     local tasks="$base/tasks"
     mkdir -p "$tasks/archive"
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "test_no-repo.md" "$now"
     local branch rc
     branch=$(archive_move "$base" "tasks/test_no-repo.md" "tasks/archive/test_no-repo.md"); rc=$?
@@ -2606,7 +2607,7 @@ am3_probe_fails_outside_a_repository() {
 # archive fixture carrying the provenance that status needs.
 archived_task() {
     local tasks=$1 filename=$2 status=$3 now
-    now=$(date +%Y-%m-%dT%H:%M:%S)
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/archive/$filename" <<EOF
 ---
 description: archived $status fixture
@@ -2624,7 +2625,7 @@ EOF
 
 stage_scoped_tree() {
     local tasks=$1 now
-    now=$(date +%Y-%m-%dT%H:%M:%S)
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     archived_task "$tasks" "link_target.md" "finished"
     # Oversized archived page: header plus >300 filler lines.
     {
@@ -2711,7 +2712,7 @@ fs1_scoped_archived_page_reports_only_itself() {
 
 fs2_scoped_live_page_excludes_all_others() {
     local tasks; tasks=$(fresh_tasks fs2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     # Live page under test carries its own (live-only) soft-pointer warn.
     emit "$tasks/live_target.md" <<EOF
 ---
@@ -2757,7 +2758,7 @@ EOF
 fs3_invalid_path_exits_nonzero() {
     local tasks; tasks=$(fresh_tasks fs3)
     local root; root=$(dirname "$tasks")
-    write_task "$tasks" "test_present.md" "$(date +%Y-%m-%dT%H:%M:%S)"
+    write_task "$tasks" "test_present.md" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     # A real file sitting beside tasks/, inside the project root but
     # outside the tasks tree, so it resolves-outside rather than missing.
     : > "$root/outside.md"
@@ -2778,7 +2779,7 @@ fs3_invalid_path_exits_nonzero() {
 
 fs4_conflicting_flags_and_file_only() {
     local tasks; tasks=$(fresh_tasks fs4)
-    write_task "$tasks" "test_present.md" "$(date +%Y-%m-%dT%H:%M:%S)"
+    write_task "$tasks" "test_present.md" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     local ok=true
 
     # --file with --include-archive is rejected at argparse, naming both.
@@ -2798,7 +2799,7 @@ fs4_conflicting_flags_and_file_only() {
 
 fs5_scoped_duplicate_basename_reports_named_only() {
     local tasks; tasks=$(fresh_tasks fs5)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "dup_page.md" "$now"
     archived_task "$tasks" "dup_page.md" "finished"
     local ret; ret=$(run_lint "$tasks" --file tasks/dup_page.md)
@@ -2826,7 +2827,7 @@ fs6_help_and_usage_document_file_option() {
 fs7_scoped_path_edge_cases() {
     local tasks; tasks=$(fresh_tasks fs7)
     local root; root=$(dirname "$tasks")
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     write_task "$tasks" "test_present.md" "$now"
     # A decoy project whose tasks tree carries the same relative path, so a
     # run started from inside it must still lint the tasks root it was given.
@@ -2863,7 +2864,7 @@ fs7_scoped_path_edge_cases() {
 
 y1_unquoted_colon_space_blocks() {
     local tasks; tasks=$(fresh_tasks y1)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_colon.md" <<EOF
 ---
 description: Turn make install into environment preparation: declare the runtime
@@ -2887,7 +2888,7 @@ EOF
 
 y2_unquoted_hash_after_whitespace_blocks() {
     local tasks; tasks=$(fresh_tasks y2)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_hash.md" <<EOF
 ---
 description: keep the prefix # drop the suffix
@@ -2911,7 +2912,7 @@ EOF
 
 y3_unquoted_backtick_start_blocks() {
     local tasks; tasks=$(fresh_tasks y3)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_tick.md" <<EOF
 ---
 description: \`make lint\` runs the checks
@@ -2935,7 +2936,7 @@ EOF
 
 y4_unquoted_ending_colon_blocks() {
     local tasks; tasks=$(fresh_tasks y4)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_endcolon.md" <<EOF
 ---
 description: environment preparation:
@@ -2959,7 +2960,7 @@ EOF
 
 y5_quoted_colon_and_hash_is_clean() {
     local tasks; tasks=$(fresh_tasks y5)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_quoted.md" <<EOF
 ---
 description: "preparation: declare the runtime # keep the hash"
@@ -2982,7 +2983,7 @@ EOF
 
 y6_quoted_hash_keeps_full_description_length() {
     local tasks; tasks=$(fresh_tasks y6)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     local inner
     inner=$(python3 -c 'print("# " + ("x" * 199))')
     emit "$tasks/test_longhash.md" <<EOF
@@ -3010,7 +3011,7 @@ EOF
 
 y7_quoted_scope_hash_is_text() {
     local tasks; tasks=$(fresh_tasks y7)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     local page="$tasks/test_scopehash.md"
     emit "$page" <<EOF
 ---
@@ -3048,7 +3049,7 @@ print(mod.get_raw_scope(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")))
 y_lint_description() {
     local id=$1 description=$2
     local tasks; tasks=$(fresh_tasks "$id")
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     python3 -c '
 import sys
 from pathlib import Path
@@ -3129,7 +3130,7 @@ y13_unquoted_colon_tab_blocks() {
 
 y14_status_trailing_comment_asks_to_remove_it() {
     local tasks; tasks=$(fresh_tasks y14)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_status_comment.md" <<EOF
 ---
 description: valid task harness fixture
@@ -3155,7 +3156,7 @@ EOF
 
 y15_scope_trailing_comment_stays_a_path() {
     local tasks; tasks=$(fresh_tasks y15)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     emit "$tasks/test_scope_comment.md" <<EOF
 ---
 description: valid task harness fixture
@@ -3181,7 +3182,7 @@ EOF
 
 y16_double_quoted_escapes_decode() {
     local tasks; tasks=$(fresh_tasks y16)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     local page="$tasks/test_escapes.md"
     NOW="$now" python3 -c '
 import os
@@ -3226,7 +3227,7 @@ print(mod._decode_quoted_scalar("\"a\\\\b\""))
 
 y17_apostrophe_does_not_keep_a_later_comment() {
     local tasks; tasks=$(fresh_tasks y17)
-    local now; now=$(date +%Y-%m-%dT%H:%M:%S)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     local page="$tasks/test_apostrophe.md"
     emit "$page" <<EOF
 ---
@@ -3268,6 +3269,149 @@ y18_plain_scalars_yaml_accepts_stay_clean() {
     local ok=true
     assert_eq "exit 0 (plain scalars YAML accepts)" "$rc" "0" || ok=false
     assert_not_contains "no misread finding" "$out" "unquoted value for" || ok=false
+    $ok
+}
+
+###############################################################################
+# UTC timestamp normalization: a naive local or non-zero-offset created /
+# updated value warns and names the no-bump rule; the Z form, a zero offset,
+# and a date-only value stay clean. The conversion snippets preserve the
+# instant, so a naive value converts to its own UTC instant, never to now.
+###############################################################################
+
+tz1_naive_local_warns_with_zone_ask() {
+    local tasks; tasks=$(fresh_tasks tz1)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    emit "$tasks/test_naive.md" <<EOF
+---
+description: naive local timestamp fixture
+scope: "test"
+created: $now
+updated: 2026-11-03T13:26:31
+status: open
+reported-by: Test User
+---
+
+# Naive local timestamp
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local count; count=$(grep -c "naive local time" <<<"$out" || true)
+    assert_eq "exit 0 (naive timestamp is warn, not blocking)" "$rc" "0" || ok=false
+    assert_eq "exactly one naive-local finding" "$count" "1" || ok=false
+    assert_contains "names the naive value" "$out" "2026-11-03T13:26:31" || ok=false
+    assert_contains "names the zone ask" "$out" "zone that produced it" || ok=false
+    assert_contains "names the no-bump rule" "$out" "does not bump \`updated\`" || ok=false
+    assert_not_contains "names no UTC target for a naive value" "$out" "convert it to 20" || ok=false
+    $ok
+}
+
+tz2_nonzero_offset_warns_with_utc_target() {
+    local tasks; tasks=$(fresh_tasks tz2)
+    local now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    emit "$tasks/test_offset.md" <<EOF
+---
+description: non-zero-offset timestamp fixture
+scope: "test"
+created: $now
+updated: 2026-11-03T13:26:31+01:00
+status: open
+reported-by: Test User
+---
+
+# Non-zero-offset timestamp
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local count; count=$(grep -c "non-zero UTC offset" <<<"$out" || true)
+    assert_eq "exit 0 (offset timestamp is warn, not blocking)" "$rc" "0" || ok=false
+    assert_eq "exactly one non-zero-offset finding" "$count" "1" || ok=false
+    assert_contains "names the offset value" "$out" "2026-11-03T13:26:31+01:00" || ok=false
+    assert_contains "names the UTC target" "$out" "2026-11-03T12:26:31Z" || ok=false
+    assert_contains "names the no-bump rule" "$out" "does not bump \`updated\`" || ok=false
+    assert_not_contains "no zone ask for an explicit offset" "$out" "zone that produced it" || ok=false
+    $ok
+}
+
+tz3_utc_and_date_only_stay_clean() {
+    local tasks; tasks=$(fresh_tasks tz3)
+    emit "$tasks/test_z.md" <<'EOF'
+---
+description: Z-form timestamp fixture
+scope: "test"
+created: 2026-11-03T13:26:31Z
+updated: 2026-11-03T13:26:31Z
+status: open
+reported-by: Test User
+---
+
+# Z-form timestamp
+EOF
+    emit "$tasks/test_zero-offset.md" <<'EOF'
+---
+description: zero-offset timestamp fixture
+scope: "test"
+created: 2026-11-03T13:26:31+00:00
+updated: 2026-11-03T13:26:31+0000
+status: open
+reported-by: Test User
+---
+
+# Zero-offset timestamp
+EOF
+    emit "$tasks/test_date-only.md" <<'EOF'
+---
+description: date-only timestamp fixture
+scope: "test"
+created: 2026-11-03
+updated: 2026-11-03
+status: open
+reported-by: Test User
+---
+
+# Date-only timestamp
+EOF
+    local ret; ret=$(run_lint "$tasks")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (Z, zero offset, and date-only are clean)" "$rc" "0" || ok=false
+    assert_contains "reports a clean tree" "$out" "clean — no issues" || ok=false
+    assert_not_contains "no naive-local finding" "$out" "naive local time" || ok=false
+    assert_not_contains "no non-zero-offset finding" "$out" "non-zero UTC offset" || ok=false
+    $ok
+}
+
+tz4_conversion_snippets_keep_the_instant() {
+    local zone_out offset_out fixed_out now
+    zone_out=$(python3 - <<'PY'
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+naive = datetime.fromisoformat("2026-11-03T13:26:31")
+utc = naive.replace(tzinfo=ZoneInfo("Europe/Berlin")).astimezone(timezone.utc)
+print(utc.strftime("%Y-%m-%dT%H:%M:%SZ"))
+PY
+)
+    offset_out=$(python3 - <<'PY'
+from datetime import datetime, timezone
+value = datetime.fromisoformat("2026-11-03T13:26:31+01:00")
+print(value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+PY
+)
+    fixed_out=$(python3 - <<'PY'
+from datetime import datetime, timezone, timedelta
+naive = datetime.fromisoformat("2026-11-03T13:26:31")
+utc = (naive - timedelta(hours=1)).replace(tzinfo=timezone.utc)
+print(utc.strftime("%Y-%m-%dT%H:%M:%SZ"))
+PY
+)
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    local ok=true
+    assert_eq "naive value with an IANA zone converts to its UTC instant" "$zone_out" "2026-11-03T12:26:31Z" || ok=false
+    assert_eq "explicit non-zero offset converts to its UTC instant" "$offset_out" "2026-11-03T12:26:31Z" || ok=false
+    assert_eq "naive value with a fixed offset converts to its UTC instant" "$fixed_out" "2026-11-03T12:26:31Z" || ok=false
+    assert_not_contains "the naive conversion keeps its own instant, not now" "$zone_out" "${now:0:10}" || ok=false
     $ok
 }
 
@@ -3377,6 +3521,11 @@ scenario y15 "lint: scope trailing comment stays a path"   y15_scope_trailing_co
 scenario y16 "lint: double-quoted escapes decode"          y16_double_quoted_escapes_decode
 scenario y17 "lint: apostrophe does not keep a comment"    y17_apostrophe_does_not_keep_a_later_comment
 scenario y18 "lint: plain scalars YAML accepts stay clean" y18_plain_scalars_yaml_accepts_stay_clean
+
+scenario tz1 "lint: naive local timestamp warns with zone ask" tz1_naive_local_warns_with_zone_ask
+scenario tz2 "lint: non-zero offset warns with UTC target"      tz2_nonzero_offset_warns_with_utc_target
+scenario tz3 "lint: Z, zero offset, and date-only stay clean"   tz3_utc_and_date_only_stay_clean
+scenario tz4 "lint: conversion snippets preserve the instant"   tz4_conversion_snippets_keep_the_instant
 
 scenario de1 "lint: absent design-extended is clean"           de1_absent_design_extended_is_clean
 scenario de2 "lint: non-boolean design-extended blocks"        de2_non_boolean_design_extended_blocks

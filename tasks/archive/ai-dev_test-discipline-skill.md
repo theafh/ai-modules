@@ -1,8 +1,8 @@
 ---
 description: Ship a standalone, stack-agnostic test_discipline skill (independent of the task system, like format_*) carrying durable testing rules; optional root TESTING.md holds the fluid project specifics.
 scope: plugins/ai_dev/skills
-created: 2026-06-21T15:39:42
-updated: 2026-07-02T18:44:14
+created: 2026-06-21T13:39:42Z
+updated: 2026-07-02T16:44:14Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

@@ -1,8 +1,8 @@
 ---
 description: "Add git_auto_review: a loop that runs git_review as its gate, fixes qualifying findings with verified agents, and stops under the convergence rules the Approach states once."
 scope: plugins/ai_dev
-created: 2026-10-24T20:48:07
-updated: 2026-10-28T19:28:17
+created: 2026-10-24T18:48:07Z
+updated: 2026-10-28T18:28:17Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: "Make the git_auto_review ignored-file manifest path-only and its set comparisons linear, so a large ignored build tree no longer forces a folder relocation."
 scope: plugins/ai_dev/skills/git_auto_review
-created: 2026-11-03T10:23:25
-updated: 2026-11-03T16:12:09
+created: 2026-11-03T09:23:25Z
+updated: 2026-11-03T15:12:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Add a base-task `<verification_economy>` rule — run each linter, suite, or check once per state and re-run only when its inputs changed — and point task_implement, task_audit, and task_finish at it.
 scope: plugins/ai_dev/skills
-created: 2026-07-16T11:07:19
-updated: 2026-07-20T04:58:49
+created: 2026-07-16T09:07:19Z
+updated: 2026-07-20T02:58:49Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

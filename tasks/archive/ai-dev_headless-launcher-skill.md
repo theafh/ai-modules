@@ -1,8 +1,8 @@
 ---
 description: Ship headless_launcher as the fallback for a failed native spawn, whose stdlib script runs one worker of the host's own agent CLI per manifest row under a watchdog and stop file.
 scope: plugins/ai_dev/skills
-created: 2026-10-03T15:54:08
-updated: 2026-10-04T14:00:34
+created: 2026-10-03T13:54:08Z
+updated: 2026-10-04T12:00:34Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

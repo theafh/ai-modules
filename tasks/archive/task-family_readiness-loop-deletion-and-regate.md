@@ -1,8 +1,8 @@
 ---
 description: In task_auto_check, send any repair that deletes or weakens a frozen task commitment to the user, limit what each gate call reads, and challenge a ready from the last allowed call.
 scope: plugins/ai_dev/skills/task_auto_check
-created: 2026-10-03T15:54:08
-updated: 2026-10-12T19:02:10
+created: 2026-10-03T13:54:08Z
+updated: 2026-10-12T17:02:10Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

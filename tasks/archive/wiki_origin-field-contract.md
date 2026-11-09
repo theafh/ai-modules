@@ -1,8 +1,8 @@
 ---
 description: "Enforce the raw-sidecar origin contract: validate forms, agent auto-reconciles and surfaces conflicts, safe-fix absolute in-repo paths across source_path and sources, align SCHEMA and prose."
 scope: plugins/knowledge_management
-created: 2026-07-21T12:32:02
-updated: 2026-10-16T22:53:04
+created: 2026-07-21T10:32:02Z
+updated: 2026-10-16T20:53:04Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

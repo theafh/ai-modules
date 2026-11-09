@@ -1,10 +1,12 @@
 ---
 description: "Make the task linter report every non-UTC created/updated value as fixable, and give task_fix a locale-ask protocol that converts them to UTC without bumping updated."
 scope: plugins/ai_dev/skills/task
-created: 2026-11-03T13:26:31
-updated: 2026-11-03T23:26:25
-status: ready
+created: 2026-11-03T12:26:31Z
+updated: 2026-11-09T04:58:32Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Heal Task Timestamps to UTC
@@ -17,7 +19,7 @@ The task linter reports every `created` or `updated` frontmatter value that is n
 
 - **The linter.** `plugins/ai_dev/skills/task/scripts/lint.py` holds the date check in `check_frontmatter`, under the `for date_field in ("created", "updated")` loop, and its `DATETIME_RE` accepts an optional `Z` or `[+-]HH:MM` designator. The check warns only on a non-ISO shape, so a naive local value and a non-zero-offset value both pass clean today.
 - **The convention.** The base `task` skill's `<frontmatter>` tells every writer to run `date +%Y-%m-%dT%H:%M:%S` and copy its output, which is local time with no designator. Every value that `grep -h '^updated:' tasks/*.md tasks/archive/*.md` returns lacks a designator.
-- **The no-bump rule.** The base `task` skill's `<bump_updated>` and the linter's inline note that legacy provenance backfill does not bump `updated` say a content fix bumps `updated`. The archived [trustworthy-timestamps task](archive/task-family_trustworthy-timestamps.md) established the wall-clock `date` command that produced the local convention; this task keeps that command's wall-clock rule and changes the form it writes to UTC.
+- **The no-bump rule.** The base `task` skill's `<bump_updated>` and the linter's inline note that legacy provenance backfill does not bump `updated` say a content fix bumps `updated`. The archived [trustworthy-timestamps task](task-family_trustworthy-timestamps.md) established the wall-clock `date` command that produced the local convention; this task keeps that command's wall-clock rule and changes the form it writes to UTC.
 - **The consumer.** `plugins/ai_dev/skills/task_fix/SKILL.md` owns the mechanical remediation in its **Remediate.** step and the report shape in its `<output_contract>`. It is interactive, so it can ask the locale. Its escalated writer `auto_shaper_task` reads `task_fix` before editing.
 - **The tests.** `tests/task/script_tests/run.sh` covers the linter mechanically, and `tests/task/evals/` covers the skill prose through the eval runner.
 - Python 3 is a standing dependency and `zoneinfo` is stdlib from 3.9, so the conversion adds no dependency.

@@ -1,8 +1,8 @@
 ---
 description: "Build language_humanizer in ai_editorial: one SKILL.md that reviews, rewrites, or writes prose into clear, coherent first-read text, with a ledger pass proving no load-bearing meaning drops."
 scope: "ai_editorial plugin"
-created: 2026-07-30T20:42:30
-updated: 2026-10-08T12:43:40
+created: 2026-07-30T18:42:30Z
+updated: 2026-10-08T10:43:40Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

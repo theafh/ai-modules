@@ -78,14 +78,15 @@ fm_field() {
     | sed "s/^$2:[[:space:]]*//; s/^[\"']//; s/[\"']$//"
 }
 
-# iso_epoch <iso> -> epoch seconds (BSD then GNU date form).
+# iso_epoch <iso> -> epoch seconds (UTC Z form first, then BSD then GNU date).
 iso_epoch() {
   local iso="$1"
-  date -j -f "%Y-%m-%dT%H:%M:%S" "$iso" +%s 2>/dev/null \
+  date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$iso" +%s 2>/dev/null \
+    || date -j -f "%Y-%m-%dT%H:%M:%S" "$iso" +%s 2>/dev/null \
     || date -d "$iso" +%s 2>/dev/null
 }
 
-ISO_RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ][0-9]{2}:[0-9]{2}(:[0-9]{2})?)?$'
+ISO_RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ][0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:?[0-9]{2})?)?$'
 
 lint_no_blocking() { python3 "$LINT" "$TASKS" >/dev/null 2>&1; }   # exit 0 == 0 blocking
 lint_archive_no_blocking() { python3 "$LINT" "$TASKS" --include-archive >/dev/null 2>&1; }
@@ -763,6 +764,28 @@ case "$eval_id" in
     check "description is double-quoted with its text unchanged" description_quoted_unchanged
     check "body is byte-identical to the seed"                   body_byte_identical
     check "archive-inclusive lint reports no blocking finding"   lint_archive_no_blocking
+    ;;
+
+  fix_utc_timestamp)
+    f="$TASKS/api_rotation-log.md"
+    updated_is_utc() { [[ "$(fm_field "$f" updated)" == "2026-11-03T12:26:31Z" ]]; }
+    created_is_utc() { [[ "$(fm_field "$f" created)" == "2026-11-03T10:26:31Z" ]]; }
+    # The converted instant is the seeded value's own UTC time, so it proves
+    # the run did not bump `updated` to its wall clock.
+    updated_not_bumped() {
+      [[ "$(fm_field "$f" updated)" == "2026-11-03T12:26:31Z" ]] \
+        && [[ "$(fm_field "$f" updated)" != "$(date -u +%Y-%m-%dT%H:%M:%SZ)" ]]
+    }
+    no_non_utc_findings() {
+      ! python3 "$LINT" "$TASKS" --include-archive --quiet 2>&1 \
+        | grep -qE 'naive local time|non-zero UTC offset'
+    }
+    check "updated is the UTC instant of the naive value"       updated_is_utc
+    check "created is the UTC instant of the naive value"       created_is_utc
+    check "updated is not bumped to the run wall clock"         updated_not_bumped
+    check "archive-inclusive lint reports zero non-UTC stamps"  no_non_utc_findings
+    check "archive-inclusive lint reports no blocking finding"  lint_archive_no_blocking
+    note_agent_attest "the run used the Europe/Berlin zone the prompt supplies rather than guessing a fixed offset"
     ;;
 
   query)

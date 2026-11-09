@@ -1,8 +1,8 @@
 ---
 description: "Rework the Concurrency panel from unseparated inline text into a labelled grid with tabular figures and a green-yellow-orange-red load colour scale."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
-created: 2026-11-06T16:26:03
-updated: 2026-11-06T16:26:03
+created: 2026-11-06T15:26:03Z
+updated: 2026-11-06T15:26:03Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Define $WIKI_SKILL resolution once in the base wiki skill, route wiki_import/wiki_wrapup through it, and add a one-line canonical-mirror note on the agent's <resolve_runtime_paths>.
 scope: plugins/knowledge_management
-created: 2026-07-19T18:51:20
-updated: 2026-08-21T08:01:08
+created: 2026-07-19T16:51:20Z
+updated: 2026-08-21T06:01:08Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

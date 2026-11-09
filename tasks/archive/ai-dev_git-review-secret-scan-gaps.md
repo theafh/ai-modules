@@ -1,8 +1,8 @@
 ---
 description: Make git_review's secret scan report each hit's file and line, read every added line, catch the credential and home-path shapes it misses, and match the manual fallback.
 scope: plugins/ai_dev/skills/git_review
-created: 2026-10-06T13:25:39
-updated: 2026-10-18T15:42:34
+created: 2026-10-06T11:25:39Z
+updated: 2026-10-18T13:42:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

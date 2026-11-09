@@ -1,8 +1,8 @@
 ---
 description: Make task_finish status-aware so a current `audited` task skips the redundant codebase re-verification, while a direct `finished` close on a never-audited task still verifies.
 scope: plugins/ai_dev/skills/task_finish
-created: 2026-06-29T18:42:31
-updated: 2026-06-30T21:53:21
+created: 2026-06-29T16:42:31Z
+updated: 2026-06-30T19:53:21Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

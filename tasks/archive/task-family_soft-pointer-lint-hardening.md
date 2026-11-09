@@ -1,8 +1,8 @@
 ---
 description: Harden the task linter's soft-pointer detector (catch tilde/capital-Lines shapes, skip size extents) and teach skills to triage each warn — rewrite genuine line anchors, ignore false positives.
 scope: plugins/ai_dev/skills
-created: 2026-06-13T14:33:01
-updated: 2026-06-16T22:22:40
+created: 2026-06-13T12:33:01Z
+updated: 2026-06-16T20:22:40Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

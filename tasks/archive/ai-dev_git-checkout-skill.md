@@ -1,8 +1,8 @@
 ---
 description: Add a git_checkout skill to ai_dev that switches the repo onto an existing branch wherever it lives, creating a tracking branch from the sole remote carrying the name and holding on ambiguity.
 scope: plugins/ai_dev/skills
-created: 2026-09-02T18:13:37
-updated: 2026-10-01T22:16:12
+created: 2026-09-02T16:13:37Z
+updated: 2026-10-01T20:16:12Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: "Make a task_auto_check ready verdict refutable: every clean content-lens checklist line carries the citation it rests on, and a first-round zero-issue approval passes a refute-by-default check."
 scope: plugins/ai_dev
-created: 2026-08-12T19:26:25
-updated: 2026-10-16T22:53:04
+created: 2026-08-12T17:26:25Z
+updated: 2026-10-16T20:53:04Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

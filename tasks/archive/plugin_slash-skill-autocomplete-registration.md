@@ -1,8 +1,8 @@
 ---
 description: "Register every discovered skill as a /name command, with collision skipping, discovery order, and a neutral default prompt instead of the skill body."
 scope: harness-plugins/opencode_v2/slash-skill-autocomplete
-created: 2026-11-05T20:33:23
-updated: 2026-11-05T20:33:23
+created: 2026-11-05T19:33:23Z
+updated: 2026-11-05T19:33:23Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

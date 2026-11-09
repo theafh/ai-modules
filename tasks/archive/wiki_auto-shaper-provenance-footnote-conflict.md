@@ -1,8 +1,8 @@
 ---
 description: Align the auto_shaper_wiki agent's provenance detection and remediation with the inline-path-link, no-footnote attribution convention the linter, schema, and SKILL already enforce.
 scope: plugins/knowledge_management
-created: 2026-06-12T23:32:36
-updated: 2026-06-14T19:22:48
+created: 2026-06-12T21:32:36Z
+updated: 2026-06-14T17:22:48Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

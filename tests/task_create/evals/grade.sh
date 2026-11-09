@@ -71,7 +71,8 @@ fm_field() {
 
 iso_epoch() {
   local iso="$1"
-  date -j -f "%Y-%m-%dT%H:%M:%S" "$iso" +%s 2>/dev/null \
+  date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$iso" +%s 2>/dev/null \
+    || date -j -f "%Y-%m-%dT%H:%M:%S" "$iso" +%s 2>/dev/null \
     || date -d "$iso" +%s 2>/dev/null
 }
 

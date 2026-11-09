@@ -1,8 +1,8 @@
 ---
 description: Ship one Pattern A eval-runner helper (default 4 workers, per-job isolation) and lockstep the CLAUDE.md/AGENTS.md/README.md parallel-workers rule with the vendor.py comment.
 scope: tests/lib
-created: 2026-10-04T22:11:10
-updated: 2026-11-06T22:40:12
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-06T21:40:12Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

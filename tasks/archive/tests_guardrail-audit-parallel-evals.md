@@ -1,8 +1,8 @@
 ---
 description: Run guardrail_audit evals at default 4 workers through the shared helper, derive ids from evals.json, and prove isolation with a Cursor default run.
 scope: tests/guardrail_audit/evals
-created: 2026-10-04T22:11:10
-updated: 2026-11-05T23:29:16
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-05T22:29:16Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

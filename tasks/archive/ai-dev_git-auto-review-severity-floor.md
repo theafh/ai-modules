@@ -1,8 +1,8 @@
 ---
 description: "Let git_auto_review fix every finding under git_review's three finding headings, inferred and should-fix ones included, so a run lands those fixes instead of handing them back."
 scope: plugins/ai_dev/skills/git_auto_review
-created: 2026-10-29T23:50:26
-updated: 2026-10-30T15:33:08
+created: 2026-10-29T22:50:26Z
+updated: 2026-10-30T14:33:08Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: "Make git_review's credential scan skip subscripts, unquoted code values, and bare lowercase key names, and match camelCase Token and Password key names."
 scope: plugins/ai_dev/skills/git_review
-created: 2026-10-20T17:01:49
-updated: 2026-10-23T15:57:54
+created: 2026-10-20T15:01:49Z
+updated: 2026-10-23T13:57:54Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

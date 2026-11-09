@@ -1,8 +1,8 @@
 ---
 description: "Broaden the base task skill's role to orientation and state the system's concept: a task file is enough on its own to implement, with every available context staying in play."
 scope: plugins/ai_dev/skills/task
-created: 2026-06-09T11:06:38
-updated: 2026-06-10T20:50:09
+created: 2026-06-09T09:06:38Z
+updated: 2026-06-10T18:50:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

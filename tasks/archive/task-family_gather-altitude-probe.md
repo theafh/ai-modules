@@ -1,8 +1,8 @@
 ---
 description: "Settle incident-shaped requests' altitude at gather: point-fix or behaviour definition, decided from evidence with point-fix default, recorded in the Goal, surfaced to the user."
 scope: plugins/ai_dev/skills/task
-created: 2026-06-09T14:03:33
-updated: 2026-06-10T20:50:09
+created: 2026-06-09T12:03:33Z
+updated: 2026-06-10T18:50:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

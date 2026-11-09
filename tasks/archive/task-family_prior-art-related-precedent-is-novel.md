@@ -1,8 +1,8 @@
 ---
 description: "Classify a prior-art hit that shares context but covers none of the requested work as Novel, so task_create writes the task instead of stopping to ask, and prove it with a task_create eval."
 scope: plugins/ai_dev/skills/task
-created: 2026-10-20T11:22:04
-updated: 2026-10-22T13:46:44
+created: 2026-10-20T09:22:04Z
+updated: 2026-10-22T11:46:44Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

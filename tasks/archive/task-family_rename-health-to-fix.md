@@ -1,8 +1,8 @@
 ---
 description: Rename task_health to task_fix — mirror wiki_fix and give repair a name token (a lever for the sibling-trigger-routing task); update all refs and bump versions lockstep.
 scope: plugins/ai_dev
-created: 2026-05-30T00:07:29
-updated: 2026-05-30T23:13:04
+created: 2026-05-29T22:07:29Z
+updated: 2026-05-30T21:13:04Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

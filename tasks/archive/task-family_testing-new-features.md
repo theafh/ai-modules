@@ -1,8 +1,8 @@
 ---
 description: Running collection task for test coverage deferred from tasks-skill feature commits — behavioral evals (and any other test growth) that the one-bump-per-commit rule keeps out of the shipping commit.
 scope: plugins/ai_dev
-created: 2026-05-28T20:17:49
-updated: 2026-05-31T00:20:09
+created: 2026-05-28T18:17:49Z
+updated: 2026-05-30T22:20:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

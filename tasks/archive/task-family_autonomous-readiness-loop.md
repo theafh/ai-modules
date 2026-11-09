@@ -1,8 +1,8 @@
 ---
 description: "Add task_auto_check, an opt-in loop driving a task to readiness with task_check as the gate: reviewers debate solutions, the verifier keeps worthwhile intent-safe fixes, re-checked until ready."
 scope: plugins/ai_dev
-created: 2026-06-21T15:17:35
-updated: 2026-10-16T22:53:04
+created: 2026-06-21T13:17:35Z
+updated: 2026-10-16T20:53:04Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

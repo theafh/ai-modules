@@ -1,8 +1,8 @@
 ---
 description: Bundle scripts/run_ledger.py in agent_spinner, a standard-library program that keeps a helper run's records and launches no helper, with its tests, check fixes, lint prune, and docs.
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-10-03T15:54:08
-updated: 2026-11-07T19:12:34
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-07T18:12:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

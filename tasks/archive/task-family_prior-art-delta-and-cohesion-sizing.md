@@ -1,8 +1,8 @@
 ---
 description: "Sharpen create-path scoping: re-derive the genuinely-new delta against shipped and open tasks, route or extend instead of duplicating, and size tasks by cohesion rather than reflexive splitting."
 scope: "task_* family skills"
-created: 2026-06-15T16:21:22
-updated: 2026-06-18T23:03:45
+created: 2026-06-15T14:21:22Z
+updated: 2026-06-18T21:03:45Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

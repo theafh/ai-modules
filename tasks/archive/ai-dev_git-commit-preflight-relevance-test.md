@@ -1,8 +1,8 @@
 ---
 description: git_commit's pre-flight gate gains a path-relevance test for obligations, mirrors it into manual_fallback, ships skip/run evals — so commits skip gates that prove nothing on the touched paths.
 scope: plugins/ai_dev/skills/git_commit
-created: 2026-09-01T12:03:24
-updated: 2026-09-01T22:21:17
+created: 2026-09-01T10:03:24Z
+updated: 2026-09-01T20:21:17Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

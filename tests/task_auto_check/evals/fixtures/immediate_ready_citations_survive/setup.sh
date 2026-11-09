@@ -64,8 +64,8 @@ cat > "$target/proj/tasks/api_retry-header.md" <<'EOF'
 ---
 description: Add a Retry-After header to API throttling responses so clients know when to retry after HTTP 429.
 scope: src/api
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

@@ -1,8 +1,8 @@
 ---
 description: Make auto_drift_task return drift only when the title or Goal broadens what the task is for, judged against the last commit; narrowing, refinement, and bug fixes classify clean.
 scope: plugins/ai_dev
-created: 2026-09-06T15:28:22
-updated: 2026-09-07T19:38:34
+created: 2026-09-06T13:28:22Z
+updated: 2026-09-07T17:38:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

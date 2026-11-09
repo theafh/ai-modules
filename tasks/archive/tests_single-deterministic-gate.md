@@ -1,8 +1,8 @@
 ---
 description: "Wire the shared tests/lib unit tests and every harness's deterministic surface into one runnable gate, so no suite is reachable only by remembering its path."
 scope: "local test harnesses"
-created: 2026-10-30T23:33:51
-updated: 2026-11-01T22:28:37
+created: 2026-10-30T22:33:51Z
+updated: 2026-11-01T21:28:37Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: "Make task_auto_check robust on weaker models: final-message helper returns, an output-budget failure class, a context-compaction stop, read-only isolation counting, and high helper effort."
 scope: plugins/ai_dev
-created: 2026-10-27T11:38:26
-updated: 2026-10-27T11:40:00
+created: 2026-10-27T10:38:26Z
+updated: 2026-10-27T10:40:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Enforce log.md rotation (so it never reaches tens of thousands of tokens) and switch the prescribed log-read idiom from tail -n N to entry-aware bounded retrieval.
 scope: plugins/knowledge_management
-created: 2026-05-28T20:05:29
-updated: 2026-10-29T05:53:29
+created: 2026-05-28T18:05:29Z
+updated: 2026-10-29T04:53:29Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

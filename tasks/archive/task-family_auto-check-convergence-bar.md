@@ -1,8 +1,8 @@
 ---
 description: "Make task_auto_check converge: a blocking bar, notes never repaired, diff-scoped rounds, an implementable dry-run verdict, a stall stop, and selector-found sets in place of frozen counts."
 scope: plugins/ai_dev
-created: 2026-10-27T11:39:05
-updated: 2026-10-27T12:19:16
+created: 2026-10-27T10:39:05Z
+updated: 2026-10-27T11:19:16Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

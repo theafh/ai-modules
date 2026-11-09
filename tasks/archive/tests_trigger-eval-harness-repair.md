@@ -1,8 +1,8 @@
 ---
 description: Repair the trigger-eval harness, which reports a zero trigger rate on every positive query, so its numbers measure skill triggering again, then re-baseline the recorded results.
 scope: "local test harnesses"
-created: 2026-08-11T18:59:52
-updated: 2026-10-03T13:20:10
+created: 2026-08-11T16:59:52Z
+updated: 2026-10-03T11:20:10Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

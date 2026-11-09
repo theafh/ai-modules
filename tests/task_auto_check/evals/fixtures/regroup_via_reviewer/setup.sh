@@ -61,8 +61,8 @@ cat > "$target/proj/tasks/api_quota-reset-config.md" <<'EOF'
 ---
 description: Move the quota reset interval out of src/api/quota.py into the service config so operators can tune it without a deploy.
 scope: src/api
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---
@@ -102,8 +102,8 @@ cat > "$target/proj/tasks/api_quota-retry-header.md" <<'EOF'
 ---
 description: Add a Retry-After header to API quota-exhausted responses so clients know when the monthly budget resets.
 scope: src/api
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

@@ -1,8 +1,8 @@
 ---
 description: "Make the request concurrency queue one process-wide limiter shared across every OpenCode location, and make the Concurrency panel show that shared state reliably."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
-created: 2026-11-06T13:18:48
-updated: 2026-11-06T15:03:47
+created: 2026-11-06T12:18:48Z
+updated: 2026-11-06T14:03:47Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

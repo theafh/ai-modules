@@ -1,8 +1,8 @@
 ---
 description: Rewrite six agent_spinner blocks on probing, planning, containment, and user decisions, add the decision packet, rework the tier examples, and add evals and an escape guard.
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-10-03T15:54:08
-updated: 2026-11-06T17:14:37
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-06T16:14:37Z
 status: ready
 reported-by: Andreas Hoffmann
 ---

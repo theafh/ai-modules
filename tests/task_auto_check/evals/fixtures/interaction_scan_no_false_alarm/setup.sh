@@ -78,8 +78,8 @@ cat > "$target/proj/tasks/api_request-id.md" <<'EOF'
 ---
 description: Add a new_request_id() helper returning a fresh UUID4 string so each API request can carry a unique trace identifier.
 scope: src/api
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---

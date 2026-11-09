@@ -1,8 +1,8 @@
 ---
 description: Stop the auto_shaper_wiki agent (and wiki authoring contract) from inserting page-convention prose and lint-sanction prose into wiki page bodies.
 scope: plugins/knowledge_management
-created: 2026-05-28T19:24:26
-updated: 2026-10-04T08:37:56
+created: 2026-05-28T17:24:26Z
+updated: 2026-10-04T06:37:56Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

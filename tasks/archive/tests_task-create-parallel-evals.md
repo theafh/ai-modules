@@ -1,8 +1,8 @@
 ---
 description: Run task_create evals at default 4 workers with per-eval host-tasks fail-safes that stay correct under overlap, using the shared Pattern A helper.
 scope: tests/task_create/evals
-created: 2026-10-04T22:11:10
-updated: 2026-11-04T12:59:12
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-04T11:59:12Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

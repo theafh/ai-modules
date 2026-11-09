@@ -1,8 +1,8 @@
 ---
 description: Keep git_commit's whole-repo staging as the default; add a drift guard that pauses to ask when files outside the reviewed set appear, biasing to commit-all when uncertain.
 scope: plugins/ai_dev/skills/git_commit
-created: 2026-06-26T18:38:55
-updated: 2026-07-06T20:42:50
+created: 2026-06-26T16:38:55Z
+updated: 2026-07-06T18:42:50Z
 reported-by: Andreas Hoffmann
 status: finished
 implemented-by: Andreas Hoffmann

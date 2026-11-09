@@ -1,8 +1,8 @@
 ---
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
-created: 2026-06-09T15:26:15
-updated: 2026-11-04T11:49:57
+created: 2026-06-09T13:26:15Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

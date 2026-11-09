@@ -1,8 +1,8 @@
 ---
 description: Point wiki layer-2 at the shared eval-runner pool so Pattern B stops carrying a private copy of the parallel loop.
 scope: tests/wiki/layer2
-created: 2026-10-04T22:11:10
-updated: 2026-11-04T11:49:57
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

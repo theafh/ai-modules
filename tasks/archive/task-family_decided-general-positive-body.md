@@ -1,8 +1,8 @@
 ---
 description: Tighten the task-body authoring rules so a body stays a resolved, general, forward spec that frames edits as in-place rewrites, keeps sensitive detail out, and stays implementably dense.
 scope: plugins/ai_dev/skills/task
-created: 2026-06-15T16:21:22
-updated: 2026-06-18T20:55:05
+created: 2026-06-15T14:21:22Z
+updated: 2026-06-18T18:55:05Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

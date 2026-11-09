@@ -1,8 +1,8 @@
 ---
 description: Make skill_doctor state that it checks skills only, so a named-agent request gets an out-of-scope answer instead of a missing-skill error.
 scope: plugins/ai_dev/skills/skill_doctor
-created: 2026-08-10T23:20:58
-updated: 2026-08-21T17:14:27
+created: 2026-08-10T21:20:58Z
+updated: 2026-08-21T15:14:27Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Give the task linter a file-scoped mode so archive close-out verifies only the file it just moved, instead of sweeping the whole archive and discarding most of the output by hand.
 scope: plugins/ai_dev/skills/task
-created: 2026-09-05T22:39:53
-updated: 2026-09-06T17:47:29
+created: 2026-09-05T20:39:53Z
+updated: 2026-09-06T15:47:29Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Tighten the task-family soft-pointer rule to verbatim greppable labels only — no path:N or "line N" position claims — at every rule site, plus a fence-aware warn-level lint check.
 scope: plugins/ai_dev/skills
-created: 2026-06-12T14:22:20
-updated: 2026-10-29T06:02:01
+created: 2026-06-12T12:22:20Z
+updated: 2026-10-29T05:02:01Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

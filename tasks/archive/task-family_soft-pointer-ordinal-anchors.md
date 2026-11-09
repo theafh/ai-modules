@@ -1,8 +1,8 @@
 ---
 description: Extend the task-family soft-pointer rule and readiness lens from line-number claims to ordinal list-position anchors ("step 6", "item 3"), which rot when the task edits that list.
 scope: plugins/ai_dev/skills/task
-created: 2026-06-29T22:26:13
-updated: 2026-07-01T19:34:40
+created: 2026-06-29T20:26:13Z
+updated: 2026-07-01T17:34:40Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

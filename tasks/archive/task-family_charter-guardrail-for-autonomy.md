@@ -1,8 +1,8 @@
 ---
 description: Add the root CHARTER.md project-identity contract and template, plus a single shared in-plugin protect hook wired live on both Claude and Codex (config-layer) that branch-gates edits to it.
 scope: plugins/ai_dev
-created: 2026-06-21T15:17:35
-updated: 2026-06-27T18:08:01
+created: 2026-06-21T13:17:35Z
+updated: 2026-06-27T16:08:01Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

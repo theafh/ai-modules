@@ -1,8 +1,8 @@
 ---
 description: Make the task family's Decide or label rule reliably surface a guardrail-bound fork instead of auto-resolving it from the guardrail hierarchy, and re-measure over repeated draws.
 scope: plugins/ai_dev/skills
-created: 2026-09-05T02:35:10
-updated: 2026-10-22T13:47:18
+created: 2026-09-05T00:35:10Z
+updated: 2026-10-22T11:47:18Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: "Reconcile tests-tree docs with the harness: stale scenario counts, wrong fixture counts, and a drifted parallel-workers section."
 scope: "local test harnesses"
-created: 2026-10-30T23:33:51
-updated: 2026-11-02T13:57:12
+created: 2026-10-30T22:33:51Z
+updated: 2026-11-02T12:57:12Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

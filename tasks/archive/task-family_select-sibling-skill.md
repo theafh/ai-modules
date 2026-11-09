@@ -1,8 +1,8 @@
 ---
 description: Add a `task_select` sibling skill that ranks eligible live tasks by impact, implementation complexity, friction, and bug-fix priority, then recommends what to work on next.
 scope: plugins/ai_dev
-created: 2026-06-15T23:42:00
-updated: 2026-06-16T21:37:14
+created: 2026-06-15T21:42:00Z
+updated: 2026-06-16T19:37:14Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Replace the query workflow's file-valuable-answers judgment call with a deterministic filing default, explicit first-synthesis handling, and a mandatory one-line filed-or-not report.
 scope: plugins/knowledge_management
-created: 2026-06-11T17:46:27
-updated: 2026-07-31T19:07:16
+created: 2026-06-11T15:46:27Z
+updated: 2026-07-31T17:07:16Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

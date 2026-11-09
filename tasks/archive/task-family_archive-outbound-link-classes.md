@@ -1,8 +1,8 @@
 ---
 description: Rewrite the archive close-out to re-point all three outbound link classes and verify the moved file with an archive-inclusive lint, plus fix the step count in task and task_finish.
 scope: plugins/ai_dev/skills/task
-created: 2026-07-02T19:03:00
-updated: 2026-07-18T21:59:57
+created: 2026-07-02T17:03:00Z
+updated: 2026-07-18T19:59:57Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

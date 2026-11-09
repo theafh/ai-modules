@@ -1,8 +1,8 @@
 ---
 description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
-created: 2026-08-07T23:39:03
-updated: 2026-11-04T11:49:57
+created: 2026-08-07T21:39:03Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

@@ -12,8 +12,8 @@ cat > "$target/proj/tasks/api_pathological.md" <<'EOF'
 ---
 description: Pathological task fixture that remains under-specified across repair attempts.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

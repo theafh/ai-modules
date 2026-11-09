@@ -1,8 +1,8 @@
 ---
 description: "Move four hand-run checks into agent_spinner's run ledger: stamp routing, checklist coverage, decision packets, and a helper-log read audit, with Claude Code and Cursor log formats."
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-10-03T15:54:08
-updated: 2026-11-06T17:19:27
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-06T16:19:27Z
 status: ready
 reported-by: Andreas Hoffmann
 ---

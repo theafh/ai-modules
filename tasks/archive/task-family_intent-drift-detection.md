@@ -1,8 +1,8 @@
 ---
 description: Add a freeze-time auto_drift_task subagent to task_auto_check that, only on meaning-level Goal drift from git history, surfaces a one-time human intention check; task_check stays history-free.
 scope: "task_* family: new auto_drift_task agent + task_auto_check (task_check unchanged)"
-created: 2026-06-28T18:04:01
-updated: 2026-07-01T19:58:13
+created: 2026-06-28T16:04:01Z
+updated: 2026-07-01T17:58:13Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Give wiki-harness runs self-describing provenance, surface a narrowed regression baseline, and retire the docs' frozen run-cost counts.
 scope: "local test harnesses"
-created: 2026-08-22T08:19:15
-updated: 2026-11-04T20:27:19
+created: 2026-08-22T06:19:15Z
+updated: 2026-11-04T19:27:19Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

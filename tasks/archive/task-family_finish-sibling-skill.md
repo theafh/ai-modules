@@ -1,8 +1,8 @@
 ---
 description: Add a `task_finish` sibling skill that closes out one task — set status, bump updated, git mv to archive/, re-point links, re-lint — the action counterpart to the read-only task_audit gate.
 scope: plugins/ai_dev
-created: 2026-05-28T22:07:10
-updated: 2026-05-31T00:20:09
+created: 2026-05-28T20:07:10Z
+updated: 2026-05-30T22:20:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

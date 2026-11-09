@@ -1,8 +1,8 @@
 ---
 description: Deploy the output style to Antigravity as an always-on rule, at global scope as a marked block in the single rules file and at project scope as an ordinary workspace rule file.
 scope: deployment
-created: 2026-08-07T23:39:03
-updated: 2026-11-04T11:49:57
+created: 2026-08-07T21:39:03Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

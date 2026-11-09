@@ -32,8 +32,8 @@ new_project() {
     (cd "$proj" && pwd -P)
 }
 
-# now_iso -> ISO 8601 local timestamp matching the skill's stamp format.
-now_iso() { date +%Y-%m-%dT%H:%M:%S; }
+# now_iso -> ISO 8601 UTC timestamp matching the skill's stamp format.
+now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 # git_commit_all <proj> <message> -> stage and commit the whole tree so a
 # later `git status --porcelain` cleanly reveals what the agent changed.

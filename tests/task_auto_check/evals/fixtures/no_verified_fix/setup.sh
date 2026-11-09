@@ -12,8 +12,8 @@ cat > "$target/proj/tasks/api_product-decision.md" <<'EOF'
 ---
 description: Fixture whose remaining readiness gap needs a product decision.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

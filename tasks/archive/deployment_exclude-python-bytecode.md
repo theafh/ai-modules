@@ -1,8 +1,8 @@
 ---
 description: Exclude __pycache__ directories and stray .pyc files from every deployed artifact so a working tree that ran bundled skill scripts stops pushing Python bytecode into vendor config dirs.
 scope: deployment
-created: 2026-08-10T23:01:29
-updated: 2026-08-12T22:44:15
+created: 2026-08-10T21:01:29Z
+updated: 2026-08-12T20:44:15Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

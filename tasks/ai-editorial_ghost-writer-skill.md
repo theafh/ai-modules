@@ -1,8 +1,8 @@
 ---
 description: "Build the ghost_writer skill: rules for writing and especially editing strong prose, with one ruleset per genre — scientific, essays, blog posts, social media, case studies."
 scope: "ai_editorial plugin"
-created: 2026-06-01T23:31:06
-updated: 2026-11-04T11:49:57
+created: 2026-06-01T21:31:06Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

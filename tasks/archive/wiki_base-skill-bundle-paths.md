@@ -1,8 +1,8 @@
 ---
 description: Route the wiki hub's own bundled-script invocations through the resolved bundle path, since its bare relative calls resolve only when the working directory is the skill bundle.
 scope: plugins/knowledge_management
-created: 2026-08-11T18:59:52
-updated: 2026-08-22T10:25:12
+created: 2026-08-11T16:59:52Z
+updated: 2026-08-22T08:25:12Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

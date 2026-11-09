@@ -1,8 +1,8 @@
 ---
 description: Let a wiki declare in-repo source roots in SCHEMA `## Lint` so `sources:` can cite live in-repo primary sources beside `raw/`, honoured by linter and auto-shaper; default unchanged.
 scope: plugins/knowledge_management
-created: 2026-09-06T14:24:22
-updated: 2026-11-04T10:11:30
+created: 2026-09-06T12:24:22Z
+updated: 2026-11-04T09:11:30Z
 status: ready
 reported-by: Andreas Hoffmann
 ---

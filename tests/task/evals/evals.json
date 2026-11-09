@@ -16,7 +16,7 @@
         "reported-by is populated from the user-name chain.",
         "created equals updated (both stamped once from one date run).",
         "created sits within minutes of the real wall clock captured at run time — not a fabricated time-of-day (grade.sh compares it against the run-start wall clock).",
-        "The agent ran `date +%Y-%m-%dT%H:%M:%S` (or otherwise produced a wall-clock value) rather than inventing a timestamp.",
+        "The agent ran `date -u +%Y-%m-%dT%H:%M:%SZ` (or otherwise produced a UTC wall-clock value) rather than inventing a timestamp.",
         "The frontmatter description is composed to the ~180-character budget (mechanically: at most 200 characters, under the lint warn).",
         "'## Acceptance' is an enumerated list of task-specific checks; no generic project gate (make lint, a deploy dry-run, the full test suite) appears as an item.",
         "No second task was created and no list/query/update workflow was run."
@@ -291,6 +291,22 @@
         "After the run the description is double-quoted and its text is unchanged.",
         "The body is byte-identical to the seeded body.",
         "lint.py --include-archive reports no blocking finding."
+      ]
+    },
+    {
+      "id": "fix_utc_timestamp",
+      "skill": "task_fix",
+      "prompt": "Health-check and clean up the tasks backlog in this project. The task timestamps were written in Europe/Berlin local time, so convert every non-UTC timestamp to UTC. Fix what is mechanical and flag the rest for review.",
+      "expected_output": "task_fix applies the timestamp-correction protocol with the Europe/Berlin zone the prompt supplies: the naive created and updated values are rewritten to the Z form at their own UTC instants (2026-11-03T10:26:31Z and 2026-11-03T12:26:31Z), updated is not bumped to the run's wall clock because the conversion preserves the instant, and the archive-inclusive linter reports zero non-UTC timestamps and no blocking finding.",
+      "files": [
+        "evals/fixtures/fix_utc_timestamp/setup.sh"
+      ],
+      "expectations": [
+        "The task's updated value is rewritten to 2026-11-03T12:26:31Z, the UTC instant of the seeded naive local value.",
+        "The task's created value is rewritten to 2026-11-03T10:26:31Z, the UTC instant of the seeded naive local value.",
+        "updated is left at that converted instant rather than bumped to the run's wall clock, because the conversion preserves the instant.",
+        "An archive-inclusive lint run reports zero non-UTC timestamps and zero blocking findings.",
+        "The run uses the Europe/Berlin zone the prompt supplies, rather than guessing a fixed offset or a different zone."
       ]
     },
     {

@@ -1,8 +1,8 @@
 ---
 description: "Make the wiki log contract single-voiced: log.md entries only when wiki files changed — fix the query step, log-template preamble, and schema-template every-action rule."
 scope: plugins/knowledge_management
-created: 2026-06-11T17:46:27
-updated: 2026-10-29T06:02:01
+created: 2026-06-11T15:46:27Z
+updated: 2026-10-29T05:02:01Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Rewrite agent_spinner's description so the router reaches it, measured against the recorded 1-of-8 recall baseline while holding its clean 8-of-8 boundary.
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-09-16T14:58:00
-updated: 2026-10-04T19:52:01
+created: 2026-09-16T12:58:00Z
+updated: 2026-10-04T17:52:01Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

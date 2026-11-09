@@ -1,8 +1,8 @@
 ---
 description: Rewrite the re-ingest drift instruction to compare fresh content against the recorded sha256 via the hash helper's report-only mode before any sidecar write, so drift is detected rather than erased.
 scope: plugins/knowledge_management
-created: 2026-07-19T18:51:20
-updated: 2026-08-21T18:18:43
+created: 2026-07-19T16:51:20Z
+updated: 2026-08-21T16:18:43Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Give git_checkout and git_refresh vendor-aware Pattern A eval runners that import the shared eval_runner helper, so an eval sweep reaches their behavioral evals.
 scope: "local test harnesses"
-created: 2026-09-05T02:10:57
-updated: 2026-10-19T19:52:34
+created: 2026-09-05T00:10:57Z
+updated: 2026-10-19T17:52:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

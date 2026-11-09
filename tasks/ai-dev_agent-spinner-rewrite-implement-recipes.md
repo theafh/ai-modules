@@ -1,8 +1,8 @@
 ---
 description: Add agent_spinner's recipes for one wording rule across many files and for one task spanning many files, with selector rows and four evals for sampling, triage, and moved files.
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-10-03T15:54:08
-updated: 2026-10-04T17:22:33
+created: 2026-10-03T13:54:08Z
+updated: 2026-10-04T15:22:33Z
 status: open
 reported-by: Andreas Hoffmann
 ---

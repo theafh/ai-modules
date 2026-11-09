@@ -1,8 +1,8 @@
 ---
 description: Make the size lint and the prose split thresholds growth-pattern aware (per-type defaults + SCHEMA `## Lint` growth bullet), and make custom-type anatomies name their session-derived-source label.
 scope: plugins/knowledge_management
-created: 2026-05-28T19:25:37
-updated: 2026-11-04T10:11:30
+created: 2026-05-28T17:25:37Z
+updated: 2026-11-04T09:11:30Z
 status: open
 reported-by: Andreas Hoffmann
 ---

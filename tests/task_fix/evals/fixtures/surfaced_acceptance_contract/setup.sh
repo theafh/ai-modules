@@ -55,8 +55,8 @@ cat > "$target/proj/tasks/api_token-rotation.md" <<'EOF'
 ---
 description: Move the hourly token rotation job onto the shared scheduler and set the retention window for rotation history.
 scope: src/auth
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---
@@ -99,8 +99,8 @@ cat > "$target/proj/tasks/api_retirement-audit-log.md" <<'EOF'
 ---
 description: Record an audit row for every token retirement so an operator can answer which tokens were retired and when.
 scope: src/auth
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

@@ -1,8 +1,8 @@
 ---
 description: "Name every eval sandbox root by its harness prefix alone, so a worker cannot read the eval id or scenario name, and the expected answer it often encodes, from its own working directory."
 scope: "local test harnesses"
-created: 2026-10-20T11:45:48
-updated: 2026-10-23T13:31:23
+created: 2026-10-20T09:45:48Z
+updated: 2026-10-23T11:31:23Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

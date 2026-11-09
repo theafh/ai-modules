@@ -1,8 +1,8 @@
 ---
 description: "Add a bounded recent-transition feed to the Concurrency panel so acquire, queue, and release activity is visible in the desktop app instead of only in discarded stdout."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
-created: 2026-11-06T13:18:48
-updated: 2026-11-06T15:23:00
+created: 2026-11-06T12:18:48Z
+updated: 2026-11-06T14:23:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Make the auto_shaper_wiki agent route displaced semantics to their proper channel before normalising structure, and surface both halves in the audit report.
 scope: plugins/knowledge_management
-created: 2026-05-28T19:25:24
-updated: 2026-08-21T17:27:43
+created: 2026-05-28T17:25:24Z
+updated: 2026-08-21T15:27:43Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

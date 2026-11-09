@@ -1,8 +1,8 @@
 ---
 description: git_commit pre-flight step before gather_context that satisfies tree-mutating agent-directed obligations first, so they aren't skipped, context builds once, and drift ignores self-edits.
 scope: plugins/ai_dev/skills/git_commit
-created: 2026-07-14T18:41:53
-updated: 2026-07-18T05:21:05
+created: 2026-07-14T16:41:53Z
+updated: 2026-07-18T03:21:05Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

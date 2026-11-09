@@ -1,8 +1,8 @@
 ---
 description: Let wiki_fix hand its agent a user-approved list of confirmed findings as its scope, so auto_shaper_wiki checks each one again, fixes only those, and reports the outcome of each.
 scope: plugins/knowledge_management/skills/wiki_fix
-created: 2026-10-03T15:54:08
-updated: 2026-11-04T11:49:57
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

@@ -1,8 +1,8 @@
 ---
 description: Rename the `tasks` skill to `task` everywhere (dir, frontmatter, H1, plugin metas, READMEs, CLAUDE.md), keeping the managed `tasks/` backlog dir name — prerequisite for the task_* sibling skills.
 scope: plugins/ai_dev
-created: 2026-05-28T20:25:06
-updated: 2026-06-14T18:14:02
+created: 2026-05-28T18:25:06Z
+updated: 2026-06-14T16:14:02Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

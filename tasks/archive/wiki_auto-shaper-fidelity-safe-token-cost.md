@@ -1,8 +1,8 @@
 ---
 description: Cut auto_shaper_wiki token cost via a safe orient-phase trim and change-scoped page reads, while preserving every reflective prose check the linter cannot catch.
 scope: plugins/knowledge_management
-created: 2026-06-27T11:12:00
-updated: 2026-07-30T11:23:55
+created: 2026-06-27T09:12:00Z
+updated: 2026-07-30T09:23:55Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

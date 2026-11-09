@@ -1,8 +1,8 @@
 ---
 description: Teach the agent_spinner eval runner second turn, inline body, staged agents, CLI-withheld shell/writes with declared-absence spawn, a tool-call record, and the Claude/Cursor parity rule.
 scope: tests/agent_spinner/evals
-created: 2026-10-03T15:54:08
-updated: 2026-11-08T13:52:54
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-08T12:52:54Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

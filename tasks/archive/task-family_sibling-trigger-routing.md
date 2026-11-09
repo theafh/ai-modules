@@ -1,8 +1,8 @@
 ---
 description: Improve task* family trigger routing — baseline precise 14/25; description-sharpening was tried and regressed, so the working levers are naming and right-sizing the eval, not more description text.
 scope: plugins/ai_dev
-created: 2026-05-29T23:41:45
-updated: 2026-05-31T00:43:06
+created: 2026-05-29T21:41:45Z
+updated: 2026-05-30T22:43:06Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

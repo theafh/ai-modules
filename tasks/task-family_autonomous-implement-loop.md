@@ -1,8 +1,8 @@
 ---
 description: "Low-priority convenience loop task_auto_implement: implement then audit, re-implement on findings until the audit is clean, then auto-finish; off by default, single-shot readiness remains the aim."
 scope: plugins/ai_dev
-created: 2026-06-21T17:17:45
-updated: 2026-11-04T11:49:57
+created: 2026-06-21T15:17:45Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

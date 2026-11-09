@@ -609,7 +609,7 @@ case "$eval_id" in
         && body_text "$f" >"$target/.after.body" \
         && cmp -s "$target/.before.body" "$target/.after.body"
     }
-    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
+    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]; }
     check "task remains status: ready" status_ready
     check "description is within linter budget" description_within_budget
     check "description preserves API Retry-After throttling scope" description_scope_preserved
@@ -627,7 +627,7 @@ case "$eval_id" in
     status_ready() { status_is_one_of "$f" ready checked; }
     link_repointed() { grep -Fq '(api_cursor-contract.md)' "$f"; }
     broken_target_gone() { ! grep -Fq '(api_cursor.md)' "$f"; }
-    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
+    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]; }
     check "status stays ready/checked (gate verdict only)" status_ready
     check "broken link is re-pointed to api_cursor-contract.md" link_repointed
     check "missing api_cursor.md target is no longer referenced" broken_target_gone
@@ -653,7 +653,7 @@ case "$eval_id" in
     # documented edit surfaces stay named (same pattern as the repair-class
     # evals).
     goal_preserved() { grep -q '504' "$f" && grep -qE 'docs/api\.md|src/api/timeout\.py' "$f"; }
-    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
+    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]; }
     check "status stays ready/checked (gate verdict only, no other change)" status_ready
     check "created is normalised to ISO 8601 (2026-01-01)" created_iso
     check "504 timeout objective and edit surfaces are preserved" goal_preserved
@@ -672,7 +672,7 @@ case "$eval_id" in
     status_ready() { status_is_one_of "$f" ready checked; }
     no_wikilink() { ! grep -Fq '[[' "$f"; }
     link_converted() { grep -Fq '(api_error-codes.md)' "$f"; }
-    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
+    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]; }
     check "task remains status: ready" status_ready
     check "wikilink syntax is removed from the body" no_wikilink
     check "wikilink is converted to a standard link to api_error-codes.md" link_converted
@@ -732,7 +732,7 @@ case "$eval_id" in
         && grep -Fq 'Document the supported filter operators' "$f"
     }
     origin_not_restored() { ! grep -Fq 'Add cursor pagination to the public API search endpoint' "$f"; }
-    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-02T00:00:00" ]]; }
+    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-02T00:00:00Z" ]]; }
     check "task remains status: open because task_check is not run" status_open
     check "no extra task files created" one_task
     check "no task file is archived or moved" no_archive_task
@@ -796,7 +796,7 @@ case "$eval_id" in
       grep -Fq 'webhook delivery surface' "$f" \
         && grep -Fq 'src/api/webhooks.py' "$f"
     }
-    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-02T00:00:00" ]]; }
+    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-02T00:00:00Z" ]]; }
     check "task remains status: open because task_check is not run" status_open
     check "no extra task files created" one_task
     check "no task file is archived or moved" no_archive_task
@@ -1235,7 +1235,7 @@ PY
     status_open() { status_is "$f" open; }
     one_task() { task_count_is 1; }
     file_untouched() { git -C "$proj" diff --quiet -- tasks/api_healthcheck.md; }
-    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-01T00:00:00" ]]; }
+    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-01T00:00:00Z" ]]; }
     check "task remains status: open (no gate write happened)" status_open
     check "updated timestamp is unchanged" updated_unchanged
     check "task file is byte-for-byte unchanged" file_untouched
@@ -1253,7 +1253,7 @@ PY
     status_open() { status_is "$f" open; }
     one_task() { task_count_is 1; }
     file_untouched() { git -C "$proj" diff --quiet -- tasks/api_metrics.md; }
-    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-01T00:00:00" ]]; }
+    updated_unchanged() { [[ "$(fm_field "$f" updated)" == "2026-01-01T00:00:00Z" ]]; }
     check "task remains status: open (task_check never ran)" status_open
     check "updated timestamp is unchanged" updated_unchanged
     check "task file is byte-for-byte unchanged" file_untouched
@@ -1424,7 +1424,7 @@ PY
       git -C "$proj" show HEAD:tasks/api_quota-reset-config.md >"$target/.sibling.md" \
         && cmp -s "$target/.sibling.md" "$sibling"
     }
-    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
+    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]; }
     disposition_line_regrouped() {
       [[ "$(disposition_of "api_quota-retry-header")" == "regrouped" ]]
     }
@@ -1462,7 +1462,7 @@ PY
       git -C "$proj" show HEAD:tasks/api_throttle-window-config.md >"$target/.sibling.md" \
         && cmp -s "$target/.sibling.md" "$sibling"
     }
-    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]; }
+    updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]; }
     # The body, H1 onward, is exactly as staged. The frontmatter is left out
     # because the gate's own ready stamp rewrites status and updated on every
     # path, so a whole-file comparison would fail a surfaced run that left the

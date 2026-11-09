@@ -1,8 +1,8 @@
 ---
 description: Isolate git_commit eval TMPDIR per job, run the suite at default 4 workers through the shared Pattern A helper, and prove that path on the default vendor.
 scope: tests/git_commit/evals
-created: 2026-10-04T22:11:10
-updated: 2026-10-21T18:04:41
+created: 2026-10-04T20:11:10Z
+updated: 2026-10-21T16:04:41Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: "Add a declared-direction register (`## Direction`) the code drives toward, and teach guardrail_audit to leave an unreached target unflagged."
 scope: plugins/ai_dev/skills
-created: 2026-08-15T12:31:08
-updated: 2026-10-17T13:43:37
+created: 2026-08-15T10:31:08Z
+updated: 2026-10-17T11:43:37Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

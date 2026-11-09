@@ -1,8 +1,8 @@
 ---
 description: Parallelize isolated task-hub evals at default 4 workers via Pattern A with per-eval host-tasks fail-safes under overlap, and keep the Approach serial nested-loop set sequential in-run.
 scope: tests/task/evals
-created: 2026-10-04T22:11:10
-updated: 2026-11-02T18:51:01
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-02T17:51:01Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

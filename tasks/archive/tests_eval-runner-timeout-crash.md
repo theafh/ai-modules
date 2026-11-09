@@ -1,8 +1,8 @@
 ---
 description: Re-measure task_auto_check eval band, set default --timeout above it, sync RUNBOOK/run.py/CLAUDE.md band surfaces, keep per-eval ceilings via evals.json and RUNBOOK table.
 scope: "local test harnesses"
-created: 2026-09-05T03:06:08
-updated: 2026-10-13T10:59:58
+created: 2026-09-05T01:06:08Z
+updated: 2026-10-13T08:59:58Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

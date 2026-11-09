@@ -1,8 +1,8 @@
 ---
 description: Cut auto_shaper_wiki token consumption from unconditional full-file reads — make orient reads conditional and switch the page walk to Grep-first, bounded reads.
 scope: plugins/knowledge_management
-created: 2026-05-28T20:05:29
-updated: 2026-06-27T11:12:00
+created: 2026-05-28T18:05:29Z
+updated: 2026-06-27T09:12:00Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

@@ -1,8 +1,8 @@
 ---
 description: "Wire the live-task ordering fork to `<dependency_signals>` in the base task skill and the verifier, so directional evidence settles a ship order instead of surfacing it."
 scope: plugins/ai_dev
-created: 2026-11-06T10:47:26
-updated: 2026-11-06T21:01:55
+created: 2026-11-06T09:47:26Z
+updated: 2026-11-06T20:01:55Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

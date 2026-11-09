@@ -1,8 +1,8 @@
 ---
 description: Park the dormant managed-global-rules variables in deployment.sh as commented scaffolding with a revival note, clearing the SC2034 shellcheck findings.
 scope: deployment
-created: 2026-06-02T19:23:55
-updated: 2026-06-14T18:14:02
+created: 2026-06-02T17:23:55Z
+updated: 2026-06-14T16:14:02Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

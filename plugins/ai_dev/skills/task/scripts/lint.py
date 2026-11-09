@@ -41,6 +41,7 @@ import subprocess
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 from urllib.parse import unquote
@@ -80,6 +81,14 @@ DATETIME_RE = re.compile(
     r"(?:[T ]\d{2}:\d{2}(?::\d{2})?"  # optional time
     r"(?:Z|[+-]\d{2}:?\d{2})?)?$"     # optional tz
 )
+# UTC canonical form: a `created` / `updated` value is clean when it carries
+# the `Z` designator, a zero offset (`+00:00` / `+0000`), or is a date with no
+# time part. A time with no designator is naive local time; a non-zero offset
+# carries an explicit instant. Both heal to the `Z` form without changing the
+# instant, so the conversion never bumps `updated`.
+DATE_ONLY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+OFFSET_RE = re.compile(r"[+-]\d{2}:?\d{2}$")
+ZERO_OFFSET_RE = re.compile(r"^[+-]00:?00$")
 H1_RE = re.compile(r"^#\s+\S")
 # First character of an unquoted scalar that YAML reads as an indicator
 # rather than as text. Covers the skill_doctor start class and the flow
@@ -601,6 +610,49 @@ def implemented_by_value(tasks: Path, page: Path) -> tuple[str, str]:
     return user_name_head(tasks), "derived from `git config user.name`"
 
 
+def _utc_target(value: str) -> str | None:
+    """Return the `Z`-form UTC instant of a value with an explicit offset."""
+    try:
+        parsed = datetime.fromisoformat(value.replace(" ", "T", 1))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _utc_normalization_message(date_field: str, value: str) -> str | None:
+    """Return a warn message for a datetime that is not in UTC form.
+
+    A value is clean when it carries `Z`, a zero offset (`+00:00` /
+    `+0000`), or is a date with no time part. A time with no designator is
+    naive local time, and a non-zero offset carries an explicit instant.
+    Both are reported so a task tree heals to the canonical `Z` form. The
+    message names the no-bump rule because the conversion preserves the
+    instant; an explicit offset carries its UTC target, while a naive value
+    names the zone ask in place of one.
+    """
+    if DATE_ONLY_RE.match(value) or value.endswith("Z"):
+        return None
+    offset = OFFSET_RE.search(value)
+    if offset is not None:
+        if ZERO_OFFSET_RE.match(offset.group(0)):
+            return None
+        target = _utc_target(value)
+        target_clause = f"convert it to {target}" if target else "convert it to UTC"
+        return (
+            f"{date_field} carries a non-zero UTC offset ({value!r}); "
+            f"{target_clause} — the conversion preserves the instant, so "
+            "it does not bump `updated`"
+        )
+    return (
+        f"{date_field} is naive local time ({value!r}); convert it to UTC "
+        "by naming the zone that produced it (an IANA zone such as "
+        "Europe/Berlin, or a fixed offset) — the conversion preserves the "
+        "instant, so it does not bump `updated`"
+    )
+
+
 def check_frontmatter(tasks: Path, page: Path) -> tuple[list[Issue], dict | None]:
     text = page.read_text(encoding="utf-8")
     fm, body = parse_frontmatter(text)
@@ -664,12 +716,17 @@ def check_frontmatter(tasks: Path, page: Path) -> tuple[list[Issue], dict | None
 
     for date_field in ("created", "updated"):
         v = fm.get(date_field)
-        if isinstance(v, str) and v and not DATETIME_RE.match(v):
-            issues.append(Issue(
-                SEV_WARN, "frontmatter", page,
-                f"{date_field} not in ISO 8601 format (YYYY-MM-DD or "
-                f"YYYY-MM-DDTHH:MM:SS): {v!r}",
-            ))
+        if isinstance(v, str) and v:
+            if not DATETIME_RE.match(v):
+                issues.append(Issue(
+                    SEV_WARN, "frontmatter", page,
+                    f"{date_field} not in ISO 8601 format (YYYY-MM-DD or "
+                    f"YYYY-MM-DDTHH:MM:SS): {v!r}",
+                ))
+                continue
+            utc_message = _utc_normalization_message(date_field, v)
+            if utc_message:
+                issues.append(Issue(SEV_WARN, "frontmatter", page, utc_message))
 
     description = fm.get("description")
     if isinstance(description, str) and len(description) > 200:

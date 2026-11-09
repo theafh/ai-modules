@@ -1,8 +1,8 @@
 ---
 description: Run the delegation probes on Codex and OpenCode, record them in harness_portability and the wiki, add eval vendors where a headless CLI allows, and run the agent_spinner suite there.
 scope: plugins/ai_dev/skills/harness_portability
-created: 2026-10-03T15:54:08
-updated: 2026-10-04T15:20:11
+created: 2026-10-03T13:54:08Z
+updated: 2026-10-04T13:20:11Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

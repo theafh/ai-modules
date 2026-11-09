@@ -1,8 +1,8 @@
 ---
 description: After the changelog skill fixes ship, delete CHANGELOG.md and cold-regenerate it from git history with the fixed skill, then verify a re-run is a no-op.
 scope: "CHANGELOG.md regeneration"
-created: 2026-06-02T19:37:57
-updated: 2026-07-04T13:31:02
+created: 2026-06-02T17:37:57Z
+updated: 2026-07-04T11:31:02Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

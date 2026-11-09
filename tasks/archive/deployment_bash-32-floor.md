@@ -1,8 +1,8 @@
 ---
 description: Rewrite deployment.sh to run under the stock macOS bash 3.2, guard the floor with a lint check and a bash-3.2 test run, fix two mapfile graders, and state the floor in the deploy README.
 scope: deployment
-created: 2026-09-18T19:48:56
-updated: 2026-10-03T14:55:53
+created: 2026-09-18T17:48:56Z
+updated: 2026-10-03T12:55:53Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

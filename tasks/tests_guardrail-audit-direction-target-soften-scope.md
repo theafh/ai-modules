@@ -1,8 +1,8 @@
 ---
 description: Scope the guardrail_audit direction_target softening check to sentences about the Direction target so an unrelated doc-vs-code option stops failing it.
 scope: tests/guardrail_audit/evals
-created: 2026-11-06T10:48:40
-updated: 2026-11-06T10:48:40
+created: 2026-11-06T09:48:40Z
+updated: 2026-11-06T09:48:40Z
 status: open
 reported-by: Andreas Hoffmann
 ---

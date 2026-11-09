@@ -1,8 +1,8 @@
 ---
 description: Move the readiness checklist into the base task skill as the single source, have task_create self-check drafts against it pre-write, and task_check assess by reference.
 scope: "task_* family skills"
-created: 2026-06-09T10:45:16
-updated: 2026-06-10T20:50:09
+created: 2026-06-09T08:45:16Z
+updated: 2026-06-10T18:50:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

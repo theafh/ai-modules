@@ -1,8 +1,8 @@
 ---
 description: Fix incremental-run date selection — reprocess the last recorded day plus all following, and use only committed work, since same-day commits can land after the last entry.
 scope: plugins/ai_dev/skills/update_changelog
-created: 2026-06-02T20:06:20
-updated: 2026-06-23T00:00:27
+created: 2026-06-02T18:06:20Z
+updated: 2026-06-22T22:00:27Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

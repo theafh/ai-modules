@@ -1,8 +1,8 @@
 ---
 description: Add a readiness-checklist content-lens item that flags an H1 title or frontmatter description whose named scope is narrower than the body it heads, so a stale under-naming title is caught.
 scope: plugins/ai_dev/skills/task
-created: 2026-06-28T17:33:01
-updated: 2026-07-01T19:09:39
+created: 2026-06-28T15:33:01Z
+updated: 2026-07-01T17:09:39Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

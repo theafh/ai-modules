@@ -1,8 +1,8 @@
 ---
 description: "Make git_auto_review restore and report any file its fixer creates outside the approved fixes and the run's .git_auto_review folder, and resolve the loose reproduction scripts in tests/."
 scope: plugins/ai_dev/skills/git_auto_review
-created: 2026-10-31T21:57:38
-updated: 2026-11-01T17:52:38
+created: 2026-10-31T20:57:38Z
+updated: 2026-11-01T16:52:38Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

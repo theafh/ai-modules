@@ -1,8 +1,8 @@
 ---
 description: Give the base task skill an output_contract, widen not_in_scope for sibling preference, and a Pattern A hub-<update> eval proving the contract.
 scope: plugins/ai_dev/skills/task
-created: 2026-08-11T18:58:50
-updated: 2026-08-12T09:11:28
+created: 2026-08-11T16:58:50Z
+updated: 2026-08-12T07:11:28Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Generalize wiki detection to a name + marker predicate so loosely-named and stood-in wikis resolve instead of "undecided"; fix lint.py's --wiki-path hint and give discovery its own exit code.
 scope: plugins/knowledge_management
-created: 2026-05-28T20:06:23
-updated: 2026-06-14T18:14:02
+created: 2026-05-28T18:06:23Z
+updated: 2026-06-14T16:14:02Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

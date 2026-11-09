@@ -1,8 +1,8 @@
 ---
 description: Add agent_spinner's recipes for design options, corpus research, and disputed claims, with selector rows and evals, and rewrite variants.md with the blind and calibration variants.
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-10-03T15:54:08
-updated: 2026-11-06T17:24:01
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-06T16:24:01Z
 status: ready
 reported-by: Andreas Hoffmann
 ---

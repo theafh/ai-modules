@@ -1,8 +1,8 @@
 ---
 description: Make the locked-slot boilerplate check preserve owner extensions so wiki refinements survive audits, add a declare-and-honour path for deliberate contradictions, and update supporting docs and tests.
 scope: plugins/knowledge_management
-created: 2026-08-20T17:21:49
-updated: 2026-09-07T19:44:01
+created: 2026-08-20T15:21:49Z
+updated: 2026-09-07T17:44:01Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

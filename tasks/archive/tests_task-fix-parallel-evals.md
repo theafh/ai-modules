@@ -1,8 +1,8 @@
 ---
 description: Run task_fix evals at default 4 workers with per-eval host-tasks fail-safes that stay correct under overlap, using the shared Pattern A helper.
 scope: tests/task_fix/evals
-created: 2026-10-04T22:11:10
-updated: 2026-11-05T08:02:13
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-05T07:02:13Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

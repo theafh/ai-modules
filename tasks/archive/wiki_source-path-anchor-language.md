@@ -1,8 +1,8 @@
 ---
 description: Retire "repo-relative" for the wiki-root-resolved raw-sidecar `source_path:` anchor wherever taught, and compute the `file://` reconciliation form so the auto-fix can't emit a lint-failing path.
 scope: plugins/knowledge_management
-created: 2026-07-22T12:32:59
-updated: 2026-07-22T15:08:52
+created: 2026-07-22T10:32:59Z
+updated: 2026-07-22T13:08:52Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

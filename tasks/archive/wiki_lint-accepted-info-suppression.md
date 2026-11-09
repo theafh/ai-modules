@@ -1,8 +1,8 @@
 ---
 description: Give lint.py a per-finding acknowledge mechanism so accepted info-level findings stop re-surfacing every run and being re-justified in prose and the log.
 scope: plugins/knowledge_management
-created: 2026-05-28T20:05:29
-updated: 2026-08-20T22:38:51
+created: 2026-05-28T18:05:29Z
+updated: 2026-08-20T20:38:51Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

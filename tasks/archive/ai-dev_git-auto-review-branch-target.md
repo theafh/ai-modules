@@ -1,8 +1,8 @@
 ---
 description: "Run git_auto_review's review-and-fix loop on a checked-out feature branch, over its commits since the default branch plus the working tree, and route every automated fix ask to it."
 scope: plugins/ai_dev/skills/git_auto_review
-created: 2026-10-29T23:42:35
-updated: 2026-10-30T20:46:50
+created: 2026-10-29T22:42:35Z
+updated: 2026-10-30T19:46:50Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

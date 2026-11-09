@@ -1,8 +1,8 @@
 ---
 description: Scope skill_doctor's sibling description comparisons to one family group, so a skill from another family or plugin neither raises a sibling finding nor hides one.
 scope: plugins/ai_dev/skills/skill_doctor
-created: 2026-08-14T19:11:13
-updated: 2026-08-14T20:25:27
+created: 2026-08-14T17:11:13Z
+updated: 2026-08-14T18:25:27Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

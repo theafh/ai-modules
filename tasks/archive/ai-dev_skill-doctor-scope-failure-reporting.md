@@ -1,8 +1,8 @@
 ---
 description: Correct skill_doctor's resolve_scope failure enumeration and make an absent plugins/*/skills tree report as its own failure in every scope mode.
 scope: plugins/ai_dev/skills/skill_doctor
-created: 2026-08-10T23:20:58
-updated: 2026-08-11T20:31:31
+created: 2026-08-10T21:20:58Z
+updated: 2026-08-11T18:31:31Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

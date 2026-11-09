@@ -1,8 +1,8 @@
 ---
 description: "Add a window-bottom status bar that shows per-provider concurrency load on every screen, including Home, and opens the full panel in a dialog."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
-created: 2026-11-06T20:04:34
-updated: 2026-11-06T20:04:34
+created: 2026-11-06T19:04:34Z
+updated: 2026-11-06T19:04:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

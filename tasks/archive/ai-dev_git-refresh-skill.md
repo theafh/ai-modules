@@ -1,8 +1,8 @@
 ---
 description: Add a git_refresh skill to ai_dev that fast-forwards the repo's default branch and deletes cleanly-merged local branches by default, gating riskier branch pruning behind an explicit opt-in.
 scope: plugins/ai_dev/skills
-created: 2026-06-28T18:53:29
-updated: 2026-07-02T18:32:34
+created: 2026-06-28T16:53:29Z
+updated: 2026-07-02T16:32:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

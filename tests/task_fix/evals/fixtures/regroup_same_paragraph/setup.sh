@@ -37,8 +37,8 @@ cat > "$target/proj/tasks/api_export-schema.md" <<'EOF'
 ---
 description: Fix the reporting CSV column order and publish it as the schema every export consumer reads.
 scope: src/export
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---
@@ -76,8 +76,8 @@ cat > "$target/proj/tasks/api_export-gzip.md" <<'EOF'
 ---
 description: Gzip the reporting CSV export so large tenant exports transfer in a fraction of the bytes.
 scope: src/export
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

@@ -38,8 +38,8 @@ cat > "$target/proj/tasks/notes_pinned-order.md" <<'EOF'
 ---
 description: "Rewrite release_notes Ordering so pinned entries are oldest-first only, and add one Pinned-order rule."
 scope: skills
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

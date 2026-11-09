@@ -1,8 +1,8 @@
 ---
 description: Extend task_select to detect dependency and ordering relationships between candidate tasks and rank prerequisites ahead of the tasks that need them, so it never recommends a blocked task first.
 scope: plugins/ai_dev/skills/task_select
-created: 2026-06-17T23:08:20
-updated: 2026-06-18T00:21:14
+created: 2026-06-17T21:08:20Z
+updated: 2026-06-17T22:21:14Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

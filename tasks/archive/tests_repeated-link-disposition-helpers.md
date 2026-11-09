@@ -1,8 +1,8 @@
 ---
 description: Share record-bounded repeated-link disposition helpers in tests/lib, rewrite both graders onto them, unit-test and document the shared file, and re-grade affected evals.
 scope: tests
-created: 2026-10-08T18:10:50
-updated: 2026-10-14T19:08:50
+created: 2026-10-08T16:10:50Z
+updated: 2026-10-14T17:08:50Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Deploy the output style to Cursor as a project always-apply .mdc rule; on --global report that no print-mode-injecting machine-wide file path exists and name the settings User Rules paste.
 scope: deployment
-created: 2026-08-07T23:39:03
-updated: 2026-10-07T09:14:15
+created: 2026-08-07T21:39:03Z
+updated: 2026-10-07T07:14:15Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

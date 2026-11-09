@@ -1,8 +1,8 @@
 ---
 description: Bundle a wiki-skill log-preamble merge script that converges canonical units, preserves owner lines by construction, and never duplicates a unit; route `<fix_log_preamble_drift>` through it.
 scope: plugins/knowledge_management
-created: 2026-08-26T18:53:13
-updated: 2026-11-08T00:50:10
+created: 2026-08-26T16:53:13Z
+updated: 2026-11-07T23:50:10Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

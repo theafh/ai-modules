@@ -1,8 +1,8 @@
 ---
 description: "Make the deterministic test gate hermetic and green: fix skill_doctor's mixed-family grouping failure, and remove git_review's dependence on ambient git core.quotePath."
 scope: "local test harnesses"
-created: 2026-10-30T23:33:51
-updated: 2026-10-31T18:12:20
+created: 2026-10-30T22:33:51Z
+updated: 2026-10-31T17:12:20Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

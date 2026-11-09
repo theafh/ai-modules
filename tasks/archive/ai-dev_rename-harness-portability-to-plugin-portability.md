@@ -1,8 +1,8 @@
 ---
 description: Rename the harness_portability skill to plugin_portability across active artefacts; historic task and changelog content keeps the old name except for breaking path references.
 scope: plugins/ai_dev/skills/harness_portability
-created: 2026-06-30T19:55:47
-updated: 2026-07-26T08:17:31
+created: 2026-06-30T17:55:47Z
+updated: 2026-07-26T06:17:31Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

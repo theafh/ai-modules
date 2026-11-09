@@ -1,8 +1,8 @@
 ---
 description: "Consolidate the task skill's two local test dirs into one, register every task-family harness in the inventory table and README ## Current harnesses, and add task_auto_check trigger cases."
 scope: "task_* family local test harness"
-created: 2026-08-11T18:58:50
-updated: 2026-10-16T22:53:04
+created: 2026-08-11T16:58:50Z
+updated: 2026-10-16T20:53:04Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

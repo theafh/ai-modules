@@ -1,8 +1,8 @@
 ---
 description: Redesign update_changelog so past entries are immutable — drop the retroactive status-marker re-evaluation that rewrites already-written entries.
 scope: plugins/ai_dev/skills/update_changelog
-created: 2026-06-02T19:37:57
-updated: 2026-06-22T23:40:18
+created: 2026-06-02T17:37:57Z
+updated: 2026-06-22T21:40:18Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

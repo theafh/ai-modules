@@ -1,8 +1,8 @@
 ---
 description: Introduce documented `source_path:` semantics for out-of-repo local raw sources in the SCHEMA template and ingest guidance; the `raw/<kind>/` rubric already shipped in raw_taxonomy.md.
 scope: plugins/knowledge_management
-created: 2026-05-28T19:25:04
-updated: 2026-07-19T17:02:38
+created: 2026-05-28T17:25:04Z
+updated: 2026-07-19T15:02:38Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -44,8 +44,8 @@ cat > "$target/proj/tasks/api_webhook-timestamp.md" <<'EOF'
 ---
 description: Add a signed timestamp header to outbound webhooks so receivers can reject replayed deliveries.
 scope: src/api
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

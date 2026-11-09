@@ -1,8 +1,8 @@
 ---
 description: Make each deploy generator that rebuilds frontmatter carry the source description through unchanged, and prove the round trip for every YAML scalar form in the deploy harness.
 scope: deployment
-created: 2026-10-07T08:03:07
-updated: 2026-10-07T08:03:07
+created: 2026-10-07T06:03:07Z
+updated: 2026-10-07T06:03:07Z
 status: open
 reported-by: Andreas Hoffmann
 ---

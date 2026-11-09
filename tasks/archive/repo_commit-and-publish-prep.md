@@ -1,8 +1,8 @@
 ---
 description: "Commit the plugin work on the repository's main branch, with the temporary handoff note removed before the commit."
 scope: harness-plugins/opencode_v2
-created: 2026-11-05T15:07:12
-updated: 2026-11-05T21:22:00
+created: 2026-11-05T14:07:12Z
+updated: 2026-11-05T20:22:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

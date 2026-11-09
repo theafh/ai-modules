@@ -1,8 +1,8 @@
 ---
 description: Rework the git_review delta_rereview fixture and eval 32 so each prior finding has one evidence home, no tree comment states a tag, and the grader checks the full tag set.
 scope: tests/git_review
-created: 2026-10-02T10:23:20
-updated: 2026-10-03T18:19:48
+created: 2026-10-02T08:23:20Z
+updated: 2026-10-03T16:19:48Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

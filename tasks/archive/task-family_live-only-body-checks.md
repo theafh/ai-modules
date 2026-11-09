@@ -1,8 +1,8 @@
 ---
 description: Gate the repeated-link and size checks to live task bodies, and rewrite the rules describing them so an archived finding is never reported rather than reported as a count nobody acts on.
 scope: plugins/ai_dev/skills
-created: 2026-09-18T21:27:49
-updated: 2026-10-10T18:35:00
+created: 2026-09-18T19:27:49Z
+updated: 2026-10-10T16:35:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

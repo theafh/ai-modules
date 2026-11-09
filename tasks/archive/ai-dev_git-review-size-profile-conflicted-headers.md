@@ -1,8 +1,8 @@
 ---
 description: Make git_review's size profile read diff --cc sections as files in every field and list binary and generated files by their git paths, with script-test proof.
 scope: plugins/ai_dev/skills/git_review
-created: 2026-10-08T09:29:33
-updated: 2026-10-19T16:14:29
+created: 2026-10-08T07:29:33Z
+updated: 2026-10-19T14:14:29Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

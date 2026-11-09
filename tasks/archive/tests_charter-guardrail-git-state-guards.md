@@ -1,8 +1,8 @@
 ---
 description: Delete the two one-time git diff --quiet guards from the charter_guardrail script tests so the suite judges file content and passes while an unrelated edit sits uncommitted.
 scope: tests/charter_guardrail
-created: 2026-10-08T17:28:56
-updated: 2026-10-08T23:10:51
+created: 2026-10-08T15:28:56Z
+updated: 2026-10-08T21:10:51Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

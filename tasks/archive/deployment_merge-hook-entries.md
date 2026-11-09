@@ -1,8 +1,8 @@
 ---
 description: Make the deploy script add or update only ai-modules' own hook entries in Codex, Claude Code and Cursor hook files, keep every foreign entry in place, and uninstall only its own.
 scope: deployment
-created: 2026-10-17T00:45:44
-updated: 2026-10-29T20:12:25
+created: 2026-10-16T22:45:44Z
+updated: 2026-10-29T19:12:25Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

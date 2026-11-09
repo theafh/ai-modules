@@ -1,8 +1,8 @@
 ---
 description: "Add three authoring rules to the base skill's body: rules stated once with sections pointing, one labeled open decision at most, and examples that illustrate rather than carry."
 scope: plugins/ai_dev/skills/task
-created: 2026-06-09T12:34:16
-updated: 2026-06-10T20:50:09
+created: 2026-06-09T10:34:16Z
+updated: 2026-06-10T18:50:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

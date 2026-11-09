@@ -1,8 +1,8 @@
 ---
 description: Add Google Antigravity as a full target harness in harness_portability, retarget the stale Gemini-CLI claims to Antigravity, and drop Gemini CLI since its consumer surface is retired.
 scope: plugins/ai_dev/skills/harness_portability
-created: 2026-07-24T12:54:02
-updated: 2026-07-26T12:29:33
+created: 2026-07-24T10:54:02Z
+updated: 2026-07-26T10:29:33Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Rescope skill_doctor's two non-ASCII findings onto the typographic punctuation set, rename both codes after that class, drop the UTF-8 half, and report the measured sibling split.
 scope: plugins/ai_dev/skills/skill_doctor
-created: 2026-08-12T19:09:05
-updated: 2026-10-03T13:20:10
+created: 2026-08-12T17:09:05Z
+updated: 2026-10-03T11:20:10Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

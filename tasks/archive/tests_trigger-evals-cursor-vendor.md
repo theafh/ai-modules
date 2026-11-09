@@ -1,8 +1,8 @@
 ---
 description: Run the trigger evals on Cursor as on Claude, each worker in its own directory, with same-vendor baselines and no Claude-only label, and record a live run on Cursor.
 scope: tests/trigger_evals
-created: 2026-10-04T10:56:39
-updated: 2026-11-04T14:56:50
+created: 2026-10-04T08:56:39Z
+updated: 2026-11-04T13:56:50Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

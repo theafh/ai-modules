@@ -1,8 +1,8 @@
 ---
 description: "Scaffold the plugin packages, their repository rules, and the task backlog in the harness tree."
 scope: harness-plugins/opencode_v2
-created: 2026-11-05T15:07:12
-updated: 2026-11-05T20:33:23
+created: 2026-11-05T14:07:12Z
+updated: 2026-11-05T19:33:23Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

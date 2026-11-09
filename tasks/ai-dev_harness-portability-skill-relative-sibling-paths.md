@@ -1,9 +1,9 @@
 ---
 description: Name in harness_portability that skill and sibling-file paths must be written from the skills-tree perspective, not from the repository root.
 scope: plugins/ai_dev/skills/harness_portability
-created: 2026-10-14T08:47:49
-updated: 2026-10-14T08:47:49
-status: open
+created: 2026-10-14T06:47:49Z
+updated: 2026-11-08T22:25:14Z
+status: checked
 reported-by: Andreas Hoffmann
 ---
 

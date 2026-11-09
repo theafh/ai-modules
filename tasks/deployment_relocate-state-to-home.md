@@ -1,8 +1,8 @@
 ---
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
-created: 2026-06-02T18:58:04
-updated: 2026-11-04T11:49:57
+created: 2026-06-02T16:58:04Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

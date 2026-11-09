@@ -1,8 +1,8 @@
 ---
 description: "Replace the hand-written plugin shims in the live OpenCode config with deployed packages, and record that the service must be restarted before its plugin list means anything."
 scope: deployment
-created: 2026-11-05T21:22:00
-updated: 2026-11-05T21:22:00
+created: 2026-11-05T20:22:00Z
+updated: 2026-11-05T20:22:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

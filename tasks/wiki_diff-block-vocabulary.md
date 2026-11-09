@@ -1,8 +1,8 @@
 ---
 description: Replace the diff-jargon term hunk with plain English across the auto_shaper_wiki agent, rename its two hunk tags, and update the Layer 1 contract test and live tasks that pin the old wording.
 scope: plugins/knowledge_management
-created: 2026-08-25T01:08:56
-updated: 2026-11-04T10:11:30
+created: 2026-08-24T23:08:56Z
+updated: 2026-11-04T09:11:30Z
 status: open
 reported-by: Andreas Hoffmann
 ---

@@ -1,8 +1,8 @@
 ---
 description: Settle and fold wiki log entries at commit, skip clean lint logs, keep session detail and redaction out, align import/wrapup to one entry, propagate via wiki_fix.
 scope: plugins/knowledge_management
-created: 2026-08-20T17:09:44
-updated: 2026-11-04T10:11:30
+created: 2026-08-20T15:09:44Z
+updated: 2026-11-04T09:11:30Z
 status: checked
 reported-by: Andreas Hoffmann
 ---

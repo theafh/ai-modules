@@ -1,8 +1,8 @@
 ---
 description: "Give the harness plugin packages a Bun workspace root, a separate make plugin-test target, and lint and git exclusions for their node_modules."
 scope: harness-plugins/opencode_v2
-created: 2026-11-05T20:33:23
-updated: 2026-11-05T20:33:23
+created: 2026-11-05T19:33:23Z
+updated: 2026-11-05T19:33:23Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

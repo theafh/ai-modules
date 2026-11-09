@@ -1,8 +1,8 @@
 ---
 description: Establish the naming convention — manual skills family-first, autonomous skills `<family>_auto_<rest>`, agents `auto_<role>_<family>` — and rename wiki_auto_shaper to auto_shaper_wiki.
 scope: "repo-wide"
-created: 2026-06-21T17:28:26
-updated: 2026-06-22T23:08:21
+created: 2026-06-21T15:28:26Z
+updated: 2026-06-22T21:08:21Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

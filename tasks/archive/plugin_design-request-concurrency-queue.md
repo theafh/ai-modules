@@ -1,8 +1,8 @@
 ---
 description: "Design a process-wide FIFO request concurrency limiter for OpenCode 2, captured in a handoff note before implementation."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
-created: 2026-11-05T15:07:12
-updated: 2026-11-05T20:14:00
+created: 2026-11-05T14:07:12Z
+updated: 2026-11-05T19:14:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Widen the task linter to every in-repo markdown link in any repo markdown file, silence outbound links, wire the remit, and land this repository blocking-clean.
 scope: plugins/ai_dev/skills/task
-created: 2026-09-12T17:31:37
-updated: 2026-10-24T09:40:38
+created: 2026-09-12T15:31:37Z
+updated: 2026-10-24T07:40:38Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

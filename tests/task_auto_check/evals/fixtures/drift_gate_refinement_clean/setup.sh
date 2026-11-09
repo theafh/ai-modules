@@ -12,8 +12,8 @@ cat > "$target/proj/tasks/api_timeout-headers.md" <<'EOF'
 ---
 description: Document API timeout headers.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---
@@ -44,8 +44,8 @@ cat > "$target/proj/tasks/api_timeout-headers.md" <<'EOF'
 ---
 description: Document API timeout headers and verify them in tests.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-02T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-02T00:00:00Z
 status: ready
 reported-by: Harness
 ---

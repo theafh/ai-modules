@@ -1,8 +1,8 @@
 ---
 description: Add a lint.py check that the "Total pages:" header in index.md matches the real page count, so the count stops drifting and being hand-recomputed.
 scope: plugins/knowledge_management
-created: 2026-05-28T20:06:45
-updated: 2026-11-04T10:11:30
+created: 2026-05-28T18:06:45Z
+updated: 2026-11-04T09:11:30Z
 status: open
 reported-by: Andreas Hoffmann
 ---

@@ -1,8 +1,8 @@
 ---
 description: Align the wiki harness entrypoint's Layer 2 footer with the vendor-worker run it actually starts, matching the file header and the two operator docs.
 scope: "local test harnesses"
-created: 2026-11-04T20:48:40
-updated: 2026-11-05T22:56:08
+created: 2026-11-04T19:48:40Z
+updated: 2026-11-05T21:56:08Z
 status: finished
 implemented-by: Andreas Hoffmann
 design-extended: false

@@ -1,8 +1,8 @@
 ---
 description: "Correct `<aggregation>`'s `show` record list to the record types the shipped ledger imports, and name the channel that carries a beyond-brief find."
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-11-08T22:07:15
-updated: 2026-11-08T22:07:15
+created: 2026-11-08T21:07:15Z
+updated: 2026-11-08T21:07:15Z
 status: open
 reported-by: Andreas Hoffmann
 ---

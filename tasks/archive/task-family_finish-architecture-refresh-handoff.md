@@ -1,8 +1,8 @@
 ---
 description: "Make the close-out ARCHITECTURE.md refresh executable: drop task_finish's divergent step list, add a report slot, carry the design signal upstream-to-finish, and define the trigger test."
 scope: plugins/ai_dev
-created: 2026-08-05T19:29:15
-updated: 2026-10-16T22:53:04
+created: 2026-08-05T17:29:15Z
+updated: 2026-10-16T20:53:04Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

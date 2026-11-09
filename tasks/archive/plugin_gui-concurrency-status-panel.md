@@ -1,8 +1,8 @@
 ---
 description: "Show per-provider request concurrency state in the OpenCode desktop side region with queue depth, utilization, demand, and color states."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
-created: 2026-11-05T15:19:13
-updated: 2026-11-06T05:07:52
+created: 2026-11-05T14:19:13Z
+updated: 2026-11-06T04:07:52Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

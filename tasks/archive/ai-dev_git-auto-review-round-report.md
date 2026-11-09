@@ -1,8 +1,8 @@
 ---
 description: "Rework git_auto_review's report.txt into per-round outcomes, not-applied findings with reasons, and the final state, so a finding fixed earlier is never reported as unfixed."
 scope: plugins/ai_dev/skills/git_auto_review
-created: 2026-11-04T14:19:14
-updated: 2026-11-08T11:28:02
+created: 2026-11-04T13:19:14Z
+updated: 2026-11-08T10:28:02Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

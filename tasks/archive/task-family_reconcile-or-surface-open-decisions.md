@@ -1,8 +1,8 @@
 ---
 description: Lift a stage-agnostic reconcile-or-surface rule for open decisions into the base task skill; wire the check, auto_check, and implement siblings to apply it.
 scope: plugins/ai_dev/skills
-created: 2026-07-14T20:11:35
-updated: 2026-07-15T19:27:39
+created: 2026-07-14T18:11:35Z
+updated: 2026-07-15T17:27:39Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

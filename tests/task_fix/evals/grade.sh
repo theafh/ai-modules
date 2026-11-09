@@ -166,7 +166,7 @@ case "$eval_id" in
     }
     handoff_survives() { grep -q 'api_export-schema' "$live"; }
     updated_bumped() {
-      [[ "$(fm_field "$live" updated)" != "2026-01-01T00:00:00" ]]
+      [[ "$(fm_field "$live" updated)" != "2026-01-01T00:00:00Z" ]]
     }
     link_target_untouched() { byte_identical "tasks/api_export-schema.md"; }
     archived_untouched() { byte_identical "tasks/archive/api_legacy-export.md"; }
@@ -240,7 +240,7 @@ case "$eval_id" in
         && grep -q 'docs/webhooks\.md' <<<"$acc" && grep -qi 'freshness' <<<"$acc"
     }
     updated_bumped() {
-      [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]
+      [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]
     }
     page_untouched() { byte_identical "docs/webhooks.md"; }
     regrouped_line() { [[ "$(disposition_of "api_webhook-timestamp")" == "regrouped" ]]; }
@@ -328,7 +328,7 @@ case "$eval_id" in
         && section_as_staged "## Acceptance"
     }
     updated_bumped() {
-      [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00" ]]
+      [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]
     }
     link_target_untouched() { byte_identical "tasks/api_export-schema.md"; }
     regrouped_line() { [[ "$(disposition_of "api_export-gzip")" == "regrouped" ]]; }

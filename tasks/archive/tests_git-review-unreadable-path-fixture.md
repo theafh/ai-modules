@@ -1,8 +1,8 @@
 ---
 description: Restage the git_review unreadable_path fixture so one changed path's new content is unreachable through git, record unread paths in the collector, and grade eval 19 on it.
 scope: tests/git_review
-created: 2026-10-02T10:23:20
-updated: 2026-10-03T19:46:16
+created: 2026-10-02T08:23:20Z
+updated: 2026-10-03T17:46:16Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

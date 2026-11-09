@@ -45,8 +45,8 @@ cat > "$target/proj/tasks/api_ready-task.md" <<'EOF'
 ---
 description: Ready task fixture with concrete goal, context, approach, and acceptance.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---

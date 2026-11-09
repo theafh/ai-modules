@@ -1,8 +1,8 @@
 ---
 description: Add a `task_implement` sibling skill that implements one task file end-to-end (code, tests, verification) via a strict read-understand-implement-verify flow, adapted from spec_implement.
 scope: plugins/ai_dev
-created: 2026-05-28T20:25:06
-updated: 2026-05-31T00:20:09
+created: 2026-05-28T18:25:06Z
+updated: 2026-05-30T22:20:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

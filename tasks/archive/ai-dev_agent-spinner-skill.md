@@ -1,8 +1,8 @@
 ---
 description: Add agent_spinner to ai_dev encoding helper-agent orchestration, with tests/agent_spinner/, tests/trigger_evals/agent_spinner.json, plugin/marketplace/README registration, and a wiki pointer.
 scope: plugins/ai_dev/skills
-created: 2026-09-16T01:12:27
-updated: 2026-09-16T19:36:57
+created: 2026-09-15T23:12:27Z
+updated: 2026-09-16T17:36:57Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

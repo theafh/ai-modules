@@ -1,8 +1,8 @@
 ---
 description: Keep wiki headings and bold-prefix labels structural, route displaced metadata (date, source, qualifier) to its proper channel, and lint both heading-label heuristics (length; ISO-date) at info.
 scope: plugins/knowledge_management
-created: 2026-05-28T19:24:35
-updated: 2026-11-04T11:49:57
+created: 2026-05-28T17:24:35Z
+updated: 2026-11-04T10:49:57Z
 status: checked
 reported-by: Andreas Hoffmann
 ---

@@ -1,8 +1,8 @@
 ---
 description: Filter foreign configs out of the vscode hook route, ship a Copilot-schema hook config, and switch VS Code's Claude hook sources off so native delivery is the only route.
 scope: deployment
-created: 2026-08-09T20:07:35
-updated: 2026-11-04T11:49:57
+created: 2026-08-09T18:07:35Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

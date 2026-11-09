@@ -1,8 +1,8 @@
 ---
 description: Move git_commit's foreign-drift guard from the prose-only detect_drift step into commit_with_message.sh as a mechanical backstop that no longer depends on which model runs.
 scope: plugins/ai_dev/skills/git_commit
-created: 2026-07-12T16:31:50
-updated: 2026-07-12T18:19:48
+created: 2026-07-12T14:31:50Z
+updated: 2026-07-12T16:19:48Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

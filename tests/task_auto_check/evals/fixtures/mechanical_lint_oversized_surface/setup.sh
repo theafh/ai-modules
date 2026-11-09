@@ -43,8 +43,8 @@ cat > "$task" <<'EOF'
 ---
 description: Document every field of the API audit-log event schema so downstream consumers can parse audit events reliably.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---

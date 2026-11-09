@@ -1,8 +1,8 @@
 ---
 description: Make eval graders assert substance over form, subject-anchored matches, wrap-collapsed checks, and split conjunctions; rules in TESTING.md and standing instructions, mechanics in the tests tree.
 scope: "local test harnesses"
-created: 2026-08-15T14:08:10
-updated: 2026-10-05T10:35:44
+created: 2026-08-15T12:08:10Z
+updated: 2026-10-05T08:35:44Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

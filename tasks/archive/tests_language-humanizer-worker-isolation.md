@@ -1,8 +1,8 @@
 ---
 description: "Isolate the language_humanizer eval worker and judge from host instructions through a shared tests/lib helper, re-measure on Cursor, and keep Claude isolation as compatibility."
 scope: tests
-created: 2026-10-02T12:56:51
-updated: 2026-10-08T22:56:55
+created: 2026-10-02T10:56:51Z
+updated: 2026-10-08T20:56:55Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

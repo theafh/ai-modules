@@ -1,8 +1,8 @@
 ---
 description: Ship two generic agent definitions, auto_checker_spinner (read-only) and auto_writer_spinner, to every target, and prove on the default eval vendor that a checker spawns through its role.
 scope: plugins/ai_dev/agents
-created: 2026-10-03T15:54:08
-updated: 2026-11-04T11:49:57
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

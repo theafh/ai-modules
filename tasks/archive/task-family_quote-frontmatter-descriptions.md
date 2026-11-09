@@ -1,8 +1,8 @@
 ---
 description: Make the task skills write description in double quotes, make the task linter block an unquoted value YAML would misread, and let task_fix repair it by quoting.
 scope: plugins/ai_dev/skills/task
-created: 2026-10-07T08:16:38
-updated: 2026-10-16T23:32:34
+created: 2026-10-07T06:16:38Z
+updated: 2026-10-16T21:32:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: After task_create writes and lints a task, add a step that surfaces the draft's one residual open decision with a reconciliation suggestion and asks the user to resolve it now or defer it.
 scope: plugins/ai_dev/skills/task_create
-created: 2026-06-29T19:39:17
-updated: 2026-06-30T07:27:09
+created: 2026-06-29T17:39:17Z
+updated: 2026-06-30T05:27:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

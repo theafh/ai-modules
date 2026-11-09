@@ -1,8 +1,8 @@
 ---
 description: Add a rule to the task skills that a task links to another task file only when the link marks a dependency, changes how the work is implemented, or points at a file that will be co-edited.
 scope: plugins/ai_dev/skills/task
-created: 2026-06-02T21:00:35
-updated: 2026-06-14T18:14:02
+created: 2026-06-02T19:00:35Z
+updated: 2026-06-14T16:14:02Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

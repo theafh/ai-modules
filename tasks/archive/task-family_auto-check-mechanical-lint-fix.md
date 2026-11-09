@@ -1,8 +1,8 @@
 ---
 description: Add a task_auto_check step that auto-fixes a task's mechanical lint findings (overlong description, broken links, datetime/format) before reporting done, even when task_check already stamped it ready.
 scope: "task_* family: task_auto_check + base task <lint>"
-created: 2026-06-29T18:48:53
-updated: 2026-07-01T19:58:13
+created: 2026-06-29T16:48:53Z
+updated: 2026-07-01T17:58:13Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

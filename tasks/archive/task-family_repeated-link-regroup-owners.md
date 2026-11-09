@@ -1,8 +1,8 @@
 ---
 description: Make task_fix and task_auto_check regroup a live task's scattered account of one target per repeated-link warn, gather by account in the base protocol, and count archived findings only.
 scope: plugins/ai_dev
-created: 2026-09-17T19:54:01
-updated: 2026-09-18T08:49:13
+created: 2026-09-17T17:54:01Z
+updated: 2026-09-18T06:49:13Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

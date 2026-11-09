@@ -40,8 +40,8 @@ cat > "$target/proj/tasks/api_cursor-contract.md" <<'EOF'
 ---
 description: Define the cursor pagination contract shared by API list endpoints.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---
@@ -72,8 +72,8 @@ cat > "$target/proj/tasks/api_pagination-ready.md" <<'EOF'
 ---
 description: Document the API next_cursor response field so clients can page through list results deterministically.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---

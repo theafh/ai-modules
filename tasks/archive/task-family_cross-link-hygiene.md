@@ -1,8 +1,8 @@
 ---
 description: Flag a task body linking one target more than once, a maintenance tax and a hint the body grew organically. Pair a linter warn with a react protocol and a grouping rule.
 scope: plugins/ai_dev/skills/task
-created: 2026-08-12T19:46:46
-updated: 2026-08-30T13:20:59
+created: 2026-08-12T17:46:46Z
+updated: 2026-08-30T11:20:59Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

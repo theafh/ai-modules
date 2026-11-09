@@ -1,8 +1,8 @@
 ---
 description: Rewrite the natural-language style so a rewrite keeps each source relation's marker, even when it moves or splits the claim, and record a baseline and refined five-pass Claude measurement.
 scope: styles
-created: 2026-10-09T23:16:07
-updated: 2026-10-09T23:16:07
+created: 2026-10-09T21:16:07Z
+updated: 2026-10-09T21:16:07Z
 status: open
 reported-by: Andreas Hoffmann
 ---

@@ -1,8 +1,8 @@
 ---
 description: Rewrite agent_spinner's rules for checking helper work in five SKILL.md blocks, add checks.md and edit-mechanics.md, rewrite the role prompts, and add evals for each rule.
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-10-03T15:54:08
-updated: 2026-11-06T19:41:38
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-06T18:41:38Z
 status: ready
 reported-by: Andreas Hoffmann
 ---

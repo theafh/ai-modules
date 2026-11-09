@@ -1,8 +1,8 @@
 ---
 description: Retire the Gemini CLI deploy target in deployment.sh and expand the Antigravity target so one run reaches 2.0, the IDE, and the CLI with skills, agents, and hooks.
 scope: deployment
-created: 2026-07-24T12:54:02
-updated: 2026-07-26T22:07:01
+created: 2026-07-24T10:54:02Z
+updated: 2026-07-26T20:07:01Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

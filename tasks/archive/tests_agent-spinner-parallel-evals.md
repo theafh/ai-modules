@@ -1,8 +1,8 @@
 ---
 description: Run agent_spinner evals at default 4 workers with a per-eval host git-status escape guard that stays attributable under overlap, using the shared helper.
 scope: tests/agent_spinner/evals
-created: 2026-10-04T22:11:10
-updated: 2026-11-06T23:28:09
+created: 2026-10-04T20:11:10Z
+updated: 2026-11-06T22:28:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

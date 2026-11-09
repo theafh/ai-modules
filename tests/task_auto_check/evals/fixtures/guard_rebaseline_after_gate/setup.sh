@@ -43,8 +43,8 @@ cat > "$target/proj/tasks/api_idempotency.md" <<'EOF'
 ---
 description: Reject repeated API writes that reuse an Idempotency-Key header.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

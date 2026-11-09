@@ -1,8 +1,8 @@
 ---
 description: "Implement guardrail_audit as a slim read-only sibling wired into the guardrail hub: only the audit delta — doc-vs-doc, doc-vs-code, and grounded missing-doc findings, ranked by hierarchy."
 scope: plugins/ai_dev/skills
-created: 2026-06-29T19:01:01
-updated: 2026-10-16T22:53:04
+created: 2026-06-29T17:01:01Z
+updated: 2026-10-16T20:53:04Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

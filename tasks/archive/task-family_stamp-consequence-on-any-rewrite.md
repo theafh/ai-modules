@@ -1,8 +1,8 @@
 ---
 description: State once in the task hub that rewriting a ready task beyond mechanical lint fixes sets it back to checked, that split-off tasks start open, and that implemented work is routed.
 scope: plugins/ai_dev/skills/task
-created: 2026-10-03T15:54:08
-updated: 2026-10-10T18:35:00
+created: 2026-10-03T13:54:08Z
+updated: 2026-10-10T16:35:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: "Scaffold and register the new ai_editorial plugin shell — both plugin.json files, README, skills/ dir, marketplace entry, and root README update."
 scope: "ai_editorial plugin"
-created: 2026-06-01T23:31:06
-updated: 2026-10-08T12:43:40
+created: 2026-06-01T21:31:06Z
+updated: 2026-10-08T10:43:40Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

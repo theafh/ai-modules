@@ -1,8 +1,8 @@
 ---
 description: Pin git_review's report to a prose form contract in the <report> stage so output reads as clear sectioned prose without field-block leakage, with token-level eval checks that grade the shape.
 scope: plugins/ai_dev/skills
-created: 2026-09-09T10:52:05
-updated: 2026-10-03T15:27:00
+created: 2026-09-09T08:52:05Z
+updated: 2026-10-03T13:27:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

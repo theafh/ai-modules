@@ -1,8 +1,8 @@
 ---
 description: Give task_fix a default backlog-coherence assessment over live tasks and their shared target artifacts, with reconcile still gated on accept or escalate.
 scope: plugins/ai_dev
-created: 2026-08-05T18:22:13
-updated: 2026-08-16T21:21:55
+created: 2026-08-05T16:22:13Z
+updated: 2026-08-16T19:21:55Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

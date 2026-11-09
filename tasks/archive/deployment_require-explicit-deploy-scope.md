@@ -1,8 +1,8 @@
 ---
 description: Require an explicit --global or --project-dir before deployment.sh deploys, while keeping no-scope uninstall and backup cleanup as maintenance modes.
 scope: deployment
-created: 2026-06-02T23:06:06
-updated: 2026-06-16T22:09:29
+created: 2026-06-02T21:06:06Z
+updated: 2026-06-16T20:09:29Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

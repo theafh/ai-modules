@@ -1,8 +1,8 @@
 ---
 description: "Make every behavioral eval grader fail an inert worker: assert at least one positive artifact so absence-only checks stop scoring a no-op run as a pass."
 scope: "local test harnesses"
-created: 2026-10-30T23:33:51
-updated: 2026-11-02T13:28:29
+created: 2026-10-30T22:33:51Z
+updated: 2026-11-02T12:28:29Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

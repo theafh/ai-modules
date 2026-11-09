@@ -1,8 +1,8 @@
 ---
 description: Make git_review's size profile count content lines only (numstat-equal in range and uncommitted), prove via a new range scenario plus s11/s22, and keep tests/README.md and tests/CLAUDE.md current.
 scope: plugins/ai_dev/skills/git_review
-created: 2026-10-06T13:09:42
-updated: 2026-10-18T15:42:34
+created: 2026-10-06T11:09:42Z
+updated: 2026-10-18T13:42:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

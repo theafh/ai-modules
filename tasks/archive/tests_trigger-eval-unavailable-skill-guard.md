@@ -1,8 +1,8 @@
 ---
 description: "Make the trigger-eval runner fail loudly when a skill is unavailable, and document how to read a zero-recall outcome in the `## tests/trigger_evals/` section of `tests/CLAUDE.md`."
 scope: "local test harnesses"
-created: 2026-08-30T16:57:07
-updated: 2026-10-17T13:43:37
+created: 2026-08-30T14:57:07Z
+updated: 2026-10-17T11:43:37Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

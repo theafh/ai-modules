@@ -1,8 +1,8 @@
 ---
 description: Add a `task_check` sibling skill (inspired by spec_check) that assesses one task's implementation readiness against a checklist (scope, focus, complexity, no contradictions/ambiguity), read-only.
 scope: plugins/ai_dev
-created: 2026-05-28T20:35:20
-updated: 2026-05-31T00:20:09
+created: 2026-05-28T18:35:20Z
+updated: 2026-05-30T22:20:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Make `wiki_import` capture implicit mid-conversation sources into a `raw/` sidecar + `sources:` instead of body-prose narration, and have `wiki_fix` route uncaptured ones to `wiki_import`.
 scope: plugins/knowledge_management
-created: 2026-05-28T19:24:54
-updated: 2026-11-04T11:49:57
+created: 2026-05-28T17:24:54Z
+updated: 2026-11-04T10:49:57Z
 status: open
 reported-by: Andreas Hoffmann
 ---

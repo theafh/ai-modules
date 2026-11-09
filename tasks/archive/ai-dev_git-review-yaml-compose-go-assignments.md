@@ -1,8 +1,8 @@
 ---
 description: "Make git_review's credential scan match unquoted YAML and Compose assignments and Go := declarations, while type annotations, templated values, and Go expressions draw no hit."
 scope: plugins/ai_dev/skills/git_review
-created: 2026-10-18T21:53:52
-updated: 2026-10-18T22:08:10
+created: 2026-10-18T19:53:52Z
+updated: 2026-10-18T20:08:10Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

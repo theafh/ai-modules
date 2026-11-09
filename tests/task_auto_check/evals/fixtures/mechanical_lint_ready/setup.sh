@@ -41,8 +41,8 @@ cat > "$target/proj/tasks/api_lint-ready.md" <<'EOF'
 ---
 description: Add API Retry-After throttling response documentation with an overly elaborated explanatory sentence that should disappear because this frontmatter description repeats body details, implementation hints, and acceptance context far beyond the task linter budget while still naming the API Retry-After throttling scope.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---

@@ -1,8 +1,8 @@
 ---
 description: Add agent_spinner's recipes for source-fidelity review, drift repair, and read-only audit, with selector rows, four evals, and run.sh checks every recipe file must pass.
 scope: plugins/ai_dev/skills/agent_spinner
-created: 2026-10-03T15:54:08
-updated: 2026-10-04T17:22:33
+created: 2026-10-03T13:54:08Z
+updated: 2026-10-04T15:22:33Z
 status: open
 reported-by: Andreas Hoffmann
 ---

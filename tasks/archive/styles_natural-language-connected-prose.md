@@ -1,8 +1,8 @@
 ---
 description: "Refine the natural-language output style toward connected, balanced prose: relation-keeping splits, paragraph rules, colons, glosses, a list test, and an eval harness on a shared isolation helper."
 scope: styles
-created: 2026-10-02T12:20:55
-updated: 2026-10-08T22:56:55
+created: 2026-10-02T10:20:55Z
+updated: 2026-10-08T20:56:55Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

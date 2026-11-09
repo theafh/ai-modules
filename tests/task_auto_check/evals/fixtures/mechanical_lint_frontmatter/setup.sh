@@ -35,7 +35,7 @@ cat > "$target/proj/tasks/api_timeout-ready.md" <<'EOF'
 description: Document the API request-timeout response so clients know the enforced timeout window behind HTTP 504.
 scope: "api"
 created: 2026/01/01
-updated: 2026-01-01T00:00:00
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---

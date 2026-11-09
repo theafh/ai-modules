@@ -1,8 +1,8 @@
 ---
 description: Stage every behavioural eval sandbox outside the checkout via create_sandbox_root, and fail a pass whose worker reads a checkout path such as its harness's evals.json or grade.sh.
 scope: tests
-created: 2026-10-09T21:50:04
-updated: 2026-10-12T21:11:30
+created: 2026-10-09T19:50:04Z
+updated: 2026-10-12T19:11:30Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

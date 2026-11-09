@@ -1,8 +1,8 @@
 ---
 description: Add harness_portability's references/delegation-surfaces.md, dated facts on how Claude Code, Cursor, and Codex run sub-agents, with a pointer to it and a sub-agent-only spawn rule.
 scope: plugins/ai_dev/skills/harness_portability
-created: 2026-10-03T15:54:08
-updated: 2026-11-07T21:09:36
+created: 2026-10-03T13:54:08Z
+updated: 2026-11-07T20:09:36Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

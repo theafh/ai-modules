@@ -1,8 +1,8 @@
 ---
 description: Add a read-only task_explain sibling skill that gives a compact high-level what/why/how readout of one task file, and register it across the family rosters, READMEs, and manifests.
 scope: plugins/ai_dev
-created: 2026-06-28T14:36:58
-updated: 2026-06-28T16:46:25
+created: 2026-06-28T12:36:58Z
+updated: 2026-06-28T14:46:25Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: State once in the wiki hub that a chosen AVAILABLE candidate sets $WIKI to <level>/wiki, route every pick, adoption, init, and handoff site through it, and prove it in layer 2.
 scope: plugins/knowledge_management
-created: 2026-10-01T18:28:06
-updated: 2026-10-03T17:41:17
+created: 2026-10-01T16:28:06Z
+updated: 2026-10-03T15:41:17Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

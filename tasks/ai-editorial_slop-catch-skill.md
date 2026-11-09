@@ -1,8 +1,8 @@
 ---
 description: "Build slop_catch in ai_editorial: a ported Python detector plus a structural-tell ruleset that score a draft's AI-tell density and return replacements, run as the humanizer's check pass."
 scope: "ai_editorial plugin"
-created: 2026-06-01T23:31:06
-updated: 2026-10-17T13:50:32
+created: 2026-06-01T21:31:06Z
+updated: 2026-10-17T11:50:32Z
 status: open
 reported-by: Andreas Hoffmann
 ---

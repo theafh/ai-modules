@@ -16,8 +16,8 @@ cat > "$target/proj/tasks/api_metrics.md" <<'EOF'
 ---
 description: Expose a /metrics request-count endpoint on the public API.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

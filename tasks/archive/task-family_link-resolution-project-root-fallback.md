@@ -1,8 +1,8 @@
 ---
 description: Make lint.py resolve body links from the project root as a fallback so repo-relative links stop being false-positive broken-links that force ../ prefixing.
 scope: plugins/ai_dev/skills/task
-created: 2026-05-28T19:49:23
-updated: 2026-06-14T18:14:02
+created: 2026-05-28T17:49:23Z
+updated: 2026-06-14T16:14:02Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

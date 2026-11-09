@@ -1,8 +1,8 @@
 ---
 description: Make task_implement require ready (or implemented for audit-gap repair), refuse open or checked, and gate done on Acceptance-named checks plus cheap surfaces.
 scope: plugins/ai_dev/skills/task_implement
-created: 2026-10-12T19:02:54
-updated: 2026-10-14T20:12:22
+created: 2026-10-12T17:02:54Z
+updated: 2026-10-14T18:12:22Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: "Realign the wiki family's activation surface: hub stops claiming import and audit ground, purpose-first descriptions, em-dash sentence splits, and trigger fixtures aligned to the boundary."
 scope: plugins/knowledge_management
-created: 2026-08-11T18:59:52
-updated: 2026-10-16T22:53:04
+created: 2026-08-11T16:59:52Z
+updated: 2026-10-16T20:53:04Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

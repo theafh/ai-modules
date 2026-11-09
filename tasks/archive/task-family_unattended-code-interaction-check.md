@@ -1,8 +1,8 @@
 ---
 description: Add a code-anchored readiness lens so task_check and task_auto_check surface interacting or contradicting code a task is silent about, found by a keyed repo search over its touch-points.
 scope: plugins/ai_dev/skills
-created: 2026-07-14T20:48:17
-updated: 2026-07-19T22:52:27
+created: 2026-07-14T18:48:17Z
+updated: 2026-07-19T20:52:27Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

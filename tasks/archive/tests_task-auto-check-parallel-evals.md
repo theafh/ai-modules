@@ -1,8 +1,8 @@
 ---
 description: Parallelize isolated task_auto_check evals at default 4 workers through the shared helper, and keep the Approach serial nested-loop set sequential in the same run.
 scope: tests/task_auto_check/evals
-created: 2026-10-04T22:11:10
-updated: 2026-10-16T20:47:10
+created: 2026-10-04T20:11:10Z
+updated: 2026-10-16T18:47:10Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Give the base task skill's Out-of-scope rule its not-for side — never an in-scope requirement, never a standing-rule waiver — plus the matching readiness-checklist findings.
 scope: plugins/ai_dev/skills/task
-created: 2026-07-21T16:30:11
-updated: 2026-07-30T10:18:01
+created: 2026-07-21T14:30:11Z
+updated: 2026-07-30T08:18:01Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

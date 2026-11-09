@@ -1,8 +1,8 @@
 ---
 description: Deploy the charter_guardrail hook to OpenCode via a bridge plugin, since OpenCode has no declarative hook config. A TS plugin registers a V2 permission.evaluate or tool.execute.before hook and calls the shared bash script.
 scope: deployment
-created: 2026-07-23T19:48:14
-updated: 2026-11-05T14:45:00
+created: 2026-07-23T17:48:14Z
+updated: 2026-11-05T13:45:00Z
 status: open
 reported-by: Andreas Hoffmann
 ---

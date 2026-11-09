@@ -1,8 +1,8 @@
 ---
 description: Make every task-writing surface answer a repeated-link warn by reorganizing the body so that what belongs together sits together, and retire the per-link kept disposition.
 scope: plugins/ai_dev
-created: 2026-10-07T08:07:22
-updated: 2026-10-10T18:35:00
+created: 2026-10-07T06:07:22Z
+updated: 2026-10-10T16:35:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

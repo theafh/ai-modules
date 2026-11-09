@@ -1,8 +1,8 @@
 ---
 description: Replace live-home deploy backups with rsync that skips sockets and FIFOs and treats vanished sources as success, add a jq/perl/rsync PATH gate, and prove both in the script tests.
 scope: deployment
-created: 2026-10-06T13:50:51
-updated: 2026-10-06T15:59:58
+created: 2026-10-06T11:50:51Z
+updated: 2026-10-06T13:59:58Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

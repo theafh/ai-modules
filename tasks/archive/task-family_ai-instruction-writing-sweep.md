@@ -1,8 +1,8 @@
 ---
 description: Sweep every task_* family SKILL.md for big ai_instruction_writing violations — negative-only and inverted instructions — and rewrite them to a positive, action-oriented carrier.
 scope: "task_* family skills"
-created: 2026-06-01T22:50:36
-updated: 2026-06-10T20:50:09
+created: 2026-06-01T20:50:36Z
+updated: 2026-06-10T18:50:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

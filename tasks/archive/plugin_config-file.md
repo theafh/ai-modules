@@ -1,8 +1,8 @@
 ---
 description: "Read a dedicated JSON config file for the deployed directory and file-entry installs, with options, file, environment, and default precedence."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
-created: 2026-11-05T15:35:10
-updated: 2026-11-05T20:14:00
+created: 2026-11-05T14:35:10Z
+updated: 2026-11-05T19:14:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

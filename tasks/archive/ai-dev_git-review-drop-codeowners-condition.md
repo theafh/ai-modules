@@ -1,8 +1,8 @@
 ---
 description: Drop the CODEOWNERS condition from git_review's reviewer-side edit gate, leaving fork status and push permission, since code ownership gates review rather than write access.
 scope: plugins/ai_dev/skills
-created: 2026-09-06T14:09:28
-updated: 2026-10-03T15:27:00
+created: 2026-09-06T12:09:28Z
+updated: 2026-10-03T13:27:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

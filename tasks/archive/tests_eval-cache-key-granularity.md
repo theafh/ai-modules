@@ -1,8 +1,8 @@
 ---
 description: Narrow the shared behavioral-eval verdict cache key with fail-closed per-eval dependency declarations and always-on grade.sh arm-split, so an edit re-runs only the evals that can reach it.
 scope: "local test harnesses"
-created: 2026-09-04T17:54:29
-updated: 2026-10-19T19:52:34
+created: 2026-09-04T15:54:29Z
+updated: 2026-10-19T17:52:34Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -12,8 +12,8 @@ cat > "$target/proj/tasks/api_search-results.md" <<'EOF'
 ---
 description: Add cursor pagination and CSV export for public API search results.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---
@@ -45,8 +45,8 @@ cat > "$target/proj/tasks/api_search-results.md" <<'EOF'
 ---
 description: Add cursor pagination to public API search results.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-02T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-02T00:00:00Z
 status: ready
 reported-by: Harness
 ---

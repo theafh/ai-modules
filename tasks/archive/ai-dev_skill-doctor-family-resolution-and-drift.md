@@ -1,8 +1,8 @@
 ---
 description: Parse the real family block instead of the first tag mention, group the family set by owning plugin, and warn when a prefix family spans plugins or disagrees with the hub's block.
 scope: plugins/ai_dev/skills/skill_doctor
-created: 2026-08-13T18:02:27
-updated: 2026-08-14T19:04:43
+created: 2026-08-13T16:02:27Z
+updated: 2026-08-14T17:04:43Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

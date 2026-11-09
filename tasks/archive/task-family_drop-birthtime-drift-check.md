@@ -1,8 +1,8 @@
 ---
 description: Drop the `created`-vs-birth-time drift check from task lint.py — birthtime is not durable under edits or clones, so the check false-flags legitimate changes. Move to trust-on-write.
 scope: plugins/ai_dev/skills/task
-created: 2026-05-29T00:28:10
-updated: 2026-05-31T01:18:38
+created: 2026-05-28T22:28:10Z
+updated: 2026-05-30T23:18:38Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Gate make lint on frontmatter that a strict YAML checker accepts, run skill_doctor's discovery check in place, and repair the files that fail today.
 scope: "repo toolchain"
-created: 2026-10-07T07:46:48
-updated: 2026-11-08T08:10:31
+created: 2026-10-07T05:46:48Z
+updated: 2026-11-08T07:10:31Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

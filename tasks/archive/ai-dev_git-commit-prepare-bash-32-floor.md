@@ -1,8 +1,8 @@
 ---
 description: Fix prepare_commit_context.sh under stock bash 3.2 (empty diff lists, masked abort status) and prove both git_commit scripts under /bin/bash in the script tests.
 scope: plugins/ai_dev/skills/git_commit
-created: 2026-10-09T22:18:42
-updated: 2026-10-13T18:33:15
+created: 2026-10-09T20:18:42Z
+updated: 2026-10-13T16:33:15Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -1,8 +1,8 @@
 ---
 description: Restore a green wiki layer-2 full-suite run by reconciling the path-suffix assertions and the artefact read-check with prefix-only sandbox roots and command transcripts.
 scope: "local test harnesses"
-created: 2026-11-04T20:13:17
-updated: 2026-11-04T22:45:38
+created: 2026-11-04T19:13:17Z
+updated: 2026-11-04T21:45:38Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

@@ -16,8 +16,8 @@ cat > "$target/proj/tasks/api_quota-headers.md" <<'EOF'
 ---
 description: Add quota usage headers to API responses.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---

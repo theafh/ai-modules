@@ -1,8 +1,8 @@
 ---
 description: Make skill_doctor's sibling non-ASCII finding report the measured split across the selected set, since its message asserts an ASCII-only sibling set even when several siblings carry non-ASCII.
 scope: plugins/ai_dev/skills/skill_doctor
-created: 2026-08-11T18:59:52
-updated: 2026-08-13T22:32:17
+created: 2026-08-11T16:59:52Z
+updated: 2026-08-13T20:32:17Z
 status: deferred
 reported-by: Andreas Hoffmann
 ---

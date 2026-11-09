@@ -1,8 +1,8 @@
 ---
 description: "Add a harness-plugins discovery root and the plugin artifact type, so a self-contained harness plugin package deploys as one directory."
 scope: deployment/deployment.sh
-created: 2026-11-05T20:33:23
-updated: 2026-11-05T20:47:00
+created: 2026-11-05T19:33:23Z
+updated: 2026-11-05T19:47:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

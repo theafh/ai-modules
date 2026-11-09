@@ -1,8 +1,8 @@
 ---
 description: "Replace the gate's hand-written shell scanner with a per-harness declaration so every deterministic eval file runs exactly once and an undecided harness fails by name."
 scope: tests
-created: 2026-11-02T08:13:09
-updated: 2026-11-04T10:27:27
+created: 2026-11-02T07:13:09Z
+updated: 2026-11-04T09:27:27Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

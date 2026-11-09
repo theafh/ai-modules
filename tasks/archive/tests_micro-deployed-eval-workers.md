@@ -1,8 +1,8 @@
 ---
 description: Micro-deploy skills, agents, and styles for every staging eval runner via the real deploy script on Cursor and Claude; fail out-of-set reads.
 scope: tests
-created: 2026-10-08T11:47:48
-updated: 2026-10-09T22:36:05
+created: 2026-10-08T09:47:48Z
+updated: 2026-10-09T20:36:05Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

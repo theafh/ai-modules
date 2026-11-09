@@ -1,8 +1,8 @@
 ---
 description: Calibrate skill_doctor's listing-budget length finding; diagnose bare listing entries as budget truncation or name-only override, not a YAML parse bug.
 scope: plugins/ai_dev/skills/skill_doctor
-created: 2026-08-11T17:26:49
-updated: 2026-08-13T22:32:17
+created: 2026-08-11T15:26:49Z
+updated: 2026-08-13T20:32:17Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

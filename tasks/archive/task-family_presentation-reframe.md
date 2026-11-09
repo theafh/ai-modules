@@ -1,8 +1,8 @@
 ---
 description: Reframe task family docs to a five-step lifecycle spine, task_select demoted to a chooser, check/auto-check merged into one entry, staged-spec lineage removed, and 'Work tracking' header retitled.
 scope: plugins/ai_dev
-created: 2026-07-14T19:38:42
-updated: 2026-07-21T08:47:33
+created: 2026-07-14T17:38:42Z
+updated: 2026-07-21T06:47:33Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

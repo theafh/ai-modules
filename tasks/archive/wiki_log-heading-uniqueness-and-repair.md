@@ -1,8 +1,8 @@
 ---
 description: "Make the append-only wiki log tolerate breakage from a logged entry: heading uniqueness, a repair-not-rewrite carve-out, and a duplicate-heading lint check, rolled out to existing wikis."
 scope: plugins/knowledge_management
-created: 2026-06-18T19:33:04
-updated: 2026-10-29T06:02:01
+created: 2026-06-18T17:33:04Z
+updated: 2026-10-29T05:02:01Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

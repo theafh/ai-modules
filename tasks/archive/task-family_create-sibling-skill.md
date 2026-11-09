@@ -1,8 +1,8 @@
 ---
 description: Add a `task_create` sibling skill — a focused, low-ceremony entry point that creates exactly one well-formed task file, delegating naming/frontmatter/lint rules to the base `task` skill.
 scope: plugins/ai_dev
-created: 2026-05-28T20:25:06
-updated: 2026-05-31T00:20:09
+created: 2026-05-28T18:25:06Z
+updated: 2026-05-30T22:20:09Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

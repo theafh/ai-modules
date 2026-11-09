@@ -1,7 +1,7 @@
 ---
 name: task_create
 description: Create exactly one new task file for one upcoming work item. Use when the user asks to make, add, file, write, or capture a single task or todo. Use task for listing, querying, updating, archiving, linting, or multi task backlog work.
-version: 1.1.11
+version: 1.1.12
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -48,7 +48,7 @@ Create one file, in order:
 2. **Gather.** Confirm the single item to capture and collect enough context to fill the `<body>` sections to the base skill's self-sufficiency bar: the file on its own is enough to implement, with everything actually available at implementation time (the codebase, the project's standing instructions, the user) staying in play. When the context is too thin for that, ask one sharp clarifying question, then proceed.
 3. **Prior-art gate.** Run the `task` skill's `<prior_art>` step: a fast `rg` scan of `tasks/` + `tasks/archive/` that escalates to an in-depth project analysis only when the scan hits. When a match shows the work is already an open task, partially covered, already implemented, or already deferred, surface it with evidence and let the user decide how to proceed before writing, never auto-resolve.
 4. **Scope and name.** Pick a `<scope>` from the groupings already present in `tasks/`, and a compact `<name>` that is unique across both `tasks/` and `tasks/archive/`. List both directories once to keep the name collision-free.
-5. **Timestamp.** Run `date +%Y-%m-%dT%H:%M:%S` once and use its output verbatim for both `created` and `updated`.
+5. **Timestamp.** Stamp both `created` and `updated` from the base `task` skill's `<frontmatter>` timestamp command, run once and copied verbatim.
 6. **Self-check the draft.** Judge the drafted body against the `task` skill's `<readiness_checklist>` and resolve every finding derivable from the authoring-time material before writing. When the **Ambiguity / under-specification** lens finds one genuinely-open decision the authoring material cannot settle, carry it forward as one labeled "Open decision:" whose label carries its options, a suggested default, and the why-open clause the base **Decide or label** rule requires, so the file written already passes the lens `task_check` will apply. Zero carried-forward decisions is the expected outcome of this step and one is the ceiling, so settle every other fork here against that rule's evidence base rather than deferring it to a label.
 7. **Write.** Create `<tasks>/<scope>_<name>.md` with `status: open` and `reported-by` resolved via the base skill's `<user_name_chain>`, then write a body that opens with a single `# Title` and fills Goal / Context / Approach / Acceptance per the `task` skill's `<body>`. When filling `## Context` and any cross-references, apply the cross-link discipline, the grouping rule, and the soft-pointer rule from the `task` skill's `<markdown_policy>` while drafting, so each link to another task earns its place, what the body says about one link target sits together under one link, and each pointer to file content survives edits to its target.
 8. **Lint.** Run the linter per the `task` skill's `<lint>` step (`lint.py --quiet`), resolve every blocking finding, and answer each `repeated-link` warn on the new file through the base `<lint>` **Repeated-link react protocol** before reporting the file as created, keeping the one timestamp the **Timestamp** step captured.

@@ -1,8 +1,8 @@
 ---
 description: Repair task_audit and task_select descriptions for dual-audience Use when coverage and harness-agnostic wording; no regression vs the Context-defined pre-edit Findings-era baseline.
 scope: "task_* family: task_audit + task_select descriptions"
-created: 2026-08-11T18:58:50
-updated: 2026-08-11T21:17:14
+created: 2026-08-11T16:58:50Z
+updated: 2026-08-11T19:17:14Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

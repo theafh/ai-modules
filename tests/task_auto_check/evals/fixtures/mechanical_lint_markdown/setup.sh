@@ -39,8 +39,8 @@ cat > "$target/proj/tasks/api_error-codes.md" <<'EOF'
 ---
 description: Enumerate the canonical API error codes returned across endpoints.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: open
 reported-by: Harness
 ---
@@ -72,8 +72,8 @@ cat > "$target/proj/tasks/api_errors-ready.md" <<'EOF'
 ---
 description: Document the API JSON error envelope so clients can parse error codes and messages consistently.
 scope: "api"
-created: 2026-01-01T00:00:00
-updated: 2026-01-01T00:00:00
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
 status: ready
 reported-by: Harness
 ---

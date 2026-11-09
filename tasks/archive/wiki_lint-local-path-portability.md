@@ -1,8 +1,8 @@
 ---
 description: Fix the wiki linter's `sources:` absolute-path escape, and constrain raw-sidecar `source_path:` to a repo-relative form, capturing out-of-repo local files as prose.
 scope: plugins/knowledge_management
-created: 2026-07-19T14:09:18
-updated: 2026-07-19T17:02:38
+created: 2026-07-19T12:09:18Z
+updated: 2026-07-19T15:02:38Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

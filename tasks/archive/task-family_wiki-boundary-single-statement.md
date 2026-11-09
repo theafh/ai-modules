@@ -1,8 +1,8 @@
 ---
 description: Trim the hub's wiki pitfall to the archive-time lesson instruction it alone carries, leaving not_in_scope the single statement of the wiki boundary.
 scope: plugins/ai_dev/skills/task
-created: 2026-08-12T19:09:35
-updated: 2026-08-19T20:24:32
+created: 2026-08-12T17:09:35Z
+updated: 2026-08-19T18:24:32Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
