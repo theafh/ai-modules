@@ -51,7 +51,12 @@ rules below read in the vocabulary of the wiki they govern.
   the wiki captured at `raw/<kind>/<slug>.md` is cited inline next to the claim
   it supports, through a relative markdown link into `raw/`, and is listed in
   the page's `sources:` frontmatter, which the linter validates path by path.
-  External lineage the wiki never captured is recorded in the bottom-of-page
+  A live in-repo document that **is** the subject of classification — a paper,
+  spec, or codebase the wiki exists to explain — is cited the same way in
+  `sources:` under a root the wiki declares with a `Declared source root:`
+  bullet in `## Lint`; it carries no sha256 drift detection, so its coherence
+  relies on a review rule the wiki states. Uncaptured lineage that is **not**
+  the subject of classification is recorded in the bottom-of-page
   `## Derived from` section described in the next bullet. Write per-claim
   attribution as an inline standard-markdown link:
 
@@ -67,17 +72,18 @@ rules below read in the vocabulary of the wiki they govern.
 - **Record uncaptured external lineage under `## Derived from`.** Some pages
   exist because external material exists, such as a doctrine file in another
   repo, a codebase the page distills, or a notebook the analysis was extracted
-  from. That external material is **not** itself the subject of
-  classification, so it does not get captured into `raw/<kind>/<slug>.md`.
-  Put that lineage in an optional bottom-of-page `## Derived from` section
-  (bulleted list of external paths, URLs, or descriptors with whatever
-  standing commentary applies). The heading is deliberately distinct from
-  `## Sources` so the linter does not flag it as the deprecated body-Sources
-  section. The `sources:` frontmatter remains the single structured channel
-  (strict `raw/<kind>/<slug>.md` paths, lint-validated), while
-  `## Derived from` is the unstructured channel for external derivation
-  material that lives outside the wiki by design. A page may have `sources:`,
-  `## Derived from`, both, or neither.
+  from. When that external material is **not** itself the subject of
+  classification, it does not get captured into `raw/<kind>/<slug>.md` and does
+  not belong in `sources:`. Put that lineage in an optional bottom-of-page
+  `## Derived from` section (bulleted list of external paths, URLs, or
+  descriptors with whatever standing commentary applies). The heading is
+  deliberately distinct from `## Sources` so the linter does not flag it as the
+  deprecated body-Sources section. The `sources:` frontmatter remains the
+  single structured channel (paths under `raw/<kind>/<slug>.md` or under a
+  declared source root, lint-validated), while `## Derived from` is the
+  unstructured channel for external derivation material that lives outside the
+  wiki by design. A page may have `sources:`, `## Derived from`, both, or
+  neither.
 
 An existing wiki converges on these conventions opportunistically. Each page
 adopts them as it passes through audit and repair, and no migration sweep is
@@ -92,7 +98,7 @@ created: YYYY-MM-DD
 updated: YYYY-MM-DD
 type: entity | concept | comparison | query | summary | procedure
 tags: [from taxonomy below]
-sources: [raw/articles/source-name.md]  # present when the page cites a captured source
+sources: [raw/articles/source-name.md]  # present when the page cites a captured source or a declared-root document
 # Optional quality signals:
 confidence: high | medium | low        # how well-supported the claims are
 contested: true                        # see ## Update Policy
@@ -101,10 +107,12 @@ checked: YYYY-MM-DD                    # when the claims were last checked again
 ---
 ```
 
-Carry `sources:` on a page that cites a source the wiki captured under `raw/`, and leave the
-key off a page that cites none. A wiki capturing nothing into `raw/` therefore carries no
-`sources:` key rather than an empty list on every page. The linter requires the remaining
-fields on every page and validates each `sources:` entry it does find against disk.
+Carry `sources:` on a page that cites a source the wiki captured under `raw/` or a live
+in-repo document under a declared source root, and leave the key off a page that cites
+neither. A wiki capturing nothing into `raw/` and declaring no source root therefore
+carries no `sources:` key rather than an empty list on every page. The linter requires the
+remaining fields on every page and validates each `sources:` entry it does find against
+disk.
 
 `confidence` and `contested` are optional but recommended for opinion-heavy or fast-moving
 topics. Lint surfaces `contested: true` and `confidence: low` pages for review, and
@@ -412,3 +420,25 @@ classifies it as an extension on that same channel automatically.
 
 The example sits in a fenced block, so it is documentation; a live declaration
 goes on an unfenced bullet.
+
+A wiki whose primary source is a live document tracked in the same repository
+declares that source root here, so its pages can cite the document's files in
+`sources:` without capturing them into `raw/`. Each root names a directory or a
+single file, relative to the wiki root, with a required reason after ` — `:
+
+```text
+- Declared source root: ../paper — the paper this wiki classifies
+- Declared source root: ../specs/ch03.md — the specification chapter under review
+```
+
+A valid declaration is reported once under `ACKNOWLEDGED` with a `(declared)`
+marker, naming the root and its reason. A relative `sources:` entry may resolve
+under `raw/` or under any declared root; an entry under neither stays the
+blocking `broken-source` finding, and an entry under a declared root that names
+no file draws the same "missing on disk" finding as a `raw/` entry. A root that
+resolves to nothing, or (in a wiki inside a git repo) outside that repository,
+is itself a blocking finding on `SCHEMA.md`. An absolute or `~`-prefixed entry
+stays blocking even when it resolves under a declared root: rewrite it to a
+relative path under `raw/` or under a declared root. This example sits in a
+fenced block, so it is documentation; a live declaration goes on an unfenced
+bullet.

@@ -3739,6 +3739,348 @@ EOF
 }
 
 ###############################################################################
+# Declared source root scenarios
+###############################################################################
+
+# Append (or replace) live `- Declared source root:` bullets at the end of
+# SCHEMA.md, inside its trailing `## Lint` section. Pass no payload to clear.
+# Args: <wiki> [payload without the label prefix]...
+set_declared_source_root_bullets() {
+    local wiki=$1
+    shift
+    python3 - "$wiki/SCHEMA.md" "$@" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+kept = [ln for ln in p.read_text().splitlines() if not ln.startswith("- Declared source root:")]
+while kept and kept[-1] == "":
+    kept.pop()
+if sys.argv[2:]:
+    kept.append("")
+    kept.extend(f"- Declared source root: {payload}" for payload in sys.argv[2:])
+p.write_text("\n".join(kept) + "\n")
+PY
+}
+
+# Assert ACKNOWLEDGED carries one `(declared)` source-root line naming <root>
+# and <reason>. Args: <label> <output> <root> <reason>
+assert_declared_source_root_ack() {
+    local label=$1 out=$2 root=$3 reason=$4
+    local ok=true
+    printf '%s' "$out" | grep -Eq "^ACKNOWLEDGED \([0-9]+\)" || ok=false
+    printf '%s' "$out" \
+        | grep -E "^[[:space:]]*\(declared\)[[:space:]]+source-root[[:space:]]" \
+        | grep -F "$root" | grep -qF "$reason" || ok=false
+    if $ok; then
+        return 0
+    fi
+    log "    [missing declared-source-root acknowledgement: $label — expected (declared) source-root for $root carrying '$reason']"
+    printf '%s\n' "$out" | indent
+    return 1
+}
+
+# Rewrite a staged concept page's `sources: []` to cite <src>.
+# Args: <page> <src>
+set_concept_sources() {
+    python3 - "$1" "$2" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace("sources: []", f"sources: [{sys.argv[2]}]"))
+PY
+}
+
+# Stage a valid declared-root fixture: a fresh git-repo wiki plus a sibling
+# `paper/` directory holding the named files. Echoes the wiki path.
+stage_declared_root_fixture() {
+    local id=$1
+    shift
+    local wiki; wiki=$(stage_fresh_wiki_in_repo "$id")
+    customize_taxonomy "$wiki"
+    local repo; repo=$(cd "$wiki/.." && pwd)
+    mkdir -p "$repo/paper"
+    local name
+    for name in "$@"; do
+        printf '%s source body\n' "$name" > "$repo/paper/$name"
+    done
+    printf '%s' "$wiki"
+}
+
+# L86: a declared source root names a sibling directory inside the scratch git
+# repo. A page citing a file under it lints with no broken-source finding and one
+# (declared) acknowledged line naming the root and its reason.
+l86_lint_declared_source_root_accepts() {
+    local wiki; wiki=$(stage_declared_root_fixture l86 ch03.tex)
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    write_valid_concept_page "$wiki" widget
+    set_concept_sources "$wiki/concepts/widget.md" "../paper/ch03.tex"
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "no broken-source" "$out" "broken-source" || ok=false
+    assert_declared_source_root_ack "declared root ack" "$out" "../paper" "the paper this wiki classifies" || ok=false
+    $ok
+}
+
+# L87: one valid declared root cited by two pages emits exactly one (declared)
+# acknowledged line for that root, not one per citing page.
+l87_lint_declared_source_root_reported_once() {
+    local wiki; wiki=$(stage_declared_root_fixture l87 ch03.tex ch04.tex)
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    local slug src
+    for pair in "alpha:ch03.tex" "beta:ch04.tex"; do
+        slug=${pair%%:*} src=${pair#*:}
+        write_valid_concept_page "$wiki" "$slug"
+        set_concept_sources "$wiki/concepts/$slug.md" "../paper/$src"
+        add_index_entry_concept "$wiki" "$slug"
+    done
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "no broken-source" "$out" "broken-source" || ok=false
+    local ack_count
+    ack_count=$(printf '%s\n' "$out" | grep -cE "^[[:space:]]*\(declared\)[[:space:]]+source-root[[:space:]]")
+    assert_eq "one acknowledgement for the root" "$ack_count" "1" || ok=false
+    assert_declared_source_root_ack "declared root ack" "$out" "../paper" "the paper this wiki classifies" || ok=false
+    $ok
+}
+
+# L88: removing the declaration restores the blocking escapes finding unchanged.
+l88_lint_declared_source_root_removed_blocks() {
+    local wiki; wiki=$(stage_declared_root_fixture l88 ch03.tex)
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    write_valid_concept_page "$wiki" widget
+    set_concept_sources "$wiki/concepts/widget.md" "../paper/ch03.tex"
+    add_index_entry_concept "$wiki" widget
+    set_declared_source_root_bullets "$wiki"
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_finding_for_file "escaping sources blocking" "$out" blocking broken-source "concepts/widget.md" || ok=false
+    assert_live_message "escape message" "$out" "concepts/widget.md" "escapes the wiki's \`raw/\` tree" || ok=false
+    assert_live_message "declaration remedy" "$out" "concepts/widget.md" "declare an in-repo root in \`SCHEMA.md\`" || ok=false
+    assert_no_acknowledged_section "no declaration to acknowledge" "$out" || ok=false
+    $ok
+}
+
+# L89: a declared root resolving outside the scratch git repo is a blocking
+# broken-source finding on SCHEMA.md.
+l89_lint_declared_source_root_outside_repo_blocks() {
+    local wiki; wiki=$(stage_fresh_wiki_in_repo l89)
+    customize_taxonomy "$wiki"
+    local home; home=$(cd "$wiki/../.." && pwd)
+    mkdir -p "$home/outside"
+    set_declared_source_root_bullets "$wiki" "../../outside — outside the repository"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_finding_for_file "root outside repo blocks" "$out" blocking broken-source "SCHEMA.md" || ok=false
+    assert_live_message "root outside repo message" "$out" "SCHEMA.md" "escapes the repository" || ok=false
+    assert_no_acknowledged_section "invalid root is not acknowledged" "$out" || ok=false
+    $ok
+}
+
+# L90: a declared root resolving to nothing in a git-repo wiki is a blocking
+# broken-source finding on SCHEMA.md.
+l90_lint_declared_source_root_missing_blocks() {
+    local wiki; wiki=$(stage_fresh_wiki_in_repo l90)
+    customize_taxonomy "$wiki"
+    set_declared_source_root_bullets "$wiki" "../paper — not created"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_finding_for_file "missing root blocks" "$out" blocking broken-source "SCHEMA.md" || ok=false
+    assert_live_message "missing root message" "$out" "SCHEMA.md" "resolves to no file or directory" || ok=false
+    assert_no_acknowledged_section "missing root is not acknowledged" "$out" || ok=false
+    $ok
+}
+
+# L91: a wiki outside any git repo is local-only, so a resolving declared root is
+# accepted with one (declared) acknowledged line.
+l91_lint_declared_source_root_non_repo_accepts() {
+    local wiki; wiki=$(stage_fresh_wiki l91)
+    customize_taxonomy "$wiki"
+    local home; home=$(cd "$wiki/.." && pwd)
+    mkdir -p "$home/paper"
+    printf 'chapter source body\n' > "$home/paper/ch03.tex"
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    write_valid_concept_page "$wiki" widget
+    set_concept_sources "$wiki/concepts/widget.md" "../paper/ch03.tex"
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "no broken-source" "$out" "broken-source" || ok=false
+    assert_declared_source_root_ack "non-repo declared root ack" "$out" "../paper" "the paper this wiki classifies" || ok=false
+    $ok
+}
+
+# L92: a non-repo wiki still blocks a declared root that resolves to nothing.
+l92_lint_declared_source_root_non_repo_missing_blocks() {
+    local wiki; wiki=$(stage_fresh_wiki l92)
+    customize_taxonomy "$wiki"
+    set_declared_source_root_bullets "$wiki" "../paper — not created"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_finding_for_file "non-repo missing root blocks" "$out" blocking broken-source "SCHEMA.md" || ok=false
+    assert_live_message "non-repo missing root message" "$out" "SCHEMA.md" "resolves to no file or directory" || ok=false
+    $ok
+}
+
+# L93: an entry under a valid declared root naming a missing file draws the same
+# "missing on disk" blocking finding as a raw entry.
+l93_lint_declared_source_root_missing_entry_blocks() {
+    local wiki; wiki=$(stage_declared_root_fixture l93 ch03.tex)
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    write_valid_concept_page "$wiki" widget
+    set_concept_sources "$wiki/concepts/widget.md" "../paper/missing.tex"
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_finding_for_file "missing entry blocks" "$out" blocking broken-source "concepts/widget.md" || ok=false
+    assert_live_message "missing on disk message" "$out" "concepts/widget.md" "missing on disk" || ok=false
+    $ok
+}
+
+# L94: a file root admits exactly that file and rejects its siblings.
+l94_lint_declared_source_root_file_admits_only_itself() {
+    local wiki; wiki=$(stage_declared_root_fixture l94 ch03.tex ch04.tex)
+    set_declared_source_root_bullets "$wiki" "../paper/ch03.tex — the specification chapter"
+    write_valid_concept_page "$wiki" alpha
+    set_concept_sources "$wiki/concepts/alpha.md" "../paper/ch03.tex"
+    add_index_entry_concept "$wiki" alpha
+    write_valid_concept_page "$wiki" beta
+    set_concept_sources "$wiki/concepts/beta.md" "../paper/ch04.tex"
+    add_index_entry_concept "$wiki" beta
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_no_finding_for_file "admitted file passes" "$out" broken-source "concepts/alpha.md" || ok=false
+    assert_finding_for_file "sibling rejected" "$out" blocking broken-source "concepts/beta.md" || ok=false
+    assert_live_message "sibling escapes" "$out" "concepts/beta.md" "escapes the wiki's \`raw/\` tree" || ok=false
+    $ok
+}
+
+# L95: an absolute sources entry resolving under a declared root stays blocking;
+# declaring a root alone never clears an absolute/~ entry.
+l95_lint_absolute_sources_under_declared_root_blocks() {
+    local wiki; wiki=$(stage_declared_root_fixture l95 ch03.tex)
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    local repo; repo=$(cd "$wiki/.." && pwd)
+    write_valid_concept_page "$wiki" widget
+    set_concept_sources "$wiki/concepts/widget.md" "$repo/paper/ch03.tex"
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_finding_for_file "absolute declared-root entry blocks" "$out" blocking broken-source "concepts/widget.md" || ok=false
+    assert_live_message "absolute remedy" "$out" "concepts/widget.md" "relative path under \`raw/\` or under a declared root" || ok=false
+    $ok
+}
+
+# L96: downstream consumers stay coherent for declared-root entries.
+# check_stale_content keys on raw ingest dates, so a declared-root entry with no
+# raw date is never stale; check_quality_signals counts it like a raw entry, so a
+# single declared-root source with no confidence still draws the quality info.
+l96_lint_declared_root_downstream_checks() {
+    local wiki; wiki=$(stage_declared_root_fixture l96 ch03.tex)
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    write_valid_concept_page "$wiki" aged
+    python3 - "$wiki/concepts/aged.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text().replace("sources: []", "sources: [../paper/ch03.tex]")
+text = text.replace("updated: 2026-05-01", "updated: 2020-01-01")
+p.write_text(text)
+PY
+    add_index_entry_concept "$wiki" aged
+    write_valid_concept_page "$wiki" single
+    python3 - "$wiki/concepts/single.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text().replace("sources: []", "sources: [../paper/ch03.tex]")
+text = text.replace("confidence: medium\n", "")
+p.write_text(text)
+PY
+    add_index_entry_concept "$wiki" single
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_finding_for_file "declared root never stale" "$out" stale "concepts/aged.md" || ok=false
+    assert_finding_for_file "declared root counted for single-source" "$out" info quality "concepts/single.md" || ok=false
+    assert_live_message "single-source message" "$out" "concepts/single.md" "single source with no confidence field" || ok=false
+    $ok
+}
+
+# L97: the synthesis-citation classifier admits a declared-root citation, so a
+# summary page that declares and cites the same declared-root `.md` file draws
+# no citation finding.
+l97_lint_citation_accepts_declared_root() {
+    local wiki; wiki=$(stage_declared_root_fixture l97 ch03.md)
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    write_typed_page "$wiki" summary declared-cite "sources: [../paper/ch03.md]"
+    cat >> "$wiki/summaries/declared-cite.md" <<'EOF'
+
+The chapter argues the widget contract ([ch03](../../paper/ch03.md)).
+EOF
+    add_index_entry_for "$wiki" summaries declared-cite
+    write_valid_concept_page "$wiki" companion
+    add_index_entry_concept "$wiki" companion
+    cat >> "$wiki/concepts/companion.md" <<'EOF'
+
+See [the summary](../summaries/declared-cite.md).
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "declared-root citation accepted" "$out" "citation" || ok=false
+    assert_declared_source_root_ack "declared root ack" "$out" "../paper" "the paper this wiki classifies" || ok=false
+    $ok
+}
+
+# L98: a ~-prefixed sources entry resolving under a declared root stays blocking.
+# The `~` branch shares the absolute-entry rule: declaring a root never clears a
+# home-relative path. HOME is pinned to the scratch tree so `~` expands safely.
+l98_lint_tilde_sources_under_declared_root_blocks() {
+    local wiki; wiki=$(stage_fresh_wiki l98)
+    customize_taxonomy "$wiki"
+    local home; home=$(cd "$wiki/.." && pwd)
+    mkdir -p "$home/paper"
+    printf 'chapter source body\n' > "$home/paper/ch03.tex"
+    set_declared_source_root_bullets "$wiki" "../paper — the paper this wiki classifies"
+    write_valid_concept_page "$wiki" widget
+    # shellcheck disable=SC2088  # the literal ~ is the YAML value under test
+    set_concept_sources "$wiki/concepts/widget.md" "~/paper/ch03.tex"
+    add_index_entry_concept "$wiki" widget
+    local out rc
+    out=$(HOME="$home" python3 "$LINT" "$wiki" 2>&1) && rc=0 || rc=$?
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_finding_for_file "tilde declared-root entry blocks" "$out" blocking broken-source "concepts/widget.md" || ok=false
+    assert_live_message "tilde remedy" "$out" "concepts/widget.md" "relative path under \`raw/\` or under a declared root" || ok=false
+    $ok
+}
+
+###############################################################################
 # compute_sha256.py scenarios
 ###############################################################################
 
@@ -4226,6 +4568,19 @@ scenario l82 "lint citation page-citing query stays clean"  l82_lint_citation_pa
 scenario l83 "lint citation ignores code examples"          l83_lint_citation_code_examples_not_citations
 scenario l84 "lint citation synthesis-type gate"            l84_lint_citation_synthesis_type_gate
 scenario l85 "lint citation findings stay info-only"        l85_lint_citation_findings_are_info_only
+scenario l86 "lint accepts a declared source root"           l86_lint_declared_source_root_accepts
+scenario l87 "declared root acknowledged once, not per page" l87_lint_declared_source_root_reported_once
+scenario l88 "removed declaration restores escape block"     l88_lint_declared_source_root_removed_blocks
+scenario l89 "declared root outside repo blocks"             l89_lint_declared_source_root_outside_repo_blocks
+scenario l90 "declared root missing blocks (git wiki)"       l90_lint_declared_source_root_missing_blocks
+scenario l91 "non-repo wiki accepts declared root"           l91_lint_declared_source_root_non_repo_accepts
+scenario l92 "non-repo wiki blocks missing declared root"    l92_lint_declared_source_root_non_repo_missing_blocks
+scenario l93 "declared-root missing file blocks"             l93_lint_declared_source_root_missing_entry_blocks
+scenario l94 "file root admits only itself"                  l94_lint_declared_source_root_file_admits_only_itself
+scenario l95 "absolute entry under declared root blocks"     l95_lint_absolute_sources_under_declared_root_blocks
+scenario l96 "declared root downstream checks coherent"      l96_lint_declared_root_downstream_checks
+scenario l97 "citation classifier accepts declared root"      l97_lint_citation_accepts_declared_root
+scenario l98 "tilde entry under declared root blocks"        l98_lint_tilde_sources_under_declared_root_blocks
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

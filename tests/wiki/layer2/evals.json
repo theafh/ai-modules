@@ -2920,6 +2920,105 @@
       ]
     },
     {
+      "id": "AS-22",
+      "name": "auto-shaper-honours-declared-source-root",
+      "description": "auto_shaper_wiki (via wiki_fix) honours a SCHEMA `- Declared source root:` bullet that widens `sources:` to a live in-repo document. Page alpha already cites `../paper/ch03.tex` in frontmatter: the audit leaves it there and creates no `## Derived from` bullet. Page beta carries a body `## Sources` bullet whose link resolves under the declared root: the audit hoists that path into `sources:` frontmatter, removes the body section, and creates no `## Derived from` bullet. Both pages re-lint clean. Graded against the expanded `<fix_external_source_pointer>` declared-root branch over the top-level passes denominator.",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-22",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Honour the live `- Declared source root:` bullet in SCHEMA.md: a `sources:` entry or body `## Sources` bullet resolving under that root is a declared primary source, not an external pointer.",
+        "Leave the declared-root `sources:` entries in frontmatter and do not migrate them to `## Derived from`.",
+        "Hoist a body `## Sources` bullet that resolves under the declared root into `sources:` frontmatter.",
+        "Re-lint until clean."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "declared_root_entries_kept: yes|no",
+        "derived_from_created: yes|no"
+      ],
+      "extra_report_field_doc": "- `declared_root_entries_kept`: `yes` if every `sources:` entry resolving under a declared source root remained in frontmatter after the audit; `no` otherwise.\n- `derived_from_created`: `yes` if you created a `## Derived from` section for any path resolving under a declared source root; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_alpha_sources_entry_retained",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/alpha.md",
+          "regex": "(?m)^sources:.*ch03\\.tex"
+        },
+        {
+          "id": "A3_alpha_no_derived_from",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/alpha.md",
+          "regex": "(?m)^##\\s+Derived from"
+        },
+        {
+          "id": "A4_beta_sources_hoisted",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/beta.md",
+          "regex": "(?m)^sources:.*ch04\\.tex"
+        },
+        {
+          "id": "A5_beta_body_sources_heading_removed",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/beta.md",
+          "regex": "(?m)^##\\s+Sources\\s*$"
+        },
+        {
+          "id": "A6_beta_no_derived_from",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/beta.md",
+          "regex": "(?m)^##\\s+Derived from"
+        },
+        {
+          "id": "A7_no_derived_from_on_any_page",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/*.md",
+          "regex": "(?m)^##\\s+Derived from"
+        },
+        {
+          "id": "A8_declared_root_entries_kept_reported",
+          "type": "report_field_eq",
+          "field": "declared_root_entries_kept",
+          "expected": "yes"
+        },
+        {
+          "id": "A9_no_derived_from_reported",
+          "type": "report_field_eq",
+          "field": "derived_from_created",
+          "expected": "no"
+        },
+        {
+          "id": "A10_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A11_relint_clean",
+          "type": "report_field_matches",
+          "field": "lint_findings",
+          "regex": "(^|[^0-9])0\\s+blocking|no\\s+blocking|^\\s*clean\\b|no\\s+issues"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
       "id": "MP-1",
       "name": "auto-shaper-no-meta-prose-on-oversized-todo",
       "description": "auto_shaper_wiki (via wiki_fix) handles an oversized custom todo page that trips the page-size info finding without inserting page-convention or lint-sanction prose into the page body. Any accepted-finding rationale appears only in SCHEMA.md's ## Lint section or the audit log. Graded out-of-band against the top-level passes denominator (wiki_meta-prose-in-page-bodies, Acceptance: MP-1).",

@@ -1356,6 +1356,88 @@ stage_AS-21() {
     _baseline_skill_templates "$sb"
 }
 
+stage_AS-22() {
+    # AS-22 (wiki_declared-source-roots): a declared source root widens
+    # `sources:` to a live in-repo document. Page alpha already cites a
+    # declared-root file in frontmatter and must keep it (no ## Derived from).
+    # Page beta carries a body ## Sources bullet resolving under the declared
+    # root and must have it hoisted into `sources:` (no ## Derived from). Both
+    # re-lint clean.
+    local sb
+    sb=$(reset_sandbox AS-22)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    mkdir -p "$sb/HOME/proj/paper"
+    printf 'Chapter three of the paper.\n' > "$sb/HOME/proj/paper/ch03.tex"
+    printf 'Chapter four of the paper.\n' > "$sb/HOME/proj/paper/ch04.tex"
+    python3 - "$wiki/SCHEMA.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "## Lint\n",
+    "## Lint\n\n- Declared source root: ../paper — the paper this wiki classifies\n",
+    1,
+)
+text = text.replace(
+    "## Tag Taxonomy\n",
+    "## Tag Taxonomy\n\n- Domain: model\n",
+    1,
+)
+p.write_text(text)
+PY
+    mkdir -p "$wiki/concepts"
+    cat > "$wiki/concepts/alpha.md" <<'EOF'
+---
+title: alpha
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+sources: [../paper/ch03.tex]
+confidence: high
+---
+
+# alpha
+
+The chapter three argument ([ch03](../paper/ch03.tex)) defines the widget
+contract. See also [beta](beta.md).
+EOF
+    cat > "$wiki/concepts/beta.md" <<'EOF'
+---
+title: beta
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+confidence: high
+---
+
+# beta
+
+The chapter four argument defines the rollout sequence. See also
+[alpha](alpha.md).
+
+## Sources
+
+- [ch04](../paper/ch04.tex) — the specification chapter
+EOF
+    python3 - "$wiki/index.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n- [alpha](concepts/alpha.md) — widget contract\n"
+    "- [beta](concepts/beta.md) — rollout sequence\n",
+    1,
+)
+p.write_text(text)
+PY
+}
+
 stage_MP-1() {
     # MP-1 (wiki_meta-prose-in-page-bodies): oversized custom `todo` page that
     # trips the page-size info finding. After wiki_fix the page body must
@@ -1451,7 +1533,7 @@ idx.write_text(text if text.endswith("\n") else text + "\n")
 PY
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 MP-1)
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 MP-1)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

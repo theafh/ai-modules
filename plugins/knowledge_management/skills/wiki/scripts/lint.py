@@ -6,13 +6,15 @@ the format_markdown skill), tag taxonomy compliance, stale content,
 oversized pages, source drift, and log rotation. Findings are grouped
 by severity so the caller knows what to fix first.
 
-Three sources leave the live blocking, warn, and info totals for a trailing
+Four sources leave the live blocking, warn, and info totals for a trailing
 context-only ``ACKNOWLEDGED`` section: an info finding the wiki owner has
 reviewed and accepted (``- Accepted finding: …`` in SCHEMA.md's ``## Lint``
 section), an insert-only locked-slot extension the boilerplate check classifies
-as such, and a matching ``- Declared boilerplate: …`` honour for an intentional
-locked-slot remove-or-rewrite divergence. Each one is reported outside the live
-counts so a settled decision stops re-surfacing as work.
+as such, a matching ``- Declared boilerplate: …`` honour for an intentional
+locked-slot remove-or-rewrite divergence, and a valid ``- Declared source root:
+…`` declaration that widens ``sources:`` to an in-repo root beside ``raw/``.
+Each one is reported outside the live counts so a settled decision stops
+re-surfacing as work.
 
 Usage:
     python3 lint.py [WIKI_PATH] [--quiet]
@@ -179,9 +181,10 @@ VALID_CONFIDENCE = {"high", "medium", "low"}
 REQUIRED_FRONTMATTER = ("title", "created", "updated", "type", "tags")
 
 # Canonical keys beyond the required set: `sources` is present only on a page
-# citing a source captured under `raw/`, and the quality signals are optional
-# throughout. Built-in keys handled by other checks; custom-field validation
-# skips all of these.
+# citing a source captured under `raw/` or a live in-repo document under a
+# declared source root, and the quality signals are optional throughout.
+# Built-in keys handled by other checks; custom-field validation skips all of
+# these.
 CANONICAL_FRONTMATTER = set(REQUIRED_FRONTMATTER) | {
     "sources", "confidence", "contested", "contradictions", "checked",
 }
@@ -254,8 +257,9 @@ class Issue:
         """Render a settled finding for the acknowledged section.
 
         ``marker`` selects the line tag: ``accepted`` for Accepted-finding
-        suppressions, ``extension`` for insert-only locked-slot extensions, and
-        ``declared`` for matching ``Declared boilerplate:`` honours. Drops the
+        suppressions, ``extension`` for insert-only locked-slot extensions,
+        ``declared`` for matching ``Declared boilerplate:`` honours, and
+        ``declared`` for valid ``Declared source root:`` declarations. Drops the
         ``[severity]`` bracket the live buckets use, so an acknowledged line
         never reads — to an agent or a grep — as a finding that still wants
         action.
@@ -417,6 +421,17 @@ LINT_DECLARE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A fourth ``## Lint`` bullet kind declares a wiki-root-relative source root a
+# page may cite in ``sources:`` without capturing it under ``raw/``:
+# ``- Declared source root: <path> — <reason>``. The path names a directory or
+# a single file; the reason is required free text after the first `` — `` and
+# is never matched. Same fence-safe scan and marker tolerance as the sibling
+# bullets.
+LINT_SOURCE_ROOT_RE = re.compile(
+    r"^\s*[-*+]\s+declared source root\s*:\s*(.+)$",
+    re.IGNORECASE,
+)
+
 # The field separator inside an ``Accepted finding:`` or ``Declared boilerplate:``
 # bullet: an em dash with a space on each side, so a path, message, or reason
 # may carry a bare hyphen.
@@ -433,9 +448,10 @@ def iter_lint_section_lines(wiki: Path) -> Iterator[str]:
     """Yield the unfenced lines of SCHEMA.md's ``## Lint`` section.
 
     Every machine-read setting in that section — the ``Page-check exclusions:``
-    walk exclusions, the ``Accepted finding:`` acceptance store, and the
-    ``Declared boilerplate:`` locked-slot declarations — reads its bullets
-    through here, so one fence-safe scan serves them all. Fenced blocks are
+    walk exclusions, the ``Accepted finding:`` acceptance store, the
+    ``Declared boilerplate:`` locked-slot declarations, and the ``Declared
+    source root:`` source-root declarations — reads its bullets through here,
+    so one fence-safe scan serves them all. Fenced blocks are
     skipped, mirroring ``load_taxonomy`` and the body scanners, so a bullet
     shown inside a fenced example (in the canonical template, or where a vault
     documents its own settings) is never read as live config. A missing
@@ -446,7 +462,9 @@ def iter_lint_section_lines(wiki: Path) -> Iterator[str]:
     if not schema.is_file():
         return
     section = re.search(
-        r"##\s+Lint(.+?)(?=\n##\s|\Z)", schema.read_text(encoding="utf-8"), re.DOTALL
+        r"^##\s+Lint\s*$(.+?)(?=^##\s|\Z)",
+        schema.read_text(encoding="utf-8"),
+        re.DOTALL | re.MULTILINE,
     )
     if not section:
         return
@@ -627,6 +645,49 @@ def load_declared_boilerplate(
         else:
             unmatched.append(label)
     return matched, unmatched
+
+
+def parse_declared_source_root(payload: str) -> tuple[str, str] | None:
+    """Parse ``<path> — <reason>`` from a Declared source root bullet.
+
+    Left-anchored on ``ACCEPT_SEP`` so the machine key is the wiki-root-relative
+    path and the reason is the remainder (which may carry further em dashes).
+    Both fields are required: a payload with no separator, an empty path, or an
+    empty reason is documentation-shaped rather than a live declaration, so it
+    parses to None and draws no acknowledgement.
+    """
+    if ACCEPT_SEP not in payload:
+        return None
+    path, reason = payload.split(ACCEPT_SEP, 1)
+    path = path.strip().strip("`")
+    reason = reason.strip()
+    if not path or not reason:
+        return None
+    return path, reason
+
+
+def load_declared_source_roots(wiki: Path) -> dict[str, str]:
+    """Wiki-root-relative source roots declared in SCHEMA.md's ``## Lint``.
+
+    A wiki whose primary source is a live in-repo document declares its root
+    once on a ``- Declared source root: <path> — <reason>`` bullet, so a
+    ``sources:`` entry may cite a file under it without a ``raw/`` capture. The
+    path names a directory or a single file; the reason is free text. Reads
+    through ``iter_lint_section_lines``, so an absent section yields no
+    declarations and a fenced example stays documentation. A repeated path
+    keeps its first reason, matching one-bullet-per-root.
+    """
+    roots: dict[str, str] = {}
+    for line in iter_lint_section_lines(wiki):
+        m = LINT_SOURCE_ROOT_RE.match(line)
+        if not m:
+            continue
+        parsed = parse_declared_source_root(m.group(1).rstrip())
+        if parsed is None:
+            continue
+        path, reason = parsed
+        roots.setdefault(path, reason)
+    return roots
 
 
 def partition_accepted(
@@ -2132,8 +2193,10 @@ def check_markdown_style(wiki: Path) -> list[Issue]:
 # The wiki uses four rules for source attribution:
 #
 #   1. `sources:` frontmatter is the canonical, page-level source inventory.
-#      Every entry must resolve to a real file under `raw/` — blocking when
-#      it doesn't, same severity as broken markdown links.
+#      Every entry must resolve to a real file under `raw/` or under a root
+#      declared by a `- Declared source root:` bullet in SCHEMA.md's `## Lint`
+#      section — blocking when it doesn't, same severity as broken markdown
+#      links.
 #   2. Pages do not carry a body "Sources" / "Source references" H2 section.
 #      The frontmatter alone is the source of truth; a bottom-of-page list
 #      duplicates that inventory and splits the claim-source binding across
@@ -2147,8 +2210,9 @@ def check_markdown_style(wiki: Path) -> list[Issue]:
 #      Warn-level so the conversion path is clear and actionable.
 #   4. On synthesis pages (`summary`, `query`, `comparison`), the two
 #      provenance channels must agree: every `sources:` entry is cited
-#      inline and every inline `raw/` citation is declared. Info-level,
-#      presence and consistency only — grounding stays a review concern.
+#      inline and every inline citation resolving under `raw/` or a declared
+#      source root is declared. Info-level, presence and consistency only —
+#      grounding stays a review concern.
 # ---------------------------------------------------------------------------
 
 SOURCES_HEADER_RE = re.compile(
@@ -2159,23 +2223,75 @@ FOOTNOTE_RE = re.compile(r"\[\^([^\]\s]+)\]")
 FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^([^\]\s]+)\]:")
 
 
-def check_source_paths_exist(wiki: Path) -> list[Issue]:
-    """Validate every `sources:` entry is a portable, repo-relative `raw/…`
-    path that resolves on disk.
+def _path_under(path: Path, root: Path) -> bool:
+    """True when ``path`` resolves at or below ``root``.
 
-    Entries are interpreted relative to the wiki root. A `~`-prefixed entry, or
-    one that escapes the wiki's `raw/` tree, is non-portable — it resolves only
-    on the machine that wrote it, and Python's `pathlib` even lets an absolute
-    entry silently override the `wiki /` join — so it is blocking regardless of
-    whether it happens to exist locally. An absolute or `~`-prefixed entry that
-    resolves to an existing file inside `raw/` has a deterministic
-    `raw/…`-relative equivalent — the same file, portably spelled — so it is a
-    safe-auto-fix **warn** carrying that rewrite; only an entry resolving
-    outside `raw/` (or to no file) stays the blocking `broken-source` finding. A
-    surviving repo-relative `raw/…` entry must still resolve on disk.
+    One predicate bounds both declaration shapes: a directory root admits every
+    descendant, and a single-file root admits exactly that file.
+    """
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def check_source_paths_exist(
+    wiki: Path,
+) -> tuple[list[Issue], list[tuple[Issue, str]]]:
+    """Validate every `sources:` entry resolves under `raw/` or a declared root.
+
+    Entries are interpreted relative to the wiki root. A relative entry passes
+    when it resolves under `raw/` or under a valid `- Declared source root:`
+    declaration in SCHEMA.md's `## Lint` section, and stays blocking when it
+    resolves under neither ("escapes") or resolves under a root to no file
+    ("missing on disk"). A declaration is valid when its root exists and, in a
+    git-repo wiki, stays inside the repository; a root resolving to nothing or
+    outside the repo is a blocking `broken-source` finding on SCHEMA.md, while a
+    wiki outside any git repo is local-only so only existence applies. Each
+    valid declaration is reported once on the acknowledged channel with the
+    `(declared)` marker, naming the root and its reason, never as a live Issue.
+
+    An absolute or `~`-prefixed entry is non-portable regardless of where it
+    resolves, so it stays blocking; its remedy is a relative path under `raw/`
+    or a declared root, and declaring a root alone does not clear it. The one
+    exception is the safe-fix **warn** for an absolute entry that resolves inside
+    `raw/`, which carries its deterministic `raw/…`-relative rewrite.
     """
     issues: list[Issue] = []
+    acknowledged: list[tuple[Issue, str]] = []
     raw_root = (wiki / "raw").resolve()
+    repo_root = _git_repo_root(wiki)
+
+    valid_roots: list[Path] = []
+    for declared, reason in load_declared_source_roots(wiki).items():
+        resolved = (wiki / declared).resolve()
+        if not resolved.exists():
+            issues.append(Issue(
+                SEV_BLOCKING, "broken-source", wiki / "SCHEMA.md",
+                f"`Declared source root:` resolves to no file or directory — "
+                f"use a `raw/…` path, or declare an in-repo root in `SCHEMA.md`: "
+                f"{declared}",
+            ))
+            continue
+        if repo_root is not None and not _path_under(resolved, repo_root):
+            issues.append(Issue(
+                SEV_BLOCKING, "broken-source", wiki / "SCHEMA.md",
+                f"`Declared source root:` escapes the repository — use a "
+                f"`raw/…` path, or declare an in-repo root in `SCHEMA.md`: "
+                f"{declared}",
+            ))
+            continue
+        valid_roots.append(resolved)
+        acknowledged.append((
+            Issue(
+                SEV_INFO, "source-root", wiki / "SCHEMA.md",
+                f"`Declared source root:` {declared} — {reason}",
+            ),
+            "declared",
+        ))
+
+    roots = [raw_root, *valid_roots]
     for page in iter_wiki_pages(wiki):
         fm, _ = parse_frontmatter(page.read_text(encoding="utf-8"))
         if not fm:
@@ -2199,18 +2315,18 @@ def check_source_paths_exist(wiki: Path) -> list[Issue]:
                 else:
                     issues.append(Issue(
                         SEV_BLOCKING, "broken-source", page,
-                        f"`sources:` entry is an absolute/home path resolving "
-                        f"outside the wiki's `raw/` tree (or to no file) — use a "
-                        f"repo-relative `raw/…` path: {src}",
+                        f"`sources:` entry is an absolute/home path — rewrite it "
+                        f"to a relative path under `raw/` or under a declared "
+                        f"root: {src}",
                     ))
                 continue
             target = (wiki / src).resolve()
-            try:
-                target.relative_to(raw_root)
-            except ValueError:
+            if not any(_path_under(target, root) for root in roots):
                 issues.append(Issue(
                     SEV_BLOCKING, "broken-source", page,
-                    f"`sources:` entry escapes the wiki's `raw/` tree — use a repo-relative `raw/…` path: {src}",
+                    f"`sources:` entry escapes the wiki's `raw/` tree — use a "
+                    f"`raw/…` path, or declare an in-repo root in `SCHEMA.md`: "
+                    f"{src}",
                 ))
                 continue
             if not target.is_file():
@@ -2218,7 +2334,7 @@ def check_source_paths_exist(wiki: Path) -> list[Issue]:
                     SEV_BLOCKING, "broken-source", page,
                     f"`sources:` entry missing on disk: {src}",
                 ))
-    return issues
+    return issues, acknowledged
 
 
 def check_sources_section(wiki: Path) -> list[Issue]:
@@ -2261,11 +2377,12 @@ def check_synthesis_citation(wiki: Path) -> list[Issue]:
 
     For pages whose ``type`` is in ``SYNTHESIS_TYPES``, compare the
     ``sources:`` frontmatter inventory against the inline markdown links in the
-    body that resolve under ``raw/``. Three info findings:
+    body that resolve under ``raw/`` or under a declared source root. Three
+    info findings:
 
     - a ``sources:`` entry no inline link references (declared, never pinned);
-    - an inline ``raw/`` citation absent from ``sources:`` (pinned, never
-      declared);
+    - an inline citation under ``raw/`` or a declared root absent from
+      ``sources:`` (pinned, never declared);
     - a synthesis page with no local ``.md`` inline links at all, the coarse
       backstop for synthesis grounded in nothing visible.
 
@@ -2277,6 +2394,11 @@ def check_synthesis_citation(wiki: Path) -> list[Issue]:
     a judgment call the review surface reports rather than auto-applies.
     """
     issues: list[Issue] = []
+    raw_root = (wiki / "raw").resolve()
+    declared_roots = [
+        (wiki / root).resolve() for root in load_declared_source_roots(wiki)
+    ]
+    citation_roots = [raw_root, *declared_roots]
     for page in iter_wiki_pages(wiki):
         text = page.read_text(encoding="utf-8")
         fm, body = parse_frontmatter(text)
@@ -2299,12 +2421,13 @@ def check_synthesis_citation(wiki: Path) -> list[Issue]:
             ))
         cited: set[str] = set()
         for target, _text, _raw in links:
+            if not any(_path_under(target, root) for root in citation_roots):
+                continue
             try:
                 rel = target.relative_to(wiki).as_posix()
             except ValueError:
-                continue
-            if rel.startswith("raw/"):
-                cited.add(rel)
+                rel = Path(os.path.relpath(target, wiki)).as_posix()
+            cited.add(rel)
         for src in sorted(declared - cited):
             issues.append(Issue(
                 SEV_INFO, "citation", page,
@@ -2424,9 +2547,10 @@ def render_report(
 
     ``acknowledged`` holds settled items reported outside the live blocking,
     warn, and info totals: Accepted-finding suppressions (marker ``accepted``),
-    insert-only locked-slot extensions (``extension``), and matching
-    ``Declared boilerplate:`` honours (``declared``). They stay out of every
-    live bucket, out of the total, and out of the counts, and appear only in a
+    insert-only locked-slot extensions (``extension``), matching
+    ``Declared boilerplate:`` honours (``declared``), and valid ``Declared
+    source root:`` declarations (``declared``). They stay out of every live
+    bucket, out of the total, and out of the counts, and appear only in a
     trailing context section that names itself as needing no action — so a
     reviewed decision is still visible without asking to be re-justified.
     ``--quiet`` drops them with the rest of the info level.
@@ -2442,7 +2566,8 @@ def render_report(
         ack_block.append("")
         ack_block.append(
             f"ACKNOWLEDGED ({len(ack)}) — settled outside live counts "
-            "(accepted findings, locked-slot extensions, declared boilerplate); "
+            "(accepted findings, locked-slot extensions, declared boilerplate, "
+            "declared source roots); "
             "context only, already decided, no action and no rationale needed"
         )
         ack_block.extend(
@@ -2498,6 +2623,7 @@ def main() -> int:
         sys.exit(f"wiki not found at {wiki}")
 
     issues: list[Issue] = []
+    source_ack: list[tuple[Issue, str]] = []
 
     type_spec = load_page_type_spec(wiki)
     if type_spec is None:
@@ -2527,7 +2653,8 @@ def main() -> int:
 
         issues.extend(check_type_location(wiki, valid_types, page_dirs))
         issues.extend(check_links_and_orphans(wiki))
-        issues.extend(check_source_paths_exist(wiki))
+        source_issues, source_ack = check_source_paths_exist(wiki)
+        issues.extend(source_issues)
         issues.extend(check_index_completeness(wiki))
         if taxonomy:
             issues.extend(check_unused_tags(wiki, taxonomy))
@@ -2560,6 +2687,7 @@ def main() -> int:
         (issue, "accepted") for issue in accepted_ack
     ]
     acknowledged.extend(boilerplate_ack)
+    acknowledged.extend(source_ack)
 
     print(render_report(wiki, issues, args.quiet, acknowledged))
     return 1 if any(i.severity == SEV_BLOCKING for i in issues) else 0

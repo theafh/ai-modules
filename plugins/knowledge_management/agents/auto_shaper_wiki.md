@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.10
+version: 1.11.11
 model: inherit
 background: false
 effort: high
@@ -96,13 +96,16 @@ exists so the SCHEMA read is never skipped or deferred.
     the current canonical structure encoded in `$WIKI_SKILL/SKILL.md`
     and `$WIKI_SKILL/references/template_*.md`. The wiki's own
     customizations (configured domain, tag taxonomy, declared custom
-    fields, user-added page types, page-check exclusions, acknowledged
-    locked-slot insert-only extensions visible on the acknowledged
-    channel with no SCHEMA bullet, and `- Declared boilerplate:`
-    regions) are preserved on top of the canonical baseline.
+    fields, declared source roots, user-added page types, page-check
+    exclusions, acknowledged locked-slot insert-only extensions visible on
+    the acknowledged channel with no SCHEMA bullet, and `- Declared
+    boilerplate:` regions) are preserved on top of the canonical baseline.
     Scaffold alignment does not require verbatim locked-slot equality
     when the check has classified an insert-only extension or a
     matching declaration has honoured a remove-or-rewrite divergence.
+    A valid `- Declared source root:` declaration is the fourth non-overlapping structural route:
+    it widens `sources:` beyond `raw/` and is preserved, never reported as
+    drift.
   </scaffold_alignment>
   <index_completeness>
     `index.md` lists every page exactly once under its correct section.
@@ -245,8 +248,9 @@ have audited before, because the schema, taxonomy, or domain may have changed.
 
   <read_schema>
     Read `$WIKI/SCHEMA.md` end-to-end. Capture the page-type enum,
-    custom field declarations, tag taxonomy, and domain statement.
-    These define what is canonical for this wiki.
+    custom field declarations, tag taxonomy, domain statement, and the
+    declared source roots (each `- Declared source root:` bullet in the
+    `## Lint` section). These define what is canonical for this wiki.
   </read_schema>
 
   <read_index>
@@ -457,9 +461,9 @@ the fix move.
   <provenance_violation>
     A page synthesizes 3+ sources but its claims lack inline
     standard-markdown path-link attribution to the source files under
-    `raw/<kind>/<slug>.md`. The wiki convention keeps attribution next
-    to the claim it supports and uses page-level `sources:` frontmatter
-    as the canonical source inventory.
+    `raw/<kind>/<slug>.md` or under a declared root. The wiki convention
+    keeps attribution next to the claim it supports and uses page-level
+    `sources:` frontmatter as the canonical source inventory.
   </provenance_violation>
 
   <external_source_pointer>
@@ -478,10 +482,12 @@ the fix move.
       check is the semantic complement that names *why* the bullets
       are there and where they should go.
     - Resolve every `sources:` frontmatter value from the wiki root and open it
-      with `Read` as `$WIKI/<sources-value>`. A value that does not resolve to a
-      file under `$WIKI/raw/` fires lint's blocking `broken-source`; this
-      check distinguishes "the path is genuinely broken" from "the
-      path is external by design and belongs in the body section".
+      with `Read` as `$WIKI/<sources-value>`. A value that resolves to a file
+      under `$WIKI/raw/` or under a declared root is a declared primary source:
+      neither broken nor external by design, so it stays in `sources:`. A value
+      that does not resolve under either fires lint's blocking `broken-source`;
+      this check distinguishes "the path is genuinely broken" from "the path is
+      external by design and belongs in the body section".
     - Inline prose attribution that names an external file path or
       URL the page is built on, without a corresponding `sources:`
       entry or `## Derived from` listing.
@@ -645,10 +651,10 @@ the fix move.
 
       - `template_schema.md`: the body of `## Domain`, the body of
         `## Tag Taxonomy`, the `Page-check exclusions` bullet, every
-        `Accepted finding` bullet, and every `Declared boilerplate`
-        bullet in the `## Lint` section, declared custom frontmatter
-        fields beyond the canonical set, and user-added page types
-        beyond the canonical enum.
+        `Accepted finding` bullet, every `Declared boilerplate` bullet,
+        and every `Declared source root:` bullet in the `## Lint`
+        section, declared custom frontmatter fields beyond the canonical
+        set, and user-added page types beyond the canonical enum.
       - `template_index.md`: the header values (`Total pages: N`,
         `Last updated: <date>`) and the page entries inside each
         section.
@@ -876,9 +882,10 @@ affect the same file so each file is opened, read, and rewritten once.
       `updated` when bumping after a fix.
 
       Write `sources` only when the page cites raw material the wiki
-      captured under `raw/`: list those paths, and on a page citing none
-      leave the key out of the rewritten block entirely rather than
-      writing an empty list. Carry every optional field the page already
+      captured under `raw/` or a live in-repo document under a declared root:
+      list those paths, and on a page citing neither leave the key out of
+      the rewritten block entirely rather than writing an empty list. Carry
+      every optional field the page already
       has, `checked` included, through the rewrite unchanged, and add
       none of them the page does not already carry.
 
@@ -1030,47 +1037,52 @@ affect the same file so each file is opened, read, and rewritten once.
     <fix_provenance_violation>
       Add inline standard-markdown path links next to the specific
       claims drawn from each source, pointing at the matching
-      `raw/<kind>/<slug>.md` files. Keep page-level `sources:`
-      frontmatter as the source inventory, and keep claim-level
-      attribution beside the claim it supports.
+      `raw/<kind>/<slug>.md` files or at files under a declared root.
+      Keep page-level `sources:` frontmatter as the source inventory,
+      and keep claim-level attribution beside the claim it supports.
     </fix_provenance_violation>
 
     <fix_external_source_pointer>
       Preserve every external pointer and its surrounding commentary
       verbatim. The agent never silently drops a source pointer.
       Migration uses **only** the body section; frontmatter stays
-      strictly typed (`sources:` continues to mean `raw/<kind>/<slug>.md`
-      paths and nothing else).
+      strictly typed (`sources:` continues to mean paths under
+      `raw/<kind>/<slug>.md` or under a declared root, and nothing else).
 
       Process each affected page in this order:
 
-      1. **Hoist `raw/`-resolvable bullets first.** Walk every bullet in
-         the body `## Sources` section (and every entry in `sources:`).
-         A bullet whose link target resolves to an existing file under
-         `$WIKI/raw/<kind>/<slug>.md` belongs in `sources:` frontmatter.
-         Add it there if not already present, then remove the
-         hoisted bullet from the body section. This is the normal
-         migration that clears `check_sources_section` for purely
-         in-wiki attribution.
+      1. **Hoist `raw/`- and declared-root-resolvable bullets first.**
+         Walk every bullet in the body `## Sources` section (and every
+         entry in `sources:`). A bullet whose link target resolves to an
+         existing file under `$WIKI/raw/<kind>/<slug>.md` or under a
+         declared root belongs in `sources:` frontmatter. Add it there
+         if not already present, then remove the hoisted bullet from the
+         body section. This is the normal migration that clears
+         `check_sources_section` for purely in-wiki attribution and for
+         a declared primary source.
       2. **Rename the heading for the remainder.** Whatever bullets
-         remain under the body H2 after step 1 are non-`raw/` entries
-         (absolute paths into other repos, `~/`-relative paths, URLs,
-         descriptors, possibly with commentary). Rename the heading
-         from `## Sources` to `## Derived from` in place. Keep every
-         remaining bullet and every line of surrounding commentary
-         unchanged. The new heading does not match the linter's
-         `SOURCES_HEADER_RE` (`^\s*##\s+(?:sources?|source\s+references?)\s*$`),
-         so the info-level `check_sources_section` finding clears
-         without losing content.
+         remain under the body H2 after step 1 resolve under neither
+         `raw/` nor a declared root (absolute paths into other repos,
+         `~/`-relative paths, URLs, descriptors, possibly with
+         commentary). Rename the heading from `## Sources` to
+         `## Derived from` in place. Keep every remaining bullet and
+         every line of surrounding commentary unchanged. The new heading
+         does not match the linter's `SOURCES_HEADER_RE`
+         (`^\s*##\s+(?:sources?|source\s+references?)\s*$`), so the
+         info-level `check_sources_section` finding clears without
+         losing content.
       3. **Empty body section after hoist.** If step 1 left the body
          section with no remaining bullets, delete the heading entirely.
          No `## Derived from` is needed when nothing external survives.
-      4. **`sources:` entries resolving outside `raw/`.** Move the
-         entry from `sources:` frontmatter into a `## Derived from`
-         bullet at the page bottom (create the section if it does not
-         exist yet). Lint's `broken-source` blocking finding clears
+      4. **`sources:` entries resolving outside `raw/` and every
+         declared root.** Leave an entry that resolves under a declared
+         root untouched: it is a declared primary source, not an
+         external pointer. Move only an entry that resolves under
+         neither root from `sources:` frontmatter into a `## Derived
+         from` bullet at the page bottom (create the section if it does
+         not exist yet). Lint's `broken-source` blocking finding clears
          because the remaining `sources:` entries all resolve under
-         `raw/`.
+         `raw/` or a declared root.
       5. **Absolute `sources:` entries resolving inside `raw/`.** An
          absolute or `~`-prefixed entry that resolves to an existing file
          under `$WIKI/raw/` is a portability mis-spelling, not an external
@@ -1421,16 +1433,21 @@ affect the same file so each file is opened, read, and rewritten once.
 
     <preserve_external_attribution>
       External source pointers and their surrounding commentary are
-      never silently removed. When a `sources:` entry resolves outside
-      `raw/`, when a body `## Sources` section carries non-`raw/`
-      bullets, or when prose attributes a claim to an external file,
-      URL, or repo, the only allowed moves are: hoist `raw/`-resolvable
-      bullets into `sources:` frontmatter and rename the remaining body
-      section to `## Derived from` via `fix_external_source_pointer`, or
-      surface to the user when the migration target is ambiguous. The
-      `fix_broken_md_link` move's "remove the link when the reference is
-      obsolete" branch does **not** apply to external derivation pointers.
-      Those are durable lineage records, not obsolete references.
+      never silently removed. A `sources:` entry or body `## Sources`
+      bullet that resolves under a declared root is a declared primary
+      source: keep it in frontmatter or hoist it there, and never treat
+      it as an outside-`raw/` migration case. When a `sources:` entry
+      resolves outside `raw/` and every declared root, when a body
+      `## Sources` section carries bullets that resolve under neither,
+      or when prose attributes a claim to an external file, URL, or
+      repo, the only allowed moves are: hoist `raw/`- or declared-root-
+      resolvable bullets into `sources:` frontmatter and rename the
+      remaining body section to `## Derived from` via
+      `fix_external_source_pointer`, or surface to the user when the
+      migration target is ambiguous. The `fix_broken_md_link` move's
+      "remove the link when the reference is obsolete" branch does
+      **not** apply to external derivation pointers. Those are durable
+      lineage records, not obsolete references.
     </preserve_external_attribution>
 
   </fix_constraints>
@@ -1527,7 +1544,9 @@ affect the same file so each file is opened, read, and rewritten once.
     this wiki, name that slot or deviation in this report as a
     candidate for the shipped template. That is a report line only:
     leave every `$WIKI_SKILL/references/template_*.md` path unedited
-    from inside a managed wiki.
+    from inside a managed wiki. A declared source root describes one
+    wiki's repository layout, so it is never reported as a candidate
+    for the shipped template.
   </verify_output>
   <final_line>
     Final report ends with one line: `audit complete — N issues
@@ -1538,7 +1557,7 @@ affect the same file so each file is opened, read, and rewritten once.
 <policy>
 
   <linter_is_truth_for_structure>
-    Trust the lint script as the structural source of truth. Three
+    Trust the lint script as the structural source of truth. Four
     non-overlapping structural routes settle a finding without editing
     the script, and each suppresses or preserves only its own finding
     class — none substitutes for the others:
@@ -1549,11 +1568,16 @@ affect the same file so each file is opened, read, and rewritten once.
       SCHEMA bullet and are visible on the acknowledged channel.
     - `- Declared boilerplate: …` in that same `## Lint` section for
       intentional locked-slot remove-or-rewrite divergences.
+    - `- Declared source root: …` in that same `## Lint` section for a
+      live in-repo source root that widens `sources:` beyond `raw/`;
+      a valid declaration is visible on the acknowledged channel.
 
-    A block of differing lines inside a declared slot is wiki-owned,
-    and no repair reverts it. Reverting an owner's declared
-    refinement destroys a recorded decision while the audit reports
-    success.
+    The fourth non-overlapping structural route is a declaration, not a
+    finding to clear: it preserves the declared-root `sources:` entries
+    instead of migrating them. A block of differing lines inside a
+    declared slot is wiki-owned, and no repair reverts it. Reverting an
+    owner's declared refinement destroys a recorded decision while the
+    audit reports success.
 
     Do not edit the script.
   </linter_is_truth_for_structure>
@@ -1588,12 +1612,15 @@ affect the same file so each file is opened, read, and rewritten once.
     frontmatter) as the skill evolves. Bring the scaffold forward to
     match the current `$WIKI_SKILL/SKILL.md` and
     `$WIKI_SKILL/references/template_*.md`, preserving the wiki's
-    domain, tag taxonomy, declared custom fields, user-added page
-    types, page-check exclusions, acknowledged locked-slot insert-only
-    extensions, and `- Declared boilerplate:` regions on top.
-    Convergence is additive: it does not strip acknowledged locked-slot
-    extensions or declared-slot regions, and it does not require
-    verbatim locked-slot restoration. Preserve a line the owner added
+    domain, tag taxonomy, declared custom fields, declared source
+    roots, user-added page types, page-check exclusions, acknowledged
+    locked-slot insert-only extensions, and `- Declared boilerplate:`
+    regions on top. Convergence is additive: it does not strip
+    acknowledged locked-slot extensions or declared-slot regions, and it
+    does not require verbatim locked-slot restoration. A valid
+    `- Declared source root:` declaration is the fourth non-overlapping structural route,
+    so bringing the scaffold forward keeps it in place and never rewrites it
+    as drift. Preserve a line the owner added
     to a scaffold file on the same footing, byte-identical where it
     sits, including inside the `log.md` preamble. Bringing the
     scaffold forward means every canonical unit reaches its current

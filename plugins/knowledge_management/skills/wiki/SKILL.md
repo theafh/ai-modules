@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.15
+version: 1.24.16
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -184,12 +184,17 @@ being attributed picks the channel. A source the wiki captured under `raw/` is
 cited inline next to the claim it supports, as a standard-markdown link rather
 than a footnote marker, and is listed in the page's `sources:` frontmatter, whose
 `raw/<kind>/<slug>.md` paths the lint validates against disk (see
-`<write_or_update_pages>`). That field is present on a page citing a captured
-raw source and absent from a page citing none, so a wiki that captures nothing
-carries no `sources:` key rather than an empty list everywhere. External
-material the page was distilled from but that stays outside `raw/` (e.g.
-doctrine in another repo) goes into an optional `## Derived from` body section
-at the page bottom; the renamed heading does not match the linter's deprecated
+`<write_or_update_pages>`). A live in-repo document that **is** the subject of
+classification (a paper, spec, or codebase the wiki exists to explain) is cited
+the same way under a root the wiki declares with a `Declared source root:`
+bullet in `SCHEMA.md`'s `## Lint` section; it carries no sha256 drift detection,
+so its coherence relies on a review rule the wiki states. The `sources:` field
+is present on a page citing a captured raw source or a declared-root document
+and absent from a page citing neither, so a wiki that captures nothing and
+declares no root carries no `sources:` key rather than an empty list everywhere.
+Uncaptured lineage that is **not** the subject of classification (e.g. doctrine
+in another repo) goes into an optional `## Derived from` body section at the
+page bottom; the renamed heading does not match the linter's deprecated
 `## Sources` regex, so it does not collide with the structured `sources:`
 channel.
 </page_anatomy>
@@ -601,8 +606,8 @@ difference between a growing wiki and a pile of duplicates.
 - **Updating existing pages**: always bump the `updated` date.
 - **Cross-reference**: every new/updated page links to ≥2 others.
 - **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page.
-- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. It is also listed in the page-level `sources:` frontmatter, the canonical inventory of captured sources the page draws on, present on a page citing a captured raw source, absent from a page citing none, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`. Uncaptured external lineage takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
-- **External derivation**: when a page is distilled from material that is **not** itself the subject of classification (doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes), that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns", and leave the field off entirely when the page cites no captured raw source. A page may have either, both, or neither.
+- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. A live in-repo document that **is** the subject of classification (a paper, spec, or codebase the wiki exists to explain) is cited the same way under a root the wiki declares with a `Declared source root:` bullet in `SCHEMA.md`'s `## Lint` section, and it carries no sha256 drift detection, so its coherence relies on a review rule the wiki states. Both objects are listed in the page-level `sources:` frontmatter, the canonical inventory the page draws on, present on a page citing either object, absent from a page citing neither, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`; a declared-root value may resolve to a sibling of the wiki inside the same repository. Uncaptured lineage that is **not** the subject of classification takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
+- **External derivation**: when a page is distilled from material that is **not** itself the subject of classification (doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes), that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns or on a live in-repo document under a declared source root", and leave the field off entirely when the page cites neither. A page may have either, both, or neither.
 - **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
 - **Page body content**: keep ordinary page bodies to load-bearing knowledge. Lead with one short sentence naming what the page is for, then the entries and facts. Put page-convention definitions, entry-anatomy explanations, canon-kind clauses, and lint-sanction prose in `SCHEMA.md` (page conventions and the `## Lint` acceptance store) or in the audit log — never in an ordinary page body. Carve-out: `SCHEMA.md`, `index.md`, and synthesis types (`summary`, `query`, `comparison`), whose organising prose is their load-bearing content. `SCHEMA.md`'s `## Conventions` bullet **Keep ordinary page bodies to load-bearing knowledge** is the canonical statement.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
@@ -823,8 +828,8 @@ Findings come in three buckets:
   `log.md` entry headings (`log-heading`), `log.md` entry bullets whose
   subject is a path outside the wiki (`log-scope`), and synthesis-page
   citation inconsistency (`citation`): declared-but-never-cited (a `sources:`
-  entry with no inline link), cited-but-undeclared (an inline `raw/` link
-  absent from `sources:`), and zero-inline-links (a synthesis page with no
+  entry with no inline link), cited-but-undeclared (an inline link under `raw/`
+  or a declared source root absent from `sources:`), and zero-inline-links (a synthesis page with no
   local `.md` inline links). The two log-entry checks
   are surfaced for review because repairing an entry already written is an
   operator-requested move rather than a routine sweep. The citation check
@@ -845,7 +850,7 @@ the outcome to `log.md`:
 ## [YYYY-MM-DD HH:MM] lint | N blocking, N warn, N info
 ```
 
-Three non-overlapping structural routes settle a finding without editing the
+Four non-overlapping structural routes settle a finding without editing the
 script, and each covers only its own finding class:
 
 - `- Accepted finding: …` in `SCHEMA.md`'s `## Lint` section for intentional
@@ -857,6 +862,10 @@ script, and each covers only its own finding class:
   channel).
 - `- Declared boilerplate: …` in that same `## Lint` section for an
   intentional locked-slot remove-or-rewrite divergence.
+- `- Declared source root: …` in that same `## Lint` section for a live
+  in-repo source root that widens `sources:` beyond `raw/`; a valid
+  declaration is reported on the acknowledged channel with a `(declared)`
+  marker.
 
 These are not alternatives for one another: the acceptance store never
 suppresses a warn, a declaration never accepts an info finding, and
