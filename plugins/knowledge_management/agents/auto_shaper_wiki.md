@@ -467,20 +467,20 @@ the fix move.
   </provenance_violation>
 
   <external_source_pointer>
-    A page carries attribution to material that lives outside the wiki's
-    `raw/` tree, typically an absolute or `~/`-relative filesystem path
-    into another repo, a URL the page was distilled from, or a bullet
-    in a body `## Sources` H2 that names such a target. These are
-    **derivation pointers**, not subjects of classification: the external
-    file is the substrate the page was distilled from, but capturing it
-    into `raw/<kind>/<slug>.md` is not the intent (the user's other repo,
-    workspace doctrine, etc. stays where it lives). Detect:
+    A page carries attribution to material that resolves under neither the
+    wiki's `raw/` tree nor a declared source root — typically an absolute or
+    `~/`-relative filesystem path into another repo, a URL the page was
+    distilled from, or a bullet in a body `## Sources` H2 that names such a
+    target. These are **derivation pointers**, not subjects of classification:
+    the external file is the substrate the page was distilled from, but
+    capturing it into `raw/<kind>/<slug>.md` is not the intent (the user's
+    other repo, workspace doctrine, etc. stays where it lives). Detect:
 
-    - A body `## Sources` H2 section whose bullets contain non-`raw/`
-      paths or arbitrary external descriptors. Lint also flags the
-      heading itself info-level via `check_sources_section`; this
-      check is the semantic complement that names *why* the bullets
-      are there and where they should go.
+    - A body `## Sources` H2 section whose bullets contain paths that resolve
+      under neither `raw/` nor a declared root, or arbitrary external
+      descriptors. Lint also flags the heading itself info-level via
+      `check_sources_section`; this check is the semantic complement that
+      names *why* the bullets are there and where they should go.
     - Resolve every `sources:` frontmatter value from the wiki root and open it
       with `Read` as `$WIKI/<sources-value>`. A value that resolves to a file
       under `$WIKI/raw/` or under a declared root is a declared primary source:

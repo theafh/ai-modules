@@ -4080,6 +4080,56 @@ l98_lint_tilde_sources_under_declared_root_blocks() {
     $ok
 }
 
+# L99: an absolute declaration in a git-repo wiki that resolves to an in-repo
+# root is a safe-fix warn carrying its wiki-root-relative rewrite, and the root
+# still widens `sources:` so a relative entry under it stays accepted.
+l99_lint_absolute_declared_root_warns_with_rewrite() {
+    local wiki; wiki=$(stage_declared_root_fixture l99 ch03.tex)
+    local repo; repo=$(cd "$wiki/.." && pwd)
+    set_declared_source_root_bullets "$wiki" "$repo/paper — the paper this wiki classifies"
+    write_valid_concept_page "$wiki" widget
+    set_concept_sources "$wiki/concepts/widget.md" "../paper/ch03.tex"
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_finding_for_file "absolute root warns" "$out" warn broken-source "SCHEMA.md" || ok=false
+    assert_live_message "rewrite suffix" "$out" "SCHEMA.md" "paper -> ../paper" || ok=false
+    assert_live_message "portable spelling" "$out" "SCHEMA.md" "wiki-root-relative" || ok=false
+    assert_no_finding_for_file "sources still accepted" "$out" broken-source "concepts/widget.md" || ok=false
+    assert_no_acknowledged_section "absolute root is not acknowledged" "$out" || ok=false
+    $ok
+}
+
+# L100: an absolute declaration in a wiki outside any git repo has no repo root
+# to spell a rewrite against, so it stays blocking. Staged via mktemp OUTSIDE
+# the ai-modules tree so no `.git` ancestor exists.
+l100_lint_absolute_declared_root_non_repo_blocks() {
+    local base; base=$(mktemp -d)
+    local wiki="$base/wiki"
+    "$INIT" "$wiki" >/dev/null 2>&1
+    if git -C "$wiki" rev-parse --show-toplevel >/dev/null 2>&1; then
+        log "    [skip l100: mktemp dir is unexpectedly inside a git repo]"
+        rm -rf "$base"; return 0
+    fi
+    customize_taxonomy "$wiki"
+    mkdir -p "$base/paper"
+    printf 'chapter source body\n' > "$base/paper/ch03.tex"
+    set_declared_source_root_bullets "$wiki" "$base/paper — the paper this wiki classifies"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_finding_for_file "absolute non-repo root blocks" "$out" blocking broken-source "SCHEMA.md" || ok=false
+    assert_live_message "absolute non-repo remedy" "$out" "SCHEMA.md" "declare it relative to the wiki root" || ok=false
+    assert_no_acknowledged_section "absolute non-repo root is not acknowledged" "$out" || ok=false
+    rm -rf "$base"
+    $ok
+}
+
 ###############################################################################
 # compute_sha256.py scenarios
 ###############################################################################
@@ -4581,6 +4631,8 @@ scenario l95 "absolute entry under declared root blocks"     l95_lint_absolute_s
 scenario l96 "declared root downstream checks coherent"      l96_lint_declared_root_downstream_checks
 scenario l97 "citation classifier accepts declared root"      l97_lint_citation_accepts_declared_root
 scenario l98 "tilde entry under declared root blocks"        l98_lint_tilde_sources_under_declared_root_blocks
+scenario l99 "absolute in-repo declared root warns+rewrite"   l99_lint_absolute_declared_root_warns_with_rewrite
+scenario l100 "absolute non-repo declared root blocks"        l100_lint_absolute_declared_root_non_repo_blocks
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

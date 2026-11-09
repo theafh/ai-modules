@@ -2257,6 +2257,15 @@ def check_source_paths_exist(
     or a declared root, and declaring a root alone does not clear it. The one
     exception is the safe-fix **warn** for an absolute entry that resolves inside
     `raw/`, which carries its deterministic `raw/…`-relative rewrite.
+
+    A declaration is wiki-root-relative for the same reason, so an absolute or
+    `~`-prefixed `Declared source root:` is non-portable too, handled like an
+    absolute `source_path:`. In a git-repo wiki an absolute declaration that
+    resolves to an existing in-repo root is a **warn** carrying its
+    wiki-root-relative rewrite (the same root, portably spelled) and still
+    widens `sources:`; one resolving outside the repo, or to nothing, is
+    blocking. A wiki outside any git repo has no repo root to spell against, so
+    an absolute declaration there stays blocking with the relative-path remedy.
     """
     issues: list[Issue] = []
     acknowledged: list[tuple[Issue, str]] = []
@@ -2265,6 +2274,31 @@ def check_source_paths_exist(
 
     valid_roots: list[Path] = []
     for declared, reason in load_declared_source_roots(wiki).items():
+        if Path(declared).is_absolute() or declared.startswith("~"):
+            resolved = Path(declared).expanduser().resolve()
+            rel = None
+            if (
+                repo_root is not None
+                and _path_under(resolved, repo_root)
+                and resolved.exists()
+            ):
+                rel = os.path.relpath(resolved, wiki)
+            if rel is not None:
+                issues.append(Issue(
+                    SEV_WARN, "broken-source", wiki / "SCHEMA.md",
+                    f"`Declared source root:` is an absolute/home path but "
+                    f"resolves inside the repository — rewrite it "
+                    f"wiki-root-relative (same root, portable spelling): "
+                    f"{declared} -> {rel}",
+                ))
+                valid_roots.append(resolved)
+            else:
+                issues.append(Issue(
+                    SEV_BLOCKING, "broken-source", wiki / "SCHEMA.md",
+                    f"`Declared source root:` is an absolute/home path — "
+                    f"declare it relative to the wiki root: {declared}",
+                ))
+            continue
         resolved = (wiki / declared).resolve()
         if not resolved.exists():
             issues.append(Issue(
