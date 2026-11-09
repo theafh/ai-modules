@@ -1,8 +1,8 @@
 ---
-description: Deploy the charter_guardrail hook to OpenCode via a bridge plugin, since OpenCode has no declarative hook config. A TS plugin registers a V2 permission.evaluate or tool.execute.before hook and calls the shared bash script.
+description: Deploy the charter_guardrail hook to OpenCode via a TS bridge plugin that registers a V2 permission.evaluate or tool.execute.before hook and calls the shared bash script; OpenCode has no hook config.
 scope: deployment
 created: 2026-07-23T17:48:14Z
-updated: 2026-11-05T13:45:00Z
+updated: 2026-11-09T10:01:28Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -59,4 +59,4 @@ Document the OpenCode hook mechanism in `deployment/README.md` as its own row, a
 - A deploy into a throwaway `--project-dir` scratch directory with `--target opencode` places the bridge at `<scratch>/.opencode/plugins/opencode-charter-guardrail.ts` and the script at `<scratch>/.opencode/hooks/charter_guardrail.sh`, both real files, and the deployed bridge references the deployed script's `.opencode/hooks/` path.
 - The same scratch deploy with `--target claude,codex,cursor,vscode` does **not** place `opencode-charter-guardrail.ts` anywhere under `.claude`, `.codex`, `.cursor`, or the Copilot hook tree; a grep for the bridge filename in those trees finds nothing, confirming non-OpenCode targets skip the `.ts` source.
 - `--uninstall --target opencode` scoped to the scratch deployment removes both the deployed bridge and the deployed script recorded in the log.
-- `deployment/README.md` documents the OpenCode hook path as a bridge plugin plus the shared script, distinct from the JSON-merge rows, and states the subagent-bypass limitation; the wiki's [SST OpenCode](../wiki/entities/sst-opencode.md) and [hook surface portability](../wiki/concepts/hook-surface-portability.md) pages record the OpenCode hook model and the same caveats.
+- `deployment/README.md` documents the OpenCode hook path as a bridge plugin plus the shared script, distinct from the JSON-merge rows, and states the subagent-bypass limitation; the wiki's SST OpenCode and hook surface portability pages record the OpenCode hook model and the same caveats.
