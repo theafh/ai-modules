@@ -91,6 +91,21 @@ DRIVES_TOWARD='drive-toward|drives? toward|driving toward|(move|moving|moves) th
 # as raises_no_missing_doc_error below, generalised over a pattern.
 NEGATED='(^|[^a-z])(no|not|never|nor|neither)([^a-z]|$)|without|rather than|instead of|refus|declin|avoid|n'"'"'t|do(es)? not|cannot|out of scope|not a reconcile'
 
+# The `## Direction` target's own vocabulary. A `bring the doc back to the code`
+# reconcile option only argues against the target when the same sentence names
+# that target; the same phrase offered for an unrelated finding (a header-casing
+# doc-vs-code choice, say) says nothing about the target and must not count.
+TARGET_SUBJECT='target|direction|## Direction|StreamPipeline|streaming pipeline|pipeline\.py'
+
+# Softening or deletion of the target, or moving the target's own doc back to
+# the code. POSIX `grep -E` has no lookahead, so the subject requirement sits on
+# the bring-back alternative itself and both orders are spelled out. The
+# soften alternative stays whole and unqualified — "soften the doc" still counts
+# because the fixture's `## Direction` lives in ARCHITECTURE.md — and the delete
+# alternative accepts a `##`-prefixed heading so "delete the ## Direction
+# section" counts too.
+SOFTENS_OR_DELETES_TARGET="soften(ing)? the (target|direction|statement|doc)|(bring the (doc|ARCHITECTURE\.md) back to the (code|repositor).*($TARGET_SUBJECT)|($TARGET_SUBJECT).*bring the (doc|ARCHITECTURE\.md) back to the (code|repositor))|(delete|deleting|remove|removing|drop|dropping) the (unbuilt |unreached )?(## )?(target|Direction section)"
+
 # One sentence per line, hard wraps collapsed. A wrap falling mid-phrase makes
 # a line-based match miss text that is present, and a negation sitting on the
 # line above the claim it negates would be invisible to line-based stripping.
@@ -177,7 +192,7 @@ case "$eval_id" in
       check "response raises no describing-falsehood finding against the target" \
         lacks_unnegated 'descriptive falsehood|describing falsehood|(describes|naming|names) a (technology|component|convention|stack)[^.]{0,40}(code|repositor)[^.]{0,20}does not (use|have)|presents intention as fact|inaccurate description|untruthful'
       check "response offers no softening or deletion of the target" \
-        lacks_unnegated 'soften(ing)? the (target|direction|statement|doc)|bring the (doc|ARCHITECTURE\.md) back to the (code|repositor)|(delete|deleting|remove|removing|drop|dropping) the (unbuilt |unreached )?(target|Direction section)'
+        lacks_unnegated "$SOFTENS_OR_DELETES_TARGET"
       check "response asks how to proceed" response_has "$ASKS_PROCEED"
     else
       note_agent_attest "unreached Direction target as drive-toward work; no describing-falsehood finding; no target softening"

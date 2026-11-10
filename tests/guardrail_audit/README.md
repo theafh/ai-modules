@@ -24,7 +24,9 @@ tests/guardrail_audit/
   plugin / marketplace / README registration, plus `script_tests/` proving
   the eval runner's stop on a failed or empty stage through
   `tests/lib/check_stage_guard.py` and `sandbox_git_isolation.sh` (fixture
-  git cannot commit into the host checkout).
+  git cannot commit into the host checkout). `grader_response.sh` stages
+  chosen responses through `grade.sh` to pin the `direction_target`
+  softening check's PASS and FAIL directions.
 - **evals**: six staged fixtures covering presence-gating, doc-vs-doc,
   doc-vs-code (retrofit), an unreached `## Direction` target read as
   drive-toward work, grounded TESTING.md proposal, and multi-project

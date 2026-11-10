@@ -206,3 +206,7 @@ fi
 
 # Sandbox git must never be able to commit into the host checkout.
 bash "$HERE/sandbox_git_isolation.sh"
+
+# Chosen responses staged and graded: the direction_target softening check's
+# PASS and FAIL directions.
+bash "$HERE/grader_response.sh"

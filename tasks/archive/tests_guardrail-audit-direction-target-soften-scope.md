@@ -2,9 +2,11 @@
 description: Scope the guardrail_audit direction_target softening check to sentences about the Direction target so an unrelated doc-vs-code option stops failing it.
 scope: tests/guardrail_audit/evals
 created: 2026-11-06T09:48:40Z
-updated: 2026-11-09T14:23:24Z
-status: ready
+updated: 2026-11-10T17:05:00Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Scope the direction_target softening check to the Direction target
@@ -33,9 +35,9 @@ substance instead of needing a manual reread.
   check matches the unrelated first sentence because the marker names no
   subject.
 - This is the same defect class the archived
-  [grader-authoring discipline task](archive/tests_grader-authoring-discipline.md)
+  [grader-authoring discipline task](tests_grader-authoring-discipline.md)
   names as "Anchor a structured match to its subject", and the archived
-  [task_create grader false-fails task](archive/tests_task-create-grader-label-false-fails.md)
+  [task_create grader false-fails task](tests_task-create-grader-label-false-fails.md)
   fixed in that grader by pinning each accepted and rejected form with script
   tests.
 - `tests/guardrail_audit/script_tests/run.sh` covers the static contract and the
