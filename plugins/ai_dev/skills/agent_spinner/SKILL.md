@@ -2,24 +2,19 @@
 name: agent_spinner
 description: >
   Run helper agents from an orchestrating agent under one quality contract,
-  whatever delegation the host offers. Establishes the capability tier, declares
-  a phase plan, picks an orchestration shape and its width, contains each helper
-  to one path, checks work refute-by-default, classifies helper non-results,
-  keeps the dispatch roster on disk, and merges cited findings into one
-  verdict-first report. Every guarantee holds at the inline floor, so a host
-  exposing no spawn surface runs the same passes in one context and says so. Use
-  when deciding how to run helper agents, sub-agents, or subagents for a job:
-  sizing a fan-out over many files, spawning parallel helpers, splitting a
-  review into lenses, running a judge or verifier pass, cross-checking one
-  agent's work with another, sizing how many helpers to spend, containing
+  whatever the host offers. Establishes the capability tier, declares a phase
+  plan, picks an orchestration shape and width, contains each helper to one
+  path, checks work refute-by-default, and merges cited findings into one
+  verdict-first report. Every guarantee holds at the inline floor. Use when
+  deciding how to run helper agents, sub-agents, or subagents: sizing a fan-out
+  over files, spawning parallel helpers, splitting a review into lenses,
+  running a judge or verifier pass, cross-checking agents' work, containing
   concurrent writers, aggregating helper reports, or recovering from a helper
-  that failed, hung, or returned nothing. Use it too when a multi-agent or
-  parallel-agent run needs a plan before the first helper starts. Route a
-  request naming the task backlog to the task_* family and a request naming the
-  wiki to wiki_fix, unless the user names agent_spinner, since those families
-  are worked instances of this shape that keep their own contracts. Per-harness
-  facts stay with harness_portability.
-version: 1.0.6
+  that failed, hung, or returned nothing. Use it when a multi-agent run needs a
+  plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
+  unless the user names agent_spinner; those families keep their own contracts.
+  Per-harness facts stay with harness_portability.
+version: 1.0.7
 author: Andreas F. Hoffmann
 license: MIT
 ---

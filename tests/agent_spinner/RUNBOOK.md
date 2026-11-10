@@ -134,6 +134,11 @@ runs per query, graded at the 50%-over-three threshold.
 | 2026-10-04 | `claude` 2.1.226 | `claude-sonnet-4-6` | Claude | conditional sentence | 4/8 | 8/8 | 2/2 |
 | 2026-11-09 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | baseline (parent-commit name-blind text) | 8/8 | 8/8 | 2/2 |
 | 2026-11-09 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | changed (conditional sentence) | 8/8 | 8/8 | 2/2 |
+| 2026-11-10 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | trimmed description under the 1,000-character listing budget | 8/8 | 8/8 | 2/2 |
+
+The 2026-11-10 Cursor run staged the trimmed description under the same
+scratch-home route; its result directory is
+`tests/trigger_evals/results/agent_spinner/2026-11-10_123721`.
 
 The 2026-11-09 Cursor runs used the scratch-home route above, with the baseline
 run staging the parent commit's `SKILL.md` and the changed run staging the
