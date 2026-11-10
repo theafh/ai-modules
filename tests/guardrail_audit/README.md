@@ -7,7 +7,10 @@ bundled scripts).
 tests/guardrail_audit/
 ├── README.md
 ├── RUNBOOK.md
-├── script_tests/run.sh          # static SKILL.md + registration contract
+├── script_tests/
+│   ├── run.sh                   # static SKILL.md + registration contract
+│   ├── sandbox_git_isolation.sh # fixture git cannot commit into the host
+│   └── grader_response.sh       # chosen responses graded through grade.sh
 ├── evals/
 │   ├── evals.json
 │   ├── stage.sh

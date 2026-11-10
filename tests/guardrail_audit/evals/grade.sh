@@ -92,19 +92,25 @@ DRIVES_TOWARD='drive-toward|drives? toward|driving toward|(move|moving|moves) th
 NEGATED='(^|[^a-z])(no|not|never|nor|neither)([^a-z]|$)|without|rather than|instead of|refus|declin|avoid|n'"'"'t|do(es)? not|cannot|out of scope|not a reconcile'
 
 # The `## Direction` target's own vocabulary. A `bring the doc back to the code`
-# reconcile option only argues against the target when the same sentence names
-# that target; the same phrase offered for an unrelated finding (a header-casing
-# doc-vs-code choice, say) says nothing about the target and must not count.
-TARGET_SUBJECT='target|direction|## Direction|StreamPipeline|streaming pipeline|pipeline\.py'
+# reconcile option only argues against the target when the same finding block
+# names that target; the same phrase offered for an unrelated finding (a
+# header-casing doc-vs-code choice, say) says nothing about the target and must
+# not count. Bare `direction` is the ordinary English word rather than the
+# target's name, so only the target-specific tokens scope the bring-back branch.
+TARGET_SUBJECT='target|## Direction|StreamPipeline|streaming pipeline|pipeline\.py'
 
 # Softening or deletion of the target, or moving the target's own doc back to
 # the code. POSIX `grep -E` has no lookahead, so the subject requirement sits on
 # the bring-back alternative itself and both orders are spelled out. The
 # soften alternative stays whole and unqualified — "soften the doc" still counts
 # because the fixture's `## Direction` lives in ARCHITECTURE.md — and the delete
-# alternative accepts a `##`-prefixed heading so "delete the ## Direction
-# section" counts too.
-SOFTENS_OR_DELETES_TARGET="soften(ing)? the (target|direction|statement|doc)|(bring the (doc|ARCHITECTURE\.md) back to the (code|repositor).*($TARGET_SUBJECT)|($TARGET_SUBJECT).*bring the (doc|ARCHITECTURE\.md) back to the (code|repositor))|(delete|deleting|remove|removing|drop|dropping) the (unbuilt |unreached )?(## )?(target|Direction section)"
+# alternative accepts a `##`-prefixed heading, backticked or not, so "delete the
+# ## Direction section" and "delete the `## Direction` section" both count.
+SOFTENS_OR_DELETES_TARGET="soften(ing)? the (target|direction|statement|doc)|(bring the (doc|ARCHITECTURE\.md) back to the (code|repositor).*($TARGET_SUBJECT)|($TARGET_SUBJECT).*bring the (doc|ARCHITECTURE\.md) back to the (code|repositor))|(delete|deleting|remove|removing|drop|dropping) the (unbuilt |unreached )?(\`)?(## )?(target|Direction( section)?)(\`)?"
+
+# The bring-back offer without its subject requirement: the block supplies the
+# subject token, so the offer may sit in a sentence of its own.
+BRINGS_BACK='bring the (doc|ARCHITECTURE\.md) back to the (code|repositor)'
 
 # One sentence per line, hard wraps collapsed. A wrap falling mid-phrase makes
 # a line-based match miss text that is present, and a negation sitting on the
@@ -126,6 +132,73 @@ mentions_unnegated() {
 }
 
 lacks_unnegated() { ! mentions_unnegated "$1"; }
+
+# One block per line: a paragraph's sentences stay together, and each list item
+# starts its own block. A markdown heading is carried into the block it
+# introduces, so a blank line under the heading does not detach its text from
+# the finding it names. A bring-back offer is often a sentence of its own, with
+# the target named in the sentence before it inside the same finding block,
+# while a neighbouring bullet about an unrelated finding must stay out of scope.
+# The heading is also closed with a sentence terminator, so the block's later
+# split on sentence-final punctuation keeps the heading a sentence of its own:
+# its text still supplies the subject token, while a negation inside it cannot
+# reach the paragraph's first sentence and silence the offer there.
+blocks() {
+  [[ -f "$response" ]] || return 1
+  awk '
+    function flush() {
+      if (buf != "") {
+        gsub(/[[:space:]]+/, " ", buf)
+        sub(/^ /, "", buf)
+        print buf
+        buf = ""
+      }
+    }
+    /^[[:space:]]*#{1,6}[[:space:]]/ {
+      flush(); in_heading = 1
+      buf = ($0 ~ /[.!?][[:space:]]*$/) ? $0 : $0 "."
+      next
+    }
+    /^[[:space:]]*$/ { if (in_heading) next; flush(); next }
+    /^[[:space:]]*([-*+]|[0-9]+[.)])[[:space:]]/ { if (!in_heading) flush(); in_heading = 0 }
+    { in_heading = 0; buf = (buf == "" ? $0 : buf " " $0) }
+    END { flush() }
+  ' "$response"
+}
+
+# The target check judges that block unit rather than one sentence alone, so a
+# target named adjacent to the bring-back offer still scopes the check. The block
+# supplies only the subject token; the negation filter runs on the sentence that
+# carries the softening or bring-back phrase, so a sentence that only declines
+# the move does not count and a neutral sentence beside it cannot re-arm it.
+mentions_target_softening() {
+  [[ -n "$response" && -f "$response" ]] || return 1
+  local block sentence has_subject carries
+  while IFS= read -r block; do
+    printf '%s\n' "$block" | grep -Eiq "$SOFTENS_OR_DELETES_TARGET" || continue
+    if printf '%s\n' "$block" | grep -Eiq "$TARGET_SUBJECT"; then
+      has_subject=1
+    else
+      has_subject=0
+    fi
+    while IFS= read -r sentence; do
+      [[ -n "$sentence" ]] || continue
+      if printf '%s\n' "$sentence" | grep -Eiq "$SOFTENS_OR_DELETES_TARGET"; then
+        carries=1
+      elif [[ "$has_subject" == 1 ]] \
+        && printf '%s\n' "$sentence" | grep -Eiq "$BRINGS_BACK"; then
+        carries=1
+      else
+        carries=0
+      fi
+      [[ "$carries" == 1 ]] || continue
+      printf '%s\n' "$sentence" | grep -Eiq "$NEGATED" || return 0
+    done < <(printf '%s\n' "$block" | sed -E 's/([.!?]) /\1\n/g')
+  done < <(blocks)
+  return 1
+}
+
+lacks_target_softening() { ! mentions_target_softening; }
 
 # A response legitimately *names* "missing-doc error" when it reports that no
 # such error applies, so drop negated mentions before deciding. Only a
@@ -192,7 +265,7 @@ case "$eval_id" in
       check "response raises no describing-falsehood finding against the target" \
         lacks_unnegated 'descriptive falsehood|describing falsehood|(describes|naming|names) a (technology|component|convention|stack)[^.]{0,40}(code|repositor)[^.]{0,20}does not (use|have)|presents intention as fact|inaccurate description|untruthful'
       check "response offers no softening or deletion of the target" \
-        lacks_unnegated "$SOFTENS_OR_DELETES_TARGET"
+        lacks_target_softening
       check "response asks how to proceed" response_has "$ASKS_PROCEED"
     else
       note_agent_attest "unreached Direction target as drive-toward work; no describing-falsehood finding; no target softening"

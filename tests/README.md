@@ -287,7 +287,10 @@ files.
   at a time after the isolated pool. See `evals/README.md`.
 - **`guardrail_audit/`**: Pattern A, prose-only skill. `script_tests/`
   covers the static SKILL.md / registration contract and the eval runner's
-  stop on a failed or empty stage; `evals/` has six
+  stop on a failed or empty stage, plus `sandbox_git_isolation.sh` (fixture
+  git cannot commit into the host checkout) and `grader_response.sh`, which
+  stages chosen responses through `grade.sh` to pin the `direction_target`
+  softening check's PASS and FAIL directions; `evals/` has six
   staged fixtures (presence-gating, doc-vs-doc, doc-vs-code retrofit,
   declared-direction target (`direction_target`), grounded TESTING.md
   proposal, multi-project nature mismatch) with byte-identity grading and a `run.py` on the default
