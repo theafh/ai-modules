@@ -2,8 +2,8 @@
 description: "Correct `<aggregation>`'s `show` record list to the record types the shipped ledger imports, and name the channel that carries a beyond-brief find."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-08T21:07:15Z
-updated: 2026-11-08T21:07:15Z
-status: open
+updated: 2026-11-09T14:41:35Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -26,14 +26,12 @@ After this task, `<aggregation>` sends the orchestrator through `show` only to r
 
 Rewrite the `show` sentence in `<aggregation>` in place so it matches the shipped program:
 
-- List only record types `RECORD_LISTS` imports, meaning forks, decide-class findings, incidents, and own-authority calls.
-- State that a beyond-brief find is recorded as a flag through `dispose --flag` and read the same way.
-- State how a disagreement between two returns is handled without inventing a record type: check each side and record the disagreement as a finding.
-- Keep the rest of the block and its economy. `<aggregation>` measured 907 bytes before this task; keep it at or under 1,000 bytes, and keep `SKILL.md` under 25,000 bytes.
+- List only the judgement record types `RECORD_LISTS` imports, meaning forks, decide-class findings, alternatives, incidents, and own-authority calls. `alternatives` joins the read set because `close` condition 2 and `run-protocol.md` P6 require a disposition for every alternative record, so the run reads it through `show` rather than pattern-disposing it unread.
+- State that a beyond-brief find is recorded as a flag through `dispose --flag` and read the same way, and that the flag's `reason` is its whole record: a flag carries no `id`, so it takes no `dispose --id` disposition.
+- State how a disagreement between two returns is handled without inventing a record type: check each side, and when they still conflict, surface the disagreement as a user gate with `dispose --open-gate ID --question TEXT`. Never record it as a finding, which only `accept` imports.
+- Keep the rest of the block and its economy. `<aggregation>` measured 907 bytes before this task; keep it at or under 1,200 bytes, and keep `SKILL.md` under 25,000 bytes.
 
-Add a static check in `tests/agent_spinner/script_tests/run.sh` that inspects the `<aggregation>` block alone: it fails when the block names `contradictions` or `beyond-brief finds` as `show` records, and passes when the block names the `dispose --flag` channel for a beyond-brief find. Prove the check fails on a scratch copy carrying the old sentence.
-
-Bump the `agent_spinner` skill version (patch) and raise the `ai_dev` plugin version with both plugin manifests and both marketplace registrations in lockstep, per the repo rules.
+Add a static check in `tests/agent_spinner/script_tests/run.sh` that inspects the `<aggregation>` block alone: it fails when the block names `contradictions` or `beyond-brief finds` as `show` records, and passes when the block names `alternatives` among its `show` record types and names the `dispose --flag` channel for a beyond-brief find. Prove the check fails on a scratch copy carrying the old sentence.
 
 **Out of scope:**
 
@@ -43,11 +41,12 @@ Bump the `agent_spinner` skill version (patch) and raise the `ai_dev` plugin ver
 
 ## Acceptance
 
-- `<aggregation>` names no record type `RECORD_LISTS` lacks, and states that a beyond-brief find is recorded through `dispose --flag`.
+- `<aggregation>` names the five judgement record types it sends the orchestrator to — forks, decide-class findings, alternatives, incidents, and own-authority calls — states that a beyond-brief find is recorded through `dispose --flag` and that a flag needs no separate disposition, and names no judgement record type `RECORD_LISTS` does not import; the flag channel stands beside that list as a channel, not as a sixth judgement record type.
+- `<aggregation>` names `dispose --open-gate` as the channel for a disagreement between two returns, and contains no instruction to record a disagreement as a finding.
 - `grep` over the `<aggregation>` block finds 0 matches for `contradictions` and for `beyond-brief finds`.
-- The block measures at most 1,000 bytes from opening tag through closing tag, and `wc -c` on `SKILL.md` reports under 25,000 bytes.
+- The block measures at most 1,200 bytes from opening tag through closing tag, and `wc -c` on `SKILL.md` reports under 25,000 bytes.
+- The block keeps its other load-bearing sentences: `The ledger imports every return in full.`, `never read a return through slices or keyword searches`, `Give each record one disposition`, `Every number the report states comes from the ledger`, and `Cap any payload pasted downstream at a stated size` all still appear inside the `<aggregation>` block.
 - `bash tests/agent_spinner/script_tests/run.sh` passes with the new `<aggregation>` check, and that check fails on a scratch copy carrying the old sentence.
 - `beyond_brief_defect_reported` keeps its `"type": "flag"` grader assertion and its prompt's `dispose --flag` instruction, and the body now agrees with both.
 - `make lint` is clean.
-- `agent_spinner` and `ai_dev` versions are consistent across the skill, both plugin manifests, and both marketplace registrations.
 - A read of the changed files finds no session, company, or project name.
