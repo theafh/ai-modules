@@ -158,6 +158,38 @@ selector_recipe_rows_match() {
   return 0
 }
 
+# aggregation_block <skill.md> — the <aggregation> block alone, so a pin reads
+# the section that owns the rule rather than the whole body.
+aggregation_block() {
+  awk '
+    /^<aggregation>$/ { inside = 1 }
+    inside            { print }
+    /^<\/aggregation>$/ { inside = 0 }
+  ' "$1"
+}
+
+# aggregation_show_list_correct <skill.md> — the block's `show` read set names
+# `alternatives` among the record types the ledger imports, names the
+# `dispose --flag` channel for a beyond-brief find, and carries none of the
+# retired show targets (`contradictions`, `beyond-brief finds`) that the ledger
+# imports no record type for.
+aggregation_show_list_correct() {
+  local block
+  block="$(aggregation_block "$1")"
+  [[ -n "$block" ]] || return 1
+  printf '%s\n' "$block" | grep -Eq 'alternatives'
+  printf '%s\n' "$block" | grep -Eq '`dispose --flag'
+  ! printf '%s\n' "$block" | grep -Eqi 'contradictions|beyond-brief finds'
+}
+
+# aggregation_block_under <skill.md> <bytes> — the block measured from opening
+# tag through closing tag.
+aggregation_block_under() {
+  local size
+  size="$(aggregation_block "$1" | wc -c | tr -d ' ')"
+  [[ "$size" -le "$2" ]]
+}
+
 oldest_python3() {
   {
     type -a -p python3 2>/dev/null || true
@@ -226,6 +258,12 @@ check "<start_here> sits directly after </role>" \
   bash -c "awk 'BEGIN{seen=0} /^<\\/role>/{getline; if (\$0 == \"\") {getline}; print; exit}' '$SKILL' | grep -qx '<start_here>'"
 check "every run_ledger.py path is skill-relative" \
   ledger_paths_qualified "$SKILL_DIR"
+
+# --- <aggregation>'s `show` read set ----------------------------------------
+check "<aggregation> show read set matches the ledger's imported record types" \
+  aggregation_show_list_correct "$SKILL"
+check "<aggregation> stays within its 1200-byte budget" \
+  aggregation_block_under "$SKILL" 1200
 
 # --- the six shapes, each with its four elements ----------------------------
 SHAPES=(
@@ -353,6 +391,25 @@ printf 'Run `python3 scripts/run_ledger.py status` first.\n' \
   > "$SCRATCH/bare-path/references/probe.md"
 check "the bare-path check fails on a bare scripts/run_ledger.py" \
   not ledger_paths_qualified "$SCRATCH/bare-path"
+
+# The aggregation check must fail on the retired show sentence, so a green run
+# proves it can fail rather than passing vacuously.
+mkdir -p "$SCRATCH/old-aggregation"
+cp "$SKILL" "$SCRATCH/old-aggregation/SKILL.md"
+python3 - "$SCRATCH/old-aggregation/SKILL.md" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+old_block = """<aggregation>
+Merge cited findings, never count agreement. The ledger imports every return in full. Read through `show`, in full, every record that needs your judgement: forks, decide-class findings, contradictions, beyond-brief finds, incidents, and own-authority calls. Dispose of the rest by id pattern, and never read a return through slices or keyword searches. Give each record one disposition: applied, refuted with its reason, surfaced to the user, or deferred with a durable pointer. Two helpers raising the same item is shared priors, so union the proposals and check each. Join by the echoed identifier and stop the merge when one is missing. Every number the report states comes from the ledger. Cap any payload pasted downstream at a stated size, tell that pass its material may be cut and that load-bearing detail gets re-read from the source, and list every trimmed identifier.
+</aggregation>"""
+text, n = re.subn(r"<aggregation>.*?</aggregation>", lambda _: old_block, text, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit("aggregation block not found")
+open(path, "w").write(text)
+PY
+check "the aggregation check fails on the old show sentence" \
+  not aggregation_show_list_correct "$SCRATCH/old-aggregation/SKILL.md"
 
 # The one-to-one recipe check must fail on both violation shapes, so a green
 # run proves it can fail rather than passing vacuously.

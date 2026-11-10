@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.7
+version: 1.0.8
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -175,7 +175,7 @@ Keep the run in `.agent_spinner/` through the ledger, and query it only through 
 </run_state>
 
 <aggregation>
-Merge cited findings, never count agreement. The ledger imports every return in full. Read through `show`, in full, every record that needs your judgement: forks, decide-class findings, contradictions, beyond-brief finds, incidents, and own-authority calls. Dispose of the rest by id pattern, and never read a return through slices or keyword searches. Give each record one disposition: applied, refuted with its reason, surfaced to the user, or deferred with a durable pointer. Two helpers raising the same item is shared priors, so union the proposals and check each. Join by the echoed identifier and stop the merge when one is missing. Every number the report states comes from the ledger. Cap any payload pasted downstream at a stated size, tell that pass its material may be cut and that load-bearing detail gets re-read from the source, and list every trimmed identifier.
+Merge cited findings, never count agreement. The ledger imports every return in full. Read through `show`, in full, every record that needs your judgement: forks, decide-class findings, alternatives, incidents, and own-authority calls. A beyond-brief find travels as a flag, not a record type: `dispose --flag LABEL --reason TEXT` records it and `show` reads it; a flag has no `id`, so its `reason` is its whole record and needs no separate disposition. When two returns disagree, check each side; if they still conflict, surface it as a user gate with `dispose --open-gate ID --question TEXT`, never a finding. Dispose of the rest by id pattern; never read a return through slices or keyword searches. Give each record one disposition: applied, refuted with its reason, surfaced, or deferred with a durable pointer. Two helpers raising the same item is shared priors: union and check. Join by the echoed identifier; stop when one is missing. Every number the report states comes from the ledger. Cap any payload pasted downstream at a stated size, tell that pass its material may be cut and load-bearing detail re-reads from source, and list every trimmed identifier.
 </aggregation>
 
 <reporting>

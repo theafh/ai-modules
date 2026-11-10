@@ -2,9 +2,11 @@
 description: "Correct `<aggregation>`'s `show` record list to the record types the shipped ledger imports, and name the channel that carries a beyond-brief find."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-08T21:07:15Z
-updated: 2026-11-09T14:41:35Z
-status: ready
+updated: 2026-11-10T14:10:00Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Correct `<aggregation>`'s `show` record list to the record types the ledger imports
@@ -18,7 +20,7 @@ After this task, `<aggregation>` sends the orchestrator through `show` only to r
 - **Current state.** `plugins/ai_dev/skills/agent_spinner/SKILL.md`'s `<aggregation>` block says: "Read through `show`, in full, every record that needs your judgement: forks, decide-class findings, contradictions, beyond-brief finds, incidents, and own-authority calls."
 - **What the ledger imports.** `RECORD_LISTS` in `plugins/ai_dev/skills/agent_spinner/scripts/run_ledger.py` imports `findings`, `forks`, `incidents`, `own_authority`, `alternatives`, `brief_corrections`, `dropped_suspicions`, and `confirmations`. `beyond_brief` is a validated return key in `RETURN_KEYS` and never becomes a record, and no contradiction record type exists. `show <label>` therefore prints no beyond-brief record and no contradiction record.
 - **What does carry a beyond-brief find.** `dispose --flag LABEL --reason TEXT` writes a flag record. The shipped `beyond_brief_defect_reported` eval already records a beyond-brief defect that way, and its grader asserts a `"type": "flag"` record, so the body currently contradicts its own eval.
-- **Why the text is wrong today.** The archived [ledger-doctrine task](archive/ai-dev_agent-spinner-ledger-doctrine.md) froze this sentence as its `<aggregation>` target text, so the ledger-doctrine audit confirmed the block matched that text rather than the program. This task supersedes that one sentence; the archived task stays unedited as the decision record.
+- **Why the text is wrong today.** The archived [ledger-doctrine task](ai-dev_agent-spinner-ledger-doctrine.md) froze this sentence as its `<aggregation>` target text, so the ledger-doctrine audit confirmed the block matched that text rather than the program. This task supersedes that one sentence; the archived task stays unedited as the decision record.
 - **Ownership.** The live judgement-containment and checking-doctrine tasks rewrite other blocks (`<judgement>`, `<containment>`, `<phase_plan>`, `<delegation_depth>`, `<capability_probe>`, `<degradation>`, and the checking blocks), not `<aggregation>`, so this task owns this sentence alone.
 - **Reproduction.** Accept a return carrying a `beyond_brief` entry in a scratch run, then run `show <label>`: it prints only the dispatch and accept records, and `ledger.jsonl` carries no beyond-brief line.
 
