@@ -1,7 +1,7 @@
 ---
 title: Agent-delegated automation
 created: 2026-08-29
-updated: 2026-11-07
+updated: 2026-11-09
 type: concept
 tags: [skill, agent, authoring, repo-structure]
 sources: [raw/notes/agent-spinner-run-evidence-2026-09.md]
@@ -170,13 +170,15 @@ and launches no helper. The split follows this wiki's own dividing test: a rule
 an agent needs while working in another repository has to travel with the
 artefact, because the wiki travels nowhere else.
 
-The skill is advisory, and the direction is one-way. It states the general
-shape, cites the shipped surfaces by name as worked instances, and restates no
-rule those surfaces already state. `task_auto_check`, `task_fix`, and
-`wiki_fix` keep authority over their own runs: where one of them states its own
-loop bounds, helper-failure policy, verification standard, aggregation rule, or
-stop-and-ask boundary, that contract wins inside that run and the skill adds
-nothing to it. The skill likewise carries none of the per-harness facts a
+The skill is advisory, and the direction is one-way: no family skill cites it
+back. It states the general shape, cites the shipped surfaces by name as worked
+instances, and restates no rule those surfaces already state.
+`task_auto_check`, `task_fix`, and `wiki_fix` keep authority over their own
+runs. A request that names a family without naming the skill goes to that
+family, whose contract wins inside its run. When the user names the skill for a
+family-owned job, the family's writer stays the only writer, the looks run at
+the orchestrator's level, and every repair returns to that writer as a scope the
+user approves. The skill likewise carries none of the per-harness facts a
 delegation surface rests on, which stay with the portability review that owns
 them and re-verifies each one.
 

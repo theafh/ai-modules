@@ -16,9 +16,10 @@ description: >
   that failed, hung, or returned nothing. Use it too when a multi-agent or
   parallel-agent run needs a plan before the first helper starts. Route a
   request naming the task backlog to the task_* family and a request naming the
-  wiki to wiki_fix, which are worked instances of this shape that keep their
-  own contracts. Per-harness facts stay with harness_portability.
-version: 1.0.5
+  wiki to wiki_fix, unless the user names agent_spinner, since those families
+  are worked instances of this shape that keep their own contracts. Per-harness
+  facts stay with harness_portability.
+version: 1.0.6
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -28,7 +29,7 @@ license: MIT
 <agent_spinner_skill>
 
 <role>
-agent_spinner is the orchestration doctrine an agent reads before it runs helper agents. It owns one question: given a job and whatever delegation the host offers, how do helpers spin off, stay contained, cross-check each other, fail, report, and get aggregated into one answer. It owns no artifact class and writes no domain state, so it stays advisory over any run that a domain skill already governs. Every guarantee below is written to hold at the inline floor, where the same passes run in one context, so the quality contract reads the same whether the host fans helpers out or not.
+agent_spinner is the orchestration doctrine an agent follows when it runs helper agents, whatever delegation the host offers. `scripts/` holds the ledger program, and the run's files live under `.agent_spinner/` in the working root. The skill owns no artifact class and writes no domain state, and every guarantee holds at the inline floor.
 </role>
 
 <start_here>
@@ -39,19 +40,10 @@ Build every path to `scripts/` and `references/` from the directory of the loade
 3. Open the run per P1, which governs the probe, the orient rows, the inventory validation, the pre-dispatch gates, the pilot, the written plan, and its announcement.
 </start_here>
 
-<when_to_activate>
-Activate when the orchestration decision belongs to the orchestrator:
-
-- "Fan this out across the files" / "run several agents on this" / "spawn parallel helpers for these items."
-- "Split the review into lenses" / "have a second agent check the first one's work" / "add a verifier pass."
-- "How many helpers should this take?" / "how do I keep two writers off the same file?"
-- "One of the helpers came back empty" / "a helper hung" / "merge what the helpers reported."
-
-Route a request naming the task backlog to the `task_*` family and a request naming the wiki to `wiki_fix`. Route every concrete per-harness question, meaning which delegation surface a target exposes and how a role registers on it, to `harness_portability`, which owns those facts under its own re-verification rule.
-</when_to_activate>
-
 <invocation_boundary>
-A run already governed by a named skill keeps that skill's orchestration contract. Where that skill states its own loop bounds, helper-failure policy, verification standard, aggregation rule, or stop-and-ask boundary, this skill adds nothing to that run and overrides nothing in it. Read `agent_spinner` for a request about running helpers in general, or for a job no shipped family owns. The shipped families stay worked instances of this shape at different sizes: cite them for illustration, and leave authority over their runs with them.
+A request naming the task backlog or the wiki without naming this skill goes to that family (`task_*`, `wiki_fix`); a per-harness question goes to `harness_portability`. A run a named skill governs keeps that contract's loop bounds, failure policy, verification standard, aggregation rule, and stop-and-ask boundary.
+
+When the user names this skill on a family-owned job, the family's writer stays the only writer. Run the looks at your level: one read-only finder per ledger unit before the writer, and `<paired_refute_check>`'s post-write check on every changed file. Where that contract stops and asks for a host with no spawn surface, honour it and run no look inline. Every repair a look raises returns to the family writer as a scope the user explicitly approves; only the user's explicit gate answer is that approval, not the request, a goal objective, your own authority, a plan confirmation or mode switch. Write no family-owned artifact yourself, encode no multi-helper shape into a brief, and relay its report per that contract.
 </invocation_boundary>
 
 <capability_probe>
@@ -75,17 +67,20 @@ The inline floor is the floor for a run the orchestrator owns outright. Where a 
 </degradation>
 
 <selector>
-Match orchestration weight to the ask before picking a mechanism.
+Match weight first.
 
-- A read-only diagnostic, or a single judgement question, is answered inline from the orchestrator's own reads before any helper is spent, and the same reply names the checks that fuller shape would have run, per `<coverage_tradeoff>`.
-- An enumerated imperative over many artifacts gets per-artifact fan-out.
-- One corpus needing several angles gets a lens panel.
-- A produced artifact needing an adversarial read gets a paired refute-by-default check.
-- A closed comparison among candidates gets a judge panel.
-- A finished body needing a what-is-missing read gets a completeness critic.
-- A tree of writes gets a single-writer terminal validator after the writers.
+- An enumerated imperative over many artifacts: per-artifact fan-out.
+- One text needing several angles, not different kinds of source: a lens panel.
+- A produced artifact needing an adversarial read: a paired refute-by-default check.
+- A closed comparison among candidates: a judge panel.
+- A finished body needing a what-is-missing read: a completeness critic.
+- A tree of writes: a single-writer validator after writers.
 
-Name the outcome of this match in the run's opening: say which listed shape the ask matched, or say it matched none. An ask matching none gets the smallest shape that covers it, named as the smallest covering choice, so a residual ask is answered visibly rather than folded into whichever row looks closest.
+A read-only diagnostic or single judgement question is answered inline from your own reads before any helper is spent, takes no recipe, naming a fuller shape's checks. An ask no single row covers, or one combining rows, gets the smallest shape that covers it, named as the smallest covering one, answered visibly rather than folded into a nearby row, and takes no recipe. A shape match matches the recipe table, whose matched recipe is the procedure; with no recipe it runs from the body. Name what matched, or nothing, in the opening. Read `references/variants.md` for isolation and unreduced draws.
+
+| Ask | Recipe in `references/recipes/` |
+| --- | --- |
+
 </selector>
 
 <shapes>
@@ -189,32 +184,11 @@ Merge cited findings, never count agreement. The ledger imports every return in 
 </aggregation>
 
 <reporting>
-Put the verdict first, and keep three things apart. The opening sentence gives the answer, the tier, helpers dispatched against returned, and whether `close` exited 0. The body separates what the run established, what a helper found beyond its brief, and what a helper or you decided on your own authority for the user to review, with `none` under an empty part. A sentence in a report, reply, or log entry that asserts verification, independence, completion, or coverage cites its ledger row or check output and says whether it was measured, re-derived, or taken on a helper's word. Read repository state from version control at report time. Check the single claim the verdict rests on against the artifact, and report a verdict that resisted re-derivation as the helpers' finding. Re-read an earlier deliverable before conceding it lacks something, and fix a conceded false premise in every open draft. Helper return shapes stay internal.
+Put the verdict first, and keep three things apart. The opening sentence gives the answer, the tier, helpers dispatched against returned, and whether `close` exited 0. The body separates what the run established, what a helper found beyond its brief, and what a helper or you decided on your own authority for the user to review, with `none` under an empty part, and names the artifact each finding concerns. A sentence in a report, reply, or log entry that asserts verification, independence, completion, or coverage cites its ledger row or check output and says whether it was measured, re-derived, or taken on a helper's word. Read repository state from version control at report time. Check the verdict's single claim against the artifact, and report a resisted re-derivation as the helpers' finding. Re-read an earlier deliverable before conceding a gap, and fix a conceded false premise in every open draft. Helper return shapes stay internal.
 </reporting>
 
 <judgement>
 Route the real forks to the user. Removing most of a body, deleting a load-bearing section, picking one side of a real fork, resolving a contradiction, or touching an artifact already marked complete are surfaced rather than settled, at every tier, and no helper writes a field a named gate owns. A run whose ask was which work to do changes nothing, states the no-edit rule in every helper prompt, and closes by asking for the go-ahead.
 </judgement>
-
-<references>
-Load a reference when the run needs its detail:
-
-- `references/run-protocol.md`: the capability tier table, the run directory, the ledger floor, the P1 to P6 run procedure, and the ledger's command reference.
-- `references/role-prompts.md`: the producing, lens, checking, and synthesis prompt templates.
-- `references/report-shapes.md`: the opening, interim, stop, completion-notice, and closing report shapes, the provenance tags, and a digest keyed by ledger record ids.
-- `references/degradation-examples.md`: the same job worked at the inline floor and at full fan-out.
-- `references/variants.md`: information isolation between concurrent helpers, and replicated draws returned unreduced.
-</references>
-
-<worked_instances>
-`agent_spinner` states the general shape; these shipped skills are worked
-instances of that shape and keep authority over their own runs. They are not a
-`agent_spinner_*` family roster:
-
-- `task_auto_check`: the bounded readiness loop, with its own helper-failure policy and verification standard.
-- `task_fix`: whole-tree repair with one escalated writer.
-- `wiki_fix`: the collapsed form, where one agent assesses, repairs, and verifies.
-- `harness_portability`: every per-harness fact this skill deliberately carries none of.
-</worked_instances>
 
 </agent_spinner_skill>

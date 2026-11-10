@@ -1415,3 +1415,13 @@ pre-existing, and the size infos stay advisory; the one on
   Derived from entry carries the same description)
 - index.md (the agent-delegated automation summary names the bundled run
   ledger, and Last updated moves to 2026-11-07)
+
+## [2026-11-09 13:57] update | State the two routing cases on the agent-delegated automation page
+
+- concepts/agent-delegated-automation.md (the advisory-direction paragraph now
+  names the two routing cases: a request naming a family without naming the
+  skill goes to that family, whose contract wins inside its run; and a
+  family-owned job the user names the skill for keeps the family's writer as the
+  only writer, with the looks at the orchestrator's level and every repair
+  returning to that writer as a scope the user approves; the one-way citation
+  direction and the per-harness facts sentence stay)

@@ -7,6 +7,8 @@
   {"query": "plan a multi-agent run over these artifacts before anything gets dispatched", "should_trigger": true},
   {"query": "merge what the helper agents reported into one answer without just counting how many of them agreed", "should_trigger": true},
   {"query": "this harness has no subagents at all — can I still get the same verification quality out of one context?", "should_trigger": true},
+  {"query": "use agent_spinner to run the readiness repair on tasks/api_rate-limit.md until task_check passes", "should_trigger": true},
+  {"query": "with agent_spinner, fan the broken-link repair out across the five pages of my wiki", "should_trigger": true},
 
   {"query": "auto-fix the readiness issues on tasks/api_rate-limit.md until task_check says ready", "should_trigger": false},
   {"query": "health-check and repair my whole tasks/ backlog in one pass", "should_trigger": false},

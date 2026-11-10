@@ -308,8 +308,11 @@ files.
   lockstep, the ledger's stdlib-only and read-only-git checks, and the eval
   runner's stop on a failed or empty stage), and `script_tests/ledger_run.sh`
   exercises the bundled `scripts/run_ledger.py` under the oldest and newest
-  python3; `evals/test_run.py` proves the runner's wiring against a stub
-  worker; `evals/` holds every id in `evals.json` (26 today). Each
+  python3; `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over
+  11 committed report variants (15 pass/fail checks) for
+  `explicit_spinner_on_family_job`; `evals/test_run.py` proves the runner's
+  wiring against a stub worker; `evals/` holds every id in `evals.json` (49
+  today). Each
   behavioural eval stages one behaviour and the `smoke_*` evals check the
   runner's modes, driven by `evals/run.py` on the default Cursor worker in
   the shared `tests/lib/eval_runner` pool at the default 4 workers, with a

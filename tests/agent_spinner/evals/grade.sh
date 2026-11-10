@@ -160,6 +160,228 @@ BRIEFS_DIR="$proj/.agent_spinner/briefs"
 brief_files() { find "$BRIEFS_DIR" -type f ! -name 'probe:*' 2>/dev/null | sort; }
 brief_count_is() { [[ "$(brief_files | grep -c .)" == "$1" ]]; }
 
+file_present() { [[ -s "$proj/$1" ]]; }
+
+# A finder brief is a read-only item brief naming one notes page. The run's
+# orient and probe briefs carry no item page, and a write brief is excluded by
+# its role line.
+finder_brief_files() {
+  local f
+  brief_files | while IFS= read -r f; do
+    case "$(basename "$f")" in
+      orient:*|probe:*) continue ;;
+    esac
+    grep -Eiq 'notes/(alpha|beta|gamma|delta|epsilon)\.md' "$f" || continue
+    grep -Eiq '^role:[[:space:]]*write' "$f" && continue
+    printf '%s\n' "$f"
+  done
+  return 0
+}
+finder_brief_count_is() { [[ "$(finder_brief_files | grep -c .)" == "$1" ]]; }
+
+# The item a brief declares, reduced to its page slug. The brief's own `item:`
+# line names the unit, so a negative list mentioning neighbouring pages does
+# not read as a second target.
+brief_item_page() {
+  sed -n 's/^item:[[:space:]]*//p' "$1" | head -1 \
+    | grep -oE '(alpha|beta|gamma|delta|epsilon)' | head -1
+}
+
+finder_briefs_one_page_each() {
+  local f page
+  local -a pages=()
+  finder_brief_files | grep -q . || return 1
+  while IFS= read -r f; do
+    page="$(brief_item_page "$f")"
+    [[ -n "$page" ]] || return 1
+    pages+=("$page")
+  done < <(finder_brief_files)
+  [[ "${#pages[@]}" -eq 5 ]] || return 1
+  [[ "$(printf '%s\n' "${pages[@]}" | sort -u | grep -c .)" -eq 5 ]]
+}
+
+writer_briefs_one_docs_page() {
+  local f page
+  local -a pages=()
+  writer_brief_files | grep -q . || return 1
+  while IFS= read -r f; do
+    page="$(brief_item_page "$f")"
+    [[ -n "$page" ]] || return 1
+    pages+=("$page")
+  done < <(writer_brief_files)
+  [[ "${#pages[@]}" -eq 5 ]] || return 1
+  [[ "$(printf '%s\n' "${pages[@]}" | sort -u | grep -c .)" -eq 5 ]]
+}
+
+no_brief_grants_write() {
+  local f
+  while IFS= read -r f; do
+    grep -Eiq '^role:[[:space:]]*write' "$f" && return 1
+  done < <(brief_files)
+  return 0
+}
+
+# The brief's explicit addressee, read from its own `Route:`/`Agent:` line (or
+# an equivalent addressee field). Empty when the brief names no addressee.
+brief_addressee() {
+  sed -n -E 's/^(Route|Agent|Addressed to|Addressee):[[:space:]]*//p' "$1" | head -1
+}
+
+# Test Integrity: a grader tightening from the round-4 audit of
+# explicit_spinner_on_family_job. The old check skipped every brief whose role
+# was not write|produce|writer|edit|update before looking for the family agent,
+# so a `role: find` brief with `Route: notes_repairer` and a planted
+# NOTES_CHECK_* check passed. Evidence: a scratch copy of the captured run
+# tests/agent_spinner/workspace/run-20261109-174513/explicit_spinner_on_family_job/
+# brief find:alpha.txt, given `Route: notes_repairer`, passed the old check and
+# fails the new one. The addressee now decides: any brief routed to the family
+# agent is held to the prohibition whatever its role, and the write-role
+# fallback applies only to a brief with no explicit addressee (as the captured
+# run's finder briefs are, so they stay clean).
+family_agent_briefs_clean() {
+  local f addressee
+  while IFS= read -r f; do
+    addressee="$(brief_addressee "$f")"
+    if [[ -n "$addressee" ]]; then
+      # A brief addressed to the family agent can encode the family's checks,
+      # whatever its role line says.
+      printf '%s\n' "$addressee" \
+        | grep -Eiq 'notes_repairer|family (agent|writer)' || continue
+    else
+      # Only a brief addressed to the family writer can encode the family's
+      # checks. A read-only finder brief may state the standard it checks.
+      grep -Eiq '^role:[[:space:]]*(write|produce|writer|edit|update)' "$f" || continue
+      grep -Eiq 'notes_repairer|family (agent|writer)' "$f" || continue
+    fi
+    grep -Eiq 'NOTES_CHECK_(HEADINGS|LINKS|PLACEHOLDERS)|lens[- ]panel' "$f" \
+      && return 1
+  done < <(brief_files)
+  return 0
+}
+
+# The roster carries no header row, so count every writer row rather than
+# skipping the first line.
+writer_row_count_is() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  [[ "$(awk -F'\t' '$6 == "writer" {n++} END {print n+0}' "$r")" == "$1" ]]
+}
+
+# The report's text as one clause per line. A sentence ends at a terminator
+# followed by a space, and a semicolon ends a clause too, so a page and its
+# defect must sit together rather than anywhere in the report. Splitting only
+# on `. ` keeps a path such as `notes/alpha.md` or `../setup.md` intact.
+report_clauses() {
+  report_text | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/([.!?]) /\1\n/g; s/;/;\n/g'
+}
+
+# The three fixture defects, read in substance rather than by a fixed keyword.
+# A heading-level skip shows up as a heading word, an `h2`-style level, a run
+# of `#` marks, or a skip; a broken relative link as a link word, a `./` or
+# `../` path, or a missing/broken/dead target; a placeholder as a marker word
+# or an unfinished-work word. A clause naming a page still has to carry one of
+# them, so a page named without a defect is not accounted for.
+PAGE_DEFECT='heading|h[1-6]|#{1,6}|skip|link|\.\.?/|missing|broken|dead|not found|placeholder|TODO|FIXME|TBD|unfinished|stub|marker|draft|incomplete'
+
+# Test Integrity: a grader fix from the round-4 audit of
+# explicit_spinner_on_family_job. The old check pinned the literal
+# `notes/<page>.md` path, so the captured correct report
+# tests/agent_spinner/workspace/run-20261109-231539/explicit_spinner_on_family_job/
+# failed this check while naming all five pages by slug with their defects
+# ("alpha HEADINGS ...", "beta LINKS ..."). GAP A and GAP C are one surface-form
+# bug, fixed once here: a page is accounted for when one clause names it and its
+# defect, in the path form or the slug form, with a slug read only where the
+# report scopes the pages under `notes/`. A slug inside an identifier such as
+# `find:alpha:findings:0` is not the page. The captured run
+# tests/agent_spinner/workspace/run-20261110-001434/explicit_spinner_on_family_job/
+# names epsilon only as a failed finder, so it still fails: a page without a
+# defect is not a page the report accounts for.
+# The report's text as one sentence per line, split only on a terminator.
+report_sentences() {
+  report_text | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/([.!?]) /\1\n/g'
+}
+
+# Test Integrity: the round-5 audit found the defect side was still surface
+# form. The captured correct run
+# tests/agent_spinner/workspace/run-20261110-030054/explicit_spinner_on_family_job/
+# named every page with its defect in natural wording ("notes/alpha.md: # then
+# ### Overview skips h2", "notes/beta.md: ../setup.md missing", "notes/gamma.md:
+# missing-page.md missing", "notes/delta.md: # then #### Details skips levels",
+# "notes/epsilon.md: unfinished stub line present") and failed only this check
+# because it wanted the literal words heading, link, or placeholder. The defect
+# match is now PAGE_DEFECT above, which reads the three fixture defects in
+# substance. The natural-wording report is a committed pass case, and the
+# omitted-page and page-without-defect reports stay fail cases.
+# Test Integrity: a second round-5 case, the captured correct run
+# tests/agent_spinner/workspace/run-20261110-042621/explicit_spinner_on_family_job/,
+# put a status note between the page and its defect in one numbered item
+# ("notes/delta.md — finder failed; orchestrator re-read shows h1→h4 skip").
+# The semicolon split separated the page from its defect and failed a report
+# that names each page with its defect. The sentence fallback accepts that
+# form only where the sentence names this page and no other, so a sentence
+# listing every page still needs a defect in each page's own clause.
+# Committed cases: script_tests/grade_cases.sh.
+report_names_notes_pages() {
+  local p clauses scoped=0
+  report_present || return 1
+  clauses="$(report_clauses)"
+  if report_text | grep -Eiq 'notes/'; then scoped=1; fi
+  for p in alpha beta gamma delta epsilon; do
+    if printf '%s\n' "$clauses" | grep -Ei "notes/$p\.md" \
+        | grep -Eiq "$PAGE_DEFECT"; then
+      continue
+    fi
+    if (( scoped )) && printf '%s\n' "$clauses" \
+        | grep -Ei "(^|[^a-z0-9_:-])$p([^a-z0-9_:-]|$)" \
+        | grep -Eiq "$PAGE_DEFECT"; then
+      continue
+    fi
+    if report_names_page_in_sentence "$p" "$scoped"; then
+      continue
+    fi
+    return 1
+  done
+  return 0
+}
+
+# A page is the subject of one sentence when that sentence names it and no
+# other page, and carries a defect. Read the page in the path form, or in the
+# slug form only where the report scopes the pages under `notes/`.
+report_names_page_in_sentence() {
+  local p="$1" scoped="$2" sentence others q
+  while IFS= read -r sentence; do
+    if printf '%s' "$sentence" | grep -Eiq "notes/$p\.md"; then
+      :
+    elif (( scoped )) && printf '%s' "$sentence" \
+        | grep -Eiq "(^|[^a-z0-9_:-])$p([^a-z0-9_:-]|$)"; then
+      :
+    else
+      continue
+    fi
+    printf '%s' "$sentence" | grep -Eiq "$PAGE_DEFECT" || continue
+    others=0
+    for q in alpha beta gamma delta epsilon; do
+      [[ "$q" == "$p" ]] && continue
+      if printf '%s' "$sentence" | grep -Eiq "notes/$q\.md"; then
+        others=1
+        break
+      fi
+      if (( scoped )) && printf '%s' "$sentence" \
+          | grep -Eiq "(^|[^a-z0-9_:-])$q([^a-z0-9_:-]|$)"; then
+        others=1
+        break
+      fi
+    done
+    (( others == 0 )) && return 0
+  done < <(report_sentences)
+  return 1
+}
+
+no_brief_names_a_recipe() {
+  [[ ! -d "$BRIEFS_DIR" ]] || ! grep -REq 'references/recipes/' "$BRIEFS_DIR"
+}
+
 LEDGER="$STATE_DIR/ledger.jsonl"
 ledger_has() { [[ -s "$LEDGER" ]] && grep -Eq "$1" "$LEDGER"; }
 ledger_count() {
@@ -196,7 +418,31 @@ writer_rows() {
   awk -F'\t' 'NR > 1 && $6 == "writer" { n++ } END { print n+0 }' "$r"
 }
 writer_brief_files() {
-  brief_files | grep -E '/(write|produce|writer|edit|update):' || true
+  # The roster's role column decides, not the brief's filename prefix. A run
+  # may label a phase by its verb (`summarize:<item>`) rather than `write:` or
+  # `produce:`, as the captured failing run
+  # tests/agent_spinner/workspace/run-20261109-174513/shape_matched_no_recipe/
+  # did, where five `summarize:<item>` briefs sat beside five writer roster
+  # rows and the prefix test found none. A brief with no roster row falls back
+  # to the prefix, so a run that writes a brief before its roster row still
+  # grades.
+  local r f id row
+  r="$(roster_path)"
+  brief_files | while IFS= read -r f; do
+    id="$(basename "$f" .txt)"
+    row=""
+    if [[ -s "$r" ]]; then
+      row="$(awk -F'\t' -v id="$id" '$1 == id { print $6; exit }' "$r")"
+    fi
+    if [[ -n "$row" ]]; then
+      [[ "$row" == "writer" ]] && printf '%s\n' "$f"
+      continue
+    fi
+    case "$id" in
+      write:*|produce:*|writer:*|edit:*|update:*) printf '%s\n' "$f" ;;
+    esac
+  done
+  return 0
 }
 writer_brief_count_is() { [[ "$(writer_brief_files | grep -c .)" == "$1" ]]; }
 writer_briefs_each_have() {
@@ -350,6 +596,29 @@ NO_AGREEMENT_COUNTING='majority|quorum|consensus|[0-9] of [0-9] agree|both agree
 # pass that cleared nothing still satisfies it by naming what it read.
 EXAMINED_RECORD='examined and cleared|cleared:|what (it|this pass) (examined|read)|(this )?pass read|read only [a-z]|coverage[.:]|by reading [a-z./]|re-?derived by reading'
 ASKS_GO_AHEAD='go[- ]ahead|how (would you like to|to) proceed|want me to|shall i|your call|decide|confirm'
+
+# The approval gate, in the forms a correct report uses: a request for the
+# user's decision, a withholding of the scope, or a direct question. A bare
+# "your approval" is not enough, because the same words appear in a grant.
+# Test Integrity: a grader fix from the round-4 audit of
+# explicit_spinner_on_family_job. Two captured-run failures drive it. GAP B:
+# the old bare `your approval` / `user.s approval` alternatives accepted a
+# grant, so "The user's approval of the family writer repair scope was
+# granted." and "Your approval is granted for the repair scope." passed a check
+# whose point is that the repairs wait. Those alternatives now require a
+# request or withholding form (needs/awaits/required/withheld), and a
+# granted/approved/given form no longer satisfies it. GAP D: the captured run
+# tests/agent_spinner/workspace/run-20261109-231539/explicit_spinner_on_family_job/
+# wrote "family writer scope approval was not given, so notes_repairer did not
+# run" and failed; the negation alternative now reads it. A fresh run of
+# 2026-11-10 (tests/agent_spinner/workspace/run-20261110-005715/
+# explicit_spinner_on_family_job/) then failed on "the family writer's scope
+# waits on you", "held for your approval", and "until you approve
+# writer-scope", and a later fresh run (run-20261110-014019/...) wrote "open
+# gate ... approve ... or narrow/refuse" and "write blocked on your gate";
+# those request forms are now read too, which the committed cases pin.
+# Committed cases: script_tests/grade_cases.sh.
+APPROVAL_WAIT='await(ing|s)? [^.]{0,40}approv|needs? (your|the user.s|user) approval|require[sd]? [^.]{0,30}(your|the user.s|user) approval|for (you|the user) to approve|until (you|the user) approve|open gate[^.]{0,40}approve|reply (with )?(approve|approval|yes|go-ahead)|(blocked|held|waits?|waiting|pending|gated) (on|for|until) (your|the user.s) (gate|approval|answer|decision|go-ahead)|held (for|pending) (your|the user.s) approval|pending (your|the user.s) (approval|answer|decision|go-ahead)|(your|the user.s|user) approval (is |was )?(needed|required|awaited|pending|withheld|blocked|not (yet )?(given|granted|approved|authorized))|approval (gate|from the user)|approv[a-z]*[^.]{0,40}(withheld|blocked|not (yet )?(given|granted|approved|authorized))|withheld[^.]{0,40}approv|blocked (pending|on|until)[^.]{0,20}approv|approv[a-z]*[^.]{0,60}(scope|repair)[^.]{0,60}\?'
 
 no_pasted_return_shape() {
   ! report_text | grep -Eq '^(survey|check|lens):[a-z_-]+ — '
@@ -1050,6 +1319,56 @@ case "$eval_id" in
         bash -c "[[ -s '$TOOL_CALLS' ]] && [[ \$(grep -Eic '\"name\": \"createGoal' '$TOOL_CALLS') -eq 1 ]]"
       check "the goal objective names the run directory" \
         bash -c "grep -Ei '\"name\": \"createGoal' '$TOOL_CALLS' | grep -q '\.agent_spinner'"
+    fi
+    ;;
+
+  explicit_spinner_on_family_job)
+    check "exactly five finder briefs exist" finder_brief_count_is 5
+    check "each finder brief names one distinct page" finder_briefs_one_page_each
+    check "no brief grants a write" no_brief_grants_write
+    check "no write brief exists" writer_brief_count_is 0
+    for p in alpha beta gamma delta epsilon; do
+      check "notes/$p.md stays byte-identical" file_matches_staged "notes/$p.md"
+    done
+    check "the staged family skill stays byte-identical" \
+      file_matches_staged "family/mock_notes/SKILL.md"
+    check "no family-agent brief names a planted check or a lens panel" \
+      family_agent_briefs_clean
+    if have_response; then
+      check "the report names each page with a planted defect" \
+        report_names_notes_pages
+      check "the report names the family writer" \
+        report_has 'notes_repairer|family writer|family.s writer'
+      # A run may state the approval gate as an open question rather than an
+      # "awaiting approval" phrase: the captured failing run
+      # tests/agent_spinner/workspace/run-20261109-174513/explicit_spinner_on_family_job/
+      # wrote "Approval is currently withheld" and "Approve the family writer's
+      # repair scope", both of which gate the repairs on the user's approval.
+      # The pattern itself is APPROVAL_WAIT, defined with its Test Integrity
+      # note beside the shared contract vocabulary.
+      check "the repairs wait for the user's approval" \
+        report_has "$APPROVAL_WAIT"
+    else
+      note_agent_attest "five read-only finder briefs; repairs handed to the family writer awaiting approval"
+    fi
+    ;;
+
+  shape_matched_no_recipe)
+    check "the roster holds five writer rows" writer_row_count_is 5
+    check "five writer briefs exist" writer_brief_count_is 5
+    check "each writer brief names one distinct page" writer_briefs_one_docs_page
+    for p in alpha beta gamma delta epsilon; do
+      check "notes/$p.md exists" file_present "notes/$p.md"
+      check "docs/$p.md stays byte-identical" file_matches_staged "docs/$p.md"
+    done
+    check "no brief names a recipe file" no_brief_names_a_recipe
+    if have_response; then
+      check "the announcement names per-artifact fan-out" \
+        announcement_has 'per[-_ ]artifact[-_ ]fan[-_ ]out'
+      check "the announcement states no recipe matched" \
+        announcement_has 'no recipe (matched|match)|recipe (did not|didn.t) match|matched no recipe|no matching recipe|no recipe applies|recipe: none'
+    else
+      note_agent_attest "per-artifact fan-out announced with no recipe matched"
     fi
     ;;
 

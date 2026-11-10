@@ -1,6 +1,6 @@
 # agent_spinner behavioral evals
 
-Every id in `evals.json` (forty-seven today). Each behavioural eval stages one
+Every id in `evals.json` (forty-nine today). Each behavioural eval stages one
 behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
 names one behaviour rather than a conjoined verdict. The static body and grep
 items stay under `script_tests/`.
@@ -86,6 +86,8 @@ having taken it.
 | `gate_scope_checked_before_dispatch` | run gate record + ledger | The gate's known-positive result and the dropped run-directory findings are the scope facts; the auto-fix refusal is recorded beside them. |
 | `pause_request_stops_dispatch` | ledger dispatches + report | No second-wave dispatch is the stop fact, and the three row lists are the stop report. |
 | `continuation_armed_once` | tool record + announcement | Cursor's goal tool is the vendor-specific feature: exactly one goal creation with the run directory in its objective. On Claude, the absence of a goal tool is proven by no goal, `ScheduleWakeup`, or cron call, and the announcement names re-entry through `status` and `attach`. |
+| `explicit_spinner_on_family_job` | finder briefs + file hashes + report | Five read-only finder briefs, one per page, are the orchestrator-level look the named family job gets. Byte-identical pages and family files prove the family writer stayed the only writer. No brief addressed to the family agent names its checks or assigns a lens panel. The report carries the approval handoff. |
+| `shape_matched_no_recipe` | roster + briefs + note files + announcement | Per-artifact fan-out is the shape the enumerated imperative matches, and the empty recipe table means no recipe can match. The roster and briefs carry the five-way width, the note files are the produced artifacts, and the announcement states the shape and the no-recipe path. |
 
 Seven evals additionally run the shared closing-report contract: the opening
 verdict with its tier and dispatched-against-returned count, the yield clause,

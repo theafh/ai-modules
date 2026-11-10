@@ -109,6 +109,55 @@ scripts_exactly_ledger() {
   [[ -d "$1" ]] && [[ "$(ls -1A "$1")" == "run_ledger.py" ]]
 }
 
+# selector_recipe_rows_match <skill.md> <recipes dir> — the selector's recipe
+# table names each recipe file once, every named file exists under the recipes
+# directory, and every *.md there has exactly one row. An empty table with no
+# recipes directory passes, which is the state until the recipe tasks land.
+selector_recipe_rows_match() {
+  local skill="$1" dir="$2" name f count uniq
+  local -a files=()
+  local cells
+  # Start at the line-start opening tag so the inline `<selector>` citation in
+  # <start_here> stays out of the scan.
+  cells="$(awk '
+    /^<selector>$/ { inside = 1 }
+    inside { print }
+    /^<\/selector>$/ { inside = 0 }
+  ' "$skill" | awk -F'|' '
+    /^[[:space:]]*\|/ {
+      cell = $3
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell)
+      if (cell == "" || cell ~ /^-+$/ || cell ~ /Recipe in/) next
+      print cell
+    }')"
+  if [[ -n "$cells" ]]; then
+    while IFS= read -r name; do
+      [[ -n "$name" ]] || continue
+      files+=("$name")
+    done < <(printf '%s\n' "$cells" | grep -oE '`[^`]+\.md`' | tr -d '`')
+  fi
+  if (( ${#files[@]} > 0 )); then
+    uniq="$(printf '%s\n' "${files[@]}" | sort -u | grep -c .)"
+    [[ "$uniq" -eq "${#files[@]}" ]] || return 1
+    for name in "${files[@]}"; do
+      [[ -f "$dir/$name" ]] || return 1
+    done
+  fi
+  if [[ -d "$dir" ]]; then
+    while IFS= read -r f; do
+      [[ -n "$f" ]] || continue
+      count=0
+      if (( ${#files[@]} > 0 )); then
+        for name in "${files[@]}"; do
+          [[ "$name" == "$f" ]] && count=$((count + 1))
+        done
+      fi
+      [[ "$count" -eq 1 ]] || return 1
+    done < <(find "$dir" -maxdepth 1 -type f -name '*.md' -exec basename {} \; 2>/dev/null)
+  fi
+  return 0
+}
+
 oldest_python3() {
   {
     type -a -p python3 2>/dev/null || true
@@ -305,6 +354,26 @@ printf 'Run `python3 scripts/run_ledger.py status` first.\n' \
 check "the bare-path check fails on a bare scripts/run_ledger.py" \
   not ledger_paths_qualified "$SCRATCH/bare-path"
 
+# The one-to-one recipe check must fail on both violation shapes, so a green
+# run proves it can fail rather than passing vacuously.
+mkdir -p "$SCRATCH/recipe-missing/references/recipes"
+cp "$SKILL" "$SCRATCH/recipe-missing/SKILL.md"
+python3 - "$SCRATCH/recipe-missing/SKILL.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace("| --- | --- |\n", "| --- | --- |\n| an ask | `missing.md` |\n", 1)
+open(path, "w").write(text)
+PY
+check "the one-to-one check fails on a table naming a missing recipe file" \
+  not selector_recipe_rows_match "$SCRATCH/recipe-missing/SKILL.md" "$SCRATCH/recipe-missing/references/recipes"
+
+mkdir -p "$SCRATCH/recipe-orphan/references/recipes"
+cp "$SKILL" "$SCRATCH/recipe-orphan/SKILL.md"
+printf '# orphan recipe\n' > "$SCRATCH/recipe-orphan/references/recipes/orphan.md"
+check "the one-to-one check fails on a recipe file with no row" \
+  not selector_recipe_rows_match "$SCRATCH/recipe-orphan/SKILL.md" "$SCRATCH/recipe-orphan/references/recipes"
+
 # --- references -------------------------------------------------------------
 check "references/run-protocol.md exists" test -f "$REFS/run-protocol.md"
 check "references/role-prompts.md exists" test -f "$REFS/role-prompts.md"
@@ -334,6 +403,8 @@ check "variants.md carries the information-isolation variant" \
   file_has "$REFS/variants.md" 'Information isolation between concurrent helpers'
 check "variants.md carries the replicated-draw variant" \
   file_has "$REFS/variants.md" 'Replicated draws returned unreduced'
+check "selector recipe rows match references/recipes/ one to one" \
+  selector_recipe_rows_match "$SKILL" "$REFS/recipes"
 check "every template opens with an action rather than a prohibition" \
   python3 -c "
 import re, sys

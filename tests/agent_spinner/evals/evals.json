@@ -1025,6 +1025,51 @@
         "report_contract": false,
         "tool_record": true
       }
+    },
+    {
+      "id": "explicit_spinner_on_family_job",
+      "skill": "agent_spinner",
+      "prompt": "Use agent_spinner for this job. The mock family skill at family/mock_notes/SKILL.md governs the repair; read it and follow its contract. Fix the five pages under notes/. Gate answers: the scope is all five pages, and the estimate is five finders plus one writer. The approval of the family writer's scope is not given; it stays the user's to decide.",
+      "expected_output": "The user named agent_spinner for a family-owned job, so the family's writer stays the only writer while the read-only finders run at the orchestrator's level. Five finder briefs are written, one per page, and none grants a write. Every page and every staged family file stays byte-identical. No brief addressed to the family agent names any of its three checks or assigns a lens panel. The report hands each raised repair to the family writer as a scope that waits for the user's approval, naming each page with a planted defect.",
+      "files": [
+        "evals/fixtures/explicit_spinner_on_family_job/setup.sh"
+      ],
+      "expectations": [
+        "Exactly five finder briefs exist under .agent_spinner/briefs/, one per page.",
+        "No brief grants a write and no write brief exists.",
+        "Every page under notes/ and the staged family skill stay byte-identical.",
+        "No brief addressed to the family agent names any of its three checks or assigns a lens panel.",
+        "The report hands each raised repair to the family writer as a scope awaiting the user's approval, naming each page with a planted defect."
+      ],
+      "harness": {
+        "agents": [
+          "fixtures/explicit_spinner_on_family_job/agents/notes_repairer.md"
+        ],
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "shape_matched_no_recipe",
+      "skill": "agent_spinner",
+      "prompt": "Write a three-line summary of each page under docs/ into notes/<page>.md, one helper per page. Gate answers: the scope is all five pages, and the estimate is five helpers.",
+      "expected_output": "The ask is an enumerated imperative over five pages, so it matches per-artifact fan-out and no recipe row exists. The announcement names per-artifact fan-out and states that no recipe matched. The roster holds five rows, five briefs each name one page, and five note files exist under notes/. Every page under docs/ stays byte-identical, and no brief names a file under references/recipes/.",
+      "files": [
+        "evals/fixtures/shape_matched_no_recipe/setup.sh"
+      ],
+      "expectations": [
+        "The announcement names per-artifact fan-out and states that no recipe matched.",
+        "The roster holds five rows and five briefs each name one page.",
+        "Five note files exist under notes/.",
+        "Every page under docs/ stays byte-identical.",
+        "No brief names a file under references/recipes/."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      }
     }
   ]
 }

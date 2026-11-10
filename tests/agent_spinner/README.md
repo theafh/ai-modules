@@ -9,9 +9,10 @@ ledger that keeps a run's records on disk and launches no helper.
 tests/agent_spinner/
 ├── README.md
 ├── RUNBOOK.md
-├── run_all.sh                   # drives run.sh, ledger_run.sh, and test_run.py
+├── run_all.sh                   # drives run.sh, ledger_run.sh, grade_cases.sh, and test_run.py
 ├── script_tests/run.sh          # SKILL.md, references, greps, registration
 ├── script_tests/ledger_run.sh   # run_ledger.py scenarios under oldest/newest python3
+├── script_tests/grade_cases.sh  # committed pass/fail report cases for evals/grade.sh
 ├── script_tests/import_check.py # stdlib-only import guard
 ├── script_tests/git_guard.py    # read-only git guard
 ├── evals/
@@ -37,12 +38,16 @@ tests/agent_spinner/
   page, and `script_tests/` proves the eval runner's stop on a failed or
   empty stage through `tests/lib/check_stage_guard.py`. `evals/test_run.py`
   proves the runner's modes and wiring against a stub worker.
+  `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over 11
+  committed report variants for `explicit_spinner_on_family_job`, 15
+  pass/fail checks in all: seven passing report forms and four reports that
+  must fail on the page or approval check.
 - **ledger_run.sh**: the bundled ledger's scenarios under the oldest and newest
   python3 the machine offers, each staged in its own repository. It covers the
   frozen verb set and `--help`, the run-directory contract, roster and return
   contracts, every close condition, the no-helper audit-hook proof, and the
   hostile-git and repository-safety checks.
-- **evals**: every id in `evals.json` (47 today). Each behavioural eval
+- **evals**: every id in `evals.json` (49 today). Each behavioural eval
   stages one behaviour, and the `smoke_*` evals check the runner's modes. Every
   compound acceptance bullet was split into its own eval, so a failure names
   one behaviour rather than a conjoined verdict.
@@ -67,7 +72,7 @@ blames the eval only for new host paths whose basename appears in that eval's
 preserved sandbox copy. The evals run at the default 4 workers, so
 overlapping siblings stay attributable: an escape fails the eval whose sandbox
 names it, and a sibling's own work never does. The run set is every id in
-`evals.json` (47 today), derived at startup rather than frozen. The run's own
+`evals.json` (49 today), derived at startup rather than frozen. The run's own
 instrumentation output under `proj/.agent_spinner/` is excluded from the
 `proj/` inventory on both sides, so writing a roster never reads as editing
 the corpus.

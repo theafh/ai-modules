@@ -2,10 +2,11 @@
 # Top-level agent_spinner regression entrypoint.
 #
 # agent_spinner bundles one program, scripts/run_ledger.py, so the deterministic
-# surface here is three runners: the static contract (SKILL.md budgets and
+# surface here is four runners: the static contract (SKILL.md budgets and
 # blocks, the reference set, the per-harness greps that must stay empty, and the
 # ledger's stdlib-only and read-only-git contract), the ledger's own script
-# tests, and the eval runner's plumbing test against a stub worker.
+# tests, the grader's committed pass/fail cases, and the eval runner's plumbing
+# test against a stub worker.
 #
 # The behavioral evals under evals/ are intentionally not run from here. They
 # spawn vendor workers (`agent -p` by default) and consume tokens; see evals/README.md.
@@ -21,7 +22,8 @@ for arg in "$@"; do
 Usage: $0
 
 Runs the static contract checks (script_tests/run.sh), the ledger script tests
-(script_tests/ledger_run.sh), and the eval runner's plumbing test
+(script_tests/ledger_run.sh), the grader's committed pass/fail cases
+(script_tests/grade_cases.sh), and the eval runner's plumbing test
 (evals/test_run.py), with one aggregated exit code.
 
 For the behavioral evals, see tests/agent_spinner/evals/README.md.
@@ -43,6 +45,12 @@ echo "================================================================"
 echo "  agent_spinner run ledger — script tests"
 echo "================================================================"
 "$SCRIPT_DIR/script_tests/ledger_run.sh" || RC=1
+
+echo
+echo "================================================================"
+echo "  agent_spinner grader — committed pass/fail cases"
+echo "================================================================"
+"$SCRIPT_DIR/script_tests/grade_cases.sh" || RC=1
 
 echo
 echo "================================================================"

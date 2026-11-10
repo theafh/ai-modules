@@ -86,12 +86,60 @@ python3 tests/trigger_evals/run.py \
 A Claude run is one the operator asks for; name it with `--vendor claude` so
 the Claude run is visible.
 
-The skill has to be deployed for the runner's deployed-mode path. A skill
-missing from the run vendor's deployed tree exits with a named unavailability
-error and writes no score; `--force-uuid` remains the Claude-only deliberate
-opt-in to the UUID proxy and, for `agent_spinner`, also needs
-`--skill-path plugins/ai_dev/skills/agent_spinner` because the default
-source root is `plugins/knowledge_management/skills/<skill>`.
+Two routes reach the runner's deployed-mode path. The first is a deployed
+skill: `make deploy` installs `agent_spinner` under the run vendor's native
+root (`~/.cursor/skills` or `~/.claude/skills`), and a skill missing from that
+tree exits with a named unavailability error and writes no score. The second
+measures a source description without a deploy: a scratch home directory holds
+a copy of the deployed skills with only `agent_spinner`'s files swapped in, and
+the run points `HOME` at it. Build the scratch home the way
+`tests/lib/micro_deploy.py` does, because the Cursor CLI reads its login
+through `Library/Keychains` and runs shell commands from a login shell under
+`HOME`: link the real home's `Library/Keychains` and write the three login
+profiles that restore the worker's `PATH` from `MICRO_DEPLOY_PATH`.
+
+```bash
+cfg=$(mktemp -d)
+mkdir -p "$cfg/.cursor" "$cfg/Library"
+cp -R ~/.cursor/skills "$cfg/.cursor/skills"
+if [ -d "$HOME/Library/Keychains" ]; then
+  ln -sfn "$HOME/Library/Keychains" "$cfg/Library/Keychains"
+fi
+for p in .zprofile .bash_profile .profile; do
+  printf '%s\n' 'if [ -n "${MICRO_DEPLOY_PATH:-}" ]; then export PATH="$MICRO_DEPLOY_PATH"; fi' > "$cfg/$p"
+done
+rm -rf "$cfg/.cursor/skills/agent_spinner"
+cp -R plugins/ai_dev/skills/agent_spinner "$cfg/.cursor/skills/agent_spinner"
+HOME="$cfg" MICRO_DEPLOY_PATH="$PATH" python3 tests/trigger_evals/run.py \
+  --eval-set tests/trigger_evals/agent_spinner.json --skill agent_spinner \
+  --skill-path plugins/ai_dev/skills/agent_spinner \
+  --runs-per-query 3 --timeout 45 --workers 6
+```
+
+`--force-uuid` remains the Claude-only deliberate opt-in to the UUID proxy and,
+for `agent_spinner`, also needs
+`--skill-path plugins/ai_dev/skills/agent_spinner` because the default source
+root is `plugins/knowledge_management/skills/<skill>`.
+
+### Recorded measurements
+
+The set holds eight `should_trigger: true` queries that name no skill, eight
+`should_trigger: false` queries, and the two naming queries. Each run is three
+runs per query, graded at the 50%-over-three threshold.
+
+| Date | Build | Model | Vendor | Description | True queries (no skill named) | Negative queries | Naming queries |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-04 | `claude` 2.1.226 | `claude-sonnet-4-6` | Claude | today's name-blind text, run 1 | 4/8 | 8/8 | 2/2 |
+| 2026-10-04 | `claude` 2.1.226 | `claude-sonnet-4-6` | Claude | today's name-blind text, run 2 | 3/8 | 8/8 | 2/2 |
+| 2026-10-04 | `claude` 2.1.226 | `claude-sonnet-4-6` | Claude | conditional sentence | 4/8 | 8/8 | 2/2 |
+| 2026-11-09 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | baseline (parent-commit name-blind text) | 8/8 | 8/8 | 2/2 |
+| 2026-11-09 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | changed (conditional sentence) | 8/8 | 8/8 | 2/2 |
+
+The 2026-11-09 Cursor runs used the scratch-home route above, with the baseline
+run staging the parent commit's `SKILL.md` and the changed run staging the
+working tree's. Their result directories are
+`tests/trigger_evals/results/agent_spinner/baseline-cursor-20261109-135739` and
+`tests/trigger_evals/results/agent_spinner/changed-cursor-20261109-135850`.
 
 **Deploy-time obligation.** The first `make deploy` that installs
 `agent_spinner` is the moment its description starts competing for triggers, so
