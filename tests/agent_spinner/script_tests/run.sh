@@ -174,12 +174,16 @@ aggregation_block() {
 # retired show targets (`contradictions`, `beyond-brief finds`) that the ledger
 # imports no record type for.
 aggregation_show_list_correct() {
-  local block
+  local block clause
   block="$(aggregation_block "$1")"
   [[ -n "$block" ]] || return 1
-  printf '%s\n' "$block" | grep -Eq 'alternatives'
-  printf '%s\n' "$block" | grep -Eq '`dispose --flag'
-  ! printf '%s\n' "$block" | grep -Eqi 'contradictions|beyond-brief finds'
+  # The first sentence that sends the orchestrator through `show`, so
+  # `alternatives` has to sit in the read set itself rather than anywhere in
+  # the block.
+  clause="$(printf '%s\n' "$block" | tr '\n' ' ' | grep -Eo '`show`[^.]*' | sed -n '1p' || true)"
+  printf '%s\n' "$clause" | grep -Eq 'alternatives' \
+    && printf '%s\n' "$block" | grep -Eq '`dispose --flag' \
+    && ! printf '%s\n' "$block" | grep -Eqi 'contradictions|beyond-brief finds'
 }
 
 # aggregation_block_under <skill.md> <bytes> — the block measured from opening
