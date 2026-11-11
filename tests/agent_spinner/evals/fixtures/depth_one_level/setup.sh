@@ -41,6 +41,8 @@ for n in $(seq -w 1 40); do
 done
 
 printf 'The flag is now --workers everywhere.\n' > "$proj/NOTES.txt"
+printf 'docs/reference.md is rebuilt from MANIFEST.txt, so a change there is its\n' >> "$proj/NOTES.txt"
+printf 'own job for a later run rather than a direct edit.\n' >> "$proj/NOTES.txt"
 
 cat > "$proj/Makefile" <<'MK'
 # docs/reference.md is generated from every path MANIFEST.txt names.

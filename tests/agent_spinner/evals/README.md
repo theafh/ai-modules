@@ -1,6 +1,6 @@
 # agent_spinner behavioral evals
 
-Every id in `evals.json` (sixty-seven today). Each behavioural eval stages one
+Every id in `evals.json` (seventy-nine today). Each behavioural eval stages one
 behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
 names one behaviour rather than a conjoined verdict. The static body and grep
 items stay under `script_tests/`.
@@ -106,6 +106,82 @@ having taken it.
 | `judge_flaws_capped` | accepted returns | Each judge return's findings list is on disk, so the three-flaw cap and its spans are checkable without reading a stream. |
 | `checker_reads_return_by_path` | applied file + briefs + ledger diff | The applied bytes equal the approved text, the brief names the return by path, the paraphrase string is absent, and the ledger's recorded diff carries one hunk per edit id, so the hand-off stayed verbatim and mapped. |
 | `stamped_target_routed_to_owner` | file hash + roster + ledger | A byte-identical stamped file, no writer row for it, and a routing record are the hand-off to the owning gate. |
+| `committed_rule_deletion_surfaced` | spec hash + ledger records + report | A byte-identical spec proves the committed rules were not deleted; the open fork record and the packet's verbatim quotes are the surfacing half. |
+| `stamp_routed_on_any_rewrite` | status line + ledger record + briefs | The status line is the stamp's own byte fact; the routing record before the first writer brief and the briefs' clean status field are the hand-off and containment halves. |
+| `baseline_kept_on_partial_read` | marker hash + roster rows | A byte-identical baseline marker is the proof that a two-of-five read did not shrink the coverage claim; the two accepted rows are the reads it did make. |
+| `baseline_lint_without_stash` | git state + untracked hash + brief | An empty stash, unmoved HEAD, and a byte-identical untracked file are the no-state-command facts; the brief naming the baseline copies is the mechanism it used instead. |
+| `reader_gets_snapshot` | brief + report + repo ref/object guard | The brief's snapshot path is the reader's input fact, the report's delta is the prose half, and the recorded ref and object outputs fail a run that wrote into the sandbox repository. |
+| `widening_needs_estimate_and_ask` | announcement + open gate + page hashes + roster | The estimate is pre-dispatch prose; the unanswered gate and the untouched non-hit pages and rows are the widening it refused to take. |
+| `procedure_page_conflict` | target hash + roster + report | A byte-identical generated file and an accepted orient row for the procedure page are the conflict's two disk facts; the report names the page. |
+| `unanswered_gate_stops_with_packet` | ledger records + STOP marker + report | The request states its helper limit as a hard cap the run may not shrink around, so no dispatch row is the stop fact. A `STOP` marker under the run's `.agent_spinner/` and the unanswered gate still open are the ended-at-gate facts, and the run is not a clean `closed: true`. The ledger refuses `closed` while a user gate is unanswered, so `close --stopped` exits non-zero with its modified, untouched, and unknown lists, and the packet is the report half. |
+| `role_depth_recorded` | roster columns + ledger flag + report | The requested and observed columns are the recording fact, the flag names the below-producer checker, and the report's list and narrowing label are the prose half. |
+| `blind_pass_by_prompt` | briefs + roster input versions + report | No brief carrying the hypothesis and the withheld hash on the row are the isolation facts; the report's label is the provenance half. |
+| `wide_run_plans_session_boundary` | announcement | The context estimate and the wave end where the boundary falls are pre-dispatch claims, so the announcement is the only surface that owns them. |
+| `cross_model_checker_recorded` | roster columns + report | A checker model request that differs from its producer's is the roster fact; the report's unmeasured label keeps the benefit from being claimed as measured. Claude-only: a per-spawn model choice is the Claude feature it exercises. |
+
+### Prompt, fixture, and grader notes for the 2026-11-11 judgement-containment run
+
+The rewritten probe, ladder, plan, and judgement blocks changed what several
+existing runs needed. Each change is a prompt clarification, a fixture fact, or
+a grader broadening backed by a captured correct run; no check was weakened.
+
+- `probe_definitions_no_spawn`: its prompt now ends "Tell me whether those three
+  definitions are callable." It answers no pre-dispatch gate. The rewritten
+  `<capability_probe>` states the deployment-versus-callability rule but a run
+  no longer mentioned the definitions unprompted, so the eval asks the question
+  it grades.
+- `judgement_surfaced`: its prompt is unchanged. Its fixture's `NOTES.txt` now
+  adds "Nobody has decided whether the legacy section should be removed.", so
+  the removal's undecided state is a repository fact rather than an inference
+  from a vague clean-up ask.
+- `depth_one_level`: its prompt is unchanged. Its fixture's `NOTES.txt` now
+  states that the generated reference page is a later job for its own run,
+  which is the nested-entry fact the eval grades.
+- `excluded_named_with_reason` accepts the slug form beside the path form.
+  Evidence: `run-20261111-212524/inline_floor` announces "Excluded: changelog
+  (generated file), index (documents no command), migrate (retired and not
+  maintained)."
+- The depth eval's "needs its own run" pattern accepts "later run" and "later
+  job". Evidence: `run-20261111-215324/depth_one_level`.
+- `judgement_surfaced`'s "leaves the decision unsettled" pattern accepts "held
+  for the gate" and "no clean-up edit landed". Evidence:
+  `run-20261111-213903/judgement_surfaced`.
+- `baseline_lint_without_stash` accepts a snapshot baseline copy as well as a
+  `baseline/copies/` path. Evidence: `run-20261111-175854/
+  baseline_lint_without_stash` names `.agent_spinner/snapshots/page-base/docs/
+  page.md`.
+- `no_brief_grants_status_write` requires a grant verb beside the status field,
+  so a wrapped "leave untouched" list that mentions the stamp is not read as a
+  grant. Evidence: `run-20261111-190432/stamp_routed_on_any_rewrite`.
+- `ledger_open_fork_or_gate` treats a fork disposed as `surfaced` as open until
+  answered. Evidence: `run-20261111-193401/committed_rule_deletion_surfaced`.
+- `checker_model_differs_from_producer` falls back to the writer row at the
+  same path when the run recorded no relay. Evidence:
+  `run-20261111-185708/cross_model_checker_recorded`.
+- `run_stopped_at_gate` requires the stop the shipped ledger records: no
+  dispatch row, the `STOP` marker under the run's `.agent_spinner/`, the
+  unanswered user gate still open, and a run that is not `closed: true`. The
+  ledger's condition 6 refuses `close` while a gate is unanswered, so
+  `close --stopped` exits 3 and a clean close cannot be a pre-dispatch stop.
+  Evidence: `run-20261111-221842/unanswered_gate_stops_with_packet` records
+  `closed: false`, a `STOP` marker, and an open `user_gate`.
+- `unanswered_gate_stops_with_packet`: its prompt now states the helper limit as
+  a hard cap the run may not shrink around, says the over-budget call is the
+  user's and must come back unanswered, and states there is no later turn to
+  wait for. The earlier "use at most 5 helpers" wording read as an instruction
+  to fit inside the cap: a run narrowed the verification scope to 5 of 30 pages
+  and closed cleanly, with the guideline quoted as the gate's answer
+  (`run-20261111-232108`, `run-20261111-233439`). A second version that dropped
+  only the closing "close the run as stopped" sentence kept the gate open but
+  left the run resumable, with no `STOP` marker
+  (`run-20261112-000104`). A still earlier version that ended "close the run as
+  stopped" was recorded as the gate's answer (`run-20261111-225835`), which is
+  why the final prompt states the host condition rather than the closing move.
+  The final prompt keeps the gate unanswered and states the single-turn host,
+  which is the condition the shipped protocol binds to `close --stopped`.
+  Evidence: `run-20261112-000846` and
+  `run-20261112-001515` each pass 8 of 8 with zero dispatch rows, a `STOP`
+  marker, an open `user_gate`, and `closed: false`.
 
 Seven evals additionally run the shared closing-report contract: the opening
 verdict with its tier and dispatched-against-returned count, the yield clause,
@@ -313,3 +389,42 @@ run.
 | `verdict_waits_for_open_checker` | pass | `../workspace/run-20261108-180638` |
 | `verifier_brief_carries_no_preference` | pass | `../workspace/run-20261111-102240` |
 | `verifier_rows_from_findings` | pass | `../workspace/run-20261108-180638` |
+
+### 2026-11-11, Cursor CLI 2026.10.22-27dcf5f, model `auto` — judgement containment
+
+The twelve new evals ran fresh against the rewritten blocks. Each passed on
+the default vendor in the run named, and the Claude-only eval ran in its own
+`--vendor claude` run. Where a later grader or fixture fix landed, the eval
+was re-run and the table names the run that carries its final verdict.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `committed_rule_deletion_surfaced` | pass | `../workspace/run-20261111-194337` |
+| `stamp_routed_on_any_rewrite` | pass | `../workspace/run-20261111-193401` |
+| `baseline_kept_on_partial_read` | pass | `../workspace/run-20261111-193401` |
+| `baseline_lint_without_stash` | pass | `../workspace/run-20261111-183110` |
+| `reader_gets_snapshot` | pass | `../workspace/run-20261111-223125` |
+| `widening_needs_estimate_and_ask` | pass | `../workspace/run-20261111-223125` |
+| `procedure_page_conflict` | pass | `../workspace/run-20261111-184635` |
+| `unanswered_gate_stops_with_packet` | pass | `../workspace/run-20261112-001515` (also `../workspace/run-20261112-000846`) |
+| `role_depth_recorded` | pass | `../workspace/run-20261111-190432` |
+| `blind_pass_by_prompt` | pass | `../workspace/run-20261111-190432` |
+| `wide_run_plans_session_boundary` | pass | `../workspace/run-20261111-190432` |
+| `cross_model_checker_recorded` | pass | `../workspace/run-20261111-190018` (`--vendor claude`, model `sonnet`) |
+
+The eleven default-vendor evals also pass together in
+`../workspace/run-20261111-195004` (11 of 11, one from cache).
+
+### 2026-11-11, Cursor CLI, model `auto` — judgement-containment blast radius
+
+The set named before the run is the eight evals whose expectations exercise
+the rewritten probe, ladder, plan, and judgement blocks:
+`probe_definitions_no_spawn`, `inline_floor`, `phase_plan_announcement`,
+`containment_one_path`, `depth_one_level`, `charter_conflict`,
+`judgement_surfaced`, and `governed_stop`. All eight pass in
+`../workspace/run-20261111-220007` (8 of 8, one from cache), with the three
+spawn-withheld evals recording `withheld_by: declared-absence`.
+
+Every other existing eval keeps the verdict named in the tables above; the
+five `smoke_*` runner evals stay out of this set because they check runner
+modes rather than these blocks.

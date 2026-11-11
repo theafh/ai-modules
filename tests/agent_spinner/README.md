@@ -47,7 +47,7 @@ tests/agent_spinner/
   frozen verb set and `--help`, the run-directory contract, roster and return
   contracts, every close condition, the no-helper audit-hook proof, and the
   hostile-git and repository-safety checks.
-- **evals**: every id in `evals.json` (67 today). Each behavioural eval
+- **evals**: every id in `evals.json` (79 today). Each behavioural eval
   stages one behaviour, and the `smoke_*` evals check the runner's modes. Every
   compound acceptance bullet was split into its own eval, so a failure names
   one behaviour rather than a conjoined verdict.
@@ -72,7 +72,7 @@ blames the eval only for new host paths whose basename appears in that eval's
 preserved sandbox copy. The evals run at the default 4 workers, so
 overlapping siblings stay attributable: an escape fails the eval whose sandbox
 names it, and a sibling's own work never does. The run set is every id in
-`evals.json` (67 today), derived at startup rather than frozen. The run's own
+`evals.json` (79 today), derived at startup rather than frozen. The run's own
 instrumentation output under `proj/.agent_spinner/` is excluded from the
 `proj/` inventory on both sides, so writing a roster never reads as editing
 the corpus.

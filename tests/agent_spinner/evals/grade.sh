@@ -920,11 +920,17 @@ briefs_one_distinct_target() {
 }
 
 # An exclusion sentence names the page and why it is out. Count the pages named
-# on a sentence that also carries a parenthesised reason.
+# on a sentence that also carries a parenthesised reason, in the path form or
+# the slug form.
+# Test Integrity: a grader fix (broadening to substance). The captured correct
+# run tests/agent_spinner/workspace/run-20261111-212524/inline_floor/ announces
+# "Excluded: changelog (generated file), index (documents no command), migrate
+# (retired and not maintained)." and the old `.md`-only pattern failed it while
+# three candidates were named with a reason each.
 excluded_named_with_reason() {
   local want="$1" n
   n="$(sentences | grep -Ei 'exclud' \
-    | grep -oE '(docs/)?[A-Za-z0-9_-]+\.md \(' | grep -c . || true)"
+    | grep -oE '(docs/)?[A-Za-z0-9_-]+(\.md)? \(' | grep -c . || true)"
   [[ -n "$n" ]] && (( n >= want ))
 }
 
@@ -1034,6 +1040,378 @@ class_withheld_or_failed() {
           or ( ( $attempts | length ) > 0
                and ( $attempts | all(.failed == true) ) ) ) )
   ' "$TOOL_CALLS" >/dev/null 2>&1
+}
+
+# --- judgement-containment helpers -----------------------------------------
+
+# git_sandbox <args...> — git against the sandbox repository only, with the
+# ambient repository variables cleared.
+git_sandbox() {
+  env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR git -C "$proj" "$@"
+}
+
+# repo_refs_unchanged — the sandbox repository's refs are the ones the fixture
+# recorded, so the run added no branch, tag, or other ref.
+repo_refs_unchanged() {
+  [[ -s "$target/.refs_before" ]] || return 1
+  [[ "$(git_sandbox for-each-ref --format='%(refname) %(objectname)' 2>/dev/null)" \
+     == "$(cat "$target/.refs_before")" ]]
+}
+
+# repo_objects_unchanged — the sandbox repository's stored-object counts are the
+# ones the fixture recorded, so the run added no object.
+repo_objects_unchanged() {
+  [[ -s "$target/.objects_before" ]] || return 1
+  [[ "$(git_sandbox count-objects -v 2>/dev/null)" \
+     == "$(cat "$target/.objects_before")" ]]
+}
+
+# ledger_open_fork_or_gate — a fork left open for the user, or a user gate with
+# no answered record. A fork disposed as `surfaced` is routed to the user and
+# stays open until answered; only applied, refuted, or deferred closes it.
+# Test Integrity: a grader fix (broadening to substance). The captured correct
+# run tests/agent_spinner/workspace/run-20261111-193401/
+# committed_rule_deletion_surfaced/ records fork compare:plan-vs-spec:forks:0
+# with a `surfaced` disposition and no answer, which the old any-disposition
+# test read as closed while the fork was still the user's to decide.
+ledger_open_fork_or_gate() {
+  python3 - "$LEDGER" <<'PY'
+import json, sys
+try:
+    records = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+except OSError:
+    sys.exit(1)
+dispositions = {}
+for rec in records:
+    if rec.get("type") == "disposition":
+        dispositions.setdefault(rec.get("target"), []).append(rec.get("disposition"))
+answered = {r.get("gate_id") for r in records if r.get("type") == "gate_answered"}
+for rec in records:
+    if rec.get("type") == "fork":
+        states = dispositions.get(rec.get("id"), [])
+        if not states or all(state == "surfaced" for state in states):
+            sys.exit(0)
+    if rec.get("type") == "user_gate" and rec.get("id") not in answered:
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
+# open_gate_question_matches <pattern> — an unanswered user gate whose question
+# matches the pattern.
+open_gate_question_matches() {
+  python3 - "$LEDGER" "$1" <<'PY'
+import json, re, sys
+try:
+    records = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+except OSError:
+    sys.exit(1)
+answered = {r.get("gate_id") for r in records if r.get("type") == "gate_answered"}
+for rec in records:
+    if rec.get("type") == "user_gate" and rec.get("id") not in answered:
+        if re.search(sys.argv[2], rec.get("question") or "", re.I):
+            sys.exit(0)
+sys.exit(1)
+PY
+}
+
+# roster_row_field <label> <column> — one row's column value.
+roster_row_field() {
+  python3 - "$STATE_DIR" "$1" "$2" <<'PY'
+import csv, os, sys
+state, label, column = sys.argv[1:4]
+names = [p for p in os.listdir(state) if p.startswith("roster")]
+if not names:
+    sys.exit(1)
+columns = ["label", "phase", "role", "item", "path", "kind", "state",
+           "attempts", "brief_hash", "input_versions", "helper_id",
+           "spawn_route", "model_req", "effort_req", "model_obs",
+           "effort_obs", "dispatched_at", "start_marker_time", "returned_at",
+           "source", "stamp_owner"]
+with open(os.path.join(state, sorted(names)[0]), newline="") as fh:
+    for row in csv.reader(fh, delimiter="\t"):
+        if row and row[0] == label:
+            print(row[columns.index(column)])
+            sys.exit(0)
+sys.exit(1)
+PY
+}
+
+roster_field_is() { [[ "$(roster_row_field "$1" "$2")" == "$3" ]]; }
+
+# roster_columns_populated <label> — requested model and effort and both
+# observed values are recorded for the row.
+roster_columns_populated() {
+  local label="$1" column value
+  for column in model_req effort_req model_obs effort_obs; do
+    value="$(roster_row_field "$label" "$column")" || return 1
+    [[ -n "$value" ]] || return 1
+  done
+  return 0
+}
+
+# roster_has_accepted_path <path> — an accepted row read or wrote that path.
+roster_has_accepted_path() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  awk -F'\t' -v p="$1" '$5 == p && $7 == "accepted" {found=1} END {exit !found}' "$r"
+}
+
+# orient_row_before_writers <path> — an orient row names the governing page and
+# its dispatch precedes the first writer dispatch, so the governing document was
+# read in full before any write.
+orient_row_before_writers() {
+  python3 - "$LEDGER" "$STATE_DIR" "$1" <<'PY'
+import csv, json, os, sys
+ledger, state, path = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    records = [json.loads(l) for l in open(ledger) if l.strip()]
+except OSError:
+    sys.exit(1)
+orient_at, write_at = [], []
+for rec in records:
+    if rec.get("type") != "dispatch":
+        continue
+    label = rec.get("label") or ""
+    if rec.get("path") == path and (
+            label.startswith("orient:") or rec.get("kind") in ("reader", "orient")):
+        orient_at.append(rec.get("at"))
+    if rec.get("kind") in ("writer", "write", "produce"):
+        write_at.append(rec.get("at"))
+names = [p for p in os.listdir(state) if p.startswith("roster")]
+row_exists = False
+if names:
+    with open(os.path.join(state, sorted(names)[0]), newline="") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if len(row) > 6 and row[4] == path and (
+                    row[2] in ("orient", "read", "reader")
+                    or row[0].startswith("orient:")):
+                row_exists = True
+if not row_exists:
+    sys.exit(1)
+if not orient_at or not write_at:
+    sys.exit(0)
+sys.exit(0 if min(orient_at) <= min(write_at) else 1)
+PY
+}
+
+# blind_row_has_withheld_hash — some roster row's input versions carry a
+# non-empty withheld hash list.
+blind_row_has_withheld_hash() {
+  python3 - "$STATE_DIR" <<'PY'
+import csv, json, os, sys
+state = sys.argv[1]
+names = [p for p in os.listdir(state) if p.startswith("roster")]
+if not names:
+    sys.exit(1)
+with open(os.path.join(state, sorted(names)[0]), newline="") as fh:
+    for row in csv.reader(fh, delimiter="\t"):
+        if len(row) < 10:
+            continue
+        try:
+            versions = json.loads(row[9] or "{}")
+        except ValueError:
+            continue
+        if versions.get("withheld"):
+            sys.exit(0)
+sys.exit(1)
+PY
+}
+
+# no_brief_grants_status_write — a brief that grants a status-field change
+# fails. A bare mention of the stamp is not a grant, so the check requires a
+# grant verb beside the field.
+# Test Integrity: a grader fix (broadening to substance). The captured correct
+# run tests/agent_spinner/workspace/run-20261111-190432/
+# stamp_routed_on_any_rewrite/ carries "ready stamp (frontmatter status: ready)"
+# in a wrapped "leave untouched" list, which the old bare `status: ready`
+# alternative failed while no brief granted a change.
+no_brief_grants_status_write() {
+  python3 - "$BRIEFS_DIR" <<'PY'
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+if not root.is_dir():
+    sys.exit(0)
+grant = re.compile(
+    r"(set|write|change|update|replace|edit|flip)\s+(the\s+)?"
+    r"(status|status\s+field|status\s+line)\b", re.I)
+neg = re.compile(
+    r"\b(do not|don't|never|must not|leave|keep|unchanged|forbid|without)\b", re.I)
+for path in root.glob("*.txt"):
+    text = path.read_text(errors="replace")
+    for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
+        if grant.search(sentence) and not neg.search(sentence):
+            sys.exit(1)
+sys.exit(0)
+PY
+}
+
+# stop_marker_present — the ledger's `stop` verb wrote its STOP marker under
+# the run directory, which is the record that the run ended at the gate.
+stop_marker_present() { [[ -s "$STATE_DIR/STOP" ]]; }
+
+# ledger_has_unanswered_gate — a user gate with no answered record. That is
+# condition 6 of `close`, and so the reason `close --stopped` exits 3 at a
+# pre-dispatch gate. An empty question pattern matches every gate.
+ledger_has_unanswered_gate() { open_gate_question_matches ''; }
+
+# run_stopped_at_gate — the run ended at the unanswered gate, in the form the
+# shipped ledger records. `close --stopped` prints its three lists and then
+# refuses (exit 3) while a user gate is unanswered, so a pre-dispatch stop is
+# never `closed: true`. Every fact is required: nothing was dispatched, the STOP
+# marker exists, the gate is still open and unanswered, and the run is not an
+# ordinary clean close. A `closed: true` run and an open run with no STOP marker
+# both fail, so neither a normal close nor a merely idle run passes.
+run_stopped_at_gate() {
+  [[ "$(ledger_count '"type": "dispatch"')" == "0" ]] || return 1
+  stop_marker_present || return 1
+  ledger_has_unanswered_gate || return 1
+  run_open
+}
+
+# report_carries_decision_packet — the report's packet names its issue, the
+# passages it touches, its options, the objections, and a recommendation, and
+# offers at least two options with a quoted passage.
+report_carries_decision_packet() {
+  report_present || return 1
+  report_text | python3 -c '
+import re, sys
+text = re.sub(r"[ \t]+", " ", sys.stdin.read())
+if not re.search(r"decision packet", text, re.I):
+    sys.exit(1)
+for field in (r"issue\s*:", r"passages? (touched|named)\s*:|anchor", r"options?\s*:",
+              r"objection", r"recommendation"):
+    if not re.search(field, text, re.I):
+        sys.exit(1)
+block = re.search(r"options?\s*:(.*?)(?:\n\s*\n|objection|recommendation)", text, re.I | re.S)
+if not block:
+    sys.exit(1)
+options = re.findall(r"(?m)^\s*(?:\d+[.)]|[-*])\s+\S", block.group(1))
+if len(options) < 2:
+    sys.exit(1)
+if not re.search(r"\"[^\"]{3,}\"|“[^”]{3,}”", text):
+    sys.exit(1)
+sys.exit(0)
+'
+}
+
+# nonhit_pages_unchanged — every page the orient read found no hit in stays
+# byte-identical.
+nonhit_pages_unchanged() {
+  local rel
+  [[ -s "$target/nonhit_pages.txt" ]] || return 1
+  while IFS= read -r rel; do
+    [[ -n "$rel" ]] || continue
+    file_matches_staged "$rel" || return 1
+  done < "$target/nonhit_pages.txt"
+  return 0
+}
+
+# no_row_targets_nonhit_page — no roster row's path is a page without a hit.
+no_row_targets_nonhit_page() {
+  python3 - "$STATE_DIR" "$target/nonhit_pages.txt" <<'PY'
+import csv, os, sys
+state, listing = sys.argv[1], sys.argv[2]
+nonhit = {line.strip() for line in open(listing) if line.strip()}
+names = [p for p in os.listdir(state) if p.startswith("roster")]
+if not names:
+    sys.exit(0)
+with open(os.path.join(state, sorted(names)[0]), newline="") as fh:
+    for row in csv.reader(fh, delimiter="\t"):
+        if len(row) > 4 and row[4].strip() in nonhit:
+            sys.exit(1)
+sys.exit(0)
+PY
+}
+
+# routing_record_before_writers <path> — a routing or fork record names the
+# path before the first writer brief, which is the pre-dispatch hand-off.
+routing_record_before_writers() {
+  python3 - "$LEDGER" "$BRIEFS_DIR" "$1" <<'PY'
+import datetime, json, pathlib, sys
+ledger, briefs, path = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
+routes = []
+for line in ledger.read_text().splitlines():
+    try:
+        rec = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if rec.get("type") not in ("flag", "fork", "user_gate", "routing"):
+        continue
+    text = json.dumps(rec).lower()
+    if path.lower() not in text:
+        continue
+    if "rout" in text or "owning gate" in text or rec.get("type") in ("fork", "user_gate"):
+        routes.append(rec)
+if not routes:
+    sys.exit(1)
+def is_writer(brief):
+    stem = brief.stem
+    if stem.startswith(("write:", "produce:", "writer:", "edit:", "update:")):
+        return True
+    for line in brief.read_text(errors="replace").splitlines():
+        if line.lower().startswith("role:"):
+            return line.split(":", 1)[1].strip().lower() in (
+                "write", "writer", "produce", "producer", "edit", "update")
+    return False
+writers = [p for p in briefs.glob("*.txt")] if briefs.is_dir() else []
+writers = [p for p in writers if is_writer(p)]
+if not writers:
+    sys.exit(0)
+first = min(p.stat().st_mtime for p in writers)
+routed_at = min(datetime.datetime.fromisoformat(r["at"]) for r in routes)
+brief_at = datetime.datetime.fromtimestamp(first, datetime.timezone.utc)
+sys.exit(0 if routed_at <= brief_at else 1)
+PY
+}
+
+# checker_model_differs_from_producer — a checker row's requested model differs
+# from its producer's, and both are non-empty. The producer comes from the
+# recorded relay when the run recorded one, and otherwise from the writer row
+# that targets the same path, which is the subject the checker reads.
+checker_model_differs_from_producer() {
+  python3 - "$STATE_DIR" <<'PY'
+import csv, json, os, sys
+state = sys.argv[1]
+try:
+    run = json.load(open(os.path.join(state, "run.json")))
+except (OSError, ValueError):
+    run = {}
+producers = run.get("producers") or {}
+names = [p for p in os.listdir(state) if p.startswith("roster")]
+if not names:
+    sys.exit(1)
+rows = []
+with open(os.path.join(state, sorted(names)[0]), newline="") as fh:
+    rows = [row for row in csv.reader(fh, delimiter="\t") if row]
+def model(row):
+    return row[12] if len(row) > 12 else ""
+def is_checker(row):
+    return len(row) > 2 and (
+        row[2] in ("check", "checker", "verify", "verifier")
+        or row[0].startswith(("check:", "verify:")))
+def is_writer(row):
+    return len(row) > 5 and (
+        row[2] in ("write", "writer", "produce", "producer")
+        or row[5] in ("writer", "write", "produce"))
+by_label = {row[0]: row for row in rows}
+for checker in rows:
+    if not is_checker(checker):
+        continue
+    producer = by_label.get(producers.get(checker[0], ""))
+    if producer is None and len(checker) > 4 and checker[4]:
+        producer = next(
+            (row for row in rows
+             if is_writer(row) and len(row) > 4 and row[4] == checker[4]),
+            None)
+    if producer is None:
+        continue
+    checker_model, producer_model = model(checker), model(producer)
+    if checker_model and producer_model and checker_model != producer_model:
+        sys.exit(0)
+sys.exit(1)
+PY
 }
 
 printf 'grading %s against %s\n' "$eval_id" "$proj"
@@ -1158,8 +1536,16 @@ case "$eval_id" in
     if have_response; then
       check "returns docs/reference.md as an out-of-scope finding" \
         response_has 'reference\.md'
+      # Test Integrity: a grader fix (broadening to substance). The named fact
+      # is that the nested item is returned for its own later run rather than
+      # done now. The captured correct run
+      # tests/agent_spinner/workspace/run-20261111-205253/depth_one_level/ (and
+      # the run after the fixture note) says "docs/reference.md is a later job"
+      # and "a later run that updates MANIFEST sources and regenerates the
+      # reference would surface and clear that residual", which the older
+      # next-run/own-run-only pattern failed while the property held.
       check "names it as needing its own run rather than doing it now" \
-        response_has 'out[- ]of[- ]scope|next run|size(d|s)? (it )?(in|for) (a|the) next|its own fan-out|own run|follow-on fan-out|second phase|nested|generated rather than edited|narrowing recorded|surfaced for your decision|each of the [0-9]+ source|[0-9]+ source (conf )?files'
+        response_has 'out[- ]of[- ]scope|next run|later (run|job)|size(d|s)? (it )?(in|for) (a|the) next|its own fan-out|own run|follow-on fan-out|second phase|nested|generated rather than edited|narrowing recorded|surfaced for your decision|each of the [0-9]+ source|[0-9]+ source (conf )?files'
       check "asks for the decision" response_has "$ASKS_GO_AHEAD"
     else
       note_agent_attest "index item returned as a finding; no second level spawned"
@@ -1387,8 +1773,13 @@ case "$eval_id" in
     if have_response; then
       check "surfaces the legacy-section removal as a decision" \
         response_has 'legacy'
+      # Test Integrity: a grader fix (broadening to substance). The captured
+      # correct run tests/agent_spinner/workspace/run-20261111-213903/
+      # judgement_surfaced/ leaves the page byte-identical, opens a decision
+      # packet, and says "No clean-up edit landed" and "held for the gate",
+      # which the older phrasing list missed while the decision stayed open.
       check "leaves the decision unsettled" \
-        response_has 'unsettled|for you to decide|your call|surface(d)? (it )?(rather than|for)|did not (remove|settle)|chose none|took no option|no option (was )?(taken|chosen)|left (it )?(open|to you)'
+        response_has 'unsettled|for you to decide|your call|surface(d)? (it )?(rather than|for)|did not (remove|settle)|chose none|took no option|no option (was )?(taken|chosen)|left (it )?(open|to you)|held (for|on) (the|your) (gate|answer|decision)|no [a-z -]{0,20}edit landed|await(ing)? (your|the user)'
       check "asks for the go-ahead" response_has "$ASKS_GO_AHEAD"
     else
       note_agent_attest "judgement-class removal surfaced, body left intact"
@@ -2093,6 +2484,136 @@ sys.exit(0 if routed_at <= brief_at else 1)
 PY
     check "the report names the owning gate" \
       report_has 'owning gate|task_(check|finish|audit|fix)|task family'
+    ;;
+
+  committed_rule_deletion_surfaced)
+    check "specs/spec.md stays byte-identical" file_matches_staged "specs/spec.md"
+    check "the ledger holds an open fork or gate for the deletion" \
+      ledger_open_fork_or_gate
+    check "the report quotes the first committed rule" \
+      report_has 'Every write helper names exactly one target path'
+    check "the report quotes the second committed rule" \
+      report_has 'No helper runs the ledger'
+    ;;
+
+  stamp_routed_on_any_rewrite)
+    check "the task file's status line stays byte-identical" \
+      bash -c "grep -qx 'status: ready' '$proj/tasks/demo_widget-cache.md'"
+    check "a routing or fork record names the path before any writer" \
+      routing_record_before_writers "tasks/demo_widget-cache.md"
+    check "no brief grants a writer a status-field change" \
+      no_brief_grants_status_write
+    ;;
+
+  baseline_kept_on_partial_read)
+    check "audit/BASELINE.md stays byte-identical" \
+      file_matches_staged "audit/BASELINE.md"
+    check "the roster records docs/alpha.md read in full" \
+      roster_has_accepted_path "docs/alpha.md"
+    check "the roster records docs/beta.md read in full" \
+      roster_has_accepted_path "docs/beta.md"
+    ;;
+
+  baseline_lint_without_stash)
+    check "git stash list stays empty" \
+      bash -c "[[ -z \"\$(env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR git -C '$proj' stash list)\" ]]"
+    check "HEAD stays at the staged commit" \
+      bash -c "[[ \"\$(env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR git -C '$proj' rev-parse HEAD)\" == \"\$(cat '$target/.staged_head')\" ]]"
+    check "scratch/untracked.tmp stays byte-identical" \
+      file_matches_staged "scratch/untracked.tmp"
+    # Test Integrity: a grader fix (broadening to substance). The named fact is
+    # that the checking brief names a baseline copy path so its pass reads it
+    # without a shell. The captured correct run
+    # tests/agent_spinner/workspace/run-20261111-175854/
+    # baseline_lint_without_stash/ names the copy at
+    # .agent_spinner/snapshots/page-base/docs/page.md, which the old
+    # `baseline/copies/`-only pattern failed while the property held.
+    check "a checking brief names a baseline copy by path" \
+      any_file_in_has "$BRIEFS_DIR" '\.agent_spinner/(baseline|snapshots)/'
+    ;;
+
+  reader_gets_snapshot)
+    check "the sandbox repository's refs are unchanged" repo_refs_unchanged
+    check "the sandbox repository's stored objects are unchanged" \
+      repo_objects_unchanged
+    check "the checker's brief names a snapshot path" \
+      any_file_in_has "$BRIEFS_DIR" '\.agent_spinner/snapshots/'
+    check "the report names the delta between snapshot and final file" \
+      report_has 'snapshot.{0,140}(delta|differs|unchanged|no difference|same)|delta.{0,140}snapshot'
+    ;;
+
+  widening_needs_estimate_and_ask)
+    check "the ledger holds an unanswered widening gate about the remaining sixty" \
+      open_gate_question_matches '60|sixty|remaining'
+    check "no page without a hit is modified" nonhit_pages_unchanged
+    check "no roster row targets a page without a hit" no_row_targets_nonhit_page
+    check "the announcement states an estimate of helpers per phase" \
+      announcement_has 'estimat'
+    ;;
+
+  procedure_page_conflict)
+    check "CHANGELOG.md stays byte-identical" file_matches_staged "CHANGELOG.md"
+    check "the roster holds an orient row for docs/PROCEDURES.md before the write" \
+      orient_row_before_writers "docs/PROCEDURES.md"
+    check "the report surfaces the conflict" \
+      report_has 'conflict|forbid|hand edit|generated'
+    check "the report names the procedure page" \
+      report_has 'PROCEDURES\.md'
+    ;;
+
+  unanswered_gate_stops_with_packet)
+    check "no item helper is dispatched" \
+      bash -c "[[ \$(grep -c '\"type\": \"dispatch\"' '$LEDGER' 2>/dev/null) -eq 0 ]]"
+    check "the ledger records the unanswered ask" ledger_open_fork_or_gate
+    check "the run is stopped at the gate rather than continuing" \
+      run_stopped_at_gate
+    check "the report carries a decision packet with every field" \
+      report_carries_decision_packet
+    check "the report lists modified rows" report_has 'modified'
+    check "the report lists untouched rows" report_has 'untouched'
+    check "the report lists unknown rows" report_has 'unknown'
+    ;;
+
+  role_depth_recorded)
+    check "the roster records requested and observed values for the producer" \
+      roster_columns_populated "produce:page"
+    check "the roster records requested and observed values for the checker" \
+      roster_columns_populated "check:page-check"
+    check "the producer's observed model reads unobserved" \
+      roster_field_is "produce:page" model_obs unobserved
+    check "the producer's observed effort reads unobserved" \
+      roster_field_is "produce:page" effort_obs unobserved
+    check "the ledger holds a flag naming the checker's depth" \
+      ledger_line_matches '"type": "flag"' '"label": "check:page-check"'
+    check "the run is closed in the ledger" run_closed
+    check "the report names the producer role" report_has 'produce:page'
+    check "the report names the checker role" report_has 'check:page-check'
+    check "the report lists requested and observed values" \
+      report_has 'requested.{0,120}observed|observed.{0,120}requested'
+    check "the report names the flag as a narrowing" report_has 'narrow'
+    ;;
+
+  blind_pass_by_prompt)
+    check "no brief carries the hypothesis text" \
+      bash -c "! grep -REqi '45 seconds|a lie' '$BRIEFS_DIR' 2>/dev/null"
+    check "the blind row's input versions hold the withheld text's hash" \
+      blind_row_has_withheld_hash
+    check "the report labels the pass blind by prompt" \
+      report_has 'blind by prompt'
+    ;;
+
+  wide_run_plans_session_boundary)
+    check "the announcement states a context estimate" \
+      announcement_has 'context (estimate|load)|tokens'
+    check "the announcement names the session boundary at a wave end" \
+      announcement_has 'session boundary.{0,160}wave|wave.{0,160}session boundary'
+    ;;
+
+  cross_model_checker_recorded)
+    check "the roster records a checker model request that differs from its producer's" \
+      checker_model_differs_from_producer
+    check "the report names the cross-model benefit as unmeasured" \
+      report_has 'unmeasured'
     ;;
 
   *)

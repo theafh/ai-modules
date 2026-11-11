@@ -115,6 +115,18 @@ record_outside_hashes() {
   _hash_tree "$1/outside" "" > "$2"
 }
 
+# record_repo_guard <target> <proj> — record the sandbox repository's refs and
+# its stored-object counts beside the hash inventories, outside proj/, so a run
+# that added a ref or an object to that repository fails the comparison after
+# the run. `git for-each-ref` lists every ref; `git count-objects -v` counts the
+# stored objects.
+record_repo_guard() {
+  local target="$1" proj="$2"
+  sandbox_git "$proj" for-each-ref \
+    --format='%(refname) %(objectname)' > "$target/.refs_before"
+  sandbox_git "$proj" count-objects -v > "$target/.objects_before"
+}
+
 # seal <target> <proj> — commit the sandbox and record both hash files.
 seal() {
   local target="$1" proj="$2"

@@ -25,7 +25,8 @@ through the host's own sub-agent surface, the only route a helper runs on.
 | Notice delivery | Dispatch in the background with `--helper-id`, and wait inside the turn in bounded `accept --wait` polls. A late notice re-runs `accept`, which changes nothing on an accepted row. Where the notice carries no result, send read-only helpers as a foreground batch. | `dispatch --helper-id`, `accept --wait`, `accept` again on a late notice. |
 
 There is no headless-worker row. Helpers run only as sub-agents of the host the
-orchestrator runs in.
+orchestrator runs in. `references/degradation-examples.md` works one job at the
+inline floor, batch delivery, and notice delivery rows.
 
 ## Run directory
 
@@ -109,8 +110,10 @@ fans out on its own.
     each one verb plus one clause naming the earlier returns it reads.
     Scouting, calibration, deterministic gates, scripted merges, validation,
     and reporting are listed as orchestrator steps. The plan holds a model and
-    an effort per role, recorded with `dispatch --model M --effort E`. It holds
-    the wave size, the bound, and the exclusions. It also holds a context
+    an effort per role, recorded with `dispatch --model M --effort E`. Where the
+    host exposes a model choice, a checker may run on a model other than its
+    producer's, and the report names that benefit as unmeasured. It holds the
+    wave size, the bound, and the exclusions. It also holds a context
     estimate against the host window `harness_portability` records, with a
     session boundary at the first wave end past half the window. Where the
     reference records no batch or window for the host, or omits the host, use a

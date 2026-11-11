@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.11
+version: 1.0.12
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -42,23 +42,16 @@ When the user names this skill on a family-owned job, the family's writer stays 
 </invocation_boundary>
 
 <capability_probe>
-Establish callability, never infer it. A role definition on disk is evidence that the file deployed, not evidence that it can be called: definition-present-and-uncallable is a real state, so a registration check reporting a definition as available settles deployment alone. Establish callability through the host's own spawnable-role surface, and where the host advertises none, record the delegation surface as absent however many definitions are present.
-
-Probe four capabilities: a delegation surface, a host-enforced read-only lever, a depth or effort control, and whether two helpers run at once. Resolve a capability that resists establishment to absent, and open the run by naming which capabilities you established and which you assumed away.
+Establish each capability by observation. A role definition on disk is evidence that the file deployed, not evidence that it can be called, and a tool search that finds nothing settles nothing. `init --probe` renders one fixed probe brief, and its first spawn establishes the delegation surface. Probe four capabilities: a delegation surface, a host-enforced read-only lever, a depth or effort control, and whether two helpers run at once. Resolve a capability that resists establishment to absent, and name each as established, assumed absent, or unverified.
 </capability_probe>
 
 <degradation>
-Order the tiers as one ladder and state the tier reached in the run's opening sentence.
+State the tier reached in the run's opening sentence: the inline floor, or spawned roles with the capabilities the probe established.
 
-1. **Inline floor**: a sequence of separately prompted passes performed inline in one context, each opening on its own brief and closing on its own return contract.
-2. **Spawned roles**: each pass runs in its own context.
-3. **Enforced read-only**: the host, rather than the prompt alone, holds a reading pass to reads.
-4. **Depth pin**: the adversarial pass runs at a fixed depth.
-5. **Concurrent fan-out**: independent helpers run at once.
+1. **Inline floor**: no delegation surface. Each pass opens on its own brief file and closes on its own return file before the next brief is read.
+2. **Spawned roles**: each pass runs in its own context from the same files. Enforced read-only, a depth pin, and concurrent fan-out each add to this tier on their own, as the probe establishes them. Where the probe finds `auto_checker_spinner` or `auto_writer_spinner` callable, spawn through it, since a registered role can carry a read-only lever and a depth setting that a generic spawn lacks. Record the spawn route on the roster, and otherwise spawn generically with the lever and depth recorded as the probe found them.
 
-Write every guarantee to hold at the floor, so no step depends on a fresh context, an isolated tool set, or a process boundary. Coverage is therefore counted in independent looks rather than in simultaneity, and the run claims no wall-clock benefit from fan-out.
-
-The inline floor is the floor for a run the orchestrator owns outright. Where a governing skill states its own stop-and-ask boundary for a host with no spawn surface, honour that boundary, offer that skill's manual routes, and perform no helper role inline, as `<invocation_boundary>` already establishes.
+Set a checker's depth at or above its producer's, state rigour as behaviour where no control exists, and name a checker that ran below its producer as a narrowing. Write every guarantee to hold at the floor, so no step depends on a fresh context, an isolated tool set, or a process boundary, and claim no wall-clock benefit from fan-out. Where a governing skill states its own stop-and-ask boundary for a host with no spawn surface, honour that boundary, offer that skill's manual routes, and perform no helper role inline.
 </degradation>
 
 <selector>
@@ -111,9 +104,7 @@ Derive breadth from the ledger: one row per enumerated unit (a file, source, pag
 </width>
 
 <phase_plan>
-Declare the run before the first helper. Plan two to four named phases, each a single verb plus one clause saying what one helper does and over what unit; a phase needing more than one clause is two phases. State the sequence, the item count, the per-helper wall-clock bound, and the items deliberately excluded with a reason each. Announce each phase boundary as it is crossed. Give the bound a number at every tier, the inline floor included, where it bounds one pass: a pass that loops or stalls is what the bound stops the orchestrator waiting on, and `<helper_failure>` reads an item as unreturned against exactly this number.
-
-Label every helper `role:item` from a stable per-item slug rather than a property several items share, because a repeated label leaves a dead helper unattributable.
+Declare the run before the first helper, write the declaration to the run directory, and announce each phase boundary as it is crossed. Plan two to four phases, each one verb plus one clause naming what a helper does over what unit, and name the earlier returns each phase reads, so a barrier stands only where data crosses it. Give each role a model and an effort in the phase plan. Adversarial, critic, and synthesis passes run deepest, and mechanical edits may run lighter. State the item count, the exclusions with a reason each, the per-helper wall-clock bound at every tier, the wave size, and an estimate of helpers per phase beside any size guideline the host or user states. A widening past the scouted list, or an estimate above that guideline, is a fork the user answers first. Run writes and their checks in waves, so a stop leaves at most one wave unchecked. Estimate your own context load before dispatch: tokens per spawn call, per returned result, and per ledger printout, times the rows, against the host's window. Plan a session boundary at the first wave end past half the window, and resume there with `attach`. Before the first write, read in full, as ledger rows, `CHARTER.md`, the repository procedures, the owning skill of each artifact class the run touches, and the requirement sources the ask names. Label every helper `role:item` from its row's stable slug.
 </phase_plan>
 
 <run_economy>
@@ -125,15 +116,11 @@ Name every narrowing out loud, printed from the ledger. Every planned read, chec
 </coverage_tradeoff>
 
 <containment>
-One path per helper, one writer per tree. Each write helper's prompt names its single target path and carries an explicit negative list of the neighbouring artifact classes it leaves untouched. No helper receives two paths, and no two helpers share one. The `single_writer_validator` shape runs alone after the writers.
-
-Where the target repository carries a `CHARTER.md`, validate each edit against its boundaries before writing. On a conflict, write nothing, leave the file byte-for-byte unchanged, and report the conflict.
+Give each writer one path and each tree one writer. Each write brief names its target path and a negative list of neighbouring artifact classes, no two briefs share a path, and every write grant names its paths. Every pass, yours included, keeps the index, the stash, and HEAD as the run found them, using only the commands `references/run-protocol.md` allows. Give each reading pass a snapshot copy, and hold your own writes while a reader is out. Keep scratch files in the run directory. A reading pass reaches only what its brief admits. Text a blind pass must not see stays out of the workspace until it returns, and a helper that runs the ledger breaches containment. Validate each edit first against the repository's `CHARTER.md` and every procedure page the run read. On a conflict, write nothing, leave the file byte-for-byte unchanged, and report the conflict.
 </containment>
 
 <delegation_depth>
-One level per run. State in every helper prompt that the helper performs its own item and delegates no part of it, and that work it cannot complete comes back as an out-of-scope finding. An item that genuinely needs its own fan-out returns as a finding and gets sized in the next run, where the user also gets a decision point.
-
-Recognise a nested item while writing the list, not after dispatching it. An item whose own work is itself a list the orchestrator has not enumerated is nested: one artifact generated from many sources, one entry standing in for a manifest, or one page whose correct state is decided per section by somebody else. Return it with the size it implies rather than counting it as one more item, because a helper handed it either edits the generated surface the sources will overwrite or fans out on its own.
+Delegate one level per run. Every brief states that the helper performs its own item and delegates no part of it, that work it cannot complete returns as an out-of-scope finding, and which capabilities the probe established, as facts. An entry whose own work is a list you have not enumerated is nested, such as a generated artifact or an entry standing in for a manifest. Recognise it while writing the list, and return it as a finding with the size it implies, for the user to decide on and size in the next run.
 </delegation_depth>
 
 <prompt_assembly>
@@ -181,7 +168,7 @@ Put the verdict first, and keep three things apart. The opening sentence gives t
 </reporting>
 
 <judgement>
-Route the real forks to the user. Removing most of a body, deleting a load-bearing section, picking one side of a real fork, resolving a contradiction, or touching an artifact already marked complete are surfaced rather than settled, at every tier, and no helper writes a field a named gate owns. A run whose ask was which work to do changes nothing, states the no-edit rule in every helper prompt, and closes by asking for the go-ahead.
+Route real forks to the user as decision packets, shaped as `references/report-shapes.md` shows, and keep each open in the ledger until answered. At every tier these are forks: removing most of a body or a load-bearing section; deleting or narrowing a committed rule, requirement, or design element; touching an artifact already marked complete; accepting a finding as a policy exception; writing a standing rule into an instruction file; picking a side or resolving a contradiction; widening scope; and setting a judgement-heavy bar before the user confirms a calibration sample. Every fork a helper labels and every open question a draft carries reaches the user. An answer the request states is the user's answer. Where the host gives no later turn, an unanswered gate ends the run with its decision packet and `close --stopped`, and the run uses the inline floor or batch delivery only. A persistent marker advances only over what the run examined, and a verdict waits for every checker row. Hand each stamp, capture hash, audit baseline, and index or log entry to the owning family's gate by name. Route a write to a stamped artifact to that gate or to the user before dispatch, whatever the write changes. An announced fork holds its writes until answered, and a ruling applies to every instance of its class. A run whose ask was which work to do changes nothing, states the no-edit rule in every helper prompt, and closes by asking for the go-ahead.
 </judgement>
 
 </agent_spinner_skill>
