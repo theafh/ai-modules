@@ -3,10 +3,9 @@
 # task file supplied.
 #
 # The change touches `report.py`. `helper.py` sits beside it with a defect the
-# change never touched, so with no anchoring task file the Scope anchor cannot
-# admit it: the run leaves `helper.py` byte-identical and lists the finding as
-# a follow-up task proposal. The prompt names no task path, so the relay stem
-# is `default`.
+# change never touched, so the line-level Scope anchor cannot admit it: the run
+# leaves `helper.py` byte-identical and lists the finding as a follow-up task
+# proposal. The prompt names no task path, so the relay stem is `default`.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -117,14 +117,13 @@ record_head() {
 # Writes the task file a fixture's prompt names into the sandbox repository, so
 # the worker resolves the path it was given inside its own working directory
 # instead of searching the host checkout for it. The pre-seeded gate return
-# carries the findings. Its Goal and Acceptance must therefore admit every
-# module those returns cite — each seeded helper's returned value — because a
-# narrower anchor makes `auto_verifier_git` triage refuse the whole set as a
-# scope extension and the run stops on "the approved set is empty" before it
-# reaches the ledger, unmapped-hunk, or self-written path the eval proves.
-# Fixtures whose findings a narrower or wider anchor must admit pass that Goal
-# text as the optional third argument; the default covers the plain "each
-# helper returns its documented value" shape every other fixture uses.
+# carries the findings. The task file is read by **Decisions.** alone: its Goal
+# and Acceptance supply the pending-decisions wording, and no agent reads them
+# to widen the review subject or the Scope anchor, so the changed lines alone
+# decide which findings qualify.
+# Fixtures whose wording must name a particular behaviour pass that Goal text
+# as the optional third argument; the default covers the plain "each helper
+# returns its documented value" shape every other fixture uses.
 seed_task_file() {
   local target=$1 rel=$2 goal=${3:-}
   if [[ -z "$goal" ]]; then

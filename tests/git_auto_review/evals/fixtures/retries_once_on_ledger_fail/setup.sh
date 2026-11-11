@@ -12,16 +12,27 @@ seed_in_scope_change "$target"
   cd "$target/repo"
 cat > "$target/repo/alpha.py" <<'EOF'
 def alpha_value():
-    return 1
+    return 0
 EOF
 cat > "$target/repo/beta.py" <<'EOF'
 def beta_value():
-    return 1
+    return 0
 EOF
   git add alpha.py beta.py
   git commit --quiet -m "seed round targets"
   git update-ref refs/remotes/origin/main HEAD
 )
+# The cited paths stay tracked and modified in the working tree, so each
+# round's `path:2` citation lands on a changed line under the line-level Scope
+# anchor.
+cat > "$target/repo/alpha.py" <<'EOF'
+def alpha_value():
+    return 2
+EOF
+cat > "$target/repo/beta.py" <<'EOF'
+def beta_value():
+    return 2
+EOF
 cat > "$target/repo/report.py" <<'EOF'
 def total(items):
     """Sum the item values."""

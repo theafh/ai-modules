@@ -80,6 +80,24 @@ has_line() {
   return 1
 }
 
+# continue_reason <text> <round> — the continue-reason field value of that
+# round's per-round line, so a check on it cannot be satisfied by `round <n>`
+# itself or by a different field.
+continue_reason() {
+  local text=$1 round=$2
+  printf '%s\n' "$text" | awk -v want="round $round" -F ' \\| ' '
+    index($0, want " |") == 1 {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^continue-reason /) {
+          sub(/^continue-reason /, "", $i)
+          print $i
+          exit
+        }
+      }
+    }
+  '
+}
+
 # block_lane <text> <location> <lane> — one structured verdict block carries
 # that `location:` value and that `lane:` value. A block runs from one finding's
 # `id:` line to the next, so a lane asserted for a different finding fails. The
@@ -300,6 +318,8 @@ text="$(report_text)"
 
 case "$eval_id" in
   fixes_in_scope_bug)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "report.py restores the plain sum" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] && echo yes || echo no)"
     report "the ledger holds one reproduction" \
@@ -318,6 +338,9 @@ case "$eval_id" in
       "$(has_line "$text" "per-round record" && echo yes || echo no)"
     report "the round-1 record names the review, decision, qualifying finding, triage, fix, ledger, and delta audit" \
       "$(has_line "$text" "round 1" "review first" "decision continue" "qualifying 1" "triage 1=approved" "fixes 1=report.py" "ledger pass" "delta-audit pass" && echo yes || echo no)"
+    report "the round-1 continue-reason is non-empty, not none, and names the qualifying finding" \
+      "$(cr="$(continue_reason "$text" 1)"
+         [[ -n "$cr" && "$cr" != "none" && "$cr" == *"1"* ]] && echo yes || echo no)"
     report "the round-2 record names the delta review and the stop decision" \
       "$(has_line "$text" "round 2" "review delta" "decision stop" && echo yes || echo no)"
     report "the not-applied record label line is present" \
@@ -344,6 +367,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   lists_preexisting_issue)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "legacy.py is byte-identical" \
       "$([[ "$(cat "$repo/legacy.py" 2>/dev/null)" == "unrelated pre-existing defect" ]] && echo yes || echo no)"
     report "the report lists the finding as a follow-up proposal" \
@@ -352,12 +377,16 @@ case "$eval_id" in
       "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     ;;
   lists_scope_extension)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "feature.py is byte-identical" \
       "$([[ "$(grep -c 'return False' "$repo/feature.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "the report lists the finding as a follow-up proposal" \
       "$(has "$text" "feature.py" && echo yes || echo no)"
     ;;
   fixes_inferred_and_should_fix_findings)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "report.py restores the plain sum" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] && echo yes || echo no)"
     report "notes.md names the ledger file" \
@@ -376,6 +405,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   routes_decision)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "report.py is byte-identical" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "the final-state block stop field names the decision-pending condition" \
@@ -387,6 +418,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_clean_first_gate)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the working tree matches its pre-run state" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "the final-state block stop field names the no-qualifying-finding condition" \
@@ -407,6 +440,8 @@ case "$eval_id" in
          [[ -z "${sd:-}" || ! -f "${sd:-}/fixer-r1.txt" ]] && echo yes || echo no)"
     ;;
   stops_on_empty_approved_triage)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the empty-approved condition" \
       "$(has "$text" "approved set is empty" && echo yes || echo no)"
     report "the report lists the not-approved finding" \
@@ -418,26 +453,36 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_failure)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the contract-violating class" \
       "$(has "$text" "contract-violating" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_spawn_failure)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the spawn-failure class" \
       "$(has "$text" "spawn-failure" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_mid_run_death)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the mid-run-death class" \
       "$(has "$text" "mid-run-death" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_inability)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the declared-inability class" \
       "$(has "$text" "declared-inability" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_script_failure)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the helper-script class" \
       "$(has "$text" "helper-script" && echo yes || echo no)"
     report "the working tree matches its pre-run state" \
@@ -454,6 +499,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_helper_script_failure_restore)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the helper-script class" \
       "$(has "$text" "helper-script" && echo yes || echo no)"
     report "the final-state block stop field does not name the ledger class" \
@@ -465,11 +512,15 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_concurrent_modification)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the concurrent-modification stop" \
       "$(has "$text" "concurrent" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_charter_refusal)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "report.py is byte-identical" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
     report "the final-state block stop field names the CHARTER-before-write condition" \
@@ -479,6 +530,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   triage_reports_status_and_reason)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "report.py is fixed" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] && echo yes || echo no)"
     report "extra.py is byte-identical" \
@@ -488,8 +541,17 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   honours_task_scope_anchor)
-    report "helper.py is fixed under the anchored run" \
-      "$([[ "$(grep -c 'value \* 2' "$repo/helper.py" 2>/dev/null)" == "1" ]] && echo yes || echo no)"
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
+    # The task file is read by Decisions alone, so the untouched helper.py
+    # finding never meets the line-level Scope anchor: the file stays
+    # byte-identical and the report lists it as a follow-up task proposal.
+    report "helper.py is byte-identical under the supplied task file" \
+      "$(file_matches "$repo/helper.py" "$root/.helper.before" && echo yes || echo no)"
+    report "the report lists the finding as a follow-up proposal with no fix" \
+      "$(has_line "$text" "helper.py" "working-tree lane" "follow-up" && echo yes || echo no)"
+    report "the final-state block stop field names the no-qualifying-finding condition" \
+      "$(has "$text" "no qualifying finding remains" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   honours_task_scope_anchor_no_task)
@@ -505,6 +567,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   lists_local_commits_lane_finding)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "report.py is fixed" \
       "$([[ "$(grep -c 'sum(items) + 10' "$repo/report.py" 2>/dev/null)" == "0" ]] && echo yes || echo no)"
     report "helper.py is fixed at the cited position" \
@@ -523,8 +587,13 @@ case "$eval_id" in
       "$([[ "$(sed -n '2p' "$repo/file_a.py" 2>/dev/null)" == "    result = compute()" ]] && echo yes || echo no)"
     report "file B is byte-identical" \
       "$(file_matches "$repo/file_b.py" "$root/.file_b.before" && echo yes || echo no)"
-    report "the report lists the file B finding as a follow-up proposal with no fix" \
-      "$(has_line "$text" "file_b.py" "local-commits lane" "follow-up" && echo yes || echo no)"
+    # The skill's not-applied reason class for a lane-excluded finding is
+    # `lane-excluded`; a run that names the same disposition as a follow-up
+    # proposal is accepted too, because both state the no-fix disposition.
+    report "the report lists the file B finding as a no-fix follow-up" \
+      "$( { has_line "$text" "file_b.py" "local-commits lane" "lane-excluded" \
+            || has_line "$text" "file_b.py" "local-commits lane" "follow-up"; } \
+           && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   relay_round_trip)
@@ -658,8 +727,41 @@ case "$eval_id" in
       "$(block_lane "$text" "file_b.py:2" "local-commits lane" && echo yes || echo no)"
     ;;
   honours_round_cap)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names the round cap" \
       "$(has "$text" "round cap" && echo yes || echo no)"
+    report "the final-state block records the user cap source and no violation" \
+      "$(has_line "$text" "cap-source user" "contract-violations none" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  ignores_orchestrator_round_cap)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
+    report "the final-state block stop field names the round cap" \
+      "$(has "$text" "round cap" && echo yes || echo no)"
+    report "the final-state block records the default cap source and the orchestrator violation" \
+      "$(has_line "$text" "cap-source default" "contract-violations round-cap-without-attestation" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  delta_re_review_bounds_the_subject)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
+    report "the round-2 per-round line records the delta review" \
+      "$(has_line "$text" "round 2" "review delta" && echo yes || echo no)"
+    report "the report lists the untouched-file finding as a follow-up proposal with no fix" \
+      "$(has_line "$text" "helper.py" "working-tree lane" "follow-up" && echo yes || echo no)"
+    report "helper.py is byte-identical" \
+      "$(file_matches "$repo/helper.py" "$root/.helper.before" && echo yes || echo no)"
+    report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
+    ;;
+  empty_continue_reason_forces_stop)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
+    report "the per-round record records decision stop with continue-reason none" \
+      "$(has_line "$text" "round 1" "decision stop" "continue-reason none" && echo yes || echo no)"
+    report "the final-state block names the empty-reason stop label" \
+      "$(has "$text" "an empty continue-reason" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   retries_once_on_ledger_fail)
@@ -674,6 +776,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_second_ledger_fail)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names a second-ledger-failure condition" \
       "$(has "$text" "ledger" && echo yes || echo no)"
     report "the not-applied record holds the unlanded finding under stop-unlanded" \
@@ -683,6 +787,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_self_written_code)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the report names the self-written stop" \
       "$(has "$text" "loop wrote" && echo yes || echo no)"
     report "authored.txt exists" \
@@ -708,6 +814,8 @@ case "$eval_id" in
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"
     ;;
   stops_on_second_unmapped_hunk)
+    report "the loop wrote report.txt" \
+      "$(loop_report >/dev/null && echo yes || echo no)"
     report "the final-state block stop field names an unmapped-hunk condition" \
       "$(has "$text" "unmapped" && echo yes || echo no)"
     report "HEAD is unchanged" "$(head_unchanged && echo yes || echo no)"

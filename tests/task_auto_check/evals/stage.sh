@@ -89,7 +89,8 @@ case "$eval_id" in
     ;;
   last_call_ready_refuted)
     "$HERE/fixtures/last_call_ready_refuted/setup.sh" "$target" >/dev/null
-    prompt="Run task_auto_check on tasks/api_last-call.md with max rounds 2."
+    prompt="Run task_auto_check on tasks/api_last-call.md with max rounds 2.
+round-cap-authority: user"
     ;;
   regate_isolated)
     "$HERE/fixtures/regate_isolated/setup.sh" "$target" >/dev/null
@@ -117,7 +118,8 @@ case "$eval_id" in
     ;;
   cap_override)
     "$HERE/fixtures/cap_override/setup.sh" "$target" >/dev/null
-    prompt="Run task_auto_check on tasks/api_pathological.md with max rounds 2."
+    prompt="Run task_auto_check on tasks/api_pathological.md with max rounds 2.
+round-cap-authority: user"
     ;;
   gate_failure_user_stop)
     "$HERE/fixtures/gate_failure_user_stop/setup.sh" "$target" >/dev/null
@@ -165,7 +167,8 @@ case "$eval_id" in
     ;;
   dryrun_gap_confirmed)
     "$HERE/fixtures/dryrun_gap_confirmed/setup.sh" "$target" >/dev/null
-    prompt="Run task_auto_check on tasks/notes_pinned-order.md with max rounds 8 and stop when task_check reports ready."
+    prompt="Run task_auto_check on tasks/notes_pinned-order.md with max rounds 8 and stop when task_check reports ready.
+round-cap-authority: user"
     ;;
   *)
     echo "unknown eval id: $eval_id" >&2

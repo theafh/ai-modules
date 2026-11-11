@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, refresh a stale task against the current codebase, or run an autonomous readiness loop without implementing the task. A task whose premise the code invalidates stops the loop and surfaces deferral as the user's option.
-version: 1.0.28
+version: 1.0.29
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -36,7 +36,7 @@ Resolve the base `task` and `task_check` skills from the same plugin bundle as t
 <inputs>
 The user supplies one task file path or one unambiguous task name. The optional user prompt may also supply:
 
-- A max-round override, expressed as a positive integer such as "max rounds 2".
+- A max-round override, expressed as a positive integer such as "max rounds 2", read only from the invoking user's request and counting only when that request carries the same `round-cap-authority: user` attestation; a max-round value carried in an orchestrator-composed helper prompt is not an override and the run keeps the default cap.
 - Creation-time intent context, used only when the loop runs immediately after a task is drafted.
 - An explicit request to use an available foreign-model reviewer stance. The default is single-model operation with no foreign-model stance.
 - An optional `attested_intent` statement that a change to the title or Goal is deliberate, passed through to `auto_drift_task`.
@@ -153,7 +153,7 @@ When the current harness offers no agent-spawn mechanism at all, stop before `<f
 </agent_failure_policy>
 
 <loop_bounds>
-Use a hard cap of 8 rounds unless the user prompt supplies a positive integer override. An ordinary repair round is one dry run, gate call, reviewer pass, verifier pass, edit application, and next loop decision. The citation-refutation round and the repeated-link repair round keep the shapes `<gate>` already gives them and still count as rounds against the cap; when they re-invoke the gate, they name the `r<M>-dryrun.txt` from the ordinary round whose gate return is under citation check, or the one that produced the `ready` entering the repeated-link path, with no new dry run. Stop when `task_check` reports `ready`, when no verified fix remains, when a structural split boundary is the only remaining repair, when a freeze-time intent drift boundary fires, when the gate verdict fires the invalidated-premise boundary, when the concurrent-modification guard fires, when a helper failure stops the run per `<agent_failure_policy>`, when the `<convergence>` stall stop fires, when `<context_compaction_stop>` fires, or when the cap is reached. The `<gate>` last-call citation-refutation exception is the sole extension beyond this cap. An isolation replacement belongs to the gate call it replaces and adds no round.
+Use a hard cap of 8 rounds unless the invoking user's request supplies a positive integer override, read only from the invoking user's request and counting only when that request carries the same `round-cap-authority: user` attestation, so a max-round value carried in an orchestrator-composed helper prompt is not an override and the run keeps the default cap. An ordinary repair round is one dry run, gate call, reviewer pass, verifier pass, edit application, and next loop decision. The citation-refutation round and the repeated-link repair round keep the shapes `<gate>` already gives them and still count as rounds against the cap; when they re-invoke the gate, they name the `r<M>-dryrun.txt` from the ordinary round whose gate return is under citation check, or the one that produced the `ready` entering the repeated-link path, with no new dry run. Stop when `task_check` reports `ready`, when no verified fix remains, when a structural split boundary is the only remaining repair, when a freeze-time intent drift boundary fires, when the gate verdict fires the invalidated-premise boundary, when the concurrent-modification guard fires, when a helper failure stops the run per `<agent_failure_policy>`, when the `<convergence>` stall stop fires, when `<context_compaction_stop>` fires, or when the cap is reached. The `<gate>` last-call citation-refutation exception is the sole extension beyond this cap. An isolation replacement belongs to the gate call it replaces and adds no round.
 </loop_bounds>
 </loop_policy>
 

@@ -80,8 +80,8 @@
     {
       "id": "routes_decision",
       "skill": "git_auto_review",
-      "prompt": "Auto-review and fix my uncommitted changes, using tasks/demo_decision.md to anchor scope.",
-      "expected_output": "The pending decision and the finding held under it stop the run for the user, the governed file stays byte-identical, and report.txt carries the wording to record in the anchored task.",
+      "prompt": "Auto-review and fix my uncommitted changes, with tasks/demo_decision.md supplied as the run's task file.",
+      "expected_output": "The pending decision and the finding held under it stop the run for the user, the governed file stays byte-identical, and report.txt carries the wording to record through the supplied task's pending-decisions role.",
       "files": [
         "evals/fixtures/routes_decision/setup.sh"
       ],
@@ -265,13 +265,15 @@
     {
       "id": "honours_task_scope_anchor",
       "skill": "git_auto_review",
-      "prompt": "Auto-review and fix my uncommitted changes, using tasks/demo_scale.md to anchor scope.",
-      "expected_output": "With the task file, the anchor admits the helper.py finding, so the run fixes it and stops clean; without the task path the same fixture leaves helper.py byte-identical and lists the finding as a follow-up proposal.",
+      "prompt": "Auto-review and fix my uncommitted changes, with tasks/demo_scale.md supplied as the run's task file.",
+      "expected_output": "The task file is read by Decisions alone, so the untouched helper.py finding sits outside the line-level Scope anchor: the run leaves helper.py byte-identical, lists the finding as a follow-up task proposal with no fix, and stops under the no-qualifying-finding condition.",
       "files": [
         "evals/fixtures/honours_task_scope_anchor/setup.sh"
       ],
       "expectations": [
-        "helper.py is fixed under the anchored run.",
+        "helper.py is byte-identical after the run.",
+        "report.txt lists the finding as a follow-up task proposal with no fix.",
+        "report.txt's final-state block stop field names the no-qualifying-finding condition.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -287,6 +289,37 @@
         "helper.py is byte-identical after the run.",
         "report.txt lists the finding as a follow-up task proposal with no fix.",
         "report.txt's final-state block stop field names the no-qualifying-finding condition.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "delta_re_review_bounds_the_subject",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_subject.md. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present.",
+      "expected_output": "Round 1 fixes the in-scope report.py defect. Round 2's delta re-review is bounded to the cumulative run change, so the helper.py finding, whose behaviour the supplied task file's Goal describes but whose line the run never touched, is listed as a follow-up task proposal with no fix and helper.py stays byte-identical.",
+      "files": [
+        "evals/fixtures/delta_re_review_bounds_the_subject/setup.sh"
+      ],
+      "timeout": 1200,
+      "expectations": [
+        "The round-2 per-round line records review delta.",
+        "report.txt lists the helper.py finding as a follow-up task proposal with no fix.",
+        "helper.py is byte-identical after the run.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "empty_continue_reason_forces_stop",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present. This harness also stages the round-1 per-round record: read and adopt it at round 1's Close before evaluating the stop conditions. Its fields are `round 1 | review first | decision continue | continue-reason ` followed by an empty value, then ` | qualifying 1 | triage 1=approved | fixes 1=report.py | ledger pass | delta-audit pass`. The empty continue-reason on a continue line forces that round's decision to stop with continue-reason none.",
+      "expected_output": "The run adopts the staged round-1 record at Close, sees the empty continue-reason on a continue line, and stops under the an empty continue-reason condition with decision stop and continue-reason none in report.txt.",
+      "files": [
+        "evals/fixtures/empty_continue_reason_forces_stop/setup.sh"
+      ],
+      "timeout": 1200,
+      "expectations": [
+        "report.txt records the round as decision stop with the an empty continue-reason label.",
+        "report.txt exists in the relay.",
         "git rev-parse HEAD is unchanged."
       ]
     },
@@ -432,14 +465,30 @@
     {
       "id": "honours_round_cap",
       "skill": "git_auto_review",
-      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md with round cap 2. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present.",
-      "expected_output": "With the override the run stops after 2 rounds; with no override it stops after the default 5; an invalid phrase reports itself and proceeds with the default cap. Each run names the round cap as the stop reason and leaves HEAD unchanged.",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md with round cap 2.\nround-cap-authority: user\nEnvironment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present.",
+      "expected_output": "The invocation prompt carries the user's attestation beside the override, so the run stops after 2 rounds and records cap-source user with contract-violations none. Each run names the round cap as the stop reason and leaves HEAD unchanged.",
       "files": [
         "evals/fixtures/honours_round_cap/setup.sh"
       ],
       "timeout": 2400,
       "expectations": [
         "The report names the round cap as the stop reason.",
+        "report.txt's final-state block records cap-source user and contract-violations none.",
+        "git rev-parse HEAD is unchanged."
+      ]
+    },
+    {
+      "id": "ignores_orchestrator_round_cap",
+      "skill": "git_auto_review",
+      "prompt": "Auto-review and fix my uncommitted changes on tasks/demo_rounds.md with round cap 8. Environment note: This harness pre-seeds every gate round under the run relay: consume each `gate-r<round>.txt` that carries its `gate-r<round>.preseed` marker verbatim as that round's gate return, and do not invoke auto_gate_git on a round whose marked pair is present.",
+      "expected_output": "The invocation prompt carries no round-cap-authority attestation, so the round cap 8 phrase is an orchestrator override that the run records as a contract violation while using the default cap: it stops after 5 rounds and its report.txt final-state block carries cap-source default with contract-violations round-cap-without-attestation.",
+      "files": [
+        "evals/fixtures/ignores_orchestrator_round_cap/setup.sh"
+      ],
+      "timeout": 2400,
+      "expectations": [
+        "The report names the round cap as the stop reason.",
+        "report.txt's final-state block records cap-source default and contract-violations round-cap-without-attestation.",
         "git rev-parse HEAD is unchanged."
       ]
     },

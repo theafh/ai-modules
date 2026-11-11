@@ -2,7 +2,7 @@
 
 ## What the changes do and implement
 
-The working-tree change now scales by 2.
+The uncommitted change adjusts the working-tree files named below.
 
 ## What it retires
 
@@ -18,8 +18,7 @@ None.
 
 ## Bugs it may introduce
 
-**`helper.py:2` — `scale` multiplies by the wrong factor (verified, closed).** The
-factor is now 2. Fix: none.
+**`beta.py:2` — wrong value (verified).** The change should return the corrected value. Fix: change the return.
 
 ## What should be fixed though it is not a clear bug
 
@@ -36,15 +35,14 @@ Yes.
 # auto_gate_git verdict
 
 ## Findings
-
-id: 1
+id: 2
 heading: Bugs it may introduce
 label: verified
 non_blocking: no
-location: helper.py:2
+location: beta.py:2
 lane: working-tree lane
-Fix: none
-tag: closed
+Fix: Change `beta_value` to return the correct value.
+tag: new
 
 ## Decisions
 None.

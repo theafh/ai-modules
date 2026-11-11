@@ -34,6 +34,16 @@ EOF
   git commit --quiet -m "seed round targets"
   git update-ref refs/remotes/origin/main HEAD
 )
+# Each round's gate return cites one of these five paths at line 2. They stay
+# tracked and modified in the working tree, so every cited line lands on a
+# changed line under the line-level Scope anchor and each round keeps a
+# qualifying finding until the cap is reached.
+for name in alpha beta gamma delta epsilon; do
+cat > "$target/repo/$name.py" <<EOF
+def ${name}_value():
+    return 2
+EOF
+done
 cat > "$target/repo/report.py" <<'EOF'
 def total(items):
     """Sum the item values."""

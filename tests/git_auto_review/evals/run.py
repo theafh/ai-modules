@@ -73,6 +73,9 @@ ISOLATION_PREFIX = "git_auto_review_"
 # one at a time after the isolated pool finishes.
 SERIAL_NESTED_LOOP_IDS = (
     "honours_round_cap",
+    "ignores_orchestrator_round_cap",
+    "delta_re_review_bounds_the_subject",
+    "empty_continue_reason_forces_stop",
     "retries_once_on_ledger_fail",
     "stops_on_second_ledger_fail",
     "stops_on_self_written_code",

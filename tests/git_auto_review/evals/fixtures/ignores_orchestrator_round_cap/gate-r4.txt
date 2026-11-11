@@ -1,0 +1,48 @@
+# git_review report
+
+## What the changes do and implement
+
+The uncommitted change adjusts the working-tree files named below.
+
+## What it retires
+
+Nothing.
+
+## What of the existing workflow changes
+
+Nothing.
+
+## What is critical
+
+None.
+
+## Bugs it may introduce
+
+**`delta.py:2` — wrong value (verified).** The change should return the corrected value. Fix: change the return.
+
+## What should be fixed though it is not a clear bug
+
+None.
+
+## Decisions the implementer must make before fixing
+
+None.
+
+## Can it be structurally merged as it is
+
+Yes.
+
+# auto_gate_git verdict
+
+## Findings
+id: 4
+heading: Bugs it may introduce
+label: verified
+non_blocking: no
+location: delta.py:2
+lane: working-tree lane
+Fix: Change `delta_value` to return the correct value.
+tag: new
+
+## Decisions
+None.

@@ -55,7 +55,7 @@ the sandbox target. Those evals measure the gate itself, not the loop around it.
 | `stops_on_concurrent_modification` | The concurrent-modification stop after an external write |
 | `stops_on_charter_refusal` | The CHARTER-before-write refusal with `charter-set-refused` listing |
 | `triage_reports_status_and_reason` | One finding fixed, the refuted one's file byte-identical and listed with the `triage-not-approved` class on its line |
-| `honours_task_scope_anchor` | The task-anchored finding fixed and HEAD unchanged |
+| `honours_task_scope_anchor` | The task file read by Decisions alone: the untouched `helper.py` finding listed as a follow-up with no fix, `helper.py` byte-identical, and the no-qualifying stop named |
 | `honours_task_scope_anchor_no_task` | The same fixture with no task path: the finding's file byte-identical and the finding listed as a follow-up proposal |
 | `lists_local_commits_lane_finding` | The local-commits-lane finding's locations byte-identical and listed |
 | `anchors_duplicated_staged_lines` | The no-match staged finding's file byte-identical and listed |
@@ -66,7 +66,10 @@ the sandbox target. Those evals measure the gate itself, not the loop around it.
 | `gate_reviews_branch_and_worktree` | The gate's report headings and base-SHA lead, both a committed and an uncommitted defect listed in `working-tree lane` at their working-tree lines, and refs, worktrees, product files, and `HEAD` byte-identical |
 | `gate_moves_no_ref` | Refs, worktrees, product files, and HEAD byte-identical around a standalone gate run |
 | `classifies_lanes_from_evidence` | Each finding's lane and location matching the skill's case rules |
-| `honours_round_cap` | The round-cap stop for the override and default runs |
+| `honours_round_cap` | The attested user override stopping at 2 rounds with `cap-source user` and `contract-violations none` |
+| `ignores_orchestrator_round_cap` | The orchestrator's `round cap 8` phrase with no attestation treated as a contract violation: the default 5 stops the run with `cap-source default` and `contract-violations round-cap-without-attestation` |
+| `delta_re_review_bounds_the_subject` | The round-2 delta subject bounded to the cumulative run change: the untouched `helper.py` finding listed as a follow-up with no fix, `helper.py` byte-identical, and the round-2 line reading `review delta` |
+| `empty_continue_reason_forces_stop` | The staged round-1 record's empty `continue-reason` forcing `decision stop` under the `an empty continue-reason` label, with `report.txt` written |
 | `retries_once_on_ledger_fail` | The ledger restore-and-retry leaving the reproduction passing |
 | `stops_on_second_ledger_fail` | The second-ledger-failure stop with the pre-fix tree restored, a `not-applied record` line carrying `alpha.py:2` and `stop-unlanded`, and no `per-round record` because the round stopped before Close |
 | `stops_on_self_written_code` | The self-written stop with `authored.txt` holding the cumulative hunks |

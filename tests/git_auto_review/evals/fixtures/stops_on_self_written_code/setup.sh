@@ -2,10 +2,11 @@
 # Fixture: two consecutive rounds whose qualifying findings all sit in code the
 # loop wrote in an earlier round.
 #
-# The seeded `alpha.py` carries one genuine defect per helper: both document a
-# limit of 1 and both return the literal `2`. The task Goal additionally
-# requires that limit written once as a module-level `ALPHA_LIMIT` rather than
-# repeated as a literal.
+# The working-tree change makes both helpers return the literal `2` where
+# their docstrings document a limit of 1, so each cited line lands on a changed
+# line under the line-level Scope anchor. The task Goal additionally requires
+# that limit written once as a module-level `ALPHA_LIMIT` rather than repeated
+# as a literal.
 #
 #   round 1  both helpers return 2 where their docstrings document 1. The fix
 #            rewrites both bodies, so `authored.txt` records two hunks: the
@@ -38,6 +39,22 @@ seed_in_scope_change "$target"
   cat > alpha.py <<'EOF'
 def alpha_value():
     """Return the documented limit of 1."""
+    return 0
+
+
+def alpha_max():
+    """Return the largest allowed limit of 1."""
+    return 0
+EOF
+  git add alpha.py
+  git commit --quiet -m "seed round targets"
+  git update-ref refs/remotes/origin/main HEAD
+)
+# The working-tree change introduces the defect at the two cited lines, so both
+# citations land on changed lines under the line-level Scope anchor.
+cat > "$target/repo/alpha.py" <<'EOF'
+def alpha_value():
+    """Return the documented limit of 1."""
     return 2
 
 
@@ -45,10 +62,6 @@ def alpha_max():
     """Return the largest allowed limit of 1."""
     return 2
 EOF
-  git add alpha.py
-  git commit --quiet -m "seed round targets"
-  git update-ref refs/remotes/origin/main HEAD
-)
 cat > "$target/repo/report.py" <<'EOF'
 def total(items):
     """Sum the item values."""

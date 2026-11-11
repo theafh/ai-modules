@@ -294,7 +294,7 @@
     {
       "id": "cap_override",
       "skill": "task_auto_check",
-      "prompt": "Run task_auto_check on tasks/api_pathological.md with max rounds 2.",
+      "prompt": "Run task_auto_check on tasks/api_pathological.md with max rounds 2.\nround-cap-authority: user",
       "expected_output": "The pathological task does not converge within the user-supplied cap; the loop stops after honoring max rounds 2 and surfaces stuck.",
       "files": [
         "evals/fixtures/cap_override/setup.sh"
@@ -529,7 +529,7 @@
       "id": "last_call_ready_refuted",
       "skill": "task_auto_check",
       "timeout": 3600,
-      "prompt": "Run task_auto_check on tasks/api_last-call.md with max rounds 2.",
+      "prompt": "Run task_auto_check on tasks/api_last-call.md with max rounds 2.\nround-cap-authority: user",
       "expected_output": "One missing body-preservation proof is repaired in the first round. The second gate reaches ready at max rounds 2 and receives citation refutation. A refuted citation causes a single re-gate and a stuck stop with no body repair; only all-survived citations allow final ready.",
       "files": [
         "evals/fixtures/last_call_ready_refuted/setup.sh"
@@ -561,7 +561,7 @@
       "id": "dryrun_gap_confirmed",
       "skill": "task_auto_check",
       "timeout": 3600,
-      "prompt": "Run task_auto_check on tasks/notes_pinned-order.md with max rounds 8 and stop when task_check reports ready.",
+      "prompt": "Run task_auto_check on tasks/notes_pinned-order.md with max rounds 8 and stop when task_check reports ready.\nround-cap-authority: user",
       "expected_output": "The fixture task adds an oldest-first pinned-entries rule to a fixture skill file whose existing ordering rule already directs newest-first for every section including pinned entries, and the task never mentions that rule. Every ordinary repair round runs the pre-gate dry run: the first dry-run return records kind: instruction prose and a finding that names the planted newest-first versus oldest-first conflict, that round's gate grounds the finding, confirms it as a readiness issue titled with (dry run dr<k>), and records the confirmation with its issue number on its dryrun: evidence line. A citation-refutation or repeated-link re-gate reuses that ordinary round's dry-run return with no new dry run. The loop repairs the task so the final text resolves the conflict, naming the existing rule while keeping the oldest-first deliverable, and reaches ready.",
       "files": [
         "evals/fixtures/dryrun_gap_confirmed/setup.sh"

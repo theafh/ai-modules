@@ -238,8 +238,24 @@ that followed.
 | `routes_decision` | PASS (all behaviours, including the `decision-pending` record and `pending-decisions` field) | 2026-11-08 |
 | `stops_on_second_ledger_fail` | PASS (all behaviours, including the `stop-unlanded` record and the absent per-round record) | 2026-11-08 |
 | `restores_stray_fixer_path` | PASS (all behaviours, including the `settled by a decision` earlier-fix record) | 2026-11-08 |
-| `honours_task_scope_anchor` | PASS (all behaviours) | 2026-10-28 |
-| `honours_task_scope_anchor_no_task` | PASS (all behaviours) | 2026-10-28 |
+| `honours_task_scope_anchor` | PASS (all behaviours; the supplied task file read by Decisions alone, `helper.py` byte-identical and listed as a follow-up) | 2026-11-11 |
+| `honours_task_scope_anchor_no_task` | PASS (all behaviours) | 2026-11-11 |
+
+Stop-hardening measurement on 2026-11-11, default Cursor `auto` vendor, `--force`:
+
+| Eval | Result | Date |
+| :--- | :--- | :--- |
+| `honours_round_cap` | PASS (stops at 2, `cap-source user`, `contract-violations none`) | 2026-11-11 |
+| `ignores_orchestrator_round_cap` | PASS (default 5, `cap-source default`, `contract-violations round-cap-without-attestation`) | 2026-11-11 |
+| `delta_re_review_bounds_the_subject` | PASS (round-2 `review delta`, untouched `helper.py` byte-identical and listed as a follow-up) | 2026-11-11 |
+| `empty_continue_reason_forces_stop` | PASS (`decision stop`, `continue-reason none`, `an empty continue-reason` stop label) | 2026-11-11 |
+| `fixes_in_scope_bug` | PASS (round-1 `continue-reason` non-empty and naming finding 1) | 2026-11-11 |
+| `retries_once_on_ledger_fail` / `stops_on_second_ledger_fail` | PASS (cited paths stay on changed lines) | 2026-11-11 |
+| `retries_once_on_unmapped_hunk` / `stops_on_second_unmapped_hunk` | PASS (round diff carries the fixer write, retry maps every hunk) | 2026-11-11 |
+| `stops_on_self_written_code` | PASS (self-written stop with `authored.txt`) | 2026-11-11 |
+| `fixes_inferred_and_should_fix_findings` | PASS (all behaviours) | 2026-11-11 |
+| `stops_on_helper_failure` / `stops_on_helper_spawn_failure` / `stops_on_helper_mid_run_death` / `stops_on_helper_inability` / `stops_on_helper_script_failure` / `stops_on_helper_script_failure_restore` | PASS (each stop path writes `report.txt`) | 2026-11-11 |
+| `stops_on_clean_first_gate` / `stops_on_empty_approved_triage` / `routes_decision` / `stops_on_charter_refusal` / `stops_on_concurrent_modification` / `lists_local_commits_lane_finding` / `lists_preexisting_issue` / `lists_scope_extension` / `triage_reports_status_and_reason` | PASS (all behaviours) | 2026-11-11 |
 
 `routes_decision` graded every authored behaviour as passing (decision-pending
 stop, pending-decision wording carried, `report.py` byte-identical, HEAD

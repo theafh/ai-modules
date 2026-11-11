@@ -117,9 +117,10 @@ main() {
             || die_env "not inside a git repository"
     fi
 
-    # The task file anchors the run's scope, so a path that does not resolve is
-    # an environment failure rather than a stem to derive. A relative path
-    # resolves against the relay root, the same root every relay path uses.
+    # The task file supplies the run's pending-decisions wording, so a path
+    # that does not resolve is an environment failure rather than a stem to
+    # derive. A relative path resolves against the relay root, the same root
+    # every relay path uses.
     if [[ -n "$TASK" ]]; then
         local task_path="$TASK"
         [[ "$task_path" = /* ]] || task_path="$repo_root/$TASK"

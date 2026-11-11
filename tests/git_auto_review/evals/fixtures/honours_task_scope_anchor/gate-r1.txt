@@ -2,8 +2,8 @@
 
 ## What the changes do and implement
 
-The uncommitted change adjusts `report.py`'s `total` helper and the anchored
-task's goal covers the scaling behaviour in `helper.py`.
+The uncommitted change adjusts `report.py`'s `total` helper. The change never
+touches `helper.py`.
 
 ## What it retires
 
@@ -20,9 +20,11 @@ None.
 ## Bugs it may introduce
 
 **`helper.py:2` — `scale` multiplies by the wrong factor (verified).** The
-anchored task's Goal and Acceptance require a factor of 2, so this finding meets
-the Scope anchor through the task file rather than through the changed lines
-alone. Fix: `return value * 2`.
+committed helper returns `value * 4`, and the change never touches `helper.py`,
+so this defect sits outside the lines the change added or modified. The
+supplied task file's Goal and Acceptance describe the behaviour but never widen
+the line-level Scope anchor. Fix: none from this run; proposed as a follow-up
+task.
 
 ## What should be fixed though it is not a clear bug
 
@@ -46,7 +48,7 @@ label: verified
 non_blocking: no
 location: helper.py:2
 lane: working-tree lane
-Fix: Change `scale` to `return value * 2`.
+Fix: none
 tag: none
 
 ## Decisions

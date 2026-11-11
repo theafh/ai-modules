@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Fixture: a finding the Scope anchor admits only through a supplied task file.
+# Fixture: a finding the line-level Scope anchor never admits, with a task file
+# supplied.
 #
 # The change touches `report.py`. `helper.py` sits beside it with a defect the
-# change never touched, so the finding qualifies only when the supplied task
-# file's Goal and Acceptance cover that behaviour. Round 1's pre-seeded gate
-# return carries the finding; round 2's delta return tags it closed.
+# change never touched, so the finding sits outside the changed lines even
+# though the supplied task file's Goal and Acceptance describe that behaviour.
+# Round 1's pre-seeded gate return carries the finding; the run leaves
+# `helper.py` byte-identical and lists the finding as a follow-up task
+# proposal. The prompt names the task file, so the relay stem derives from it.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,15 +29,18 @@ EOF
 )
 # The prompt names tasks/demo_scale.md, so the sandbox carries that path: the
 # worker resolves it in its own working directory instead of searching the host
-# checkout for it. Its Goal admits the `helper.py` scaling behaviour the gate
-# return cites, which the changed lines alone never cover; a narrower anchor
-# makes triage refuse the set as a scope extension.
+# checkout for it. The task file is read by **Decisions.** alone; its Goal and
+# Acceptance never widen the line-level Scope anchor, so the untouched
+# `helper.py` finding stays a follow-up.
 seed_task_file "$target" tasks/demo_scale.md \
   "The scaling helper in helper.py returns the documented factor of two, so
 scale(value) returns value * 2, without changing the shipped interface."
 record_head "$target"
 record_index "$target"
 
+# Pre-run working-tree copy the grader compares against: the finding never
+# qualifies on unmodified lines, so this file must stay byte-identical.
+cp "$target/repo/helper.py" "$target/.helper.before"
+
 stem="$(stem_for tasks/demo_scale.md)"
 preseed_gate "$target" "$stem" 1 "$HERE/gate-r1.txt"
-preseed_gate "$target" "$stem" 2 "$HERE/gate-r2.txt"

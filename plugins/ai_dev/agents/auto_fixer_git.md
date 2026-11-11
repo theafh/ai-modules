@@ -1,7 +1,7 @@
 ---
 name: auto_fixer_git
 description: The single serialized writer for git_auto_review. For each approved finding it makes the fix in the working tree at that finding's location and adds a reproduction file directly in the run's ignored .git_auto_review folder at the path its ledger line names, or extends the reproduction that line already names, a test or a command that fails before the fix and passes after, then appends that reproduction to the run's regression ledger; it writes only the paths the finding's Fix requires, the reproduction, and the ledger, and on a retry it re-applies the round's full approved finding set after the restore so no approved fix stays unlanded.
-version: 1.0.5
+version: 1.0.6
 model: inherit
 background: false
 effort: max
@@ -24,13 +24,13 @@ For a `git_auto_review` call, receive as paths to read:
 - The target: the `git_auto_review` skill's `<inputs>` **Target.** bullet defines it, on either shape, so each fix anchors at the whole-file working-tree lines its finding's `location` names.
 - The round's approved finding set: one block per finding, each carrying the gate `id`, `heading`, `label`, `location`, and `Fix` from the round's gate return, as the verifier approved it.
 - The run's relay directory, `.git_auto_review/<run-stem>/` at the repository root, including `ledger.txt`, which holds the run's regression ledger under the skill's **Regression ledger.** rule. Reproduction files go directly into this folder.
-- The anchoring task file path when the run was given one, read only to confirm a fix's intent boundary.
+- The optional task file path when the run was given one, read by **Decisions.** alone, so a pending decision's wording reaches `report.txt`.
 - On a retry, the named failure that authorizes it: the failing `ledger.txt` line for a **Regression ledger.** retry, or the unmapped hunks from the round's `round-r<round>.diff.txt` for an `<audit_delta>` retry.
 </inputs>
 
 <policy>
   <rule>Write only these three path sets: the paths each approved finding's `Fix:` requires, anchored at that finding's `location`; the reproduction path, a `reproduction-r<round>-finding-<id>.<ext>` file in the run's `.git_auto_review/<run-stem>/` folder that the reproduction's `ledger.txt` line names; and `ledger.txt`. Write no other file and change no committed history.</rule>
-  <rule>Make each fix the minimum change that resolves the approved finding at its location. Read the file at that location in the working tree, apply the `Fix:` the finding names, and stay within the intent the anchoring task file's Goal and Acceptance covers when a task file was supplied.</rule>
+  <rule>Make each fix the minimum change that resolves the approved finding at its location. Read the file at that location in the working tree, apply the `Fix:` the finding names, and stay within the change's paths and the finding's location.</rule>
   <rule>Add one reproduction per approved finding, or extend the reproduction that a finding's `ledger.txt` line already names, as a test or a command that fails on the pre-fix state and passes after the fix.</rule>
   <rule>Write every file reproduction as a file directly in the run's `.git_auto_review/<run-stem>/` folder at the repository root. Name it `reproduction-r<round>-finding-<id>.<ext>` after the round and the gate finding id it reproduces, with the extension its runner needs, and keep the path a finding's `ledger.txt` line already names when a later round extends that reproduction. Git ignores that folder through the relay's `.gitignore`, the gate's and verifier's reproduction-line exclusion matches the file by its ledger path, and the next run clears it. A test the finding's `Fix:` itself requires is a fix write in the project's tree with `kind` `fix`.</rule>
   <rule>Write each reproduction to run from the repository root, the working directory the ledger check uses, and to find the repository through that working directory or `git rev-parse --show-toplevel`.</rule>

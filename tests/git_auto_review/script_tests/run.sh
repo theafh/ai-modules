@@ -92,6 +92,17 @@ assert_not_contains_re() {
   return 1
 }
 
+# Literal absence. The regex helper above cannot carry a needle whose
+# metacharacters would change its meaning, so a quoted old phrase uses this.
+assert_not_contains() {
+  local label=$1 file=$2 needle=$3
+  if ! grep -Fq -- "$needle" "$file"; then return 0; fi
+  log "    unwanted text: $label"
+  log "      file: $file"
+  log "      text: $needle"
+  return 1
+}
+
 assert_only_model_inherit() {
   local label=$1 file=$2
   if ! grep -Eq '^model:' "$file"; then
@@ -228,6 +239,74 @@ s4_convergence_labels_single_source() {
   for label in "per-round record" "not-applied record" "final-state block" "earlier-fix" "decision-pending" "stop-unlanded"; do
     assert_contains "report record token $label" "$skill" "$label" || ok=false
   done
+
+  # The stop-hardening contract: user-only cap authority, the hard ceiling,
+  # the cumulative-run-change subject, the line-level anchor, the
+  # empty-reason stop, and the report fields that carry them.
+  assert_contains "user-only round-cap authority" "$skill" \
+    "read only from the invoking user's request" || ok=false
+  assert_contains "orchestrator prompt is never a cap source" "$skill" \
+    "gate or fixer prompt is never a cap source" || ok=false
+  assert_contains "kept invalid-integer sentence" "$skill" \
+    "A phrase whose integer is zero, negative, or non-numeric is not an override" \
+    || ok=false
+  assert_contains "round cap is a hard ceiling" "$skill" \
+    "The cap is a hard ceiling" || ok=false
+  assert_contains "cumulative-run-change subject" "$skill" \
+    "the cumulative run change" || ok=false
+  assert_contains "line-level scope anchor" "$skill" \
+    "A finding meets the Scope anchor when it concerns lines the change added or modified, or a line in a path the original change created." \
+    || ok=false
+  assert_contains "empty-reason forces stop" "$skill" \
+    "An empty reason on a \`continue\` line forces that round's \`decision\` to \`stop\`, its \`continue-reason\` to \`none\`, and the stop condition \`an empty continue-reason\`" \
+    || ok=false
+  for token in "cap-source" "contract-violations" "continue-reason"; do
+    assert_contains "report token $token" "$skill" "$token" || ok=false
+  done
+  assert_contains "final-state field order" "$skill" \
+    "stop <condition> | cap-source <user|default> | contract-violations <none|round-cap-without-attestation> | files-changed" \
+    || ok=false
+  assert_contains "per-round field order" "$skill" \
+    "round <n> | review <first|delta> | decision <continue|stop> | continue-reason" \
+    || ok=false
+
+  # The old intent-based phrases are gone from the skill.
+  assert_not_contains "old override phrase is gone" "$skill" \
+    "**An optional round-cap override**, written anywhere in the prompt" || ok=false
+  assert_not_contains "old intent-anchor phrase is gone" "$skill" \
+    "or behaviour the change's intent covers" || ok=false
+  assert_not_contains "old round-2 subject phrase is gone" "$skill" \
+    "same target shape as round 1" || ok=false
+
+  # The third evidence collection the default-branch subject needs lives in
+  # the gate agent, because the pre-seeded lane eval cannot exercise it.
+  assert_contains "gate third-collection rule" "$AGENTS_DIR/auto_gate_git.md" \
+    "base <upstream> --head <checked-out branch>" || ok=false
+
+  # git_review's headings and tag set stay as written: no new heading and no
+  # new tag value.
+  assert_contains "git_review heading set unchanged" \
+    "$REPO_ROOT/plugins/ai_dev/skills/git_review/SKILL.md" \
+    "Use these headings in this order: What the changes do and implement; What it retires; What of the existing workflow changes; What is critical; Bugs it may introduce; What should be fixed though it is not a clear bug; Decisions the implementer must make before fixing; Can it be structurally merged as it is." \
+    || ok=false
+  assert_contains "git_review tag set unchanged" \
+    "$REPO_ROOT/plugins/ai_dev/skills/git_review/SKILL.md" \
+    "closed, open, open and not acknowledged, settled by a decision, or regressed" \
+    || ok=false
+
+  # task_auto_check carries the same user-only authority in its own words, in
+  # both blocks, and no git_auto_review-only report field.
+  local tac="$REPO_ROOT/plugins/ai_dev/skills/task_auto_check/SKILL.md" tac_inputs tac_bounds
+  tac_inputs="$SCRATCH/s4_task_auto_check_inputs.txt"
+  tac_bounds="$SCRATCH/s4_task_auto_check_loop_bounds.txt"
+  awk '/<inputs>/,/<\/inputs>/' "$tac" > "$tac_inputs"
+  awk '/<loop_bounds>/,/<\/loop_bounds>/' "$tac" > "$tac_bounds"
+  assert_contains "task_auto_check inputs user-only clause" "$tac_inputs" \
+    "read only from the invoking user's request" || ok=false
+  assert_contains "task_auto_check loop_bounds user-only clause" "$tac_bounds" \
+    "read only from the invoking user's request" || ok=false
+  assert_not_contains "task_auto_check carries no cap-source field" "$tac" \
+    "cap-source" || ok=false
   $ok
 }
 
