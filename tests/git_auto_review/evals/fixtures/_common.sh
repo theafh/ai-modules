@@ -133,11 +133,11 @@ shipped interface."
   mkdir -p "$target/repo/$(dirname "$rel")"
   cat > "$target/repo/$rel" <<TASK
 ---
-description: "Fixture task anchoring the scope of this run"
+description: "Fixture task carrying the run's pending-decisions wording"
 status: ready
 ---
 
-# Fixture run anchor
+# Fixture task file
 
 ## Goal
 
@@ -150,7 +150,7 @@ TASK
   (
     cd "$target/repo"
     git add "$rel"
-    git commit --quiet -m "seed the anchoring task file"
+    git commit --quiet -m "seed the run task file"
     git update-ref refs/remotes/origin/main HEAD
   )
 }

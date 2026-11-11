@@ -29,7 +29,7 @@ None.
 ## Decisions the implementer must make before fixing
 
 **Decide the per-item adjustment.** Choose whether `total` adds 10, subtracts 1,
-or returns the plain sum. Record the choice in the anchored task's Goal.
+or returns the plain sum. Record the choice in the supplied task's Goal.
 
 ## Can it be structurally merged as it is
 
@@ -51,4 +51,4 @@ tag: none
 ## Decisions
 
 Decide the per-item adjustment. Choose whether `total` adds 10, subtracts 1, or
-returns the plain sum. Record the choice in the anchored task's Goal.
+returns the plain sum. Record the choice in the supplied task's Goal.

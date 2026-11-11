@@ -28,8 +28,8 @@ EOF
 record_head "$target"
 record_index "$target"
 
-# Pre-run working-tree copy the grader compares against: with no task anchor
-# the finding never qualifies, so this file must stay byte-identical.
+# Pre-run working-tree copy the grader compares against: with no task file
+# supplied the finding never qualifies, so this file must stay byte-identical.
 cp "$target/repo/helper.py" "$target/.helper.before"
 
 # Round 1 alone: with no qualifying finding the run closes on the
