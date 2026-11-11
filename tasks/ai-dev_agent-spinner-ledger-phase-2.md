@@ -30,7 +30,7 @@ harness_portability's delegation reference gains a log-format description for Cl
   - In a helper's return, each `examined` entry claims a reading of `full`, `searched`, or `unreachable`, with one receipt line copied verbatim from the file. `accept` checks that line against the input version the row recorded.
   - `brief` takes a withheld text on standard input and keeps only its hash on the blind row, the row of a blind pass.
   - No verb reads a helper's log. Every full-read claim therefore stays claimed by receipt, backed only by its receipt line. Every blind pass stays blind by prompt, blind only because its prompt says so.
-- **The rules these features enforce.** [The checking-doctrine task](ai-dev_agent-spinner-checking-doctrine.md) writes them into `references/checks.md` as numbered checks that the orchestrator runs by hand. Three of those checks matter here:
+- **The rules these features enforce.** [The checking-doctrine task](archive/ai-dev_agent-spinner-checking-doctrine.md) writes them into `references/checks.md` as numbered checks that the orchestrator runs by hand. Three of those checks matter here:
   - C2 counts checklist lines against acceptance items. It labels a blind pass blind by prompt unless the helper's logs show no read outside its admitted inputs.
   - C8 counts a path as read only where tool evidence shows a full read.
   - C9 has the ledger check only its own rows, so that every changed path recorded as stamped has a routing or fork row. Each family's file formats stay with that family.

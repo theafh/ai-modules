@@ -28,7 +28,10 @@ tool calls to `tool_calls.jsonl` when the eval sets `tool_record`.
 
 Every eval is one job in the shared pool from `tests/lib/eval_runner.py`
 (`--workers`, default `vendor.DEFAULT_PARALLEL_WORKERS`, each job with its own
-TMPDIR). The default ids are every id in `evals.json`, in file order.
+TMPDIR). The default ids are every id in `evals.json`, in file order. An eval
+carrying its own `timeout` in `evals.json` overrides `--timeout` for that eval,
+so a spawned-helper run that stages several real passes gets the wall clock it
+needs without loosening every other eval.
 
 A host-status guard brackets each job through the helper's before/after hooks.
 The before hook stores the full `git status --porcelain` of the host checkout;
@@ -41,7 +44,7 @@ Usage:
     python3 tests/agent_spinner/evals/run.py [eval_id ...]
       # default: every `id` in evals.json, derived at startup
       [--vendor claude|cursor] [--model sonnet|auto|'']
-      [--workers 4] [--timeout 420] [--worker-bin <bin>]
+      [--workers 4] [--timeout 900] [--worker-bin <bin>]
       [--force] [--no-cache]
 """
 
@@ -658,6 +661,11 @@ def run_one(
     env: Mapping[str, str],
 ) -> EvalOutcome:
     """Run one eval inside the caller's job, under that job's TMPDIR."""
+    # An eval carrying its own `timeout` in evals.json overrides the run's
+    # default. A spawned-helper eval that stages several real passes needs a
+    # longer wall clock than the default bound; the eval's meaning stays the
+    # same, and only the harness's patience moves.
+    timeout = int(spec.get("timeout", timeout))
     eval_dir = run_dir / eval_id
     eval_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1045,7 +1053,7 @@ def main() -> int:
     parser.add_argument("ids", nargs="*", default=None)
     vendor.add_vendor_arguments(parser)
     eval_runner.add_workers_argument(parser)
-    parser.add_argument("--timeout", type=int, default=420)
+    parser.add_argument("--timeout", type=int, default=900)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-cache", action="store_true")
     args = parser.parse_args()

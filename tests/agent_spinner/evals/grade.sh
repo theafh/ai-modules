@@ -259,13 +259,29 @@ family_agent_briefs_clean() {
   return 0
 }
 
+# A producing row is a row with a target path whose role and kind are neither a
+# reading nor a checking class. The kind column carries the item's kind note, so
+# a producing row may be `summary-note` rather than the literal `writer`.
+# Test Integrity: a grader fix (broadening to substance). Evidence: the captured
+# run tests/agent_spinner/workspace/run-20261111-110729/shape_matched_no_recipe/
+# holds five `summarize` rows with kind `summary-note`, each with its target
+# path, and wrote all five notes; the kind-only test read them as no writer.
+PRODUCING_AWK='
+function producing(role, kind, path) {
+  if (path == "") return 0
+  if (kind ~ /^(reader|check|probe|orient)$/) return 0
+  if (role ~ /^(check|checker|verify|probe|orient|find|read)$/) return 0
+  return 1
+}
+'
+
 # The roster carries no header row, so count every writer row rather than
 # skipping the first line.
 writer_row_count_is() {
   local r
   r="$(roster_path)"
   [[ -s "$r" ]] || return 1
-  [[ "$(awk -F'\t' '$6 == "writer" {n++} END {print n+0}' "$r")" == "$1" ]]
+  [[ "$(awk -F'\t' "$PRODUCING_AWK"' producing($3, $6, $5) {n++} END {print n+0}' "$r")" == "$1" ]]
 }
 
 # The report's text as one clause per line. A sentence ends at a terminator
@@ -384,6 +400,22 @@ no_brief_names_a_recipe() {
 
 LEDGER="$STATE_DIR/ledger.jsonl"
 ledger_has() { [[ -s "$LEDGER" ]] && grep -Eq "$1" "$LEDGER"; }
+
+# ledger_line_matches <pattern>... — one ledger record carries every pattern.
+# Records are written with sorted keys, so a field order in the pattern is not
+# something a check may rely on.
+ledger_line_matches() {
+  [[ -s "$LEDGER" ]] || return 1
+  python3 - "$LEDGER" "$@" <<'PY'
+import re, sys
+path, patterns = sys.argv[1], sys.argv[2:]
+for line in open(path, encoding="utf-8", errors="replace"):
+    if all(re.search(p, line) for p in patterns):
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
 ledger_count() {
   [[ -s "$LEDGER" ]] || { printf '0'; return; }
   grep -Ec "$1" "$LEDGER" || true
@@ -415,7 +447,7 @@ writer_rows() {
   local r
   r="$(roster_path)"
   [[ -s "$r" ]] || { printf '0'; return; }
-  awk -F'\t' 'NR > 1 && $6 == "writer" { n++ } END { print n+0 }' "$r"
+  awk -F'\t' "$PRODUCING_AWK"' producing($3, $6, $5) { n++ } END { print n+0 }' "$r"
 }
 writer_brief_files() {
   # The roster's role column decides, not the brief's filename prefix. A run
@@ -432,7 +464,7 @@ writer_brief_files() {
     id="$(basename "$f" .txt)"
     row=""
     if [[ -s "$r" ]]; then
-      row="$(awk -F'\t' -v id="$id" '$1 == id { print $6; exit }' "$r")"
+      row="$(awk -F'\t' -v id="$id" "$PRODUCING_AWK"' $1 == id && producing($3, $6, $5) { print "writer"; exit }' "$r")"
     fi
     if [[ -n "$row" ]]; then
       [[ "$row" == "writer" ]] && printf '%s\n' "$f"
@@ -488,6 +520,234 @@ every_brief_has() {
   return 0
 }
 
+# --- per-path roster facts ---------------------------------------------------
+
+# roster_rows_with_path <path> — how many roster rows name that path.
+roster_rows_with_path() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  awk -F'\t' -v p="$1" '$5 == p {n++} END {print n+0}' "$r"
+}
+
+# roster_rows_with_path_state <path> <state> — rows at that path in a state.
+roster_rows_with_path_state() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  awk -F'\t' -v p="$1" -v s="$2" '$5 == p && $7 == s {n++} END {print n+0}' "$r"
+}
+
+# roster_rows_with_path_role <path> <role> — rows at that path with a role.
+roster_rows_with_path_role() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  awk -F'\t' -v p="$1" -v role="$2" '$5 == p && $3 == role {n++} END {print n+0}' "$r"
+}
+
+# row_depth <label> — the requested depth `brief --depth` recorded.
+row_depth() {
+  [[ -s "$STATE_DIR/run.json" ]] || return 1
+  jq -r --arg l "$1" '.depths[$l] // empty' "$STATE_DIR/run.json" 2>/dev/null
+}
+
+# writer_rows_for_path <path> — writer-kind rows that target that path.
+writer_rows_for_path() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  awk -F'\t' -v p="$1" '$5 == p && $6 == "writer" {n++} END {print n+0}' "$r"
+}
+
+# accepted_check_rows_for_path <path> — accepted checking rows at that path,
+# which is the post-write check the roster must hold. The role column decides,
+# not the kind column: a check row created by `init` carries kind `reader` until
+# its brief sets a kind, and the check the eval names is the role/state pair.
+# Test Integrity: a grader fix (broadening to substance). Evidence: the captured
+# run tests/agent_spinner/workspace/run-20261111-102240/
+# merged_deliverable_checked/proj/.agent_spinner/roster.tsv holds
+# `check:spec.md  check  ...  reader  accepted`, which the kind-only check
+# failed although the post-write check ran and was accepted.
+accepted_check_rows_for_path() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  awk -F'\t' -v p="$1" '$5 == p && ($3 == "check" || $3 == "checker" || $3 == "verify") && $7 == "accepted" {n++} END {print n+0}' "$r"
+}
+
+# preamble_settled_lacks <preamble> <pattern> — the settled-facts part, which
+# sits before the unverified-premises block, does not carry the claim.
+preamble_settled_lacks() {
+  python3 - "$1" "$2" <<'PY'
+import re, sys
+path, pattern = sys.argv[1], sys.argv[2]
+text = open(path, encoding="utf-8", errors="replace").read()
+parts = re.split(r"^\s*(?:#+\s*|\*\*)?\s*unverified\b[^\n]*$", text, maxsplit=1, flags=re.I | re.M)
+settled = parts[0]
+sys.exit(1 if re.search(pattern, settled, re.I) else 0)
+PY
+}
+
+# preamble_settled_claim_attributed <preamble> <claim-regex> <attribution-regex>
+# — a settled sentence that mentions the claim also names the source it was
+# read from. A read fact about what a page says is settled; the page's claim is
+# not, so "docs/schema.md states that legacy_id is absent" passes while
+# "legacy_id is absent" fails.
+# Test Integrity: a grader fix (broadening to substance). The first version
+# failed a correct preamble that recorded the documented sentence as a read
+# fact. Evidence: the captured run tests/agent_spinner/workspace/
+# run-20261111-102240/documented_absence_stays_conditional/proj/.agent_spinner/
+# preamble.md settles "docs/schema.md finished content states ... legacy_id is
+# absent" while its unverified block carries the absence claim itself.
+preamble_settled_claim_attributed() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import re, sys
+path, claim, attribution = sys.argv[1:4]
+text = open(path, encoding="utf-8", errors="replace").read()
+parts = re.split(r"^\s*(?:#+\s*|\*\*)?\s*unverified\b[^\n]*$", text, maxsplit=1, flags=re.I | re.M)
+settled = re.sub(r"\s+", " ", parts[0])
+for sentence in re.split(r"(?<=[.!?])\s+", settled):
+    if re.search(claim, sentence, re.I) and not re.search(attribution, sentence, re.I):
+        sys.exit(1)
+sys.exit(0)
+PY
+}
+
+# preamble_unverified_has <preamble> <pattern>... — every pattern appears in
+# the unverified-premises block.
+preamble_unverified_has() {
+  python3 - "$@" <<'PY'
+import re, sys
+path, patterns = sys.argv[1], sys.argv[2:]
+text = open(path, encoding="utf-8", errors="replace").read()
+parts = re.split(r"^\s*(?:#+\s*|\*\*)?\s*unverified\b[^\n]*$", text, maxsplit=1, flags=re.I | re.M)
+if len(parts) < 2:
+    sys.exit(1)
+block = parts[1]
+sys.exit(0 if all(re.search(p, block, re.I) for p in patterns) else 1)
+PY
+}
+
+
+# The checker rows at a path other than the named first checker, so a re-check
+# is counted without the check it re-runs.
+recheck_rows_for_path() {
+  local r path first
+  r="$(roster_path)"
+  path="$1"; first="$2"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  awk -F'\t' -v p="$path" -v first="$first" \
+    '$5 == p && $1 != first && ($3 == "check" || $3 == "checker" || $3 == "verify") {n++} END {print n+0}' "$r"
+}
+
+# exactly_one_deep_recheck <path> <min-depth> <first-label> — exactly one
+# checking row at that path, other than the first check, records a depth at or
+# above the first check's, which is the single re-check C5 allows.
+# Test Integrity: a grader fix (broadening to substance). Evidence: the captured
+# run tests/agent_spinner/workspace/run-20261111-104535/one_remediation_round/
+# records both check:verify and the re-check at depth 3, so counting the first
+# check as a re-check failed a correct run.
+exactly_one_deep_recheck() {
+  python3 - "$STATE_DIR" "$1" "$2" "$3" <<'PY'
+import csv, json, os, sys
+state, path, minimum, first = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+run = json.load(open(os.path.join(state, "run.json")))
+depths = run.get("depths", {})
+rosters = sorted(p for p in os.listdir(state) if p.startswith("roster"))
+if not rosters:
+    sys.exit(1)
+with open(os.path.join(state, rosters[0]), newline="") as fh:
+    rows = list(csv.reader(fh, delimiter="\t"))
+count = 0
+# The roster carries no header row: label, phase, role, item, path, kind, ...
+for row in rows:
+    if len(row) < 5 or row[4] != path or row[0] == first:
+        continue
+    if row[2] not in ("check", "checker", "verify", "recheck"):
+        continue
+    depth = depths.get(row[0])
+    if depth is not None and int(depth) >= minimum:
+        count += 1
+sys.exit(0 if count == 1 else 1)
+PY
+}
+
+# repair_rows_for_path <path> — rows that carried out a repair round on it.
+repair_rows_for_path() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  awk -F'\t' -v p="$1" \
+    '$5 == p && ($3 == "remediate" || $3 == "repair" || $3 == "fix" || $3 == "remediator") {n++} END {print n+0}' "$r"
+}
+
+
+# Brief files whose roster role is a checking role, so a checker-brief fact is
+# not asserted over a writer's brief.
+checker_brief_files() {
+  local r f id row
+  r="$(roster_path)"
+  brief_files | while IFS= read -r f; do
+    id="$(basename "$f" .txt)"
+    row=""
+    if [[ -s "$r" ]]; then
+      row="$(awk -F'\t' -v id="$id" '$1 == id { print $3; exit }' "$r")"
+    fi
+    case "$row" in
+      check|checker|verify|judge|critic|recheck) printf '%s\n' "$f"; continue ;;
+    esac
+    case "$id" in
+      check:*|verify:*|judge:*|critic:*|recheck:*|sample:*) printf '%s\n' "$f" ;;
+    esac
+  done
+  return 0
+}
+checker_briefs_each_have() {
+  local f
+  checker_brief_files | grep -q . || return 1
+  while IFS= read -r f; do
+    grep -Eiq "$1" "$f" || return 1
+  done < <(checker_brief_files)
+  return 0
+}
+checker_brief_count_at_least() {
+  [[ "$(checker_brief_files | grep -c .)" -ge "$1" ]]
+}
+
+# report_finding_label_clean — "confirmed" alone and "independent" are not
+# labels the contract sanctions for a finding both lenses saw; only
+# "survived both lenses, recall-confirmed" is. The check reads a sentence that
+# names the finding, drops a negated sentence, and only then looks for the bare
+# label, so "rather than confirmed" and "no independent second look" are not
+# read as labels.
+# Test Integrity: a grader fix (broadening to substance). The first version
+# failed a correct report that said "rather than confirmed" and listed
+# "Independently surfaced — none" as a tally category. Evidence: the captured
+# run tests/agent_spinner/workspace/run-20261111-100623/
+# survived_lenses_labelled_recall/proj/.agent_spinner/report.md carries both
+# legitimate forms and the contract label, while its Established sentence
+# "was confirmed by both lenses" is the bare label the rule forbids.
+report_finding_label_clean() {
+  report_present || return 1
+  report_text | python3 -c '
+import re, sys
+subject = re.compile(r"finding|claim|survey:page|both lenses", re.I)
+bad = re.compile(
+    r"\b(?:was|is|were|are)\s+(?:independently\s+)?"
+    r"(?:(?<!recall-)confirmed|independent)\b"
+    r"|confirmed by (?:both )?lenses"
+    r"|labell?ed (?:as )?(?:(?<!recall-)confirmed|independent)\b",
+    re.I)
+text = re.sub(r"\s+", " ", sys.stdin.read())
+for sentence in re.split(r"(?<=[.!?])\s+", text):
+    if subject.search(sentence) and bad.search(sentence):
+        sys.exit(1)
+sys.exit(0)
+'
+}
+
+
 any_file_in_has() {
   local dir="$1" pattern="$2"
   [[ -d "$dir" ]] || return 1
@@ -520,14 +780,22 @@ run_text() {
 _split() { tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/([.!?]) /\1\n/g'; }
 sentences() { run_text | _split; }
 
-response_has() { { have_response || have_announcement; } && sentences | grep -Eiq "$1"; }
+# Test Integrity: a grader fix (broadening to substance). `set -o pipefail`
+# turns a `grep -q` early exit into a SIGPIPE failure for the upstream
+# `cat`/`sed`, so a match present in a long run text could read as absent.
+# Evidence: the captured run tests/agent_spinner/workspace/
+# run-20261111-110729/residual_selector/ announces "Shape matched: smallest
+# covering ...", which this check failed under pipefail and matches when the
+# same text is replayed. `grep -c` reads the whole stream and keeps the exit
+# status meaning "at least one match".
+response_has() { { have_response || have_announcement; } && sentences | grep -Eic "$1" >/dev/null; }
 
 # A pre-dispatch claim belongs in the announcement. Read it there when one was
 # written, and fall back to the whole run text when none was, so a run that
 # said it all in one turn is not failed for the harness's own capture limit.
 announcement_has() {
   if have_announcement; then
-    _split < "$ANNOUNCE" | grep -Eiq "$1"
+    _split < "$ANNOUNCE" | grep -Eic "$1" >/dev/null
   else
     response_has "$1"
   fi
@@ -558,7 +826,7 @@ NEGATED='(^|[^a-z])(no|not|never|nor|neither)([^a-z]|$)|without|rather than|inst
 # A response legitimately *names* a move in order to say it does not apply.
 # Drop negated sentences before deciding, so only a surviving sentence counts
 # as a move the run actually made.
-mentions_unnegated() { have_response && sentences | grep -Ei "$1" | grep -Eiqv "$NEGATED"; }
+mentions_unnegated() { have_response && sentences | grep -Ei "$1" | grep -Eicv "$NEGATED" >/dev/null; }
 lacks_unnegated() { ! mentions_unnegated "$1"; }
 
 # The closing report's own opening carries the verdict the contract puts first.
@@ -572,10 +840,10 @@ report_present() { [[ -s "$REPORT" ]] || have_response; }
 
 opening_has() {
   report_present || return 1
-  report_text | _split | head -2 | grep -Eiq "$1"
+  report_text | _split | sed -n '1,2p' | grep -Eic "$1" >/dev/null
 }
 
-report_has() { report_present && report_text | _split | grep -Eiq "$1"; }
+report_has() { report_present && report_text | _split | grep -Eic "$1" >/dev/null; }
 
 # --- shared contract vocabulary ---------------------------------------------
 #
@@ -594,7 +862,12 @@ NO_AGREEMENT_COUNTING='majority|quorum|consensus|[0-9] of [0-9] agree|both agree
 # The reviewing pass's coverage record. The contract obliges the pass to report
 # what it examined; whether anything came back clear depends on the corpus, so a
 # pass that cleared nothing still satisfies it by naming what it read.
-EXAMINED_RECORD='examined and cleared|cleared:|what (it|this pass) (examined|read)|(this )?pass read|read only [a-z]|coverage[.:]|by reading [a-z./]|re-?derived by reading'
+EXAMINED_RECORD='examined and cleared|cleared:|what (it|this pass) (examined|read)|(this )?pass read|read only [a-z]|coverage[.:]|by reading [a-z./]|re-?derived by reading|empty findings list|returned empty findings|(checker|check) rows? .{0,40}empty|re-?derived from the files'
+# Test Integrity: a grader fix (broadening to substance). The captured clean
+# run tests/agent_spinner/workspace/run-20261111-111927/clean_corpus records
+# its coverage as "Both checker rows returned empty findings lists" and
+# "Re-derived from the files", which reports what it examined and cleared
+# while the older phrasing list missed it.
 ASKS_GO_AHEAD='go[- ]ahead|how (would you like to|to) proceed|want me to|shall i|your call|decide|confirm'
 
 # The approval gate, in the forms a correct report uses: a request for the
@@ -621,7 +894,7 @@ ASKS_GO_AHEAD='go[- ]ahead|how (would you like to|to) proceed|want me to|shall i
 APPROVAL_WAIT='await(ing|s)? [^.]{0,40}approv|needs? (your|the user.s|user) approval|require[sd]? [^.]{0,30}(your|the user.s|user) approval|for (you|the user) to approve|until (you|the user) approve|open gate[^.]{0,40}approve|reply (with )?(approve|approval|yes|go-ahead)|(blocked|held|waits?|waiting|pending|gated) (on|for|until) (your|the user.s) (gate|approval|answer|decision|go-ahead)|held (for|pending) (your|the user.s) approval|pending (your|the user.s) (approval|answer|decision|go-ahead)|(your|the user.s|user) approval (is |was )?(needed|required|awaited|pending|withheld|blocked|not (yet )?(given|granted|approved|authorized))|approval (gate|from the user)|approv[a-z]*[^.]{0,40}(withheld|blocked|not (yet )?(given|granted|approved|authorized))|withheld[^.]{0,40}approv|blocked (pending|on|until)[^.]{0,20}approv|approv[a-z]*[^.]{0,60}(scope|repair)[^.]{0,60}\?'
 
 no_pasted_return_shape() {
-  ! report_text | grep -Eq '^(survey|check|lens):[a-z_-]+ — '
+  ! report_text | grep -Ec '^(survey|check|lens):[a-z_-]+ — ' >/dev/null
 }
 
 # The declared target path, read from the brief's own "Your target path:" /
@@ -668,7 +941,7 @@ spawned_no_helpers() {
 # there.
 item_section_has() {
   report_text | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/(survey:[a-z]+)/\n\1/g' \
-    | grep -E "^survey:$1" | grep -Eiq "$2"
+    | grep -E "^survey:$1" | grep -Eic "$2" >/dev/null
 }
 
 # The forty paths docs/reference.md points at. Handling that item would mean
@@ -962,11 +1235,31 @@ case "$eval_id" in
 
   uncited_clean_reroute)
     check "sandbox tree byte-identical" tree_unchanged
+    # Test Integrity: a grader addition (not a relaxation). The prior checks
+    # stay, including the routing and the not-cleared check. Class: new
+    # coverage of the receipt rule in C8. Evidence: the staged return's receipt
+    # line is absent from the input version the row recorded, so `accept`
+    # records an accept_reject and leaves the row in violation.
+    # `accept` rejects the return for the receipt that is absent from the
+    # recorded input version, and the row stays in violation.
+    # Test Integrity: a grader fix (broadening to substance). The named fact is
+    # that `accept` leaves the row in violation for the receipt. A correct run
+    # then spends the contract's one identical-prompt re-invocation, so the
+    # current state can be `dispatched` with attempts=2 rather than `violation`.
+    # Evidence: the captured run tests/agent_spinner/workspace/
+    # run-20261111-101508/uncited_clean_reroute/ records the accept_reject and
+    # re-dispatches once (attempts 2), which the old state-only check failed.
+    check "accept leaves the row in violation for the receipt" \
+      bash -c "grep -q '\"type\": \"accept_reject\"' '$LEDGER' 2>/dev/null && awk -F'\t' '\$1==\"check:deploy\" && (\$7==\"violation\" || \$7==\"failed\" || \$8>=2) {found=1} END {exit !found}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\""
+    check "the ledger records the receipt rejection" \
+      ledger_line_matches '"type": "accept_reject"' '"label": "check:deploy"' 'receipt'
     if have_response; then
       check "routes the clean verdict back for re-checking" \
         response_has 're-?check|routes? (it |that verdict )?back|send (it|that verdict) back|another pass'
       check "names the missing citation as the reason" \
         response_has 'cite|citation|cited span|no span'
+      check "routes the heading-only clear back" \
+        response_has 'heading|cites only a heading|only a heading|no settling span'
       check "does not report deploy.md as cleared on that verdict" \
         lacks_unnegated 'deploy\.md is (clear|clean|fine)|accept(ed|ing) the clean verdict'
     else
@@ -1014,6 +1307,20 @@ case "$eval_id" in
 
   confirmation_provenance)
     check "sandbox tree byte-identical" tree_unchanged
+    # Test Integrity: a grader addition (not a relaxation). The eval's prior
+    # three response checks stay byte-identical; these two ledger checks pin the
+    # provenance split the fixture stages. Class: new coverage of a rule this
+    # task adds. Evidence: the fixture's two `confirmations` lists, one on the
+    # relaying check row and one on the survey row, which the ledger tags
+    # recall-confirmed and independently surfaced.
+    # The ledger's own provenance tags are the fact; the report's labels are the
+    # prose half. The check row's brief relays survey:verify, so its
+    # confirmation is recall-confirmed, and the survey row's is independently
+    # surfaced.
+    check "the ledger tags the checking confirmation recall-confirmed" \
+      ledger_line_matches '"type": "confirmation"' '"provenance": "recall-confirmed"'
+    check "the ledger tags the survey confirmation independently surfaced" \
+      ledger_line_matches '"type": "confirmation"' '"provenance": "independently surfaced"'
     if have_response; then
       check "marks the survey finding independently surfaced" \
         response_has 'independently surfaced'
@@ -1029,14 +1336,30 @@ case "$eval_id" in
   one_remediation_round)
     check "docs/verify.md remediated" file_differs_from_staged "docs/verify.md"
     check "docs/status.md untouched" file_matches_staged "docs/status.md"
+    check "the first check's depth was recorded" \
+      bash -c "[[ \"\$(jq -r '.depths[\"check:verify\"] // empty' '$STATE_DIR/run.json' 2>/dev/null)\" == '3' ]]"
+    # Test Integrity: superseded behaviour. The archived agent_spinner task's
+    # "no second verification loop" rule was reversed by the owner's re-check
+    # decision of 2026-10-03, recorded in
+    # tasks/ai-dev_agent-spinner-checking-doctrine.md: one re-check per repaired
+    # item at no lower depth than its first check, and no second repair round.
+    check "exactly one re-check row at no lower depth than the first check" \
+      exactly_one_deep_recheck "docs/verify.md" 3 "check:verify"
+    check "no second repair round runs" \
+      bash -c "[[ \$(awk -F'\t' '\$5==\"docs/verify.md\" && (\$3==\"remediate\"||\$3==\"repair\"||\$3==\"fix\"||\$3==\"remediator\") {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -le 1 ]]"
     if have_response; then
+      # Test Integrity: a grader fix (broadening to substance). The captured
+      # report tests/agent_spinner/workspace/run-20261111-104535/
+      # one_remediation_round states one re-check ("passed once") and blocks a
+      # second round ("a second repair round (blocked ...)"), which the older
+      # phrasing-only patterns missed while the property held.
       check "states exactly one remediation round" \
-        response_has 'one[- ]round|single remediation|one remediation|exactly one (repair|round)|(one|1) of (two|2) .{0,30}entered repair|entered repair'
-      check "attempts no second verification loop" \
-        lacks_unnegated 're-?verif(y|ied) (the|that) (repair|remediat)|second verification|verified again|loop(ed)? until'
+        response_has 'one[- ]round|single remediation|one remediation|exactly one (repair|round)|(one|1) of (two|2) .{0,30}entered repair|entered repair|one re-?check|re-?check .{0,30}once|passed once'
+      check "states that no second round follows" \
+        response_has 'no second (repair|remediation|verification) round|second (repair|remediation|verification) round\s*\(?\s*(blocked|not run|waits|is not|does not)|one round only|never loop|does not loop'
       check "marks the remediated output unverified" response_has 'unverified'
     else
-      note_agent_attest "one repair round; repaired output marked unverified"
+      note_agent_attest "one repair round, one re-check at no lower depth, output marked unverified"
     fi
     ;;
 
@@ -1370,6 +1693,406 @@ case "$eval_id" in
     else
       note_agent_attest "per-artifact fan-out announced with no recipe matched"
     fi
+    ;;
+
+  merged_deliverable_checked)
+    # The write that lands gets its own check row, and that check is accepted
+    # before the report claims a verdict.
+    check "spec.md was written" file_present "spec.md"
+    check "the roster holds a writer row for spec.md" \
+      bash -c "[[ \$(awk -F'\t' '\$5==\"spec.md\" && \$6==\"writer\" {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -ge 1 ]]"
+    check "the roster holds an accepted check row for spec.md" \
+      bash -c "[[ \$(awk -F'\t' '\$5==\"spec.md\" && (\$3==\"check\" || \$3==\"checker\" || \$3==\"verify\") && \$7==\"accepted\" {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -ge 1 ]]"
+    check "the report names that check's verdict" \
+      report_has 'verdict.{0,40}(pass|fail)|(pass|fail).{0,40}verdict|check.{0,40}(pass|fail)'
+    check "every other file under the sandbox stays byte-identical" \
+      tree_unchanged './spec.md'
+    ;;
+
+  unapproved_hunk_after_regeneration)
+    check "docs/spec.md stays byte-identical" file_matches_staged "docs/spec.md"
+    check "the checker's brief carries the approved-edit list" \
+      bash -c "grep -REq 'e1' '$BRIEFS_DIR' 2>/dev/null && grep -REq 'e2' '$BRIEFS_DIR' 2>/dev/null"
+    check "the report quotes the hunk that maps to no id" \
+      report_has 'Draft note|not approved'
+    ;;
+
+  acceptance_presence_on_every_surface)
+    for p in 1 2 3 4 5; do
+      check "docs/page$p.md stays byte-identical" file_matches_staged "docs/page$p.md"
+    done
+    check "the checker's brief holds one checklist line per acceptance item" \
+      python3 - "$BRIEFS_DIR" <<'PY'
+import pathlib, re, sys
+for path in pathlib.Path(sys.argv[1]).glob("*"):
+    text = path.read_text(errors="replace")
+    if not all(f"docs/page{i}.md" in text for i in range(1, 6)):
+        continue
+    lines = [l for l in text.splitlines() if re.match(r"^\s*(\d+[.)]|[-*]\s)", l)]
+    if len(lines) >= 5:
+        sys.exit(0)
+sys.exit(1)
+PY
+    check "the report names the two pages that lack the marker" \
+      report_has 'page2'
+    check "the report names page four as lacking the marker" \
+      report_has 'page4'
+    ;;
+
+  verifier_brief_carries_no_preference)
+    check "the verifier's brief names both return files" \
+      bash -c "grep -REl 'reviews/a\.md' '$BRIEFS_DIR' 2>/dev/null | xargs -r grep -l 'reviews/b\.md' 2>/dev/null | grep -q ."
+    check "the verifier's brief holds none of the notes' preference strings" \
+      bash -c "! grep -REqi 'likely approve|prefer (a|option a)' '$BRIEFS_DIR' 2>/dev/null"
+    ;;
+
+  documented_absence_stays_conditional)
+    check "every file under the sandbox stays byte-identical" tree_unchanged
+    check "the preamble settles no absence claim" \
+      preamble_settled_claim_attributed "$STATE_DIR/preamble.md" \
+      'legacy_id[^.]{0,80}absent|absent[^.]{0,80}legacy_id' \
+      'docs/schema\.md|schema\.md|data/sample\.csv|sample\.csv'
+    check "the unverified-premises block lists the claim as documented" \
+      preamble_unverified_has "$STATE_DIR/preamble.md" 'legacy_id' 'documented'
+    check "the report states the answer as conditional with its probe" \
+      report_has 'conditional'
+    check "the report names the probe that would settle it" \
+      report_has 'probe|read the (sample|data)|check the (sample|data)|inspect the (sample|data)'
+    ;;
+
+  placeholder_figure_held)
+    check "every file under the sandbox stays byte-identical" tree_unchanged
+    check "the figure appears in the unverified block tagged placeholder" \
+      preamble_unverified_has "$STATE_DIR/preamble.md" '4\.2M' 'placeholder'
+    check "the figure never appears as a settled fact" \
+      preamble_settled_claim_attributed "$STATE_DIR/preamble.md" \
+      '4\.2M|revenue target' \
+      'TBD|placeholder|to be confirmed|docs/plan\.md|plan\.md'
+    check "every checker brief carries the unverified-premises block" \
+      checker_briefs_each_have 'unverified'
+    check "every checker brief tags the figure placeholder" \
+      checker_briefs_each_have 'placeholder'
+    check "the report states the figure as conditional" \
+      report_has 'conditional'
+    ;;
+
+  wrapped_contrast_and_quotation)
+    check "archive/2024-note.md stays byte-identical" \
+      file_matches_staged "archive/2024-note.md"
+    check "docs/guide.md was rewritten" file_differs_from_staged "docs/guide.md"
+    check "the wrapped sentence still makes its contrast" \
+      python3 - "$proj/docs/guide.md" <<'PY'
+import re, sys
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+flat = re.sub(r"\s+", " ", text)
+sys.exit(0 if "rather than" in flat and "--workers" in flat and "--all" in flat else 1)
+PY
+    check "the roster gives docs/guide.md its own writer row" \
+      bash -c "[[ \$(awk -F'\t' '\$5==\"docs/guide.md\" && \$6==\"writer\" {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -ge 1 ]]"
+    check "docs/quick.md carries the new term" \
+      bash -c "grep -q -- '--workers' '$proj/docs/quick.md' && ! grep -q -- '--jobs' '$proj/docs/quick.md'"
+    ;;
+
+  probe_positive_control)
+    # Test Integrity: a grader fix (broadening to substance). The eval's named
+    # fact is that each of the two counts has a passing positive control, and
+    # the fixture now registers one counter per count. The old check only
+    # asserted that some counter existed, which a single control marker
+    # satisfied without covering either count. Evidence: the captured run
+    # tests/agent_spinner/workspace/run-20261111-103456/probe_positive_control/
+    # proj/.agent_spinner/run.json held one counter named `control` with the
+    # bare pattern `CONTROL_MARKER`, and the gate recorded `reports_plant:
+    # false`, so neither count had a counter of its own.
+    check "the ledger records a gate result carrying both counts" \
+      ledger_line_matches '"type": "gate_result"' 'dashes: 2' 'percentages: 1'
+    check "the gate output records two dashes" ledger_has 'dashes: 2'
+    check "the gate output records one percentage" ledger_has 'percentages: 1'
+    check "each count has a counter whose positive control passed" \
+      python3 - "$STATE_DIR/run.json" <<'PY'
+import json, re, sys
+run = json.load(open(sys.argv[1]))
+counters = run.get("counters") or {}
+if len(counters) < 2:
+    sys.exit(1)
+names = " ".join(counters).lower()
+if "dash" not in names or not any(w in names for w in ("percent", "pct")):
+    sys.exit(1)
+control = "CONTROL_MARKER\n"
+for pattern in counters.values():
+    try:
+        if not re.search(pattern, control):
+            sys.exit(1)
+    except re.error:
+        sys.exit(1)
+sys.exit(0)
+PY
+    check "the counter check ran" \
+      ledger_line_matches '"type": "diff"'
+    check "the gate ran with the count expectation" \
+      ledger_line_matches '"expect": "count"' '"ok": true'
+    check "the report states two dashes" \
+      report_has 'two dashes|dashes: 2|2 dashes'
+    check "the report states one percentage" \
+      report_has 'one percentage|percentages: 1|1 percentage'
+    ;;
+
+  remediator_refutes_false_finding)
+    check "docs/page.md stays byte-identical" file_matches_staged "docs/page.md"
+    check "the ledger disposes of the finding as refuted" \
+      ledger_line_matches '"target": "survey:page:findings:0"' '"disposition": "refuted"'
+    check "the disposition carries its settling span" \
+      ledger_line_matches '"target": "survey:page:findings:0"' '"span": "[^"]+"'
+    check "the report says the finding is refuted" \
+      report_has 'refut|disproved'
+    ;;
+
+  count_check_cannot_clear_meaning)
+    check "docs/policy.md stays byte-identical" file_matches_staged "docs/policy.md"
+    check "a checker brief exists for docs/policy.md" \
+      any_file_in_has "$BRIEFS_DIR" 'docs/policy\.md'
+    check "the ledger holds a finding quoting the inverted sentence" \
+      ledger_line_matches '"type": "finding"' 'permits a merge'
+    check "no report sentence rests a meaning claim on a count" \
+      lacks_unnegated 'numbers?[^.]{0,50}(unchanged|preserved)[^.]{0,50}(so|therefore|meaning)|count[^.]{0,50}(confirms|clears|proves)[^.]{0,30}meaning'
+    ;;
+
+  ruling_applies_to_class)
+    for name in alpha beta gamma; do
+      check "docs/$name.md carries the ruled wording" \
+        bash -c "grep -q 'use the cache' '$proj/docs/$name.md' && ! grep -q 'utilize' '$proj/docs/$name.md'"
+    done
+    check "the ledger gives all three instances one disposition, citing the ruling" \
+      bash -c "[[ \$(grep '\"type\": \"disposition\"' '$LEDGER' 2>/dev/null | grep -c '\"disposition\": \"applied\"') -ge 3 ]] && grep '\"type\": \"disposition\"' '$LEDGER' 2>/dev/null | grep -Eqi 'utilize|ruling'"
+    check "the report names the ruling" report_has 'utilize|ruling'
+    ;;
+
+  survived_lenses_labelled_recall)
+    check "the ledger tags both confirmations recall-confirmed" \
+      bash -c "[[ \$(grep '\"type\": \"confirmation\"' '$LEDGER' 2>/dev/null | grep -c '\"provenance\": \"recall-confirmed\"') -ge 2 ]]"
+    check "the report labels the finding survived both lenses, recall-confirmed" \
+      report_has 'survived both lenses, recall-confirmed'
+    check "the report never labels the finding with the bare word confirmed or independent" \
+      report_finding_label_clean
+    ;;
+
+  known_false_control_caught)
+    check "the staged verify return is accepted" roster_has 'verify:page-check.*accepted'
+    check "the ledger disposes of the control finding as refuted" \
+      ledger_line_matches '"target": "survey:page:findings:0"' '"disposition": "refuted"'
+    check "the refutation carries its settling span" \
+      ledger_line_matches '"target": "survey:page:findings:0"' '"span": "[^"]+"'
+    check "the batch's re-verification rows exist under a different framing" \
+      any_file_in_has "$BRIEFS_DIR" 'framing|reframe'
+    check "the report says the verifier confirmed a false finding" \
+      report_has 'false|contradict'
+    ;;
+
+  surplus_read_proposes_removal)
+    check "docs/merged.md stays byte-identical" file_matches_staged "docs/merged.md"
+    check "the surplus read names the restated rule for conversion into a citation" \
+      bash -c "grep -REqi 'restat' '$STATE_DIR/returns' '$REPORT' 2>/dev/null && grep -REqi 'citation' '$STATE_DIR/returns' '$REPORT' 2>/dev/null"
+    ;;
+
+  unverified_band_sampled)
+    # Test Integrity: a grader fix (broadening to substance). The eval's named
+    # fact is that a lower-band sample row exists before the first verifier
+    # brief. The old case read the roster's phase column and required the word
+    # "sample" there, which is a label the run need not carry: the contract
+    # fixes the sample before dispatch, and the brief's own timestamp is that
+    # ordering record. Evidence: the captured run
+    # tests/agent_spinner/workspace/run-20261111-121049/
+    # unverified_band_sampled/ wrote the minor-band brief at 12:19:24 and the
+    # blocker verifier briefs at 12:19:37, but labelled every check row
+    # `verify`, so the old phase-name test failed while the ordering held.
+    # The band comes from the survey return's own severity field.
+    check "sample rows for the minor band exist before the first verifier brief" \
+      python3 - "$STATE_DIR" "$BRIEFS_DIR" <<'PY'
+import csv, json, pathlib, re, sys
+state, briefs = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+severity = {}
+for path in (state / "returns").glob("survey:*.md"):
+    match = re.search(r"```json\n(.*?)\n```", path.read_text(errors="replace"), re.S)
+    if not match:
+        continue
+    try:
+        data = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        continue
+    for index, finding in enumerate(data.get("findings") or []):
+        severity[(path.stem, index)] = str(finding.get("severity") or "").lower()
+rosters = sorted(p for p in state.glob("roster*") if p.is_file())
+if not rosters:
+    sys.exit(1)
+with open(rosters[0], newline="") as handle:
+    rows = list(csv.reader(handle, delimiter="\t"))
+samples, verifiers = [], []
+for row in rows:
+    if len(row) < 4:
+        continue
+    label, item = row[0], row[3]
+    match = re.fullmatch(r"(.+)-findings-(\d+)", item)
+    if not match:
+        continue
+    key = ("survey:" + match.group(1).split("-", 1)[-1], int(match.group(2)))
+    band = severity.get(key)
+    brief = briefs / ("%s.txt" % label)
+    if band is None or not brief.is_file():
+        continue
+    if band in ("minor", "note"):
+        samples.append(brief)
+    elif band in ("blocker", "major"):
+        verifiers.append(brief)
+if not samples or not verifiers:
+    sys.exit(1)
+sys.exit(0 if max(p.stat().st_mtime for p in samples) <= min(p.stat().st_mtime for p in verifiers) else 1)
+PY
+    check "the report states the minor band's sampled refutation rate" \
+      report_has 'refutation rate|refuted [0-9]+ of [0-9]+|[0-9]+ of [0-9]+ .{0,20}refut'
+    ;;
+
+  judge_flaws_capped)
+    check "the speed judge row is accepted" roster_has 'judge:speed.*accepted'
+    check "the cost judge row is accepted" roster_has 'judge:cost.*accepted'
+    check "each judge return holds at most three fatal flaws with a span" \
+      python3 - "$STATE_DIR/returns" <<'PY'
+import json, pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+returns = sorted(root.glob("judge:*.md"))
+if len(returns) < 2:
+    sys.exit(1)
+for path in returns:
+    text = path.read_text(errors="replace")
+    m = re.search(r"```json\n(.*?)\n```", text, re.S)
+    if not m:
+        sys.exit(1)
+    data = json.loads(m.group(1))
+    findings = data.get("findings") or []
+    if len(findings) > 3:
+        sys.exit(1)
+    for finding in findings:
+        if not finding.get("quote") or not finding.get("anchor"):
+            sys.exit(1)
+sys.exit(0)
+PY
+    check "the report names the speed criterion" report_has 'speed'
+    check "the report names the cost criterion" report_has 'cost'
+    ;;
+
+  checker_reads_return_by_path)
+    check "the applied file equals the approved text" \
+      bash -c "cmp -s '$proj/docs/spec.md' '$target/expected_spec.md'"
+    check "the check brief names the producer return's path" \
+      any_file_in_has "$BRIEFS_DIR" 'returns/produce:spec\.md'
+    check "the check brief holds none of the paraphrase string" \
+      bash -c "! grep -REqi 'PARAPHRASE_MARKER' '$BRIEFS_DIR' 2>/dev/null"
+    # Test Integrity: a grader fix (broadening to substance). The eval's named
+    # fact is the ledger's hunk-to-edit mapping, and the ledger records its
+    # hunks on disk under `diffs/` beside the approved-edit list the check
+    # brief carries; the mapping itself is printed, not appended. The old case
+    # asserted only that the report mentioned `e1` and `e2`, which a report
+    # could do without any mapping on disk. Evidence: the captured run
+    # tests/agent_spinner/workspace/run-20261111-104535/
+    # checker_reads_return_by_path/ holds `diffs/docs-spec.md.diff` with one
+    # hunk per edit and passed the old response-only case.
+    check "the ledger's diff maps every applied hunk to an edit id" \
+      python3 - "$STATE_DIR" "$proj" <<'PY'
+import json, pathlib, sys
+state, proj = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+diffs = sorted((state / "diffs").glob("*.diff"))
+if len(diffs) != 1:
+    sys.exit(1)
+edits = json.loads((proj / "approved-edits.json").read_text())["edits"]
+blocks, current = [], None
+for line in diffs[0].read_text().splitlines():
+    if line.startswith("@@") or line.startswith("---") or line.startswith("+++"):
+        continue
+    if line.startswith("+"):
+        if current is None:
+            current = []
+            blocks.append(current)
+        current.append(line[1:])
+    elif line.startswith(" "):
+        current = None
+if len(blocks) != len(edits):
+    sys.exit(1)
+for added, edit in zip(blocks, edits):
+    if "\n".join(added) != edit["text"]:
+        sys.exit(1)
+sys.exit(0)
+PY
+    ;;
+
+  stamped_target_routed_to_owner)
+    check "tasks/demo_cache.md stays byte-identical" \
+      file_matches_staged "tasks/demo_cache.md"
+    check "no writer row targets the stamped path" \
+      bash -c "[[ \$(awk -F'\t' '\$5==\"tasks/demo_cache.md\" && \$6==\"writer\" {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -eq 0 ]]"
+    # Test Integrity: a grader fix (broadening to substance). The eval's named
+    # fact is a routing or fork record, so the case reads only routing-shaped
+    # record types and requires the record's own text to name the path and the
+    # route. The old pattern also accepted `finding` and `disposition`, which
+    # are generic finding records, so a run that merely raised a finding passed
+    # the routing check. Evidence: the captured run
+    # tests/agent_spinner/workspace/run-20261111-104535/
+    # stamped_target_routed_to_owner/ records a `flag` with reason
+    # "routed to owning gate task_check", which the narrowed predicate keeps.
+    check "the ledger holds a routing or fork row for that path" \
+      python3 - "$LEDGER" <<'PY'
+import json, sys
+for line in open(sys.argv[1]):
+    try:
+        rec = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if rec.get("type") not in ("flag", "fork", "user_gate", "routing"):
+        continue
+    text = json.dumps(rec).lower()
+    if "tasks/demo_cache.md" not in text:
+        continue
+    if "rout" in text or "owning gate" in text or rec.get("type") in ("fork", "user_gate"):
+        sys.exit(0)
+sys.exit(1)
+PY
+    check "the routing record precedes the first writer brief" \
+      python3 - "$LEDGER" "$BRIEFS_DIR" <<'PY'
+import datetime, json, pathlib, sys
+ledger, briefs = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+routes = []
+for line in ledger.read_text().splitlines():
+    try:
+        rec = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if rec.get("type") not in ("flag", "fork", "user_gate", "routing"):
+        continue
+    text = json.dumps(rec).lower()
+    if "tasks/demo_cache.md" not in text:
+        continue
+    if "rout" in text or "owning gate" in text or rec.get("type") in ("fork", "user_gate"):
+        routes.append(rec)
+if not routes:
+    sys.exit(1)
+def is_writer(path):
+    stem = path.stem
+    if stem.startswith(("write:", "produce:", "writer:", "edit:", "update:")):
+        return True
+    for line in path.read_text(errors="replace").splitlines():
+        if line.lower().startswith("role:"):
+            return line.split(":", 1)[1].strip().lower() in (
+                "write", "writer", "produce", "producer", "edit", "update")
+    return False
+writers = []
+if briefs.is_dir():
+    writers = [p for p in briefs.glob("*.txt") if is_writer(p)]
+if not writers:
+    sys.exit(0)
+first = min(p.stat().st_mtime for p in writers)
+routed_at = min(datetime.datetime.fromisoformat(r["at"]) for r in routes)
+brief_at = datetime.datetime.fromtimestamp(first, datetime.timezone.utc)
+sys.exit(0 if routed_at <= brief_at else 1)
+PY
+    check "the report names the owning gate" \
+      report_has 'owning gate|task_(check|finish|audit|fix)|task family'
     ;;
 
   *)

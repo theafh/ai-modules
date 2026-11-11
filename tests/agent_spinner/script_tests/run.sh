@@ -158,6 +158,36 @@ selector_recipe_rows_match() {
   return 0
 }
 
+# checks_sections_in_order <checks.md> — the ten C1..C10 headings, in order,
+# each one exactly once, so a missing or reordered check fails.
+checks_sections_in_order() {
+  local file="$1" seq
+  [[ -f "$file" ]] || return 1
+  seq="$(grep -E '^## C[0-9]+\. ' "$file" \
+    | sed -E 's/^## C([0-9]+)\..*/\1/' | tr '\n' ' ')"
+  [[ "$seq" == "1 2 3 4 5 6 7 8 9 10 " ]]
+}
+
+# role_prompt_headings_present <role-prompts.md> — the four kept pass
+# templates plus the four added ones and the access and closing blocks.
+role_prompt_headings_present() {
+  local file="$1" heading
+  [[ -f "$file" ]] || return 1
+  for heading in \
+    'Producing pass' 'Lens pass' 'Checking pass' 'Synthesis pass' \
+    'Remediation pass' 'Critic pass' 'Judge pass' 'Validator pass' \
+    'Access block' 'Closing block'; do
+    grep -qx "## $heading" "$file" || return 1
+  done
+}
+
+# references_cite_no_step_number <references dir> — a run-protocol step is
+# cited by its P label alone, never by a step number that a later edit to
+# run-protocol.md can renumber out from under it.
+references_cite_no_step_number() {
+  ! grep -REq 'P[1-6] step [0-9]' "$1"
+}
+
 # aggregation_block <skill.md> — the <aggregation> block alone, so a pin reads
 # the section that owns the rule rather than the whole body.
 aggregation_block() {
@@ -435,8 +465,53 @@ printf '# orphan recipe\n' > "$SCRATCH/recipe-orphan/references/recipes/orphan.m
 check "the one-to-one check fails on a recipe file with no row" \
   not selector_recipe_rows_match "$SCRATCH/recipe-orphan/SKILL.md" "$SCRATCH/recipe-orphan/references/recipes"
 
+# The four reference checks must fail on a scratch copy holding one violation,
+# so a green run proves each can fail rather than passing vacuously.
+mkdir -p "$SCRATCH/refs-missing-c7"
+cp -R "$REFS/." "$SCRATCH/refs-missing-c7/"
+python3 - "$SCRATCH/refs-missing-c7/checks.md" <<'PY'
+import sys
+path = sys.argv[1]
+lines = [line for line in open(path) if not line.startswith("## C7. ")]
+open(path, "w").writelines(lines)
+PY
+check "the C1-to-C10 check fails on a missing C7 heading" \
+  not checks_sections_in_order "$SCRATCH/refs-missing-c7/checks.md"
+
+mkdir -p "$SCRATCH/refs-missing-judge"
+cp -R "$REFS/." "$SCRATCH/refs-missing-judge/"
+python3 - "$SCRATCH/refs-missing-judge/role-prompts.md" <<'PY'
+import sys
+path = sys.argv[1]
+lines = [line for line in open(path) if line.rstrip("\n") != "## Judge pass"]
+open(path, "w").writelines(lines)
+PY
+check "the role-heading check fails on a missing judge template" \
+  not role_prompt_headings_present "$SCRATCH/refs-missing-judge/role-prompts.md"
+
+mkdir -p "$SCRATCH/refs-step-number"
+cp -R "$REFS/." "$SCRATCH/refs-step-number/"
+printf '\nSee P3 step 2 for the return rules.\n' \
+  >> "$SCRATCH/refs-step-number/checks.md"
+check "the step-number check fails on a numbered run-protocol citation" \
+  not references_cite_no_step_number "$SCRATCH/refs-step-number"
+
+mkdir -p "$SCRATCH/refs-no-edit-mechanics"
+cp -R "$REFS/." "$SCRATCH/refs-no-edit-mechanics/"
+rm -f "$SCRATCH/refs-no-edit-mechanics/edit-mechanics.md"
+check "the edit-mechanics check fails when the file is absent" \
+  not test -f "$SCRATCH/refs-no-edit-mechanics/edit-mechanics.md"
+
 # --- references -------------------------------------------------------------
 check "references/run-protocol.md exists" test -f "$REFS/run-protocol.md"
+check "references/checks.md exists" test -f "$REFS/checks.md"
+check "references/checks.md holds the ten C1-to-C10 headings in order" \
+  checks_sections_in_order "$REFS/checks.md"
+check "references/edit-mechanics.md exists" test -f "$REFS/edit-mechanics.md"
+check "role-prompts.md carries the four kept, four added, and two block headings" \
+  role_prompt_headings_present "$REFS/role-prompts.md"
+check "no file under references/ cites a run-protocol step by number" \
+  references_cite_no_step_number "$REFS"
 check "references/role-prompts.md exists" test -f "$REFS/role-prompts.md"
 check "references/report-shapes.md exists" test -f "$REFS/report-shapes.md"
 check "references/degradation-examples.md exists" test -f "$REFS/degradation-examples.md"

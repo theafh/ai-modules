@@ -34,6 +34,10 @@ write_return "$proj" survey:verify "done" pass '{
      "severity": "major",
      "quote": "Add `--fail-fast` to stop at the first failure.",
      "anchor": "docs/verify.md, under \"# verify\""}
+  ],
+  "confirmations": [
+    {"claim": "docs/verify.md documents --fail-fast; bin/tool.sh accepts --strict only.",
+     "note": "raised from my own read"}
   ]
 }'
 run_ledger "$proj" accept survey:verify >/dev/null
@@ -48,6 +52,10 @@ write_return "$proj" check:verify-check "done" pass '{
      "severity": "major",
      "quote": "Add `--fail-fast` to stop at the first failure.",
      "anchor": "docs/verify.md, under \"# verify\""}
+  ],
+  "confirmations": [
+    {"claim": "docs/verify.md documents --fail-fast; bin/tool.sh accepts --strict only.",
+     "note": "relayed from survey:verify and not refuted"}
   ]
 }'
 

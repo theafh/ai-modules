@@ -314,7 +314,7 @@ files.
   python3; `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over
   11 committed report variants (15 pass/fail checks) for
   `explicit_spinner_on_family_job`; `evals/test_run.py` proves the runner's
-  wiring against a stub worker; `evals/` holds every id in `evals.json` (49
+  wiring against a stub worker; `evals/` holds every id in `evals.json` (67
   today). Each
   behavioural eval stages one behaviour and the `smoke_*` evals check the
   runner's modes, driven by `evals/run.py` on the default Cursor worker in

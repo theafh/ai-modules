@@ -1,6 +1,6 @@
 # agent_spinner behavioral evals
 
-Every id in `evals.json` (forty-nine today). Each behavioural eval stages one
+Every id in `evals.json` (sixty-seven today). Each behavioural eval stages one
 behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
 names one behaviour rather than a conjoined verdict. The static body and grep
 items stay under `script_tests/`.
@@ -56,7 +56,7 @@ having taken it.
 | `clean_corpus` | response | The false-positive guard: a clean corpus must produce zero findings and an examined-and-cleared record. `bin/tool.sh` really parses the flags its pages document, so a finding here is an invention rather than a reading. |
 | `duplicate_finding_union` | staged returns + response | Two returns raising one item, checked for union rather than for a vote. |
 | `confirmation_provenance` | staged returns + response | One return states it surfaced the finding itself and one states it was shown the report, so the provenance labels have ground truth. |
-| `one_remediation_round` | per-file hashes + response | Only the failing item changes; the unverified label is the response half. |
+| `one_remediation_round` | per-file hashes + roster depths + response | Only the failing item changes, the roster holds one re-check row at no lower depth than the first check, no second repair round runs, and the unverified-end-to-end label is the response half. |
 | `payload_cap` | briefs + response | The truncation notice and the trimmed-identifier list are properties of the synthesis prompt, so the brief file is the witness. |
 | `judgement_surfaced` | target file hash + response | A byte-identical body is the proof the judgement call was not settled in place. |
 | `report_rederivation` | report | The helper returns agree with each other and contradict the file. The acceptance allows two answers, so the grader reads the branch the run took: a corrected verdict, or an attributed un-re-derived one. |
@@ -88,6 +88,24 @@ having taken it.
 | `continuation_armed_once` | tool record + announcement | Cursor's goal tool is the vendor-specific feature: exactly one goal creation with the run directory in its objective. On Claude, the absence of a goal tool is proven by no goal, `ScheduleWakeup`, or cron call, and the announcement names re-entry through `status` and `attach`. |
 | `explicit_spinner_on_family_job` | finder briefs + file hashes + report | Five read-only finder briefs, one per page, are the orchestrator-level look the named family job gets. Byte-identical pages and family files prove the family writer stayed the only writer. No brief addressed to the family agent names its checks or assigns a lens panel. The report carries the approval handoff. |
 | `shape_matched_no_recipe` | roster + briefs + note files + announcement | Per-artifact fan-out is the shape the enumerated imperative matches, and the empty recipe table means no recipe can match. The roster and briefs carry the five-way width, the note files are the produced artifacts, and the announcement states the shape and the no-recipe path. |
+| `merged_deliverable_checked` | roster + report | The write that lands gets its own check row and that row is accepted, so the merged deliverable is checked rather than certified by its producer. |
+| `unapproved_hunk_after_regeneration` | file hash + briefs + report | A regenerated file's unmapped hunk is the fact; the brief carrying the approved-edit list and the report quoting the hunk are the two halves of C1's mapping rule. |
+| `acceptance_presence_on_every_surface` | page hashes + brief + report | Byte-identical pages prove nothing was written, the brief's five checklist lines prove the checklist came from the acceptance contract, and the report names the two pages that fail it. |
+| `verifier_brief_carries_no_preference` | briefs | A verifier's brief is a prompt property, so the brief file is the only witness that the returns are named by path and the notes' preference stayed out. |
+| `documented_absence_stays_conditional` | preamble + report | The preamble's settled and unverified sections separate a documented claim from a measured one, which is C10's whole distinction. |
+| `placeholder_figure_held` | preamble + checker briefs + report | A placeholder-sourced figure that never reaches the settled facts, while every checker brief carries the unverified block, is the tier rule on disk. |
+| `wrapped_contrast_and_quotation` | file hashes + roster + report | The archived record's hash proves verbatim text stayed still, and the wrap-collapsed contrast proves the sentence edit did not split a contrast at its wrap. |
+| `probe_positive_control` | ledger gate record + counters | The counts sit in a gate record with a counter whose positive control passed, so a zero or a wrong count cannot pass silently. |
+| `remediator_refutes_false_finding` | file hash + ledger disposition | A byte-identical target and a refuted disposition with its span prove the remediator re-derived the finding rather than editing to it. |
+| `count_check_cannot_clear_meaning` | briefs + ledger finding + report | The inverted sentence's finding and the report's refusal to rest meaning on a count are the claim-type table's consequence. |
+| `ruling_applies_to_class` | page hashes + ledger dispositions | Three applied dispositions under one ruling prove the ruling reached the class rather than the instance the user named. |
+| `survived_lenses_labelled_recall` | ledger confirmations + report | The ledger's two recall-confirmed tags are the provenance fact; the report's label is the prose half, and a bare confirmed or independent label for the finding fails. |
+| `known_false_control_caught` | ledger disposition + briefs | A refuted control with its span, plus re-verification briefs under a different framing, is the calibration rule made visible. |
+| `surplus_read_proposes_removal` | file hash + report/returns | A byte-identical artifact and a named restatement to convert into a citation are the surplus read's whole output. |
+| `unverified_band_sampled` | brief order + report | Sample briefs that predate the first verifier brief are the ordering fact; the reported rate is the prose half. |
+| `judge_flaws_capped` | accepted returns | Each judge return's findings list is on disk, so the three-flaw cap and its spans are checkable without reading a stream. |
+| `checker_reads_return_by_path` | applied file + briefs + ledger diff | The applied bytes equal the approved text, the brief names the return by path, the paraphrase string is absent, and the ledger's recorded diff carries one hunk per edit id, so the hand-off stayed verbatim and mapped. |
+| `stamped_target_routed_to_owner` | file hash + roster + ledger | A byte-identical stamped file, no writer row for it, and a routing record are the hand-off to the owning gate. |
 
 Seven evals additionally run the shared closing-report contract: the opening
 verdict with its tier and dispatched-against-returned count, the yield clause,
@@ -125,6 +143,7 @@ that mode off.
 | `disallowed_tools` | tool classes: `spawn`, `shell`, `write` | Each class is withheld under the withheld-tool rule. |
 | `needs_real_absence` | `true` | The eval's expected behaviour rests on a withheld tool being truly absent, and the runner reports a run where that absence is only declared. |
 | `tool_record` | `true` | Every turn streams its events, and the runner writes the tool calls they show to `tool_calls.jsonl` beside `response.txt`. |
+| `timeout` | seconds | The eval's own worker bound, overriding `--timeout`. A spawned-helper eval that stages several real passes needs more wall clock than the default, and this keeps the extra patience scoped to that eval. |
 
 ### The two response files
 
@@ -203,3 +222,93 @@ unrelated live edit whose basename no sandbox copy carries stays outside that
 eval's verdict. `uncited_clean_reroute`
 now stages a true clean verdict, so the missing citation is the only reason to
 route back; its checks are unchanged.
+
+### 2026-11-11, Cursor CLI 2026.10.22-27dcf5f, model `auto` — checking-doctrine blast radius
+
+The component change (`SKILL.md`, `references/checks.md`,
+`references/role-prompts.md`) and the eval changes it ships reach the set
+below. Each was re-run fresh (`--force`) after the last component edit, so
+every passing run postdates every artifact under test. Where an eval appears
+in the 2026-11-02–03 table above, the run here supersedes it as the verdict of
+record. `--timeout` defaults to 900 now, because a spawned-helper run on this
+vendor outlasts the old 420-second bound; `residual_selector` and
+`containment_one_path` carry their own 1200-second bound in `evals.json`.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `merged_deliverable_checked` | pass | `../workspace/run-20261111-121049` |
+| `documented_absence_stays_conditional` | pass | `../workspace/run-20261111-121049` |
+| `probe_positive_control` | pass | `../workspace/run-20261111-121049` |
+| `one_remediation_round` | pass | `../workspace/run-20261111-121049` |
+| `residual_selector` | pass | `../workspace/run-20261111-121049` |
+| `containment_one_path` | pass | `../workspace/run-20261111-121049` |
+| `checker_reads_return_by_path` | pass | `../workspace/run-20261111-121049` |
+| `stamped_target_routed_to_owner` | pass | `../workspace/run-20261111-121049` |
+| `wrapped_contrast_and_quotation` | pass | `../workspace/run-20261111-124512` |
+| `shape_matched_no_recipe` | pass | `../workspace/run-20261111-124512` |
+| `clean_corpus` | pass | `../workspace/run-20261111-124512` |
+| `unverified_band_sampled` | pass | `../workspace/run-20261111-124512` |
+| `payload_cap` | pass | `../workspace/run-20261111-124512` |
+
+Every eval outside that set keeps its recorded verdict, named below with the
+run it relies on. The three evals whose newest recorded run predates this
+task's component rewrite (`charter_conflict`, `judgement_surfaced`,
+`roster_partial_stop`) are outside the change's blast radius and keep that
+run.
+
+| Eval | Result | Recorded run |
+| --- | --- | --- |
+| `aborted_writer_settled_from_diff` | pass | `../workspace/run-20261108-180638` |
+| `acceptance_presence_on_every_surface` | pass | `../workspace/run-20261111-103456` |
+| `attached_body_opens_and_closes_ledger` | pass | `../workspace/run-20261108-180638` |
+| `beyond_brief_defect_reported` | pass | `../workspace/run-20261108-180638` |
+| `changed_false_still_checked` | pass | `../workspace/run-20261108-180638` |
+| `charter_conflict` | pass | `../workspace/run-20261015-095519` |
+| `completion_turn_advances_phase` | pass | `../workspace/run-20261108-180638` |
+| `confirmation_provenance` | pass | `../workspace/run-20261111-100623` |
+| `continuation_armed_once` | pass | `../workspace/run-20261108-192757` |
+| `count_check_cannot_clear_meaning` | pass | `../workspace/run-20261111-103456` |
+| `decision_items_past_line_100` | pass | `../workspace/run-20261108-180638` |
+| `declared_shape_switch_named` | pass | `../workspace/run-20261108-180638` |
+| `depth_one_level` | pass | `../workspace/run-20261108-185753` |
+| `diagnostic_inline` | pass | `../workspace/run-20261110-111507` |
+| `duplicate_finding_union` | pass | `../workspace/run-20261111-111927` |
+| `explicit_spinner_on_family_job` | pass | `../workspace/run-20261110-114924` |
+| `failure_taxonomy` | pass | `../workspace/run-20261111-110729` |
+| `gate_scope_checked_before_dispatch` | pass | `../workspace/run-20261108-180638` |
+| `governed_stop` | pass | `../workspace/run-20261110-111507` |
+| `hollow_plan_blocks_writes` | pass | `../workspace/run-20261108-184030` |
+| `inline_floor` | pass | `../workspace/run-20261107-190758` |
+| `judge_flaws_capped` | pass | `../workspace/run-20261111-100623` |
+| `judgement_surfaced` | pass | `../workspace/run-20261015-095519` |
+| `known_false_control_caught` | pass | `../workspace/run-20261111-100623` |
+| `labelled_forks_all_relayed` | pass | `../workspace/run-20261108-180638` |
+| `ledger_unavailable_by_hand` | pass | `../workspace/run-20261108-180638` |
+| `lint_warning_delta_reported` | pass | `../workspace/run-20261108-180638` |
+| `mandated_step_listed` | pass | `../workspace/run-20261108-180638` |
+| `pause_request_stops_dispatch` | pass | `../workspace/run-20261108-180638` |
+| `phase_plan_announcement` | pass | `../workspace/run-20261107-180125` |
+| `placeholder_figure_held` | pass | `../workspace/run-20261111-102240` |
+| `planted_defect` | pass | `../workspace/run-20261111-111927` |
+| `probe_definitions_no_spawn` | pass | `../workspace/run-20261102-234332` |
+| `readonly_checker_returns_by_message` | pass | `../workspace/run-20261108-180638` |
+| `remediator_refutes_false_finding` | pass | `../workspace/run-20261111-100623` |
+| `report_rederivation` | pass | `../workspace/run-20261111-111927` |
+| `roster_partial_stop` | pass | `../workspace/run-20261015-095519` |
+| `ruling_applies_to_class` | pass | `../workspace/run-20261111-103456` |
+| `skipped_close_reported` | pass | `../workspace/run-20261108-180638` |
+| `smoke_inline_body` | pass | `../workspace/run-20261106-230911` |
+| `smoke_second_turn` | pass | `../workspace/run-20261103-003235` |
+| `smoke_staged_agent` | pass | `../workspace/run-20261103-003235` |
+| `smoke_withheld_shell` | pass | `../workspace/run-20261106-230911` |
+| `smoke_withheld_write` | pass | `../workspace/run-20261103-000611` |
+| `surplus_read_proposes_removal` | pass | `../workspace/run-20261111-103456` |
+| `survived_lenses_labelled_recall` | pass | `../workspace/run-20261111-101317` |
+| `twelve_files_twelve_rows` | pass | `../workspace/run-20261111-110729` |
+| `unapproved_hunk_after_regeneration` | pass | `../workspace/run-20261111-102240` |
+| `uncited_clean_reroute` | pass | `../workspace/run-20261111-104535` |
+| `unlabelled_returns_joined_by_id` | pass | `../workspace/run-20261108-180638` |
+| `unreturned_bound` | pass | `../workspace/run-20261111-110729` |
+| `verdict_waits_for_open_checker` | pass | `../workspace/run-20261108-180638` |
+| `verifier_brief_carries_no_preference` | pass | `../workspace/run-20261111-102240` |
+| `verifier_rows_from_findings` | pass | `../workspace/run-20261108-180638` |

@@ -144,7 +144,8 @@
         "disallowed_tools": [],
         "extra_reads": [],
         "report_contract": false
-      }
+      },
+      "timeout": 1200
     },
     {
       "id": "containment_one_path",
@@ -167,7 +168,8 @@
         "disallowed_tools": [],
         "extra_reads": [],
         "report_contract": true
-      }
+      },
+      "timeout": 1200
     },
     {
       "id": "depth_one_level",
@@ -290,15 +292,17 @@
     {
       "id": "uncited_clean_reroute",
       "skill": "agent_spinner",
-      "prompt": ".agent_spinner/returns/check:deploy.md is the checking pass's clean verdict for docs/deploy.md; it cites no span. Apply the skill's rule for an uncited clean verdict and report the run.",
-      "expected_output": "The clean verdict cites no span, so the run routes it back for re-checking rather than accepting it, and reports docs/deploy.md as unsettled rather than cleared.",
+      "prompt": ".agent_spinner/returns/check:deploy.md is the checking pass's clean verdict for docs/deploy.md; it cites only a heading and its receipt line is absent from the input version the row recorded. Accept it and apply the skill's rules for an uncited clean verdict and for a receipt that does not match. Report the run.",
+      "expected_output": "The clean verdict cites only a heading, so the run routes it back for re-checking rather than accepting it, and `accept` leaves the row in violation for the receipt that is absent from the recorded input version.",
       "files": [
         "evals/fixtures/uncited_clean_reroute/setup.sh"
       ],
       "expectations": [
         "The response routes the clean verdict back for re-checking.",
         "The response names the missing citation as the reason.",
+        "The response routes the heading-only clear back.",
         "The response does not report docs/deploy.md as cleared on that verdict.",
+        "The ledger leaves the check:deploy row in violation for the receipt.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
         "Every file under the outside canary tree stays byte-identical."
       ],
@@ -378,12 +382,14 @@
     {
       "id": "confirmation_provenance",
       "skill": "agent_spinner",
-      "prompt": ".agent_spinner/returns/survey:verify.md raised a finding from its own read. .agent_spinner/returns/check:verify-check.md was handed that report and checked it. Report the run, including the provenance split and the weight each provenance carries.",
+      "prompt": ".agent_spinner/returns/survey:verify.md raised a finding from its own read. .agent_spinner/returns/check:verify-check.md was handed that report and checked it. Accept both returns and report the run, including the provenance split and the weight each provenance carries.",
       "expected_output": "The report marks the survey pass's finding independently surfaced and the checking pass's non-refutation recall-confirmed, and says a decision resting only on recall-confirmed findings carries less weight.",
       "files": [
         "evals/fixtures/confirmation_provenance/setup.sh"
       ],
       "expectations": [
+        "The ledger tags the survey finding's confirmation independently surfaced.",
+        "The ledger tags the checking pass's confirmation recall-confirmed.",
         "The response marks the survey pass's finding as independently surfaced.",
         "The response marks the checking pass's non-refutation as recall-confirmed.",
         "The response states that a recall-confirmed finding carries less weight.",
@@ -401,15 +407,16 @@
     {
       "id": "one_remediation_round",
       "skill": "agent_spinner",
-      "prompt": "Two checking passes have returned in .agent_spinner/returns/. check:verify.md failed and check:status.md passed. Remediate and report the run.",
-      "expected_output": "Only docs/verify.md enters repair, it enters once, no second verification loop is attempted, and the report marks the repaired output unverified.",
+      "prompt": "Two checking passes have returned in .agent_spinner/returns/. check:verify.md failed at depth 3 and check:status.md passed. Remediate, re-check the repaired item once at no lower depth than its first check, and report the run.",
+      "expected_output": "Only docs/verify.md enters repair, it enters once, one re-check follows at no lower depth than the first check, no second repair round runs, and the report marks the repaired output unverified end to end.",
       "files": [
         "evals/fixtures/one_remediation_round/setup.sh"
       ],
       "expectations": [
         "Only docs/verify.md is remediated; docs/status.md stays byte-identical to the staged file.",
         "Exactly one remediation round runs.",
-        "No second verification loop over the repaired output is attempted.",
+        "The roster holds exactly one re-check row for docs/verify.md at no lower depth than its first check.",
+        "No second repair round runs.",
         "The report states that the remediated output is unverified.",
         "Every file under the outside canary tree stays byte-identical."
       ],
@@ -1067,6 +1074,407 @@
       ],
       "harness": {
         "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "merged_deliverable_checked",
+      "skill": "agent_spinner",
+      "prompt": "Merge the three drafts under drafts/ into spec.md, then run the post-write check over spec.md and report its verdict. Verification covers spec.md only; no widening. Change no other file.",
+      "expected_output": "The roster holds a write row for spec.md and an accepted check row on the same path from another row, and the report names that check's verdict.",
+      "files": [
+        "evals/fixtures/merged_deliverable_checked/setup.sh"
+      ],
+      "expectations": [
+        "The roster holds a writer row for spec.md.",
+        "The roster holds an accepted check row for spec.md from another row.",
+        "The report names that check's verdict.",
+        "Every other file under the sandbox stays byte-identical to the staged tree.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "unapproved_hunk_after_regeneration",
+      "skill": "agent_spinner",
+      "prompt": "docs/spec.md was regenerated. Map its changed blocks against approved-edits.json with the ledger's approved-edit mapping, write the checker's brief from that list, and quote the hunk that maps to no id. Change no file.",
+      "expected_output": "The file stays byte-identical, the checker's brief carries the approved-edit list, and the report quotes the hunk that maps to no approved-edit id.",
+      "files": [
+        "evals/fixtures/unapproved_hunk_after_regeneration/setup.sh"
+      ],
+      "expectations": [
+        "docs/spec.md stays byte-identical to the staged file.",
+        "The checker's brief carries the approved-edit list.",
+        "The report quotes the hunk that maps to no approved-edit id.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "acceptance_presence_on_every_surface",
+      "skill": "agent_spinner",
+      "prompt": "Check the five pages under docs/ against ACCEPTANCE.md, which requires CACHE_MARKER on every page. Write the checker's brief with one checklist line per acceptance item, and report which pages lack the marker. Do not accept a helper return; the brief and the report are the deliverables. Change no file.",
+      "expected_output": "The pages stay byte-identical, the checker's brief holds one checklist line per acceptance item, and the report names the two pages that lack the marker.",
+      "files": [
+        "evals/fixtures/acceptance_presence_on_every_surface/setup.sh"
+      ],
+      "expectations": [
+        "The five pages under docs/ stay byte-identical to the staged tree.",
+        "The checker's brief holds one checklist line per acceptance item.",
+        "The report names docs/page2.md and docs/page4.md as lacking the marker.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "verifier_brief_carries_no_preference",
+      "skill": "agent_spinner",
+      "prompt": "Write the verifier's brief over the two reviewer returns at reviews/a.md and reviews/b.md. Keep notes.md's preference out of the brief, and report the run.",
+      "expected_output": "The verifier's brief names the return files by path and holds none of the notes' preference strings.",
+      "files": [
+        "evals/fixtures/verifier_brief_carries_no_preference/setup.sh"
+      ],
+      "expectations": [
+        "The verifier's brief names reviews/a.md and reviews/b.md by path.",
+        "The verifier's brief holds none of notes.md's preference strings.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "documented_absence_stays_conditional",
+      "skill": "agent_spinner",
+      "prompt": "Report only: is legacy_id absent from the export? Build the run's preamble with tiered settled facts and the unverified-premises block, then report the answer as conditional with its probe. Change no file.",
+      "expected_output": "The tree stays byte-identical, the preamble settles no absence claim, the unverified-premises block lists it as documented, and the report states it as conditional with its probe.",
+      "files": [
+        "evals/fixtures/documented_absence_stays_conditional/setup.sh"
+      ],
+      "expectations": [
+        "Every file under the sandbox stays byte-identical to the staged tree.",
+        "The preamble settles no absence claim.",
+        "The unverified-premises block lists the absence claim as documented.",
+        "The report states the answer as conditional with its probe.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "placeholder_figure_held",
+      "skill": "agent_spinner",
+      "prompt": "Report only: what revenue figure should the spec state? Build the tiered preamble, answer with the figure as conditional, and write the checking brief over your report. Change no file.",
+      "expected_output": "The tree stays byte-identical, the figure appears in the unverified-premises block tagged placeholder and never as a settled fact, every checker brief carries that block, and the report states the figure as conditional.",
+      "files": [
+        "evals/fixtures/placeholder_figure_held/setup.sh"
+      ],
+      "expectations": [
+        "Every file under the sandbox stays byte-identical to the staged tree.",
+        "The figure appears in the unverified-premises block tagged placeholder.",
+        "The figure never appears as a settled fact.",
+        "Every checker brief carries the unverified-premises block.",
+        "The report states the figure as conditional.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "wrapped_contrast_and_quotation",
+      "skill": "agent_spinner",
+      "prompt": "Rename `--jobs` to `--workers` on the pages under docs/. Keep the archived record byte-identical, keep the wrapped sentence's contrast intact, and give the claim-bearing page its own writer row.",
+      "expected_output": "The archived record stays byte-identical, the wrapped sentence still makes its contrast with wraps collapsed, and the roster gives the claim-bearing file its own writer row.",
+      "files": [
+        "evals/fixtures/wrapped_contrast_and_quotation/setup.sh"
+      ],
+      "expectations": [
+        "archive/2024-note.md stays byte-identical to the staged file.",
+        "The wrapped sentence still makes its contrast with wraps collapsed.",
+        "The roster gives docs/guide.md its own writer row.",
+        "docs/quick.md carries the new term.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "probe_positive_control",
+      "skill": "agent_spinner",
+      "prompt": "Count the dashes and percentages in docs/page.md. Run the ledger's counter check so each registered counter's positive control passes, then run bin/count.sh as a gate expecting a count, and report the counts.",
+      "expected_output": "The ledger records counts of 2 and 1, each with a passing positive control.",
+      "files": [
+        "evals/fixtures/probe_positive_control/setup.sh"
+      ],
+      "expectations": [
+        "The ledger records a gate result carrying both counts.",
+        "Each count has a passing positive control.",
+        "The report states two dashes and one percentage.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "remediator_refutes_false_finding",
+      "skill": "agent_spinner",
+      "prompt": "The accepted finding against docs/page.md is false. Re-derive it against the file, refute it with its settling span, and dispose of it as refuted. Change no file.",
+      "expected_output": "The target file stays byte-identical, the ledger disposes of the finding as refuted with its span, and the report says refuted.",
+      "files": [
+        "evals/fixtures/remediator_refutes_false_finding/setup.sh"
+      ],
+      "expectations": [
+        "docs/page.md stays byte-identical to the staged file.",
+        "The ledger disposes of the finding as refuted with its settling span.",
+        "The report says the finding is refuted.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "count_check_cannot_clear_meaning",
+      "skill": "agent_spinner",
+      "prompt": "docs/policy.md was rewritten against the baseline. Confirm whether the meaning held: write the checker's brief and raise the inverted requirement as a finding. Change no file.",
+      "expected_output": "A checker brief exists for the file, the ledger holds a finding quoting the inverted sentence, and no report sentence rests a meaning claim on a count.",
+      "files": [
+        "evals/fixtures/count_check_cannot_clear_meaning/setup.sh"
+      ],
+      "expectations": [
+        "docs/policy.md stays byte-identical to the staged file.",
+        "A checker brief exists for docs/policy.md.",
+        "The ledger holds a finding quoting the inverted sentence.",
+        "No report sentence rests a meaning claim on a count.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "ruling_applies_to_class",
+      "skill": "agent_spinner",
+      "prompt": "I rule that `utilize` becomes `use` in all three pages. Apply that ruling to all three instances, record one disposition per instance citing the ruling, and report the run.",
+      "expected_output": "The ledger gives all three instances the same disposition, citing the ruling.",
+      "files": [
+        "evals/fixtures/ruling_applies_to_class/setup.sh"
+      ],
+      "expectations": [
+        "All three pages carry the ruled wording and no longer say utilize.",
+        "The ledger gives all three instances the same disposition, citing the ruling.",
+        "The report names the ruling.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "survived_lenses_labelled_recall",
+      "skill": "agent_spinner",
+      "prompt": "Two lens returns are staged in .agent_spinner/returns/. Accept both and report the provenance of the finding both lenses saw. Give it the contract's exact label, survived both lenses, recall-confirmed, and never label it confirmed or independent.",
+      "expected_output": "The ledger tags both confirmations recall-confirmed, and the report labels the finding survived both lenses, recall-confirmed, never with the bare confirmed or with independent.",
+      "files": [
+        "evals/fixtures/survived_lenses_labelled_recall/setup.sh"
+      ],
+      "expectations": [
+        "The ledger tags both confirmations recall-confirmed.",
+        "The report labels the finding survived both lenses, recall-confirmed.",
+        "The report never labels the finding with the bare word confirmed or with independent.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "known_false_control_caught",
+      "skill": "agent_spinner",
+      "prompt": "The verify batch's known-false control is the finding its quoted source contradicts. Accept the staged verify return, refute the control with its span, and add the batch's re-verification rows under a different framing.",
+      "expected_output": "The ledger disposes of the control finding as refuted with its settling span, and the batch's re-verification rows exist under a different framing.",
+      "files": [
+        "evals/fixtures/known_false_control_caught/setup.sh"
+      ],
+      "expectations": [
+        "The ledger disposes of the control finding as refuted with its settling span.",
+        "The batch's re-verification rows exist under a different framing.",
+        "The report says the verifier confirmed a false finding.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "surplus_read_proposes_removal",
+      "skill": "agent_spinner",
+      "prompt": "Run a surplus read over docs/merged.md against docs/rules.md. Report the restated rule to convert into a citation. Change no file.",
+      "expected_output": "The surplus read's return names the restated rule for conversion into a citation, and the artifact stays byte-identical.",
+      "files": [
+        "evals/fixtures/surplus_read_proposes_removal/setup.sh"
+      ],
+      "expectations": [
+        "docs/merged.md stays byte-identical to the staged file.",
+        "The surplus read names the restated rule for conversion into a citation.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "unverified_band_sampled",
+      "skill": "agent_spinner",
+      "prompt": "Verification is limited to the blocker band. Add sample rows and briefs for the minor band before the first verifier brief, then add the blocker verifier rows and report that band's sampled refutation rate.",
+      "expected_output": "Sample rows for the lower band exist before the first verifier brief, and the report states that band's sampled refutation rate.",
+      "files": [
+        "evals/fixtures/unverified_band_sampled/setup.sh"
+      ],
+      "expectations": [
+        "Sample rows for the minor band exist before the first verifier brief.",
+        "The report states the minor band's sampled refutation rate.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "judge_flaws_capped",
+      "skill": "agent_spinner",
+      "prompt": "Two judges returned in .agent_spinner/returns/. Accept both, confirm each return holds at most three fatal flaws each with a span, and report the panel.",
+      "expected_output": "Each judge return holds at most three fatal flaws, each with a span.",
+      "files": [
+        "evals/fixtures/judge_flaws_capped/setup.sh"
+      ],
+      "expectations": [
+        "Both judge rows are accepted.",
+        "Each judge return holds at most three fatal flaws.",
+        "Each fatal flaw carries a span.",
+        "The report names both judged criteria.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "checker_reads_return_by_path",
+      "skill": "agent_spinner",
+      "prompt": "Apply the approved edits in approved-edits.json to docs/spec.md. Write the checker's brief naming the producer's return at .agent_spinner/returns/produce:spec.md by path, and keep paraphrase.md's paraphrase out of the brief. Report which edit id each hunk maps to.",
+      "expected_output": "The applied file equals the approved text, the check brief names the return's path and holds none of the paraphrase string, and the ledger maps every applied hunk to an edit id.",
+      "files": [
+        "evals/fixtures/checker_reads_return_by_path/setup.sh"
+      ],
+      "expectations": [
+        "The applied file equals the approved text.",
+        "The check brief names the producer return's path.",
+        "The check brief holds none of the paraphrase string.",
+        "The ledger's recorded diff maps every applied hunk to an edit id.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "stamped_target_routed_to_owner",
+      "skill": "agent_spinner",
+      "prompt": "Edit tasks/demo_cache.md to add a note that the cache work is deferred. Record the routing in the run ledger and report the owning gate.",
+      "expected_output": "The file stays byte-identical, the ledger holds a routing or fork row for that path recorded before the first writer brief, and the report names the owning gate.",
+      "files": [
+        "evals/fixtures/stamped_target_routed_to_owner/setup.sh"
+      ],
+      "expectations": [
+        "tasks/demo_cache.md stays byte-identical to the staged file.",
+        "The ledger holds a routing or fork row for that path before any writer brief.",
+        "The report names the owning gate.",
+        "Every file under the outside canary tree stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
         "extra_reads": [],
         "report_contract": false
       }

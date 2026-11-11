@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.9
+version: 1.0.10
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -66,7 +66,7 @@ Match weight first.
 
 - An enumerated imperative over many artifacts: per-artifact fan-out.
 - One text needing several angles, not different kinds of source: a lens panel.
-- A produced artifact needing an adversarial read: a paired refute-by-default check.
+- A write that lands, whoever wrote it, you included: a paired refute-by-default check.
 - A closed comparison among candidates: a judge panel.
 - A finished body needing a what-is-missing read: a completeness critic.
 - A tree of writes: a single-writer validator after writers.
@@ -79,30 +79,30 @@ A read-only diagnostic or single judgement question is answered inline from your
 </selector>
 
 <shapes>
-The library. Each shape states its trigger condition, its width rule, its prompt skeleton, and its return contract.
+Each shape's skeleton and return are templates in `references/role-prompts.md`.
 
 <per_artifact_fan_out>
-**Trigger** an enumerated imperative over many artifacts, each judged on its own. **Width** one helper per file path on the list written out before dispatch. **Prompt skeleton** the invariant preamble, the one target path, that artifact's situation and target state, the negative list, the no-further-delegation clause, and the return contract. **Return** this artifact's outcome keyed by its stable identifier, the findings raised against it, and an explicit statement of what the helper examined and cleared.
+**Trigger** an enumerated imperative over many artifacts, each judged on its own. **Width** one helper per ledger row, one path per row. **Prompt skeleton** the producing template with the item's kind note. **Return** the producing return.
 </per_artifact_fan_out>
 
 <lens_panel>
-**Trigger** one corpus that needs several angles rather than several artifacts. **Width** three to five named lenses over the identical corpus. **Prompt skeleton** the preamble, this lens's name and the question it asks, the corpus pointer, the note that siblings cover the other angles so depth beats breadth, and the return contract. **Return** findings under this lens only, each carrying its verdict, confidence, verbatim quote, anchor, and severity, plus what this lens examined and cleared.
+**Trigger** one corpus that needs several angles. **Width** three to five named lenses over the identical corpus. **Prompt skeleton** the lens template. **Return** the lens return.
 </lens_panel>
 
 <paired_refute_check>
-**Trigger** a produced artifact whose correctness the run is about to rest on. **Width** exactly one checker per produced artifact. **Prompt skeleton** the preamble, the producer's report verbatim, the artifact pointer, the stated opening position that the work is incomplete or wrong, the closed numbered checklist that concedes it, and the read-only operations to use. **Return** a verdict per checklist item with its citing span, the findings, and the narrowed wording where a claim was overstated rather than wrong.
+**Trigger** every write that lands, whoever wrote it, you included. **Width** one check per written file against the recorded baseline: gates clear pointer-only hunks, and one checker reads each file whose diff changes a claim. **Prompt skeleton** the checking template with its two standing lines. **Return** the checking return.
 </paired_refute_check>
 
 <judge_panel>
-**Trigger** a closed comparison among candidates that already exist. **Width** one judge per named criterion, with the candidate set held identical across judges. **Prompt skeleton** the preamble, the full candidate set, this judge's single criterion and its scale, and the instruction to score every candidate on that criterion alone. **Return** a score and a one-clause rationale per candidate under this criterion, with the quote that earned each score.
+**Trigger** a closed comparison among candidates that already exist. **Width** one judge per criterion over the identical candidate set. **Prompt skeleton** the judge template, one criterion on a defined scale. **Return** the judge return, with at most three cited fatal flaws.
 </judge_panel>
 
 <completeness_critic>
-**Trigger** a finished body that needs a what-is-missing read rather than a what-is-wrong read. **Width** one critic per body, given the body and the brief it answers. **Prompt skeleton** the preamble, the brief, the finished body, and the instruction to name what the brief requires that the body leaves out. **Return** the missing items with the brief's own words for each, the items confirmed present with their anchors, and an empty list where nothing is missing.
+**Trigger** a finished body that needs a what-is-missing read; its scope is every check scoped to raised findings or changed files. **Width** one critic per body, paired with one surplus read. **Prompt skeleton** the critic template. **Return** the critic return, with gap units as full briefs.
 </completeness_critic>
 
 <single_writer_validator>
-**Trigger** a tree of writes that share a link graph or an index. **Width** exactly one, running alone after every writer has returned. **Prompt skeleton** the preamble, the roster of what was written, the invariants the tree holds, and the instruction to read the tree as it now stands. **Return** the invariants that hold, the ones broken with the path and anchor that break them, and the repairs proposed rather than applied.
+**Trigger** a tree of writes that share a link graph or an index. **Width** exactly one, alone, after every writer and checker has returned. **Prompt skeleton** the validator template, with a grant naming its paths. **Return** the validator return, with repairs proposed rather than applied. On an upstream shortfall it reports the gap and writes nothing.
 </single_writer_validator>
 </shapes>
 
@@ -137,21 +137,19 @@ Recognise a nested item while writing the list, not after dispatching it. An ite
 </delegation_depth>
 
 <prompt_assembly>
-Assemble each helper prompt from three parts. An **invariant preamble** holds the hard rules, the shared vocabulary, the severity ladder, and the facts already settled that nobody re-derives. A **hand-written per-item brief** names that item's situation and target state. A **kind note**, drawn from a small table, handles items whose class needs different treatment. The preamble goes unchanged into checking passes as well as producing ones.
+Render every brief with `brief` from files in the run directory: the invariant preamble, the phase's access block, the item brief, its kind note from `references/edit-mechanics.md`, the hashed intent, and the paths of upstream returns to read in full. The preamble holds the hard rules, the vocabulary, the severity ladder, and settled facts. Settle only a fact measured against the primary system, or read in finished content of the artifact the claim is about, and tag each settled fact with its provenance class. A fact from documentation, a wiki, another project's guide, a placeholder, a to-do note, or a later phase stays conditional. It goes in the unverified-premises block, checking passes test it, and a deliverable states it with the probe that would settle it. A producer and its checker include the same rules file byte for byte, and a writer applies only text its checker saw. Scripted replacement touches pointers only, and every claim, quotation, and hard-wrapped sentence changes through a writer that edits whole sentences.
 
-Write every role contract as text the pass reads inside its own turn: open with the pass's first concrete action, state each prohibition as something the pass does, and restate a load-bearing prohibition at the point of use. A role body can arrive inside the user turn with no authority over the surrounding conversation, so a contract that relies on standing precedence reaches only some hosts while an action-shaped one reaches all of them.
+Write every role contract as text the pass reads inside its own turn. Open with its first concrete action, state each prohibition as something the pass does, and restate a load-bearing prohibition at the point of use. A role body can arrive inside the user turn with no authority over the conversation around it.
 </prompt_assembly>
 
 <checking>
-Refute by default, cite to clear. The checker receives the producer's report verbatim, opens from the stated position that the work is incomplete or wrong, and concedes only after running a closed numbered checklist. Name the cost that sets that default in the same sentence, so the helper weighs it rather than obeys it.
+Refute by default, cite to clear. The checker reads the producer's return, the governing contract, and the artifact from their paths, opens from the position that the work is incomplete or wrong, and concedes only after a closed numbered checklist. Name the cost that sets that default, so the checker weighs it. Build the checklist from the artifact's acceptance contract, one line per item, testing the required form present and the old form absent. Keep expected verdicts, preferences, and prior-round digests out of the brief. When the claim is your own, one pass derives it blind from the question and the sources first.
 
-The checker changes nothing and is told which read-only operations to use. Where a host's read-only mode gates commands behind approval rather than denying them, the checking pass stays clear of shell use entirely.
-
-Each finding carries a verdict from a small closed set, a confidence, a verbatim quote, a path with a heading or symbol anchor, and a severity from a defined ladder. A clean verdict cites the span that settled it, so a first-pass all-clear with no citation routes back for re-checking rather than passing. The checker may narrow an overstated claim instead of killing it, and the narrowed wording propagates. A helper acting on findings re-derives each one first and reports a disproved finding as refuted. Every reviewing pass reports what it examined and cleared, and an empty finding list is a valid and expected outcome.
+Each atomic finding carries a verdict and a confidence from the sets C2 defines, a claim type from C8, a verbatim quote, an anchored path, and a severity from the preamble's ladder. A clean line cites its settling span, and an uncited or self-cited clear routes back once. A check clears only claims of its own type, and a probe fires on a known positive before its empty result counts. A read receipt is a claim that `accept` checks against the input version the row recorded. The checker changes nothing, uses the read-only operations its brief names, and stays off the shell where a read-only mode gates commands behind approval. Narrowed wording propagates. Every reviewing pass reports what it examined and cleared, and an empty finding list is a valid outcome.
 </checking>
 
 <confirmation_provenance>
-Record how a finding survived. A finding the checking pass was shown and did not refute is **recall-confirmed** and says so in the report. A finding a pass surfaced without having been shown it is **independently surfaced**. Recognising a stated issue is easier and steadier than generating it, so a recall-confirmed finding carries less weight, and a decision resting only on recall-confirmed findings says so.
+Record how a finding survived. One a pass was shown and did not refute is **recall-confirmed**, and one a pass surfaced unprompted is **independently surfaced**. The ledger tags each confirmation recall-confirmed when the checker's brief relayed that record, and independently surfaced otherwise. A recall-confirmed finding carries less weight, and a decision resting only on such findings says so. Label a finding that no lens refuted after both lenses saw it "survived both lenses, recall-confirmed", and reserve "confirmed" for a finding surfaced independently or re-derived against the source.
 </confirmation_provenance>
 
 <helper_failure>
@@ -167,7 +165,7 @@ Completion is an accepted return. A notice, a quiet interval, or a tree predicat
 </helper_failure>
 
 <remediation>
-One round, never loop until pass. Only the items that failed verification enter repair, they enter once, and the report marks the repaired output as unverified rather than implying end-to-end coverage. Repeating a stochastic check until it passes selects its most lenient draw rather than verifying. Guard a follow-up fan-out on the count of items that need it, so a pass over an empty list dispatches nothing and says so.
+One round, never loop until pass. The repair list holds every item that failed verification, including each instance a confirmed class sweep found, whatever verdict word the checker used, and each enters repair once. A remediator re-derives each finding first and returns applied, refuted with its span, or routed. Re-check each repaired item once, at no lower depth than its first check. Report a pass as re-checked once, recall-limited, and unverified end to end, and report a fail as failed after repair, with no second round. Repeating a stochastic check until it passes selects its most lenient draw. Guard a follow-up fan-out on its count, so an empty list dispatches nothing and says so.
 </remediation>
 
 <run_state>

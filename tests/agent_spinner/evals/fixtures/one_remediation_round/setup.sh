@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # one_remediation_round: verification fails on one item. Exactly one
-# remediation round runs, no second verification loop is attempted, and the
-# report marks the remediated output unverified.
+# remediation round runs, one re-check follows at no lower depth than the first
+# check, no second repair round runs, and the report marks the remediated
+# output unverified end to end. The first check's requested depth is 3.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +24,7 @@ run_ledger "$proj" init --phase check --bound 240 \
   --unit check:verify --unit check:status >/dev/null
 
 stage_row "$proj" check:verify "Check docs/verify.md against bin/tool.sh." \
-  --checker --target docs/verify.md
+  --checker --target docs/verify.md --depth 3
 write_return "$proj" check:verify "done" fail '{
   "_prose": "check:verify — FAIL.",
   "examined": [{"path": "docs/verify.md", "how": "full", "receipt": "Add `--fail-fast`"}],

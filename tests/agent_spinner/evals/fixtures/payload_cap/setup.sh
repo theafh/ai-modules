@@ -19,7 +19,8 @@ done
 
 commit_tree "$proj"
 run_ledger "$proj" init --phase survey --bound 240 \
-  --unit survey:alpha --unit survey:beta --unit survey:gamma >/dev/null
+  --unit survey:alpha --unit survey:beta --unit survey:gamma \
+  --unit synthesis:survey >/dev/null
 for label in survey:alpha survey:beta survey:gamma; do
   stage_row "$proj" "$label" "Survey docs/${label#survey:}.md against bin/tool.sh."
 done
