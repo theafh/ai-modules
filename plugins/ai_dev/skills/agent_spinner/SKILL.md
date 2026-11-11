@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.10
+version: 1.0.11
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -145,7 +145,7 @@ Write every role contract as text the pass reads inside its own turn. Open with 
 <checking>
 Refute by default, cite to clear. The checker reads the producer's return, the governing contract, and the artifact from their paths, opens from the position that the work is incomplete or wrong, and concedes only after a closed numbered checklist. Name the cost that sets that default, so the checker weighs it. Build the checklist from the artifact's acceptance contract, one line per item, testing the required form present and the old form absent. Keep expected verdicts, preferences, and prior-round digests out of the brief. When the claim is your own, one pass derives it blind from the question and the sources first.
 
-Each atomic finding carries a verdict and a confidence from the sets C2 defines, a claim type from C8, a verbatim quote, an anchored path, and a severity from the preamble's ladder. A clean line cites its settling span, and an uncited or self-cited clear routes back once. A check clears only claims of its own type, and a probe fires on a known positive before its empty result counts. A read receipt is a claim that `accept` checks against the input version the row recorded. The checker changes nothing, uses the read-only operations its brief names, and stays off the shell where a read-only mode gates commands behind approval. Narrowed wording propagates. Every reviewing pass reports what it examined and cleared, and an empty finding list is a valid outcome.
+Each atomic finding carries a verdict and a confidence from the sets C2 defines in `references/checks.md`, a claim type from C8, a verbatim quote, an anchored path, and a severity from the preamble's ladder. A clean line cites its settling span, and an uncited or self-cited clear routes back once. A check clears only claims of its own type, and a probe fires on a known positive before its empty result counts. A read receipt is a claim that `accept` checks against the input version the row recorded. The checker changes nothing, uses the read-only operations its brief names, and stays off the shell where a read-only mode gates commands behind approval. Narrowed wording propagates. Every reviewing pass reports what it examined and cleared, and an empty finding list is a valid outcome.
 </checking>
 
 <confirmation_provenance>

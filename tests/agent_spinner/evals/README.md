@@ -226,7 +226,8 @@ route back; its checks are unchanged.
 ### 2026-11-11, Cursor CLI 2026.10.22-27dcf5f, model `auto` — checking-doctrine blast radius
 
 The component change (`SKILL.md`, `references/checks.md`,
-`references/role-prompts.md`) and the eval changes it ships reach the set
+`references/edit-mechanics.md`, `references/role-prompts.md`) and the eval
+changes it ships reach the set
 below. Each was re-run fresh (`--force`) after the last component edit, so
 every passing run postdates every artifact under test. Where an eval appears
 in the 2026-11-02–03 table above, the run here supersedes it as the verdict of
