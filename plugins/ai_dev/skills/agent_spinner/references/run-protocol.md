@@ -99,9 +99,9 @@ fans out on its own.
 9. Read the request for each pre-dispatch gate's answer, proceed on a stated
    answer, and quote it in the announcement. A pre-dispatch gate is a question
    for the user that the run settles before it sends helpers. On a host with no
-   later turn, an unanswered gate stops the run before dispatch, with its
-   decision packet and `close --stopped`. A run on such a host uses the inline
-   floor or batch delivery only.
+   later turn, an unanswered gate stops the run before dispatch: run `stop` so
+   `STOP` is written, record its decision packet, and run `close --stopped`. A
+   run on such a host uses the inline floor or batch delivery only.
 10. Pilot two or three items to price the per-item cost.
 11. Put every unanswered gate to the user: forks, widening, and the
     verification scope with its estimate beside any size guideline the host or

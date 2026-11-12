@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.12
+version: 1.0.13
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -168,7 +168,7 @@ Put the verdict first, and keep three things apart. The opening sentence gives t
 </reporting>
 
 <judgement>
-Route real forks to the user as decision packets, shaped as `references/report-shapes.md` shows, and keep each open in the ledger until answered. At every tier these are forks: removing most of a body or a load-bearing section; deleting or narrowing a committed rule, requirement, or design element; touching an artifact already marked complete; accepting a finding as a policy exception; writing a standing rule into an instruction file; picking a side or resolving a contradiction; widening scope; and setting a judgement-heavy bar before the user confirms a calibration sample. Every fork a helper labels and every open question a draft carries reaches the user. An answer the request states is the user's answer. Where the host gives no later turn, an unanswered gate ends the run with its decision packet and `close --stopped`, and the run uses the inline floor or batch delivery only. A persistent marker advances only over what the run examined, and a verdict waits for every checker row. Hand each stamp, capture hash, audit baseline, and index or log entry to the owning family's gate by name. Route a write to a stamped artifact to that gate or to the user before dispatch, whatever the write changes. An announced fork holds its writes until answered, and a ruling applies to every instance of its class. A run whose ask was which work to do changes nothing, states the no-edit rule in every helper prompt, and closes by asking for the go-ahead.
+Route real forks to the user as decision packets, shaped as `references/report-shapes.md` shows, and keep each open in the ledger until answered. At every tier these are forks: removing most of a body or a load-bearing section; deleting or narrowing a committed rule, requirement, or design element; touching an artifact already marked complete; accepting a finding as a policy exception; writing a standing rule into an instruction file; picking a side or resolving a contradiction; widening scope; and setting a judgement-heavy bar before the user confirms a calibration sample. Every fork a helper labels and every open question a draft carries reaches the user. An answer the request states is the user's answer. Where the host gives no later turn, an unanswered gate ends the run with its decision packet: run `stop` so `STOP` is written, then `close --stopped`, and the run uses the inline floor or batch delivery only. A persistent marker advances only over what the run examined, and a verdict waits for every checker row. Hand each stamp, capture hash, audit baseline, and index or log entry to the owning family's gate by name. Route a write to a stamped artifact to that gate or to the user before dispatch, whatever the write changes. An announced fork holds its writes until answered, and a ruling applies to every instance of its class. A run whose ask was which work to do changes nothing, states the no-edit rule in every helper prompt, and closes by asking for the go-ahead.
 </judgement>
 
 </agent_spinner_skill>

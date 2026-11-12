@@ -1648,7 +1648,7 @@
     {
       "id": "role_depth_recorded",
       "skill": "agent_spinner",
-      "prompt": "Close the open run under .agent_spinner/. If the close reports the checker's recorded depth as below its producer's, record that as a flag with its reason, then close again. Write the report and list the requested and observed model and effort for each role, naming the flag as a narrowing.",
+      "prompt": "Close the open run under .agent_spinner/. If the close reports the checker's recorded depth as below its producer's, record that as a flag with its reason. Then write the report, listing the requested and observed model and effort for each role and naming the flag as a narrowing; the final close needs the current tally block in report.md. Then close again.",
       "expected_output": "Each roster row carries the requested model and effort and the observed values, with unobserved where the host exposed nothing. The close flags the checker on its recorded depth, the run closes cleanly once the flag is recorded, and the report lists both values per role and names the flag as a narrowing.",
       "files": [
         "evals/fixtures/role_depth_recorded/setup.sh"

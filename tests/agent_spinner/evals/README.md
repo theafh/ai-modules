@@ -130,6 +130,10 @@ a grader broadening backed by a captured correct run; no check was weakened.
   `<capability_probe>` states the deployment-versus-callability rule but a run
   no longer mentioned the definitions unprompted, so the eval asks the question
   it grades.
+- `role_depth_recorded`: its prompt now writes the report before the final
+  close and names the tally-block requirement, because `close` condition 7
+  refuses while `report.md` lacks the current tally block. It answers no
+  pre-dispatch gate; the fixture stages the run mid-flight.
 - `judgement_surfaced`: its prompt is unchanged. Its fixture's `NOTES.txt` now
   adds "Nobody has decided whether the legacy section should be removed.", so
   the removal's undecided state is a repository fact rather than an inference
@@ -413,7 +417,9 @@ was re-run and the table names the run that carries its final verdict.
 | `cross_model_checker_recorded` | pass | `../workspace/run-20261111-190018` (`--vendor claude`, model `sonnet`) |
 
 The eleven default-vendor evals also pass together in
-`../workspace/run-20261111-195004` (11 of 11, one from cache).
+`../workspace/run-20261111-195004` (11 of 11, one from cache), but that
+combined run covers the pre-revision versions of the evals whose later fixes
+landed afterwards; the table above names the run carrying each final verdict.
 
 ### 2026-11-11, Cursor CLI, model `auto` — judgement-containment blast radius
 
