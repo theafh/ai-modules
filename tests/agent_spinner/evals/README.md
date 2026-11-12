@@ -1,6 +1,6 @@
 # agent_spinner behavioral evals
 
-Every id in `evals.json` (eighty-one today). Each behavioural eval stages one
+Every id in `evals.json` (eighty-five today). Each behavioural eval stages one
 behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
 names one behaviour rather than a conjoined verdict. The static body and grep
 items stay under `script_tests/`.
@@ -120,6 +120,10 @@ having taken it.
 | `cross_model_checker_recorded` | roster columns + report | A checker model request that differs from its producer's is the roster fact; the report's unmeasured label keeps the benefit from being claimed as measured. Claude-only: a per-spawn model choice is the Claude feature it exercises. |
 | `checker_spawned_through_role` | `probe.json` + roster + report | The registered role's probe entry records its delegation as established and its read-only lever as enforced, and the checker's roster row names that role as its spawn route. A relayed accept proves the checker returned by message. |
 | `checker_spawned_without_role` | `probe.json` + roster + report | No role is staged, so no probe row uses a role route and the checker records a generic route. A role-labelled probe entry recording an established delegation fails the case by naming the visible copy. |
+| `attached_body_reads_recipe` | run directory + roster + page hashes + tool record + announcement | The attached body arrives without its reference files, so the read call naming `references/recipes/check-only-audit.md` is the proof the run found the recipe, and the announcement names it. `init` wrote the run directory and roster, and every page stays byte-identical. |
+| `routed_premise_sentences_landed` | report + page hashes | The plan and the landed pages are the disk facts; the report's failed post-run check and its refusal to claim every routed sentence landed are the prose half. |
+| `repair_list_keyed_on_severity` | ledger `row_source` + roster + report | One repair row per failing item is a ledger fact, the nit-only and passing artifacts' absence from the roster is its counterpart, and the report's nit list is the prose half. |
+| `confirmed_class_swept_before_clean` | ledger `row_source` + roster + report | The sweep row's source record and its coverage of every unit are ledger facts; the report's `docs/b.md` line and the fix-or-file fork are the prose half. |
 
 ### Prompt, fixture, and grader notes for the 2026-11-11 judgement-containment run
 
@@ -314,8 +318,10 @@ below. Each was re-run fresh (`--force`) after the last component edit, so
 every passing run postdates every artifact under test. Where an eval appears
 in the 2026-11-02–03 table above, the run here supersedes it as the verdict of
 record. `--timeout` defaults to 900 now, because a spawned-helper run on this
-vendor outlasts the old 420-second bound; `residual_selector` and
-`containment_one_path` carry their own 1200-second bound in `evals.json`.
+vendor outlasts the old 420-second bound; `containment_one_path` carries its own
+1200-second bound in `evals.json`, and `residual_selector` carries an
+1800-second bound because its ten-input survey-and-synthesis run measured about
+860 seconds on this vendor, which left too little headroom under load.
 
 | Eval | Result | Run |
 | --- | --- | --- |

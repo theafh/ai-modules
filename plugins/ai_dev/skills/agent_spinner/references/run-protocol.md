@@ -447,6 +447,10 @@ A return is optional prose, exactly one fenced JSON block, and the line
 - `checklist` is a list of objects with `verdict` (`pass` or `fail`) and `span`.
 - `findings` is a list of objects with `claim`, `severity` (on the ladder),
   `quote`, and `anchor`.
+- `gaps` is an optional list beside `findings`, one object per gap unit
+  carrying that gap unit's full brief.
+- `confirmations` is an optional list beside `findings`, one object per cleared
+  unit carrying the unit's `path` and the `span` that cleared it.
 - `forks` is a list of objects with `issue`, two to four `options`, and
   `preferred`.
 

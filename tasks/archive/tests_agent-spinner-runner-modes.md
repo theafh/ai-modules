@@ -144,7 +144,7 @@ Set `needs_real_absence` on `probe_definitions_no_spawn`, `inline_floor`, and `g
 
 **Out of scope:**
 
-- The evals that use these modes, which the ledger-doctrine task, the role-definitions task, and [the review-repair-recipes task](../ai-dev_agent-spinner-review-repair-recipes.md) own.
+- The evals that use these modes, which the ledger-doctrine task, the role-definitions task, and [the review-repair-recipes task](ai-dev_agent-spinner-review-repair-recipes.md) own.
 - Running the suite on a vendor the vendor layer does not drive.
 
 ## Acceptance

@@ -83,6 +83,7 @@ RECORD_LISTS = [
     "brief_corrections",
     "dropped_suspicions",
     "confirmations",
+    "gaps",
 ]
 PLACEHOLDER_MARKERS = ("todo", "tbd", "fixme", "xxx")
 STATE_VALUES = (

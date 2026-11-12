@@ -132,7 +132,7 @@ Through the wiki skill family, rewrite the paragraph of `wiki/concepts/agent-del
 **Out of scope:**
 
 - Rewriting the rest of the description for recall. On 2026-10-04, rewrites that led with the purpose or anchored the triggers to the moment of spawning passed 3 and 2 of the eight queries that name no skill, against 3 and 4 for today's text. The queries that still miss load no skill at all, or the bundled code-review skill.
-- The recipe rows and the recipe files, which [the review-repair recipes task](../ai-dev_agent-spinner-review-repair-recipes.md), [the rewrite-implement recipes task](../ai-dev_agent-spinner-rewrite-implement-recipes.md), and [the decision-research recipes task](../ai-dev_agent-spinner-decision-research-recipes.md) each add in one change.
+- The recipe rows and the recipe files, which [the review-repair recipes task](ai-dev_agent-spinner-review-repair-recipes.md), [the rewrite-implement recipes task](../ai-dev_agent-spinner-rewrite-implement-recipes.md), and [the decision-research recipes task](../ai-dev_agent-spinner-decision-research-recipes.md) each add in one change.
 - The pointers to `references/role-prompts.md` in `<shapes>` and to `references/report-shapes.md` in `<judgement>`, which [the checking-doctrine task](ai-dev_agent-spinner-checking-doctrine.md) and the judgement-containment task own.
 - The concept page's list of what ships with the skill and its "Derived from" entry, which the run-ledger task owns.
 

@@ -732,6 +732,133 @@ check "variants.md carries the replicated-draw variant" \
   file_has "$REFS/variants.md" 'Replicated draws returned unreduced'
 check "selector recipe rows match references/recipes/ one to one" \
   selector_recipe_rows_match "$SKILL" "$REFS/recipes"
+
+# Every recipe file under references/recipes/ carries one outer tag named after
+# its file stem, the thirteen field tags in order, two to four numbered phases,
+# and the shared lines each field must hold. A recipe with a repair round, one
+# whose <orchestrator_gates> carries the C5 label, also carries the three
+# repair-round lines. The loop passes when no recipe file exists, so it holds at
+# every commit and covers the recipe files other tasks ship.
+
+RECIPE_FIELDS=(
+  trigger ledger_steps phases width roles_and_returns adversarial_checks
+  orchestrator_gates failure_handling stop_and_ask report cost_profile
+  tier_notes post_run_checks
+)
+RECIPE_SHARED_LINES=(
+  'trigger|applies only after the selector matched that shape'
+  'width|spans sessions at wave ends'
+  'roles_and_returns|`accept --stdin`, never through a shell'
+  'orchestrator_gates|These orchestrator steps run in this order'
+  'failure_handling|accepts every pending return before it continues'
+  'stop_and_ask|An answer the request states is the user'"'"'s answer'
+  'cost_profile|coverage by construction, a review of every landed write, and baseline-differential gates'
+)
+RECIPE_REPAIR_LINES=(
+  'orchestrator_gates|re-enters the write phase and the checking phase that reads the repaired diff'
+  'report|re-checked once, recall-limited, and unverified end to end'
+  'post_run_checks|exactly one re-check row, at no lower depth than its first check'
+)
+
+record_result() {
+  if [[ "$1" == pass ]]; then
+    pass=$((pass+1)); printf '  PASS  %s\n' "$2"
+  else
+    fail=$((fail+1)); printf '  FAIL  %s\n' "$2"; failures+=("$2")
+  fi
+}
+
+# recipe_file_checks <file> — prints one "status<TAB>label" line per property,
+# with every shared phrase matched as a fixed string over its field's text and
+# line breaks collapsed to single spaces.
+recipe_file_checks() {
+  python3 - "$1" "${RECIPE_FIELDS[@]}" "--" "${RECIPE_SHARED_LINES[@]}" \
+    "--" "${RECIPE_REPAIR_LINES[@]}" <<'PY'
+import os, re, sys
+
+path = sys.argv[1]
+args = sys.argv[2:]
+first = args.index("--")
+fields = args[:first]
+rest = args[first + 1:]
+second = rest.index("--")
+shared = rest[:second]
+repair = rest[second + 1:]
+
+name = os.path.basename(path)
+stem = name[:-3].replace("-", "_")
+text = open(path, encoding="utf-8").read()
+results = []
+
+
+def emit(ok, label):
+    results.append(("pass" if ok else "fail", label))
+
+
+def block(outer, field):
+    tag = "<%s>" % field
+    if tag not in outer:
+        return ""
+    start = outer.index(tag) + len(tag)
+    end = outer.find("</%s>" % field, start)
+    return outer[start:end] if end != -1 else outer[start:]
+
+
+def collapse(value):
+    return re.sub(r"\s+", " ", value).strip()
+
+
+outer_open = "<%s>" % stem
+outer_close = "</%s>" % stem
+emit(outer_open in text and outer_close in text,
+     "%s opens the outer tag <%s>" % (name, stem))
+if outer_open in text and outer_close in text:
+    start = text.index(outer_open) + len(outer_open)
+    outer = text[start:text.index(outer_close, start)]
+else:
+    outer = ""
+
+positions = []
+for field in fields:
+    idx = outer.find("<%s>" % field)
+    emit(idx != -1, "%s <%s> present" % (name, field))
+    positions.append(idx)
+emit(all(idx != -1 for idx in positions)
+     and positions == sorted(positions),
+     "%s field tags appear in the required order" % name)
+
+phases = block(outer, "phases")
+numbered = len(re.findall(r"^[ \t]*[0-9]+\.[ \t]+\S", phases, re.M))
+emit(2 <= numbered <= 4,
+     "%s <phases> holds two to four numbered phases (found %d)"
+     % (name, numbered))
+
+for entry in shared:
+    field, phrase = entry.split("|", 1)
+    emit(phrase in collapse(block(outer, field)),
+         "%s <%s> carries '%s'" % (name, field, phrase))
+
+if "C5" in block(outer, "orchestrator_gates"):
+    for entry in repair:
+        field, phrase = entry.split("|", 1)
+        emit(phrase in collapse(block(outer, field)),
+             "%s <%s> carries the repair-round line '%s'"
+             % (name, field, phrase))
+
+for status, label in results:
+    print("%s\t%s" % (status, label))
+PY
+}
+
+if [[ -d "$REFS/recipes" ]]; then
+  while IFS= read -r recipe; do
+    [[ -n "$recipe" ]] || continue
+    while IFS=$'\t' read -r status label; do
+      [[ -n "$status" ]] || continue
+      record_result "$status" "$label"
+    done < <(recipe_file_checks "$recipe")
+  done < <(find "$REFS/recipes" -maxdepth 1 -type f -name '*.md' | sort)
+fi
 check "every template opens with an action rather than a prohibition" \
   python3 -c "
 import re, sys

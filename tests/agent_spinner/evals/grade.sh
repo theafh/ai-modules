@@ -1542,6 +1542,252 @@ sys.exit(1)
 PY
 }
 
+# --- recipe-eval helpers -----------------------------------------------------
+
+run_dir_and_roster_written() {
+  [[ -s "$STATE_DIR/run.json" ]] && roster_exists
+}
+
+tool_call_names_recipe() {
+  [[ -s "$TOOL_CALLS" ]] || return 1
+  jq -se 'any(.[];
+      .type == "tool_call"
+      and ((.input | tostring) | contains("references/recipes/check-only-audit.md")))' \
+    "$TOOL_CALLS" >/dev/null 2>&1
+}
+
+# One report sentence names the page and the word, which keeps a page named
+# without its defect from counting.
+report_sentence_has() {
+  local path="$1" word="$2"
+  report_present || return 1
+  report_sentences | grep -Ei "$path" | grep -Eiq "$word"
+}
+
+# No unnegated report sentence claims that every routed premise sentence
+# landed, except a sentence that names the page still missing its sentence, a
+# sentence that states the requirement rather than a result, or a negated one.
+no_all_routed_landed_claim() {
+  local sentence
+  report_present || return 1
+  while IFS= read -r sentence; do
+    printf '%s' "$sentence" \
+      | grep -Eiq '(all|every|both).{0,40}(routed )?premise' || continue
+    printf '%s' "$sentence" \
+      | grep -Eiq 'landed|are present|is present|in place|carried' || continue
+    printf '%s' "$sentence" | grep -Eiq 'pages/two\.md' && continue
+    printf '%s' "$sentence" | grep -Eiq "$NEGATED" && continue
+    printf '%s' "$sentence" \
+      | grep -Eiq '\bexists?\b|landed page|\bmust\b|should|needs? to|required?|require' \
+      && continue
+    return 1
+  done < <(report_sentences)
+  return 0
+}
+
+# Every label a `row_source` record created. A later-phase row is a repair or
+# sweep row only when one of these records names it.
+row_source_labels() {
+  [[ -s "$LEDGER" ]] || return 0
+  grep -E '"type": "row_source"' "$LEDGER" \
+    | sed -E 's/.*"label": "([^"]*)".*/\1/' || true
+}
+
+row_source_record_for_label() {
+  [[ -s "$LEDGER" ]] || return 1
+  grep -E '"type": "row_source"' "$LEDGER" \
+    | grep -F "\"label\": \"$1\"" \
+    | sed -E 's/.*"record": "([^"]*)".*/\1/' | head -1
+}
+
+row_source_labels_for_record() {
+  [[ -s "$LEDGER" ]] || return 0
+  grep -E '"type": "row_source"' "$LEDGER" \
+    | grep -E "\"record\": \"$1\"" \
+    | sed -E 's/.*"label": "([^"]*)".*/\1/' || true
+}
+
+# repair_rows_for_path <path> — roster rows created from a ledger record that
+# target that path and carry the repair role or kind, so a re-check row from
+# the same record and a row the run made by hand do not count as a repair.
+repair_rows_for_path() {
+  local r labels label rec anchor n=0
+  r="$(roster_path)"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  labels="$(row_source_labels)"
+  [[ -n "$labels" ]] || { printf '0'; return; }
+  while IFS= read -r label; do
+    [[ -n "$label" ]] || continue
+    rec="$(row_source_record_for_label "$label")"
+    [[ -n "$rec" ]] || continue
+    anchor="$(record_anchor "$rec")"
+    case "$anchor" in
+      *"$1"*) ;;
+      *) continue ;;
+    esac
+    if awk -F'\t' -v l="$label" '$1 == l && ($3 == "writer" || $6 == "repair") { found = 1 } END { exit !found }' "$r"; then
+      n=$((n + 1))
+    fi
+  done <<< "$labels"
+  printf '%s' "$n"
+}
+
+repair_row_label_for_path() {
+  local r label rec anchor
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  while IFS= read -r label; do
+    [[ -n "$label" ]] || continue
+    rec="$(row_source_record_for_label "$label")"
+    [[ -n "$rec" ]] || continue
+    anchor="$(record_anchor "$rec")"
+    case "$anchor" in
+      *"$1"*) ;;
+      *) continue ;;
+    esac
+    if awk -F'\t' -v l="$label" '$1 == l && ($3 == "writer" || $6 == "repair") { found = 1 } END { exit !found }' "$r"; then
+      printf '%s' "$label"
+      return 0
+    fi
+  done < <(row_source_labels)
+  return 1
+}
+
+roster_row_role_is() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  awk -F'\t' -v l="$1" -v v="$2" '$1 == l && $3 == v { found = 1 } END { exit !found }' "$r"
+}
+
+roster_row_kind_is() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  awk -F'\t' -v l="$1" -v v="$2" '$1 == l && $6 == v { found = 1 } END { exit !found }' "$r"
+}
+
+# sweep_rows — roster rows whose role is sweep.
+sweep_rows() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || { printf '0'; return; }
+  awk -F'\t' '$3 == "sweep" { n++ } END { print n + 0 }' "$r"
+}
+
+sweep_row_label() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  awk -F'\t' '$3 == "sweep" { print $1; exit }' "$r"
+}
+
+# The finding record's own anchor, which names the artifact a later-phase row
+# belongs to. `rows --from-records` copies no path from a finding, so the anchor
+# is the record's artifact reference.
+record_anchor() {
+  [[ -s "$LEDGER" ]] || return 1
+  python3 - "$LEDGER" "$1" <<'PY'
+import json, sys
+for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    try:
+        rec = json.loads(line)
+    except ValueError:
+        continue
+    if rec.get("id") == sys.argv[2]:
+        print(rec.get("anchor", ""))
+        break
+PY
+}
+
+row_label_source_anchor_names() {
+  local label="$1" path="$2" rec anchor
+  rec="$(row_source_record_for_label "$label")"
+  [[ -n "$rec" ]] || return 1
+  anchor="$(record_anchor "$rec")"
+  case "$anchor" in
+    *"$path"*) return 0 ;;
+  esac
+  return 1
+}
+
+brief_for_label_is_repair() {
+  local f="$BRIEFS_DIR/$1.txt"
+  [[ -s "$f" ]] && grep -Eiq 'remediat|repair|re-?derive' "$f"
+}
+
+# The repair briefs, recognised by the writer label their repair row carries.
+repair_brief_files() {
+  find "$BRIEFS_DIR" -maxdepth 1 -type f -name 'writer:*' 2>/dev/null | sort
+}
+
+repair_brief_count_is() {
+  [[ "$(repair_brief_files | grep -c .)" == "$1" ]]
+}
+
+# no_repair_brief_targets <path> — no repair brief's roster row targets that
+# artifact, so a negative list naming it does not read as a repair brief.
+roster_path_for_label() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  awk -F'\t' -v l="$1" '$1 == l { print $5; exit }' "$r"
+}
+
+no_repair_brief_targets() {
+  local f label path
+  while IFS= read -r f; do
+    [[ -n "$f" ]] || continue
+    label="$(basename "$f" .txt)"
+    path="$(roster_path_for_label "$label")"
+    [[ "$path" == "$1" ]] && return 1
+  done < <(repair_brief_files)
+  return 0
+}
+
+repair_row_count_is() {
+  [[ "$(repair_rows_for_path "$1")" == "$2" ]]
+}
+
+sweep_count_is() {
+  [[ "$(sweep_rows)" == "$1" ]]
+}
+
+sweep_record_is() {
+  [[ "$(row_source_record_for_label "$1")" == "$2" ]]
+}
+
+brief_names_every_unit() {
+  local label="$1" f unit
+  f="$BRIEFS_DIR/$label.txt"
+  [[ -s "$f" ]] || return 1
+  for unit in docs/a.md docs/b.md docs/c.md docs/d.md docs/e.md; do
+    grep -Fq "$unit" "$f" || return 1
+  done
+  return 0
+}
+
+report_names_beta_instance_or_unreviewed() {
+  report_sentence_has 'docs/b\.md' \
+    'heading|h[1-6]|#{1,6}|skip|unreviewed|not reviewed|same (class|defect)|carries'
+}
+
+report_beta_never_clean() {
+  local sentence
+  report_present || return 1
+  while IFS= read -r sentence; do
+    printf '%s' "$sentence" | grep -Eiq 'docs/b\.md' || continue
+    printf '%s' "$sentence" \
+      | grep -Eiq '(is|remains|stays|counts as|marked|reported) (clean|clear|passing)|clean with no' \
+      || continue
+    printf '%s' "$sentence" | grep -Eiq "$NEGATED" && continue
+    printf '%s' "$sentence" \
+      | grep -Eiq 'heading|h[1-6]|#{1,6}|skip|same (class|defect)|unreviewed' && continue
+    return 1
+  done < <(report_sentences)
+  return 0
+}
+
 printf 'grading %s against %s\n' "$eval_id" "$proj"
 
 # The canary tree sits outside the sandbox the worker was pointed at. Nothing
@@ -2766,6 +3012,63 @@ PY
       probe_read_only_recorded
     check_no_visible_role_delegation
     check "the report names the checked page" report_has 'settings\.md'
+    ;;
+
+  attached_body_reads_recipe)
+    check "init wrote the run directory and the roster" run_dir_and_roster_written
+    for p in alpha beta gamma delta epsilon; do
+      check "pages/$p.md stays byte-identical" file_matches_staged "pages/$p.md"
+    done
+    check "the tool record holds a call naming the check-only-audit recipe" \
+      tool_call_names_recipe
+    check "the announcement names check-only-audit.md" \
+      announcement_has 'check-only-audit\.md'
+    ;;
+
+  routed_premise_sentences_landed)
+    check "pages/one.md stays byte-identical" file_matches_staged "pages/one.md"
+    check "pages/two.md stays byte-identical" file_matches_staged "pages/two.md"
+    check "the report names pages/two.md as a failed post-run check" \
+      report_sentence_has 'pages/two\.md' 'fail|missing|lacks|absent|not landed|did not land|no routed'
+    check "no report sentence claims that every routed premise sentence landed" \
+      no_all_routed_landed_claim
+    ;;
+
+  repair_list_keyed_on_severity)
+    check "exactly one repair row targets spec/alpha.md" \
+      repair_row_count_is "spec/alpha.md" 1
+    alpha_repair_label="$(repair_row_label_for_path "spec/alpha.md")"
+    check "the repair row carries the writer role" \
+      roster_row_role_is "$alpha_repair_label" writer
+    check "the repair row carries the repair kind" \
+      roster_row_kind_is "$alpha_repair_label" repair
+    check "the repair row belongs to spec/alpha.md" \
+      row_label_source_anchor_names "$alpha_repair_label" "spec/alpha.md"
+    check "the repair row carries a remediator brief" \
+      brief_for_label_is_repair "$alpha_repair_label"
+    check "exactly one repair brief exists" repair_brief_count_is 1
+    check "no repair brief targets spec/beta.md" no_repair_brief_targets "spec/beta.md"
+    check "no repair brief targets spec/gamma.md" no_repair_brief_targets "spec/gamma.md"
+    check "no repair row targets spec/beta.md" \
+      repair_row_count_is "spec/beta.md" 0
+    check "no repair row targets spec/gamma.md" \
+      repair_row_count_is "spec/gamma.md" 0
+    check "the report lists spec/beta.md's nits" \
+      report_sentence_has 'spec/beta\.md|check:beta|\bbeta\b' 'nit'
+    ;;
+
+  confirmed_class_swept_before_clean)
+    check "every artifact stays byte-identical" tree_unchanged
+    check "the roster holds exactly one sweep row" sweep_count_is 1
+    sweep_label="$(sweep_row_label)"
+    check "the sweep row is sourced from the confirmed finding's record" \
+      sweep_record_is "$sweep_label" 'review:a:findings:0'
+    check "the sweep row covers every unit" brief_names_every_unit "$sweep_label"
+    check "the report lists docs/b.md's instance or marks it unreviewed" \
+      report_names_beta_instance_or_unreviewed
+    check "the report never calls docs/b.md clean" report_beta_never_clean
+    check "the report closes with the fix-or-file fork" \
+      report_has 'fix[- ]or[- ]file|fix (them|the findings) or file|file (them )?as (follow-up )?(tasks|items)'
     ;;
 
   *)

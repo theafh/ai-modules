@@ -19,9 +19,9 @@ Read [the run's request, intent, and orient records] before writing anything.
 
 Vocabulary: [the three to six terms this run keys on, one clause each].
 
-Severity ladder, highest first: blocker (the artifact is wrong or unusable),
-major (a stated requirement goes unmet), minor (a real defect that changes no
-decision), note (an observation worth recording).
+Severity ladder, highest first: [the severity names `init` registered through
+`--severity`, highest first, each with a one-clause meaning; fill this slot from
+the run's registered ladder so `accept` enforces the same names].
 
 Settled facts, each tagged measured or read with its source:
 - [measured] [the fact, the command that measured it, and the value it
@@ -126,11 +126,13 @@ Sibling passes cover the other angles, so spend your effort on depth under
 this lens rather than breadth across the others.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
-`beyond_brief`, `incidents`, `own_authority`, `alternatives`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `confirmations`,
+`forks`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Put findings under this
 lens only in `findings`, each with its verdict, confidence, quote, anchor, and
-severity. An empty `findings` list is a valid and expected result.
+severity. Name each unit the pass cleared in `confirmations`, one entry per
+unit carrying that unit's `path` and the `span` that cleared it. An empty
+`findings` list is a valid and expected result.
 ```
 
 ## Checking pass
@@ -235,18 +237,18 @@ Read the finished body and the brief it answers in full.
 [access block]
 
 Name what the brief requires that the body leaves out, in the brief's own
-words. Name each item you confirm present with its anchor. Write each gap unit
-as a full brief.
+words. Name each item you confirm present with its anchor. Return each gap unit
+in `gaps`, one entry per gap unit carrying that gap unit's full brief.
 
 Run the surplus read beside this pass: name what to remove, and propose turning
 each restated rule into a citation.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `gaps`, `forks`,
 `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
-`brief_corrections`, `dropped_suspicions`, `notes`. Put the gap units as full
-briefs in `notes`, the confirmed-present items with their anchors in
-`checklist`, and the surplus read's removal proposals in `alternatives`.
+`brief_corrections`, `dropped_suspicions`, `notes`. Put the gap units in
+`gaps`, one full brief per entry, the confirmed-present items with their anchors
+in `checklist`, and the surplus read's removal proposals in `alternatives`.
 ```
 
 ## Judge pass

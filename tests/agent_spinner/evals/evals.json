@@ -145,7 +145,7 @@
         "extra_reads": [],
         "report_contract": false
       },
-      "timeout": 1200
+      "timeout": 1800
     },
     {
       "id": "containment_one_path",
@@ -1769,6 +1769,92 @@
       ],
       "harness": {
         "agents": [],
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1200
+    },
+    {
+      "id": "attached_body_reads_recipe",
+      "skill": "agent_spinner",
+      "prompt": "Audit every page under pages/ against rubric.md and report what to fix. Change nothing. Gate answers: the verification scope is all five pages, and no widening is needed; the estimate is five reviewers, one per page, plus one verifier per finding. Name the matched recipe file in your opening announcement.",
+      "expected_output": "The run matches the check-only-audit recipe and names it in the announcement, even though the attached skill body arrived without its reference files. init writes the run directory and roster, and every page stays byte-identical.",
+      "files": [
+        "evals/fixtures/attached_body_reads_recipe/setup.sh"
+      ],
+      "expectations": [
+        "init wrote the run directory and the roster.",
+        "Every page stays byte-identical.",
+        "The tool record holds a call whose input names references/recipes/check-only-audit.md.",
+        "The announcement names check-only-audit.md."
+      ],
+      "harness": {
+        "inline_body": true,
+        "tool_record": true,
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1200
+    },
+    {
+      "id": "routed_premise_sentences_landed",
+      "skill": "agent_spinner",
+      "prompt": "The fidelity run under .agent_spinner/ is closed. Run its post-run checks against the plan and the landed pages, and write the closing report. Change no file.",
+      "expected_output": "One routed premise sentence never landed. The report names pages/two.md as a failed post-run check, and no report sentence claims that every routed premise sentence landed. Every page stays byte-identical.",
+      "files": [
+        "evals/fixtures/routed_premise_sentences_landed/setup.sh"
+      ],
+      "expectations": [
+        "Every page stays byte-identical.",
+        "The report names pages/two.md as a failed post-run check.",
+        "No report sentence claims that every routed premise sentence landed."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1200
+    },
+    {
+      "id": "repair_list_keyed_on_severity",
+      "skill": "agent_spinner",
+      "prompt": "Continue this artifact-repair run after its Check phase: build the repair list from the accepted checker returns, create one repair row per failing item keyed on its lowest-id should-fix finding record, with its repair and re-check briefs, and write the report. Change no artifact.",
+      "expected_output": "The first artifact enters repair once, keyed on one of its two should-fix finding records, with one repair row and one remediator brief. The nit-only artifact and the passing artifact get no repair row and no remediator brief, and the report lists the nit-only artifact's findings.",
+      "files": [
+        "evals/fixtures/repair_list_keyed_on_severity/setup.sh"
+      ],
+      "expectations": [
+        "The roster holds exactly one repair row for spec/alpha.md.",
+        "That row is sourced from one of spec/alpha.md's accepted should-fix finding records.",
+        "Exactly one remediator brief exists.",
+        "spec/beta.md and spec/gamma.md have no repair row and no remediator brief.",
+        "The report lists spec/beta.md's nits."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1200
+    },
+    {
+      "id": "confirmed_class_swept_before_clean",
+      "skill": "agent_spinner",
+      "prompt": "Continue this check-only audit run after its Verify phase: create the class-sweep and recall-probe rows, run the sweep across every unit, and write the report. Change no artifact.",
+      "expected_output": "One sweep row is sourced from the confirmed finding's record and covers every unit. The report lists docs/b.md's instance of the confirmed class or marks it unreviewed, never clean, and closes with the fix-or-file fork. Every artifact stays byte-identical.",
+      "files": [
+        "evals/fixtures/confirmed_class_swept_before_clean/setup.sh"
+      ],
+      "expectations": [
+        "Every artifact stays byte-identical.",
+        "The roster holds one sweep row sourced from the confirmed finding's record that covers every unit.",
+        "The report lists docs/b.md's instance or marks it unreviewed, never clean.",
+        "The report closes with the fix-or-file fork."
+      ],
+      "harness": {
         "disallowed_tools": [],
         "extra_reads": [],
         "report_contract": false
