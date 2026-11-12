@@ -1,6 +1,6 @@
 # agent_spinner behavioral evals
 
-Every id in `evals.json` (seventy-nine today). Each behavioural eval stages one
+Every id in `evals.json` (eighty-one today). Each behavioural eval stages one
 behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
 names one behaviour rather than a conjoined verdict. The static body and grep
 items stay under `script_tests/`.
@@ -118,6 +118,8 @@ having taken it.
 | `blind_pass_by_prompt` | briefs + roster input versions + report | No brief carrying the hypothesis and the withheld hash on the row are the isolation facts; the report's label is the provenance half. |
 | `wide_run_plans_session_boundary` | announcement | The context estimate and the wave end where the boundary falls are pre-dispatch claims, so the announcement is the only surface that owns them. |
 | `cross_model_checker_recorded` | roster columns + report | A checker model request that differs from its producer's is the roster fact; the report's unmeasured label keeps the benefit from being claimed as measured. Claude-only: a per-spawn model choice is the Claude feature it exercises. |
+| `checker_spawned_through_role` | `probe.json` + roster + report | The registered role's probe entry records its delegation as established and its read-only lever as enforced, and the checker's roster row names that role as its spawn route. A relayed accept proves the checker returned by message. |
+| `checker_spawned_without_role` | `probe.json` + roster + report | No role is staged, so no probe row uses a role route and the checker records a generic route. A role-labelled probe entry recording an established delegation fails the case by naming the visible copy. |
 
 ### Prompt, fixture, and grader notes for the 2026-11-11 judgement-containment run
 
@@ -219,7 +221,7 @@ that mode off.
 | --- | --- | --- |
 | `inline_body` | `true` | The first turn carries the deployed skill body inline, in place of the path-read steps. |
 | `second_turn` | `{"prompt": "...", "between": "fixtures/<id>/between_turns.sh"}` | After the first turn the runner runs the optional `between` script, then sends `prompt` as a second turn through the resume path. |
-| `agents` | repository- or evals-relative paths | Each file is staged as a discoverable agent definition before the first turn. A fixture's mock agent lives under `fixtures/<id>/agents/`. |
+| `agents` | repository- or evals-relative paths | Each file is staged as a discoverable agent definition before the first turn. A fixture's mock agent lives under `fixtures/<id>/agents/`; a shipped plugin role is named by its repository path, as `checker_spawned_through_role` names `plugins/ai_dev/agents/auto_checker_spinner.md`. |
 | `disallowed_tools` | tool classes: `spawn`, `shell`, `write` | Each class is withheld under the withheld-tool rule. |
 | `needs_real_absence` | `true` | The eval's expected behaviour rests on a withheld tool being truly absent, and the runner reports a run where that absence is only declared. |
 | `tool_record` | `true` | Every turn streams its events, and the runner writes the tool calls they show to `tool_calls.jsonl` beside `response.txt`. |
@@ -434,3 +436,16 @@ spawn-withheld evals recording `withheld_by: declared-absence`.
 Every other existing eval keeps the verdict named in the tables above; the
 five `smoke_*` runner evals stay out of this set because they check runner
 modes rather than these blocks.
+
+### 2026-11-12, Cursor CLI, model `auto` — helper-role spawn routes
+
+The two new role evals ran fresh against the shipped role files and the
+existing agent_spinner body. No existing eval's fixture, grader branch, or
+runner surface changed: the role files are new, the `grade.sh` additions are
+two new case branches with their own helpers, and the runner's `agents` key is
+unchanged. The blast radius is therefore the two new ids alone.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `checker_spawned_through_role` | pass | `../workspace/run-20261112-121014` |
+| `checker_spawned_without_role` | pass | `../workspace/run-20261112-121014` |

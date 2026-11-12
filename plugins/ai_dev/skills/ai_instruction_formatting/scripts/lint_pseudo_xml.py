@@ -552,7 +552,12 @@ def lint_file(path: Path) -> FileReport:
     else:
         rep.info.append("No YAML frontmatter — frontmatter checks skipped.")
 
-    # H1 check.
+    # H1 check. A role definition whose body must open with its runtime
+    # instruction opts out with a frontmatter comment, because the instruction
+    # has to be the body's first line rather than a title.
+    allow_no_h1 = bool(
+        fm and re.search(r"^#\s*lint:\s*allow-no-h1\b", fm, re.M)
+    )
     h1: str | None = None
     for ln in body.splitlines():
         s = ln.strip()
@@ -577,6 +582,8 @@ def lint_file(path: Path) -> FileReport:
             ))
         elif fm_name:
             rep.good.append("H1 matches frontmatter name.")
+    elif allow_no_h1:
+        rep.info.append("H1: omitted by the role-body opt-out.")
     elif fm is not None:
         rep.issues.append(Issue(
             "warn", body_start_line,

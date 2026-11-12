@@ -53,7 +53,9 @@ ai-modules/
 │   │   │   ├── auto_shaper_task.md
 │   │   │   ├── auto_gate_git.md
 │   │   │   ├── auto_fixer_git.md
-│   │   │   └── auto_verifier_git.md
+│   │   │   ├── auto_verifier_git.md
+│   │   │   ├── auto_checker_spinner.md
+│   │   │   └── auto_writer_spinner.md
 │   │   ├── hooks/           # shared hook scripts plus Claude/Codex/Antigravity hook configs
 │   │   └── skills/
 │   │       ├── git_commit/

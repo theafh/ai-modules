@@ -1139,6 +1139,134 @@ PY
 
 roster_field_is() { [[ "$(roster_row_field "$1" "$2")" == "$3" ]]; }
 
+# --- helper-role spawn-route facts ------------------------------------------
+
+PROBE="$STATE_DIR/probe.json"
+
+# probe_entry_field <label> <key> — one probe.json entry's key value.
+probe_entry_field() {
+  [[ -s "$PROBE" ]] || return 1
+  python3 - "$PROBE" "$1" "$2" <<'PY'
+import json, sys
+store = json.load(open(sys.argv[1]))
+entry = store.get(sys.argv[2]) or {}
+if sys.argv[3] not in entry:
+    sys.exit(1)
+print(entry[sys.argv[3]])
+PY
+}
+
+probe_entry_is() { [[ "$(probe_entry_field "$1" "$2")" == "$3" ]]; }
+
+# probe_entry_has_capability_value <label> <value> — any capability key on the
+# entry holds the value. probe_brief fixes no key name, and accept_probe stores
+# whatever keys the worker returned, so the value match is the subject.
+probe_entry_has_capability_value() {
+  [[ -s "$PROBE" ]] || return 1
+  python3 - "$PROBE" "$1" "$2" <<'PY'
+import json, sys
+store = json.load(open(sys.argv[1]))
+entry = store.get(sys.argv[2]) or {}
+sys.exit(0 if sys.argv[3] in entry.values() else 1)
+PY
+}
+
+# role_route_probe_labels — probe roster rows whose spawn_route is one of the
+# two shipped role names.
+role_route_probe_labels() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  awk -F'\t' '$3 == "probe" && ($12 == "auto_checker_spinner" || $12 == "auto_writer_spinner") {print $1}' "$r"
+}
+no_role_route_probe() { [[ -z "$(role_route_probe_labels)" ]]; }
+
+# non_role_probe_label — the first probe row whose spawn_route is not a role
+# name, which is the generic route the without-role case records.
+non_role_probe_label() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  awk -F'\t' '$3 == "probe" && $12 != "auto_checker_spinner" && $12 != "auto_writer_spinner" {print $1; exit}' "$r"
+}
+
+probe_read_only_recorded() {
+  local label value
+  label="$(non_role_probe_label)" || return 1
+  [[ -n "$label" ]] || return 1
+  value="$(probe_entry_field "$label" read_only)" || return 1
+  [[ -n "$value" ]]
+}
+
+# visible_role_delegation — a role-labelled probe entry records an established
+# delegation, which means a deployed role copy was visible to the worker.
+visible_role_delegation() {
+  [[ -s "$PROBE" ]] || return 1
+  python3 - "$PROBE" <<'PY'
+import json, sys
+store = json.load(open(sys.argv[1]))
+for label, caps in store.items():
+    if not isinstance(caps, dict) or "established" not in caps.values():
+        continue
+    route = label[len("probe:"):] if label.startswith("probe:") else label
+    if route in ("auto_checker_spinner", "auto_writer_spinner"):
+        print(route)
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
+# check_no_visible_role_delegation — fail with the visible copy's name, so a
+# deployed role never passes as a generic spawn.
+check_no_visible_role_delegation() {
+  local label="no role-labelled probe records an established delegation" visible
+  visible="$(visible_role_delegation)" || true
+  if [[ -z "$visible" ]]; then
+    pass=$((pass+1)); printf '  PASS  %s\n' "$label"
+  else
+    fail=$((fail+1))
+    printf '  FAIL  %s — the worker saw a deployed copy named %s\n' "$label" "$visible"
+    failures+=("$label")
+  fi
+}
+
+# checker_row_label — the roster row for the checked page, preferring the row
+# whose path is settings.md.
+checker_row_label() {
+  local r
+  r="$(roster_path)"
+  [[ -s "$r" ]] || return 1
+  awk -F'\t' '
+    ($3 == "check" || $3 == "checker" || $3 == "verify" || $6 == "check" || $6 == "checker") {
+      if ($5 == "settings.md" || $5 == "./settings.md") { print $1; found = 1; exit }
+      if (first == "") first = $1
+    }
+    END { if (!found && first != "") print first }
+  ' "$r"
+}
+
+checker_row_route_is() {
+  local label
+  label="$(checker_row_label)" || return 1
+  [[ -n "$label" ]] || return 1
+  roster_field_is "$label" spawn_route "$1"
+}
+
+checker_row_route_not_role() {
+  local label route
+  label="$(checker_row_label)" || return 1
+  [[ -n "$label" ]] || return 1
+  route="$(roster_row_field "$label" spawn_route)" || return 1
+  [[ -n "$route" && "$route" != "auto_checker_spinner" && "$route" != "auto_writer_spinner" ]]
+}
+
+checker_accepted_relayed() {
+  local label
+  label="$(checker_row_label)" || return 1
+  [[ -n "$label" ]] || return 1
+  roster_field_is "$label" state accepted && roster_field_is "$label" source relayed
+}
+
 # roster_columns_populated <label> — requested model and effort and both
 # observed values are recorded for the row.
 roster_columns_populated() {
@@ -2614,6 +2742,30 @@ PY
       checker_model_differs_from_producer
     check "the report names the cross-model benefit as unmeasured" \
       report_has 'unmeasured'
+    ;;
+
+  checker_spawned_through_role)
+    check "sandbox tree byte-identical" tree_unchanged
+    check "the role probe records delegation as established" \
+      probe_entry_has_capability_value "probe:auto_checker_spinner" established
+    check "the checker row names auto_checker_spinner in spawn_route" \
+      checker_row_route_is auto_checker_spinner
+    check "the role probe records read_only as enforced" \
+      probe_entry_is "probe:auto_checker_spinner" read_only enforced
+    check "the checker return is accepted with source relayed" \
+      checker_accepted_relayed
+    check "the report names the checked page" report_has 'settings\.md'
+    ;;
+
+  checker_spawned_without_role)
+    check "sandbox tree byte-identical" tree_unchanged
+    check "no probe row uses a role route" no_role_route_probe
+    check "the checker row records a generic spawn route" \
+      checker_row_route_not_role
+    check "the non-role probe entry records a read_only value" \
+      probe_read_only_recorded
+    check_no_visible_role_delegation
+    check "the report names the checked page" report_has 'settings\.md'
     ;;
 
   *)

@@ -716,6 +716,87 @@ def case_staged_agents(vendor_name: str) -> None:
         )
 
 
+def case_role_route_agents(vendor_name: str) -> None:
+    print(f"role-route agent staging ({vendor_name})")
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        worker, stub_dir = make_worker(root)
+        for index in (1, 2):
+            queue(stub_dir, index, json.dumps(
+                {"type": "result", "result": "stub reply", "session_id": "s1"}
+            ))
+        specs = {
+            eval_id: real_specs()[eval_id]
+            for eval_id in (
+                "checker_spawned_through_role",
+                "checker_spawned_without_role",
+            )
+        }
+        workspace = root / "workspace"
+        deploy_calls: list[list[str]] = []
+        real_deploy = run.micro_deploy._run_deploy
+
+        def recording_deploy(*, args, home, log_path):
+            deploy_calls.append(list(args))
+            return real_deploy(args=args, home=home, log_path=log_path)
+
+        run.micro_deploy._run_deploy = recording_deploy
+        try:
+            with patched(
+                specs, workspace, stub_dir,
+                grade=passing_grade(root),
+            ):
+                rc, output = invoke([
+                    *specs, "--vendor", vendor_name,
+                    "--worker-bin", str(worker), "--no-cache", "--workers", "1",
+                ])
+        finally:
+            run.micro_deploy._run_deploy = real_deploy
+        check(f"{vendor_name} role-route run exits 0", rc == 0, output)
+        run_root = latest_run(workspace)
+        through = json.loads(
+            (run_root / "checker_spawned_through_role" / "timing.json").read_text()
+        )
+        without = json.loads(
+            (run_root / "checker_spawned_without_role" / "timing.json").read_text()
+        )
+        check(
+            f"{vendor_name} through-role eval stages the checker role",
+            through["staged_agents"] == ["auto_checker_spinner"],
+            str(through["staged_agents"]),
+        )
+        check(
+            f"{vendor_name} without-role eval stages no role",
+            without["staged_agents"] == [],
+            str(without["staged_agents"]),
+        )
+        check(
+            f"{vendor_name} the deploy --only list names the checker role",
+            any("auto_checker_spinner" in ",".join(call) for call in deploy_calls),
+        )
+        role_path = (
+            REPO_ROOT / "plugins/ai_dev/agents/auto_checker_spinner.md"
+        ).resolve()
+        check(
+            f"{vendor_name} the through-role cache roots cover the role",
+            role_path in [
+                path.resolve()
+                for path in run.source_roots_for(
+                    specs["checker_spawned_through_role"]["harness"]
+                )
+            ],
+        )
+        check(
+            f"{vendor_name} the without-role cache roots omit the role",
+            role_path not in [
+                path.resolve()
+                for path in run.source_roots_for(
+                    specs["checker_spawned_without_role"]["harness"]
+                )
+            ],
+        )
+
+
 def case_withheld(vendor_name: str) -> None:
     print(f"withheld tools ({vendor_name})")
     with tempfile.TemporaryDirectory() as td:
@@ -1707,6 +1788,8 @@ def main() -> int:
     case_failed_preflight()
     for vendor_name in ("claude", "cursor"):
         case_staged_agents(vendor_name)
+    for vendor_name in ("claude", "cursor"):
+        case_role_route_agents(vendor_name)
     for vendor_name in ("claude", "cursor"):
         case_withheld(vendor_name)
     for vendor_name in ("claude", "cursor"):

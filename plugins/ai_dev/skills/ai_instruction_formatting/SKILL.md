@@ -1,7 +1,7 @@
 ---
 name: ai_instruction_formatting
 description: Organize AI-consumed content (prompts, rules, skills, commands, agents, system instructions) into pseudo-XML by wrapping each semantic concern in a dedicated tag for role, policy, inputs, and output contract. Use when structuring or reorganizing the body of a SKILL.md, agent or sub-agent definition, command file, rules document (.mdc), CLAUDE.md, AGENTS.md, or GEMINI.md configuration, prompt template, or system prompt into semantic tags, when choosing tag boundaries, or when checking whether an instruction file follows the pseudo-XML convention. This is the structure-and-tags skill; its sibling ai_instruction_writing governs the wording.
-version: 3.4.3
+version: 3.4.4
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -25,13 +25,13 @@ A pseudo-XML artifact lives inside a host file: a `SKILL.md`, an agent definitio
 | Tutorial with examples | Documentation pages explaining the format | Markdown prose with pseudo-XML inside ` ```xml ` fenced examples |
 | Mixed-agent | Agent definitions | Multiple top-level pseudo-XML wrappers (`<role>`, `<objective>`, `<protocol>`...) interspersed with markdown prose |
 
-Whenever the host file is a `SKILL.md` or agent definition, keep the YAML frontmatter and the H1 heading regardless of body shape: the frontmatter `name:` matches the directory name, and the H1 matches `name:`. The XML rules below apply to whichever pseudo-XML the file contains; prose-only files skip them entirely.
+Whenever the host file is a `SKILL.md` or agent definition, keep the YAML frontmatter and the H1 heading regardless of body shape: the frontmatter `name:` matches the directory name, and the H1 matches `name:`. The XML rules below apply to whichever pseudo-XML the file contains; prose-only files skip them entirely. A role definition whose body must open with its runtime instruction opts out of the H1 with a frontmatter comment, `# lint: allow-no-h1`, so the instruction stays the body's first line; the linter records the opt-out instead of a warning.
 
 ## Rule Strength
 
 Two tiers of guidance live in this skill: **mechanical rules** that are bugs when violated, and **stylistic guidance** that names well-tested defaults. The bundled linter enforces only the mechanical rules; an artifact that satisfies them while shaping content differently from the stylistic recommendations is correct, not deviant.
 
-- **Mechanical rules (linter-enforced, bugs when violated)**: frontmatter `name:` matches the directory name; H1 is present and is a casing-or-spacing variant of `name:` (so `# Auto Shaper Wiki` matches `name: auto_shaper_wiki`, and only genuine name drift is flagged); ASCII snake_case tag names; no attributes, no entities, no self-closing tags; balanced opening and closing tags with a recognized file shape; max nesting depth five (covers the canonical workflow shape `<wrapper> → <section_group> → <named_phase> → <list_parent> → <list_item>`; deeper is flagged); no duplicate siblings outside the repeating-tags allowlist; trailing newline.
+- **Mechanical rules (linter-enforced, bugs when violated)**: frontmatter `name:` matches the directory name; H1 is present and is a casing-or-spacing variant of `name:` (so `# Auto Shaper Wiki` matches `name: auto_shaper_wiki`, and only genuine name drift is flagged), unless a role definition carries the `# lint: allow-no-h1` frontmatter comment because its body must open with its runtime instruction; ASCII snake_case tag names; no attributes, no entities, no self-closing tags; balanced opening and closing tags with a recognized file shape; max nesting depth five (covers the canonical workflow shape `<wrapper> → <section_group> → <named_phase> → <list_parent> → <list_item>`; deeper is flagged); no duplicate siblings outside the repeating-tags allowlist; trailing newline.
 - **Stylistic guidance (defaults, not violations)**: which named container holds which kind of content (see "Section Separation"), the relative order of objective / tools / policy / output_contract, and which tags from the standard vocabulary appear at all. Apply the defaults when authoring from scratch; deviate when the artifact's own structure carries the meaning more clearly. An artifact whose tag names are fully self-describing (e.g., `<commit_message_multi_file>`, `<scoring_criteria>`) often needs less wrapper ceremony than one whose children share a generic name like `<rule>` or `<step>`.
 
 ## Core Format

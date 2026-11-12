@@ -313,8 +313,9 @@ files.
   exercises the bundled `scripts/run_ledger.py` under the oldest and newest
   python3; `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over
   11 committed report variants (15 pass/fail checks) for
-  `explicit_spinner_on_family_job`; `evals/test_run.py` proves the runner's
-  wiring against a stub worker; `evals/` holds every id in `evals.json` (79
+  `explicit_spinner_on_family_job` plus the `checker_spawned_without_role`
+  route cases; `evals/test_run.py` proves the runner's
+  wiring against a stub worker; `evals/` holds every id in `evals.json` (81
   today). Each
   behavioural eval stages one behaviour and the `smoke_*` evals check the
   runner's modes, driven by `evals/run.py` on the default Cursor worker in

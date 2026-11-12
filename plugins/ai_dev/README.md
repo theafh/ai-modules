@@ -73,6 +73,8 @@ Three tools sit beside the spine rather than on it:
 - **auto_gate_git**: runs `git_review` as the `git_auto_review` loop's only gate, first as a first review and then as delta re-reviews, keeping that skill's review criteria, headings, labels, and `<tags>` verbatim while forbidding its mutation paths, and returns that report followed by a structured verdict that assigns each finding a consecutive id, heading, label, `non_blocking` mark, `location`, `lane`, `Fix:`, and re-review `tag`.
 - **auto_fixer_git**: the single serialized writer of the `git_auto_review` loop. It fixes each approved finding in the working tree, adds a reproduction file directly in the run's ignored `.git_auto_review/` folder or extends the one already recorded, appends that reproduction to the run's regression ledger, and writes only the paths the finding's `Fix:` requires, the reproduction, and the ledger.
 - **auto_verifier_git**: the `git_auto_review` loop's read-only refute-by-default verifier. It triages each gate finding as approved or not-approved with a reason, then verifies each post-fix round's delta by mapping every hunk of the round diff to an approved finding, a reproduction, or `unmapped`.
+- **auto_checker_spinner**: read-only checker role for an orchestrating agent. The orchestrator spawns it through a rendered brief, and its `readonly: true` lever and read/search-only tool list keep it read-only where the host enforces them.
+- **auto_writer_spinner**: writer role for an orchestrating agent. The orchestrator spawns it through a rendered brief, and it carries out that brief's one item at the depth the spawning session or run plan sets.
 
 ## Hooks
 

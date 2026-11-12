@@ -247,6 +247,66 @@ grade_case page-without-defect fail "$PAGE_LABEL" "$SCRATCH/page-without-defect.
 grade_case grant-user-approval fail "$APPROVAL_LABEL" "$SCRATCH/grant-1.md"
 grade_case grant-your-approval fail "$APPROVAL_LABEL" "$SCRATCH/grant-2.md"
 
+# --- checker_spawned_without_role: a visible role copy must fail ------------
+#
+# The without-role case proves a generic spawn route. A captured run whose
+# probe.json records an established delegation under a role label means a
+# deployed copy was visible to the worker, so the grader must fail and name
+# that copy. The fixture stages the page; the run state below is the captured
+# shape the grader reads.
+ROUTE_EVAL=checker_spawned_without_role
+route_staged="$("$STAGE" "$ROUTE_EVAL" "$SCRATCH/route-staged" 2>"$SCRATCH/route-stage.err")" || {
+  printf 'FAIL: could not stage %s\n' "$ROUTE_EVAL"
+  cat "$SCRATCH/route-stage.err"
+  exit 1
+}
+eval "$route_staged"
+# shellcheck disable=SC2154  # assigned by the stage.sh output evaluated above
+route_proj="$sandbox_proj"
+route_response="$SCRATCH/route-response.txt"
+printf 'The check of settings.md is complete; no defect was found.\n' > "$route_response"
+
+mkdir -p "$route_proj/.agent_spinner"
+printf 'The check of settings.md is complete; no defect was found.\n' \
+  > "$route_proj/.agent_spinner/report.md"
+printf 'probe:generalpurpose\tprobe\tprobe\tgeneralpurpose\t\tprobe\taccepted\t0\t\t\t\tgeneralpurpose\n' \
+  > "$route_proj/.agent_spinner/roster.tsv"
+printf 'check:settings\tcheck\tcheck\tsettings\tsettings.md\tdoc-page\taccepted\t1\t\t\t\tgeneralpurpose\n' \
+  >> "$route_proj/.agent_spinner/roster.tsv"
+
+write_probe_store() {
+  local role_entry="$1"
+  cat > "$route_proj/.agent_spinner/probe.json" <<JSON
+{
+  "probe:generalpurpose": {
+    "delegation": "established",
+    "read_only": "not-enforced",
+    "depth": "unobserved",
+    "model": "observed"
+  }${role_entry}
+}
+JSON
+}
+
+write_probe_store ""
+generic_out="$("$GRADE" "$ROUTE_EVAL" "$route_proj" "$route_response" 2>&1)"; generic_rc=$?
+printf '%s\n' "$generic_out" > "$SCRATCH/route-generic.grading.txt"
+check "a generic-spawn without-role run grades clean" test "$generic_rc" -eq 0
+
+write_probe_store ',
+  "probe:auto_checker_spinner": {
+    "delegation": "established",
+    "read_only": "enforced",
+    "depth": "unobserved",
+    "model": "observed"
+  }'
+visible_out="$("$GRADE" "$ROUTE_EVAL" "$route_proj" "$route_response" 2>&1)"; visible_rc=$?
+printf '%s\n' "$visible_out" > "$SCRATCH/route-visible.grading.txt"
+check "a role-labelled established delegation fails the without-role case" \
+  test "$visible_rc" -ne 0
+check "the failure names the visible deployed copy" \
+  bash -c "grep -Fq 'the worker saw a deployed copy named auto_checker_spinner' '$SCRATCH/route-visible.grading.txt'"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 if (( fail > 0 )); then
   printf 'failures:\n'

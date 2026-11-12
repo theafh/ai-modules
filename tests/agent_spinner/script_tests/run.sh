@@ -20,6 +20,10 @@ SKILL="$SKILL_DIR/SKILL.md"
 REFS="$SKILL_DIR/references"
 SCRIPTS="$SKILL_DIR/scripts"
 LEDGER="$SCRIPTS/run_ledger.py"
+AGENTS_DIR="$REPO_ROOT/plugins/ai_dev/agents"
+CHECKER_ROLE="$AGENTS_DIR/auto_checker_spinner.md"
+WRITER_ROLE="$AGENTS_DIR/auto_writer_spinner.md"
+PSEUDO_XML_LINTER="$REPO_ROOT/plugins/ai_dev/skills/ai_instruction_formatting/scripts/lint_pseudo_xml.py"
 SCRATCH="$HERE/scratch"
 TRIGGERS="$REPO_ROOT/tests/trigger_evals/agent_spinner.json"
 
@@ -83,6 +87,67 @@ product_hits_cite_portability() {
 }
 
 not() { ! "$@"; }
+
+# --- helper role definitions ------------------------------------------------
+#
+# The two generic roles are prose-only bodies whose first line reads the brief
+# the orchestrator rendered. They carry no agent_spinner doctrine of their own,
+# so these checks pin their frontmatter levers and their exact body.
+
+CHECKER_BODY="Read the brief file your prompt names, in full, and follow it.
+Work read-only: change no file, and run no command that writes, even where a shell stays callable.
+Return exactly as that brief's closing block says.
+If that file is missing or unreadable, reply with one line naming its path, and stop."
+WRITER_BODY="Read the brief file your prompt names, in full, and follow it.
+Return exactly as that brief's closing block says.
+If that file is missing or unreadable, reply with one line naming its path, and stop."
+
+# role_name_matches_stem <file> — the frontmatter name equals the file stem and
+# carries the owner-approved spinner token, not the derived agent token.
+role_name_matches_stem() {
+  local file="$1" stem name
+  stem="$(basename "$file" .md)"
+  name="$(sed -n 's/^name:[[:space:]]*//p' "$file" | head -1)"
+  [[ "$name" == "$stem" ]] && [[ "$name" =~ ^auto_(checker|writer)_spinner$ ]]
+}
+
+# role_body_is <file> <expected-body> — the body's non-blank lines are exactly
+# the sentences the role owns, in order.
+role_body_is() {
+  local file="$1" expected="$2" got
+  got="$(awk 'BEGIN { fm = 0; body = 0 }
+    NR == 1 && $0 == "---" { fm = 1; next }
+    fm && $0 == "---" { fm = 0; body = 1; next }
+    body && NF { print }' "$file")"
+  [[ "$got" == "$expected" ]]
+}
+
+# checker_readonly_lever <file> — readonly: true plus a tools list of read and
+# search tools only.
+checker_readonly_lever() {
+  local file="$1" tools
+  grep -qx 'readonly: true' "$file" || return 1
+  tools="$(sed -n 's/^tools:[[:space:]]*//p' "$file" | head -1)"
+  [[ -n "$tools" ]] || return 1
+  printf '%s\n' "$tools" | grep -Eiq '\b(Read|Grep|Glob)\b' || return 1
+  ! printf '%s\n' "$tools" | grep -Eiq '\b(Write|Edit|MultiEdit|NotebookEdit|Bash|Shell|Task|WebFetch)\b'
+}
+
+writer_has_no_readonly_lever() {
+  ! grep -Eq '^readonly:[[:space:]]*true' "$1"
+}
+
+writer_has_no_tools_or_effort() {
+  ! grep -Eq '^(tools|effort|model_reasoning_effort):' "$1"
+}
+
+# role_lint_clean_file <file>... — the pseudo-XML linter reports no issue. Its
+# exit status stays 0 for warnings, so the check reads the reported issues.
+role_lint_clean_file() {
+  local out
+  out="$(python3 "$PSEUDO_XML_LINTER" "$@" 2>&1)" || return 1
+  ! printf '%s\n' "$out" | grep -Eq 'Issues: [1-9]|^[[:space:]]*! '
+}
 
 # start_here_first_step_is_status <skill.md> — the new opening block's first
 # numbered step must run the ledger's status, so an open run is found before
@@ -453,6 +518,143 @@ cp "$SKILL" "$SCRATCH/recipe-orphan/SKILL.md"
 printf '# orphan recipe\n' > "$SCRATCH/recipe-orphan/references/recipes/orphan.md"
 check "the one-to-one check fails on a recipe file with no row" \
   not selector_recipe_rows_match "$SCRATCH/recipe-orphan/SKILL.md" "$SCRATCH/recipe-orphan/references/recipes"
+
+# --- the two generic helper roles -------------------------------------------
+check "auto_checker_spinner role file exists" test -f "$CHECKER_ROLE"
+check "auto_writer_spinner role file exists" test -f "$WRITER_ROLE"
+check "auto_checker_spinner name matches its file stem and the spinner token" \
+  role_name_matches_stem "$CHECKER_ROLE"
+check "auto_writer_spinner name matches its file stem and the spinner token" \
+  role_name_matches_stem "$WRITER_ROLE"
+check "auto_checker_spinner body is exactly its four sentences" \
+  role_body_is "$CHECKER_ROLE" "$CHECKER_BODY"
+check "auto_writer_spinner body is exactly its three sentences" \
+  role_body_is "$WRITER_ROLE" "$WRITER_BODY"
+check "auto_checker_spinner carries readonly: true and read/search tools only" \
+  checker_readonly_lever "$CHECKER_ROLE"
+check "auto_checker_spinner carries model: inherit" \
+  file_has "$CHECKER_ROLE" '^model: inherit$'
+check "auto_checker_spinner pins effort: max" \
+  file_has "$CHECKER_ROLE" '^effort: max$'
+check "auto_checker_spinner pins model_reasoning_effort: xhigh" \
+  file_has "$CHECKER_ROLE" '^model_reasoning_effort: xhigh$'
+check "auto_writer_spinner carries model: inherit" \
+  file_has "$WRITER_ROLE" '^model: inherit$'
+check "auto_writer_spinner carries no readonly: true" \
+  writer_has_no_readonly_lever "$WRITER_ROLE"
+check "auto_writer_spinner carries no tools or effort key" \
+  writer_has_no_tools_or_effort "$WRITER_ROLE"
+check "the pseudo-XML linter reports no issue on either role file" \
+  role_lint_clean_file "$CHECKER_ROLE" "$WRITER_ROLE"
+
+# Each role check must fail on a scratch copy holding one violation, so a
+# green run proves the check can fail rather than passing vacuously.
+ROLE_SCRATCH="$SCRATCH/roles"
+mkdir -p "$ROLE_SCRATCH"
+
+cp "$CHECKER_ROLE" "$ROLE_SCRATCH/auto_checker_spinner.md"
+python3 - "$ROLE_SCRATCH/auto_checker_spinner.md" <<'PY'
+import sys
+path = sys.argv[1]
+lines = [line for line in open(path) if line.rstrip("\n") != "readonly: true"]
+open(path, "w").writelines(lines)
+PY
+check "the read-only check fails without readonly: true" \
+  not checker_readonly_lever "$ROLE_SCRATCH/auto_checker_spinner.md"
+
+cp "$CHECKER_ROLE" "$ROLE_SCRATCH/checker-shell-tool.md"
+python3 - "$ROLE_SCRATCH/checker-shell-tool.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace("tools: Read, Grep, Glob", "tools: Read, Grep, Glob, Bash", 1)
+open(path, "w").write(text)
+PY
+check "the read-only check fails when the tools list names a shell tool" \
+  not checker_readonly_lever "$ROLE_SCRATCH/checker-shell-tool.md"
+
+cp "$CHECKER_ROLE" "$ROLE_SCRATCH/auto_checker_agent.md"
+python3 - "$ROLE_SCRATCH/auto_checker_agent.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace("name: auto_checker_spinner", "name: auto_checker_agent", 1)
+open(path, "w").write(text)
+PY
+check "the role-name check fails on the derived agent token" \
+  not role_name_matches_stem "$ROLE_SCRATCH/auto_checker_agent.md"
+
+cp "$WRITER_ROLE" "$ROLE_SCRATCH/writer-wrong-first-line.md"
+python3 - "$ROLE_SCRATCH/writer-wrong-first-line.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace(
+    "Read the brief file your prompt names, in full, and follow it.",
+    "Read the brief when convenient.", 1)
+open(path, "w").write(text)
+PY
+check "the body check fails when the first line differs" \
+  not role_body_is "$ROLE_SCRATCH/writer-wrong-first-line.md" "$WRITER_BODY"
+
+cp "$WRITER_ROLE" "$ROLE_SCRATCH/writer-no-h1-optout.md"
+python3 - "$ROLE_SCRATCH/writer-no-h1-optout.md" <<'PY'
+import sys
+path = sys.argv[1]
+lines = [line for line in open(path) if "lint: allow-no-h1" not in line]
+open(path, "w").writelines(lines)
+PY
+check "the pseudo-XML check fails on a role body with no H1 opt-out" \
+  not role_lint_clean_file "$ROLE_SCRATCH/writer-no-h1-optout.md"
+
+# --- a scratch project-dir deploy writes each role per target ---------------
+#
+# The scratch HOME and deploy log keep the user's harness directories and the
+# checkout's deploy log untouched, the way tests/deployment stages its own
+# project directory. Each checker copy carries the read-only mapping its
+# target's agent row in deployment/README.md names.
+DEPLOY_PROJECT="$SCRATCH/deploy/project"
+DEPLOY_HOME="$SCRATCH/deploy/home"
+DEPLOY_LOG="$SCRATCH/deploy/deployed.log"
+mkdir -p "$DEPLOY_PROJECT" "$DEPLOY_HOME"
+
+deploy_agents_to_scratch() {
+  HOME="$DEPLOY_HOME" DEPLOYED_ARTIFACTS_LOG="$DEPLOY_LOG" \
+    /bin/bash "$REPO_ROOT/deployment/deployment.sh" \
+    --project-dir "$DEPLOY_PROJECT" --type agent >/dev/null 2>&1
+}
+
+check "a scratch project-dir deploy of the agent type succeeds" \
+  deploy_agents_to_scratch
+
+deploy_copy_has() { [[ -f "$1" ]] && grep -Eq "$2" "$1"; }
+deploy_copy_lacks() { [[ -f "$1" ]] && ! grep -Eq "$2" "$1"; }
+
+check "the deploy writes the VS Code checker copy with readonly: true" \
+  deploy_copy_has "$DEPLOY_PROJECT/.github/agents/auto_checker_spinner.agent.md" '^readonly: true$'
+check "the deploy writes the Cursor checker copy with readonly: true" \
+  deploy_copy_has "$DEPLOY_PROJECT/.cursor/agents/auto_checker_spinner.md" '^readonly: true$'
+check "the deploy writes the Claude checker copy with readonly: true" \
+  deploy_copy_has "$DEPLOY_PROJECT/.claude/agents/auto_checker_spinner.md" '^readonly: true$'
+check "the deploy writes the Codex checker copy with sandbox_mode read-only" \
+  deploy_copy_has "$DEPLOY_PROJECT/.codex/agents/auto_checker_spinner.toml" '^sandbox_mode = "read-only"$'
+check "the deploy writes the Antigravity checker copy with commandExecutionPolicy off" \
+  deploy_copy_has "$DEPLOY_PROJECT/.agents/agents/auto_checker_spinner.md" '^commandExecutionPolicy: off$'
+check "the deploy writes the OpenCode checker copy with an edit deny" \
+  bash -c "grep -Eq '^  - action: edit$' '$DEPLOY_PROJECT/.opencode/agents/auto_checker_spinner.md' && grep -Eq '^    effect: deny$' '$DEPLOY_PROJECT/.opencode/agents/auto_checker_spinner.md'"
+
+check "the deploy writes the VS Code writer copy without a read-only lever" \
+  deploy_copy_lacks "$DEPLOY_PROJECT/.github/agents/auto_writer_spinner.agent.md" '^readonly:'
+check "the deploy writes the Cursor writer copy without a read-only lever" \
+  deploy_copy_lacks "$DEPLOY_PROJECT/.cursor/agents/auto_writer_spinner.md" '^readonly:'
+check "the deploy writes the Claude writer copy without a read-only lever" \
+  deploy_copy_lacks "$DEPLOY_PROJECT/.claude/agents/auto_writer_spinner.md" '^readonly:'
+check "the deploy writes the Codex writer copy without a read-only sandbox" \
+  deploy_copy_lacks "$DEPLOY_PROJECT/.codex/agents/auto_writer_spinner.toml" '^sandbox_mode = "read-only"$'
+check "the deploy writes the Antigravity writer copy without a read-only policy" \
+  deploy_copy_lacks "$DEPLOY_PROJECT/.agents/agents/auto_writer_spinner.md" '^commandExecutionPolicy: off$'
+check "the deploy writes the OpenCode writer copy" \
+  test -f "$DEPLOY_PROJECT/.opencode/agents/auto_writer_spinner.md"
 
 # The four reference checks must fail on a scratch copy holding one violation,
 # so a green run proves each can fail rather than passing vacuously.
