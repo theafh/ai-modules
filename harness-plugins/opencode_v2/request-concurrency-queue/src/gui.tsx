@@ -11,13 +11,13 @@ import {
   type TransitionRow,
 } from "./status.js"
 
-/** The text the panel shows when the status fetch fails. */
+/** The text the bar and dialog show when the status fetch fails. */
 export const STATUS_UNAVAILABLE = "Status unavailable"
 
-/** The snapshot the panel shows before the first fetch resolves. */
+/** The snapshot the bar shows before the first fetch resolves. */
 const EMPTY_SNAPSHOT: StatusSnapshot = { providers: [], transitions: [] }
 
-/** What the panel body shows: the outage notice, or the last delivered state. */
+/** What the status body shows: the outage notice, or the last delivered state. */
 export interface StatusBodyState {
   readonly unavailable: boolean
   readonly rows: ProviderRow[]
@@ -25,7 +25,7 @@ export interface StatusBodyState {
 }
 
 /**
- * Decides the panel body's state. `null` means the status fetch failed, so the
+ * Decides the status body's state. `null` means the status fetch failed, so the
  * body reports that instead of showing silent zeros; a later successful fetch
  * replaces it with provider rows and the recent transition feed.
  */
@@ -38,7 +38,7 @@ export function statusBodyState(snapshot: StatusSnapshot | null): StatusBodyStat
   }
 }
 
-/** Renders the panel body from the last delivered snapshot. */
+/** Renders the status body from the last delivered snapshot. */
 export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
   const state = () => statusBodyState(props.snapshot)
   return (

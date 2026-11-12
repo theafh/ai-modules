@@ -199,8 +199,8 @@ records `released` for the releasing session and then `acquired` for the waiter.
 The server emits a `changed` event on every count-changing transition: a free
 slot acquired, a request joining the wait queue, a queued request aborted, a
 release that frees a slot, and a release that hands the slot to the next
-waiter. Every instance forwards the shared queue's transitions, so the panel
-sees them whichever location emitted them.
+waiter. Every instance forwards the shared queue's transitions, so the bar's
+dialog sees them whichever location emitted them.
 
 The desktop GUI part ships as the prebuilt `./gui-experimental` bundle and adds
 a full-width status bar in the window's bottom slot. The bar is the only
@@ -227,8 +227,8 @@ and held at dark red above 300%. The active count and utilization use the
 `(active + queued) / max`. Below the provider rows, a compact monospace feed
 lists the recent transitions newest first with their timestamp, kind, provider,
 session, and counts; it renders the newest 20 and scrolls. When a status fetch
-fails, the panel shows `Status unavailable` and no provider rows until a later
-fetch succeeds.
+fails, the bar shows `Status unavailable` and the dialog shows no provider rows,
+until a later fetch succeeds.
 
 ## Development
 

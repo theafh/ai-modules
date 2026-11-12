@@ -1,6 +1,6 @@
 import type { ProviderStatus, StatusSnapshot, TransitionKind, TransitionRecord } from "./rpc.js"
 
-/** One provider row as the panel renders it. */
+/** One provider row as the dialog renders it. */
 export interface ProviderRow {
   readonly providerID: string
   readonly active: number
@@ -116,10 +116,10 @@ export function providerRows(snapshot: StatusSnapshot): ProviderRow[] {
   return snapshot.providers.map(providerRow)
 }
 
-/** The newest transitions the panel renders; the store keeps more history. */
+/** The newest transitions the dialog renders; the store keeps more history. */
 export const PANEL_TRANSITION_LIMIT = 20
 
-/** One recent transition as the panel renders it. */
+/** One recent transition as the dialog renders it. */
 export interface TransitionRow {
   /** Local clock time, `HH:MM:SS`. */
   readonly time: string
@@ -133,7 +133,7 @@ export interface TransitionRow {
 /**
  * Turns the snapshot's recent transitions into rendered rows, newest first.
  * The rendered window is capped so a long history scrolls instead of growing
- * the panel without bound.
+ * the dialog without bound.
  */
 export function transitionRows(
   snapshot: StatusSnapshot,
@@ -163,7 +163,7 @@ export function transitionRow(transition: TransitionRecord): TransitionRow {
  * function.
  *
  * A successful fetch delivers a `StatusSnapshot`. A rejected fetch delivers
- * `null`, so the panel reports that status is unavailable instead of leaving
+ * `null`, so the bar reports that status is unavailable instead of leaving
  * stale or zeroed rows on screen; a later successful fetch restores the rows.
  */
 export function subscribeStatus(

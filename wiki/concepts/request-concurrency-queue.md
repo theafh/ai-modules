@@ -129,8 +129,8 @@ count and utilization follow the `active / max` load, while the combined count,
 queued count, and demand follow `(active + queued) / max`. Below the provider
 rows, a compact monospace feed lists the recent transitions newest first with
 their timestamp, kind, provider, session, and counts; it renders the newest 20
-and scrolls. When a status fetch fails, the panel shows `Status unavailable` and
-no provider rows until a later fetch succeeds.
+and scrolls. When a status fetch fails, the bar shows `Status unavailable` and
+the dialog shows no provider rows, until a later fetch succeeds.
 
 The queue does not address token-budget limits such as a provider's
 `burst_protection`, nor request-size rejections such as
