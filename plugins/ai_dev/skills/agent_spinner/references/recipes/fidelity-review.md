@@ -100,7 +100,7 @@ Inline floor: Find and Verify run as separate passes, each closing on its return
 </tier_notes>
 
 <post_run_checks>
-Unit rows equal the inventory minus exclusions, and each unit has an accepted return with a coverage list. Every write-bound finding has two lens verdicts or an unverified label. Writers before the repair round equal the distinct target paths, and every changed path has a review row. Every changed marked path has a hand-off or fork row, and each hand-off names as examined only rows read in full (C9). Every premise sentence the plan routed exists in its landed page. A premise sentence is the sentence a writer adds to say that a decision's premise is worth revisiting.
+Unit rows equal the inventory minus exclusions, and each unit has an accepted return with a coverage list. Every write-bound finding has two lens verdicts or an unverified label. Every accepted `gaps` entry has its Find row and its Verify rows. Writers before the repair round equal the distinct target paths, and every changed path has a review row. Every changed marked path has a hand-off or fork row, and each hand-off names as examined only rows read in full (C9). Every premise sentence the plan routed exists in its landed page. A premise sentence is the sentence a writer adds to say that a decision's premise is worth revisiting.
 
 Each repaired item has exactly one re-check row, at no lower depth than its first check.
 </post_run_checks>
