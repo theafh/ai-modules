@@ -2,8 +2,8 @@
 description: "Give the wiki family one source of truth: a hub family block, an authority block per front end, cited rather than restated base rules, and one orientation log-read quantity."
 scope: plugins/knowledge_management
 created: 2026-08-11T16:49:52Z
-updated: 2026-11-04T09:11:30Z
-status: checked
+updated: 2026-11-11T17:17:51Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -38,7 +38,7 @@ with a `<path_resolution>` block in every sibling, the authority block opening
 "The base `task` skill's `SKILL.md` is the source of truth for the task-file
 shape".
 
-`wiki_import` restates two base-skill rules instead of citing them. Its
+`wiki_import` restates base-skill rules instead of citing them. Its
 `<too_large_to_read_in_one_shot>` policy duplicates the same-named block inside
 the hub's `<file_handling_discipline>`, down to the
 `exceeds maximum allowed tokens` failure string, and its
@@ -84,9 +84,19 @@ two front ends cite it.
    for discovery, orientation, lint, semantic audit, remediation, and
    verification. Rewrite `wiki_fix`'s objective deferral so hub citation and
    agent delegation each appear once and do not compete.
-3. Replace `wiki_import`'s two restated discipline blocks with citations of the
-   hub's blocks by their verbatim tag names, keeping any genuinely
-   import-specific detail that the hub's version does not carry.
+3. Replace every front-end block that restates a hub rule with a citation of
+   that hub block by its verbatim tag name, keeping any genuinely
+   import-specific detail that the hub's version does not carry. The walk
+   finds these sites: `wiki_import`'s `<too_large_to_read_in_one_shot>` and
+   `<list_before_unfamiliar_path>`, its `<confirm_resource>` bucket mapping
+   (the hub `<capture_raw_source>` bucket list), its `<capture_raw>`
+   re-ingest ordering (the hub's **Re-ingest compares before it writes**
+   rule), and the `<orient_first_top>` blocks of `wiki_import` and
+   `wiki_wrapup`, whose duplicated SCHEMA-read wording cites the hub
+   `<orient_first_top>` while step 4 below replaces their log-read wording.
+   Each site keeps the detail specific to its own front end.
+   `wiki_fix`'s `<orient_first_top>` restates `auto_shaper_wiki`'s orientation
+   note rather than a hub rule, so it stays as written.
 4. Have `wiki_import` and `wiki_wrapup` cite `<resuming_an_existing_wiki>` by
    tag, superseding their `<orient_first_top>`, `<orient_first>`, and
    orientation-step wording, so the hub's entry-boundary quantity is stated
@@ -153,6 +163,16 @@ two front ends cite it.
    run carries no blocking finding.
 7. Searching the hub's `<resuming_an_existing_wiki>` and pitfall `<orient_first>`,
    plus `wiki_import` and `wiki_wrapup`, for `350 lines` and `tail -n 350`
-   returns no match. The hub orientation-read statement, the cited front-end
-   references, and the `<searching>` block's log-read clause name the same
-   entry bound, and `<searching>` carries no `~last 20 log entries` fence.
+   returns no match. The hub orientation-read statement names the entry bound
+   once, the front-end references resolve to it, the hub's `<searching>`
+   log-read clause cites `<resuming_an_existing_wiki>` by tag rather than
+   naming a quantity of its own, and `<searching>` carries no `~last 20 log
+   entries` fence.
+8. Searching `wiki_import` for `session-local temporary file outside the wiki
+   tree` and for `For a URL to an externally-published article, confirm the
+   target slug under` returns no match, while its `<capture_raw>` names the
+   hub's **Re-ingest compares before it writes** rule and its
+   `<confirm_resource>` cites the hub's `<capture_raw_source>` bucket list.
+   Searching `wiki_import` and `wiki_wrapup` for `The full orientation pass`
+   returns no match, and each `<orient_first_top>` cites the hub's
+   `<orient_first_top>` by tag.

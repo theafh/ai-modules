@@ -2,8 +2,8 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T13:26:15Z
-updated: 2026-11-04T10:49:57Z
-status: open
+updated: 2026-11-11T20:03:05Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -13,7 +13,7 @@ reported-by: Andreas Hoffmann
 
 Let a wiki be authored in any language while keeping filenames portable. After this task:
 
-- The wiki skills explicitly support **non-English content**: page bodies, headings, the `title:` frontmatter field, and content-specific metadata (tags as topic words) use the **language of the content**.
+- The wiki skills explicitly support **non-English content**: page bodies, headings, the `title:` frontmatter field, and content-specific metadata (tags as topic words in ASCII form) use the **language of the content**.
 - **Filenames / slugs stay pure ASCII.** A content-language word is fine (`steinbildhauerei`, `lebensziele`), but non-ASCII characters are transliterated, not embedded: German `ü→ue, ö→oe, ä→ae, ß→ss`; other languages strip diacritics (`é→e`, `ñ→n`, `å→a`). The readable title keeps its native characters; only the slug is folded (e.g. title `Künstliche Evolution` → slug `kuenstliche-evolution`).
 - The **linter flags any non-ASCII filename as a `warn`** (not blocking), naming the offending path and suggesting the ASCII-folded slug.
 - The **`auto_shaper_wiki` agent** treats that warning as an autofixable finding: `git mv` the page to its ASCII slug and re-point every inbound reference.
@@ -60,7 +60,7 @@ State the split crisply in both SKILL.md and the schema scaffold:
 
 - **Content-language, native characters**: page body prose, H1 and other headings, the `title:` frontmatter field. `title: Künstliche Evolution` is correct.
 - **Pure ASCII, language-neutral structure**: the slug/filename, the page-type enum values, frontmatter field *keys*, `status`/`confidence` enum values. These are machine vocabulary.
-- **Tags** sit between the two. They are content-specific topic words (so content language: `bildhauerei`, not a forced English translation) **but** the linter byte-matches them against the SCHEMA.md taxonomy, so they share the slug's NFC/NFD risk. **Recommendation: fold tags to ASCII too** (`koerper`, not `körper`), a content-language word in ASCII. See the open decision below.
+- **Tags** sit between the two. They are content-specific topic words (so content language: `bildhauerei`, not a forced English translation) **and** the linter byte-matches them against the SCHEMA.md taxonomy, so they take the slug's fold: a content-language word written in ASCII (`koerper`, not `körper`). State that fold in SKILL.md beside the slug rule.
 
 Give the German transliteration map explicitly (`ä→ae, ö→oe, ü→ue, ß→ss`) since a naive Unicode→ASCII fold would wrongly produce `u`/`o`/`a`; note that other languages strip diacritics instead.
 
@@ -74,13 +74,11 @@ Give the German transliteration map explicitly (`ä→ae, ö→oe, ü→ue, ß�
 When the `filename` warning fires, the autofix mirrors the manual session fix:
 
 1. Compute the ASCII-folded slug (German fold; diacritic-strip otherwise).
-2. `git mv` the page (or sidecar) to the new path so history is preserved as a rename.
-3. Re-point every inbound reference: markdown links, `sources:` frontmatter entries, `index.md`, and `contradictions: [other-page-slug]` lists.
+2. `git mv` the page to its ASCII slug so history is preserved as a rename.
+3. Re-point every inbound reference that can name a page: markdown links, `index.md`, and `contradictions: [other-page-slug]` lists (`sources:` entries resolve only under `raw/` or a declared primary-source root, so none names a page).
 4. Leave the readable title/H1 untouched; bump `updated`; record the rename in `log.md`.
 
-### Open decision to surface to the user (do not silently pick)
-
-**Should tags be ASCII-folded, or kept with native characters?** The user's instruction said tags use the content language but did not pin down ASCII. Default for this task: **ASCII-fold tags** (they are byte-matched identifiers, same risk class as slugs). The alternative, native-character tags, is viable only if the linter's tag↔taxonomy matching NFC-normalizes both sides first; otherwise the original bug reappears in tag matching. Implement the ASCII default unless the user chooses native-character tags, in which case add the NFC-normalization to the tag check instead.
+The remediation lands as `<fix_non_ascii_filename>` in `<fix_moves>`, and the dispatch sentence that maps an issue category to its move gains `filename` → `<fix_non_ascii_filename>`. Because a warn-only finding leaves `lint.py` exiting 0, the clean-skip condition gains "and no live `filename` warn" at both places that state it: `<compile_issue_list>`'s "If the lint pass exits 0 and the page-first walk finds no semantic issues, the wiki is clean" sentence, and `<assess_output>`'s "If the wiki is clean (lint passes and the page-first walk finds no semantic issues)" condition, so a wiki whose only finding is that warn enters `<remediate>` instead of stopping at assessment. A non-ASCII `raw/` sidecar filename draws the same `filename` warn but takes the report-only disposition: `<raw_directory_read_only>` keeps `raw/` content and paths untouched, so name the sidecar path in the final report and apply no move, the way `log-scope` and `citation` are reported without a body edit. That warn stays live while the audit exits clean, so `<lint_clean>` gains a second carve-out beside the contested-`quality` one for a live `filename` warn on a `raw/` sidecar, scoped to `raw/` sidecars so a page's `filename` warn stays live until the rename clears it.
 
 ### Non-goals
 
@@ -90,10 +88,12 @@ When the `filename` warning fires, the autofix mirrors the manual session fix:
 ## Acceptance
 
 - SKILL.md states the content-language-vs-ASCII-slug split and explicitly covers non-English wikis, with the German fold (`ä→ae, ö→oe, ü→ue, ß→ss`) as a worked example and a note that other languages strip diacritics.
-- `template_schema.md`'s "File names:" convention requires pure ASCII and shows the transliteration rule.
+- `template_schema.md`'s "File names:" convention requires pure ASCII and shows the transliteration rule, and states in the same block that the readable `title:`/H1 keeps its native characters.
 - `lint.py` emits a `warn`/`filename` finding for a page whose filename contains a non-ASCII character, names the path, and suggests the ASCII slug; NFD-decomposed names are detected if implemented.
 - `lint_checks.md` documents the new check in the matrix and lists it under the warn bucket.
 - `auto_shaper_wiki.md` `<remediate>` phase carries the ASCII-fold rename remediation (git mv + re-point references), coexisting with the shipped `<two_pass_remediation>` rule in the same section.
-- The tags open decision is reflected: either tags fold to ASCII (default) or the tag check NFC-normalizes both sides, per the user's call.
-- A wiki linter fixture with a non-ASCII / NFD filename produces the new warning; after the auto_shaper fix the filename is pure ASCII, references resolve, and the linter is clean.
+- SKILL.md states the tags rule in one sentence: tags are content-language topic words written ASCII-folded, with `körper` → `koerper` as the worked example.
+- A `tests/wiki/layer1/run.sh` scenario creates at run time a page whose filename carries a non-ASCII character plus an NFD-decomposed name (never a committed non-ASCII fixture name, which `core.precomposeUnicode=true` normalizes), and asserts the `filename` warn names each path and suggests its ASCII slug.
+- The same scenario stages a `raw/<kind>/<slug>.md` sidecar whose filename carries a non-ASCII character and asserts the `filename` warn fires on that sidecar path. The report-only disposition that finding takes is bounded by `auto_shaper_wiki.md`'s `<lint_clean>` criterion, which carries a `raw/`-sidecar `filename` carve-out beside the contested-`quality` one, so a wiki whose only live warn is that finding reports it and still exits clean.
+- A `tests/wiki/layer2` `AS-*` scenario registered in `tests/wiki/layer2/evals.json` with its sandbox staged in `tests/wiki/layer2/setup_scenarios.sh` stages an otherwise-clean wiki whose only live finding is a non-ASCII page filename (no non-ASCII sidecar), plus the three reference classes that can name a page (`index.md`, a markdown link, a `contradictions:` entry), runs `auto_shaper_wiki`, and asserts the filename is pure ASCII, every reference resolves, and the linter is clean; it is run with `python3 tests/wiki/layer2/run.py --scenario AS-<n>`.
 - The wiki test suite (`tests/wiki/run_all.sh`) passes.

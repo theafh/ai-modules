@@ -2,8 +2,8 @@
 description: "Drop the Concurrency side tab, show the window-bottom bar as (active + queued)/max, and recolour that count on a six-anchor dark-green-to-dark-red scale."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-11T20:07:23Z
-updated: 2026-11-11T20:07:23Z
-status: open
+updated: 2026-11-11T21:14:28Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -59,8 +59,9 @@ renders it.
 its `providerRow` mapping in `src/status.ts`. In `StatusBarBody`, render each
 item as the provider name followed by `${row.total}/${row.max}`, coloured with
 `row.demandColor`, and drop the queued span and the separator span. Keep the
-full detail in the item's `title`, for example `12 in flight or queued of 8
-slots`, so a hover still explains the number. Remove the now-unused
+full detail in the item's `title` as `${row.total} of ${row.max} slots in
+demand`, for example `12 of 8 slots in demand`, so a hover still explains the
+number without naming the queued segment the bar no longer shows. Remove the now-unused
 `.request-concurrency-bar-sep` rule from `src/panel-style.ts`.
 
 **Recolour the load scale.** Replace `LOAD_ANCHORS` in `src/status.ts` with six
@@ -91,14 +92,25 @@ assertion from `panel: true` to `panel: false`. Run `bun run build:gui` so the
 committed `dist/gui.cjs` matches source, and bump `package.json` from `0.5.0` to
 `0.6.0`.
 
-**Rewrite the docs in place.** In the plugin `README.md`, replace the
-`## State and observability` passage that describes the pinned tab and the
-`active / max` plus queue-depth bar with one describing the bar as the only
-persistent surface, the combined `X/Y` count, and the six-anchor scale. In
-`wiki/concepts/request-concurrency-queue.md`, rewrite the desktop paragraph and
-the `Panel`/`Slot` passage to match and bump its `updated` date. In
-`wiki/index.md`, drop the side-tab mention from the request-concurrency-queue
-entry.
+**Rewrite the docs in place.** In the plugin `README.md`, rewrite in place every sentence under
+`## State and observability` that names the Concurrency tab or the four-anchor
+scale: the passage opening "The desktop GUI part ships as the prebuilt
+`./gui-experimental` bundle" (the bar is the only persistent surface and shows
+the combined `X/Y` count), the sentence "The panel feed is the desktop
+observability surface: it shows recent concurrency transitions in the Concurrency
+tab" (the bar and its dialog feed are the desktop observability surface), and the
+passage opening "The side tab reads the routed session's server with the
+session's directory as the RPC location", whose "green at 0%, yellow at 100%,
+orange at 200%, and red from 300% on" becomes the six-anchor scale. Keep the log,
+snapshot, and "When a status fetch fails, the panel shows `Status unavailable`"
+sentences as they are. In
+`wiki/concepts/request-concurrency-queue.md`, rewrite in place every passage
+that names the Concurrency tab: the feed sentence "The panel feed is the desktop
+observability surface: the Concurrency tab lists recent transitions, while `log`
+remains for terminal runs", the desktop paragraph opening "A desktop GUI part
+ships as the prebuilt `./gui-experimental` bundle", and the `Panel`/`Slot`
+passage opening "A desktop status view ships through the V2 GUI plugin `Panel`
+and `Slot` APIs". Replace each stale sentence where it stands rather than adding a new paragraph, and bump the page's `updated` date. In `wiki/index.md`, drop the side-tab mention from the request-concurrency-queue entry and advance the header's `Last updated` date. Then append one `update` entry to `wiki/log.md` in its existing `## [YYYY-MM-DD HH:MM] update | <subject>` form, listing `concepts/request-concurrency-queue.md` and `index.md`.
 
 **Out of scope:**
 
@@ -122,8 +134,12 @@ entry.
   one `window.bottom` slot and one `Style`.
 - `bun test test/panel.test.ts` renders the bar for `active: 8`, `queued: 4`,
   `max: 8` and asserts the item contains `12/8`, contains no `queued` text, and
-  carries an inline `hsl(` colour; it renders `active: 6`, `queued: 2`, `max: 8`
-  as `8/8`.
+  that the element whose text is `12/8` carries a colour equal to
+  `loadColor(150)` (`hsl(60 85% 70%)`); it renders `active: 6`, `queued: 2`,
+  `max: 8` and asserts the item contains `8/8` and that the element whose text
+  is `8/8` carries a colour equal to `loadColor(100)` (`hsl(120 60% 60%)`).
+- `bun test test/panel.test.ts` asserts the rendered bar markup for a provider
+  item contains neither `request-concurrency-bar-sep` nor `·`.
 - `bun test test/panel.test.ts` renders the bar for a `null` snapshot and sees
   `Status unavailable`, and for an empty provider list sees no bar element.
 - `bun test test/panel.test.ts` imports the prebuilt `dist/gui.cjs` and reads
@@ -134,9 +150,15 @@ entry.
 - `make plugin-test` passes at the repository root.
 - The plugin `README.md` and `wiki/concepts/request-concurrency-queue.md`
   describe the bar as the only persistent surface, the combined `X/Y` count,
-  and the six-anchor scale; a search for `pinned Concurrency tab` finds no
-  match in either file, and `wiki/index.md` no longer names a side tab for this
-  plugin.
-- The working tree changes only under
-  `harness-plugins/opencode_v2/request-concurrency-queue/`, the two wiki files,
-  and the task file.
+  and the six-anchor scale; a case-insensitive whole-word search for `tab`
+  finds no match in either file, and `wiki/index.md` no longer names a side tab
+  for this plugin.
+- `wiki/log.md`'s newest entry is an `update` entry naming
+  `concepts/request-concurrency-queue.md` and `index.md`, and the `Last updated`
+  date in `wiki/index.md`'s header matches that entry's date.
+- The files this task changes stay inside
+  `harness-plugins/opencode_v2/request-concurrency-queue/`,
+  `wiki/concepts/request-concurrency-queue.md`, `wiki/index.md`, `wiki/log.md`,
+  and this task file: with `git status --porcelain` recorded before the first
+  edit, `git status --porcelain` afterwards adds no path outside those five
+  locations.
