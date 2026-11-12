@@ -554,9 +554,13 @@ def lint_file(path: Path) -> FileReport:
 
     # H1 check. A role definition whose body must open with its runtime
     # instruction opts out with a frontmatter comment, because the instruction
-    # has to be the body's first line rather than a title.
+    # has to be the body's first line rather than a title. The opt-out is
+    # scoped to files under an `agents/` directory, where role definitions
+    # live, so a skill file cannot silence its H1 rule.
     allow_no_h1 = bool(
-        fm and re.search(r"^#\s*lint:\s*allow-no-h1\b", fm, re.M)
+        fm
+        and "agents" in path.parts
+        and re.search(r"^#\s*lint:\s*allow-no-h1\b", fm, re.M)
     )
     h1: str | None = None
     for ln in body.splitlines():
