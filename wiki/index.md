@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-11-07 | Total pages: 39
+> Last updated: 2026-11-12 | Total pages: 39
 
 ## Entities
 
@@ -33,7 +33,7 @@
 - [Orchestration failure families](concepts/orchestration-failure-families.md): the run evidence behind the recipes proposed for agent_spinner, with 23 failure families and their counts, the base rates, a register of 16 cases under neutral labels, the mechanisms observed together, the families seen in the cases each recipe rests on, and a map from each run-protocol step and check to the families it answers.
 - [Output style delivery design](concepts/output-style-delivery-design.md): the decision record behind the `styles/` source, the per-target delivery matrix including Cursor's project-only `.mdc` write, the marked-block write, and the scope rejections.
 - [OpenCode plugin loading](concepts/opencode-plugin-loading.md): the two discovery roots and the `plugins` array beside them, the server part as the shared surface across TUI and desktop, options arriving only through the `plugins` array, the directory-resolution failure mode under Bun, and why a deployed plugin directory needs no `node_modules`.
-- [Request concurrency queue](concepts/request-concurrency-queue.md): one FIFO semaphore per provider shared by every open location in a server process, request-level rather than session-level counting, the primary-request gate with its retry and idle fallbacks, the no-timeout rule, the process-wide registry with its mismatch rule and refcount, the per-provider config precedence, and the desktop side tab and window-bottom status bar over a shared status RPC.
+- [Request concurrency queue](concepts/request-concurrency-queue.md): one FIFO semaphore per provider shared by every open location in a server process, request-level rather than session-level counting, the primary-request gate with its retry and idle fallbacks, the no-timeout rule, the process-wide registry with its mismatch rule and refcount, the per-provider config precedence, and the window-bottom status bar with its combined load count over a shared status RPC.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md): why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md): naming by invocation mode, rules living once in the base skill, bundled scripts, the cost of a large skill body, and the checker that reads those rules rather than restating them and takes its severity lines from the harness.
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.

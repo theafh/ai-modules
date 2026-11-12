@@ -2,9 +2,11 @@
 description: "Drop the Concurrency side tab, show the window-bottom bar as (active + queued)/max, and recolour that count on a six-anchor dark-green-to-dark-red scale."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-11T20:07:23Z
-updated: 2026-11-11T21:14:28Z
-status: ready
+updated: 2026-11-12T04:24:13Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make the concurrency bar the only desktop surface with a combined load count
@@ -41,9 +43,9 @@ needs. Styles are in `src/panel-style.ts`, and the desktop loads the prebuilt
 `dist/gui.cjs` bundle, never the source.
 
 The bar and its dialog were added by [Add a window-bottom concurrency status
-bar](archive/plugin_concurrency-window-bottom-status-bar.md), and the table's
+bar](plugin_concurrency-window-bottom-status-bar.md), and the table's
 current four-anchor scale by [Lay out the Concurrency panel as a labelled grid
-with a load colour scale](archive/plugin_concurrency-panel-layout-and-colour-scale.md).
+with a load colour scale](plugin_concurrency-panel-layout-and-colour-scale.md).
 The wiki concept page `wiki/concepts/request-concurrency-queue.md` and
 `wiki/index.md` still describe the side tab and the old scale.
 

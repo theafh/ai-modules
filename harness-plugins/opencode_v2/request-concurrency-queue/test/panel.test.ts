@@ -4,12 +4,15 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { Panel, Slot, Style } from "@opencode/plugin/gui"
 import { renderToString } from "solid-js/web"
 import { build, createServer, type ViteDevServer } from "vite"
-import gui, { STATUS_UNAVAILABLE, panel, statusBodyState } from "../src/gui.tsx"
-import type { StatusSnapshot, TransitionRecord } from "../src/rpc.js"
+import gui, { STATUS_UNAVAILABLE, statusBodyState } from "../src/gui.tsx"
+import * as guiModule from "../src/gui.tsx"
+import type { ProviderStatus, StatusSnapshot, TransitionRecord } from "../src/rpc.js"
 import {
   PANEL_TRANSITION_LIMIT,
+  loadColor,
   providerRow,
   subscribeStatus,
   transitionRows,
@@ -78,6 +81,33 @@ function snapshot(transitions: TransitionRecord[] = []): StatusSnapshot {
     providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, utilization: 0.5, demand: 0.5 }],
     transitions,
   }
+}
+
+function providerSnapshot(provider: Partial<ProviderStatus> & Pick<ProviderStatus, "providerID">): StatusSnapshot {
+  const active = provider.active ?? 0
+  const queued = provider.queued ?? 0
+  const max = provider.max ?? 1
+  return {
+    providers: [
+      {
+        providerID: provider.providerID,
+        active,
+        queued,
+        max,
+        utilization: max === 0 ? 0 : active / max,
+        demand: max === 0 ? 0 : (active + queued) / max,
+      },
+    ],
+    transitions: [],
+  }
+}
+
+/** The colour of the innermost span whose text is exactly `text`. */
+function colorOfText(html: string, text: string): string | undefined {
+  const index = html.indexOf(`>${text}<`)
+  if (index < 0) return undefined
+  const open = html.lastIndexOf("<span", index)
+  return html.slice(open, index).match(/style="color:([^"]+)"/)?.[1]
 }
 
 /**
@@ -174,16 +204,38 @@ describe("concurrency status panel body", () => {
     expect(html.match(/request-concurrency-feed-row/g)).toHaveLength(PANEL_TRANSITION_LIMIT)
   })
 
-  test("renders the window-bottom bar with per-provider load and an open action", () => {
+  test("renders the window-bottom bar with one combined load count per provider", () => {
     const html = renderBar(snapshot())
 
     expect(html).toContain("request-concurrency-bar")
     expect(html).toContain(">Concurrency<")
     expect(html).toContain(">acme<")
     expect(html).toContain(">1/2<")
-    expect(html).toContain(">0 queued<")
     expect(html).toContain("Open concurrency details")
     expect(html).toMatch(/style="color:hsl\(/)
+  })
+
+  test("shows active plus queued over max and colours it by the combined load", () => {
+    const overloaded = renderBar(providerSnapshot({ providerID: "acme", active: 8, queued: 4, max: 8 }))
+
+    expect(overloaded).toContain(">12/8<")
+    expect(overloaded.toLowerCase()).not.toContain("queued")
+    expect(overloaded).toContain("12 of 8 slots in demand")
+    expect(colorOfText(overloaded, "12/8")).toBe(loadColor(150))
+    expect(colorOfText(overloaded, "12/8")).toBe("hsl(60 85% 70%)")
+
+    const full = renderBar(providerSnapshot({ providerID: "acme", active: 6, queued: 2, max: 8 }))
+
+    expect(full).toContain(">8/8<")
+    expect(colorOfText(full, "8/8")).toBe(loadColor(100))
+    expect(colorOfText(full, "8/8")).toBe("hsl(120 60% 60%)")
+  })
+
+  test("drops the queued segment and its separator from a provider item", () => {
+    const html = renderBar(snapshot())
+
+    expect(html).not.toContain("request-concurrency-bar-sep")
+    expect(html).not.toContain("·")
   })
 
   test("reports an unavailable status in the bar", () => {
@@ -233,27 +285,28 @@ describe("concurrency status panel body", () => {
   })
 })
 
-describe("concurrency status panel", () => {
-  test("is a side-region panel with one pinned tab", () => {
-    expect(panel.region).toBe("side")
-    expect(typeof panel.list).toBe("function")
-    expect(typeof panel.render).toBe("function")
+describe("concurrency desktop surfaces", () => {
+  test("exports no side-region panel", () => {
+    const exported = guiModule as unknown as Record<string, unknown>
 
-    const tabs = panel.list({ open: [], session: {} as never, screen: {} as never })
-    expect(tabs).toHaveLength(1)
-    expect(tabs[0]).toMatchObject({ id: "status", pinned: true })
+    expect("panel" in exported).toBe(false)
+    expect(exported.panel).toBeUndefined()
   })
 
-  test("contributes a window-bottom status bar slot", () => {
-    const added: Array<{ item: unknown }> = []
+  test("contributes one window-bottom slot and one Style, and no Panel", () => {
+    const added: Array<{ registry: unknown; item: unknown }> = []
     gui.setup!({
-      add: (_registry: unknown, item: unknown) => {
-        added.push({ item })
+      add: (registry: unknown, item: unknown) => {
+        added.push({ registry, item })
         return () => {}
       },
     } as never)
 
-    expect(added.some((entry) => (entry.item as { at?: string }).at === "window.bottom")).toBe(true)
+    expect(added.some((entry) => entry.registry === Panel)).toBe(false)
+    const slots = added.filter((entry) => entry.registry === Slot)
+    expect(slots).toHaveLength(1)
+    expect(slots[0].item).toMatchObject({ at: "window.bottom" })
+    expect(added.filter((entry) => entry.registry === Style)).toHaveLength(1)
   })
 
   test("publishes the prebuilt GUI bundle beside the server entry", () => {
@@ -272,7 +325,7 @@ describe("concurrency status panel", () => {
     const imported = importGuiBundle(guiPath)
     expect(imported.stderr).toBe("")
     expect(imported.exitCode).toBe(0)
-    expect(JSON.parse(imported.stdout.trim())).toEqual({ setup: "function", panel: true })
+    expect(JSON.parse(imported.stdout.trim())).toEqual({ setup: "function", panel: false })
   })
 
   /**

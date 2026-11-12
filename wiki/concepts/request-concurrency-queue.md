@@ -1,7 +1,7 @@
 ---
 title: Request concurrency queue
 created: 2026-11-05
-updated: 2026-11-06
+updated: 2026-11-12
 type: concept
 tags: [opencode, plugin, deployment]
 confidence: high
@@ -91,8 +91,8 @@ release events with the provider ID and that provider's active and queued
 counts. Structured state comes from the separate read-only status RPC below.
 
 The desktop sidecar sends the plugin's stdout to `/dev/null`, so `log` output
-never reaches `opencode.log` or the panel. The panel feed is the desktop
-observability surface: the Concurrency tab lists recent transitions, while
+never reaches `opencode.log` or the status bar. The bar and its dialog feed are
+the desktop observability surface: the dialog lists recent transitions, while
 `log` remains for terminal runs. The feed records identifiers and counts only,
 never prompts, message content, API keys, or tool arguments.
 
@@ -110,25 +110,27 @@ emits a `changed` event on every count-changing transition: a free slot
 acquired, a request joining the wait queue, a queued request aborted, a release
 that frees a slot, and a release that hands the slot to the next waiter.
 
-A desktop GUI part ships as the prebuilt `./gui-experimental` bundle. It adds a
-pinned Concurrency tab to the session side region and reads the routed
-session's server through the shared status definition, passing the session's
-directory as the RPC location so the call reaches that location's instance. It
-refetches on every `changed` event and on a slow interval, so a missed event
-recovers. A full-width status bar in the window's bottom slot shows the same
-per-provider counts in every window, including Home, and opens a larger
-Concurrency dialog on click; it reads the built-in server because the queue is
-process-wide, and hides until the first fetch settles or when no provider is
-configured. Each provider row shows its in-flight count, configured maximum, and
-queue depth as absolute numbers, and its utilization and demand as percentages.
-The numbers are coloured on a load scale: green at 0%, yellow at 100%, orange
-at 200%, and red from 300% on, interpolated between those anchors. The active
-count and utilization follow the `active / max` load, while the queued count
-and demand follow `(active + queued) / max`. Below the provider rows, a compact
-monospace feed lists the recent transitions newest first with their timestamp,
-kind, provider, session, and counts; it renders the newest 20 and scrolls. When
-a status fetch fails, the panel shows `Status unavailable` and no provider rows
-until a later fetch succeeds.
+A desktop GUI part ships as the prebuilt `./gui-experimental` bundle. The
+window-bottom status bar is its only persistent surface: a full-width bar in the
+window's bottom slot that shows the same per-provider state in every window,
+including Home, and opens a larger Concurrency dialog on click. It reads the
+built-in server because the queue is process-wide, and hides until the first
+fetch settles or when no provider is configured. Each provider appears on the
+bar as one `X/Y` count, where `X` is active plus queued and `Y` is the
+configured maximum, coloured by `(active + queued) / max`. The bar's
+subscription refetches on every `changed` event and on a slow interval, so a
+missed event recovers, and the dialog renders that same snapshot: each provider
+row shows its in-flight count, configured maximum, and queue depth as absolute
+numbers, and its utilization and demand as percentages. The numbers are coloured
+on a six-anchor load scale: dark green at 0%, light green at 100%, light yellow
+at 150%, orange at 200%, light red at 250%, and dark red from 300% on,
+interpolated between those anchors and held at dark red above 300%. The active
+count and utilization follow the `active / max` load, while the combined count,
+queued count, and demand follow `(active + queued) / max`. Below the provider
+rows, a compact monospace feed lists the recent transitions newest first with
+their timestamp, kind, provider, session, and counts; it renders the newest 20
+and scrolls. When a status fetch fails, the panel shows `Status unavailable` and
+no provider rows until a later fetch succeeds.
 
 The queue does not address token-budget limits such as a provider's
 `burst_protection`, nor request-size rejections such as
@@ -146,13 +148,12 @@ directory and documenting the `.ts` file entry as a manual alternative covers
 both paths. See [OpenCode plugin loading](opencode-plugin-loading.md) and
 [Install a local OpenCode plugin](../procedures/install-a-local-opencode-plugin.md).
 
-A desktop status view ships through the V2 GUI plugin `Panel` and `Slot` APIs.
-The plugin's `./gui-experimental` bundle contributes a pinned tab to the
-session side region and a window-bottom status bar, and both read the server's
-per-provider state through the shared status RPC definition rather than a
-GUI-side IPC contract. The tab uses no `Slot` variant, so a `session.panel`
-menu item and a `ctx.layout.open` call are not needed to make it appear; the
-status bar is the plugin's `window.bottom` slot contribution.
+A desktop status bar ships through the V2 GUI plugin `Slot` and `Style` APIs.
+The plugin's `./gui-experimental` bundle contributes a window-bottom status bar
+and no side panel; it reads the server's per-provider state through the shared
+status RPC definition rather than a GUI-side IPC contract, and it is the
+plugin's `window.bottom` slot contribution with its CSS registered through
+`Style`.
 
 ## Related concepts
 

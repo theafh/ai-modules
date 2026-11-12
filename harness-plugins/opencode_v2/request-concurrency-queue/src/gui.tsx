@@ -1,13 +1,5 @@
 import { For, Show, createEffect, createSignal, onCleanup, type Accessor } from "solid-js"
-import {
-  Panel,
-  Plugin,
-  Slot,
-  Style,
-  usePlugin,
-  type PanelProps,
-  type PanelTab,
-} from "@opencode/plugin/gui"
+import { Plugin, Slot, Style, usePlugin } from "@opencode/plugin/gui"
 import { PANEL_STYLE } from "./panel-style.js"
 import { statusRpc, type StatusSnapshot } from "./rpc.js"
 import {
@@ -18,12 +10,6 @@ import {
   type StatusClient,
   type TransitionRow,
 } from "./status.js"
-
-const statusTab: PanelTab = {
-  id: "status",
-  title: "Concurrency",
-  pinned: true,
-}
 
 /** The text the panel shows when the status fetch fails. */
 export const STATUS_UNAVAILABLE = "Status unavailable"
@@ -162,19 +148,10 @@ export function StatusBarBody(props: { snapshot: StatusSnapshot | null; onOpen: 
                 <span class="request-concurrency-bar-item">
                   <span class="request-concurrency-bar-provider">{row.providerID}</span>
                   <span
-                    style={{ color: row.utilizationColor }}
-                    title={`${row.active} of ${row.max} slots in use`}
-                  >
-                    {`${row.active}/${row.max}`}
-                  </span>
-                  <span class="request-concurrency-bar-sep" aria-hidden="true">
-                    ·
-                  </span>
-                  <span
                     style={{ color: row.demandColor }}
-                    title={`${row.queued} waiting`}
+                    title={`${row.total} of ${row.max} slots in demand`}
                   >
-                    {`${row.queued} queued`}
+                    {`${row.total}/${row.max}`}
                   </span>
                 </span>
               )}
@@ -235,37 +212,8 @@ export function StatusBar() {
   )
 }
 
-/** One row per configured provider plus the recent transition feed. */
-function StatusView(props: PanelProps) {
-  const [snapshot, setSnapshot] = createSignal<StatusSnapshot | null>(EMPTY_SNAPSHOT)
-
-  createEffect(() => {
-    // The reactive reads below re-run this effect on a session switch, and the
-    // cleanup drops the previous client's subscription.
-    const client = props.session.server.client
-    const directory = props.session.directory
-    const unsubscribe = subscribeStatus(
-      () => client.rpc(statusRpc) as unknown as StatusClient,
-      (next) => setSnapshot(next),
-      { directory },
-    )
-    onCleanup(unsubscribe)
-  })
-
-  return <StatusBody snapshot={snapshot()} />
-}
-
-/** The pinned status tab in the desktop side region. */
-export const panel: Panel = {
-  id: "status",
-  region: "side",
-  list: () => [statusTab],
-  render: (props) => <StatusView tab={props.tab} session={props.session} screen={props.screen} />,
-}
-
 export default Plugin.define({
   setup(ctx) {
-    ctx.add(Panel, panel)
     ctx.add(Slot, { at: "window.bottom", render: () => <StatusBar /> })
     ctx.add(Style, PANEL_STYLE)
   },

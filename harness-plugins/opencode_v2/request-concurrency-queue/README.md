@@ -180,11 +180,11 @@ initializes and one line per acquire and release, including the provider ID and
 that provider's active and queued counts. It is off by default.
 
 The desktop sidecar sends the plugin's stdout to `/dev/null`, so `log` output
-never reaches `opencode.log` or the panel. The panel feed is the desktop
-observability surface: it shows recent concurrency transitions in the
-Concurrency tab, and `log` remains for terminal runs. The feed records
-identifiers and counts only; it never carries prompts, message content, API
-keys, or tool arguments.
+never reaches `opencode.log` or the status bar. The bar and its dialog feed are
+the desktop observability surface: the dialog lists recent concurrency
+transitions, and `log` remains for terminal runs. The feed records identifiers
+and counts only; it never carries prompts, message content, API keys, or tool
+arguments.
 
 The plugin serves a read-only status snapshot over the shared
 `request-concurrency-queue` RPC definition. Every location's handler reads the
@@ -203,25 +203,28 @@ waiter. Every instance forwards the shared queue's transitions, so the panel
 sees them whichever location emitted them.
 
 The desktop GUI part ships as the prebuilt `./gui-experimental` bundle and adds
-a pinned **Concurrency** tab to the session side region, plus a full-width
-status bar in the window's bottom slot. The status bar is visible in every
-window, including Home, and shows each provider's `active / max` count and queue
-depth in the same load colours; clicking it opens a larger **Concurrency** dialog
-with the provider table and the activity feed. The bar hides itself when no
-provider is configured and until the first status fetch settles. It reads the
-built-in server, because the queue is process-wide and every location returns
-the same snapshot.
+a full-width status bar in the window's bottom slot. The bar is the only
+persistent desktop surface. It is visible in every window, including Home, and
+shows each provider as one `X/Y` count, where `X` is active plus queued and `Y`
+is the configured maximum, so a fully loaded provider reads `8/8` and an
+overloaded one reads `12/8`. The count is coloured by its own load,
+`(active + queued) / max`; hovering it reports how many slots are in demand.
+Clicking the bar opens a larger **Concurrency** dialog with the provider table
+and the activity feed. The bar hides itself when no provider is configured and
+until the first status fetch settles. It reads the built-in server, because the
+queue is process-wide and every location returns the same snapshot.
 
-The side tab reads the routed session's server with the session's directory as
-the RPC location, refetches on every `changed` event, and also refetches on a
-slow interval so a missed event recovers. Each provider gets one row with its
-in-flight count, configured maximum, and queue depth as absolute numbers, and
-its utilization and demand as percentages. A header labels the columns, and the
-counts are right-aligned in tabular figures so a row reads as one line. The
-numbers are coloured on a load scale: green at 0%, yellow at 100%, orange at
-200%, and red from 300% on, interpolated between those anchors. The active count
-and utilization use the `active / max` load, while the queued count and demand
-use `(active + queued) / max`. Below the provider rows, a compact monospace feed
+The bar's subscription refetches on every `changed` event and on a slow
+interval, so a missed event recovers, and the dialog renders that same snapshot.
+Each provider gets one row with its in-flight count, configured maximum, and
+queue depth as absolute numbers, and its utilization and demand as percentages.
+A header labels the columns, and the counts are right-aligned in tabular figures
+so a row reads as one line. The numbers are coloured on a six-anchor load scale:
+dark green at 0%, light green at 100%, light yellow at 150%, orange at 200%,
+light red at 250%, and dark red from 300% on, interpolated between those anchors
+and held at dark red above 300%. The active count and utilization use the
+`active / max` load, while the combined count, queued count, and demand use
+`(active + queued) / max`. Below the provider rows, a compact monospace feed
 lists the recent transitions newest first with their timestamp, kind, provider,
 session, and counts; it renders the newest 20 and scrolls. When a status fetch
 fails, the panel shows `Status unavailable` and no provider rows until a later

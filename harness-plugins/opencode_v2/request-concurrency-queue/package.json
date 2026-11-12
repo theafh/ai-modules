@@ -1,6 +1,6 @@
 {
   "name": "opencode-request-concurrency-queue",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A process-wide FIFO concurrency limiter for OpenCode 2 model requests.",
   "type": "module",
   "license": "MIT",

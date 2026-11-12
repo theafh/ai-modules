@@ -1425,3 +1425,13 @@ pre-existing, and the size infos stay advisory; the one on
   only writer, with the looks at the orchestrator's level and every repair
   returning to that writer as a scope the user approves; the one-way citation
   direction and the per-harness facts sentence stay)
+
+## [2026-11-12 05:15] update | Make the concurrency bar the only desktop surface with a combined load count
+
+- concepts/request-concurrency-queue.md (the observability sentence names the
+  bar and its dialog feed instead of the Concurrency tab; the desktop paragraph
+  describes the window-bottom bar as the only persistent surface with its
+  combined `X/Y` count and the six-anchor dark-green-to-dark-red scale; the
+  `Slot`/`Style` paragraph drops the side `Panel` contribution)
+- index.md (the concurrency queue summary names the window-bottom bar with its
+  combined load count, and Last updated moves to 2026-11-12)

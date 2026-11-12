@@ -1,7 +1,7 @@
 /**
- * The CSS the Concurrency panel registers through the host's `Style` registry.
- * The provider rows share one column template with the header, so the counts
- * and percentages line up instead of running together.
+ * The CSS the Concurrency status surfaces register through the host's `Style`
+ * registry. The provider rows share one column template with the header, so the
+ * counts and percentages line up instead of running together.
  */
 export const PANEL_STYLE = `
 .request-concurrency-status {
@@ -206,10 +206,6 @@ export const PANEL_STYLE = `
 
 .request-concurrency-bar-provider {
   opacity: 0.7;
-}
-
-.request-concurrency-bar-sep {
-  opacity: 0.3;
 }
 
 .request-concurrency-bar-muted {

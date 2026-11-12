@@ -6,32 +6,40 @@ export interface ProviderRow {
   readonly active: number
   readonly queued: number
   readonly max: number
+  /** Active plus queued, the bar's combined load count. */
+  readonly total: number
   /** Utilization as a whole-percent string, e.g. `50%`. */
   readonly utilization: string
   /** Demand as a whole-percent string, e.g. `75%`. */
   readonly demand: string
   /** CSS color for the active count and utilization, by `active / max`. */
   readonly utilizationColor: string
-  /** CSS color for the queued count and demand, by `(active + queued) / max`. */
+  /**
+   * CSS color for the combined count, the queued count, and demand, by
+   * `(active + queued) / max`.
+   */
   readonly demandColor: string
 }
 
 /**
- * The load scale's anchor points: green at zero, yellow near 100%, orange near
- * 200%, and red from 300% on. Between anchors the color is interpolated, so a
- * row warms up as its load climbs instead of snapping between bands.
+ * The load scale's six anchor points: dark green at zero, light green at 100%,
+ * light yellow at 150%, orange at 200%, light red at 250%, and dark red at 300%
+ * and beyond. Between anchors the color is interpolated, so a row warms up as
+ * its load climbs instead of snapping between bands.
  */
 const LOAD_ANCHORS = [
-  { percent: 0, hue: 145, saturation: 65, lightness: 50 },
-  { percent: 100, hue: 48, saturation: 95, lightness: 55 },
-  { percent: 200, hue: 28, saturation: 95, lightness: 58 },
-  { percent: 300, hue: 0, saturation: 80, lightness: 62 },
+  { percent: 0, hue: 145, saturation: 60, lightness: 28 },
+  { percent: 100, hue: 120, saturation: 60, lightness: 60 },
+  { percent: 150, hue: 60, saturation: 85, lightness: 70 },
+  { percent: 200, hue: 32, saturation: 95, lightness: 55 },
+  { percent: 250, hue: 12, saturation: 90, lightness: 68 },
+  { percent: 300, hue: 0, saturation: 70, lightness: 35 },
 ] as const
 
 /**
- * The color for a load percentage on the green-to-red scale. A value below
- * zero or one that is not a number reads as no load; a value past 300% stays
- * red.
+ * The color for a load percentage on the dark-green-to-dark-red scale. A value
+ * below zero or one that is not a number reads as no load; a value at or past
+ * 300% holds the dark red anchor.
  */
 export function loadColor(percent: number): string {
   const value = Number.isFinite(percent) ? Math.max(0, percent) : 0
@@ -95,6 +103,7 @@ export function providerRow(provider: ProviderStatus): ProviderRow {
     active: provider.active,
     queued: provider.queued,
     max: provider.max,
+    total: provider.active + provider.queued,
     utilization: percent(provider.utilization),
     demand: percent(provider.demand),
     utilizationColor: loadColor(provider.utilization * 100),
