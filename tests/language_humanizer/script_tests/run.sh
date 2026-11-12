@@ -90,7 +90,9 @@ check "pseudo-XML body passes lint_pseudo_xml.py" python3 "$LINTER" --quiet "$SK
 check "no URL in the skill" file_lacks "$SKILL" 'https?://|www\.'
 check "no em dash or en dash in the skill" file_lacks "$SKILL" '—|–'
 
-check "description fits the 1024-character skill limit" description_at_most "$SKILL" 1024
+# 1024 is the trigger-eval tooling's hard description limit, stricter than the
+# harness's 1536-character truncation (skill_doctor's skillListingMaxDescChars).
+check "description fits the 1024-character trigger-eval hard limit" description_at_most "$SKILL" 1024
 check "description states comprehension and coherence for a named reader" \
   description_has "$SKILL" 'comprehension and coherence for a named reader'
 check "description routes the short-version split to executive_summary" \

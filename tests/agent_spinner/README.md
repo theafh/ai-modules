@@ -28,7 +28,7 @@ tests/agent_spinner/
 
 ## Surfaces
 
-- **script_tests**: frontmatter and the two size budgets, one block per named
+- **script_tests**: frontmatter and the description check, one block per named
   contract, the six shape tags with their four elements each, the capability
   probe's four capabilities and its deployment-versus-callability rule, the
   per-harness greps that must return nothing, the one-way advisory direction

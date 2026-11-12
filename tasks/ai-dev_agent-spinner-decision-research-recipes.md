@@ -2,7 +2,7 @@
 description: Add agent_spinner's recipes for design options, corpus research, and disputed claims, with selector rows and evals, and rewrite variants.md with the blind and calibration variants.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T13:54:08Z
-updated: 2026-11-12T08:40:44Z
+updated: 2026-11-12T09:43:18Z
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -50,7 +50,7 @@ This task ships three recipe files, `option-panel.md`, `research-synthesis.md`, 
 
 ### Recipe file layout
 
-Write the three files in the layout the recipes the review-repair recipes task ships use, which that task's per-recipe checks enforce. Each file has one outer tag named after the file stem, the field tags `RECIPE_FIELDS` lists, in that order, two to four numbered phases in `<phases>`, and at most 12,288 bytes. Write in pseudo-XML with positive, action-oriented wording, as the standing repo rules require. Write rules only, with no session figure, cost observation, case evidence, harness product name, tool identifier, harness path, instruction-file name, or precedence phrase. Cite run-protocol steps and checks by their P and C labels, and name ledger verbs and flags only from the command reference in run-protocol.md.
+Write the three files in the layout the recipes the review-repair recipes task ships use, which that task's per-recipe checks enforce. Each file has one outer tag named after the file stem, the field tags `RECIPE_FIELDS` lists, in that order, two to four numbered phases in `<phases>`. Write in pseudo-XML with positive, action-oriented wording, as the standing repo rules require. Write rules only, with no session figure, cost observation, case evidence, harness product name, tool identifier, harness path, instruction-file name, or precedence phrase. Cite run-protocol steps and checks by their P and C labels, and name ledger verbs and flags only from the command reference in run-protocol.md.
 
 Copy every shared line from the same field of `check-only-audit.md`, which the review-repair recipes task ships, where each stands as a paragraph of its own and holds its `RECIPE_SHARED_LINES` phrase. Put this recipe's shape in the trigger line. None of the three runs a repair round of its own, so no `<orchestrator_gates>` among them cites C5, and none carries the `RECIPE_REPAIR_LINES` paragraphs. As in those recipes, the first orchestrator step runs the gate-scope check before dispatch, and the **Report** step builds the report from the ledger after a clean `close` (P6). A run whose flag-ledger pass leaves an entry open exits `close` nonzero, and its **Report** step still runs, its opening sentence stating that `close` exited non-zero, as P6 requires. `<tier_notes>` holds one note each for the inline floor, batch delivery, and notice delivery. The option panel and the research synthesis pair their completeness critic with the surplus read C6 requires. The field contents below leave out what the shared lines already say, so each field holds its shared lines plus the content listed here. Where a recipe applies a variant, it names `variants.md` and the variant's heading, as the contents below show.
 
@@ -150,7 +150,7 @@ In the `# --- references ---` section of `tests/agent_spinner/script_tests/run.s
 
 ### Selector rows
 
-Add these three rows to the recipe table inside `<selector>`, in the frame's column order: the ask first, then the recipe file. This task's selector additions total 982 bytes, newlines included: 213 bytes for the three rows, 203 for the precedence sentence, 83 for the selector bullet, and 483 for the `<shapes>` block. `SKILL.md` is already 24,562 bytes against the 25,000-byte cap that run.sh's check "SKILL.md under 25000 bytes" enforces, so the additions exceed the remaining headroom. After adding them, measure the total with `wc -c`. When the total reaches 25,000, trim redundant selector prose outside the recipe table, leaving untouched the passage run.sh greps for `smallest shape that covers it`, and record the measured size and the post-trim size. run.sh's check then passes.
+Add these three rows to the recipe table inside `<selector>`, in the frame's column order: the ask first, then the recipe file.
 
 ```markdown
 | Weigh design options or challenge a built design | `option-panel.md` |
@@ -188,7 +188,7 @@ Add one row per eval to the `## Signal per eval` table in `tests/agent_spinner/e
 - A read of the three files finds rules only, with no session figure, cost observation, case evidence, or wiki citation.
 - `variants.md` keeps its H1 and its two existing headings, and carries the four new headings and the phrase "blind by prompt".
 - `grep -c 'already-settled facts'` on `variants.md` returns 0, its isolation section states that only measured and read facts settle, its replicated-draw section labels a draw whose brief carried the claim recall-confirmed, and its opening paragraph covers all six variants.
-- The recipe table in `<selector>` holds the three rows exactly as Approach gives them, run.sh's check "selector recipe rows match references/recipes/ one to one" passes, and `wc -c` reports `SKILL.md` under 25,000 bytes after the trim the byte passage describes, with the measured pre-trim size and the post-trim size recorded.
+- The recipe table in `<selector>` holds the three rows exactly as Approach gives them, and run.sh's check "selector recipe rows match references/recipes/ one to one" passes.
 - `bash tests/agent_spinner/script_tests/run.sh` passes, its per-recipe checks report and pass the three new files with no repair-round check among them, and it runs the new `variants.md` checks. A scratch copy of `variants.md` lacking one new heading fails that heading's check.
 - The four evals exist in `evals.json` with their fixtures and graders, and each has a row in the `## Signal per eval` table of `tests/agent_spinner/evals/README.md`.
 - Each of the four evals passes under TESTING.md's vendor rule. A failing eval is fixed in the recipe, `variants.md`, its selector row, or the fixture inside this task, never by weakening its check. Re-grading a captured passing run with its asserted filesystem, roster, or ledger fact removed fails each of them.

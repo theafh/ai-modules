@@ -1773,6 +1773,8 @@ check "budget_solo_exits_zero" test "${solo_rc:-0}" -eq 0
 # entry, so it has to carry the arithmetic rather than just the verdict.
 check "budget_message_states_measured_length" \
   json_has "$SOLO_JSON" "all('1200 characters' in m for m in $BUDGET_MSGS)"
+# 1000 = LISTING_BUDGET_CHARS (8000) // 8: the listing-risk threshold, not the
+# 1536-character truncation limit the listing applies per entry.
 check "budget_message_states_threshold" \
   json_has "$SOLO_JSON" "all('1000-character threshold' in m for m in $BUDGET_MSGS)"
 check "budget_message_names_the_budget" \

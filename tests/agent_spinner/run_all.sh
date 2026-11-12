@@ -2,9 +2,10 @@
 # Top-level agent_spinner regression entrypoint.
 #
 # agent_spinner bundles one program, scripts/run_ledger.py, so the deterministic
-# surface here is four runners: the static contract (SKILL.md budgets and
-# blocks, the reference set, the per-harness greps that must stay empty, and the
-# ledger's stdlib-only and read-only-git contract), the ledger's own script
+# surface here is four runners: the static contract (frontmatter and the
+# description check, the blocks, the reference set, the per-harness greps that
+# must stay empty, and the ledger's stdlib-only and read-only-git contract),
+# the ledger's own script
 # tests, the grader's committed pass/fail cases, and the eval runner's plumbing
 # test against a stub worker.
 #

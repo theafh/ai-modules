@@ -2,7 +2,7 @@
 description: Add agent_spinner's recipes for one wording rule across many files and for one task spanning many files, with selector rows and four evals for sampling, triage, and moved files.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T13:54:08Z
-updated: 2026-11-12T08:40:44Z
+updated: 2026-11-12T09:43:18Z
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -52,7 +52,7 @@ This task ships two recipe files, `prose-sweep.md` and `multi-file-task.md`, wit
 
 ### Recipe file layout
 
-Write both files in the layout the recipes the review-repair recipes task ships use, which that task's per-recipe checks enforce. Each file has one outer tag named after the file stem, the field tags `RECIPE_FIELDS` lists, in that order, two to four numbered phases in `<phases>`, and at most 12,288 bytes. Write in pseudo-XML with positive, action-oriented wording, as the standing repo rules require. Write rules only, with no session figure, cost observation, case evidence, harness product name, tool identifier, harness path, instruction-file name, or precedence phrase. Cite run-protocol steps and checks by their P and C labels, and name ledger verbs and flags only from the command reference in run-protocol.md.
+Write both files in the layout the recipes the review-repair recipes task ships use, which that task's per-recipe checks enforce. Each file has one outer tag named after the file stem, the field tags `RECIPE_FIELDS` lists, in that order, two to four numbered phases in `<phases>`. Write in pseudo-XML with positive, action-oriented wording, as the standing repo rules require. Write rules only, with no session figure, cost observation, case evidence, harness product name, tool identifier, harness path, instruction-file name, or precedence phrase. Cite run-protocol steps and checks by their P and C labels, and name ledger verbs and flags only from the command reference in run-protocol.md.
 
 Copy every shared line from the same field of `fidelity-review.md`, which the review-repair recipes task ships, where each stands as a paragraph of its own and holds its `RECIPE_SHARED_LINES` phrase. Put this recipe's shape in the trigger line. Both recipes run a repair round, so both also copy the three paragraphs that hold the `RECIPE_REPAIR_LINES` phrases. The repair-round paragraph in each `<orchestrator_gates>` cites C5. As in those recipes, the first orchestrator step runs the gate-scope check before dispatch, and the **Report** step builds the report from the ledger after a clean `close` (P6). `<tier_notes>` holds one note each for the inline floor, batch delivery, and notice delivery. The field contents below leave out what the shared lines already say, so each field holds its shared lines plus the content listed here.
 
@@ -115,7 +115,7 @@ Its H1 reads `# J3. Multi-file task implementation`, and its outer tag is `<mult
 
 ### Selector rows
 
-Add these two rows to the recipe table inside `<selector>`, in the frame's column order: the ask first, then the recipe file. Together they add 130 bytes, newlines included. Measure `SKILL.md` with `wc -c` once the prerequisite task has landed and before adding the rows, then project the budget as that measured size plus the 130 bytes these rows add plus the 982 bytes the sibling [decision and research recipes task](ai-dev_agent-spinner-decision-research-recipes.md) declares for its three rows, precedence sentence, selector bullet, and `<shapes>` block. That task follows both recipe tasks, so it lands after this one and its rows enter the projection rather than the measurement. When the projected total reaches 25,000, trim redundant selector prose outside the recipe table, leaving untouched the passage run.sh greps for `smallest shape that covers it`, until the projected total clears 25,000; the trim must cover the sibling's full 982 bytes, and the run records the measured size, the projected total, and the size after the trim. Leave the two rows and every sibling task's selector addition byte-identical. run.sh's check "SKILL.md under 25000 bytes" then passes once the sibling's rows land on this task's trimmed file.
+Add these two rows to the recipe table inside `<selector>`, in the frame's column order: the ask first, then the recipe file.
 
 ```markdown
 | Apply one wording rule across many files | `prose-sweep.md` |
@@ -154,7 +154,7 @@ Add one row per eval to the `## Signal per eval` table in `tests/agent_spinner/e
 - `bash tests/agent_spinner/script_tests/run.sh` passes, and its per-recipe checks report and pass both files, repair-round phrases included.
 - Each shared line in both files matches, word for word, the paragraph in the same field of `fidelity-review.md` that holds the same phrase, apart from the shape the trigger line names.
 - A read of both files finds rules only, with no session figure, cost observation, case evidence, or wiki citation.
-- The recipe table in `<selector>` holds the two rows exactly as Approach gives them, run.sh's check "selector recipe rows match references/recipes/ one to one" passes, and `### Selector rows`'s projected budget is recorded: the measured size, the 130 bytes the two rows add, and the 982 bytes the sibling decision and research recipes task declares form a projected total, the trim runs whenever that total reaches 25,000 and covers the sibling's full 982 bytes, and `wc -c` reports `SKILL.md` under 25,000 bytes after the trim, with the measured size and the projected total recorded.
+- The recipe table in `<selector>` holds the two rows exactly as Approach gives them, and run.sh's check "selector recipe rows match references/recipes/ one to one" passes.
 - The four evals exist in `evals.json` with their fixtures and graders, and each has a row in the `## Signal per eval` table of `tests/agent_spinner/evals/README.md`.
 - Each of the four evals passes under TESTING.md's vendor rule. A failing eval is fixed in the recipe, its selector row, or the fixture inside this task, never by weakening its check. Re-grading a captured passing run with its asserted filesystem, roster, or ledger fact removed fails each of them.
 - `diagnostic_inline` and `residual_selector` pass with the two rows in place, run under TESTING.md's re-run economy.

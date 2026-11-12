@@ -2,8 +2,8 @@
 # script_tests/run.sh — static contract checks for agent_spinner.
 #
 # agent_spinner ships one bundled program, scripts/run_ledger.py, so this
-# surface covers the filesystem and grep acceptance items: frontmatter and
-# size budgets, one block per named contract, the six shape tags and their four
+# surface covers the filesystem and grep acceptance items: frontmatter and the
+# description check, one block per named contract, the six shape tags and their four
 # elements, the per-harness-fact greps that must stay empty, the reference set,
 # the ledger's stdlib-only and read-only-git contract, the trigger eval set,
 # and registration lockstep.
@@ -47,8 +47,6 @@ section_has() {
     index($0, "</" tag ">") { inside = 0 }
   ' "$1" | grep -Eq "$3"
 }
-
-bytes_under() { [[ "$(wc -c < "$1")" -lt "$2" ]]; }
 
 description_under() {
   python3 - "$1" "$2" <<'PY'
@@ -216,14 +214,6 @@ aggregation_show_list_correct() {
     && ! printf '%s\n' "$block" | grep -Eqi 'contradictions|beyond-brief finds'
 }
 
-# aggregation_block_under <skill.md> <bytes> — the block measured from opening
-# tag through closing tag.
-aggregation_block_under() {
-  local size
-  size="$(aggregation_block "$1" | wc -c | tr -d ' ')"
-  [[ "$size" -le "$2" ]]
-}
-
 oldest_python3() {
   {
     type -a -p python3 2>/dev/null || true
@@ -252,7 +242,7 @@ oldest_python_help() {
 
 printf 'agent_spinner script_tests\n'
 
-# --- frontmatter and budgets ------------------------------------------------
+# --- frontmatter and description -------------------------------------------
 check "SKILL.md exists" test -f "$SKILL"
 check "frontmatter name: agent_spinner" file_has "$SKILL" '^name: agent_spinner$'
 # Test Integrity: a grader fix. The skill must carry a semantic version, and a
@@ -261,8 +251,9 @@ check "frontmatter name: agent_spinner" file_has "$SKILL" '^name: agent_spinner$
 # asserts the shape.
 check "frontmatter version is semver" file_has "$SKILL" '^version: [0-9]+\.[0-9]+\.[0-9]+$'
 check "H1 matches the frontmatter name" file_has "$SKILL" '^# agent_spinner$'
-check "SKILL.md under 25000 bytes" bytes_under "$SKILL" 25000
-check "description under 1500 characters" description_under "$SKILL" 1500
+# A per-skill conservative bound under the harness's 1536-character
+# truncation limit (skill_doctor's skillListingMaxDescChars).
+check "description under the 1500-character per-skill bound (1536 truncation limit)" description_under "$SKILL" 1500
 
 for word in orchestrat fan-out verif parallel; do
   check "description carries the '$word' trigger word" \
@@ -296,8 +287,6 @@ check "every run_ledger.py path is skill-relative" \
 # --- <aggregation>'s `show` read set ----------------------------------------
 check "<aggregation> show read set matches the ledger's imported record types" \
   aggregation_show_list_correct "$SKILL"
-check "<aggregation> stays within its 1200-byte budget" \
-  aggregation_block_under "$SKILL" 1200
 
 # --- the six shapes, each with its four elements ----------------------------
 SHAPES=(

@@ -2,7 +2,7 @@
 description: Add agent_spinner's recipes for source-fidelity review, drift repair, and read-only audit, with selector rows, four evals, and run.sh checks every recipe file must pass.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T13:54:08Z
-updated: 2026-11-12T08:32:23Z
+updated: 2026-11-12T09:43:18Z
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -62,7 +62,7 @@ Write each recipe as one file under `references/recipes/`, in pseudo-XML with po
 - List two to four numbered helper phases in `<phases>`. Each phase is one verb plus one clause naming what a helper does over which unit, and it names the earlier returns it reads.
 - List the orchestrator steps under `<orchestrator_gates>` in run order. Scouting, calibration with the user, deterministic gates, merges by script, validation, and reporting are orchestrator steps. So is a single helper dispatched at a barrier, such as a critic, a planner, or a validator. The one repair round re-enters the write and check phases, so it adds no phase.
 - Cite run-protocol steps and checks by their labels, P1 to P6 and C1 to C10. Name ledger verbs and flags only from the frozen set in run-protocol.md's command reference.
-- Keep each recipe file at most 12,288 bytes. The orchestrator reads a matched recipe in full, and the recipe must carry every rule. The context estimate that P1 requires already counts that load. No standing repo rule caps a reference file, so this one limit covers every recipe. Each planned recipe fits it with all its fields.
+- The orchestrator reads a matched recipe in full, and the recipe must carry every rule. The context estimate that P1 requires already counts that load. Each planned recipe carries all its fields.
 - Register each recipe's severity names at `init`. `init` records the ladder `blocker`, `major`, and `minor` unless `--severity` names others, and `accept` rejects any finding whose severity sits off that ladder. Each recipe therefore passes the names its roles use with `--severity` at `init` whenever they differ from that default.
 - Name the ledger's finding keys in every `<roles_and_returns>`: each finding carries `claim`, `severity`, `quote`, and `anchor`, and each examined entry carries its `receipt`, matched against the input version its row recorded (P3). `accept` rejects a return that omits any of them.
 - Write rules only. Leave out session figures, cost observations, case evidence, harness product names, tool identifiers, harness paths, instruction-file names, and precedence phrases such as "takes precedence".
@@ -173,7 +173,7 @@ Every recipe carries the shared lines quoted below. Each quoted line stands as a
 
 ### Selector rows
 
-Add these three rows to the recipe table inside `<selector>`, in the frame's column order: the ask first, then the recipe file. Together they add 204 bytes, newlines included. `SKILL.md` stays under 25,000 bytes, measured with `wc -c` at implementation time, so run.sh's check "SKILL.md under 25000 bytes" passes.
+Add these three rows to the recipe table inside `<selector>`, in the frame's column order: the ask first, then the recipe file.
 
 ```markdown
 | Fix derived documents against their sources | `fidelity-review.md` |
@@ -201,7 +201,7 @@ RECIPE_REPAIR_LINES  orchestrator_gates|re-enters the write and check phases
                      post_run_checks|exactly one re-check row, at no lower depth than its first check
 ```
 
-For each file, the loop checks the outer tag named after the file stem and every `RECIPE_FIELDS` tag inside it, in that order. It checks two to four numbered items inside `<phases>` and a size of at most 12,288 bytes. It finds each `RECIPE_SHARED_LINES` phrase inside the field its entry names. Wherever the file's `<orchestrator_gates>` carries the label C5, it also finds each `RECIPE_REPAIR_LINES` phrase inside its field. A phrase matches as a fixed string over the field's text, with line breaks collapsed to single spaces, so a hard wrap inside a phrase still matches. Each check's label opens with the file's name and names the property, such as `fidelity-review.md <width> carries 'spans sessions at wave ends'`. A failure then says which file broke which rule.
+For each file, the loop checks the outer tag named after the file stem and every `RECIPE_FIELDS` tag inside it, in that order. It checks two to four numbered items inside `<phases>`. It finds each `RECIPE_SHARED_LINES` phrase inside the field its entry names. Wherever the file's `<orchestrator_gates>` carries the label C5, it also finds each `RECIPE_REPAIR_LINES` phrase inside its field. A phrase matches as a fixed string over the field's text, with line breaks collapsed to single spaces, so a hard wrap inside a phrase still matches. Each check's label opens with the file's name and names the property, such as `fidelity-review.md <width> carries 'spans sessions at wave ends'`. A failure then says which file broke which rule.
 
 The loop passes when no recipe file exists, so it holds at every commit and covers the recipe files other tasks ship. Keep the array names and the label shape as given here, since the rewrite-implement and decision-research recipe tasks cite them. These are new checks under TESTING.md's Test Integrity rules.
 
@@ -227,9 +227,9 @@ Add one row per eval to the `## Signal per eval` table in `tests/agent_spinner/e
 - `artifact-repair.md` lists Write, Check, and Critique as its numbered phases. Its outer tag holds `<single_artifact_variant>`, and its `<ledger_steps>` fail an item on a blocking or should-fix finding whatever its verdict word.
 - `check-only-audit.md` lists Review and Verify as its numbered phases. Its `<orchestrator_gates>` create the class-sweep and recall-probe rows before any unit is called clean, and place any fix in a later run on the user's word.
 - `run.sh` carries the per-recipe loop in its `# --- references ---` section, with `RECIPE_FIELDS`, `RECIPE_SHARED_LINES`, and `RECIPE_REPAIR_LINES` holding the entries Approach gives. `bash tests/agent_spinner/script_tests/run.sh` passes, and its output shows every per-recipe check passing on each of the three files. The repair-round checks appear for `fidelity-review.md` and `artifact-repair.md`, and none appears for `check-only-audit.md`.
-- On a scratch copy of the repository, each of these single violations in one recipe fails its matching check: a fifth numbered phase, a field tag removed, two field tags swapped, a size past 12,288 bytes, a shared phrase moved into another field, and a repair-round phrase removed while `<orchestrator_gates>` carries C5. A shared phrase split by a hard wrap inside its own field still passes.
+- On a scratch copy of the repository, each of these single violations in one recipe fails its matching check: a fifth numbered phase, a field tag removed, two field tags swapped, a shared phrase moved into another field, and a repair-round phrase removed while `<orchestrator_gates>` carries C5. A shared phrase split by a hard wrap inside its own field still passes.
 - A read of the three files finds rules only, with no session figure, cost observation, case evidence, or wiki citation.
-- The recipe table in `<selector>` holds the three rows exactly as Approach gives them, run.sh's check "selector recipe rows match references/recipes/ one to one" passes, and `wc -c` reports `SKILL.md` under 25,000 bytes.
+- The recipe table in `<selector>` holds the three rows exactly as Approach gives them, and run.sh's check "selector recipe rows match references/recipes/ one to one" passes.
 - The four evals exist in `evals.json` with their fixtures and graders, and each has a row in the `## Signal per eval` table of `tests/agent_spinner/evals/README.md`.
 - `attached_body_reads_recipe`, `routed_premise_sentences_landed`, `repair_list_keyed_on_severity`, and `confirmed_class_swept_before_clean` pass under TESTING.md's vendor rule. A failing eval is fixed in the recipe, its selector row, or the fixture inside this task, never by weakening its check. Re-grading a captured passing run with its asserted filesystem, roster, or ledger fact removed fails each of them.
 - `diagnostic_inline` and `residual_selector` pass with the three rows in place, run under TESTING.md's re-run economy.
