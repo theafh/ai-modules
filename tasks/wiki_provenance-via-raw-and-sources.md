@@ -2,7 +2,7 @@
 description: Make `wiki_import` capture implicit mid-conversation sources into a `raw/` sidecar + `sources:` instead of body-prose narration, and have `wiki_fix` route uncaptured ones to `wiki_import`.
 scope: plugins/knowledge_management
 created: 2026-05-28T17:24:54Z
-updated: 2026-11-11T20:04:00Z
+updated: 2026-11-12T08:32:23Z
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -66,6 +66,6 @@ Related task: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](archive/wiki_raw-k
   - No body paragraph narrates provenance.
   - Any HTML-like tokens in the raw text stay unparsed inside the fenced block, so a downstream wiki running default markdownlint does not trip `MD033`; the fixture's raw text carries a four-backtick run and the scenario asserts the emitted fence is longer than that run.
   - The same fixture run emits no three-H2 import proposal and completes the consuming page write in the same turn, proving the implicit branch captures and returns instead of halting on `<propose_then_act>`.
-- Auto-shaper fixture, committed as new eval scenario `AS-23` in the same `evals.json` and staging script: a page narrating an uncaptured mid-conversation source → the assess pass's narrated-provenance check lists the page as an issue before remediation, the remediation pass adds no provenance prose, creates no sidecar itself, and surfaces the artifact for `wiki_import` routing in the per-file report.
+- Auto-shaper fixture, committed as the new eval scenario the implementation adds, carrying the next free `AS-` id at implementation time, in the same `evals.json` and staging script: a page narrating an uncaptured mid-conversation source → the assess pass's narrated-provenance check lists the page as an issue before remediation, the remediation pass adds no provenance prose, creates no sidecar itself, and surfaces the artifact for `wiki_import` routing in the per-file report.
 - `<fix_provenance_violation>` carries one canonical branch set matching the two channels `<provenance_violation>` and `<fix_external_source_pointer>` already name: an inline link is added where the claim's source resolves under `raw/<kind>/<slug>.md` or under a declared source root, and a narrated source that resolves under neither halts and is surfaced; no passage in `auto_shaper_wiki.md` instructs an inline link for a source resolving under neither channel, and no passage treats a declared-root source as uncaptured.
-- `tests/wiki/run_all.sh --layer2` passes over a scenario set that includes `WI-5` and `AS-23`, so these rules are proven by the run and not by the pre-existing scenarios alone.
+- `tests/wiki/run_all.sh --layer2` passes over a scenario set that includes `WI-5` and the auto-shaper scenario the implementation adds under the next free `AS-` id, so these rules are proven by the run and not by the pre-existing scenarios alone.

@@ -2,7 +2,7 @@
 description: Keep wiki headings and bold-prefix labels structural, route displaced metadata (date, source, qualifier) to its proper channel, and lint both heading-label heuristics (length; ISO-date) at info.
 scope: plugins/knowledge_management
 created: 2026-05-28T17:24:35Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-12T08:32:23Z
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -31,7 +31,7 @@ Files involved:
 - [plugins/knowledge_management/skills/wiki/references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md): lint check matrix and severity buckets.
 - [plugins/knowledge_management/skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py): heading/label lint.
 
-Related tasks: [wiki_two-pass-normalisation.md](archive/wiki_two-pass-normalisation.md) shipped the general "two-pass remediation" rule, which routes displaced semantics then normalises, as the family's single statement of it (`<two_pass_remediation>` in the agent). This task is the heading-specific surface that extends the shipped rule and adds `<fix_heading_label>` under `<fix_moves>`. [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) owns clarifying how a custom page-type anatomy names its structural labels (Approach **Custom-type anatomy rule in `template_schema.md`**; Acceptance **Fixture D**); this task consumes that declaration shape for SCHEMA label vocabulary and does not re-author it.
+Related tasks: [wiki_two-pass-normalisation.md](archive/wiki_two-pass-normalisation.md) shipped the general "two-pass remediation" rule, which routes displaced semantics then normalises, as the family's single statement of it (`<two_pass_remediation>` in the agent). This task is the heading-specific surface that extends the shipped rule and adds `<fix_heading_label>` under `<fix_moves>`. [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) owns clarifying how a custom page-type anatomy names its structural labels (Approach **Custom-type anatomy rule in `template_schema.md`**; Acceptance **Fixture D**); this task consumes that declaration shape for SCHEMA label vocabulary and does not re-author it. This task depends on that task shipping first: the `## Custom Types` section of `template_schema.md` does not exist yet, so the label-vocabulary shape has no anchor until it lands.
 
 ## Approach
 

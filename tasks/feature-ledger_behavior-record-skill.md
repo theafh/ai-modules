@@ -2,7 +2,7 @@
 description: Ship a decoupled ai_dev skill that maintains a root FEATURES.md behavior ledger from the codebase, analogous to update_changelog - independent of the task system, optional, used if present.
 scope: plugins/ai_dev
 created: 2026-06-21T13:17:35Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -17,7 +17,7 @@ Ship a standalone, optional skill that maintains a root `FEATURES.md` behavior-o
 
 The assessment behind this task: a behaviour ledger is separable from task tracking and need not be coupled to it. The task family deliberately draws the line that tasks capture *upcoming work*, not durable behaviour, so once a task is archived its behaviour description goes with it and there is no steady-state surface describing the running system. A feature ledger fills that gap, and it does so as cleanly off to the side as the changelog does. `update_changelog` is the working model: a repo-agnostic, on-demand skill that maintains a root `UPPERCASE.md` document (`CHANGELOG.md`) independently of any task or backlog. `FEATURES.md` is the behaviour analogue, derived from the codebase rather than git history, and by the filing rule (project-wide material lives in a root `UPPERCASE.md` doc) it lives at repo root alongside `CHANGELOG.md`.
 
-Conclusion encoded as the design: this is a separate, optional, complementary skill, not needed for the task-family extension, and usable on its own. The task family already reads `FEATURES.md` when it exists: `task_create` reads it before the prior-art scan and `task_finish` names it in the design-extended decline test, while nothing in the task lifecycle requires it.
+Conclusion encoded as the design: this is a separate, optional, complementary skill, not needed for the task-family extension, and usable on its own. The task family already reads `FEATURES.md` when it exists, through the base `task` skill's own workflows that the siblings front: its `<create>`/`<gather>` reads the file before the prior-art scan, and its `<archive>` design-extended decline test names it, while nothing in the task lifecycle requires it.
 
 ## Approach
 

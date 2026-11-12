@@ -2,7 +2,7 @@
 description: Filter foreign configs out of the vscode hook route, ship a Copilot-schema hook config, and switch VS Code's Claude hook sources off so native delivery is the only route.
 scope: deployment
 created: 2026-08-09T18:07:35Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -29,13 +29,14 @@ CHARTER.md mutation on Claude, Codex, and Antigravity blocks it on Copilot too.
 
 In `deployment/deployment.sh`, the hook artefact case first gates on file
 extension (locate by the message `not an executable hook or hook config`), then
-dispatches per target. Five branches filter by filename before writing: Cursor
+dispatches per target. Four branches filter by filename before writing: Cursor
 answers a non-matching file with `not a Cursor hook config`, Claude with
 `not a Claude hook config`, Codex with `not a Codex custom deploy hook config`,
-Antigravity with `not an Antigravity hook config`, and OpenCode with
-`Hook deployment not implemented for`. The `vscode)` branch has no such test. It
-copies every `.sh` and `.json` the hook discovery yields into the Copilot hook
-directory under the target's configuration root.
+and Antigravity with `not an Antigravity hook config`. The OpenCode branch
+instead falls through to `Hook deployment not implemented for`, so it writes
+nothing. The `vscode)` branch has no such test. It copies every `.sh` and
+`.json` the hook discovery yields into the Copilot hook directory under the
+target's configuration root.
 
 A type-scoped dry run confirms the result: alongside the shared
 `charter_guardrail.sh`, Copilot receives `hooks.json`, `codex-plugin-hooks.json`,
@@ -87,7 +88,7 @@ structure.
 
 ## Approach
 
-1. **Filter the `vscode)` hook branch** the way the other five already filter.
+1. **Filter the `vscode)` hook branch** the way the other four already filter.
    Keep the `.sh` copy unchanged, and accept a `.json` only when its basename
    matches `vscode-hooks*`, mirroring the Cursor branch's `cursor-hooks` test and
    its skip message wording. With no matching file present the branch then writes
@@ -147,7 +148,7 @@ structure.
   through `chat.instructionsFilesLocations` belongs with the instructions delivery
   in [deployment_output-style-vscode.md](deployment_output-style-vscode.md), which
   owns that configuration root.
-- Replacing the five per-branch filename tests with one declarative per-target
+- Replacing the four per-branch filename tests with one declarative per-target
   allowlist. It is the better structure and it prevents this class of defect
   recurring, but it refactors a working dispatch for a defect that has occurred
   once.

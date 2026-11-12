@@ -2,7 +2,7 @@
 description: Add agent_spinner's recipes for source-fidelity review, drift repair, and read-only audit, with selector rows, four evals, and run.sh checks every recipe file must pass.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T13:54:08Z
-updated: 2026-11-11T17:19:26Z
+updated: 2026-11-12T08:32:23Z
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -25,7 +25,7 @@ This task ships three recipe files, `fidelity-review.md`, `artifact-repair.md`, 
   - [The checking-doctrine task](archive/ai-dev_agent-spinner-checking-doctrine.md) ships `references/checks.md` with the C1 to C10 checks. For example, C1 checks every landed write, meaning every change that reached a file, and C5 allows one repair round with one re-check. The task also ships `references/edit-mechanics.md`, which says how each class of text may change, and the rewritten `references/role-prompts.md` templates, one prompt template per helper role.
   - [The routing task](archive/ai-dev_agent-spinner-routing.md) ships the recipe table's frame inside `<selector>`, the block that matches an ask to a shape. It routes an ask to a recipe only after the ask matched the recipe's shape, and it adds the run.sh check "selector recipe rows match references/recipes/ one to one".
   - [The runner-modes task](archive/tests_agent-spinner-runner-modes.md) adds the inline-body mode, in which the eval worker gets the skill body inside its prompt, as a manual attachment delivers it. It also adds the `tool_record` key, which writes the worker's tool calls to `tool_calls.jsonl` beside `response.txt`. `attached_body_reads_recipe` uses both.
-  - [The wiki_fix scope task](wiki_fix-accept-confirmed-findings-scope.md) lets `wiki_fix` take a user-approved list of confirmed findings as its scope. The fidelity review's family-owned variant hands it that list.
+  - [The wiki_fix scope task](wiki_fix-accept-confirmed-findings-scope.md) will let `wiki_fix` take a user-approved list of confirmed findings as its scope; it is a soft prerequisite, since the fidelity review's family-owned variant hands it that list only once that task ships.
 - **Terms the recipes use.** The run protocol and the checks define these terms:
   - The run ledger is the program `scripts/run_ledger.py`, bundled with the skill, which keeps a run's records under `.agent_spinner/`. Its commands are verbs. `init` opens a run over an enumerated list and records the baseline, and `close` ends the run. A clean `close` exits 0, which it does only when nothing is left open.
   - The baseline is the state of the files, and the output of each named gate, when the run opens. The net diff is every change between the baseline and the final tree, which `diff` measures and writes per file under `diffs/`.

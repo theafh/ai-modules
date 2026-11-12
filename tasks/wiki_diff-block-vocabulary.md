@@ -2,7 +2,7 @@
 description: Replace the diff-jargon term hunk with plain English across the auto_shaper_wiki agent, rename its two hunk tags, and update the Layer 1 contract test and live tasks that pin the old wording.
 scope: plugins/knowledge_management
 created: 2026-08-24T23:08:56Z
-updated: 2026-11-04T09:11:30Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,13 +15,13 @@ The shipped `auto_shaper_wiki` agent carries no occurrence of the word `hunk`. E
 
 `hunk` is unified-diff jargon. It means a contiguous block of lines that differs between two files. The agent uses it as load-bearing vocabulary in the instructions that tell the agent how to classify each difference against the canonical template. A reader who does not already know the jargon has to decode the term before they can follow the rule, and the agent's instructions are read by a model that benefits from the plain term just as a person does.
 
-After this task, `grep -rniE "\bhunk" plugins/` returns nothing. The replacement term is defined once where it first appears, so the rest of the file can use it bare. The Layer 1 contract test that pins the old wording matches the new wording instead, and every live task quoting the old tag names resolves against the renamed tags.
+After this task, `grep -rniE "\bhunk" plugins/knowledge_management/` returns nothing. The replacement term is defined once where it first appears, so the rest of the file can use it bare. The Layer 1 contract test that pins the old wording matches the new wording instead, and every live task quoting the old tag names resolves against the renamed tags.
 
 This is a vocabulary replacement across one artefact, not a point-fix at one site.
 
 ## Context
 
-`plugins/knowledge_management/agents/auto_shaper_wiki.md` is the only shipped artefact that carries the word. Take the occurrence set at implementation time from `grep -rniE "\bhunk" plugins/`, rather than from a count frozen here, because the surrounding tasks listed below edit the same file and can add or remove sites before this one lands.
+`plugins/knowledge_management/agents/auto_shaper_wiki.md` is the only artefact in `plugins/knowledge_management` that carries the word as load-bearing vocabulary; `plugins/ai_dev` uses `hunk` for its own diff tooling, so that tree stays out of this sweep. Take the occurrence set at implementation time from `grep -rniE "\bhunk" plugins/knowledge_management/`, rather than from a count frozen here, because the surrounding tasks listed below edit the same file and can add or remove sites before this one lands.
 
 The sites fall into three kinds, which the sweep handles differently:
 
@@ -35,12 +35,13 @@ Two dependencies bound the sweep.
 
 The Layer 1 contract test `tests/wiki/layer1/agent_contract.py` pins the template-read rule by regular expression, inside its `main()` function, in the `require(...)` call whose failure message reads `template reads are not hunk-scoped`. The pinned pattern spans the wording `read the relevant template section only when a` and `diff hunk needs interpretation`. Rewriting the agent without updating that call fails the default `tests/wiki/run_all.sh` Layer 1 run, so the two changes land together. The standing repo rule that a change ships with the tests it needs governs here.
 
-One live task quotes the old tag names and is co-edited by this one. Take the set at implementation time from `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md`, and refresh each hit rather than a list fixed at authoring time; the broader `grep -rniE "\bhunk" tasks/*.md` also matches unrelated live tasks that use the word for their own diff vocabulary.
+Two live tasks quote the old tag names and are co-edited by this one: `wiki_page-type-growth-and-anatomy.md` and `wiki_log-session-entry-consolidation.md`. Take the set at implementation time from `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md`, and refresh each hit rather than a list fixed at authoring time; the broader `grep -rniE "\bhunk" tasks/*.md` also matches unrelated live tasks that use the word for their own diff vocabulary.
 
 - [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md) was the heavier collision and has shipped, so it is no longer a live edit target.
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) names the tag once, in the passage explaining that a declared growth pattern would otherwise survive on the tag's generic extends-the-canon fallback.
+- [wiki_log-session-entry-consolidation.md](wiki_log-session-entry-consolidation.md) names the tag twice, in its propagation paragraph and in its schema-template step, both pointing at the classification rule the rename retargets.
 
-The live sibling imposes no build order on this task, and this task imposes none on it. Whichever lands second refreshes the names the first left behind, which is why the enumeration above is a search rather than a fixed list.
+The rename sweeps both live tasks above; whichever lands second refreshes the names the first left behind, which is why the enumeration is a search rather than a fixed list.
 
 ## Approach
 
@@ -58,7 +59,7 @@ The live sibling imposes no build order on this task, and this task imposes none
 
 ## Acceptance
 
-- `grep -rniE "\bhunk" plugins/` returns no match, so no prose passage and no tag name in any shipped artefact carries the word.
+- `grep -rniE "\bhunk" plugins/knowledge_management/` returns no match, so no prose passage and no tag name in any shipped artefact in that plugin carries the word.
 - The agent states the replacement term's meaning exactly once, at its first use, as a contiguous block of lines that differs between the wiki's file and the canonical template; the prior undefined-jargon wording at that site is superseded and no second definition appears elsewhere in the file.
 - Each renamed tag appears as a matched pair, so every opening tag has a closing tag under the same new name, and every in-file citation of those two tags uses the new name.
 - The classification rule and the example-kinds list keep the behaviour they had before the rename: the four classification outcomes and the open-list framing of the example kinds read the same, with only the vocabulary changed. No rewritten passage reads `diff diff` or `deletion diff blocks`, and `diff block` stays the full compound rather than a bare `block` at every rewritten site.

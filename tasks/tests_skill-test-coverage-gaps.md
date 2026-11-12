@@ -2,7 +2,7 @@
 description: "Add the skill-test coverage the skill_doctor sweep found missing: a script-test surface for ai_instruction_formatting's linter, and a recorded coverage disposition for the behaviour-only skills."
 scope: "local test harnesses"
 created: 2026-09-05T07:47:15Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -19,11 +19,11 @@ Second deliverable: each behaviour-only skill that ships no bundled scripts and 
 
 ## Context
 
-The standing repo rules on regression harnesses require a script-bundling skill to have a script-test surface somewhere in the repo, and a behaviour-only skill to have eval or trigger coverage or a documented reason it has none. A skill_doctor sweep on 2026-09-05 checked all thirty skills; the deterministic layers came back clean, and these coverage gaps were the concrete test-side findings.
+The standing repo rules on regression harnesses require a script-bundling skill to have a script-test surface somewhere in the repo, and a behaviour-only skill to have eval or trigger coverage or a documented reason it has none. A skill_doctor sweep on 2026-09-05 checked every skill the sweep covers, a set re-derived at implementation time rather than frozen here; the deterministic layers came back clean, and these coverage gaps were the concrete test-side findings.
 
 `ai_instruction_formatting` is the only script-bundling skill with no test surface: the git-family skills, `skill_doctor`, `task`, `update_changelog`, and `wiki` each already have one. The linter recognises four host-file shapes, stated in the skill body at the verbatim passage "Four document shapes are valid", and emits errors, warnings, and non-blocking hints, so the harness has a defined output contract to assert against.
 
-The behaviour-only set is derived, not fixed: it is the skills with no `scripts/` directory and no harness the `tests/CLAUDE.md` inventory maps to the skill or `tests/trigger_evals/<skill>.json` entry. The task family already routes its members' coverage through `tests/task/` evals, and the `wiki_*` and `task_explain` triggers live in `tests/trigger_evals/`, so those are already covered; the five named above are what remains. `guardrail` is covered by the `tests/charter_guardrail/` mapping, so it is outside the set.
+The behaviour-only set is derived, not fixed: it is the skills with no `scripts/` directory and no harness the `tests/CLAUDE.md` inventory maps to the skill or `tests/trigger_evals/<skill>.json` entry. The task family already routes its members' coverage through `tests/task/` evals, and the `wiki_*` and `task_explain` triggers live in `tests/trigger_evals/`, so those are already covered; the five named above are what remains. `guardrail` is covered by the `tests/charter_guardrail/` mapping, so it is outside the set. The disposition rule that justifies naming those five is the standing repo rule itself: every behaviour-only skill the sweep finds leaves with a recorded disposition, either coverage added or a documented reason it carries none, and the five are simply the set that rule finds uncovered on the sweep date.
 
 The Pattern A shape and where each surface lives are set by the standing repo rules and by the tests-tree operating guide; `tests/git_commit/` is the named reference implementation, and the eval schema is skill-creator's.
 

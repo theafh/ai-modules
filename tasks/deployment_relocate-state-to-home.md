@@ -2,7 +2,7 @@
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
 created: 2026-06-02T16:58:04Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -155,4 +155,4 @@ Considered and set aside for this task; revisit only if asked:
 - `./deployment/deployment.sh --global --dry-run` runs without error and shows the resolved `~/.ai_asset_deploy/` conf/log paths in its banner.
 - `python3 tests/lib/test_micro_deploy.py` passes with `DEPLOY_LOG` naming `~/.ai_asset_deploy/deployed.log`, and its check that a Claude micro-deployment of `natural-language` sets `outputStyle` holds against a scratch home whose `.ai_asset_deploy/config` the helper seeded.
 - `bash tests/deployment/run_all.sh` passes, and none of `script_tests/run.sh`, `script_tests/style_run.sh`, or `script_tests/update_run.sh` names `deployment/deployed_artefacts.log`.
-- Working tree is clean after a deploy (no `M deployment/deployment.conf`).
+- `git ls-files deployment/deployment.conf deployment/deployed_artefacts.log` returns nothing, so neither file is tracked, and the deploy log and the user conf both live under `$HOME` (`~/.ai_asset_deploy/deployed.log` and `~/.ai_asset_deploy/config`).

@@ -2,7 +2,7 @@
 description: Make the wiki audit move its baseline, and a page's checked date, forward only after it has read the pages in full, so the next audit never skips a page nobody read.
 scope: plugins/knowledge_management
 created: 2026-10-03T13:54:08Z
-updated: 2026-11-04T09:11:30Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -44,7 +44,7 @@ The rule is written once in the wiki skill, and the audit agent follows it where
 4. **Carry the rule into the rotation sentence.** Rewrite the `template_log.md` rotation rule's closing sentence so the fresh baseline it records is conditional on that audit reading every changed page in full, matching Approach step 3. The sentence currently says the next audit "cold-walks once and records a fresh baseline in the new log"; it becomes the conditional form this rule requires. Keep the rotation mechanics themselves unchanged.
 5. **Make the agent keep checked dates.** Add one clause to the agent's `<policy>`: the agent sets a new `checked` date only as the wiki-skill block allows, and otherwise keeps the date the page already has.
 6. **Extend the layer-1 test.** In `tests/wiki/layer1/agent_contract.py`, pin the clause that keeps the previous baseline and the definition of a full read in `<append_audit_log_entry>`. Extend `derive_cold_reads` with the new baseline rule over a small example: the baseline moves forward after a complete read, stays after a partial read, and becomes `unavailable` when there was no previous baseline.
-7. **Add three layer-2 scenarios.** Give them the next ids after the highest `AS-` id in `tests/wiki/layer2/evals.json`. Stage each with a `stage_<id>` function in `tests/wiki/layer2/setup_scenarios.sh`, and add each id to its `ALL_SCENARIOS` list. In each sandbox, the wiki sits in a git repository whose `log.md` holds one earlier `audit` entry, which records the first staging commit as its baseline. A second commit then changes one `concepts/` page and one `procedures/` page.
+7. **Add three layer-2 scenarios.** Give them the three next free `AS-` ids at implementation time in `tests/wiki/layer2/evals.json`. Stage each with a `stage_<id>` function in `tests/wiki/layer2/setup_scenarios.sh`, and add each id to its `ALL_SCENARIOS` list. In each sandbox, the wiki sits in a git repository whose `log.md` holds one earlier `audit` entry, which records the first staging commit as its baseline. A second commit then changes one `concepts/` page and one `procedures/` page.
    - `auto-shaper-holds-baseline-on-scoped-audit`: the request limits the audit to the `procedures/` directory. The changed `concepts/` page stays unread, so the baseline must stay where it was.
    - `auto-shaper-advances-baseline-on-full-read`: the request asks for a full audit, so the baseline must move to the new commit.
    - `auto-shaper-holds-checked-on-partial-claim-check`: an entity page carries `checked: 2026-01-01`, several claims whose sources lie outside the sandbox, and one figure that contradicts a staged raw note. The request asks the audit to check that figure against the note and fix it. The figure must be fixed while the `checked` date stays the same, because the page's other claims were not checked.

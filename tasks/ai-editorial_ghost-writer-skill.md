@@ -2,7 +2,7 @@
 description: "Build the ghost_writer skill: rules for writing and especially editing strong prose, with one ruleset per genre — scientific, essays, blog posts, social media, case studies."
 scope: "ai_editorial plugin"
 created: 2026-06-01T21:31:06Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -35,5 +35,5 @@ Add the `ghost_writer` skill to the `ai_editorial` plugin. It carries the rules 
 - The `SKILL.md` and every genre ruleset state their rules as instructions to follow rather than demonstrating their genre in their own voice, and the `SKILL.md` passes `ai_instruction_formatting`'s bundled `scripts/lint_pseudo_xml.py`.
 - The skill `description:` triggers on genre-keyed writing and editing of prose written for people to read, and states the genre-craft axis that tells it apart from `language_humanizer`'s comprehension-and-coherence axis.
 - `tests/ghost_writer/` ships a Pattern A harness with a deterministic entrypoint, scenario set, and `bash tests/ghost_writer/run_all.sh` exiting 0.
-- The skill is registered in `plugins/ai_editorial/README.md`, both plugin manifests, the root `README.md`, and both marketplace files; the plugin minor advances to 1.1.0 and `ghost_writer` ships at 1.0.0.
+- The skill is registered in `plugins/ai_editorial/README.md`, both plugin manifests, the root `README.md`, and both marketplace files; the plugin minor advances by one from its current version at implementation time, and `ghost_writer` ships at 1.0.0. The sibling slop-catch task adds a second skill to the same plugin, so whichever of the two lands second advances the plugin minor again.
 - `./deployment/deployment.sh --global --dry-run` previews `ghost_writer` without error.

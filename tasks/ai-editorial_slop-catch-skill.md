@@ -2,7 +2,7 @@
 description: "Build slop_catch in ai_editorial: a ported Python detector plus a structural-tell ruleset that score a draft's AI-tell density and return replacements, run as the humanizer's check pass."
 scope: "ai_editorial plugin"
 created: 2026-06-01T21:31:06Z
-updated: 2026-10-17T11:50:32Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -143,4 +143,5 @@ The output contract leads with the verdict — the band, the density figure, and
   - a **sparse-hit fixture** of otherwise plain human prose of at least 400 words carrying exactly two slop-vocabulary terms and nothing else, asserting the verdict lands in the clean band, that both terms still appear in the replacement list with their swaps, and that the report frames them as available improvements rather than as evidence the text is AI-written;
   - a **false-positive fixture** of human-written prose that uses em-dashes and curly quotes throughout and carries one genuine `not X, but Y` contrast where the opposition is real, asserting the verdict lands in the clean band, that the typographic hits report as grouped weak counts contributing nothing to the score, and that the negation candidate is dismissed rather than reported as a tell.
 - Each eval scenario is run over a fixed denominator of five passes, and the recorded per-scenario pass rate over that denominator is the deliverable. The bar is every assertion holding on all five passes; when a scenario misses it, the report carries the measured rate and the diverging assertions and hands the disposition to the user rather than re-running for a better draw.
+- The skill is registered in `plugins/ai_editorial/README.md`, both plugin manifests, the root `README.md`, and both marketplace files; the plugin minor advances by one from its current version at implementation time, and `slop_catch` ships at 1.0.0. The sibling ghost-writer task adds a second skill to the same plugin, so whichever of the two lands second advances the plugin minor again.
 - `./deployment/deployment.sh --global --dry-run` previews `slop_catch` without error.

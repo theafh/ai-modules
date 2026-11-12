@@ -2,7 +2,7 @@
 description: "Route every agent_spinner helper run through the run ledger: a new <start_here>, seven rewritten blocks, run-protocol.md, report shapes, new evals, and restaged fixtures."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T13:54:08Z
-updated: 2026-11-08T18:44:22Z
+updated: 2026-11-12T08:32:23Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -32,7 +32,7 @@ A new `references/run-protocol.md` carries the run protocol P1 to P6, the six nu
   - [The delegation-surfaces task](ai-dev_harness-portability-delegation-surfaces.md) ships harness_portability's `references/delegation-surfaces.md`. Its `### Delivery and concurrency` entry for each host records the delivery property, the context window, and the largest observed batch, each as a figure or as a statement that no record shows it. The delivery property says how a host hands back a spawned helper's result. The tier table and P1 read those facts, so this task lands after that task.
 - **Co-edited and following work.**
   - [The checking-doctrine task](ai-dev_agent-spinner-checking-doctrine.md) lands after this one. It rewrites the checking blocks of `SKILL.md` and ships two references beside them: `references/checks.md`, with the checks C1 to C10 that run-protocol.md points at, and `references/edit-mechanics.md`. It also rewrites `references/role-prompts.md` with the closing block, the fixed end of every brief, and extends three fixtures this task restages.
-  - [The judgement-containment task](../ai-dev_agent-spinner-judgement-containment.md) rewrites `<judgement>`, `<containment>`, `<phase_plan>`, `<delegation_depth>`, `<capability_probe>`, and `<degradation>`. It also adds the decision packet to report-shapes.md, the fixed form in which a fork, an open choice, goes to the user. Its rewrites drop detail from those blocks, so run-protocol.md must carry that detail from this task on.
+  - [The judgement-containment task](ai-dev_agent-spinner-judgement-containment.md) rewrites `<judgement>`, `<containment>`, `<phase_plan>`, `<delegation_depth>`, `<capability_probe>`, and `<degradation>`. It also adds the decision packet to report-shapes.md, the fixed form in which a fork, an open choice, goes to the user. Its rewrites drop detail from those blocks, so run-protocol.md must carry that detail from this task on.
   - The routing sibling `ai-dev_agent-spinner-routing.md` adds the recipe table to `<selector>`, a table that maps each kind of ask to a recipe file. Until it lands, the shape-matching step of `<start_here>` matches a shape and no recipe.
 - **Interim states.** Today's `<degradation>` orders five rungs, the capability tiers a run can reach. The tier table below keys its rows by the two rungs the owner approved on 2026-10-03: the inline floor, where every pass runs inline in one context, and spawned roles. Until the judgement-containment task rewrites the ladder, the table reads as detail under today's first two rungs.
 - **Continuation, decided 2026-10-04.** The continuation clause is the rule that keeps an open run moving across turns. The owner kept it as a runtime rule, which the `<run_state>` target text and P4 state. A goal tool lets a session set an objective it keeps working toward. A probe run that day observed `CreateGoal` callable in Cursor's print mode (`agent` 2026.10.01), and a resumed turn recalled the goal it created. It observed no goal tool in Claude Code's print mode (`claude` 2.1.226).

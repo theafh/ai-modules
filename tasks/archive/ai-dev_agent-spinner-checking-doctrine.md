@@ -2,7 +2,7 @@
 description: Rewrite agent_spinner's rules for checking helper work in five SKILL.md blocks, add checks.md and edit-mechanics.md, rewrite the role prompts, and add evals for each rule.
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-10-03T13:54:08Z
-updated: 2026-11-11T12:17:26Z
+updated: 2026-11-12T08:32:23Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -234,7 +234,7 @@ A comment beside each edited check names its class under TESTING.md's Test Integ
 
 **Out of scope:**
 
-- The cross-model checker rule with its eval, the decision packet, and the judgement, containment, and degradation rewrites, which [the judgement-containment task](../ai-dev_agent-spinner-judgement-containment.md) owns. The cross-model rule lets a checker run on a model other than its producer's. That task places the cross-model rule in P1, so C7 carries no cross-model step.
+- The cross-model checker rule with its eval, the decision packet, and the judgement, containment, and degradation rewrites, which [the judgement-containment task](ai-dev_agent-spinner-judgement-containment.md) owns. The cross-model rule lets a checker run on a model other than its producer's. That task places the cross-model rule in P1, so C7 carries no cross-model step.
 - The helper-log audit, the markers check, and the checklist-to-acceptance lint as ledger features, which [the ledger phase-2 task](../ai-dev_agent-spinner-ledger-phase-2.md) owns, since C2, C8, and C9 state them as checks the orchestrator runs by hand.
 - `references/variants.md`, which [the decision-research recipes task](../ai-dev_agent-spinner-decision-research-recipes.md) rewrites.
 

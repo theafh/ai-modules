@@ -2,7 +2,7 @@
 description: "Low-priority OpenCode V2 plugin that keeps a rolling summary and substitutes a compacted request only when the gateway's cold-context limit would force compaction."
 scope: harness-plugins/opencode_v2
 created: 2026-11-11T19:24:51Z
-updated: 2026-11-11T19:24:51Z
+updated: 2026-11-12T08:32:23Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -55,7 +55,7 @@ The sibling [plugin design](archive/plugin_design-request-concurrency-queue.md) 
 
 ### Package and configuration
 
-Create a Bun package under `harness-plugins/opencode_v2/smart-compacting/` with `package.json`, `src/index.ts`, `test/`, `README.md`, and `tsconfig.json`, following the sibling plugin's layout. Register it in the workspace `package.json` so `make plugin-test` covers it. Read options from `ctx.options` with these defaults:
+Create a Bun package under `harness-plugins/opencode_v2/smart-compacting/` with `package.json`, `src/index.ts`, `test/`, `README.md`, and `tsconfig.json`, following the sibling plugin's layout. Register it the way every sibling package is registered: add `smart-compacting` to the workspace `harness-plugins/opencode_v2/package.json`'s `workspaces`, `scripts.test`, and `scripts.typecheck`, which is what `make plugin-test` runs, and add its row to the `## Plugins` table in `harness-plugins/opencode_v2/README.md`, as the standing repo rules require for a new harness plugin package. Read options from `ctx.options` with these defaults:
 
 ```jsonc
 {
@@ -112,7 +112,7 @@ Leave OpenCode's `compaction.auto` at `true` and keep its threshold unreachable:
 
 ## Acceptance
 
-- `harness-plugins/opencode_v2/smart-compacting/` exists with `package.json`, `src/index.ts`, `test/`, `README.md`, and `tsconfig.json`; `harness-plugins/opencode_v2/package.json` lists `smart-compacting` in `workspaces`; `make plugin-test` runs its `test` and `typecheck` scripts.
+- `harness-plugins/opencode_v2/smart-compacting/` exists with `package.json`, `src/index.ts`, `test/`, `README.md`, and `tsconfig.json`; `harness-plugins/opencode_v2/package.json` lists `smart-compacting` in `workspaces`, `scripts.test`, and `scripts.typecheck`, so `make plugin-test` runs its `test` and `typecheck` scripts; and the workspace `harness-plugins/opencode_v2/README.md` `## Plugins` table carries its row.
 - A keep-boundary test over a fixture of user, assistant, and tool messages passes: the kept suffix begins at a user message, no tool-call/result pair is split, its estimated size is at most `keepSize`, and a single trailing turn larger than `keepSize` is kept whole and reported. The test fails against a naive tail slice.
 - An estimator test passes: the estimate equals the sum of the system, tools, and message estimates, and the measured value is taken from the last assistant message's usage.
 - A rolling-summary test passes: the held summary is reused when the model, instructions, first message, and tail are unchanged; it is extended by only the delta when the boundary moves; it is regenerated when the model, instructions, or first message changes; and it is invalidated when the tail exceeds `keepSize`.
@@ -122,4 +122,4 @@ Leave OpenCode's `compaction.auto` at `true` and keep its threshold unreachable:
 - An integration test with a fake OpenAI-compatible provider passes: the provider rejects a request carrying more than 350,000 new tokens when the session has been idle more than 4 hours; the session grows past 350,000 tokens while warm without a substitution, idles, resumes, and the first resumed request is accepted; the fake provider records no rejected request.
 - `make plugin-test` passes at the repository root, and `bun test` plus `bun run typecheck` pass inside the package.
 - `README.md` states the option defaults, the cold-trigger rule, the native-versus-plugin delta, and the conditions under which the plugin is worth enabling, and names the low-priority measurement from `## Goal` as the reason the plugin is optional.
-- The working tree changes only under `harness-plugins/opencode_v2/smart-compacting/`, the workspace `package.json`, and the Makefile's plugin-test wiring; the gateway and the OpenCode installation are untouched.
+- The working tree changes only under `harness-plugins/opencode_v2/smart-compacting/`, the workspace `harness-plugins/opencode_v2/package.json` and `README.md`; the gateway and the OpenCode installation are untouched.
