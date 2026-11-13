@@ -315,7 +315,7 @@ files.
   11 committed report variants (15 pass/fail checks) for
   `explicit_spinner_on_family_job` plus the `checker_spawned_without_role`
   route cases; `evals/test_run.py` proves the runner's
-  wiring against a stub worker; `evals/` holds every id in `evals.json` (81
+  wiring against a stub worker; `evals/` holds every id in `evals.json` (89
   today). Each
   behavioural eval stages one behaviour and the `smoke_*` evals check the
   runner's modes, driven by `evals/run.py` on the default Cursor worker in

@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.15
+version: 1.0.16
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -71,6 +71,8 @@ A read-only diagnostic or single judgement question is answered inline from your
 | Fix derived documents against their sources | `fidelity-review.md` |
 | Repair many artifacts against the tree | `artifact-repair.md` |
 | Audit many artifacts, changing nothing | `check-only-audit.md` |
+| Apply one wording rule across many files | `prose-sweep.md` |
+| Implement one task spanning many files | `multi-file-task.md` |
 
 </selector>
 

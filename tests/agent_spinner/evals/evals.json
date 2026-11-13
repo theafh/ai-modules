@@ -1860,6 +1860,88 @@
         "report_contract": false
       },
       "timeout": 1200
+    },
+    {
+      "id": "sweep_sampling_needs_user",
+      "skill": "agent_spinner",
+      "prompt": "Apply the style rule in STYLE.md in place across every page in docs/, keeping meaning, requirement strength, and length exactly as they are. Answer the calibration gates in this request: use the rule as written, keep scope to docs/, run each pass at the default depth, and treat no class as borderline. Any choice the request leaves open is mine to make, so state it with its cost rather than deciding it for me. Go ahead without stopping for the gates answered here.",
+      "expected_output": "Every changed page keeps exactly one check row on the roster, because the run gives each changed page its checker by default. The run offers the sampled checker set as a narrowing the user may choose, naming the checks it drops and its share of the estimate.",
+      "files": [
+        "evals/fixtures/sweep_sampling_needs_user/setup.sh"
+      ],
+      "expectations": [
+        "Every page in docs/ changed under the rule.",
+        "Every changed page holds exactly one check row on the roster.",
+        "The run offers the sampled checker set as a narrowing the user may choose, with the checks it drops and its share of the estimate."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 2400
+    },
+    {
+      "id": "sweep_rewrite_hunk_blocks_sampling",
+      "skill": "agent_spinner",
+      "prompt": "Apply the style rule in STYLE.md in place across every page in docs/, keeping meaning, requirement strength, and length exactly as they are. Answer the calibration gates in this request: use the rule as written, keep scope to docs/, run each pass at the default depth, set the wave size to 4 so the first wave pilots all four pages, and treat no class as borderline. Any choice the request leaves open is mine to make, so state it with its cost rather than deciding it for me. State your estimate and the wave size in the announcement, and treat that estimate as approved: dispatch without stopping for any gate this request answers.",
+      "expected_output": "docs/delta.md's hunk is a sentence rewrite, not a glyph-for-glyph substitution, so the sampling condition fails. Every changed page keeps exactly one check row, and the run offers no sampled checker set.",
+      "files": [
+        "evals/fixtures/sweep_rewrite_hunk_blocks_sampling/setup.sh"
+      ],
+      "expectations": [
+        "Every page in docs/ changed under the rule.",
+        "Every changed page holds exactly one check row on the roster.",
+        "The run offers no sampled checker set."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 2400
+    },
+    {
+      "id": "triage_pass_routes_missed_hit",
+      "skill": "agent_spinner",
+      "prompt": "Run the prose sweep in docs/: apply the rule in STYLE.md in place across every page, and also run a cheap triage pass over the pages the scan does not hit. I approve widening to any page the triage pass routes. Answer the calibration gates now: use the rule as written, keep scope to docs/, run the checks at the default depth, treat no class as borderline, and go ahead without stopping. The request I typed is saved verbatim at REQUEST.md.",
+      "expected_output": "The roster holds the triage:missed-scan row, and its brief names every page the scan did not hit. docs/page04.md gets a Rewrite-phase writer row sourced from a triage:missed-scan finding record, plus a check row. The ledger records the widening as an answered user gate, and the announcement quotes the request's answer.",
+      "files": [
+        "evals/fixtures/triage_pass_routes_missed_hit/setup.sh"
+      ],
+      "expectations": [
+        "The roster holds the triage:missed-scan row.",
+        "The triage brief names every page the scan did not hit.",
+        "docs/page04.md holds a Rewrite-phase writer row whose row_source record matches triage:missed-scan:findings:*, plus a check row.",
+        "The ledger records the widening as an answered user gate, and the announcement quotes the request's answer."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1800
+    },
+    {
+      "id": "move_integrity_flags_low_similarity",
+      "skill": "agent_spinner",
+      "prompt": "This multi-file run is staged after its Check phase, with its checker returns accepted. Run the named gate suite against the plan's acceptance list and write the report. The plan's rename similarity threshold is 50%. Hold any repair for me.",
+      "expected_output": "A gate log under the run directory lists both moved paths with their rename status, and the delete-plus-add path carries the similarity index its second, low-threshold pass measures. Every file outside the run directory stays byte-identical. The report's move-integrity table names both paths and marks the low-similarity move as a finding.",
+      "files": [
+        "evals/fixtures/move_integrity_flags_low_similarity/setup.sh"
+      ],
+      "expectations": [
+        "A gate log under the run directory lists both moved paths with their rename status.",
+        "The delete-plus-add path's entry carries the similarity index its second, low-threshold pass measures.",
+        "Every file outside the run directory stays byte-identical.",
+        "The report's move-integrity table names both paths and marks the low-similarity move as a finding."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1200
     }
   ]
 }

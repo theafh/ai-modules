@@ -11,7 +11,9 @@
 # forms, a report that omits a page, a report that names a page with no defect,
 # the request and withholding approval forms, and two grant paraphrases. They
 # also cover the round-5 fix: a natural-wording report that names each page with
-# its heading skip, broken link, or unfinished stub.
+# its heading skip, broken link, or unfinished stub. Two further cases stage the
+# sweep fixture and pin the sampling arm's initial-check count: the repair
+# round's re-check does not count, and a second initial check still fails.
 
 set -uo pipefail
 
@@ -306,6 +308,56 @@ check "a role-labelled established delegation fails the without-role case" \
   test "$visible_rc" -ne 0
 check "the failure names the visible deployed copy" \
   bash -c "grep -Fq 'the worker saw a deployed copy named auto_checker_spinner' '$SCRATCH/route-visible.grading.txt'"
+
+# --- sweep_rewrite_hunk_blocks_sampling: one initial check per page ---------
+#
+# The sampling decision produces one initial check row per changed page, and
+# the C5 repair round adds one re-check of the repaired file. That re-check can
+# carry the check phase and role (a `check:<slug>-recheck` label), so the
+# initial-check count must exclude it by its label marker. The first case pins
+# that exclusion; the second pins the count itself, so a second initial check
+# for one page still fails.
+SWEEP_EVAL=sweep_rewrite_hunk_blocks_sampling
+sweep_staged="$("$STAGE" "$SWEEP_EVAL" "$SCRATCH/sweep-staged" 2>"$SCRATCH/sweep-stage.err")" || {
+  printf 'FAIL: could not stage %s\n' "$SWEEP_EVAL"
+  cat "$SCRATCH/sweep-stage.err"
+  exit 1
+}
+eval "$sweep_staged"
+# shellcheck disable=SC2154  # assigned by the stage.sh output evaluated above
+sweep_proj="$sandbox_proj"
+for page in alpha beta gamma delta; do
+  printf '# %s\n\nThe cafe keeps a fiance'"'"'s decor in the back room.\n' "$page" \
+    > "$sweep_proj/docs/$page.md"
+done
+sweep_response="$SCRATCH/sweep-response.txt"
+printf 'All four pages changed under the rule.\n' > "$sweep_response"
+
+write_sweep_roster() {
+  local recheck_label="$1" recheck_phase="$2" recheck_role="$3"
+  mkdir -p "$sweep_proj/.agent_spinner"
+  {
+    printf 'check:docs-alpha.md\tcheck\tcheck\tdocs-alpha.md\tdocs/alpha.md\treader\taccepted\t1\n'
+    printf 'check:docs-beta.md\tcheck\tcheck\tdocs-beta.md\tdocs/beta.md\treader\taccepted\t1\n'
+    printf 'check:docs-gamma.md\tcheck\tcheck\tdocs-gamma.md\tdocs/gamma.md\treader\taccepted\t1\n'
+    printf 'check:docs-delta.md\tcheck\tcheck\tdocs-delta.md\tdocs/delta.md\treader\taccepted\t1\n'
+    printf 'writer:check-docs-delta.md-findings-0\trepair\twriter\tcheck-docs-delta.md-findings-0\tdocs/delta.md\trepair\taccepted\t1\n'
+    printf '%s\t%s\t%s\t%s\tdocs/delta.md\treader\taccepted\t1\n' \
+      "$recheck_label" "$recheck_phase" "$recheck_role" "$recheck_label"
+  } > "$sweep_proj/.agent_spinner/roster.tsv"
+}
+
+write_sweep_roster "check:docs-delta-recheck" check check
+sweep_out="$("$GRADE" "$SWEEP_EVAL" "$sweep_proj" "$sweep_response" 2>&1)"; sweep_rc=$?
+printf '%s\n' "$sweep_out" > "$SCRATCH/sweep-recheck.grading.txt"
+check "a repair-round re-check does not count as a second initial check" \
+  test "$sweep_rc" -eq 0
+
+write_sweep_roster "check:docs-delta-second" check check
+sweep2_out="$("$GRADE" "$SWEEP_EVAL" "$sweep_proj" "$sweep_response" 2>&1)"; sweep2_rc=$?
+printf '%s\n' "$sweep2_out" > "$SCRATCH/sweep-two-checks.grading.txt"
+check "a second initial check for one page still fails" \
+  test "$sweep2_rc" -ne 0
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 if (( fail > 0 )); then

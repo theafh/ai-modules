@@ -1,6 +1,6 @@
 # agent_spinner behavioral evals
 
-Every id in `evals.json` (eighty-five today). Each behavioural eval stages one
+Every id in `evals.json` (eighty-nine today). Each behavioural eval stages one
 behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
 names one behaviour rather than a conjoined verdict. The static body and grep
 items stay under `script_tests/`.
@@ -124,6 +124,10 @@ having taken it.
 | `routed_premise_sentences_landed` | report + page hashes | The plan and the landed pages are the disk facts; the report's failed post-run check and its refusal to claim every routed sentence landed are the prose half. |
 | `repair_list_keyed_on_severity` | ledger `row_source` + roster + report | One repair row per failing item is a ledger fact, the nit-only and passing artifacts' absence from the roster is its counterpart, and the report's nit list is the prose half. |
 | `confirmed_class_swept_before_clean` | ledger `row_source` + roster + report | The sweep row's source record and its coverage of every unit are ledger facts; the report's `docs/b.md` line and the fix-or-file fork are the prose half. |
+| `sweep_sampling_needs_user` | roster + announcement | Every changed page holding exactly one check row is the width fact; the glyph-only diff makes a sampled set available, and the announcement is where the run must offer it with its drops and its share of the estimate. |
+| `sweep_rewrite_hunk_blocks_sampling` | roster + announcement | The same roster fact on a corpus whose delta page needs a sentence rewrite: that hunk is no glyph-for-glyph substitution, so the sampling condition fails and the run must offer no sampled set. |
+| `triage_pass_routes_missed_hit` | ledger `row_source` + roster + briefs + ledger gate records | The triage row, its brief's page list, and the writer row sourced from a triage finding are disk facts; the answered widening gate and the announcement's quoted answer are the decision's record. |
+| `move_integrity_flags_low_similarity` | gate log + tree hash + report | The move-integrity log is the gate's own record, and its second low-threshold pass supplies the delete-plus-add path's similarity; the tree hash proves the run changed nothing, and the report's table is the prose half. |
 
 ### Prompt, fixture, and grader notes for the 2026-11-11 judgement-containment run
 
