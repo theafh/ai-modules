@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# residual_selector: ten inputs of five different kinds feed one produced
-# deliverable. Per-artifact fan-out does not fit because the deliverable is one
-# document each input only partially informs; a lens panel does not fit because
-# the inputs differ in kind rather than the angle differing; and the ask
-# produces a document rather than answering a question. The run names the
-# smallest covering shape it chose and proceeds under it.
+# residual_selector: three release changelogs are closed comparison candidates
+# for one judgement, and the ask also wants what the winner's notes leave out.
+# The ask combines rows, so no single listed shape covers it. The run names the
+# smallest covering shape it chose and proceeds under it, and writes no file.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

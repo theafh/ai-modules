@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.17
+version: 1.0.18
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -65,7 +65,7 @@ Match weight first.
 - A tree of writes: a single-writer validator after writers.
 - A disputed figure or claim settled by an edit: a two-refuter settlement check.
 
-A read-only diagnostic, or a single judgement question about a mechanism not yet built, is answered inline from your own reads before any helper is spent, takes no recipe, naming a fuller shape's checks. An ask no single row covers, or one combining rows, gets the smallest shape that covers it, named as the smallest covering one, answered visibly rather than folded into a nearby row, and takes no recipe. A shape match matches the recipe table, whose matched recipe is the procedure; with no recipe it runs from the body. Name what matched, or nothing, in the opening. Read `references/variants.md` for isolation and unreduced draws.
+A read-only diagnostic, or a single judgement question about a mechanism not yet built, is answered inline from your own reads before any helper is spent, takes no recipe, naming a fuller shape's checks. An ask no single row covers, or one combining rows, gets the smallest shape that covers it, named as the smallest covering one, answered visibly rather than folded into a nearby row, and takes no recipe. A shape match matches the recipe table, whose matched recipe is the procedure; with no recipe it runs from the body. Name what matched, or nothing, in the opening. Read `references/variants.md` for isolation, unreduced draws, blind derivation, balanced challenge, calibration controls, and hypothesis readings.
 
 A challenged built design routes to its recipe row ahead of the paired-check bullet: the design carries no accepted producer return to paste, and the recipe's Refute phase supplies the adversarial read.
 
