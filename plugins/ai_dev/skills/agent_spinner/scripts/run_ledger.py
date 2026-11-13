@@ -66,6 +66,7 @@ RETURN_KEYS = [
     "checklist",
     "findings",
     "forks",
+    "objections",
     "beyond_brief",
     "incidents",
     "own_authority",
@@ -77,6 +78,7 @@ RETURN_KEYS = [
 RECORD_LISTS = [
     "findings",
     "forks",
+    "objections",
     "incidents",
     "own_authority",
     "alternatives",
@@ -85,6 +87,15 @@ RECORD_LISTS = [
     "confirmations",
     "gaps",
 ]
+DISPOSITION_TYPES = (
+    "finding",
+    "fork",
+    "incident",
+    "own_authority",
+    "confirmation",
+    "alternative",
+    "objection",
+)
 PLACEHOLDER_MARKERS = ("todo", "tbd", "fixme", "xxx")
 STATE_VALUES = (
     "pending",
@@ -292,6 +303,100 @@ def parse_utc(text):
         return None
 
 
+def collapse_ws(text):
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.+?)\s*$")
+CHECKLIST_RE = re.compile(r"^\s*\d+[.)]\s+(.+?)\s*$")
+
+
+def list_items(text):
+    """Return every list item's text, whitespace collapsed, in order."""
+    items = []
+    for line in (text or "").splitlines():
+        match = LIST_ITEM_RE.match(line)
+        if match:
+            items.append(collapse_ws(match.group(1)))
+    return items
+
+
+def checklist_lines(text):
+    """Return the brief body's numbered checklist lines, collapsed."""
+    lines = []
+    for line in (text or "").splitlines():
+        match = CHECKLIST_RE.match(line)
+        if match:
+            lines.append(collapse_ws(match.group(1)))
+    return lines
+
+
+def section_text(text, heading):
+    """Return the markdown section under ``heading``, or an empty string."""
+    target = collapse_ws(str(heading).lstrip("#")).lower()
+    out = []
+    inside = False
+    level = 0
+    for line in (text or "").splitlines():
+        match = re.match(r"^(#{1,6})\s+(.*?)\s*$", line)
+        if match:
+            title = collapse_ws(match.group(2)).lower()
+            if not inside and title == target:
+                inside = True
+                level = len(match.group(1))
+                continue
+            if inside and len(match.group(1)) <= level:
+                break
+        if inside:
+            out.append(line)
+    return "\n".join(out)
+
+
+def path_values(obj, spec):
+    """Read a key path, iterating each list a ``[]`` segment names."""
+    if not spec:
+        return []
+    current = [obj]
+    for part in str(spec).split("."):
+        iterate = part.endswith("[]")
+        key = part[:-2] if iterate else part
+        nxt = []
+        for cur in current:
+            if not isinstance(cur, dict) or key not in cur:
+                continue
+            value = cur[key]
+            if iterate:
+                if isinstance(value, list):
+                    nxt.extend(value)
+            else:
+                nxt.append(value)
+        current = nxt
+    return current
+
+
+def first_value(obj, spec):
+    values = path_values(obj, spec)
+    return values[0] if values else None
+
+
+def resolve_fork_entry(data, name):
+    """Resolve a return's fork reference to its index and fork object."""
+    forks = data.get("forks") or []
+    if not isinstance(forks, list):
+        return None, None
+    label = data.get("label", "")
+    wanted = str(name)
+    for index, fork in enumerate(forks):
+        if not isinstance(fork, dict):
+            continue
+        names = {str(index), "forks:%d" % index, "%s:forks:%d" % (label, index)}
+        if fork.get("id") is not None:
+            names.add(str(fork.get("id")))
+        if wanted in names:
+            return index, fork
+    return None, None
+
+
 def read_rows(path):
     if not os.path.exists(path):
         return []
@@ -432,6 +537,165 @@ class Ledger(object):
             for rec in self.records()
             if rec.get("type") == "flag" and rec.get("label") == label
         ]
+
+    def routed_gates(self):
+        routed = {}
+        for rec in self.records():
+            if rec.get("type") == "disposition" and rec.get("disposition") == "routed":
+                path = rec.get("path") or rec.get("target") or ""
+                routed.setdefault(path, set()).add(rec.get("gate"))
+        return routed
+
+    def stamped_changed_paths(self):
+        """Return (path, owned target) pairs a changed stamp still lacks routing for."""
+        routed = self.routed_gates()
+        fork_paths = set(
+            norm_path(self.root, rec.get("path"))
+            for rec in self.records()
+            if rec.get("type") == "fork" and rec.get("path")
+        )
+        changed = set(
+            change.get("path")
+            for change in self.run.get("changes", [])
+            if not change.get("path", "").startswith("<")
+        )
+        pending = []
+        for target in self.run.get("owned_targets", []):
+            rel = norm_path(self.root, target.get("path", ""))
+            if rel not in changed:
+                continue
+            if rel in fork_paths:
+                continue
+            if target.get("gate") in routed.get(rel, set()):
+                continue
+            pending.append((rel, target))
+        return pending
+
+    def blind_label(self, label):
+        """Return a row's derived blind label, or "" for a row that is not blind."""
+        if label not in (self.run.get("withheld_sources") or {}):
+            return ""
+        for rec in reversed(self.records()):
+            if rec.get("type") == "blind_label" and rec.get("label") == label:
+                return rec.get("blind") or "blind by prompt"
+        # A blind row with no audit stays blind by prompt.
+        return "blind by prompt"
+
+    def open_packets(self):
+        answered = set(
+            rec.get("gate_id")
+            for rec in self.records()
+            if rec.get("type") == "gate_answered"
+        )
+        packets = []
+        for rec in self.records():
+            if (
+                rec.get("type") == "disposition"
+                and rec.get("disposition") == "surfaced"
+                and rec.get("packet")
+                and rec.get("packet") not in answered
+                and rec.get("packet") not in packets
+            ):
+                packets.append(rec.get("packet"))
+        return packets
+
+    def audit_for(self, label):
+        return [
+            rec
+            for rec in self.records()
+            if rec.get("type") == "audit" and rec.get("label") == label
+        ]
+
+    def coverage_counts(self):
+        audits = {}
+        for rec in self.records():
+            if rec.get("type") == "audit":
+                audits.setdefault(rec.get("label"), set()).update(
+                    rec.get("full_reads") or []
+                )
+        counts = {
+            "full-by-tool": 0,
+            "receipt-only": 0,
+            "searched": 0,
+            "unexamined": 0,
+        }
+        for rec in self.records():
+            if rec.get("type") != "examined":
+                continue
+            full = audits.get(rec.get("label"), set())
+            for entry in rec.get("entries") or []:
+                how = entry.get("how")
+                path = entry.get("path") or ""
+                rel = norm_path(self.root, path) if path else ""
+                if how == "full":
+                    if rel in full:
+                        counts["full-by-tool"] += 1
+                    else:
+                        counts["receipt-only"] += 1
+                elif how == "searched":
+                    counts["searched"] += 1
+                else:
+                    counts["unexamined"] += 1
+        return counts
+
+    def admitted_inputs(self, row):
+        """Return the normalized paths a row's brief admits it to read."""
+        label = row.get("label", "")
+        admitted = set(
+            [
+                "briefs/%s.txt" % label,
+                "returns/%s.start" % label,
+                "returns/%s.md" % label,
+            ]
+        )
+        brief_text = read_text(self.path("briefs", "%s.txt" % label))
+        for token in re.findall(r"[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]{1,8}", brief_text):
+            if token.startswith("http"):
+                continue
+            admitted.add(norm_path(self.root, token))
+        # A brief names inputs without an extension too (``Makefile``), so a
+        # token that resolves to an existing path under the root is admitted
+        # whether or not it carries a dot.
+        for token in re.findall(r"[A-Za-z0-9_.@/-]+", brief_text):
+            if token.startswith("http"):
+                continue
+            candidate = token.rstrip(".,;:!?")
+            while candidate.startswith("./"):
+                candidate = candidate[2:]
+            if candidate in ("", ".", ".."):
+                continue
+            rel = norm_path(self.root, candidate)
+            if rel.startswith("../") or os.path.isabs(rel):
+                continue
+            if os.path.exists(os.path.join(self.root, rel)):
+                admitted.add(rel)
+        permissions = self.run.get("permissions", {}).get(label, {})
+        for path in permissions.get("permits", {}).get("paths", []):
+            admitted.add(norm_path(self.root, path))
+        try:
+            versions = json.loads(row.get("input_versions") or "{}")
+        except ValueError:
+            versions = {}
+        for relay in versions.get("relayed") or {}:
+            admitted.add("returns/%s.md" % relay)
+        if versions.get("target_path"):
+            admitted.add(norm_path(self.root, versions["target_path"]))
+        if versions.get("acceptance_path"):
+            admitted.add(norm_path(self.root, versions["acceptance_path"]))
+        return admitted
+
+    def row_window(self, row):
+        """Return the lower and upper bounds of a row's own-session window."""
+        lower = parse_utc(row.get("dispatched_at"))
+        if lower is None:
+            lower = parse_utc(row.get("start_marker_time"))
+        if lower is None:
+            brief = self.path("briefs", "%s.txt" % row.get("label", ""))
+            if os.path.exists(brief):
+                lower = datetime.datetime.fromtimestamp(
+                    os.path.getmtime(brief), datetime.timezone.utc
+                ).replace(microsecond=0)
+        return lower, parse_utc(row.get("returned_at"))
 
 
 def parse_key_value(items, what):
@@ -884,6 +1148,42 @@ def cmd_brief(args):
             input_versions["target"] = file_hash(dest)
             input_versions["target_path"] = target
 
+    if args.acceptance:
+        spec = args.acceptance
+        if "#" in spec:
+            source_path, heading = spec.split("#", 1)
+        else:
+            source_path, heading = spec, ""
+        full = os.path.join(led.root, source_path)
+        if not os.path.isfile(full):
+            die("acceptance source %s does not exist" % source_path)
+        source_text = read_text(full)
+        if heading:
+            source_text = section_text(source_text, heading)
+            if not source_text.strip():
+                die(
+                    "acceptance source %s has no section %r"
+                    % (source_path, heading)
+                )
+        items = list_items(source_text)
+        if not items:
+            die("acceptance source %s carries no list items" % source_path)
+        lines = checklist_lines(body)
+        if len(lines) < len(items):
+            die(
+                "checklist has %d lines for %d acceptance items in %s"
+                % (len(lines), len(items), source_path)
+            )
+        unmatched = [item for item in items if not any(item in line for line in lines)]
+        if unmatched:
+            die(
+                "checklist misses acceptance items: %s" % "; ".join(unmatched)
+            )
+        input_versions["acceptance"] = file_hash(full)
+        input_versions["acceptance_path"] = norm_path(led.root, full)
+        if heading:
+            input_versions["acceptance_heading"] = heading
+
     token = short_hash(led.run.get("baseline_commit", "") + args.label + body + shared)
     led.run.setdefault("brief_tokens", {})[args.label] = token
     led.run.setdefault("obligations", {})[args.label] = obligations
@@ -903,7 +1203,7 @@ def cmd_brief(args):
 
     closing = []
     closing.append("## Return")
-    closing.append("Return template: fenced json block with label, brief, status, verdict, examined, checklist, findings, forks, beyond_brief, incidents, own_authority, alternatives, brief_corrections, dropped_suspicions, notes.")
+    closing.append("Return template: fenced json block with label, brief, status, verdict, examined, checklist, findings, forks, objections, beyond_brief, incidents, own_authority, alternatives, brief_corrections, dropped_suspicions, notes.")
     closing.append("Return channel: write returns/%s.md as your last act." % args.label)
     closing.append("End with: END %s" % args.label)
     closing.append("Delegate no part of your item; perform your own item.")
@@ -1182,8 +1482,61 @@ def validate_return(led, row, text, source):
         options = fork.get("options") or []
         if not isinstance(options, list) or not (2 <= len(options) <= 4):
             errors.append("fork needs two to four options")
+            options = []
+        seen_option_ids = set()
+        for option in options:
+            if not isinstance(option, dict):
+                errors.append("fork option is not an object")
+                continue
+            option_id = option.get("id")
+            if is_placeholder(option_id):
+                errors.append("fork option id is a placeholder or missing")
+                continue
+            if str(option_id) in seen_option_ids:
+                errors.append("fork option id %r repeats" % option_id)
+            seen_option_ids.add(str(option_id))
+            if is_placeholder(option.get("cost")):
+                errors.append("fork option %r has no cost" % option_id)
         if is_placeholder(fork.get("preferred")):
             errors.append("fork preferred end state is a placeholder")
+        passages = fork.get("passages")
+        if passages is not None:
+            if not isinstance(passages, list):
+                errors.append("fork passages is not a list")
+            else:
+                for passage in passages:
+                    if not isinstance(passage, dict):
+                        errors.append("fork passage is not an object")
+                        continue
+                    if is_placeholder(passage.get("text")):
+                        errors.append("fork passage text is a placeholder")
+                    if is_placeholder(passage.get("anchor")):
+                        errors.append("fork passage anchor is a placeholder")
+
+    objections = data.get("objections") or []
+    if not isinstance(objections, list):
+        errors.append("objections is not a list")
+        objections = []
+    for entry in objections:
+        if not isinstance(entry, dict):
+            errors.append("objection is not an object")
+            continue
+        if is_placeholder(entry.get("text")):
+            errors.append("objection text is a placeholder")
+        _, fork = resolve_fork_entry(data, entry.get("fork"))
+        if fork is None:
+            errors.append("objection names no fork: %r" % entry.get("fork"))
+            continue
+        option_ids = set(
+            str(option.get("id"))
+            for option in (fork.get("options") or [])
+            if isinstance(option, dict) and option.get("id") is not None
+        )
+        if str(entry.get("option")) not in option_ids:
+            errors.append(
+                "objection option %r names no option of fork %r"
+                % (entry.get("option"), entry.get("fork"))
+            )
 
     return errors, data
 
@@ -1298,6 +1651,12 @@ def import_records(led, row, data):
                 rec["type"] = "finding"
             elif listname == "forks":
                 rec["type"] = "fork"
+            elif listname == "objections":
+                rec["type"] = "objection"
+                fork_index, _ = resolve_fork_entry(data, rec.get("fork"))
+                if fork_index is not None:
+                    rec["fork_ref"] = rec.get("fork")
+                    rec["fork"] = "%s:forks:%d" % (label, fork_index)
             elif listname == "confirmations":
                 rec["type"] = "confirmation"
                 rec["provenance"] = "recall-confirmed" if producer else "independently surfaced"
@@ -1331,6 +1690,193 @@ def small_return_warning(led, label, text):
     return ""
 
 
+def load_log_format(path):
+    """Read the caller's log-format description and refuse a broken one."""
+    text = read_text(path)
+    if not text.strip():
+        die("log-format description %s is empty or unreadable" % path)
+    try:
+        data = json.loads(text)
+    except ValueError as exc:
+        die("log-format description %s is not valid json: %s" % (path, exc))
+    if not isinstance(data, dict):
+        die("log-format description %s is not a json object" % path)
+    if not data.get("calls"):
+        die("log-format description %s names no calls key path" % path)
+    kinds = data.get("kinds")
+    if not isinstance(kinds, dict) or not kinds:
+        die("log-format description %s names no kinds map" % path)
+    return data
+
+
+def audit_helper_log(led, row, args):
+    """Read a helper's own log through the caller's description."""
+    label = row.get("label", "")
+    if not args.log:
+        die("--log-format needs --log PATH naming the helper's log")
+    fmt = load_log_format(args.log_format)
+    if not os.path.isfile(args.log):
+        die("log %s is unreadable" % args.log)
+    raw = read_text(args.log)
+    records = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            records.append(json.loads(line))
+        except ValueError:
+            continue
+    if not records:
+        die("log %s carries no json records" % args.log)
+
+    kinds = {}
+    for kind, names in fmt.get("kinds", {}).items():
+        for name in names or []:
+            kinds[str(name)] = kind
+    lower, upper = led.row_window(row)
+    admitted = led.admitted_inputs(row)
+    full_reads = []
+    partial_reads = []
+    outside_reads = []
+    ledger_calls = []
+    spawn_calls = []
+    matched = 0
+    calls_seen = 0
+
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        if args.own_session:
+            stamp = first_value(record, fmt.get("time") or "")
+            when = parse_utc(str(stamp)) if stamp is not None else None
+            if when is None:
+                continue
+            if lower is not None and when < lower:
+                continue
+            if upper is not None and when > upper:
+                continue
+        else:
+            keep = True
+            for key, value in (fmt.get("match") or {}).items():
+                if value not in path_values(record, key):
+                    keep = False
+                    break
+            if not keep:
+                continue
+        matched += 1
+        for call in path_values(record, fmt.get("calls")):
+            if not isinstance(call, dict):
+                continue
+            name = first_value(call, fmt.get("name") or "name")
+            if name is None:
+                continue
+            kind = kinds.get(str(name))
+            if kind is None:
+                continue
+            calls_seen += 1
+            arguments = first_value(call, fmt.get("args") or "args")
+            if not isinstance(arguments, dict):
+                arguments = {}
+            if kind == "read":
+                path = ""
+                for key in fmt.get("path_args") or []:
+                    value = first_value(arguments, key)
+                    if isinstance(value, str) and value:
+                        path = value
+                        break
+                if not path:
+                    continue
+                rel = norm_path(led.root, path)
+                partial = any(
+                    first_value(arguments, key) is not None
+                    for key in (fmt.get("partial_args") or [])
+                )
+                if partial:
+                    partial_reads.append(rel)
+                else:
+                    full_reads.append(rel)
+                if rel not in admitted:
+                    outside_reads.append(rel)
+            elif kind == "shell":
+                command = ""
+                for key in fmt.get("command_args") or []:
+                    value = first_value(arguments, key)
+                    if isinstance(value, str) and value:
+                        command = value
+                        break
+                if "run_ledger.py" in command:
+                    ledger_calls.append(command)
+            elif kind == "spawn":
+                spawn_calls.append(str(name))
+
+    if matched == 0 or calls_seen == 0:
+        die("log-format description matched no tool call in %s" % args.log)
+
+    if args.own_session:
+        # The orchestrator's own log carries its own ledger calls and reads.
+        # At the inline floor neither is a containment incident.
+        outside_reads = []
+        ledger_calls = []
+        spawn_calls = []
+
+    led.append(
+        {
+            "type": "audit",
+            "label": label,
+            "full_reads": sorted(set(full_reads)),
+            "partial_reads": sorted(set(partial_reads)),
+            "outside_reads": sorted(set(outside_reads)),
+            "ledger_calls": ledger_calls,
+            "spawn_calls": spawn_calls,
+            "own_session": bool(args.own_session),
+            "records": matched,
+            "calls": calls_seen,
+        }
+    )
+    for index, command in enumerate(ledger_calls):
+        led.append(
+            {
+                "type": "incident",
+                "id": "%s:audit-incidents:%d" % (label, index),
+                "label": label,
+                "text": "helper ran the ledger: %s" % collapse_ws(command),
+                "source": "audit",
+            }
+        )
+    for offset, name in enumerate(spawn_calls):
+        led.append(
+            {
+                "type": "incident",
+                "id": "%s:audit-incidents:%d" % (label, len(ledger_calls) + offset),
+                "label": label,
+                "text": "helper spawned a helper through %s" % name,
+                "source": "audit",
+            }
+        )
+    # The blind label counts only a row whose helper ran in its own context.
+    # A row audited at the inline floor keeps blind_label()'s "blind by prompt"
+    # default, because the orchestrator's own reads and ledger calls are not
+    # the helper's evidence.
+    if label in (led.run.get("withheld_sources") or {}) and not args.own_session:
+        clean = not outside_reads and not ledger_calls and not spawn_calls
+        led.append(
+            {
+                "type": "blind_label",
+                "label": label,
+                "blind": "blind by log" if clean else "blind by prompt",
+            }
+        )
+    led.save()
+    print("audited: %s" % label)
+    print("full reads: %d" % len(set(full_reads)))
+    print("partial reads: %d" % len(set(partial_reads)))
+    print("outside reads: %d" % len(set(outside_reads)))
+    print("ledger calls: %d" % len(ledger_calls))
+    print("spawn calls: %d" % len(spawn_calls))
+    return 0
+
+
 def cmd_accept(args):
     led = Ledger(require_run=False)
     if args.probe:
@@ -1338,6 +1884,10 @@ def cmd_accept(args):
     if not led.run:
         die("no open run; run init first")
     row = led.find_row(args.label)
+    if args.own_session and not args.log_format:
+        die("--own-session needs --log-format FILE")
+    if args.log_format:
+        return audit_helper_log(led, row, args)
     if args.wait:
         deadline = time.time() + 90
         while time.time() < deadline:
@@ -1425,6 +1975,17 @@ def cmd_accept(args):
             os.path.getmtime(marker), datetime.timezone.utc
         ).replace(microsecond=0).isoformat()
     import_records(led, row, data)
+    led.append(
+        {
+            "type": "examined",
+            "label": args.label,
+            "entries": [
+                {"path": entry.get("path", ""), "how": entry.get("how", "")}
+                for entry in (data.get("examined") or [])
+                if isinstance(entry, dict)
+            ],
+        }
+    )
     warning = small_return_warning(led, args.label, text)
     led.append(
         {
@@ -1517,7 +2078,7 @@ def cmd_dispose(args):
         targets = [
             rec
             for rec in led.records()
-            if rec.get("type") in ("finding", "fork", "incident", "own_authority", "confirmation", "alternative")
+            if rec.get("type") in DISPOSITION_TYPES
             and fnmatch.fnmatch(str(rec.get("id", "")), args.id)
         ]
         if not targets:
@@ -1533,9 +2094,40 @@ def cmd_dispose(args):
                 "span": args.span or "",
                 "packet": args.packet or "",
                 "pointer": args.pointer or "",
+                "recommend": args.recommend or "",
+                "reason": args.why or "",
             }
             led.append(record)
             changed = True
+    if args.path or args.routed:
+        if not args.path:
+            die("--routed needs --path PATH")
+        if not args.routed:
+            die("--path needs --routed GATE")
+        rel = norm_path(led.root, args.path)
+        owner = None
+        for target in led.run.get("owned_targets", []):
+            if norm_path(led.root, target.get("path", "")) == rel:
+                owner = target
+                break
+        if owner is None:
+            die("path %s is not recorded as an owned target" % rel)
+        if args.routed != owner.get("gate"):
+            die(
+                "path %s is owned by gate %s, not %s"
+                % (rel, owner.get("gate"), args.routed)
+            )
+        led.append(
+            {
+                "type": "disposition",
+                "target": rel,
+                "path": rel,
+                "disposition": "routed",
+                "gate": args.routed,
+                "family": owner.get("family", ""),
+            }
+        )
+        changed = True
     if args.narrowing:
         led.append({"type": "narrowing", "text": args.narrowing, "drops": args.drops or ""})
         changed = True
@@ -1580,7 +2172,7 @@ def cmd_dispose(args):
         led.append({"type": "flag", "label": args.flag, "reason": args.reason})
         changed = True
     if not changed:
-        die("dispose needs a disposition, narrowing, gate, fork, or flag")
+        die("dispose needs a disposition, routing, narrowing, gate, fork, or flag")
     print("recorded")
     return 0
 
@@ -1939,6 +2531,28 @@ def cmd_status(args):
         print("  %s" % entry.get("path", entry))
     if not led.run.get("repair_list"):
         print("  none")
+    print("stamped paths needing routing:")
+    stamped = led.stamped_changed_paths()
+    for rel, target in stamped:
+        print("  %s family=%s gate=%s" % (rel, target.get("family", ""), target.get("gate", "")))
+    if not stamped:
+        print("  none")
+    print("open packets:")
+    packets = led.open_packets()
+    for packet in packets:
+        print("  %s" % packet)
+    if not packets:
+        print("  none")
+    print("blind rows:")
+    blind = [
+        (row.get("label"), led.blind_label(row.get("label")))
+        for row in led.rows
+    ]
+    blind = [(label, state) for label, state in blind if state]
+    for label, state in blind:
+        print("  %s %s" % (label, state))
+    if not blind:
+        print("  none")
     print("resume:")
     for row in led.rows:
         if row.get("brief_hash"):
@@ -1965,8 +2579,99 @@ def cmd_status(args):
     return 0
 
 
+def render_packet(led, packet_id):
+    dispositions = [
+        rec
+        for rec in led.records()
+        if rec.get("type") == "disposition"
+        and rec.get("disposition") == "surfaced"
+        and rec.get("packet") == packet_id
+    ]
+    if not dispositions:
+        die("no fork is surfaced under packet %s" % packet_id)
+    disposition = dispositions[-1]
+    fork_id = disposition.get("target", "")
+    fork = None
+    for rec in led.records():
+        if rec.get("type") == "fork" and rec.get("id") == fork_id:
+            fork = rec
+            break
+    if fork is None:
+        die(
+            "packet %s names fork %s, which the ledger does not hold"
+            % (packet_id, fork_id)
+        )
+    passages = fork.get("passages")
+    if passages is None:
+        passages = [fork.get("passage")] if fork.get("passage") else []
+    objections = [
+        rec
+        for rec in led.records()
+        if rec.get("type") == "objection" and rec.get("fork") == fork_id
+    ]
+    options = fork.get("options") or []
+
+    lines = [
+        "Decision packet: %s" % packet_id,
+        "",
+        "Issue: %s" % collapse_ws(fork.get("issue", "")),
+        "",
+        "Passages touched:",
+    ]
+    for passage in passages:
+        if isinstance(passage, dict):
+            lines.append('- "%s"' % passage.get("text", ""))
+            lines.append("  anchor: %s" % passage.get("anchor", ""))
+        else:
+            lines.append('- "%s"' % passage)
+    if not passages:
+        lines.append("  none")
+    lines.append("")
+    lines.append("Options:")
+    for index, option in enumerate(options, 1):
+        if not isinstance(option, dict):
+            continue
+        lines.append(
+            "%d. %s (id: %s). Cost: %s"
+            % (
+                index,
+                collapse_ws(option.get("text", "")),
+                option.get("id", ""),
+                collapse_ws(option.get("cost", "")),
+            )
+        )
+    lines.append("")
+    lines.append("Objections recorded:")
+    any_objection = False
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        for rec in objections:
+            if str(rec.get("option")) == str(option.get("id")):
+                lines.append(
+                    "- Option %s: %s"
+                    % (option.get("id", ""), collapse_ws(rec.get("text", "")))
+                )
+                any_objection = True
+    if not any_objection:
+        lines.append("  none")
+    lines.append("")
+    lines.append("Recommendation: %s" % collapse_ws(disposition.get("recommend", "")))
+    if disposition.get("reason"):
+        lines.append("Reason: %s" % collapse_ws(disposition.get("reason", "")))
+    lines.append("")
+    lines.append("Helper's preferred end state (%s):" % fork_id)
+    lines.append('"%s"' % collapse_ws(fork.get("preferred", "")))
+    return "\n".join(lines)
+
+
 def cmd_show(args):
     led = Ledger()
+    if args.packet:
+        print(render_packet(led, args.packet))
+        return 0
+    if not args.label:
+        die("show needs a label or --packet ID")
     row = led.find_row(args.label)
     for name in COLUMNS:
         print("%s: %s" % (name, row.get(name, "")))
@@ -2027,6 +2732,7 @@ def tally_block(led):
     )
     checks = [rec for rec in records if rec.get("type") == "check"]
     gates = [rec for rec in records if rec.get("type") == "gate_result"]
+    coverage = led.coverage_counts()
     lines = [
         "TALLY-BEGIN",
         "rows %d" % len(led.rows),
@@ -2040,6 +2746,10 @@ def tally_block(led):
         "confirmations %d" % len(confirmations),
         "recall-confirmed %d" % recall,
         "independently-surfaced %d" % independent,
+        "coverage-full-by-tool %d" % coverage["full-by-tool"],
+        "coverage-receipt-only %d" % coverage["receipt-only"],
+        "coverage-searched %d" % coverage["searched"],
+        "coverage-unexamined %d" % coverage["unexamined"],
         "TALLY-END",
     ]
     return "\n".join(lines)
@@ -2070,7 +2780,7 @@ def close_open_items(led):
 
     dispositions = led.dispositions()
     for rec in led.records():
-        if rec.get("type") in ("finding", "incident", "alternative"):
+        if rec.get("type") in ("finding", "incident", "alternative", "objection"):
             if not dispositions.get(rec.get("id")):
                 open_items.append("condition 2: record %s has no disposition" % rec.get("id"))
 
@@ -2083,6 +2793,12 @@ def close_open_items(led):
     for change in led.run.get("changes", []):
         if not change.get("attribution"):
             open_items.append("condition 4: change %s is unattributed" % change.get("path"))
+
+    for rel, target in led.stamped_changed_paths():
+        open_items.append(
+            "condition 10: changed stamped path %s has no routing to gate %s"
+            % (rel, target.get("gate"))
+        )
 
     current = set(path for code, path in git_status(led.root) if not under_run_dir(led.root, path))
     known = set(c.get("path") for c in led.run.get("changes", []))
@@ -2259,6 +2975,10 @@ def build_parser():
     p.add_argument("--depth", type=int)
     p.add_argument("--target")
     p.add_argument("--stamp-owner")
+    p.add_argument(
+        "--acceptance",
+        help="acceptance source PATH[#Heading] the checklist must cover",
+    )
     p.set_defaults(func=cmd_brief)
 
     p = sub.add_parser("dispatch", help="record that a helper was sent")
@@ -2280,6 +3000,15 @@ def build_parser():
     )
     p.add_argument("--source", choices=["relayed", "log"])
     p.add_argument("--log", help="read a host log file instead of stdin")
+    p.add_argument(
+        "--log-format",
+        help="audit the helper's own log through this description file",
+    )
+    p.add_argument(
+        "--own-session",
+        action="store_true",
+        help="audit the orchestrator's own session log at the inline floor",
+    )
     p.add_argument("--observed-model")
     p.add_argument("--observed-effort")
     p.add_argument("--wait", action="store_true")
@@ -2302,6 +3031,10 @@ def build_parser():
     p.add_argument("--span")
     p.add_argument("--packet")
     p.add_argument("--pointer")
+    p.add_argument("--path", help="the changed path a routed disposition names")
+    p.add_argument("--routed", help="the owning gate the changed path is routed to")
+    p.add_argument("--recommend", help="the recommendation a surfaced packet carries")
+    p.add_argument("--why", help="the reason behind a surfaced packet's recommendation")
     p.add_argument("--narrowing")
     p.add_argument("--drops")
     p.add_argument("--open-gate")
@@ -2333,11 +3066,21 @@ def build_parser():
     p.add_argument("--base", action="store_true")
     p.set_defaults(func=cmd_snapshot)
 
-    p = sub.add_parser("status", help="show where the run stands")
+    p = sub.add_parser(
+        "status",
+        help="show where the run stands",
+        description=(
+            "Show where the run stands: the tally, open rows, open gates, "
+            "the repair list, stamped paths awaiting routing with their "
+            "owning gates, the open packet ids, and the blind rows with "
+            "their derived labels."
+        ),
+    )
     p.set_defaults(func=cmd_status)
 
     p = sub.add_parser("show", help="print one row's records in full")
-    p.add_argument("label")
+    p.add_argument("label", nargs="?")
+    p.add_argument("--packet", help="render the decision packet surfaced under this id")
     p.set_defaults(func=cmd_show)
 
     p = sub.add_parser("search", help="run a pattern search over the run directory")
@@ -2347,7 +3090,15 @@ def build_parser():
     p = sub.add_parser("stop", help="create STOP so nothing new is dispatched")
     p.set_defaults(func=cmd_stop)
 
-    p = sub.add_parser("close", help="end the run")
+    p = sub.add_parser(
+        "close",
+        help="end the run",
+        description=(
+            "End the run. It prints the tally block and refuses while any "
+            "close condition holds, including a changed path recorded as "
+            "stamped or marked with no routing to its owning gate."
+        ),
+    )
     p.add_argument("--stopped", action="store_true")
     p.set_defaults(func=cmd_close)
     return parser

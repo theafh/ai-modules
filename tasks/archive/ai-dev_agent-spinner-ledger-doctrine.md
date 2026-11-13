@@ -186,7 +186,7 @@ Add one row per new eval to the signal table in `tests/agent_spinner/evals/READM
 - The scratch-file roster in `references/degradation-examples.md`, which the judgement-containment task restages to ledger verbs against the run-protocol tier table.
 - Changes to the ledger script, its verbs, and its script tests, which the run-ledger task owns.
 - Runner changes, which the runner-modes task owns.
-- The markers check over the ledger's rows, packets rendered from the ledger, and the helper-log audit that supplies tool evidence for reads, which [the ledger phase-2 task](../ai-dev_agent-spinner-ledger-phase-2.md) owns.
+- The markers check over the ledger's rows, packets rendered from the ledger, and the helper-log audit that supplies tool evidence for reads, which [the ledger phase-2 task](ai-dev_agent-spinner-ledger-phase-2.md) owns.
 - A headless-worker route, since helpers run only as sub-agents of the host.
 - Proof on hosts the eval runner does not drive, since this task proves its evals through that runner.
 

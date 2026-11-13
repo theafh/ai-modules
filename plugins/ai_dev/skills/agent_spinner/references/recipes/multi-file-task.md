@@ -43,7 +43,7 @@ A role barred from file writes returns in its final message, which you relay ver
 </roles_and_returns>
 
 <adversarial_checks>
-The checklist copies the acceptance contract, one line per item. Every rewrite item pairs "the old form is absent" with "the required new form is present on every surface the item governs" (C2). The checker reads the acceptance file by path, because a spawned helper receives only its prompt. Two standing lines come from the diff: unrequested changes and missing requested ones. The orchestrator's own writes, such as log appends and link repoints, get their own check rows (C1), and the verdict waits for a pass other than the orchestrator's. The Weigh designers work blind, without sight of the planned change, and the report labels them blind by prompt (C2).
+The checklist copies the acceptance contract, one line per item. Every rewrite item pairs "the old form is absent" with "the required new form is present on every surface the item governs" (C2). The checker reads the acceptance file by path, because a spawned helper receives only its prompt. Two standing lines come from the diff: unrequested changes and missing requested ones. The orchestrator's own writes, such as log appends and link repoints, get their own check rows (C1), and the verdict waits for a pass other than the orchestrator's. The Weigh designers work blind, without sight of the planned change, and the report labels them `blind by log` where `accept --log` with `--log-format` finds no read outside their admitted inputs and no ledger or spawn call, and `blind by prompt` otherwise (C2).
 </adversarial_checks>
 
 <orchestrator_gates>

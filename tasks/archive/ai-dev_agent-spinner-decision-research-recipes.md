@@ -176,7 +176,7 @@ Add one row per eval to the `## Signal per eval` table in `tests/agent_spinner/e
 **Out of scope:**
 
 - Running these evals on hosts the runner does not drive.
-- Decision packets that the ledger renders itself, and the helper-log audit that could lift a blind-by-prompt label, which [the ledger phase-2 task](../ai-dev_agent-spinner-ledger-phase-2.md) owns.
+- Decision packets that the ledger renders itself, and the helper-log audit that could lift a blind-by-prompt label, which [the ledger phase-2 task](ai-dev_agent-spinner-ledger-phase-2.md) owns.
 
 ## Acceptance
 

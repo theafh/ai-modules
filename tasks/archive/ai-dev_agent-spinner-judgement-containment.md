@@ -133,7 +133,7 @@ Add one row per new eval to the `## Signal per eval` table in `tests/agent_spinn
 
 - The role files and their eval, which the role-definitions task owns.
 - `references/variants.md`, which [the decision-research recipes task](ai-dev_agent-spinner-decision-research-recipes.md) rewrites with an isolation variant that reports an isolated pass as blind by prompt, the same words this task's report label uses.
-- Decision packets rendered from the ledger's records, which [the ledger phase-2 task](../ai-dev_agent-spinner-ledger-phase-2.md) owns.
+- Decision packets rendered from the ledger's records, which [the ledger phase-2 task](ai-dev_agent-spinner-ledger-phase-2.md) owns.
 
 ## Acceptance
 

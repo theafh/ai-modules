@@ -60,7 +60,7 @@ Ask about scope and the estimate before dispatch, with the estimate beside any s
 </stop_and_ask>
 
 <report>
-The report puts each checker on its own line with its derivation and its ledger tag: recall-confirmed where its brief relayed the claim, and independently surfaced otherwise. Reserve "confirmed" for a resolution surfaced independently or re-derived against the source, and split the confirmations into recall-confirmed and independently surfaced. Label the derivation blind by prompt unless the log audit shows otherwise, and give the provenance class of every number.
+The report puts each checker on its own line with its derivation and its ledger tag: recall-confirmed where its brief relayed the claim, and independently surfaced otherwise. Reserve "confirmed" for a resolution surfaced independently or re-derived against the source, and split the confirmations into recall-confirmed and independently surfaced. Label the derivation `blind by log` where `accept --log` with `--log-format` finds no read outside its admitted inputs and no ledger or spawn call, and `blind by prompt` otherwise, and give the provenance class of every number.
 </report>
 
 <cost_profile>
@@ -74,7 +74,7 @@ Inline floor: run the blind derivation first, before the hypothesis text exists 
 </tier_notes>
 
 <post_run_checks>
-The deriver's brief carries no hypothesis text, the roster held only its hash until the deriver returned, and the report labels the derivation blind by prompt unless the log audit shows otherwise. Every number traces to finished content or a measurement, or carries its provenance class and a fork. No write landed between an announced fork and the user's answer, and the log's file list matches the net diffstat.
+The deriver's brief carries no hypothesis text, the roster held only its hash until the deriver returned, and the report labels the derivation `blind by log` where `accept --log` with `--log-format` finds no read outside its admitted inputs and no ledger or spawn call, and `blind by prompt` otherwise. Every number traces to finished content or a measurement, or carries its provenance class and a fork. No write landed between an announced fork and the user's answer, and the log's file list matches the net diffstat.
 </post_run_checks>
 
 </disputed_claim>

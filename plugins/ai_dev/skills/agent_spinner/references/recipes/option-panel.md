@@ -64,7 +64,7 @@ Ask about scope and the estimate before dispatch, with the estimate beside any s
 </stop_and_ask>
 
 <report>
-The report gives the menu of options with its objection lines, each reading's fate, claims marked re-derived or taken on a helper's word, and yield. Label the designers blind by prompt, and blind only where an audit of the host's helper logs, at a path the caller supplies, shows no read outside the pass's admitted inputs (C2).
+The report gives the menu of options with its objection lines, each reading's fate, claims marked re-derived or taken on a helper's word, and yield. Label the designers `blind by log` where `accept --log` with `--log-format` over the host's helper transcript, at a path the caller supplies, finds no read outside the pass's admitted inputs and no ledger or spawn call, and `blind by prompt` otherwise (C2).
 </report>
 
 <cost_profile>

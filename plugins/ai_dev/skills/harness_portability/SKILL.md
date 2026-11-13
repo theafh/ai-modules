@@ -1,7 +1,7 @@
 ---
 name: harness_portability
 description: Cross-agent-harness and cross-OS portability review for runtime artefacts bundled inside skills and plugins. Use when creating, editing, reviewing, or troubleshooting shell scripts, Python or Node helpers, hooks and hook configuration, MCP servers, command wrappers, setup and install flows, plugin wiring, agent and subagent definitions, agent frontmatter, tool allowlists, read-only agent enforcement, output styles and their per-harness rules-file and instructions-file counterparts, skill wording, execution and initialization instructions, path handling, environment variables, permissions, or provider-specific OpenAI Codex, Anthropic Claude, Cursor, Google Antigravity, SST OpenCode, and GitHub Copilot in VS Code behaviour that must work across agent harnesses, macOS, and Linux.
-version: 1.0.20
+version: 1.0.21
 author: Andreas F. Hoffmann
 license: MIT
 ---

@@ -156,6 +156,7 @@ data = {
     "checklist": [],
     "findings": [],
     "forks": [],
+    "objections": [],
     "beyond_brief": [],
     "incidents": [],
     "own_authority": [],
@@ -275,10 +276,23 @@ scenario_help() {
             bad "$verb --help exits 0"
         fi
     done
+    frozen="init attach brief dispatch accept rows dispose diff gate snapshot status show search stop close"
+    listed=$(grep -E '^    [a-z][a-z-]*( |$)' "$out" | awk '{print $1}' | sort | tr '\n' ' ')
+    expected=$(for verb in $frozen; do printf '%s\n' "$verb"; done | sort | tr '\n' ' ')
+    if [ "$listed" = "$expected" ]; then
+        ok "help lists exactly the frozen verb set"
+    else
+        bad "help lists exactly the frozen verb set (got: $listed)"
+    fi
     if ledger "$dir" no-such-verb >/dev/null 2>&1; then
         bad "unknown verb exits non-zero"
     else
         ok "unknown verb exits non-zero"
+    fi
+    if ledger "$dir" status --help > "$dir/status-help.txt" 2>&1 && grep -q 'blind rows' "$dir/status-help.txt"; then
+        ok "status --help names the blind rows listing"
+    else
+        bad "status --help names the blind rows listing"
     fi
 }
 
@@ -799,7 +813,7 @@ PY
     ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
     ledger "$dir" dispatch produce:a >/dev/null 2>&1
     token=$(token_of "$dir" produce:a)
-    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Which option should land?","options":[{"name":"a","cost":"1"},{"name":"b","cost":"2"}],"preferred":"a"}]}'
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Which option should land?","options":[{"id":"a","text":"Option a","cost":"1"},{"id":"b","text":"Option b","cost":"2"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"a"}]}'
     ledger "$dir" accept produce:a >/dev/null 2>&1
     ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
     printf '\n# Report\n' >> "$dir/.agent_spinner/report.md"
@@ -1408,6 +1422,945 @@ scenario_docs() {
     if grep -q 'ledger_run.sh' "$REPO_ROOT/tests/agent_spinner/README.md"; then ok "the README names ledger_run.sh"; else bad "the README names ledger_run.sh"; fi
     if grep -q 'ledger_run.sh' "$REPO_ROOT/tests/agent_spinner/RUNBOOK.md"; then ok "the RUNBOOK names ledger_run.sh as the third entrypoint"; else bad "the RUNBOOK names ledger_run.sh as the third entrypoint"; fi
     if grep -q 'run_ledger.py' "$REPO_ROOT/wiki/concepts/agent-delegated-automation.md"; then ok "the concept page names the run ledger"; else bad "the concept page names the run ledger"; fi
+    proto="$REPO_ROOT/plugins/ai_dev/skills/agent_spinner/references/run-protocol.md"
+    if "$PY" - "$proto" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1]).read()
+forks = re.search(r"^- `forks` is a list.*?(?=\n- |\n\n)", text, re.M | re.S)
+cond10 = re.search(r"^10\. A changed path.*?(?=\n\n)", text, re.M | re.S)
+if not forks or not cond10:
+    raise SystemExit(1)
+entry = forks.group(0)
+clause = cond10.group(0)
+ok = (
+    "`path`" in entry
+    and "condition 10" in entry
+    and "`path` field" in clause
+)
+sys.exit(0 if ok else 1)
+PY
+    then
+        ok "run-protocol names the fork path field that clears condition 10"
+    else
+        bad "run-protocol names the fork path field that clears condition 10"
+    fi
+}
+
+scenario_markers() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close.txt" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 10' "$dir/close.txt" && grep -q 'a.txt' "$dir/close.txt"; then
+        ok "a changed stamped path with no routing keeps close at exit 3 with the path named"
+    else
+        bad "a changed stamped path with no routing keeps close at exit 3 with the path named (rc=$rc)"
+    fi
+    ledger "$dir" status > "$dir/status.txt" 2>&1
+    if grep -q 'a.txt family=task gate=task_finish' "$dir/status.txt"; then
+        ok "status lists the stamped path awaiting routing"
+    else
+        bad "status lists the stamped path awaiting routing"
+    fi
+    if ledger "$dir" dispose --path a.txt --routed other_gate >/dev/null 2>&1; then
+        bad "a routed disposition naming another gate is refused"
+    else
+        ok "a routed disposition naming another gate is refused"
+    fi
+    ledger "$dir" dispose --path a.txt --routed task_finish >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close2.txt" 2>&1
+    if grep -q 'condition 10' "$dir/close2.txt"; then
+        bad "a routed disposition naming the recorded owner clears condition 10"
+    else
+        ok "a routed disposition naming the recorded owner clears condition 10"
+    fi
+
+    dir="$dir/fork"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Route a.txt or hold it?","options":[{"id":"route","text":"Route it","cost":"a hand-off"},{"id":"hold","text":"Hold it","cost":"a stale stamp"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"route","path":"a.txt"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close.txt" 2>&1
+    if grep -q 'condition 10' "$dir/close.txt"; then
+        bad "a fork record naming the path clears condition 10"
+    else
+        ok "a fork record naming the path clears condition 10"
+    fi
+
+    dir="$dir/fork-dot"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Route a.txt or hold it?","options":[{"id":"route","text":"Route it","cost":"a hand-off"},{"id":"hold","text":"Hold it","cost":"a stale stamp"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"route","path":"./a.txt"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close.txt" 2>&1
+    if grep -q 'condition 10' "$dir/close.txt"; then
+        bad "a fork path of ./a.txt clears condition 10 for a.txt"
+    else
+        ok "a fork path of ./a.txt clears condition 10 for a.txt"
+    fi
+
+    dir="$dir/unchanged"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close.txt" 2>&1
+    if grep -q 'condition 10' "$dir/close.txt"; then
+        bad "an unchanged stamped path needs no routing"
+    else
+        ok "an unchanged stamped path needs no routing"
+    fi
+
+    dir="$dir/unstamped"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close.txt" 2>&1
+    if grep -q 'condition 10' "$dir/close.txt"; then
+        bad "an unstamped changed path needs no routing"
+    else
+        ok "an unstamped changed path needs no routing"
+    fi
+}
+
+scenario_checklist_lint() {
+    dir="$1"
+    setup_repo "$dir"
+    cat > "$dir/spec.md" <<'MD'
+# Spec
+
+## Other
+
+- An ignored item.
+
+## Accept
+
+- The first item lands.
+- The second item lands.
+MD
+    ledger "$dir" init --unit check:c >/dev/null 2>&1
+    if ledger "$dir" brief check:c --checker --body "1. The first item lands.
+2. The second item lands." --acceptance "spec.md#Accept" >/dev/null 2>&1; then
+        ok "a checklist covering every acceptance item verbatim renders"
+    else
+        bad "a checklist covering every acceptance item verbatim renders"
+    fi
+    if grep -q '"acceptance"' "$dir/.agent_spinner/roster.tsv"; then
+        ok "the row records the acceptance source's version"
+    else
+        bad "the row records the acceptance source's version"
+    fi
+    if ledger "$dir" brief check:c --checker --body "1. The first item lands.
+2. Something else entirely." --acceptance "spec.md#Accept" > "$dir/miss.txt" 2>&1; then
+        bad "a brief missing one acceptance item is refused"
+    else
+        if grep -q 'The second item lands' "$dir/miss.txt"; then
+            ok "a brief missing one acceptance item is refused with that item named"
+        else
+            bad "a brief missing one acceptance item is refused with that item named"
+        fi
+    fi
+    if ledger "$dir" brief check:c --checker --body "1. The first item lands." --acceptance "spec.md#Accept" >/dev/null 2>&1; then
+        bad "a brief with fewer lines than acceptance items is refused"
+    else
+        ok "a brief with fewer lines than acceptance items is refused"
+    fi
+    if ledger "$dir" brief check:c --checker --body "1. The first item lands.
+2. The second item lands." --acceptance spec.md >/dev/null 2>&1; then
+        bad "an unscoped source reads every list item"
+    else
+        ok "an unscoped source reads every list item"
+    fi
+}
+
+scenario_packets() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Keep the page or retire it?","options":[{"id":"o1","text":"Keep the page","cost":"one more edit"},{"id":"o2","text":"Retire the page","cost":"a dead link"}],"passages":[{"text":"alpha","anchor":"a.txt:1"},{"text":"beta","anchor":"a.txt:2"}],"preferred":"o2"}],"objections":[{"text":"the link graph still points at the page","fork":"0","option":"o2"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    if grep -q '"type": "objection"' "$dir/.agent_spinner/ledger.jsonl" && grep -q '"option": "o2"' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "an objections entry imports as an objection record"
+    else
+        bad "an objections entry imports as an objection record"
+    fi
+    ledger "$dir" dispose --id 'produce:a:forks:0' --disposition surfaced --packet pkt-1 --recommend "Option o2" --why "it removes the drift" >/dev/null 2>&1
+    ledger "$dir" show --packet pkt-1 > "$dir/packet.txt" 2>&1
+    if grep -q 'Decision packet: pkt-1' "$dir/packet.txt"; then ok "show --packet names the packet id"; else bad "show --packet names the packet id"; fi
+    if grep -q 'Issue: Keep the page or retire it?' "$dir/packet.txt"; then ok "the packet carries the issue in one sentence"; else bad "the packet carries the issue in one sentence"; fi
+    if grep -q 'anchor: a.txt:1' "$dir/packet.txt" && grep -q 'anchor: a.txt:2' "$dir/packet.txt"; then
+        ok "both passages render with their anchors"
+    else
+        bad "both passages render with their anchors"
+    fi
+    if "$PY" - "$dir/packet.txt" "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+packet_path, ledger_path = sys.argv[1:3]
+records = [json.loads(line) for line in open(ledger_path) if line.strip()]
+fork = [rec for rec in records if rec.get("type") == "fork"][0]
+expected = [passage["text"] for passage in fork.get("passages") or []]
+quoted = []
+for line in open(packet_path).read().splitlines():
+    if line.startswith('- "') and line.endswith('"'):
+        quoted.append(line[3:-1])
+sys.exit(0 if quoted == expected and expected else 1)
+PY
+    then
+        ok "both passages render byte-identical to the fork record"
+    else
+        bad "both passages render byte-identical to the fork record"
+    fi
+    if grep -q 'id: o1' "$dir/packet.txt" && grep -q 'id: o2' "$dir/packet.txt" && grep -q 'Cost: a dead link' "$dir/packet.txt"; then
+        ok "each option renders with its stable id and its cost"
+    else
+        bad "each option renders with its stable id and its cost"
+    fi
+    if grep -q 'Option o2: the link graph still points at the page' "$dir/packet.txt"; then
+        ok "the objection renders under the second option"
+    else
+        bad "the objection renders under the second option"
+    fi
+    if grep -q "preferred end state (produce:a:forks:0)" "$dir/packet.txt" && grep -qF '"o2"' "$dir/packet.txt"; then
+        ok "the helper's preferred end state is present"
+    else
+        bad "the helper's preferred end state is present"
+    fi
+    if grep -q 'Recommendation: Option o2' "$dir/packet.txt" && grep -q 'Reason: it removes the drift' "$dir/packet.txt"; then
+        ok "the recommendation and reason close the packet"
+    else
+        bad "the recommendation and reason close the packet"
+    fi
+    if ledger "$dir" show --packet no-such-packet >/dev/null 2>&1; then
+        bad "show --packet refuses an id with no surfaced fork"
+    else
+        ok "show --packet refuses an id with no surfaced fork"
+    fi
+    ledger "$dir" status > "$dir/status.txt" 2>&1
+    if grep -q 'pkt-1' "$dir/status.txt"; then ok "status lists the open packet ids"; else bad "status lists the open packet ids"; fi
+    ledger "$dir" close > "$dir/close.txt" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'produce:a:objections:0' "$dir/close.txt"; then
+        ok "an undisposed objection keeps close at exit 3"
+    else
+        bad "an undisposed objection keeps close at exit 3 (rc=$rc)"
+    fi
+    ledger "$dir" dispose --id 'produce:a:objections:0' --disposition applied >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close2.txt" 2>&1
+    if grep -q 'produce:a:objections:0' "$dir/close2.txt"; then
+        bad "a disposed objection leaves condition 2"
+    else
+        ok "a disposed objection leaves condition 2"
+    fi
+
+    dir="$dir/bad-option"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Keep or retire?","options":[{"id":"o1","text":"Keep","cost":"one edit"},{"id":"o2","text":"Retire","cost":"a link"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"o1"}],"objections":[{"text":"a bad reference","fork":"0","option":"o9"}]}'
+    ledger "$dir" accept produce:a > "$dir/accept.txt" 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ] && grep -q 'o9' "$dir/accept.txt"; then
+        ok "an objection naming an unknown option is refused with that option named"
+    else
+        bad "an objection naming an unknown option is refused with that option named (rc=$rc)"
+    fi
+}
+
+write_format_a() {
+    cat > "$1" <<'JSON'
+{
+  "match": {"kind": "call"},
+  "calls": "call",
+  "name": "tool",
+  "args": "args",
+  "kinds": {"read": ["reader"], "write": ["writer"], "shell": ["runner"], "spawn": ["spawner"]},
+  "path_args": ["target"],
+  "partial_args": ["partial"],
+  "command_args": ["cmd"],
+  "time": "at"
+}
+JSON
+}
+
+write_format_b() {
+    cat > "$1" <<'JSON'
+{
+  "match": {"role": "assistant"},
+  "calls": "message.content[]",
+  "name": "name",
+  "args": "input",
+  "kinds": {"read": ["open_file"], "write": ["save_file"], "shell": ["run_cmd"], "spawn": ["fork_task"]},
+  "path_args": ["path"],
+  "partial_args": ["limit"],
+  "command_args": ["command"],
+  "time": "ts"
+}
+JSON
+}
+
+# write_shipped_claude_format <out> — copy the Claude Code description the
+# delegation reference ships, so the own-session test reads the same format
+# the orchestrator would pass as --log-format.
+write_shipped_claude_format() {
+    "$PY" - "$REPO_ROOT/plugins/ai_dev/skills/harness_portability/references/delegation-surfaces.md" "$1" <<'PY'
+import json
+import re
+import sys
+
+ref, out = sys.argv[1:3]
+text = open(ref).read()
+section = re.search(r"^## Claude Code\n(.*?)(?=^## )", text, re.M | re.S).group(1)
+entry = re.search(r"\*\*Helper log format\.\*\*(.*?)(?=^- |\Z)", section, re.M | re.S).group(1)
+block = re.search(r"```json\n(.*?)\n[ \t]*```", entry, re.S).group(1)
+open(out, "w").write(json.dumps(json.loads(block)))
+PY
+}
+
+audit_repo() {
+    dir="$1"
+    setup_repo "$dir"
+    printf 'alpha\nbeta\n' > "$dir/a.txt"
+    printf 'gamma\n' > "$dir/b.txt"
+    printf 'delta\n' > "$dir/c.txt"
+    git -C "$dir" add -A
+    git -C "$dir" commit -qm "audit files"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "Read a.txt and b.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+}
+
+scenario_audit() {
+    dir="$1"
+    audit_repo "$dir"
+    write_format_a "$dir/fmt-a.json"
+    cat > "$dir/log-a.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "a.txt"}}}
+{"kind": "call", "at": "2026-01-01T00:00:01+00:00", "call": {"tool": "reader", "args": {"target": "b.txt", "partial": true}}}
+{"kind": "call", "at": "2026-01-01T00:00:02+00:00", "call": {"tool": "reader", "args": {"target": "c.txt"}}}
+{"kind": "call", "at": "2026-01-01T00:00:03+00:00", "call": {"tool": "writer", "args": {"target": "d.txt"}}}
+{"kind": "call", "at": "2026-01-01T00:00:04+00:00", "call": {"tool": "runner", "args": {"cmd": "printf hi"}}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/log-a.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+audit = [rec for rec in records if rec.get("type") == "audit"][-1]
+sys.exit(0 if "a.txt" in audit["full_reads"] and "b.txt" not in audit["full_reads"] else 1)
+PY
+    then
+        ok "format A records a full read as tool evidence"
+    else
+        bad "format A records a full read as tool evidence"
+    fi
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+audit = [rec for rec in records if rec.get("type") == "audit"][-1]
+sys.exit(0 if "b.txt" in audit["partial_reads"] else 1)
+PY
+    then
+        ok "format A leaves a ranged read out of tool evidence"
+    else
+        bad "format A leaves a ranged read out of tool evidence"
+    fi
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+audit = [rec for rec in records if rec.get("type") == "audit"][-1]
+sys.exit(0 if "c.txt" in audit["outside_reads"] else 1)
+PY
+    then
+        ok "format A records a read outside the admitted inputs"
+    else
+        bad "format A records a read outside the admitted inputs"
+    fi
+    if grep -q '"ledger_calls": \[\]' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "a shell command that invokes no ledger records no containment incident"
+    else
+        bad "a shell command that invokes no ledger records no containment incident"
+    fi
+
+    dir="$dir/format-b"
+    audit_repo "$dir"
+    write_format_b "$dir/fmt-b.json"
+    cat > "$dir/log-b.jsonl" <<'LOG'
+{"role": "assistant", "ts": "2026-01-01T00:00:00+00:00", "message": {"content": [{"name": "open_file", "input": {"path": "a.txt"}}, {"name": "open_file", "input": {"path": "b.txt", "limit": 3}}, {"name": "save_file", "input": {"path": "d.txt"}}]}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/log-b.jsonl" --log-format "$dir/fmt-b.json" >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+audit = [rec for rec in records if rec.get("type") == "audit"][-1]
+ok = "a.txt" in audit["full_reads"] and "b.txt" in audit["partial_reads"] and "b.txt" not in audit["full_reads"]
+sys.exit(0 if ok else 1)
+PY
+    then
+        ok "format B reads several calls in one record and splits full from ranged reads"
+    else
+        bad "format B reads several calls in one record and splits full from ranged reads"
+    fi
+
+    dir="$dir/bad-format"
+    audit_repo "$dir"
+    printf 'not json\n' > "$dir/bad.json"
+    if ledger "$dir" accept produce:a --log "$dir/log-a.jsonl" --log-format "$dir/bad.json" >/dev/null 2>&1; then
+        bad "a malformed description is refused"
+    else
+        ok "a malformed description is refused"
+    fi
+    write_format_a "$dir/fmt-a.json"
+    if ledger "$dir" accept produce:a --log "$dir/no-such-log.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1; then
+        bad "an unreadable log is refused"
+    else
+        ok "an unreadable log is refused"
+    fi
+    cat > "$dir/no-match.jsonl" <<'LOG'
+{"kind": "other", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "a.txt"}}}
+LOG
+    if ledger "$dir" accept produce:a --log "$dir/no-match.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1; then
+        bad "a description that matches no call is refused"
+    else
+        ok "a description that matches no call is refused"
+    fi
+
+    dir="$dir/unchanged"
+    audit_repo "$dir"
+    write_format_a "$dir/fmt-a.json"
+    cp "$dir/.agent_spinner/returns/produce:a.md" "$dir/before.md"
+    before_state=$(awk -F'\t' '$1=="produce:a" {print $7}' "$dir/.agent_spinner/roster.tsv")
+    cat > "$dir/log.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "a.txt"}}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/log.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    after_state=$(awk -F'\t' '$1=="produce:a" {print $7}' "$dir/.agent_spinner/roster.tsv")
+    if [ "$before_state" = "accepted" ] && [ "$after_state" = "accepted" ]; then
+        ok "an audit on an accepted row leaves its state unchanged"
+    else
+        bad "an audit on an accepted row leaves its state unchanged"
+    fi
+    if cmp -s "$dir/before.md" "$dir/.agent_spinner/returns/produce:a.md"; then
+        ok "an audit leaves returns/<label>.md byte-identical"
+    else
+        bad "an audit leaves returns/<label>.md byte-identical"
+    fi
+
+    dir="$dir/incident"
+    audit_repo "$dir"
+    write_format_a "$dir/fmt-a.json"
+    cat > "$dir/log.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "runner", "args": {"cmd": "python3 run_ledger.py status"}}}
+{"kind": "call", "at": "2026-01-01T00:00:01+00:00", "call": {"tool": "spawner", "args": {}}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/log.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    if [ "$(grep -c '"type": "incident"' "$dir/.agent_spinner/ledger.jsonl")" -eq 2 ]; then
+        ok "a ledger invocation and a spawn call each record an incident"
+    else
+        bad "a ledger invocation and a spawn call each record an incident"
+    fi
+    ledger "$dir" close > "$dir/close.txt" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 2' "$dir/close.txt"; then
+        ok "an audit incident keeps close refusing"
+    else
+        bad "an audit incident keeps close refusing (rc=$rc)"
+    fi
+    ledger "$dir" dispose --id 'produce:a:audit-incidents:0' --disposition applied >/dev/null 2>&1
+    ledger "$dir" dispose --id 'produce:a:audit-incidents:1' --disposition refuted >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close-disposed.txt" 2>&1
+    if grep -q 'produce:a:audit-incidents' "$dir/close-disposed.txt"; then
+        bad "disposing both audit incidents clears them from close"
+    else
+        ok "disposing both audit incidents clears them from close"
+    fi
+
+    dir="$dir/blind"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    printf 'the withheld hypothesis\n' | ledger "$dir" brief produce:a --body "Read a.txt." --withheld >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    write_format_a "$dir/fmt-a.json"
+    cat > "$dir/inside.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "a.txt"}}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/inside.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    if grep -q '"blind": "blind by log"' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "a blind row whose log stays inside its admitted inputs is blind by log"
+    else
+        bad "a blind row whose log stays inside its admitted inputs is blind by log"
+    fi
+    cat > "$dir/outside.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "c.txt"}}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/outside.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    if grep -q '"blind": "blind by prompt"' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "a blind row that read an outside path stays blind by prompt"
+    else
+        bad "a blind row that read an outside path stays blind by prompt"
+    fi
+
+    dir="$dir/no-audit"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    printf 'the withheld hypothesis\n' | ledger "$dir" brief produce:a --body "Read a.txt." --withheld >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" status > "$dir/status.txt" 2>&1
+    if grep -q 'produce:a blind by prompt' "$dir/status.txt"; then
+        ok "a blind row with no audit stays blind by prompt"
+    else
+        bad "a blind row with no audit stays blind by prompt"
+    fi
+
+    dir="$dir/inline-floor-blind"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    printf 'the withheld hypothesis\n' | ledger "$dir" brief produce:a --body "Read a.txt." --withheld >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    write_format_a "$dir/fmt-a.json"
+    "$PY" - "$dir/.agent_spinner/roster.tsv" "$dir/log.jsonl" <<'PY'
+import json
+import sys
+
+roster, log = sys.argv[1:3]
+returned = ""
+for line in open(roster, newline=""):
+    parts = line.rstrip("\n").split("\t")
+    if parts and parts[0] == "produce:a":
+        returned = parts[18]
+record = {
+    "kind": "call",
+    "at": returned,
+    "call": {"tool": "reader", "args": {"target": "a.txt"}},
+}
+open(log, "w").write(json.dumps(record) + "\n")
+PY
+    ledger "$dir" accept produce:a --log "$dir/log.jsonl" --log-format "$dir/fmt-a.json" --own-session >/dev/null 2>&1
+    ledger "$dir" status > "$dir/status.txt" 2>&1
+    if grep -q 'produce:a blind by prompt' "$dir/status.txt" && ! grep -q '"blind": "blind by log"' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "a blind row audited with --own-session at the inline floor stays blind by prompt"
+    else
+        bad "a blind row audited with --own-session at the inline floor stays blind by prompt"
+    fi
+    if grep -q '"full_reads": \["a.txt"\]' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "an inline-floor blind row's audit still records its tool evidence"
+    else
+        bad "an inline-floor blind row's audit still records its tool evidence"
+    fi
+
+    dir="$dir/brief-names"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "Read a.txt and b.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    write_format_a "$dir/fmt-a.json"
+    cat > "$dir/log.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "a.txt"}}}
+{"kind": "call", "at": "2026-01-01T00:00:01+00:00", "call": {"tool": "reader", "args": {"target": "b.txt"}}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/log.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    if grep -q '"outside_reads": \[\]' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "a helper that reads two files its brief names records no outside read"
+    else
+        bad "a helper that reads two files its brief names records no outside read"
+    fi
+
+    dir="$dir/admitted"
+    setup_repo "$dir"
+    printf 'all:\n\t@echo hi\n' > "$dir/Makefile"
+    cat > "$dir/spec.md" <<'MD'
+# Spec
+
+## Accept
+
+- The item lands.
+MD
+    git -C "$dir" add -A
+    git -C "$dir" commit -qm "admitted inputs"
+    ledger "$dir" init --unit check:c --bound 60 >/dev/null 2>&1
+    ledger "$dir" brief check:c --checker --body "1. The item lands. Makefile." --acceptance spec.md >/dev/null 2>&1
+    ledger "$dir" dispatch check:c >/dev/null 2>&1
+    token=$(token_of "$dir" check:c)
+    emit_return "$dir" check:c "$token" '{}'
+    ledger "$dir" accept check:c >/dev/null 2>&1
+    write_format_a "$dir/fmt-a.json"
+    cat > "$dir/log.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "Makefile"}}}
+{"kind": "call", "at": "2026-01-01T00:00:01+00:00", "call": {"tool": "reader", "args": {"target": "spec.md"}}}
+LOG
+    ledger "$dir" accept check:c --log "$dir/log.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+audit = [rec for rec in records if rec.get("type") == "audit"][-1]
+sys.exit(0 if audit["outside_reads"] == [] and set(audit["full_reads"]) == {"Makefile", "spec.md"} else 1)
+PY
+    then
+        ok "the recorded acceptance source and an extensionless brief path are admitted inputs"
+    else
+        bad "the recorded acceptance source and an extensionless brief path are admitted inputs"
+    fi
+
+    dir="$dir/own-session"
+    setup_repo "$dir"
+    printf 'delta\n' > "$dir/c.txt"
+    git -C "$dir" add -A
+    git -C "$dir" commit -qm "inline-floor input"
+    ledger "$dir" init --unit produce:a --unit produce:b --unit produce:c --unit-path produce:a=a.txt --unit-path produce:b=b.txt --unit-path produce:c=c.txt --bound 60 >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "Read a.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir" brief produce:b --body "Read b.txt." --target b.txt >/dev/null 2>&1
+    ledger "$dir" brief produce:c --body "Read c.txt." --target c.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    ledger "$dir" dispatch produce:b >/dev/null 2>&1
+    token_a=$(token_of "$dir" produce:a)
+    token_b=$(token_of "$dir" produce:b)
+    token_c=$(token_of "$dir" produce:c)
+    emit_return "$dir" produce:a "$token_a" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    emit_return "$dir" produce:b "$token_b" '{"examined":[{"path":"b.txt","how":"full","receipt":"gamma"}]}'
+    emit_return "$dir" produce:c "$token_c" '{"examined":[{"path":"c.txt","how":"full","receipt":"delta"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" accept produce:b >/dev/null 2>&1
+    ledger "$dir" accept produce:c >/dev/null 2>&1
+    "$PY" - "$dir/.agent_spinner/roster.tsv" "$dir/.agent_spinner/briefs/produce:c.txt" <<'PY'
+import calendar
+import os
+import sys
+
+path, brief = sys.argv[1:3]
+rows = []
+for line in open(path, newline=""):
+    parts = line.rstrip("\n").split("\t")
+    if parts and parts[0] == "produce:a":
+        parts[16] = "2026-01-01T00:00:00+00:00"
+        parts[17] = ""
+        parts[18] = "2026-01-01T00:10:00+00:00"
+    elif parts and parts[0] == "produce:b":
+        parts[16] = "2026-01-01T00:20:00+00:00"
+        parts[17] = ""
+        parts[18] = "2026-01-01T00:30:00+00:00"
+    elif parts and parts[0] == "produce:c":
+        # An inline-floor row: it never dispatched and wrote no start marker,
+        # so its lower bound is its brief file's modification time.
+        parts[16] = ""
+        parts[17] = ""
+        parts[18] = "2026-01-01T00:40:00+00:00"
+    rows.append("\t".join(parts))
+open(path, "w").write("\n".join(rows) + "\n")
+os.utime(brief, (calendar.timegm((2026, 1, 1, 0, 35, 0, 0, 0, 0)),) * 2)
+PY
+    write_shipped_claude_format "$dir/claude.json"
+    cat > "$dir/session.jsonl" <<'LOG'
+{"isSidechain": true, "timestamp": "2026-01-01T00:05:00+00:00", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "a.txt"}}, {"type": "tool_use", "name": "Bash", "input": {"command": "python3 run_ledger.py status"}}, {"type": "tool_use", "name": "Read", "input": {"file_path": "c.txt"}}]}}
+{"isSidechain": true, "timestamp": "2026-01-01T00:25:00+00:00", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "b.txt"}}]}}
+{"isSidechain": true, "timestamp": "2026-01-01T00:36:00+00:00", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "c.txt"}}]}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/session.jsonl" --log-format "$dir/claude.json" --own-session >/dev/null 2>&1
+    ledger "$dir" accept produce:b --log "$dir/session.jsonl" --log-format "$dir/claude.json" --own-session >/dev/null 2>&1
+    ledger "$dir" accept produce:c --log "$dir/session.jsonl" --log-format "$dir/claude.json" --own-session >/dev/null 2>&1
+    if grep -q '"own_session": true' "$dir/.agent_spinner/ledger.jsonl" && ! grep -q '"type": "incident"' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "an own-session audit records no containment incident"
+    else
+        bad "an own-session audit records no containment incident"
+    fi
+    if grep -q '"outside_reads": \[\]' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "an own-session audit records no outside read"
+    else
+        bad "an own-session audit records no outside read"
+    fi
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+audits = {}
+for rec in records:
+    if rec.get("type") == "audit":
+        audits[rec["label"]] = rec
+a = audits.get("produce:a", {}).get("full_reads", [])
+b = audits.get("produce:b", {}).get("full_reads", [])
+c = audits.get("produce:c", {}).get("full_reads", [])
+ok = "a.txt" in a and "b.txt" not in a and b == ["b.txt"] and c == ["c.txt"]
+sys.exit(0 if ok else 1)
+PY
+    then
+        ok "two dispatched rows and one inline-floor row count only the reads inside their own window"
+    else
+        bad "two dispatched rows and one inline-floor row count only the reads inside their own window"
+    fi
+}
+
+scenario_own_session_windows() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:s --unit produce:m --unit-path produce:s=a.txt --unit-path produce:m=b.txt --bound 60 >/dev/null 2>&1
+    ledger "$dir" brief produce:s --body "Read a.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir" brief produce:m --body "Read b.txt." --target b.txt >/dev/null 2>&1
+    token_s=$(token_of "$dir" produce:s)
+    token_m=$(token_of "$dir" produce:m)
+    emit_return "$dir" produce:s "$token_s" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    emit_return "$dir" produce:m "$token_m" '{"examined":[{"path":"b.txt","how":"full","receipt":"gamma"}]}'
+    touch "$dir/.agent_spinner/returns/produce:s.start"
+    ledger "$dir" accept produce:s >/dev/null 2>&1
+    ledger "$dir" accept produce:m >/dev/null 2>&1
+    "$PY" - "$dir/.agent_spinner/roster.tsv" "$dir/.agent_spinner/briefs/produce:m.txt" <<'PY'
+import calendar
+import os
+import sys
+
+path, brief = sys.argv[1:3]
+rows = []
+for line in open(path, newline=""):
+    parts = line.rstrip("\n").split("\t")
+    if parts and parts[0] == "produce:s":
+        # No dispatch, but a start marker: the window starts at the marker.
+        parts[16] = ""
+        parts[17] = "2026-01-01T00:10:00+00:00"
+        parts[18] = "2026-01-01T00:20:00+00:00"
+    elif parts and parts[0] == "produce:m":
+        # Neither dispatch nor start marker: the window starts at the brief's
+        # modification time.
+        parts[16] = ""
+        parts[17] = ""
+        parts[18] = "2026-01-01T00:40:00+00:00"
+    rows.append("\t".join(parts))
+open(path, "w").write("\n".join(rows) + "\n")
+os.utime(brief, (calendar.timegm((2026, 1, 1, 0, 30, 0, 0, 0, 0)),) * 2)
+PY
+    write_shipped_claude_format "$dir/claude.json"
+    cat > "$dir/session.jsonl" <<'LOG'
+{"isSidechain": true, "timestamp": "2026-01-01T00:05:00+00:00", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "before-s.txt"}}]}}
+{"isSidechain": true, "timestamp": "2026-01-01T00:15:00+00:00", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "inside-s.txt"}}]}}
+{"isSidechain": true, "timestamp": "2026-01-01T00:25:00+00:00", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "before-m.txt"}}]}}
+{"isSidechain": true, "timestamp": "2026-01-01T00:35:00+00:00", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "inside-m.txt"}}]}}
+LOG
+    ledger "$dir" accept produce:s --log "$dir/session.jsonl" --log-format "$dir/claude.json" --own-session >/dev/null 2>&1
+    ledger "$dir" accept produce:m --log "$dir/session.jsonl" --log-format "$dir/claude.json" --own-session >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+audits = {}
+for rec in records:
+    if rec.get("type") == "audit":
+        audits[rec["label"]] = rec
+s = audits.get("produce:s", {}).get("full_reads", [])
+m = audits.get("produce:m", {}).get("full_reads", [])
+sys.exit(0 if s == ["inside-s.txt"] and m == ["inside-m.txt"] else 1)
+PY
+    then
+        ok "an own-session window falls back to the start marker, then the brief's mtime"
+    else
+        bad "an own-session window falls back to the start marker, then the brief's mtime"
+    fi
+}
+
+scenario_objection_close() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit check:b --unit-path produce:a=a.txt --unit-path check:b=a.txt --bound 60 >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt --depth 2 >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"forks":[{"issue":"Keep or retire the page?","options":[{"id":"o1","text":"Keep","cost":"one edit"},{"id":"o2","text":"Retire","cost":"a link"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"o2"}],"objections":[{"text":"the link graph still points here","fork":"0","option":"o2"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" brief check:b --body "B" --target a.txt --relay produce:a --depth 2 --obligation a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch check:b >/dev/null 2>&1
+    token=$(token_of "$dir" check:b)
+    emit_return "$dir" check:b "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"gamma"}]}'
+    ledger "$dir" accept check:b >/dev/null 2>&1
+    ledger "$dir" diff --add-checks >/dev/null 2>&1
+    ledger "$dir" brief check:a.txt --body "C" --target a.txt --depth 2 --obligation a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch check:a.txt >/dev/null 2>&1
+    token=$(token_of "$dir" check:a.txt)
+    emit_return "$dir" check:a.txt "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"gamma"}]}'
+    ledger "$dir" accept check:a.txt >/dev/null 2>&1
+    ledger "$dir" dispose --id 'produce:a:forks:0' --disposition surfaced --packet pkt-c >/dev/null 2>&1
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
+    printf '\n# Report\n\nAll clear.\n' >> "$dir/.agent_spinner/report.md"
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'produce:a:objections:0' "$dir/.agent_spinner/close.out"; then
+        ok "an objection with no disposition keeps close at exit 3"
+    else
+        bad "an objection with no disposition keeps close at exit 3 (rc=$rc)"
+    fi
+    ledger "$dir" dispose --id 'produce:a:objections:0' --disposition applied >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "close reaches exit 0 once the objection is disposed"
+    else
+        bad "close reaches exit 0 once the objection is disposed"
+    fi
+}
+
+scenario_tally_coverage() {
+    dir="$1"
+    setup_repo "$dir"
+    printf 'delta\n' > "$dir/c.txt"
+    git -C "$dir" add -A
+    git -C "$dir" commit -qm "coverage inputs"
+    ledger "$dir" init --unit produce:a --unit produce:b --unit produce:c --unit-path produce:a=a.txt --unit-path produce:b=b.txt --unit-path produce:c=c.txt --bound 60 --wave 3 >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "Read a.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir" brief produce:b --body "Read b.txt." --target b.txt >/dev/null 2>&1
+    ledger "$dir" brief produce:c --body "Read c.txt." --target c.txt >/dev/null 2>&1
+    for label in produce:a produce:b produce:c; do
+        ledger "$dir" dispatch "$label" >/dev/null 2>&1
+    done
+    token_a=$(token_of "$dir" produce:a)
+    token_b=$(token_of "$dir" produce:b)
+    token_c=$(token_of "$dir" produce:c)
+    emit_return "$dir" produce:a "$token_a" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    emit_return "$dir" produce:b "$token_b" '{"examined":[{"path":"b.txt","how":"searched","receipt":"gamma"}]}'
+    emit_return "$dir" produce:c "$token_c" '{"examined":[{"path":"c.txt","how":"unreachable","receipt":"delta"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" accept produce:b >/dev/null 2>&1
+    ledger "$dir" accept produce:c >/dev/null 2>&1
+    write_format_a "$dir/fmt-a.json"
+    cat > "$dir/log.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "a.txt"}}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/log.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/tally.txt"
+    if grep -q 'coverage-full-by-tool 1' "$dir/tally.txt" && grep -q 'coverage-receipt-only 0' "$dir/tally.txt"; then
+        ok "the tally splits tool evidence from receipt-only coverage"
+    else
+        bad "the tally splits tool evidence from receipt-only coverage"
+    fi
+    if grep -q 'coverage-searched 1' "$dir/tally.txt" && grep -q 'coverage-unexamined 1' "$dir/tally.txt"; then
+        ok "the tally counts searched and unexamined entries"
+    else
+        bad "the tally counts searched and unexamined entries"
+    fi
+}
+
+scenario_log_format_docs() {
+    dir="$1"
+    mkdir -p "$dir"
+    ref="$REPO_ROOT/plugins/ai_dev/skills/harness_portability/references/delegation-surfaces.md"
+    if "$PY" - "$ref" "$LEDGER" <<'PY'
+import importlib.util
+import json
+import re
+import sys
+
+sys.dont_write_bytecode = True
+
+ref, ledger = sys.argv[1:3]
+spec = importlib.util.spec_from_file_location("run_ledger", ledger)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+text = open(ref).read()
+errors = []
+
+
+def section(name):
+    pattern = re.compile(r"^## %s\n(.*?)(?=^## |\Z)" % re.escape(name), re.M | re.S)
+    match = pattern.search(text)
+    return match.group(1) if match else ""
+
+
+def delivery(name):
+    body = section(name)
+    match = re.search(r"^### Delivery and concurrency\n(.*?)(?=^### |\Z)", body, re.M | re.S)
+    return match.group(1) if match else ""
+
+
+for host, log_hint in (("Claude Code", "subagents/agent-"), ("Cursor", "agent-transcripts/")):
+    body = section(host)
+    subs = re.findall(r"^### ", body, re.M)
+    if len(subs) != 5:
+        errors.append("%s holds %d subsections, expected 5" % (host, len(subs)))
+    entry = delivery(host)
+    marker = entry.find("**Helper log format.**")
+    if marker == -1:
+        errors.append("%s has no Helper log format entry" % host)
+        continue
+    tail = entry[marker:]
+    if log_hint not in tail:
+        errors.append("%s entry does not name the log it reads" % host)
+    for needle in ("Observed 2026-", "build", "result"):
+        if needle not in tail:
+            errors.append("%s entry records no %s" % (host, needle))
+    block = re.search(r"^[ \t]*```json\n(.*?)\n[ \t]*```", tail, re.S | re.M)
+    if not block:
+        errors.append("%s entry carries no json description" % host)
+        continue
+    try:
+        data = json.loads(block.group(1))
+    except ValueError as exc:
+        errors.append("%s description is not json: %s" % (host, exc))
+        continue
+    path = "/tmp/ledger-format-%s.json" % host.replace(" ", "-").lower()
+    open(path, "w").write(json.dumps(data))
+    try:
+        mod.load_log_format(path)
+    except SystemExit:
+        errors.append("%s description does not parse in the ledger" % host)
+    if not data.get("calls") or not data.get("kinds"):
+        errors.append("%s description names no calls or kinds" % host)
+
+if errors:
+    for error in errors:
+        sys.stderr.write("%s\n" % error)
+    raise SystemExit(1)
+PY
+    then
+        ok "each delegation-surfaces log-format entry parses and names its log"
+    else
+        bad "each delegation-surfaces log-format entry parses and names its log"
+    fi
 }
 
 # --- runner -----------------------------------------------------------------
@@ -1444,6 +2397,14 @@ run_all_scenarios() {
     scenario_recorded_versions "$root/recorded-versions"
     scenario_recall_tags "$root/recall-tags"
     scenario_start_markers "$root/start-markers"
+    scenario_markers "$root/markers"
+    scenario_checklist_lint "$root/checklist"
+    scenario_packets "$root/packets"
+    scenario_objection_close "$root/objection-close"
+    scenario_audit "$root/audit"
+    scenario_own_session_windows "$root/own-session-windows"
+    scenario_tally_coverage "$root/tally-coverage"
+    scenario_log_format_docs "$root/log-format-docs"
     scenario_version_floor "$root/version-floor"
     scenario_phase_count "$root/phase-count"
     scenario_exclude_prune "$root/exclude-prune"

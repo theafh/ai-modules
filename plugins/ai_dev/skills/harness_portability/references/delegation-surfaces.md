@@ -31,6 +31,28 @@ Builds read 2026-10-04: the `claude` CLI on PATH is 2.1.226, and the Claude desk
 - **Context-fill figure.** No record shows a context-fill figure for this host.
 - **Largest observed batch.** No single-message batch was recorded. Two figures exist and neither is the batch: the Workflow pool ran at most 12 helpers at once, a pool concurrency cap, and seven background agents were in flight at once, with their dispatch unrecorded. — Observed 2026-09-05 and 2026-09-22; build unrecorded; source: local agent transcripts.
 - **Helper tool-call record.** A spawned helper writes its own transcript, `subagents/agent-<id>.jsonl` inside the parent session's transcript directory. Its records carry `isSidechain` set to true and the helper's `agentId`, and their `message.content` lists each tool call as a `tool_use` block with `id`, `name`, and `input`. — Observed 2026-10-04; build unrecorded; source: local agent transcripts.
+- **Helper log format.** The description `agent_spinner`'s ledger reads for this host, proven against the log it names:
+
+  ```json
+  {
+    "match": {"isSidechain": true},
+    "calls": "message.content[]",
+    "name": "name",
+    "args": "input",
+    "kinds": {
+      "read": ["Read"],
+      "write": ["Write", "Edit", "MultiEdit", "NotebookEdit"],
+      "shell": ["Bash"],
+      "spawn": ["Agent", "Task", "Workflow"]
+    },
+    "path_args": ["file_path", "path", "notebook_path"],
+    "partial_args": ["limit", "offset"],
+    "command_args": ["command"],
+    "time": "timestamp"
+  }
+  ```
+
+  It reads the helper's own transcript, `subagents/agent-<id>.jsonl` inside the parent session's transcript directory. The `message.content[]` list also carries blocks that are not `tool_use`; those hold no tool name, so the ledger skips them and keeps only the `tool_use` calls. Real-log audit: not run. The host read on 2026-11-13 was OpenCode, which spawns no Claude Code helper, so no helper transcript could be read. Result: a narrowing. The `match` value comes from the `### Spawn surface` and `### Delivery and concurrency` facts observed 2026-10-04 on build `claude` 2.1.226. The tool names and argument keys are inferred from the host's documented tool vocabulary — the `Read`, `Write`, `Edit`, `MultiEdit`, `NotebookEdit`, and `Bash` tools with the `file_path`, `path`, and `notebook_path` argument keys — which those facts do not name, so they remain unverified against a fresh log. — Observed 2026-11-13; build not read; source: no helper transcript on this host.
 - The Workflow pool ran at most 12 helpers at once, consistent with first-in-first-out queuing. A checker queued behind writers therefore starts only once the writers ahead of it have left the queue. — Observed 2026-09-05; build unrecorded; source: local agent transcripts.
 - The Workflow tool's description carries a default size guideline of keeping workflows under 10 agents, which the user's prompt may override. — Observed 2026-09-23; build unrecorded; source: local agent transcripts.
 - Outside the Workflow tool, seven background agents were in flight at once. Whether one message dispatched them is unrecorded. — Observed 2026-09-22; build unrecorded; source: local agent transcripts.
@@ -93,6 +115,28 @@ Builds read 2026-10-04: the Cursor IDE is 3.23.12, and its `agent` CLI, also ins
 - **Helper tool-call record (print mode).** A helper's result reaches the parent as its final text inside the `Task` result, under `conversationSteps`. The helper's own tool calls appear only in the helper's own transcript. — Observed 2026-10-04; build `agent` 2026.10.01; source: a probe run.
 - *Print mode.* Print-mode helper transcripts sit beside the parent's as top-level transcripts. — Observed 2026-10-03; build unrecorded; source: eval runs on the installed CLI.
 - *Print mode.* Each print-mode helper transcript record holds `role` and `message`, whose `content` lists tool calls as `tool_use` blocks with `name` and `input`, several to a record. — Observed 2026-10-04; build `agent` 2026.10.01; source: a probe run.
+- **Helper log format.** The description `agent_spinner`'s ledger reads for this host, proven against the log it names:
+
+  ```json
+  {
+    "match": {"role": "assistant"},
+    "calls": "message.content[]",
+    "name": "name",
+    "args": "input",
+    "kinds": {
+      "read": ["Read"],
+      "write": ["Write", "StrReplace", "Delete", "EditNotebook"],
+      "shell": ["Shell"],
+      "spawn": ["Task"]
+    },
+    "path_args": ["path"],
+    "partial_args": ["limit", "offset"],
+    "command_args": ["command"],
+    "time": "timestamp"
+  }
+  ```
+
+  It reads the helper's own transcript, `.cursor/projects/<workspace>/agent-transcripts/<chat-id>/<chat-id>.jsonl` in print mode and `agent-transcripts/<parent>/subagents/<id>.jsonl` in IDE mode. One record may hold several calls, and the ledger reads each of them from `message.content[]`. The list also carries blocks that are not `tool_use`; those hold no tool name, so the ledger skips them and keeps only the `tool_use` calls. Real-log audit: not run. The host read on 2026-11-13 was OpenCode, which spawns no Cursor helper, so no helper transcript could be read. Result: a narrowing. The `match` value comes from the `### Spawn surface` and `### Delivery and concurrency` facts observed 2026-10-04 on build `agent` 2026.10.01. The tool names and argument keys are inferred from the host's documented tool vocabulary — the `Read`, `Write`, `StrReplace`, `Delete`, `EditNotebook`, `Shell`, and `Task` tools with the `path` argument key — which those facts do not all name, so they remain unverified against a fresh log. — Observed 2026-11-13; build not read; source: no helper transcript on this host.
 - *IDE mode.* IDE helper transcripts are live JSONL files under `agent-transcripts/<parent>/subagents/<id>.jsonl`. They end in a `turn_ended` record and hold no tool results. — Observed 2026-09-22 and 2026-09-23; build unrecorded; source: local agent transcripts.
 - *IDE mode.* The editor's state store keeps tool results and change tallies that the transcripts omit, and the transcripts record no token counts. — Observed 2026-09-16 to 2026-09-26; build unrecorded; source: local agent transcripts.
 - *IDE mode.* Helper progress updates never reach the parent. — Observed 2026-09-22; build unrecorded; source: local agent transcripts.

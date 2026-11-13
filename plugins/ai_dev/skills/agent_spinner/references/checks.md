@@ -59,7 +59,10 @@ another row, a covering gate, or an unverified disposition.
 A checker's brief carries nothing that could steer its verdict.
 
 1. Aim the check at the artifact or edit that will ship. Copy the checklist
-   verbatim from the artifact's acceptance contract, one line per item.
+   verbatim from the artifact's acceptance contract, one line per item, and
+   render it with `brief --acceptance PATH[#Heading]`, which refuses a
+   checklist shorter than the acceptance items or one whose lines omit an
+   item.
 2. Write each line to test that the required form is present on every governed
    surface and that the old form is absent.
 3. Split compound findings into atomic claims, and treat a recommendation's
@@ -77,11 +80,7 @@ A checker's brief carries nothing that could steer its verdict.
 8. For the orchestrator's own claim or a pivotal number, derive the answer
    blind from the question and the sources in one pass, and keep the claim out
    of the workspace until that pass returns.
-9. Report a blind or isolated pass as "blind by prompt", the label for a pass
-   kept blind by withholding text from its brief. Report it as blind only when
-   the host's helper logs, read at a path the caller supplies, show no read
-   outside its admitted inputs. A helper that runs the ledger breaches
-   containment, and the same log reading catches it.
+9. Label a blind or isolated pass `blind by log` when `accept --log` with `--log-format` over the host's helper transcript finds no read outside its admitted inputs and no ledger or spawn call, at a path the caller supplies. Label every other blind pass `blind by prompt`, the label for a pass kept blind by withholding text from its brief. A helper that runs the ledger breaches containment, and the same log reading catches it.
 10. Give a trade-off one challenger per side under a symmetric stance. Test
     each challenger against the user's objective in the user's own words, with
     a status-quo cost beside each proposal.
@@ -89,16 +88,17 @@ A checker's brief carries nothing that could steer its verdict.
     transcript and state directories off limits.
 12. Count a verdict that read an earlier verdict as recall-confirmed, and
     re-run it once in isolation. That re-run's brief names none of the earlier
-    verdicts, and the re-run carries the blind-by-prompt label unless the logs
-    show no read of them.
+    verdicts. Label it `blind by log` when `accept --log` with `--log-format`
+    finds no read outside its admitted inputs and no ledger or spawn call, and
+    `blind by prompt` otherwise.
 13. Give the last clean draw of a repeated gate, meaning its last passing run,
     one refute pass whose clears rest on external evidence.
 
-**Checks.** Checklist lines at least match the acceptance items in number, the
-brief lint finds no steering phrase, every orchestrator claim has a blind pass,
-every return carries an alternatives list that may be explicitly empty, every
-alternatives entry has a disposition, and every blind or isolated pass carries
-its label.
+**Checks.** `brief --acceptance` refuses a checklist that falls short of the
+acceptance items or omits one, the brief lint finds no steering phrase, every
+orchestrator claim has a blind pass, every return carries an alternatives list
+that may be explicitly empty, every alternatives entry has a disposition, and
+every blind or isolated pass carries its label.
 
 ## C3. Hand off verbatim and unsteered.
 
@@ -276,11 +276,7 @@ read what they claim to have read.
 8. Where the stakes justify it, have an isolated second reviewer probe some
    clean units, and report units as clean with citation, clean after the probe,
    or unreviewed.
-9. Count a path as read only where tool evidence shows a full read. Tool
-   evidence is a full read of that path in the helper's log, at a path the
-   caller supplies, or your own full read at the inline floor, where one
-   context runs every pass. Where no log is reachable, report the path as
-   claimed by receipt and unverified by tool evidence, which is a narrowing.
+9. Count a path as read only where tool evidence shows a full read. Tool evidence is a full read of that path that `accept --log` with `--log-format` reads from the helper's log at a path the caller supplies, or your own full read at the inline floor, where one context runs every pass. Where no log is reachable, report the path as claimed by receipt and unverified by tool evidence, which is a narrowing. Label a pass kept blind `blind by log` only when that audit finds no read outside its admitted inputs and no ledger or spawn call, and `blind by prompt` otherwise.
 10. Pair receipts with the class re-sweep, which is the recall check.
 11. State which claims each check clears:
 
@@ -327,9 +323,10 @@ stamp or marker.
    beside them each path claimed only by receipt, marked unverified.
 8. Check only its own rows, and leave family file formats with the family.
 
-**Checks.** Every changed path recorded as stamped has a routing or fork row,
-whatever the write changed, and every marker hand-off counts as read only paths
-with tool evidence of a full read.
+**Checks.** `close` refuses while a changed path recorded as stamped has
+neither a routed disposition naming its owning gate nor a fork record naming
+the path, whatever the write changed, and every marker hand-off counts as read
+only paths with tool evidence of a full read.
 
 ## C10. Tier the evidence and keep weak claims conditional.
 

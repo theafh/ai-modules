@@ -227,6 +227,10 @@ treated a missing index link as out of scope rather than as a finding.
 Verification: re-derived — the flag parser and the five pages. Taken on a
 helper's word — the changelog line. Not run — the three excluded pages.
 
+Coverage: read in full by tool evidence — check:build, check:deploy. Claimed
+by receipt only — survey:status. Only searched — survey:verify. Unexamined —
+the three excluded pages.
+
 Confirmations: recall-confirmed — the changelog line. Independently surfaced —
 the deploy page's --env example.
 
@@ -254,14 +258,20 @@ established.
 [measured: <check or gate record id>]     a tool produced the result
 [re-derived: <row or record id>]          the orchestrator read the artifact
 [taken on a helper's word: <row id>]      only a helper's return says so
-[blind by prompt: <row id>]               the pass was kept blind by withholding
-                                          the text from its brief
+[blind by log: <row id>]                  the pass was kept blind and its
+                                          `accept --log` audit found no read
+                                          outside its admitted inputs and no
+                                          ledger or spawn call
+[blind by prompt: <row id>]               every other blind pass: kept blind by
+                                          withholding the text from its brief
 ```
 
-A pass kept blind by withholding text from its brief, rather than by host
-isolation, carries the `blind by prompt` label. Its brief and every input its
-roster row names lack the withheld text, and the row's input versions hold that
-text's hash alone.
+A pass kept blind whose `accept --log` audit with `--log-format` finds no read
+outside its admitted inputs and no ledger or spawn call carries the
+`blind by log` label. Every other blind pass carries the `blind by prompt`
+label, and it rests on that log evidence rather than on host isolation. Its
+brief and every input its roster row names lack the withheld text, and the
+row's input versions hold that text's hash alone.
 
 Examples:
 

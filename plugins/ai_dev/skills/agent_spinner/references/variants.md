@@ -24,9 +24,7 @@ such as a paired refute-by-default check, and skip it where a shared preamble
 keeps the passes consistent, because only a fact measured against the primary
 system, or read in finished content of the artifact the claim is about, settles
 (C10). Documentation-derived, placeholder, and inferred facts stay conditional
-in every pass. Report an isolated pass as blind by prompt, and as blind only
-where an audit of the host's helper logs, at a path the caller supplies, shows
-no read outside its admitted inputs (C2).
+in every pass. Label an isolated pass `blind by log` where `accept --log` with `--log-format` over the host's helper transcript finds no read outside its admitted inputs and no ledger or spawn call, at a path the caller supplies, and `blind by prompt` otherwise (C2).
 
 **Return.** Each helper returns its own findings with its own citations. The
 orchestrator unions them and sends each through its own check, because two
@@ -67,8 +65,13 @@ run only through `brief`'s withheld-text input, and it is written out after the
 pass returns (P2). The pass reads each named file in full or searches it by
 explicit path (P5).
 
-**Return.** Its own resolution with its derivation, labelled blind by prompt
-(C2).
+**Return.** Its own resolution with its derivation, labelled `blind by log`
+where `accept --log` with `--log-format` finds no read outside its admitted
+inputs and no ledger or spawn call, and `blind by prompt` otherwise (C2). At
+the inline floor the row is audited from the orchestrator's own session log
+with `--own-session`, and that log records tool evidence only: its reads and
+its ledger calls belong to the orchestrator, so the row stays labelled `blind
+by prompt`.
 
 **Reading the result.** At the inline floor, run the blind pass first, before
 the withheld text exists, and state its residual recall, meaning what the shared

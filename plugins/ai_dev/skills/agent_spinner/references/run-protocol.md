@@ -193,12 +193,32 @@ a completed result with no retry.
 - A finding that is not an object, a placeholder claim, severity, quote, or
   anchor, or a severity outside the ladder.
 - A fork that is not an object, a placeholder issue, fewer than two or more than
-  four options, or a placeholder preferred end state.
+  four options, an option with no stable `id` or no `cost`, a placeholder
+  preferred end state, or a passage with no text or no anchor.
+- An objection that is not an object, a placeholder text, a `fork` field naming
+  no fork of the return, or an `option` field naming no option id of that fork.
 - A blind row returning the withheld text it must not see.
 
 Also use `accept --classify` for a free-text return, manifests for large
 outputs, joins by identifier only, recall tagging from recorded relays, and
 `accept --observed-model M --observed-effort E`.
+
+`accept --log PATH` reads a host log in place of standard input. Add
+`--log-format FILE` and the call becomes audit-only: the ledger reads the
+helper's own tool calls through the description in that file, writes no
+`returns/<label>.md`, and re-validates no return. The description is the
+host's log-format description from `harness_portability`'s delegation
+reference, written to a file under the run directory before the call. It
+records each path the log shows read in full as tool evidence, each read
+outside the row's admitted inputs, each shell command that invokes the ledger,
+and each spawn call. On a row already accepted, the audit adds its records and
+leaves the row's state unchanged. At the inline floor, where one context runs
+every pass, `--own-session` audits the orchestrator's own session log: it skips
+the description's `match` filter, records no containment incident and no
+outside read, and counts only the records inside the row's own window. An
+unreadable log, or a description that fails to parse or matches no call, is
+refused with a non-zero exit naming what to fix, and the row's coverage stays
+claimed by receipt.
 
 **Checks.** Every accepted row has a source of `file`, `relayed`, or `log`. A
 rejection is recorded as an `accept_reject` record and leaves the row at
@@ -256,15 +276,18 @@ each reading row's inputs.
 ## P6, the findings ledger, decision packets, and the report
 
 P6 holds the reading rule `<aggregation>` states, one disposition per record, a
-decision packet per fork, and the report built from the tally block. Coverage
-comes from tool evidence (checks.md C8), and verification and confirmations are
-split by provenance (checks.md C10). The report lint flags an assertion word,
-such as verified or complete, that carries no ledger citation. A report on a run
-with no clean `close` says so in its opening sentence.
+decision packet per fork, and the report built from the tally block. Render
+each decision packet with `show --packet ID` from the records `dispose`
+surfaced, rather than by hand. Coverage comes from tool evidence (checks.md
+C8), and verification and confirmations are split by provenance (checks.md
+C10). The report lint flags an assertion word, such as verified or complete,
+that carries no ledger citation. A report on a run with no clean `close` says
+so in its opening sentence.
 
-**Checks.** Every finding, incident, and alternative record has a disposition
-record. Every fork is surfaced or decided. `report.md` carries the current tally
-block verbatim. The opening sentence states whether `close` exited 0.
+**Checks.** Every finding, incident, alternative, and objection record has a
+disposition record. Every fork is surfaced or decided. `report.md` carries the
+current tally block verbatim. The opening sentence states whether `close`
+exited 0.
 
 ## Command reference
 
@@ -315,6 +338,11 @@ Write one helper's instructions and record its brief hash and token.
 - `--depth N`: the row's depth.
 - `--target PATH`: the row's target path.
 - `--stamp-owner NAME`: the record id this row's stamp belongs to.
+- `--acceptance PATH[#Heading]`: the acceptance source the numbered checklist
+  must cover. `brief` reads the source's list items, or the section the
+  heading names, and refuses a checklist with fewer lines than items or one
+  whose lines omit an item, naming each unmatched item. It records the
+  source's version on the row.
 
 ### `dispatch`
 
@@ -334,6 +362,12 @@ Take in a helper's return.
   standard input; records the return as relayed.
 - `--source relayed|log`: the source tag for a stdin return.
 - `--log PATH`: read a host log file instead of stdin.
+- `--log-format FILE`: audit the helper's own log through the caller's
+  description file. It writes no return and re-validates nothing, and it
+  records tool evidence, outside reads, ledger calls, and spawn calls.
+- `--own-session`: audit the orchestrator's own session log at the inline
+  floor. It skips the description's `match` filter and records no containment
+  incident and no outside read.
 - `--observed-model M`, `--observed-effort E`: record the observed values.
 - `--wait`: poll up to 90 seconds for dispatched rows to return.
 - `--classify TEXT`: accept a free-text return with a classification.
@@ -357,6 +391,11 @@ Record what became of each record.
 - `--id PATTERN`: the record ids to dispose.
 - `--disposition applied|refuted|surfaced|deferred`: the disposition.
 - `--tag TAG`, `--span SPAN`, `--packet PACKET`, `--pointer POINTER`: its detail.
+- `--recommend TEXT`, `--why TEXT`: the recommendation and reason a surfaced
+  packet closes with.
+- `--path PATH`, `--routed GATE`: record `routed` as a changed-path disposition
+  for a path `init` recorded as stamped or marked. The gate must be the owner
+  `init` recorded for that path.
 - `--narrowing TEXT`, `--drops TEXT`: a named narrowing and the checks it drops.
 - `--open-gate ID`, `--question TEXT`: open a user gate.
 - `--gate ID`, `--answered TEXT`: answer a user gate.
@@ -391,12 +430,16 @@ Make read copies.
 ### `status`
 
 Show where the run stands: run id, open or closed, the tally, each open row
-with its deadline, each open gate, the repair list, the resume hashes, and the
-start-to-return intervals.
+with its deadline, each open gate, the repair list, each stamped path awaiting
+routing with its owning gate, the open packet ids, each blind row with its
+derived label, the resume hashes, and the start-to-return intervals.
 
 ### `show`
 
-Print one row's records in full. Takes `label` (positional).
+Print one row's records in full. Takes `label` (positional), or
+`--packet ID` to render the decision packet surfaced under that id in the
+shape `references/report-shapes.md` defines. It refuses an id with no surfaced
+fork.
 
 ### `search`
 
@@ -413,7 +456,7 @@ End the run. It prints the tally block and refuses with a non-zero exit while
 any close condition holds:
 
 1. A row is not terminal.
-2. A finding, incident, or alternative record has no disposition.
+2. A finding, incident, alternative, or objection record has no disposition.
 3. A changed path has no accepted check, gate, or taken-on-word disposition.
 4. A change is unattributed.
 5. The tree guard sees an undisposed path, HEAD moved, or the stash changed.
@@ -421,6 +464,9 @@ any close condition holds:
 7. `report.md` does not carry the current tally block.
 8. An accepted, inability, or failed row has no recorded source.
 9. A checker sits below its producer with no flag naming it.
+10. A changed path `init` recorded as stamped or marked has neither a routed
+    disposition naming its owning gate nor a fork record whose `path` field
+    names the path.
 
 `close --stopped` also prints the modified, untouched, and unknown rows.
 
@@ -439,8 +485,9 @@ The states are `pending`, `dispatched`, `violation`, `accepted`, `inability`,
 A return is optional prose, exactly one fenced JSON block, and the line
 `END <label>`. The block is an object with these keys: `label`, `brief`,
 `status` (`done` or `inability`), `verdict` (`pass` or `fail`), `examined`,
-`checklist`, `findings`, `forks`, `beyond_brief`, `incidents`, `own_authority`,
-`alternatives`, `brief_corrections`, `dropped_suspicions`, `notes`.
+`checklist`, `findings`, `forks`, `objections`, `beyond_brief`, `incidents`,
+`own_authority`, `alternatives`, `brief_corrections`, `dropped_suspicions`,
+`notes`.
 
 - `examined` is a list of objects with `path`, `how` (`full`, `searched`, or
   `unreachable`), and `receipt`.
@@ -452,7 +499,16 @@ A return is optional prose, exactly one fenced JSON block, and the line
 - `confirmations` is an optional list beside `findings`, one object per cleared
   unit carrying the unit's `path` and the `span` that cleared it.
 - `forks` is a list of objects with `issue`, two to four `options`, and
-  `preferred`.
+  `preferred`. Each option object carries a stable `id`, its `text`, and its
+  `cost`. A fork may also carry `passages`, a list of objects each holding
+  `text` and `anchor`. A fork whose change touches a stamped or marked path
+  carries `path`, the path the fork names; that field clears condition 10 for
+  the path it names, so the owning gate is handed the choice rather than the
+  orchestrator silently editing a stamp another family owns.
+- `objections` is a list of objects with `text`, a `fork` field naming the fork
+  the objection answers, and an `option` field carrying an option id of that
+  fork. `accept` refuses an entry whose `option` names no option id of the fork
+  its `fork` field names, and names that option.
 
 Channels are `file` (a helper that may write leaves `returns/<label>.md`),
 `relayed` (a withheld helper's final message piped to `accept --stdin`), and
