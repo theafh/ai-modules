@@ -2,8 +2,8 @@
 description: Replace the diff-jargon term hunk with plain English across the auto_shaper_wiki agent, rename its two hunk tags, and update the Layer 1 contract test and live tasks that pin the old wording.
 scope: plugins/knowledge_management
 created: 2026-08-24T23:08:56Z
-updated: 2026-11-12T08:32:23Z
-status: open
+updated: 2026-11-12T18:32:22Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -15,7 +15,7 @@ The shipped `auto_shaper_wiki` agent carries no occurrence of the word `hunk`. E
 
 `hunk` is unified-diff jargon. It means a contiguous block of lines that differs between two files. The agent uses it as load-bearing vocabulary in the instructions that tell the agent how to classify each difference against the canonical template. A reader who does not already know the jargon has to decode the term before they can follow the rule, and the agent's instructions are read by a model that benefits from the plain term just as a person does.
 
-After this task, `grep -rniE "\bhunk" plugins/knowledge_management/` returns nothing. The replacement term is defined once where it first appears, so the rest of the file can use it bare. The Layer 1 contract test that pins the old wording matches the new wording instead, and every live task quoting the old tag names resolves against the renamed tags.
+After this task, `grep -rniE "\bhunk" plugins/knowledge_management/` returns nothing. The replacement term is defined once where it first appears, so the rest of the file can use it bare. The Layer 1 contract test that pins the old wording matches the new wording instead, and every other live task quoting the old tag names resolves against the renamed tags.
 
 This is a vocabulary replacement across one artefact, not a point-fix at one site.
 
@@ -35,7 +35,7 @@ Two dependencies bound the sweep.
 
 The Layer 1 contract test `tests/wiki/layer1/agent_contract.py` pins the template-read rule by regular expression, inside its `main()` function, in the `require(...)` call whose failure message reads `template reads are not hunk-scoped`. The pinned pattern spans the wording `read the relevant template section only when a` and `diff hunk needs interpretation`. Rewriting the agent without updating that call fails the default `tests/wiki/run_all.sh` Layer 1 run, so the two changes land together. The standing repo rule that a change ships with the tests it needs governs here.
 
-Two live tasks quote the old tag names and are co-edited by this one: `wiki_page-type-growth-and-anatomy.md` and `wiki_log-session-entry-consolidation.md`. Take the set at implementation time from `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md`, and refresh each hit rather than a list fixed at authoring time; the broader `grep -rniE "\bhunk" tasks/*.md` also matches unrelated live tasks that use the word for their own diff vocabulary.
+Two live tasks quote the old tag names and are co-edited by this one: `wiki_page-type-growth-and-anatomy.md` and `wiki_log-session-entry-consolidation.md`. Take the set at implementation time from `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md | grep -v 'tasks/wiki_diff-block-vocabulary.md'`, and refresh each hit rather than a list fixed at authoring time. This task file's own quotations of the old tags are instructions for the rename rather than edit targets, which is why the selector excludes it. The broader `grep -rniE "\bhunk" tasks/*.md` also matches unrelated live tasks that use the word for their own diff vocabulary.
 
 - [wiki_sanctioned-template-deviations.md](archive/wiki_sanctioned-template-deviations.md) was the heavier collision and has shipped, so it is no longer a live edit target.
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) names the tag once, in the passage explaining that a declared growth pattern would otherwise survive on the tag's generic extends-the-canon fallback.
@@ -65,7 +65,7 @@ The rename sweeps both live tasks above; whichever lands second refreshes the na
 - The classification rule and the example-kinds list keep the behaviour they had before the rename: the four classification outcomes and the open-list framing of the example kinds read the same, with only the vocabulary changed. No rewritten passage reads `diff diff` or `deletion diff blocks`, and `diff block` stays the full compound rather than a bare `block` at every rewritten site.
 - The `require(...)` call in `tests/wiki/layer1/agent_contract.py` whose failure message read `template reads are not hunk-scoped` is superseded in place, so its pattern matches the rewritten agent wording and its failure message names the new vocabulary rather than the old.
 - The default `tests/wiki/run_all.sh` Layer 1 run passes against the rewritten agent, with the template-read contract among the checks that pass rather than skipped.
-- `grep -rniE "\bhunk" tests/wiki/` returns no match, so the Layer 1 harness carries neither the old pinned regex wording nor the old `hunk-scoped` failure message.
-- `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md` returns no live task, so every live task that quoted the old tag names now quotes the new ones, and each file edited in that sweep carries a bumped `updated`. The broader `grep -rniE "\bhunk" tasks/*.md` may still match unrelated live tasks that use the word in their own diff vocabulary.
+- `git grep -ni "hunk" -- tests/wiki` returns no match over the harness's tracked authored files, so the Layer 1 harness carries neither the old pinned regex wording nor the old `hunk-scoped` failure message. `git grep` reads the working-tree content of tracked files, so the edited `tests/wiki/layer1/agent_contract.py` is measured before it is committed. The selector is a tracked-file search because a plain recursive `grep` over `tests/wiki/` also walks the regenerated, gitignored run output under `tests/wiki/layer2/workspace/` — snapshot copies of the pre-rename agent — and the ignored `__pycache__` bytecode, none of which this change produces or cleans up.
+- `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md | grep -v 'tasks/wiki_diff-block-vocabulary.md'` returns no live task, so every other live task that quoted the old tag names now quotes the new ones, and each file edited in that sweep carries a bumped `updated`. The broader `grep -rniE "\bhunk" tasks/*.md` may still match unrelated live tasks that use the word in their own diff vocabulary.
 - Every live task refreshed in that sweep keeps its `status` and its Goal, Approach, and Acceptance semantics unchanged, so the sweep reads as a rename and never as a re-scope.
 - The sweep stays bounded: the change's file set contains no path under `tasks/archive/` and does not contain `CHANGELOG.md`.
