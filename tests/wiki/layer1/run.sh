@@ -4159,11 +4159,17 @@ l100_lint_absolute_declared_root_non_repo_blocks() {
 }
 
 # L101: index.md's `Total pages:` header matches the page walk -> no finding.
+# A `raw/` source and an `_archive/` page are staged too: both sit outside the
+# page walk, so the header stays 1 and neither can make the count drift.
 l101_lint_index_total_pages_match() {
     local wiki; wiki=$(stage_fresh_wiki l101)
     customize_taxonomy "$wiki" model
     write_valid_concept_page "$wiki" widget
     add_index_entry_concept "$wiki" widget
+    write_clean_raw_source "$wiki" notes probe
+    write_typed_page "$wiki" concept retired
+    mkdir -p "$wiki/_archive/concepts"
+    mv "$wiki/concepts/retired.md" "$wiki/_archive/concepts/retired.md"
     set_index_total_pages "$wiki" 1
     local ret; ret=$(run_lint "$wiki")
     local rc=${ret%%|*} out=${ret#*|}
@@ -4186,7 +4192,7 @@ l102_lint_index_total_pages_mismatch() {
     local ok=true
     assert_eq "exit (info only)" "$rc" "0" || ok=false
     assert_lint_finding "index count mismatch info" "$out" info "index-count" || ok=false
-    assert_live_message "mismatch names both numbers" "$out" "index.md" "says 5, found 1 pages on disk" || ok=false
+    assert_live_message "mismatch names both numbers" "$out" "index.md" "says 5, found 1 page on disk" || ok=false
     assert_live_severity_count "one info finding" "$out" info "1" || ok=false
     $ok
 }
@@ -4208,6 +4214,37 @@ PY
     assert_eq "exit (info only)" "$rc" "0" || ok=false
     assert_lint_finding "missing header info" "$out" info "index-count" || ok=false
     assert_live_message "missing header is named" "$out" "index.md" "no Total pages header" || ok=false
+    assert_live_severity_count "one info finding" "$out" info "1" || ok=false
+    $ok
+}
+
+# L104: the header regex is anchored to a header-shaped line, so an index entry
+# summary that merely mentions the phrase is never read as the header. With the
+# real header removed, the finding is the no-header one, not a mismatch against
+# the summary's number. Restoring the old unanchored `\btotal\s+pages…` form
+# makes the entry summary match and this scenario fail with the mismatch.
+l104_lint_index_total_pages_entry_mention_not_header() {
+    local wiki; wiki=$(stage_fresh_wiki l104)
+    customize_taxonomy "$wiki" model
+    write_valid_concept_page "$wiki" widget
+    python3 - "$wiki/index.md" <<'PY'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+# Drop the real header, then let an entry summary mention the phrase.
+text = re.sub(r"\s*\|\s*Total pages:\s*\d+", "", text, count=1)
+marker = "## Concepts\n"
+entry = "- [widget](concepts/widget.md) — wrap-up note, Total pages: 3 at last audit\n"
+text = text.replace(marker, marker + "\n" + entry, 1)
+p.write_text(text)
+PY
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit (info only)" "$rc" "0" || ok=false
+    assert_lint_finding "entry mention is no header" "$out" info "index-count" || ok=false
+    assert_live_message "no-header finding is named" "$out" "index.md" "no Total pages header" || ok=false
+    assert_no_live_message "entry mention is not a header" "$out" "index.md" "says 3, found" || ok=false
     assert_live_severity_count "one info finding" "$out" info "1" || ok=false
     $ok
 }
@@ -4544,6 +4581,8 @@ c3_citation_report_only_contract() {
         || { log "    fix_moves does not route citation to report only"; ok=false; }
     printf '%s' "$moves_flat" | grep -Fq -- 'apply no body edit' \
         || { log "    fix_moves does not state the no-body-edit posture"; ok=false; }
+    printf '%s' "$moves_flat" | grep -Fq -- '`index-count` finding takes the same report-only disposition' \
+        || { log "    fix_moves does not route index-count to report only"; ok=false; }
     printf '%s' "$moves_flat" | grep -Fq -- 'Two carve-outs' \
         && { log "    superseded two-carve-outs wording remains"; ok=false; }
 
@@ -4553,6 +4592,8 @@ c3_citation_report_only_contract() {
         || { log "    compile_issue_list does not emit report only"; ok=false; }
     printf '%s' "$compile_flat" | grep -Fq -- 'applies no body edit' \
         || { log "    compile_issue_list does not state the no-body-edit posture"; ok=false; }
+    printf '%s' "$compile_flat" | grep -Fq -- 'An `index-count` finding' \
+        || { log "    compile_issue_list does not name an index-count finding"; ok=false; }
     $ok
 }
 
@@ -4718,6 +4759,7 @@ scenario l100 "absolute non-repo declared root blocks"        l100_lint_absolute
 scenario l101 "index Total pages header matches page walk"    l101_lint_index_total_pages_match
 scenario l102 "index Total pages drift is an info finding"    l102_lint_index_total_pages_mismatch
 scenario l103 "missing Total pages header is an info finding" l103_lint_index_total_pages_missing_header
+scenario l104 "an index entry mention is not the Total pages header" l104_lint_index_total_pages_entry_mention_not_header
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.17
+version: 1.24.18
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -826,7 +826,9 @@ Findings come in three buckets:
 - **info**: markdown style nits, oversized pages, low-confidence
   single-source pages, unused taxonomy tags, duplicate
   `log.md` entry headings (`log-heading`), `log.md` entry bullets whose
-  subject is a path outside the wiki (`log-scope`), and synthesis-page
+  subject is a path outside the wiki (`log-scope`), `index.md`'s
+  `Total pages:` header disagreeing with the page walk or missing entirely
+  (`index-count`), and synthesis-page
   citation inconsistency (`citation`): declared-but-never-cited (a `sources:`
   entry with no inline link), cited-but-undeclared (an inline link under `raw/`
   or a declared source root absent from `sources:`), and zero-inline-links (a synthesis page with no

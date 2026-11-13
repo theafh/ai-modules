@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.11
+version: 1.11.12
 model: inherit
 background: false
 effort: high
@@ -738,7 +738,8 @@ the fix move.
     Group lines by severity (blocking → warn → info → semantic) so
     the remediate phase can work top-down. A `citation` finding
     carries `report only` in the `->` column: it is named in the final
-    report and applies no body edit. If the lint pass exits 0
+    report and applies no body edit. An `index-count` finding carries
+    the same `report only` value and applies no body edit. If the lint pass exits 0
     and the page-first walk finds no semantic issues, the wiki is
     clean: skip the remediate phase, but still record this audit's
     baseline via `<append_audit_log_entry>` (a zero-change outcome
@@ -864,7 +865,12 @@ affect the same file so each file is opened, read, and rewritten once.
     `report only` in the `<compile_issue_list>` `->` column, and apply
     no body edit, because inserting a citation, pruning a decorative
     `sources:` entry, or flagging the page for human review is a
-    judgment call the agent surfaces rather than auto-applies. The log
+    judgment call the agent surfaces rather than auto-applies. An
+    `index-count` finding takes the same report-only disposition: name
+    the drift in the final report, print `report only` in the `->`
+    column, and apply no body edit, because the header is
+    hand-maintained and reconciling a count the page walk already
+    reports belongs to the owner's editorial call. The log
     is append-only in substance (`<configurable_zones>`), and trimming
     a historical entry whose subject was a file outside the wiki is an
     editorial decision the owner makes, not a sweep this agent

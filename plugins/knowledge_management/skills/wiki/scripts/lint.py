@@ -1341,14 +1341,14 @@ def check_index_completeness(wiki: Path) -> list[Issue]:
 
 
 # The `Total pages: N` header index.md carries in its leading blockquote.
-# Tolerant of surrounding markdown: the template writes
-# `> Last updated: … | Total pages: 0`, and an owner may bold the label
-# (`**Total pages:** 4`) or add a table pipe or bullet marker around it. Only
-# the first match in the file is read, so a page summary that happens to
-# mention the phrase later never overrides the header.
+# Anchored to a header-shaped line so an index entry summary that merely
+# mentions the phrase never matches: the label must open the line, or sit on
+# the template's blockquote header line (`> Last updated: … | Total pages: 0`),
+# optionally after a bullet marker and bold `**` markers (`**Total pages:** 4`).
+# Only the first match in the file is read.
 TOTAL_PAGES_RE = re.compile(
-    r"\btotal\s+pages\s*:?\s*\**\s*(\d+)",
-    re.IGNORECASE,
+    r"^[ \t]*(?:>[^\n]*?)?(?:[-*+][ \t]+)?(?:\*\*)?[ \t]*total\s+pages\s*:?\s*\**\s*(\d+)",
+    re.IGNORECASE | re.MULTILINE,
 )
 
 
@@ -1383,7 +1383,8 @@ def check_index_total_pages(wiki: Path) -> list[Issue]:
     if declared != actual:
         return [Issue(
             SEV_INFO, "index-count", index,
-            f"index Total pages says {declared}, found {actual} pages on disk",
+            f"index Total pages says {declared}, found {actual} "
+            f"page{'s' if actual != 1 else ''} on disk",
         )]
     return []
 
