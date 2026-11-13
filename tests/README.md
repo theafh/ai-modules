@@ -362,6 +362,12 @@ files.
   scopeless run covers every scope, out-of-scope entries are reported and
   kept), and the `logged_path_scope` helper's per-target derivation;
   `script_tests/style_run.sh` covers output-style deployment and uninstall;
+  `script_tests/description_round_trip_run.sh` covers the description round
+  trip through every frontmatter-rebuilding generator (OpenCode, Antigravity,
+  Cursor style rule, Codex TOML) and `rewrite_agent_frontmatter` across the
+  plain, single-quoted, double-quoted, and folded and literal block-scalar
+  forms with clip, `-`, and `+` chomping, including a quote-stripped negative
+  control and a byte-identical real-deploy-log assertion;
   `script_tests/hook_merge_run.sh` covers the entry-grain hook merge into a
   shared hook file, its dry-run report, the `@entries:` deploy-log manifest,
   the manifest uninstall, and the routing and documentation claims that keep

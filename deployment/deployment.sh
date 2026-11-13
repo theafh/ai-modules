@@ -1609,6 +1609,168 @@ escape_toml_basic_string() {
   printf '%s' "$value"
 }
 
+# Decode one YAML frontmatter scalar into its text.
+#
+# Reads the scalar's first line (the text after `key: `) on stdin, followed by
+# the key's blank and indented continuation lines, one per line. The rules
+# mirror the frontmatter gate's `--values` mode (scripts/lint_frontmatter.py:
+# decode_single, decode_double, decode_block, fold_lines) so a description
+# decoded here equals the one that gate reads from the source. Perl is on the
+# deploy runtime floor, and the rules need escapes and block folding that Bash
+# 3.2 cannot express. Written without single quotes so the program survives
+# the surrounding single-quoted shell word.
+decode_yaml_scalar() {
+  perl -e '
+use strict;
+use warnings;
+use Encode ();
+
+# Simple escapes whose replacement is a single ASCII byte. The escapes whose
+# replacement lies above U+007F (N, _, L, P) are handled from %codepoint and
+# encoded as UTF-8, so the output is valid UTF-8 rather than a lone high byte.
+my %simple = (
+  "0" => "\x00", "a" => "\x07", "b" => "\x08", "t" => "\t", "n" => "\n",
+  "v" => "\x0b", "f" => "\x0c", "r" => "\r", "e" => "\x1b", " " => " ",
+  "\"" => "\"", "/" => "/", "\\" => "\\",
+);
+
+my %codepoint = ("N" => 0x85, "_" => 0xa0, "L" => 0x2028, "P" => 0x2029);
+
+sub utf8_bytes {
+  my $cp = shift;
+  return Encode::encode("UTF-8", chr($cp));
+}
+
+sub decode_single {
+  my $raw = shift;
+  my $inner = substr($raw, 1, length($raw) - 2);
+  $inner =~ s/\x27\x27/\x27/g;
+  return $inner;
+}
+
+sub decode_double {
+  my $raw = shift;
+  my $end = length($raw) - 1;
+  my $out = "";
+  my $i = 1;
+  my %widths = ("x" => 2, "u" => 4, "U" => 8);
+  while ($i < $end) {
+    my $ch = substr($raw, $i, 1);
+    if ($ch ne "\\") { $out .= $ch; $i++; next; }
+    my $esc = substr($raw, $i + 1, 1);
+    if (exists $simple{$esc}) { $out .= $simple{$esc}; $i += 2; next; }
+    if (exists $codepoint{$esc}) {
+      $out .= utf8_bytes($codepoint{$esc});
+      $i += 2;
+      next;
+    }
+    if (exists $widths{$esc}) {
+      my $digits = substr($raw, $i + 2, $widths{$esc});
+      $out .= utf8_bytes(hex($digits));
+      $i += 2 + $widths{$esc};
+      next;
+    }
+    die "decode_yaml_scalar: unknown double-quoted escape \\$esc\n";
+  }
+  return $out;
+}
+
+sub fold_lines {
+  my @lines = @_;
+  my $out = "";
+  my $prev = "";
+  for my $line (@lines) {
+    if ($line eq "") { $out .= "\n"; $prev = "blank"; next; }
+    my $indented = ($line =~ /^[ \t]/) ? 1 : 0;
+    if ($prev eq "normal" && !$indented) { $out .= " "; }
+    elsif ($prev eq "normal" || $prev eq "indented") { $out .= "\n"; }
+    $out .= $line;
+    $prev = $indented ? "indented" : "normal";
+  }
+  return $out;
+}
+
+sub chomp_block {
+  my ($text, $indicator) = @_;
+  if ($indicator eq "-") { $text =~ s/\n+\z//; return $text; }
+  if ($indicator eq "+") { return $text eq "" ? "" : $text . "\n"; }
+  $text =~ s/\n+\z//;
+  return $text eq "" ? "" : $text . "\n";
+}
+
+sub decode_block {
+  my ($lines, $style, $indicator) = @_;
+  my $base;
+  for my $line (@$lines) {
+    next unless $line =~ /\S/;
+    $line =~ /^( *)/;
+    $base = length($1);
+    last;
+  }
+  $base = 0 unless defined $base;
+  my @stripped;
+  for my $line (@$lines) {
+    if ($line !~ /\S/) { push @stripped, ""; next; }
+    push @stripped, substr($line, $base);
+  }
+  my $text = $style eq "|" ? join("\n", @stripped) : fold_lines(@stripped);
+  return chomp_block($text, $indicator);
+}
+
+my $first = <STDIN>;
+exit 0 unless defined $first;
+chomp $first;
+my @rest = <STDIN>;
+chomp @rest;
+$first =~ s/^\s+//;
+$first =~ s/\s+$//;
+my $text;
+if ($first =~ /^\x27/) { $text = decode_single($first); }
+elsif ($first =~ /^"/) { $text = decode_double($first); }
+elsif ($first =~ /^([|>])([-+]?)$/) { $text = decode_block(\@rest, $1, $2); }
+else { $text = $first; }
+print $text;
+'
+}
+
+# Encode decoded text as one TOML basic-string body: no raw newline survives, so
+# it can sit inside a single-line `key = "..."` pair. Backslash, quote, and every
+# control character are escaped; other bytes pass through unchanged.
+escape_toml_inline_string() {
+  perl -e '
+use strict;
+use warnings;
+local $/;
+my $text = <STDIN>;
+$text = "" unless defined $text;
+my $out = "";
+for my $ch (split //, $text) {
+  my $code = ord($ch);
+  if ($ch eq "\\") { $out .= "\\\\"; }
+  elsif ($ch eq "\"") { $out .= "\\\""; }
+  elsif ($ch eq "\n") { $out .= "\\n"; }
+  elsif ($ch eq "\t") { $out .= "\\t"; }
+  elsif ($ch eq "\r") { $out .= "\\r"; }
+  elsif ($code == 8) { $out .= "\\b"; }
+  elsif ($code == 12) { $out .= "\\f"; }
+  elsif ($code < 0x20 || $code == 0x7f) { $out .= sprintf("\\u%04X", $code); }
+  else { $out .= $ch; }
+}
+print $out;
+'
+}
+
+# Print a source description entry as written: the key line carrying the raw
+# first line (quotes and block-scalar header included), then the entry's blank
+# and indented continuation lines unchanged. Takes the entry's lines as args.
+emit_yaml_description() {
+  [[ $# -gt 0 && -n "$1" ]] || return 0
+  printf 'description: %s\n' "$1"
+  shift
+  [[ $# -gt 0 ]] || return 0
+  printf '%s\n' "$@"
+}
+
 is_model_inherit_value() {
   local value="$1"
   value="${value#"${value%%[![:space:]]*}"}"
@@ -1643,8 +1805,13 @@ generate_toml_agent() {
   tmp_rewritten="$(mktemp)"
   rewrite_agent_frontmatter "$source" "$tmp_rewritten" "$target_id" true
 
-  local name="" description="" model="" model_reasoning_effort="" readonly="" body=""
+  local name="" model="" model_reasoning_effort="" readonly="" body=""
   local in_frontmatter=false frontmatter_done=false in_body=false
+  # A description entry spans its key line and, for a block scalar, the blank
+  # and indented continuation lines after it. Keep every line so the decoder
+  # can apply the same folding and chomping the source declares.
+  local -a description_lines=()
+  local capture_description=false
 
   while IFS= read -r line; do
     if ! $frontmatter_done && [[ "$line" == "---" ]]; then
@@ -1658,10 +1825,18 @@ generate_toml_agent() {
     fi
 
     if $in_frontmatter; then
+      if $capture_description; then
+        if [[ -z "$line" || "$line" == [[:space:]]* ]]; then
+          description_lines+=("$line")
+          continue
+        fi
+        capture_description=false
+      fi
       if [[ "$line" =~ ^name:[[:space:]]*(.+) ]]; then
         name="${BASH_REMATCH[1]}"
-      elif [[ "$line" =~ ^description:[[:space:]]*(.+) ]]; then
-        description="${BASH_REMATCH[1]}"
+      elif [[ "$line" =~ ^description:[[:space:]]*(.*)$ ]]; then
+        description_lines=("${BASH_REMATCH[1]}")
+        capture_description=true
       elif [[ "$line" =~ ^model:[[:space:]]*(.+) ]]; then
         model="${BASH_REMATCH[1]}"
       elif [[ "$line" =~ ^model_reasoning_effort:[[:space:]]*(.+) ]]; then
@@ -1682,6 +1857,20 @@ generate_toml_agent() {
   rm -f "$tmp_rewritten"
   body="${body%$'\n'}"
 
+  # Decode the YAML scalar and encode it as a TOML basic-string body in one
+  # pipeline, so no decoded byte passes through a Bash variable. A `\0` escape
+  # decodes to a NUL, which a variable cannot hold, while the encoder renders it
+  # as `\u0000`. The escaped body carries no raw newline, so command
+  # substitution keeps every trailing `\n` a `|+` or `>+` description keeps.
+  local description_escaped=""
+  if [[ ${#description_lines[@]} -gt 0 ]]; then
+    description_escaped="$(
+      printf '%s\n' "${description_lines[@]}" \
+        | decode_yaml_scalar \
+        | escape_toml_inline_string || exit 1
+    )"
+  fi
+
   if $DRY_RUN; then
     SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
     info "would-gen" "$dest (.toml agent)"
@@ -1692,7 +1881,7 @@ generate_toml_agent() {
 
   {
     [[ -n "$name" ]] && printf 'name = "%s"\n' "$(escape_toml_basic_string "$name")"
-    [[ -n "$description" ]] && printf 'description = "%s"\n' "$(escape_toml_basic_string "$description")"
+    [[ -n "$description_escaped" ]] && printf 'description = "%s"\n' "$description_escaped"
     if [[ -n "$model" ]] && ! is_model_inherit_value "$model"; then
       printf 'model = "%s"\n' "$(escape_toml_basic_string "$model")"
     fi
@@ -1740,7 +1929,9 @@ generate_antigravity_agent() {
 
   local in_frontmatter=false frontmatter_done=false in_body=false skip_block=false
   local line key value body=""
-  local name="" description="" model="" readonly="" tools=""
+  local name="" model="" readonly="" tools=""
+  local -a description_lines=()
+  local capture_description=false
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     if ! $frontmatter_done && [[ "$line" == "---" ]]; then
@@ -1756,9 +1947,13 @@ generate_antigravity_agent() {
     if $in_frontmatter; then
       if $skip_block; then
         if [[ -z "$line" || "$line" == [[:space:]]* ]]; then
+          if $capture_description; then
+            description_lines+=("$line")
+          fi
           continue
         fi
         skip_block=false
+        capture_description=false
       fi
 
       if [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*(.*)$ ]]; then
@@ -1766,7 +1961,12 @@ generate_antigravity_agent() {
         value="${BASH_REMATCH[2]}"
         case "$key" in
           name) [[ -z "$name" ]] && name="$value" ;;
-          description) [[ -z "$description" ]] && description="$value" ;;
+          description)
+            if [[ ${#description_lines[@]} -eq 0 ]]; then
+              description_lines=("$value")
+              capture_description=true
+            fi
+            ;;
           model) [[ -z "$model" ]] && model="$value" ;;
           readonly) [[ -z "$readonly" ]] && readonly="$value" ;;
           tools) [[ -z "$tools" ]] && tools="$value" ;;
@@ -1814,7 +2014,9 @@ generate_antigravity_agent() {
   {
     printf '%s\n' '---'
     [[ -n "$name" ]] && printf 'name: %s\n' "$name"
-    [[ -n "$description" ]] && printf 'description: %s\n' "$description"
+    if [[ ${#description_lines[@]} -gt 0 ]]; then
+      emit_yaml_description "${description_lines[@]}"
+    fi
     if [[ ${#mapped_tools[@]} -gt 0 ]]; then
       local joined
       joined="$(printf '%s, ' "${mapped_tools[@]}")"
@@ -1884,7 +2086,9 @@ generate_opencode_agent() {
 
   local in_frontmatter=false frontmatter_done=false in_body=false
   local skip_block=false body="" line key value action
-  local description="" model="" readonly="" tools=""
+  local model="" readonly="" tools=""
+  local -a description_lines=()
+  local capture_description=false
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     if ! $frontmatter_done && [[ "$line" == "---" ]]; then
@@ -1900,16 +2104,25 @@ generate_opencode_agent() {
     if $in_frontmatter; then
       if $skip_block; then
         if [[ -z "$line" || "$line" == [[:space:]]* ]]; then
+          if $capture_description; then
+            description_lines+=("$line")
+          fi
           continue
         fi
         skip_block=false
+        capture_description=false
       fi
 
       if [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*(.*)$ ]]; then
         key="${BASH_REMATCH[1]}"
         value="${BASH_REMATCH[2]}"
         case "$key" in
-          description) [[ -z "$description" ]] && description="$value" ;;
+          description)
+            if [[ ${#description_lines[@]} -eq 0 ]]; then
+              description_lines=("$value")
+              capture_description=true
+            fi
+            ;;
           model) [[ -z "$model" ]] && model="$value" ;;
           readonly) [[ -z "$readonly" ]] && readonly="$value" ;;
           tools) [[ -z "$tools" ]] && tools="$value" ;;
@@ -1940,7 +2153,9 @@ generate_opencode_agent() {
   {
     printf '%s\n' '---'
     printf '%s\n' 'mode: subagent'
-    [[ -n "$description" ]] && printf 'description: %s\n' "$description"
+    if [[ ${#description_lines[@]} -gt 0 ]]; then
+      emit_yaml_description "${description_lines[@]}"
+    fi
     if [[ -n "$model" ]] && ! is_model_inherit_value "$model"; then
       printf 'model: %s\n' "$model"
     fi
@@ -1997,7 +2212,8 @@ generate_cursor_style_rule() {
     return 1
   fi
 
-  local description=""
+  local -a description_lines=()
+  local capture_description=false
   local in_frontmatter=false frontmatter_done=false
   local body=""
   local line=""
@@ -2014,12 +2230,16 @@ generate_cursor_style_rule() {
     fi
 
     if $in_frontmatter; then
+      if $capture_description; then
+        if [[ -z "$line" || "$line" == [[:space:]]* ]]; then
+          description_lines+=("$line")
+          continue
+        fi
+        capture_description=false
+      fi
       if [[ "$line" =~ ^description:[[:space:]]*(.*)$ ]]; then
-        description="${BASH_REMATCH[1]}"
-        description="${description#\"}"
-        description="${description%\"}"
-        description="${description#\'}"
-        description="${description%\'}"
+        description_lines=("${BASH_REMATCH[1]}")
+        capture_description=true
       fi
       continue
     fi
@@ -2053,8 +2273,8 @@ generate_cursor_style_rule() {
 
   {
     printf '%s\n' '---'
-    if [[ -n "$description" ]]; then
-      printf 'description: %s\n' "$description"
+    if [[ ${#description_lines[@]} -gt 0 ]]; then
+      emit_yaml_description "${description_lines[@]}"
     fi
     printf '%s\n' 'alwaysApply: true'
     printf '%s\n\n' '---'

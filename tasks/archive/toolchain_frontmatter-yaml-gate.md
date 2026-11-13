@@ -2,7 +2,7 @@
 description: Gate make lint on frontmatter that a strict YAML checker accepts, run skill_doctor's discovery check in place, and repair the files that fail today.
 scope: "repo toolchain"
 created: 2026-10-07T05:46:48Z
-updated: 2026-11-08T07:10:31Z
+updated: 2026-11-13T20:39:54Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -177,7 +177,7 @@ scenario in a temporary directory outside the checkout; `make test` /
 **Out of scope:**
 
 - Checking what the deploy generators write, owned by
-  [the description round-trip task](../deployment_description-round-trip.md).
+  [the description round-trip task](deployment_description-round-trip.md).
 - A git pre-commit hook; `make lint`, which the standing repo rules run before
   every commit, is the enforcement point.
 - Replacing the parsers inside the task linter, the wiki linter, or skill_doctor
