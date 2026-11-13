@@ -318,7 +318,7 @@ files.
   a repair-round re-check does not count as a second initial check and that
   a second initial check for one page still fails (20 checks in all);
   `evals/test_run.py` proves the runner's
-  wiring against a stub worker; `evals/` holds every id in `evals.json` (89
+  wiring against a stub worker; `evals/` holds every id in `evals.json` (93
   today). Each
   behavioural eval stages one behaviour and the `smoke_*` evals check the
   runner's modes, driven by `evals/run.py` on the default Cursor worker in

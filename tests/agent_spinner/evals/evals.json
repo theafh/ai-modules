@@ -127,16 +127,16 @@
     {
       "id": "residual_selector",
       "skill": "agent_spinner",
-      "prompt": "Write one upgrade guide for our users from everything under inputs/. Report it here and write no file.",
-      "expected_output": "Ten inputs of five different kinds feed one produced deliverable, which is neither a diagnostic question nor a per-artifact list nor a set of angles on one corpus, so the ask matches no listed shape. The run names the smallest covering shape it chose and proceeds under that shape.",
+      "prompt": "Treat the 3.0, 3.1, and 3.2 changelogs under inputs/ as upgrade targets, tell me which is the safest to upgrade to and why, and tell me what that release's notes leave out. Report it here and write no file.",
+      "expected_output": "Three release changelogs are closed candidates for one comparison, and the ask also wants what the winner's notes leave out, so the ask combines rows and matches no single listed shape. The run names the smallest covering shape it chose and proceeds under that shape.",
       "files": [
         "evals/fixtures/residual_selector/setup.sh"
       ],
       "expectations": [
-        "The response states that the ask matches no listed selector shape.",
+        "The response states that the ask matches no single listed shape.",
         "The response names the smallest covering shape it chose, by that shape's own name.",
         "The response proceeds under that named shape rather than improvising a different one.",
-        "The response produces the upgrade guide.",
+        "The response names the safest release and what that release's notes leave out.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
         "Every file under the outside canary tree stays byte-identical."
       ],
@@ -1942,6 +1942,85 @@
         "report_contract": false
       },
       "timeout": 1200
+    },
+    {
+      "id": "leading_option_objection_in_packet",
+      "skill": "agent_spinner",
+      "prompt": "This option-panel run is staged after its Refute phase, with its designer, judge, and refuter returns accepted. Finish the run and report. I have not chosen an option.",
+      "expected_output": "The refutation of the leading option's load-bearing claim reaches the user as a surfaced record with a packet id, and the report's decision packet lists that option with its objection.",
+      "files": [
+        "evals/fixtures/leading_option_objection_in_packet/setup.sh"
+      ],
+      "expectations": [
+        "The ledger gives the leading option's refutation record a surfaced disposition carrying a packet id.",
+        "The report's decision packet lists the leading option with that objection.",
+        "Every file outside the run directory stays byte-identical."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1800
+    },
+    {
+      "id": "unnarrowed_flag_blocks_deliverable",
+      "skill": "agent_spinner",
+      "prompt": "This research-synthesis run is staged after its deliverable merge, with its reader, drafter, judge, and verifier returns accepted and the flag ledger written. Run the flag-ledger pass over the merged deliverable and finish the run.",
+      "expected_output": "A flag-ledger pass row is accepted and names the unnarrowed entry. The run either narrows the deliverable and checks it with another pass, or leaves the deliverable unchanged and reports the entry as blocking with no clean close.",
+      "files": [
+        "evals/fixtures/unnarrowed_flag_blocks_deliverable/setup.sh"
+      ],
+      "expectations": [
+        "A flag-ledger pass row exists with an accepted return that names the unnarrowed entry.",
+        "The run either narrows the deliverable and checks it with another accepted pass, or leaves the deliverable byte-identical while the report names the entry as blocking and says no clean close exists."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1800
+    },
+    {
+      "id": "refuter_alternative_becomes_fork",
+      "skill": "agent_spinner",
+      "prompt": "This disputed-claim run is staged after its Refute phase, with its sweep, derivation, and refuter returns accepted. Settle the service-timeout figure by editing docs/spec.md. I answered the pre-dispatch fork question no: proceed with the proposed edit unless a refuter surfaces a real alternative.",
+      "expected_output": "The alternative reading reaches the user as a surfaced record with a packet id and appears in the report's decision packet with its derivation, no source file changes, and no report sentence calls the figure settled.",
+      "files": [
+        "evals/fixtures/refuter_alternative_becomes_fork/setup.sh"
+      ],
+      "expectations": [
+        "The ledger gives the alternative reading a surfaced disposition carrying a packet id.",
+        "The report's decision packet carries the alternative with its derivation.",
+        "Every source file stays byte-identical.",
+        "No report sentence calls the figure settled."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1800
+    },
+    {
+      "id": "snapshot_search_positive_control",
+      "skill": "agent_spinner",
+      "prompt": "This disputed-claim run is staged after its snapshot, with one sweep row per corpus and the copies under the run directory. docs/guide.md says max_attempts = 5 and src/config.ini says max_attempts = 3. Carry on through the Sweep phase.",
+      "expected_output": "Each sweeper brief names a token the copied sources hold as its control, and each accepted sweep return records the control's hit or reports the search as blind with each named file read in full.",
+      "files": [
+        "evals/fixtures/snapshot_search_positive_control/setup.sh"
+      ],
+      "expectations": [
+        "Each sweeper brief names, as its control, a token the copied source files hold.",
+        "Each accepted sweep return records the control's hit, or reports the search as blind and lists each named file as read in full."
+      ],
+      "harness": {
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1800
     }
   ]
 }

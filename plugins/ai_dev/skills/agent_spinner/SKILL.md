@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.16
+version: 1.0.17
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -63,8 +63,11 @@ Match weight first.
 - A closed comparison among candidates: a judge panel.
 - A finished body needing a what-is-missing read: a completeness critic.
 - A tree of writes: a single-writer validator after writers.
+- A disputed figure or claim settled by an edit: a two-refuter settlement check.
 
-A read-only diagnostic or single judgement question is answered inline from your own reads before any helper is spent, takes no recipe, naming a fuller shape's checks. An ask no single row covers, or one combining rows, gets the smallest shape that covers it, named as the smallest covering one, answered visibly rather than folded into a nearby row, and takes no recipe. A shape match matches the recipe table, whose matched recipe is the procedure; with no recipe it runs from the body. Name what matched, or nothing, in the opening. Read `references/variants.md` for isolation and unreduced draws.
+A read-only diagnostic, or a single judgement question about a mechanism not yet built, is answered inline from your own reads before any helper is spent, takes no recipe, naming a fuller shape's checks. An ask no single row covers, or one combining rows, gets the smallest shape that covers it, named as the smallest covering one, answered visibly rather than folded into a nearby row, and takes no recipe. A shape match matches the recipe table, whose matched recipe is the procedure; with no recipe it runs from the body. Name what matched, or nothing, in the opening. Read `references/variants.md` for isolation and unreduced draws.
+
+A challenged built design routes to its recipe row ahead of the paired-check bullet: the design carries no accepted producer return to paste, and the recipe's Refute phase supplies the adversarial read.
 
 | Ask | Recipe in `references/recipes/` |
 | --- | --- |
@@ -73,6 +76,9 @@ A read-only diagnostic or single judgement question is answered inline from your
 | Audit many artifacts, changing nothing | `check-only-audit.md` |
 | Apply one wording rule across many files | `prose-sweep.md` |
 | Implement one task spanning many files | `multi-file-task.md` |
+| Weigh design options or challenge a built design | `option-panel.md` |
+| Research a corpus into one deliverable | `research-synthesis.md` |
+| Settle a disputed figure or claim by an edit | `disputed-claim.md` |
 
 </selector>
 
@@ -102,6 +108,10 @@ Each shape's skeleton and return are templates in `references/role-prompts.md`.
 <single_writer_validator>
 **Trigger** a tree of writes that share a link graph or an index. **Width** exactly one, alone, after every writer and checker has returned. **Prompt skeleton** the validator template, with a grant naming its paths. **Return** the validator return, with repairs proposed rather than applied. On an upstream shortfall it reports the gap and writes nothing.
 </single_writer_validator>
+
+<two_refuter_settlement_check>
+**Trigger** a proposed edit that settles a disputed figure or claim. **Width** exactly two refuters per proposed edit, each carrying a different brief, with the count and its reason stated first. **Prompt skeleton** the paired refute check's skeleton, run once per refuter. **Return** the paired refute check's return, plus the alternatives with their derivations and the provenance of every number the edit introduces.
+</two_refuter_settlement_check>
 </shapes>
 
 <width>

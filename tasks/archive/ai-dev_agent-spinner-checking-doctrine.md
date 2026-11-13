@@ -236,7 +236,7 @@ A comment beside each edited check names its class under TESTING.md's Test Integ
 
 - The cross-model checker rule with its eval, the decision packet, and the judgement, containment, and degradation rewrites, which [the judgement-containment task](ai-dev_agent-spinner-judgement-containment.md) owns. The cross-model rule lets a checker run on a model other than its producer's. That task places the cross-model rule in P1, so C7 carries no cross-model step.
 - The helper-log audit, the markers check, and the checklist-to-acceptance lint as ledger features, which [the ledger phase-2 task](../ai-dev_agent-spinner-ledger-phase-2.md) owns, since C2, C8, and C9 state them as checks the orchestrator runs by hand.
-- `references/variants.md`, which [the decision-research recipes task](../ai-dev_agent-spinner-decision-research-recipes.md) rewrites.
+- `references/variants.md`, which [the decision-research recipes task](ai-dev_agent-spinner-decision-research-recipes.md) rewrites.
 
 ## Acceptance
 

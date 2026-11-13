@@ -730,6 +730,16 @@ check "variants.md carries the information-isolation variant" \
   file_has "$REFS/variants.md" 'Information isolation between concurrent helpers'
 check "variants.md carries the replicated-draw variant" \
   file_has "$REFS/variants.md" 'Replicated draws returned unreduced'
+check "variants.md carries the blind-derivation variant" \
+  file_has "$REFS/variants.md" '^## Blind derivation$'
+check "variants.md carries the balanced-challenge variant" \
+  file_has "$REFS/variants.md" '^## Balanced challenge$'
+check "variants.md carries the calibration-controls variant" \
+  file_has "$REFS/variants.md" '^## Calibration controls$'
+check "variants.md carries the hypothesis-readings variant" \
+  file_has "$REFS/variants.md" '^## Splitting a hypothesis into its readings$'
+check "variants.md carries the blind-by-prompt phrase" \
+  file_has "$REFS/variants.md" 'blind by prompt'
 check "selector recipe rows match references/recipes/ one to one" \
   selector_recipe_rows_match "$SKILL" "$REFS/recipes"
 
