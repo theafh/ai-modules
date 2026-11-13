@@ -1033,6 +1033,20 @@ add_index_entry_for() {
     printf '\n- [%s](%s/%s.md) — placeholder\n' "$slug" "$folder" "$slug" >> "$wiki/index.md"
 }
 
+# Set the `Total pages:` header in index.md to <count>. The new index-count
+# check compares this number against the page walk, so a scenario that stages
+# pages keeps the header in sync with what it staged.
+# Args: <wiki> <count>
+set_index_total_pages() {
+    local wiki=$1 count=$2
+    python3 - "$wiki/index.md" "$count" <<'PY'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+p.write_text(re.sub(r"(Total pages:\s*)\d+", rf"\g<1>{sys.argv[2]}", text, count=1))
+PY
+}
+
 # Run lint and echo "<exit>|<stdout>".
 run_lint() {
     local wiki=$1
@@ -1159,20 +1173,31 @@ l2_lint_no_schema() {
     return 0
 }
 
-# L3: lint a wiki with no index.md -> blocking exit.
+# L3: lint a wiki with no index.md -> blocking exit, and the blocking finding
+# stays owned by check_index_completeness. The index-count check returns no
+# issues on that input, so the report carries one `index.md missing` structure
+# finding and no traceback.
 l3_lint_no_index() {
     local home; home=$(fresh_scratch l3)
     local target="$home/wiki"
     mkdir -p "$target"
     "$INIT" "$target" >/dev/null 2>&1 || { log "    init failed"; return 1; }
     rm "$target/index.md"
-    local rc
-    python3 "$LINT" "$target" --quiet >/dev/null 2>&1 && rc=0 || rc=$?
-    if [[ $rc -eq 0 ]]; then
-        log "    lint passed on a wiki without index.md"
-        return 1
-    fi
-    return 0
+    local ret; ret=$(run_lint "$target" --quiet)
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit (blocking)" "$rc" "1" || ok=false
+    assert_lint_finding "index missing blocking structure" "$out" blocking "structure" || ok=false
+    printf '%s' "$out" | grep -qF "index.md missing" || {
+        log "    [missing finding: index.md missing]"
+        printf '%s\n' "$out" | indent
+        ok=false
+    }
+    printf '%s' "$out" | grep -q "Traceback" && {
+        log "    [unexpected traceback on a wiki without index.md]"
+        ok=false
+    }
+    $ok
 }
 
 # L4: broken markdown link to a .md file -> blocking, exit 1.
@@ -3718,6 +3743,9 @@ EOF
     add_index_entry_for "$wiki" summaries citation-all-summary
     add_index_entry_for "$wiki" queries citation-all-query
     add_index_entry_for "$wiki" comparisons citation-all-comparison
+    # The fixture stages four pages; keep the header in sync so the index-count
+    # check stays silent and this scenario keeps its three-finding contract.
+    set_index_total_pages "$wiki" 4
     cat >> "$wiki/concepts/companion.md" <<'EOF'
 
 See [the summary](../summaries/citation-all-summary.md),
@@ -4127,6 +4155,60 @@ l100_lint_absolute_declared_root_non_repo_blocks() {
     assert_live_message "absolute non-repo remedy" "$out" "SCHEMA.md" "declare it relative to the wiki root" || ok=false
     assert_no_acknowledged_section "absolute non-repo root is not acknowledged" "$out" || ok=false
     rm -rf "$base"
+    $ok
+}
+
+# L101: index.md's `Total pages:` header matches the page walk -> no finding.
+l101_lint_index_total_pages_match() {
+    local wiki; wiki=$(stage_fresh_wiki l101)
+    customize_taxonomy "$wiki" model
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    set_index_total_pages "$wiki" 1
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "header matches the page walk" "$out" "index-count" || ok=false
+    $ok
+}
+
+# L102: the header disagrees with the page walk -> one info finding naming both
+# numbers, and the wiki still exits 0 (info never blocks).
+l102_lint_index_total_pages_mismatch() {
+    local wiki; wiki=$(stage_fresh_wiki l102)
+    customize_taxonomy "$wiki" model
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    set_index_total_pages "$wiki" 5
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit (info only)" "$rc" "0" || ok=false
+    assert_lint_finding "index count mismatch info" "$out" info "index-count" || ok=false
+    assert_live_message "mismatch names both numbers" "$out" "index.md" "says 5, found 1 pages on disk" || ok=false
+    assert_live_severity_count "one info finding" "$out" info "1" || ok=false
+    $ok
+}
+
+# L103: a missing header is an info finding, never a silent skip.
+l103_lint_index_total_pages_missing_header() {
+    local wiki; wiki=$(stage_fresh_wiki l103)
+    customize_taxonomy "$wiki" model
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    python3 - "$wiki/index.md" <<'PY'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(re.sub(r"\s*\|\s*Total pages:\s*\d+", "", p.read_text(), count=1))
+PY
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit (info only)" "$rc" "0" || ok=false
+    assert_lint_finding "missing header info" "$out" info "index-count" || ok=false
+    assert_live_message "missing header is named" "$out" "index.md" "no Total pages header" || ok=false
+    assert_live_severity_count "one info finding" "$out" info "1" || ok=false
     $ok
 }
 
@@ -4633,6 +4715,9 @@ scenario l97 "citation classifier accepts declared root"      l97_lint_citation_
 scenario l98 "tilde entry under declared root blocks"        l98_lint_tilde_sources_under_declared_root_blocks
 scenario l99 "absolute in-repo declared root warns+rewrite"   l99_lint_absolute_declared_root_warns_with_rewrite
 scenario l100 "absolute non-repo declared root blocks"        l100_lint_absolute_declared_root_non_repo_blocks
+scenario l101 "index Total pages header matches page walk"    l101_lint_index_total_pages_match
+scenario l102 "index Total pages drift is an info finding"    l102_lint_index_total_pages_mismatch
+scenario l103 "missing Total pages header is an info finding" l103_lint_index_total_pages_missing_header
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

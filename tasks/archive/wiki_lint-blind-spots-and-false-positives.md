@@ -26,7 +26,7 @@ All seven defects live in or around `lint.py`; the file paths below are the full
 6. **Absolute body links pass when they resolve locally.** `extract_md_links` joins and checks existence only, so a link with an absolute target passes on the author's machine and dangles on every clone. Verified. The frontmatter channels were hardened against exactly this — `broken-source` and `raw-source-path` block absolute paths "regardless of whether it happens to exist locally" — by [wiki_lint-local-path-portability.md](wiki_lint-local-path-portability.md); read it for the portability rationale this extends to the body-link channel.
 7. **Raw frontmatter presence is unchecked.** The schema template's `### raw/ Frontmatter` section says "Raw sources ALSO get a small frontmatter block", and the agent carries a `<fix_raw_source_frontmatter_missing>` move — but no lint check flags a raw `.md` missing `ingested` or `sha256`; the drift check skips any file without a `sha256` field. Drift detection is silently inert on precisely the files that skipped hashing, and the common narrow post-ingest lint never surfaces the omission.
 
-Coordination with live siblings: [wiki_index-total-pages-count.md](../wiki_index-total-pages-count.md) co-edits `check_index_completeness` (it adds the `Total pages:` header comparison; this task fixes membership matching) — coordinate if both land near each other. [wiki_synthesis-citation-consistency-lint.md](wiki_synthesis-citation-consistency-lint.md) builds its citation sets on `parse_frontmatter` and `extract_md_links`; landing this task first spares that check the same block-list and code-fence blind spots.
+Coordination with live siblings: [wiki_index-total-pages-count.md](wiki_index-total-pages-count.md) co-edits `check_index_completeness` (it adds the `Total pages:` header comparison; this task fixes membership matching) — coordinate if both land near each other. [wiki_synthesis-citation-consistency-lint.md](wiki_synthesis-citation-consistency-lint.md) builds its citation sets on `parse_frontmatter` and `extract_md_links`; landing this task first spares that check the same block-list and code-fence blind spots.
 
 ## Approach
 
@@ -47,7 +47,7 @@ Update the affected rows in `references/lint_checks.md` in place for every chang
 - No general-purpose YAML parser or new dependency; the parser stays stdlib-minimal and grows only block-style scalar lists.
 - Severity re-bucketing of existing checks beyond the items named above.
 - Citation-channel consistency between `sources:` and inline links — owned by [wiki_synthesis-citation-consistency-lint.md](wiki_synthesis-citation-consistency-lint.md).
-- `Total pages:` header validation — owned by [wiki_index-total-pages-count.md](../wiki_index-total-pages-count.md).
+- `Total pages:` header validation — owned by [wiki_index-total-pages-count.md](wiki_index-total-pages-count.md).
 
 ## Acceptance
 

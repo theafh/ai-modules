@@ -1340,6 +1340,54 @@ def check_index_completeness(wiki: Path) -> list[Issue]:
     return issues
 
 
+# The `Total pages: N` header index.md carries in its leading blockquote.
+# Tolerant of surrounding markdown: the template writes
+# `> Last updated: … | Total pages: 0`, and an owner may bold the label
+# (`**Total pages:** 4`) or add a table pipe or bullet marker around it. Only
+# the first match in the file is read, so a page summary that happens to
+# mention the phrase later never overrides the header.
+TOTAL_PAGES_RE = re.compile(
+    r"\btotal\s+pages\s*:?\s*\**\s*(\d+)",
+    re.IGNORECASE,
+)
+
+
+def check_index_total_pages(wiki: Path) -> list[Issue]:
+    """Compare index.md's ``Total pages: N`` header against the page walk.
+
+    ``iter_wiki_pages`` defines ground truth, so the header and the count agree
+    on what "a page" is: every markdown file below the wiki root, excluding the
+    root's own special files (SCHEMA.md, index.md, log.md, and any other
+    root-level markdown), the ``raw/`` and ``_archive/`` trees, hidden
+    directories, and the roots a SCHEMA ``## Lint`` ``Page-check exclusions:``
+    bullet adds.
+
+    An absent ``index.md`` returns no issues: ``check_index_completeness`` owns
+    the blocking ``index.md missing`` finding, and a second finding for the same
+    absence would double-report it. An absent or malformed header is an info
+    finding rather than a silent skip, since no other check reads the header.
+    A count mismatch is also info: it surfaces the drift without ever blocking
+    the exit code or driving the auto-shaper's relint-until-clean loop.
+    """
+    index = wiki / "index.md"
+    if not index.is_file():
+        return []
+    match = TOTAL_PAGES_RE.search(index.read_text(encoding="utf-8"))
+    if not match:
+        return [Issue(
+            SEV_INFO, "index-count", index,
+            "index.md has no Total pages header",
+        )]
+    declared = int(match.group(1))
+    actual = sum(1 for _ in iter_wiki_pages(wiki))
+    if declared != actual:
+        return [Issue(
+            SEV_INFO, "index-count", index,
+            f"index Total pages says {declared}, found {actual} pages on disk",
+        )]
+    return []
+
+
 def check_unused_tags(wiki: Path, taxonomy: set[str]) -> list[Issue]:
     used: set[str] = set()
     for page in iter_wiki_pages(wiki):
@@ -2690,6 +2738,7 @@ def main() -> int:
         source_issues, source_ack = check_source_paths_exist(wiki)
         issues.extend(source_issues)
         issues.extend(check_index_completeness(wiki))
+        issues.extend(check_index_total_pages(wiki))
         if taxonomy:
             issues.extend(check_unused_tags(wiki, taxonomy))
         issues.extend(check_page_size(wiki))
