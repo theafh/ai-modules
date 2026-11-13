@@ -104,7 +104,7 @@ conflict.
 Finish within [the wall-clock bound].
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `objections`,
 `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Give each `examined` entry
 the `path`, `how`, and the verbatim `receipt` line C8 requires for that path.
@@ -127,8 +127,9 @@ this lens rather than breadth across the others.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
 `status`, `verdict`, `examined`, `checklist`, `findings`, `confirmations`,
-`forks`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
-`brief_corrections`, `dropped_suspicions`, `notes`. Put findings under this
+`forks`, `objections`, `beyond_brief`, `incidents`, `own_authority`,
+`alternatives`, `brief_corrections`, `dropped_suspicions`, `notes`. Put findings
+under this
 lens only in `findings`, each with its verdict, confidence, quote, anchor, and
 severity. Name each unit the pass cleared in `confirmations`, one entry per
 unit carrying that unit's `path` and the `span` that cleared it. An empty
@@ -168,7 +169,7 @@ command needs approval rather than being refused outright, stay clear of shell
 use and read the files directly.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `objections`,
 `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Put a verdict and its
 citing span per checklist line in `checklist`, the findings in `findings`, and
@@ -196,7 +197,7 @@ Join and partition by item identifier rather than by arrival order. Keep every
 discarded finding with its one-line reason.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `objections`,
 `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Keep the three lists apart
 in `notes`: what the run established, what a pass found beyond its brief, and
@@ -220,7 +221,7 @@ Edit only the target paths this brief grants. Leave every other path
 byte-identical.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `objections`,
 `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Put one outcome per
 finding in `notes`, the applied edit ids in `checklist`, and every refutation
@@ -245,7 +246,7 @@ each restated rule into a citation.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
 `status`, `verdict`, `examined`, `checklist`, `findings`, `gaps`, `forks`,
-`beyond_brief`, `incidents`, `own_authority`, `alternatives`,
+`objections`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Put the gap units in
 `gaps`, one full brief per entry, the confirmed-present items with their anchors
 in `checklist`, and the surplus read's removal proposals in `alternatives`.
@@ -267,7 +268,7 @@ Name at most three fatal flaws, each with a span. Leave every other candidate
 observation in the rationale rather than the flaw list.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `objections`,
 `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Put one score per
 candidate with a one-clause rationale and the quote that earned it in
@@ -288,7 +289,7 @@ Work within this grant: [the paths this pass may read and write]. Read every
 granted path in full. Write only inside the grant.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `objections`,
 `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Put the invariants that
 hold in `checklist`, the broken ones with path and anchor in `findings`, and

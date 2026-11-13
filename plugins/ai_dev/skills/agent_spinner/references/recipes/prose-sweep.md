@@ -44,7 +44,7 @@ Each edit spans the whole sentence across line breaks, and then the writer reflo
 
 The checker returns a verdict per hunk (kept, narrowed, lost, inverted, or garbled) with the old and new text, and it records each file with a non-kept hunk as one finding whose claim lists those hunks. It also returns a `checklist` entry per checklist line, each with verdict `pass` or `fail` and its citing span, and the number of hunks it examined.
 
-Each return carries every key `accept` validates: `label`, `brief`, `status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`, `brief_corrections`, `dropped_suspicions`, and `notes`. Each finding carries `claim`, `severity`, `quote`, `anchor`, and `path`, with `path` naming the file the finding concerns and its severity drawn from the run's severity ladder, which `init --severity` sets when the recipe's classes differ from the default `blocker`/`major`/`minor`.
+Each return carries every key `accept` validates: `label`, `brief`, `status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `objections`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`, `brief_corrections`, `dropped_suspicions`, and `notes`. Each finding carries `claim`, `severity`, `quote`, `anchor`, and `path`, with `path` naming the file the finding concerns and its severity drawn from the run's severity ladder, which `init --severity` sets when the recipe's classes differ from the default `blocker`/`major`/`minor`.
 
 A role barred from file writes returns in its final message, which you relay verbatim to `accept --stdin`, never through a shell (P3).
 </roles_and_returns>

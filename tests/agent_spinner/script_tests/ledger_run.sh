@@ -2139,6 +2139,46 @@ PY
     fi
 }
 
+scenario_repeat_audit_incidents() {
+    dir="$1"
+    audit_repo "$dir"
+    write_format_a "$dir/fmt-a.json"
+    cat > "$dir/log-one.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "runner", "args": {"cmd": "python3 run_ledger.py status"}}}
+LOG
+    cat > "$dir/log-two.jsonl" <<'LOG'
+{"kind": "call", "at": "2026-01-01T00:00:01+00:00", "call": {"tool": "runner", "args": {"cmd": "python3 run_ledger.py show produce:a"}}}
+LOG
+    ledger "$dir" accept produce:a --log "$dir/log-one.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    ledger "$dir" accept produce:a --log "$dir/log-two.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+ids = [
+    rec.get("id")
+    for rec in records
+    if rec.get("type") == "incident" and rec.get("label") == "produce:a"
+]
+expected = ["produce:a:audit-incidents:0", "produce:a:audit-incidents:1"]
+sys.exit(0 if ids == expected else 1)
+PY
+    then
+        ok "a second audit of one row continues the incident ids instead of reusing them"
+    else
+        bad "a second audit of one row continues the incident ids instead of reusing them"
+    fi
+    ledger "$dir" dispose --id 'produce:a:audit-incidents:0' --disposition applied >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close.txt" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'produce:a:audit-incidents:1' "$dir/close.txt" && ! grep -q 'produce:a:audit-incidents:0' "$dir/close.txt"; then
+        ok "disposing the first repeat-audit incident leaves the second named by close"
+    else
+        bad "disposing the first repeat-audit incident leaves the second named by close (rc=$rc)"
+    fi
+}
+
 scenario_own_session_windows() {
     dir="$1"
     setup_repo "$dir"
@@ -2402,6 +2442,7 @@ run_all_scenarios() {
     scenario_packets "$root/packets"
     scenario_objection_close "$root/objection-close"
     scenario_audit "$root/audit"
+    scenario_repeat_audit_incidents "$root/audit-repeat"
     scenario_own_session_windows "$root/own-session-windows"
     scenario_tally_coverage "$root/tally-coverage"
     scenario_log_format_docs "$root/log-format-docs"

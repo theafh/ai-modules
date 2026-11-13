@@ -1709,6 +1709,27 @@ def load_log_format(path):
     return data
 
 
+def next_audit_incident_index(led, label):
+    """Return the first audit-incident index this label has not recorded yet.
+
+    Two audits of one row each append incidents, so the index has to continue
+    from the incidents already on the ledger rather than restart at zero.
+    """
+    prefix = "%s:audit-incidents:" % label
+    nxt = 0
+    for rec in led.records():
+        if rec.get("type") != "incident" or rec.get("label") != label:
+            continue
+        ident = str(rec.get("id", ""))
+        if not ident.startswith(prefix):
+            continue
+        try:
+            nxt = max(nxt, int(ident[len(prefix):]) + 1)
+        except ValueError:
+            continue
+    return nxt
+
+
 def audit_helper_log(led, row, args):
     """Read a helper's own log through the caller's description."""
     label = row.get("label", "")
@@ -1834,11 +1855,12 @@ def audit_helper_log(led, row, args):
             "calls": calls_seen,
         }
     )
+    base = next_audit_incident_index(led, label)
     for index, command in enumerate(ledger_calls):
         led.append(
             {
                 "type": "incident",
-                "id": "%s:audit-incidents:%d" % (label, index),
+                "id": "%s:audit-incidents:%d" % (label, base + index),
                 "label": label,
                 "text": "helper ran the ledger: %s" % collapse_ws(command),
                 "source": "audit",
@@ -1848,7 +1870,8 @@ def audit_helper_log(led, row, args):
         led.append(
             {
                 "type": "incident",
-                "id": "%s:audit-incidents:%d" % (label, len(ledger_calls) + offset),
+                "id": "%s:audit-incidents:%d"
+                % (label, base + len(ledger_calls) + offset),
                 "label": label,
                 "text": "helper spawned a helper through %s" % name,
                 "source": "audit",

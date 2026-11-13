@@ -37,7 +37,7 @@ The writer returns its label and path, the disposition applied, before-and-after
 
 The checker runs at or above the writers' depth. It returns a `checklist` entry per acceptance line, each with verdict `pass` or `fail` and its citing span, where `met` maps to `pass` and `partly` and `unmet` each map to `fail` with a finding. It also returns unrequested changes, missing changes, narrowed wording, and anything beyond the checklist.
 
-Each return carries every key `accept` validates: `label`, `brief`, `status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`, `brief_corrections`, `dropped_suspicions`, and `notes`, with its doubts as `notes`. Each finding carries `claim`, `severity`, `quote`, and `anchor`, with its severity drawn from the run's severity ladder, which `init --severity` sets when the recipe's classes differ from the default `blocker`/`major`/`minor`.
+Each return carries every key `accept` validates: `label`, `brief`, `status`, `verdict`, `examined`, `checklist`, `findings`, `forks`, `objections`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`, `brief_corrections`, `dropped_suspicions`, and `notes`, with its doubts as `notes`. Each finding carries `claim`, `severity`, `quote`, and `anchor`, with its severity drawn from the run's severity ladder, which `init --severity` sets when the recipe's classes differ from the default `blocker`/`major`/`minor`.
 
 A role barred from file writes returns in its final message, which you relay verbatim to `accept --stdin`, never through a shell (P3).
 </roles_and_returns>
