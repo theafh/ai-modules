@@ -66,7 +66,8 @@ python3 tests/git_review/evals/run.py --force 32 # ignore the cached verdict
 
 Forty-eight evals over thirty-six fixtures. The worker runs on Cursor
 (`agent -p`, model `auto`) by default, and `--vendor claude` runs it on Claude's
-`sonnet` where an eval needs a Claude-specific feature or the operator asks.
+`opus` at high effort where an eval needs a Claude-specific feature or the
+operator asks.
 `evals/README.md` has the per-eval expectations and the fixture map;
 `RUNBOOK.md` has the operating notes.
 

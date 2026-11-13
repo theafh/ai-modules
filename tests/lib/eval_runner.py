@@ -104,12 +104,14 @@ def write_run_artifacts(
     duration_s: float,
     worker_rc: int,
     model: str,
+    effort: str,
     **extra_timing: Any,
 ) -> None:
     """Write ``response.txt``, ``stderr.txt``, and ``timing.json``.
 
     ``timing.json`` always carries both ``worker_rc`` and ``claude_rc`` set to
-    the same return code so older graders that read either key keep working.
+    the same return code so older graders that read either key keep working,
+    and it names the worker ``effort`` beside the ``model`` that ran.
     """
 
     dest = pathlib.Path(eval_dir)
@@ -122,6 +124,7 @@ def write_run_artifacts(
         "worker_rc": worker_rc,
         "claude_rc": worker_rc,
         "model": model,
+        "effort": effort,
         **extra_timing,
     }
     (dest / "timing.json").write_text(json.dumps(timing, indent=2))
@@ -153,12 +156,17 @@ def cache_record(
     *,
     passed: bool,
     model: str,
+    effort: str,
     duration_s: float,
     worker_rc: int,
     grading_output: str,
     response_excerpt: str,
 ) -> dict | None:
-    """Record a miss when a cache and key are present; otherwise return ``None``."""
+    """Record a miss when a cache and key are present; otherwise return ``None``.
+
+    ``model`` and ``effort`` are the labels the run's ``timing.json`` carries,
+    so a replay of the stored entry names the same model and effort.
+    """
 
     if cache is None or key is None:
         return None
@@ -167,6 +175,7 @@ def cache_record(
         key,
         passed=passed,
         model=model,
+        effort=effort,
         duration_s=duration_s,
         worker_rc=worker_rc,
         grading_output=grading_output,

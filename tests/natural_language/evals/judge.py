@@ -11,6 +11,11 @@ unless the delivered text plainly satisfies it, so a hedged reading is a fail.
 The judge runs from its own isolated root, with no staged output style and no
 outputStyle selection. The root and the worker arguments come from
 tests/lib/worker_isolation.py.
+
+The judge's model and effort come from the vendor's judge settings: `opus` at
+`xhigh` effort on Claude. Run on its own, this module resolves those same
+judge settings (`--judge-model`, `--judge-effort`), so a re-judged pass is
+graded the way the runner grades it.
 """
 
 from __future__ import annotations
@@ -184,8 +189,14 @@ def judge(
     worker_bin: str,
     model: str,
     timeout: int,
+    *,
+    effort: str,
 ) -> dict:
-    """Grade one pass from an isolated root with no output style selected."""
+    """Grade one pass from an isolated root with no output style selected.
+
+    ``effort`` is required beside ``model`` and reaches the judge command as
+    ``--effort``; ``''`` omits the flag.
+    """
 
     prompt = build_prompt(eval_id, fixture, delivered, response)
     root = worker_isolation.create_sandbox_root("nl_judge_")
@@ -193,6 +204,7 @@ def judge(
         vendor=vendor_name,
         bin=worker_bin,
         model=model,
+        effort=effort,
         prompt=prompt,
         workspace=str(root),
         extra_args=worker_isolation.isolation_args(vendor_name),
@@ -256,11 +268,13 @@ def main() -> int:
     parser.add_argument("fixture_file")
     parser.add_argument("delivered_file")
     parser.add_argument("response_file")
-    vendor.add_vendor_arguments(parser, harness_id="natural_language")
+    vendor.add_vendor_arguments(
+        parser, with_judge=True, harness_id="natural_language"
+    )
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--out")
     args = parser.parse_args()
-    resolved = vendor.resolve(args)
+    resolved = vendor.resolve(args, with_judge=True)
     vendor.require_vendor_allowed(resolved.vendor, "natural_language")
 
     if args.eval_id not in RUBRICS:
@@ -277,8 +291,9 @@ def main() -> int:
         read(args.response_file),
         resolved.vendor,
         resolved.bin,
-        resolved.worker_model,
+        resolved.judge_model or "",
         args.timeout,
+        effort=resolved.judge_effort or "",
     )
     if args.out:
         pathlib.Path(args.out).write_text(json.dumps(verdicts, indent=2))

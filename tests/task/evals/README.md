@@ -67,7 +67,7 @@ The bundled-script surface is covered separately by
 
 `run.py` drives all three phases with one vendor worker per eval: the
 Cursor worker (`agent -p`, model `auto`) by default, the project's
-measurement vendor, or Claude's `sonnet` under `--vendor claude` (see
+measurement vendor, or Claude's `opus` at high effort under `--vendor claude` (see
 `tests/CLAUDE.md`). It spawns the worker with `$sandbox_proj` as
 the working directory, so `discover_tasks.sh` resolves the sandbox and
 never the real repo. The deterministic `grade.sh` it calls uses no model
@@ -120,9 +120,9 @@ debugging a single eval by hand.
 eval "$(bash tests/task/evals/stage.sh <eval_id>)"
 #    -> sandbox_proj, skill_name, skill_path, prompt
 
-# 2. Run the skill against the sandbox. run.py does this with a sonnet
-#    `claude -p` worker (the policy default). By hand: spawn `claude -p
-#    --model claude-sonnet-4-6 --permission-mode bypassPermissions` with
+# 2. Run the skill against the sandbox. run.py does this with the policy's
+#    vendor worker (Cursor by default). By hand on Claude: spawn `claude -p
+#    --model opus --effort high --permission-mode bypassPermissions` with
 #    $sandbox_proj as the working directory and a prompt that loads
 #    $skill_path. An in-session run is fine for a quick look but uses the
 #    inherited model, not the pinned worker — debugging, not measurement.

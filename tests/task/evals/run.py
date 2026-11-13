@@ -5,7 +5,7 @@ Phase 2 (the skill actually running) used to be operator-driven in the
 host session, i.e. on whatever model the session inherited. This runner
 instead spawns one vendor-resolved print-mode worker per eval. By default
 that means the Cursor worker (`agent -p`, model `auto`); `--vendor claude`
-(model `sonnet`) runs where Claude is needed or asked for, and
+(model `opus` at `high` effort) runs where Claude is needed or asked for, and
 `--model ''` inherits the vendor CLI default. The meta level on top — the
 deterministic `grade.sh`, which reads the captured response through
 `RESPONSE_FILE`, and the operator's confirmation of the remaining
@@ -50,7 +50,7 @@ Usage:
     python3 tests/task/evals/run.py [eval_id ...]
       # default: every `id` in evals.json, derived at startup, so a newly
       #          authored eval joins the suite without editing this file
-      [--vendor claude|cursor] [--model sonnet|auto|'']
+      [--vendor claude|cursor] [--model opus|auto|''] [--effort high|<level>|'']
       [--workers 4] [--timeout 600] [--worker-bin <bin>]
 """
 
@@ -245,6 +245,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         staged = stage(eval_id, root, env)
         workdir = staged["sandbox_proj"]
         model_label = resolved.worker_model or "<inherit>"
+        worker_effort_label = resolved.worker_effort or "<inherit>"
 
         key = None
         if cache is not None:
@@ -252,6 +253,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 source_roots=source_roots_for(staged["skill_name"]),
                 harness_dir=THIS,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 eval_id=eval_id,
                 prompt=staged["prompt"],
                 dependencies=eval_cache.dependencies_for(THIS / "evals.json", eval_id),
@@ -264,12 +266,14 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             print(f"  [{eval_id}] CACHED {verdict} "
                   f"(skill={staged['skill_name']}, "
                   f"graded {hit.get('graded_at', '?')}, "
-                  f"model={hit.get('model', '?')}) — skipped {resolved.config.label}; "
+                  f"model={hit.get('model', '?')}, "
+                  f"effort={hit.get('effort', '?')}) — skipped {resolved.config.label}; "
                   "--force to re-run\n", flush=True)
             return bool(hit["passed"]), True
 
         print(f"  [{eval_id}] running {resolved.config.label} "
-              f"(skill={staged['skill_name']}, model={model_label}) ...", flush=True)
+              f"(skill={staged['skill_name']}, model={model_label}, "
+              f"effort={worker_effort_label}) ...", flush=True)
         started_at = time.time()
         with micro_deploy.micro_deploy(
             resolved.vendor, artefacts_for(staged["skill_name"]),
@@ -282,7 +286,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             )
             worker = micro_deploy.run_worker(
                 vendor_name=resolved.vendor, bin_name=resolved.bin,
-                model=resolved.worker_model, prompt=prompt, deploy=md,
+                model=resolved.worker_model,
+                effort=resolved.worker_effort,
+                prompt=prompt, deploy=md,
                 timeout=timeout, cwd=pathlib.Path(workdir),
             )
             rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
@@ -298,6 +304,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             duration_s=duration_s,
             worker_rc=rc,
             model=model_label,
+            effort=worker_effort_label,
             skill_name=staged["skill_name"],
             artefacts_read_from_micro_deployment=integrity,
             checkout_unread=checkout_unread,
@@ -352,6 +359,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 key,
                 passed=passed,
                 model=model_label,
+                effort=worker_effort_label,
                 duration_s=duration_s,
                 worker_rc=rc,
                 grading_output=grade.stdout + grade.stderr,
@@ -424,6 +432,7 @@ def main() -> int:
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
     isolated, serial = partition_ids(ids)
 
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -432,7 +441,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
+        f"model: {model_label}; "
+        f"effort: {worker_effort_label}; workers: {args.workers}; evals: {ids}"
     )
     print(
         "Isolated pool: "

@@ -7,7 +7,7 @@ print-mode worker that loads guardrail_audit (which reads the guardrail
 hub via <authority>), records `artefacts_read_from_micro_deployment`, then
 grades byte-identity and response markers with grade.sh. The worker runs
 on Cursor by default (`agent -p`, model `auto`); `--vendor claude` (model
-`sonnet`) runs where Claude is needed or asked for, and `--model ''`
+`opus` at `high` effort) runs where Claude is needed or asked for, and `--model ''`
 inherits the vendor CLI default.
 
 Isolated evals run through `tests/lib/eval_runner.py` at `--workers`
@@ -18,7 +18,7 @@ overlapping job's work stays outside another eval's comparison.
 Usage:
     python3 tests/guardrail_audit/evals/run.py [eval_id ...]
       # default: every `id` in evals.json, derived at startup
-      [--vendor claude|cursor] [--model sonnet|auto|'']
+      [--vendor claude|cursor] [--model opus|auto|''] [--effort high|<level>|'']
       [--workers 4] [--timeout 300] [--worker-bin <bin>]
       [--force] [--no-cache]
 """
@@ -145,6 +145,7 @@ def run_one(
         staged = stage(eval_id, root, env)
         workdir = staged["sandbox_proj"]
         model_label = resolved.worker_model or "<inherit>"
+        worker_effort_label = resolved.worker_effort or "<inherit>"
 
         key = None
         if cache is not None:
@@ -152,6 +153,7 @@ def run_one(
                 source_roots=source_roots_for(),
                 harness_dir=THIS,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 eval_id=eval_id,
                 prompt=staged["prompt"],
                 dependencies=eval_cache.dependencies_for(THIS / "evals.json", eval_id),
@@ -161,12 +163,13 @@ def run_one(
             verdict = "PASS" if hit["passed"] else "FAIL"
             print(f"  [{eval_id}] CACHED {verdict} "
                   f"(graded {hit.get('graded_at', '?')}, "
-                  f"model={hit.get('model', '?')}) — skipped "
+                  f"model={hit.get('model', '?')}, "
+                  f"effort={hit.get('effort', '?')}) — skipped "
                   f"{resolved.config.label}; --force to re-run\n", flush=True)
             return bool(hit["passed"]), True
 
         print(f"  [{eval_id}] running {resolved.config.label} "
-              f"(model={model_label}) ...", flush=True)
+              f"(model={model_label}, effort={worker_effort_label}) ...", flush=True)
         started_at = time.time()
         with micro_deploy.micro_deploy(
             resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
@@ -180,7 +183,9 @@ def run_one(
             )
             worker = micro_deploy.run_worker(
                 vendor_name=resolved.vendor, bin_name=resolved.bin,
-                model=resolved.worker_model, prompt=prompt, deploy=md,
+                model=resolved.worker_model,
+                effort=resolved.worker_effort,
+                prompt=prompt, deploy=md,
                 timeout=timeout, cwd=pathlib.Path(workdir),
             )
             rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
@@ -196,6 +201,7 @@ def run_one(
             duration_s=duration_s,
             worker_rc=rc,
             model=model_label,
+            effort=worker_effort_label,
             artefacts_read_from_micro_deployment=integrity,
             checkout_unread=checkout_unread,
             started_at=started_at,
@@ -241,6 +247,7 @@ def run_one(
                 key,
                 passed=passed,
                 model=model_label,
+                effort=worker_effort_label,
                 duration_s=duration_s,
                 worker_rc=rc,
                 grading_output=grade.stdout + grade.stderr,
@@ -311,6 +318,7 @@ def main() -> int:
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
 
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = WORKSPACE / f"run-{ts}-{os.getpid()}"
@@ -318,7 +326,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
+        f"model: {model_label}; "
+        f"effort: {worker_effort_label}; workers: {args.workers}; evals: {ids}"
     )
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")

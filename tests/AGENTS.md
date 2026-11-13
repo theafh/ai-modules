@@ -39,20 +39,34 @@ and accepts:
 ```text
 --vendor {claude,cursor}   # default: cursor; claude in the Claude-only harnesses
 --model MODEL              # override worker model; '' inherits the CLI default
+--effort LEVEL             # override Claude worker effort (low|medium|high|xhigh|max); '' omits --effort
 --worker-bin PATH          # override binary; --claude-bin is a deprecated alias
 --judge-model MODEL        # every harness that ships evals/judge.py, including natural_language; '' inherits
+--judge-effort LEVEL       # override Claude judge effort beside --judge-model; '' omits --effort
 ```
+
+Only Claude has an effort control, so an explicit `--effort` or
+`--judge-effort` on Cursor stops the run with an error naming Claude.
 
 | Role | `--vendor claude` | `--vendor cursor` |
 | --- | --- | --- |
 | Worker binary | `claude -p` | `agent -p` |
-| Worker model | `sonnet` (latest alias, not a dated pin) | `auto` |
-| Judge / meta LLM | inherit (omit `--model`) | `auto` |
+| Worker model | `opus` (latest alias, not a dated pin) at high effort (`--effort high`) | `auto`, no effort setting |
+| Judge / meta LLM | `opus` at `xhigh` effort (`--effort xhigh`) | `auto`, no effort setting |
 | Permissions | `--permission-mode bypassPermissions` | `--force --sandbox disabled` |
 | Workspace | subprocess `cwd` | `--workspace <sandbox>` plus `cwd` |
 | Second turn | `--session-id` on the first turn, `--resume` with the same id on later turns | no session flag on the first turn, `--resume` with the first stream's `session_id` on later turns |
 | Staged agents | plugin roles in the scratch config directory's `agents/`, fixture agents in the sandbox project's `.claude/agents/` | both in the sandbox project's `.cursor/agents/` |
 | Withheld tools | shell and write by `--disallowedTools`; spawn declared absent in the prompt | shell and write by deny entries in `proj/.cursor/cli.json`; spawn declared absent in the prompt |
+
+At high effort a Claude eval runs for minutes: the 2026-11-13 measurements
+recorded in `tests/agent_spinner/evals/README.md` ran from 182 to over 500
+seconds per eval. An agent whose tool calls have a wall-clock limit therefore
+runs few evals per call, and it reports an eval that outlasts one call as
+inconclusive. A full Claude suite costs about one point of the five-hour usage
+window per eval, so it spans more than one window. A run that pauses at the
+operator's quota threshold resumes after the reset by re-running the same
+command, which replays the verdicts already cached.
 
 Deterministic graders (`grade.sh`, `grade.py`, pure Python scoring) stay
 model-free on both vendors.
@@ -167,10 +181,10 @@ python3 tests/language_humanizer/evals/run.py   # the recorded measurement
 python3 tests/trigger_evals/run.py --eval-set tests/trigger_evals/wiki.json \
   --skill wiki --baseline tests/trigger_evals/results/wiki/<prior-cursor-run>
 
-# Claude (latest sonnet worker, inherited judge): an eval that needs a
+# Claude (latest opus worker, opus at xhigh judge): an eval that needs a
 # Claude-specific feature, or a suite the operator explicitly asks for
 python3 tests/git_commit/evals/run.py --vendor claude
-python3 tests/language_humanizer/evals/run.py --vendor claude   # judge inherits on Claude
+python3 tests/language_humanizer/evals/run.py --vendor claude
 ```
 
 Pass `--force` to ignore the verdict cache; `--no-cache` to neither read nor
@@ -274,11 +288,12 @@ significant iteration.
 
 ### Model policy
 
-Pin the skill-under-test through `--vendor` defaults (`sonnet` / `auto`).
-Keep graders model-free when possible; when a judge LLM exists
-(every harness that ships `evals/judge.py`, including `natural_language`),
-it inherits on Claude and uses `auto` on Cursor.
-Do not pin dated model ids such as `claude-sonnet-4-6`.
+Pin the skill-under-test through `--vendor` defaults: the worker runs `opus`
+at high effort on Claude and `auto` on Cursor. Keep graders model-free when
+possible; when a judge LLM exists (every harness that ships `evals/judge.py`,
+including `natural_language`), it runs `opus` at `xhigh` effort on Claude and
+`auto` on Cursor. Do not pin a dated model id: Claude uses the latest `opus`
+alias.
 
 ### Ambient git configuration: pin the output shape at suite entry
 

@@ -16,8 +16,9 @@ correction is auditable rather than a quiet edit of history.
 
 Usage:
     python3 regrade.py <run_dir> [scenario ...]
-      [--vendor claude|cursor] [--judge-model ''|auto|<override>]
-      [--judge-timeout 300] [--workers 4] [--worker-bin <bin>] [--skip-judge]
+      [--vendor claude|cursor] [--judge-model opus|auto|'']
+      [--judge-effort xhigh|<level>|''] [--judge-timeout 300] [--workers 4]
+      [--worker-bin <bin>] [--skip-judge]
 """
 
 from __future__ import annotations
@@ -77,6 +78,7 @@ def regrade_pass(pass_dir: pathlib.Path, scenario: str, args) -> dict:
             response.read_text() if response.exists() else "",
             args.resolved.vendor, args.resolved.bin,
             args.resolved.judge_model or "", args.judge_timeout,
+            effort=args.resolved.judge_effort or "",
         )
 
     assertions = {
@@ -159,7 +161,10 @@ def main() -> int:
     judge_model_label = (
         "carried forward"
         if args.skip_judge
-        else (args.resolved.judge_model or "<inherit>")
+        else (
+            f"{args.resolved.judge_model or '<inherit>'} "
+            f"at effort {args.resolved.judge_effort or '<inherit>'}"
+        )
     )
     print(
         f"Judge vendor: {args.resolved.vendor}; command: {args.resolved.config.label}; "

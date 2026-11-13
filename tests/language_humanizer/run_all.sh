@@ -3,9 +3,10 @@
 # surface.
 #
 # language_humanizer ships no bundled scripts, so the deterministic surface is
-# the static contract (script_tests/run.sh) plus the grader's own unit tests
+# the static contract (script_tests/run.sh), the grader's own unit tests
 # (evals/test_grade.py), which prove grade.py passes a faithful rewrite and
-# fails each lossy one.
+# fails each lossy one, and the judge-command unit tests (evals/test_judge.py),
+# which prove the judge command carries the resolved judge model and effort.
 #
 # The behavioral evals under evals/ are intentionally not run from here. They
 # spawn workers and consume tokens; see RUNBOOK.md.
@@ -20,8 +21,9 @@ for arg in "$@"; do
             cat <<USAGE
 Usage: $0
 
-Runs the static contract checks (script_tests/run.sh) and the grader unit
-tests (evals/test_grade.py).
+Runs the static contract checks (script_tests/run.sh), the grader unit
+tests (evals/test_grade.py), and the judge-command unit tests
+(evals/test_judge.py).
 
 For the behavioral evals, see tests/language_humanizer/RUNBOOK.md.
 USAGE
@@ -43,6 +45,13 @@ echo "================================================================"
 python3 "$SCRIPT_DIR/evals/test_grade.py"
 RC_GRADE=$?
 
+echo
+echo "================================================================"
+echo "  language_humanizer regression: judge-command unit tests"
+echo "================================================================"
+python3 "$SCRIPT_DIR/evals/test_judge.py"
+RC_JUDGE=$?
+
 cat <<'NOTE'
 
 ================================================================
@@ -53,7 +62,7 @@ tests/language_humanizer/evals/. They are NOT run from this entrypoint,
 because they spawn workers and consume tokens. See RUNBOOK.md.
 NOTE
 
-if ((RC_STATIC != 0 || RC_GRADE != 0)); then
+if ((RC_STATIC != 0 || RC_GRADE != 0 || RC_JUDGE != 0)); then
     exit 1
 fi
 exit 0

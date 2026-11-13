@@ -14,7 +14,7 @@ those jobs do not overlap one another or the isolated pool. Each fresh
 pass micro-deploys inside its own job.
 
 The worker policy comes from `tests/lib/vendor.py`: the worker runs on
-Cursor by default (model `auto`), `--vendor claude` (model `sonnet`) runs
+Cursor by default (model `auto`), `--vendor claude` (model `opus` at `high` effort) runs
 where Claude is needed or asked for, and `--model ''` inherits the
 vendor CLI default. The harness micro-deploys the skill, the base `task`
 and `task_check` skills, and the six `auto_*_task` agents through the
@@ -215,6 +215,7 @@ def run_one(
         staged = stage(eval_id, root, env)
         workdir = staged["sandbox_proj"]
         model_label = resolved.worker_model or "<inherit>"
+        worker_effort_label = resolved.worker_effort or "<inherit>"
 
         key = None
         if cache is not None:
@@ -222,6 +223,7 @@ def run_one(
                 source_roots=source_roots_for(),
                 harness_dir=THIS,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 eval_id=eval_id,
                 prompt=staged["prompt"],
                 dependencies=eval_cache.dependencies_for(
@@ -237,7 +239,8 @@ def run_one(
                 f"  [{eval_id}] CACHED {verdict} "
                 f"(skill={staged['skill_name']}, "
                 f"graded {hit.get('graded_at', '?')}, "
-                f"model={hit.get('model', '?')}) — skipped "
+                f"model={hit.get('model', '?')}, "
+                f"effort={hit.get('effort', '?')}) — skipped "
                 f"{resolved.config.label}; --force to re-run\n",
                 flush=True,
             )
@@ -245,7 +248,8 @@ def run_one(
 
         print(
             f"  [{eval_id}] running {resolved.config.label} "
-            f"(skill={staged['skill_name']}, model={model_label}) ...",
+            f"(skill={staged['skill_name']}, model={model_label}, "
+            f"effort={worker_effort_label}) ...",
             flush=True,
         )
         started_at = time.time()
@@ -265,6 +269,7 @@ def run_one(
                 vendor_name=resolved.vendor,
                 bin_name=resolved.bin,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 prompt=prompt,
                 deploy=deploy,
                 timeout=timeout,
@@ -285,6 +290,7 @@ def run_one(
             duration_s=duration_s,
             worker_rc=rc,
             model=model_label,
+            effort=worker_effort_label,
             skill_name=staged["skill_name"],
             artefacts_read_from_micro_deployment=integrity,
             checkout_unread=checkout_unread,
@@ -339,6 +345,7 @@ def run_one(
                 key,
                 passed=passed,
                 model=model_label,
+                effort=worker_effort_label,
                 duration_s=duration_s,
                 worker_rc=rc,
                 grading_output=grade.stdout + grade.stderr,
@@ -422,6 +429,7 @@ def main() -> int:
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
     isolated, serial = partition_ids(ids)
 
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -430,7 +438,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
+        f"model: {model_label}; "
+        f"effort: {worker_effort_label}; workers: {args.workers}; evals: {ids}"
     )
     print(
         "Isolated pool: "

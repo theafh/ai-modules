@@ -1435,3 +1435,14 @@ pre-existing, and the size infos stay advisory; the one on
   `Slot`/`Style` paragraph drops the side `Panel` contribution)
 - index.md (the concurrency queue summary names the window-bottom bar with its
   combined load count, and Last updated moves to 2026-11-12)
+
+## [2026-11-13 23:53] update | Pin Claude eval workers to Opus at high effort on the verification surfaces page
+
+- concepts/verification-surfaces.md (the model-pinning section now states the
+  Claude worker on the latest `opus` alias at high effort, the Claude judge on
+  `opus` at `xhigh`, Cursor on `auto` with no effort setting, and effort as part
+  of the pinned subject in the verdict cache key, the run records, and the
+  trigger-eval baseline check; it gives the reason the default left `sonnet`,
+  points at the 2026-11-13 probe record for the measurements, and records that
+  the CLI names no effective effort level in its init event or debug output)
+- index.md (Last updated moves to 2026-11-13)

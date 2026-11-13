@@ -15,10 +15,15 @@ The judge is refute-biased: each rubric line tells it to fail the assertion
 unless the delivered text plainly satisfies it, so a hedged "mostly" reads as
 a fail rather than a pass.
 
+The judge's model and effort come from the vendor's judge settings: on
+Claude it runs `opus` at `xhigh` effort, and on Cursor it runs `auto`, which
+takes no effort. Run on its own, this module resolves those same judge
+settings, so a re-judged pass is graded the way the runner grades it.
+
 Usage:
     python3 judge.py <eval_id> <fixture_file> <delivered_file> <response_file>
-        [--vendor claude|cursor] [--model sonnet|auto|'']
-        [--timeout 300] [--worker-bin <bin>]
+        [--vendor claude|cursor] [--judge-model opus|auto|'']
+        [--judge-effort xhigh|<level>|''] [--timeout 300] [--worker-bin <bin>]
         [--out verdict.json]
 """
 
@@ -194,13 +199,16 @@ def extract_json(text: str) -> dict:
 
 
 def judge(eval_id: str, fixture: str, delivered: str, response: str,
-          vendor_name: str, worker_bin: str, model: str, timeout: int) -> dict:
+          vendor_name: str, worker_bin: str, model: str, timeout: int,
+          *, effort: str) -> dict:
     """Grade one pass from an isolated root of the judge's own.
 
     The root comes from the shared isolation helper, so the judge call starts
     outside the home directory and outside any git repository and carries the
     helper's arguments for the resolved vendor. No host standing-instruction
-    file reaches the verdict. The root is removed after the call.
+    file reaches the verdict. The root is removed after the call. ``effort``
+    is required beside ``model`` and reaches the judge command as
+    ``--effort``; ``''`` omits the flag.
     """
     prompt = build_prompt(eval_id, fixture, delivered, response)
     root = worker_isolation.create_sandbox_root(ISOLATION_PREFIX)
@@ -208,6 +216,7 @@ def judge(eval_id: str, fixture: str, delivered: str, response: str,
         vendor=vendor_name,
         bin=worker_bin,
         model=model,
+        effort=effort,
         prompt=prompt,
         workspace=str(root),
         extra_args=worker_isolation.isolation_args(vendor_name),
@@ -255,11 +264,11 @@ def main() -> int:
     ap.add_argument("fixture_file")
     ap.add_argument("delivered_file")
     ap.add_argument("response_file")
-    vendor.add_vendor_arguments(ap)
+    vendor.add_vendor_arguments(ap, with_judge=True)
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--out")
     args = ap.parse_args()
-    resolved = vendor.resolve(args)
+    resolved = vendor.resolve(args, with_judge=True)
 
     if args.eval_id not in RUBRICS:
         raise SystemExit(f"unknown eval id: {args.eval_id}")
@@ -267,7 +276,8 @@ def main() -> int:
     read = lambda p: pathlib.Path(p).read_text() if pathlib.Path(p).exists() else ""  # noqa: E731
     verdicts = judge(args.eval_id, read(args.fixture_file), read(args.delivered_file),
                      read(args.response_file), resolved.vendor, resolved.bin,
-                     resolved.worker_model, args.timeout)
+                     resolved.judge_model or "", args.timeout,
+                     effort=resolved.judge_effort or "")
 
     if args.out:
         pathlib.Path(args.out).write_text(json.dumps(verdicts, indent=2))

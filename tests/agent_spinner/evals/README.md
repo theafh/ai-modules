@@ -463,3 +463,49 @@ unchanged. The blast radius is therefore the two new ids alone.
 | --- | --- | --- |
 | `checker_spawned_through_role` | pass | `../workspace/run-20261112-121014` |
 | `checker_spawned_without_role` | pass | `../workspace/run-20261112-121014` |
+
+### 2026-11-13, Claude Code 2.1.289, worker model and effort probe
+
+These three Claude runs are the measurements behind the Claude defaults in
+`tests/lib/vendor.py`: the worker on the latest `opus` alias at `high` effort,
+and the judge on `opus` at `xhigh`. Every run used `claude` 2.1.289 on
+agent_spinner at commit `c592b42`. Their run directories sit in local scratch
+space that no clone carries, so this section is the record.
+
+- **`sonnet`, full suite.** The whole suite ran on `--vendor claude` with the
+  then-default `sonnet` worker. 56 of 93 evals passed and 36 failed.
+  `checker_spawned_through_role` stayed inconclusive, because it outran a
+  560-second wall-clock cap on both of its attempts. Every runner-level check
+  passed, and the recorded Cursor verdicts for the same evals all pass. The
+  `sonnet` failures came from skipped procedure rather than wrong answers: the
+  worker reached the expected conclusions while leaving out the steps the skill
+  requires.
+- **Opus at low effort.** The set was the 36 `sonnet` failures plus six `sonnet`
+  passes, run with `--no-cache` through a wrapper around the worker binary that
+  added `--effort low` to every `claude` command. It fixed 8 of the 36, failed
+  `blind_pass_by_prompt` where `sonnet` had passed, and left
+  `checker_spawned_through_role` inconclusive again. Most remaining failures hit
+  the same checks `sonnet` failed. The median run took 89 seconds, against 57
+  seconds for `sonnet`.
+- **Opus at high effort.** The set was eight still-failing evals, two from each
+  failure cluster (pre-dispatch plan, per-item fan-out, ledger records, report
+  contract), run the same way with `--effort high` and a 500-second worker
+  timeout. Failed checks fell from 28 at low effort to 6.
+  `containment_one_path` and `placeholder_figure_held` passed.
+  `documented_absence_stays_conditional` and `report_rederivation` each failed
+  one check. `inline_floor`, `phase_plan_announcement`, `roster_partial_stop`,
+  and `twelve_files_twelve_rows` hit the 500-second timeout with every check
+  passing except the final report's opening, which a killed run never writes;
+  those four account for four of the six failed checks. Runs took 182 to over
+  500 seconds each, and the eight together cost about nine points of the
+  five-hour usage window.
+
+High effort is also the level the operator's own Claude Code sessions run at,
+so a high-effort verdict measures the skill the way it is used. The runtime and
+cost figures above are the basis for the runtime and cost guidance in
+`tests/CLAUDE.md` and `tests/AGENTS.md`.
+
+On the new defaults, `smoke_inline_body` passed on `--vendor claude` with the
+worker on `opus` at `high` in `../workspace/run-20261114-001102`, whose
+`timing.json` and cache record name both. A re-run with `--effort medium` took
+no cache hit and passed in `../workspace/run-20261114-001331`.

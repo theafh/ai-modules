@@ -448,6 +448,7 @@ def test_run_worker_passes_launch_path() -> None:
                 try:
                     micro_deploy.run_worker(
                         vendor_name=vendor_name, bin_name=bin_name, model="",
+                        effort="",
                         prompt="hi", deploy=md, timeout=5,
                     )
                 finally:
@@ -1271,6 +1272,7 @@ def test_run_worker_command_shape_and_timeout() -> None:
                     vendor_name="cursor",
                     bin_name="agent",
                     model="auto",
+                    effort="",
                     prompt="hi",
                     deploy=cursor_handle,
                     timeout=5,
@@ -1300,6 +1302,7 @@ def test_run_worker_command_shape_and_timeout() -> None:
                     vendor_name="cursor",
                     bin_name="agent",
                     model="auto",
+                    effort="",
                     prompt="hi",
                     deploy=cursor_handle,
                     timeout=1,
@@ -1352,7 +1355,8 @@ def test_run_worker_command_shape_and_timeout() -> None:
                 result = micro_deploy.run_worker(
                     vendor_name="claude",
                     bin_name="claude",
-                    model="sonnet",
+                    model="opus",
+                    effort="high",
                     prompt="hi",
                     deploy=claude_handle,
                     timeout=5,
@@ -1373,12 +1377,64 @@ def test_run_worker_command_shape_and_timeout() -> None:
                 output_formats(cmd) == ["stream-json"] and "--verbose" in cmd,
             )
             check(
+                "claude run_worker command carries --model opus",
+                "--model" in cmd and cmd[cmd.index("--model") + 1] == "opus",
+            )
+            check(
+                "claude run_worker command carries --effort high",
+                "--effort" in cmd and cmd[cmd.index("--effort") + 1] == "high",
+            )
+            check(
                 "claude real-home shell read fails provenance",
                 result.out_of_set_paths
                 == [str((REAL_HOME / ".claude/skills/language_humanizer/SKILL.md").resolve())],
             )
         finally:
             claude_handle.close()
+
+
+def test_run_worker_requires_effort() -> None:
+    """Effort is required at run_worker and optional at the command builder.
+
+    A builder call without ``effort`` carries no ``--effort``, which the auth
+    probes rely on, and a ``run_worker`` call without ``effort`` fails before
+    any worker starts, so no runner can drop the effort its verdict names.
+    """
+
+    probe = vendor.build_print_cmd(
+        vendor="claude", bin="claude", model="opus", prompt="hi",
+        output_format="text",
+    )
+    check("a build_print_cmd call without effort carries no --effort",
+          "--effort" not in probe)
+
+    real_run = subprocess.run
+    started: list[list[str]] = []
+
+    def fake_run(cmd, **_kwargs):
+        started.append(list(cmd))
+        return fake_result(0, json.dumps({"type": "result", "result": "ok"}))
+
+    with tempfile.TemporaryDirectory() as td:
+        sandbox = pathlib.Path(td) / "proj"
+        sandbox.mkdir()
+        with micro_deploy.micro_deploy(
+            "claude", [], sandbox, preflight=False
+        ) as md:
+            subprocess.run = fake_run  # type: ignore[assignment]
+            try:
+                try:
+                    micro_deploy.run_worker(  # type: ignore[call-arg]
+                        vendor_name="claude", bin_name="claude", model="opus",
+                        prompt="hi", deploy=md, timeout=5,
+                    )
+                    raised = False
+                except TypeError as err:
+                    raised = "effort" in str(err)
+            finally:
+                subprocess.run = real_run  # type: ignore[assignment]
+    check("a run_worker call without effort raises TypeError", raised)
+    check("a run_worker call without effort starts no worker", started == [])
 
 
 def test_helper_reads_reach_provenance() -> None:
@@ -1479,6 +1535,7 @@ def test_helper_reads_reach_provenance() -> None:
                     vendor_name="cursor",
                     bin_name="agent",
                     model="auto",
+                    effort="",
                     prompt="hi",
                     deploy=cursor_handle,
                     timeout=5,
@@ -1538,7 +1595,8 @@ def test_helper_reads_reach_provenance() -> None:
                 result = micro_deploy.run_worker(
                     vendor_name="claude",
                     bin_name="claude",
-                    model="sonnet",
+                    model="opus",
+                    effort="high",
                     prompt="hi",
                     deploy=claude_handle,
                     timeout=5,
@@ -1892,6 +1950,7 @@ def test_run_worker_returns_checkout_reads() -> None:
                     vendor_name="cursor",
                     bin_name="agent",
                     model="auto",
+                    effort="",
                     prompt="hi",
                     deploy=cursor_handle,
                     timeout=5,
@@ -1947,7 +2006,8 @@ def test_run_worker_returns_checkout_reads() -> None:
                 result = micro_deploy.run_worker(
                     vendor_name="claude",
                     bin_name="claude",
-                    model="sonnet",
+                    model="opus",
+                    effort="high",
                     prompt="hi",
                     deploy=claude_handle,
                     timeout=5,
@@ -2437,6 +2497,7 @@ def main() -> int:
     test_classifier_cases()
     test_shell_paths_expand_against_worker_env()
     test_run_worker_command_shape_and_timeout()
+    test_run_worker_requires_effort()
     test_helper_reads_reach_provenance()
     test_checkout_classifier()
     test_run_worker_returns_checkout_reads()

@@ -40,7 +40,7 @@ passed, and `grade.sh` passed. The verdict cache in `evals/.eval_cache/`
 replays an eval whose inputs are unchanged without spawning a worker, and a run
 that replays every verdict also skips the auth probe. `--force` re-runs every
 eval and refreshes its stored verdict; `--no-cache` re-runs without reading or
-writing the cache. `--vendor claude` (`claude -p`, model `sonnet`) runs only
+writing the cache. `--vendor claude` (`claude -p`, model `opus` at high effort) runs only
 where an eval needs a Claude-specific feature or the operator asks for a Claude
 run, as the model policy in `tests/CLAUDE.md` states.
 

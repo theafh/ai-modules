@@ -59,14 +59,18 @@ def make_agent(root: pathlib.Path) -> pathlib.Path:
 def main() -> int:
     claude = vendor.config("claude")
     check("claude bin default", claude.bin == "claude")
-    check("claude worker model default", claude.worker_model == "sonnet")
-    check("claude judge model inherits", claude.judge_model == "")
+    check("claude worker model default", claude.worker_model == "opus")
+    check("claude worker effort default", claude.worker_effort == "high")
+    check("claude judge model default", claude.judge_model == "opus")
+    check("claude judge effort default", claude.judge_effort == "xhigh")
     check("claude label", claude.label == "claude -p")
 
     cursor = vendor.config("cursor")
     check("cursor bin default", cursor.bin == "agent")
     check("cursor worker model default", cursor.worker_model == "auto")
     check("cursor judge model default", cursor.judge_model == "auto")
+    check("cursor has no worker effort", cursor.worker_effort == "")
+    check("cursor has no judge effort", cursor.judge_effort == "")
     check("cursor label", cursor.label == "agent -p")
     check("default parallel workers", vendor.DEFAULT_PARALLEL_WORKERS == 4)
 
@@ -76,12 +80,16 @@ def main() -> int:
     check("resolve default vendor", resolved.vendor == "cursor")
     check("resolve default worker model", resolved.worker_model == "auto")
     check("resolve default judge model", resolved.judge_model == "auto")
+    check("resolve default worker effort is empty", resolved.worker_effort == "")
+    check("resolve default judge effort is empty", resolved.judge_effort == "")
     check("resolve default worker bin", resolved.bin == "agent")
     claude_args = parser.parse_args(["--vendor", "claude"])
     resolved_claude = vendor.resolve(claude_args, with_judge=True)
     check("resolve explicit claude vendor", resolved_claude.vendor == "claude")
-    check("resolve claude worker model", resolved_claude.worker_model == "sonnet")
-    check("resolve claude judge model", resolved_claude.judge_model == "")
+    check("resolve claude worker model", resolved_claude.worker_model == "opus")
+    check("resolve claude worker effort", resolved_claude.worker_effort == "high")
+    check("resolve claude judge model", resolved_claude.judge_model == "opus")
+    check("resolve claude judge effort", resolved_claude.judge_effort == "xhigh")
     check("resolve claude worker bin", resolved_claude.bin == "claude")
 
     cursor_args = parser.parse_args(
@@ -303,6 +311,124 @@ def main() -> int:
             "--workspace", "/tmp/w", "--model", "auto", "hello",
         ],
     )
+    # --- effort -------------------------------------------------------------
+    effort_parser = argparse.ArgumentParser(add_help=False)
+    vendor.add_vendor_arguments(effort_parser, with_judge=True)
+    no_judge_parser = argparse.ArgumentParser(add_help=False)
+    vendor.add_vendor_arguments(no_judge_parser)
+    no_judge = vendor.resolve(no_judge_parser.parse_args(["--vendor", "claude"]))
+    check("resolve without a judge leaves the judge effort unset",
+          no_judge.judge_effort is None and no_judge.worker_effort == "high")
+    claude_default = vendor.resolve(
+        effort_parser.parse_args(["--vendor", "claude"]), with_judge=True
+    )
+    claude_print = vendor.build_print_cmd(
+        vendor="claude", bin="claude", model=claude_default.worker_model,
+        effort=claude_default.worker_effort, prompt="hello",
+        output_format="stream-json",
+    )
+    check(
+        "claude print command carries --model opus then --effort high",
+        claude_print[claude_print.index("--model"):claude_print.index("--model") + 4]
+        == ["--model", "opus", "--effort", "high"],
+    )
+    claude_stream = vendor.build_stream_cmd(
+        vendor="claude", bin="claude", model=claude_default.worker_model,
+        effort=claude_default.worker_effort, query="hello",
+    )
+    check(
+        "claude stream command carries --model opus then --effort high",
+        claude_stream[-4:] == ["--model", "opus", "--effort", "high"],
+    )
+    judge_cmd = vendor.build_print_cmd(
+        vendor="claude", bin="claude", model=claude_default.judge_model,
+        effort=claude_default.judge_effort, prompt="hello",
+    )
+    check(
+        "claude judge command carries --model opus and --effort xhigh",
+        judge_cmd[judge_cmd.index("--model") + 1] == "opus"
+        and judge_cmd[judge_cmd.index("--effort") + 1] == "xhigh",
+    )
+    overridden = vendor.resolve(
+        effort_parser.parse_args(
+            ["--vendor", "claude", "--effort", "medium", "--judge-effort", "low"]
+        ),
+        with_judge=True,
+    )
+    check("--effort overrides the claude worker effort",
+          overridden.worker_effort == "medium")
+    check("--judge-effort overrides the claude judge effort",
+          overridden.judge_effort == "low")
+    dropped = vendor.resolve(
+        effort_parser.parse_args(
+            ["--vendor", "claude", "--effort", "", "--judge-effort", ""]
+        ),
+        with_judge=True,
+    )
+    check("--effort '' resolves to the empty effort", dropped.worker_effort == "")
+    check("--judge-effort '' resolves to the empty effort",
+          dropped.judge_effort == "")
+    dropped_print = vendor.build_print_cmd(
+        vendor="claude", bin="claude", model=dropped.worker_model,
+        effort=dropped.worker_effort, prompt="hello",
+    )
+    dropped_stream = vendor.build_stream_cmd(
+        vendor="claude", bin="claude", model=dropped.worker_model,
+        effort=dropped.worker_effort, query="hello",
+    )
+    check("--effort '' drops the flag from the claude print command",
+          "--effort" not in dropped_print and "opus" in dropped_print)
+    check("--effort '' drops the flag from the claude stream command",
+          "--effort" not in dropped_stream and "opus" in dropped_stream)
+    check("a print command built without effort carries no --effort",
+          "--effort" not in vendor.build_print_cmd(
+              vendor="claude", bin="claude", model="opus", prompt="hello"))
+    cursor_default = vendor.resolve(
+        effort_parser.parse_args(["--vendor", "cursor"]), with_judge=True
+    )
+    cursor_print = vendor.build_print_cmd(
+        vendor="cursor", bin="agent", model=cursor_default.worker_model,
+        effort=cursor_default.worker_effort, prompt="hello",
+    )
+    cursor_stream = vendor.build_stream_cmd(
+        vendor="cursor", bin="agent", model=cursor_default.worker_model,
+        effort=cursor_default.worker_effort, query="hello", workspace="/tmp/w",
+    )
+    check("a cursor print command carries no --effort", "--effort" not in cursor_print)
+    check("a cursor stream command carries no --effort",
+          "--effort" not in cursor_stream)
+    check_exit(
+        "an explicit --effort on cursor stops naming Claude",
+        lambda: vendor.resolve(
+            effort_parser.parse_args(["--vendor", "cursor", "--effort", "high"]),
+            with_judge=True,
+        ),
+        "only Claude has an effort control",
+    )
+    check_exit(
+        "an explicit --judge-effort on cursor stops naming Claude",
+        lambda: vendor.resolve(
+            effort_parser.parse_args(["--vendor", "cursor", "--judge-effort", "max"]),
+            with_judge=True,
+        ),
+        "only Claude has an effort control",
+    )
+    cursor_empty = vendor.resolve(
+        effort_parser.parse_args(["--vendor", "cursor", "--effort", ""]),
+        with_judge=True,
+    )
+    check("--effort '' on cursor resolves without an error",
+          cursor_empty.worker_effort == "")
+    try:
+        vendor.build_print_cmd(
+            vendor="cursor", bin="agent", model="auto", effort="high",
+            prompt="hello",
+        )
+        refused = False
+    except ValueError as err:
+        refused = "only Claude" in str(err)
+    check("the cursor builder refuses a non-empty effort", refused)
+
     for name, argv in (
         ("claude", vendor.build_stream_cmd(
             vendor="claude", bin="claude", model="sonnet", query="hello")),

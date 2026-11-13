@@ -40,7 +40,7 @@ to run a single scenario (useful when iterating on a specific failure).
 Use `--workers N` to tune parallelism (default
 `vendor.DEFAULT_PARALLEL_WORKERS`). The default worker policy comes from
 `tests/lib/vendor.py`: the worker runs on Cursor (`auto`) unless
-`--vendor claude` (`sonnet`) runs where Claude is needed or asked
+`--vendor claude` (`opus` at `high` effort) runs where Claude is needed or asked
 for, and `--model ''` inherits the vendor CLI default.
 """
 
@@ -161,9 +161,10 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
         ).stdout
 
         model_label = resolved.worker_model or "<inherit>"
+        worker_effort_label = resolved.worker_effort or "<inherit>"
         print(
             f"  [{sid} pass-{pass_num}] running {resolved.config.label} "
-            f"(model={model_label}) ...",
+            f"(model={model_label}, effort={worker_effort_label}) ...",
             flush=True,
         )
         start = time.time()
@@ -174,7 +175,9 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
             prompt_path.write_text(prompt)
             worker = micro_deploy.run_worker(
                 vendor_name=resolved.vendor, bin_name=resolved.bin,
-                model=resolved.worker_model, prompt=prompt, deploy=md,
+                model=resolved.worker_model,
+                effort=resolved.worker_effort,
+                prompt=prompt, deploy=md,
                 timeout=timeout, cwd=workdir,
             )
             rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
@@ -215,6 +218,7 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
             "claude_rc": rc,
             "total_tokens": None,
             "model": model_label,
+            "effort": worker_effort_label,
             "sandbox_root": str(sandbox_root),
             "artefacts_read_from_micro_deployment": integrity,
             "checkout_unread": checkout_unread,
@@ -294,7 +298,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {resolved.worker_model or '<inherit>'}"
+        f"model: {resolved.worker_model or '<inherit>'}; "
+        f"effort: {resolved.worker_effort or '<inherit>'}"
     )
     print(f"Scenarios: {[s['id'] for s in scenarios]}, passes per scenario: {passes}")
     micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)

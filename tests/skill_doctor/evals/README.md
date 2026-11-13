@@ -17,7 +17,7 @@ python3 tests/skill_doctor/evals/run.py
 
 `run.py` spawns one vendor worker per eval, per the model policy in
 `tests/CLAUDE.md`: the skill under test runs on the Cursor worker
-(`agent -p`, model `auto`) by default, or on Claude's `sonnet` under
+(`agent -p`, model `auto`) by default, or on Claude's `opus` at high effort under
 `--vendor claude`, while `grade.sh` on top uses no model at all. It
 honors the shared verdict cache (`--force` to resample, `--no-cache` to
 bypass) and writes `summary.json` into the run directory.

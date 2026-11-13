@@ -92,10 +92,10 @@ def independent_harness_digest(harness: pathlib.Path, grade_bytes: bytes) -> str
 
 
 def independent_no_decl_key(roots, harness, grade_bytes, helper_dir, *,
-                            model, eval_id, prompt) -> str:
+                            model, effort, eval_id, prompt) -> str:
     """A no-declaration key built without `content_key`: each root's label and
     `_tree_hash`, the harness digest, each helper's `_tree_hash`, then the
-    model, eval id, and prompt fields."""
+    model, effort, eval id, and prompt fields."""
     digest = hashlib.sha256()
     for root in roots:
         digest.update(b"root:" + root.name.encode() + b"\0")
@@ -105,7 +105,8 @@ def independent_no_decl_key(roots, harness, grade_bytes, helper_dir, *,
     for name in eval_cache.VERDICT_HELPERS:
         digest.update(b"helper:" + name.encode() + b"\0")
         digest.update(eval_cache._tree_hash(helper_dir / name).encode() + b"\0")
-    for field in ("model=" + model, "eval=" + eval_id, "prompt=" + prompt):
+    for field in ("model=" + model, "effort=" + effort, "eval=" + eval_id,
+                  "prompt=" + prompt):
         digest.update(field.encode() + b"\0")
     return digest.hexdigest()
 
@@ -182,11 +183,11 @@ def content_key_forwarding_problems(src: str) -> tuple[int, list[str]]:
     return len(calls), problems
 
 
-def key_for(skill, harness, *, model="claude-sonnet-4-6", eval_id="e1",
-            prompt="do the thing", dependencies=None) -> str:
+def key_for(skill, harness, *, model="claude-sonnet-4-6", effort="high",
+            eval_id="e1", prompt="do the thing", dependencies=None) -> str:
     return eval_cache.content_key(
         source_roots=[skill], harness_dir=harness,
-        model=model, eval_id=eval_id, prompt=prompt,
+        model=model, effort=effort, eval_id=eval_id, prompt=prompt,
         dependencies=dependencies,
     )
 
@@ -226,9 +227,25 @@ def main() -> int:
         (harness / "grade.sh").write_text(grade_text + "# touched\n")
         check("harness-def edit misses", base3 != key_for(skill, harness))
 
-        # 5. Model / eval_id / prompt each move the key.
+        # 5. Model / effort / eval_id / prompt each move the key.
         b = key_for(skill, harness)
         check("model change misses", b != key_for(skill, harness, model="claude-opus-4-8"))
+        check("two keys that differ only in effort differ",
+              key_for(skill, harness, effort="high")
+              != key_for(skill, harness, effort="medium"))
+        check("an empty effort keys apart from a named one",
+              key_for(skill, harness, effort="")
+              != key_for(skill, harness, effort="high"))
+        try:
+            eval_cache.content_key(  # type: ignore[call-arg]
+                source_roots=[skill], harness_dir=harness, model="opus",
+                eval_id="e1", prompt="do the thing",
+            )
+            missing_effort_raised = False
+        except TypeError as err:
+            missing_effort_raised = "effort" in str(err)
+        check("a content_key call without effort raises TypeError",
+              missing_effort_raised)
         check("eval_id change misses", b != key_for(skill, harness, eval_id="e2"))
         check("prompt change misses", b != key_for(skill, harness, prompt="something else"))
 
@@ -238,7 +255,8 @@ def main() -> int:
         (extra / "SKILL.md").write_text("# base\n")
         with_extra = eval_cache.content_key(
             source_roots=[skill, extra], harness_dir=harness,
-            model="claude-sonnet-4-6", eval_id="e1", prompt="do the thing",
+            model="claude-sonnet-4-6", effort="high", eval_id="e1",
+            prompt="do the thing",
         )
         check("extra source root moves key", with_extra != key_for(skill, harness))
 
@@ -285,24 +303,29 @@ def main() -> int:
         k = key_for(skill, harness)
         check("lookup before record is a miss", cache.lookup("e1", k) is None)
         cache.record("e1", k, passed=True, model="claude-sonnet-4-6",
-                     duration_s=12.5, worker_rc=0,
+                     effort="high", duration_s=12.5, worker_rc=0,
                      grading_output="PASS all\n", response_excerpt="hello world")
         hit = cache.lookup("e1", k)
         check("lookup after record is a hit", hit is not None)
         check("hit carries passed=True", bool(hit) and hit["passed"] is True)
+        check("hit carries the recorded effort beside the model",
+              bool(hit) and hit["effort"] == "high"
+              and hit["model"] == "claude-sonnet-4-6")
         check("wrong key misses", cache.lookup("e1", "deadbeef") is None)
         check("wrong eval_id misses", cache.lookup("e2", k) is None)
 
         # 8. Recording a superseding key for the same eval keeps both entries.
-        cache.record("e1", "otherkey", passed=False, model="m", duration_s=1.0,
-                     worker_rc=1, grading_output="FAIL\n", response_excerpt="x")
+        cache.record("e1", "otherkey", passed=False, model="m", effort="",
+                     duration_s=1.0, worker_rc=1, grading_output="FAIL\n",
+                     response_excerpt="x")
         check("original entry still present after second record",
               cache.lookup("e1", k) is not None)
 
         # 9. LRU trim caps entries per eval id.
         for i in range(40):
-            cache.record("big", f"k{i:03d}", passed=True, model="m",
-                         duration_s=0.1, worker_rc=0, grading_output="", response_excerpt="")
+            cache.record("big", f"k{i:03d}", passed=True, model="m", effort="",
+                         duration_s=0.1, worker_rc=0, grading_output="",
+                         response_excerpt="")
         stored = json.loads((root / ".eval_cache" / "big.json").read_text())
         check("LRU trim caps entries", len(stored) <= eval_cache._MAX_ENTRIES_PER_EVAL)
 
@@ -315,7 +338,7 @@ def main() -> int:
         eval_cache.write_replay_artifacts(eval_dir, {
             "passed": True, "grading_output": "PASS all\n",
             "response_excerpt": "hello", "graded_at": "2026-07-16T00:00:00",
-            "model": "claude-sonnet-4-6", "duration_s": 12.5,
+            "model": "claude-sonnet-4-6", "effort": "high", "duration_s": 12.5,
         })
         check("replay writes cached.json", (eval_dir / "cached.json").exists())
         check("replay writes grading.txt", (eval_dir / "grading.txt").read_text() == "PASS all\n")
@@ -323,6 +346,8 @@ def main() -> int:
               "CACHED REPLAY" in (eval_dir / "response.txt").read_text())
         tj = json.loads((eval_dir / "timing.json").read_text())
         check("replay timing marks cached", tj.get("cached") is True)
+        check("replay timing names the stored effort beside the model",
+              tj.get("effort") == "high" and tj.get("model") == "claude-sonnet-4-6")
 
         # --- Acceptance 1: no-declaration baseline + grade.sh arm-split ---
         skill_a = make_skill(root / "a")
@@ -357,7 +382,7 @@ def main() -> int:
                 check(f"no-decl key equals the independently built digest ({e})",
                       no_decl[e] == independent_no_decl_key(
                           [skill_a], harness_a, expected_grade[e], a_helper_dir,
-                          model="claude-sonnet-4-6", eval_id=e,
+                          model="claude-sonnet-4-6", effort="high", eval_id=e,
                           prompt="do the thing"))
             for name in eval_cache.VERDICT_HELPERS:
                 (a_helper_dir / name).write_text(f"# {name} CHANGED\n")
@@ -369,7 +394,7 @@ def main() -> int:
                           moved == independent_no_decl_key(
                               [skill_a], harness_a, expected_grade[e],
                               a_helper_dir, model="claude-sonnet-4-6",
-                              eval_id=e, prompt="do the thing"))
+                              effort="high", eval_id=e, prompt="do the thing"))
                     no_decl[e] = moved
         finally:
             eval_cache._HELPER_DIR = real_helper_dir
@@ -433,7 +458,8 @@ def main() -> int:
         multi_deps = {"demo": ["alpha"], "sib": ["one"]}
         k_multi = eval_cache.content_key(
             source_roots=[skill_d, sib], harness_dir=harness_d,
-            model="m", eval_id="e1", prompt="p", dependencies=multi_deps,
+            model="m", effort="", eval_id="e1", prompt="p",
+            dependencies=multi_deps,
         )
         (sib / "SKILL.md").write_text(
             "<sib_skill>\n  <one>1</one>\n  <two>2CHANGED</two>\n</sib_skill>\n"
@@ -442,7 +468,8 @@ def main() -> int:
             "multi-root: undeclared stage under declared sibling keeps key",
             k_multi == eval_cache.content_key(
                 source_roots=[skill_d, sib], harness_dir=harness_d,
-                model="m", eval_id="e1", prompt="p", dependencies=multi_deps,
+                model="m", effort="", eval_id="e1", prompt="p",
+                dependencies=multi_deps,
             ),
         )
         # Restore sib; omit sib from deps → whole-tree for sib.
@@ -452,7 +479,8 @@ def main() -> int:
         deps_omit_sib = {"demo": ["alpha"]}
         k_omit = eval_cache.content_key(
             source_roots=[skill_d, sib], harness_dir=harness_d,
-            model="m", eval_id="e1", prompt="p", dependencies=deps_omit_sib,
+            model="m", effort="", eval_id="e1", prompt="p",
+            dependencies=deps_omit_sib,
         )
         (sib / "SKILL.md").write_text(
             "<sib_skill>\n  <one>1</one>\n  <two>2CHANGED</two>\n</sib_skill>\n"
@@ -461,7 +489,8 @@ def main() -> int:
             "multi-root: absent sibling basename keeps whole-tree contribution",
             k_omit != eval_cache.content_key(
                 source_roots=[skill_d, sib], harness_dir=harness_d,
-                model="m", eval_id="e1", prompt="p", dependencies=deps_omit_sib,
+                model="m", effort="", eval_id="e1", prompt="p",
+                dependencies=deps_omit_sib,
             ),
         )
 
@@ -1019,7 +1048,8 @@ def main() -> int:
         # so only a dependencies= keyword that forwards this eval's own
         # declaration passes. Staged runner sources prove each fail branch.
         call = ("key = eval_cache.content_key(source_roots=roots, "
-                "harness_dir=THIS, model=m, eval_id=eval_id, prompt=p{extra})\n")
+                "harness_dir=THIS, model=m, effort=e, eval_id=eval_id, "
+                "prompt=p{extra})\n")
         prelude = ('THIS = pathlib.Path(__file__).parent\n'
                    'EVALS = THIS / "evals.json"\n')
         flagged = {
@@ -1071,6 +1101,24 @@ def main() -> int:
         )
         for problem in forwarding_problems:
             print(f"    {problem}")
+        # Tree check: every content_key call keys on the resolved worker effort
+        # beside the worker model, so no runner can replay across efforts.
+        effort_problems = []
+        for runner in callers:
+            for call in ast.walk(ast.parse(runner.read_text(encoding="utf-8"))):
+                if not (isinstance(call, ast.Call)
+                        and _call_name(call.func) == "content_key"):
+                    continue
+                passed = {k.arg: ast.unparse(k.value) for k in call.keywords if k.arg}
+                if passed.get("effort") != "resolved.worker_effort":
+                    rel = runner.relative_to(tests_root.parent)
+                    effort_problems.append(f"{rel}: line {call.lineno}")
+        check(
+            "every content_key caller passes effort=resolved.worker_effort",
+            not effort_problems,
+        )
+        for problem in effort_problems:
+            print(f"    {problem}")
 
         # --- Acceptance 10: non-publishing git_review eval omits publishing ---
         import shutil
@@ -1099,7 +1147,8 @@ def main() -> int:
                 deps = sample["dependencies"]
                 before = eval_cache.content_key(
                     source_roots=[skill_copy], harness_dir=th, model="m",
-                    eval_id=str(sample["id"]), prompt="p", dependencies=deps,
+                    effort="", eval_id=str(sample["id"]), prompt="p",
+                    dependencies=deps,
                 )
                 original = (skill_copy / "SKILL.md").read_text(encoding="utf-8")
                 mutated = original.replace(
@@ -1111,7 +1160,8 @@ def main() -> int:
                     (skill_copy / "SKILL.md").write_text(mutated)
                     after = eval_cache.content_key(
                         source_roots=[skill_copy], harness_dir=th, model="m",
-                        eval_id=str(sample["id"]), prompt="p", dependencies=deps,
+                        effort="", eval_id=str(sample["id"]), prompt="p",
+                        dependencies=deps,
                     )
                     check(
                         "non-publishing eval keeps key when publishing changes",

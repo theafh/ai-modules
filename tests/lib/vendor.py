@@ -65,42 +65,68 @@ def skill_roots(vendor: str) -> list[pathlib.Path]:
 
 @dataclass(frozen=True)
 class VendorConfig:
-    """Static defaults for one worker vendor."""
+    """Static defaults for one worker vendor.
+
+    An effort is the level the CLI's ``--effort`` flag takes. An empty effort
+    omits the flag, so the CLI applies its own default; Cursor has no effort
+    control, so both of its efforts stay empty.
+    """
 
     name: str
     bin: str
     worker_model: str
+    worker_effort: str
     judge_model: str
+    judge_effort: str
     label: str
 
 
 @dataclass(frozen=True)
 class Resolved:
-    """Effective worker settings after CLI overrides are applied."""
+    """Effective worker settings after CLI overrides are applied.
+
+    ``judge_model`` and ``judge_effort`` are ``None`` when the harness has no
+    judge (``resolve`` called without ``with_judge``).
+    """
 
     vendor: str
     bin: str
     worker_model: str
+    worker_effort: str
     judge_model: str | None
+    judge_effort: str | None
     config: VendorConfig
 
 
+# Claude runs the latest Opus alias at high effort for the worker, the level the
+# operator's own sessions run at, and at xhigh for the judge. The measurements
+# behind these defaults are recorded under the 2026-11-13 worker model and
+# effort probe in tests/agent_spinner/evals/README.md.
 _CONFIGS = {
     "claude": VendorConfig(
         name="claude",
         bin="claude",
-        worker_model="sonnet",
-        judge_model="",
+        worker_model="opus",
+        worker_effort="high",
+        judge_model="opus",
+        judge_effort="xhigh",
         label="claude -p",
     ),
     "cursor": VendorConfig(
         name="cursor",
         bin="agent",
         worker_model="auto",
+        worker_effort="",
         judge_model="auto",
+        judge_effort="",
         label="agent -p",
     ),
 }
+
+# The levels `claude --effort` accepts, named in the help text. Claude is the
+# one vendor with an effort control.
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+EFFORT_VENDORS = ("claude",)
 
 
 # --- Withheld tool classes ---------------------------------------------------
@@ -351,6 +377,16 @@ def add_vendor_arguments(
         help="Worker model override. Default: vendor worker model. Use '' to inherit.",
     )
     parser.add_argument(
+        "--effort",
+        default=None,
+        help=(
+            "Worker effort override on Claude ("
+            + "|".join(EFFORT_LEVELS)
+            + "). Default: vendor worker effort (high on Claude, none on "
+            "Cursor). Use '' to omit --effort from the command."
+        ),
+    )
+    parser.add_argument(
         "--worker-bin",
         dest="worker_bin",
         default=None,
@@ -371,10 +407,36 @@ def add_vendor_arguments(
                 "Use '' to inherit."
             ),
         )
+        parser.add_argument(
+            "--judge-effort",
+            default=None,
+            help=(
+                "Judge effort override on Claude ("
+                + "|".join(EFFORT_LEVELS)
+                + "). Default: vendor judge effort (xhigh on Claude, none on "
+                "Cursor). Use '' to omit --effort from the judge command."
+            ),
+        )
+
+
+def _require_effort_control(chosen: VendorConfig, flag: str, effort: str) -> None:
+    """Stop when a non-empty effort is asked of a vendor with no effort control."""
+
+    if effort and chosen.name not in EFFORT_VENDORS:
+        sys.exit(
+            f"error: `{flag} {effort}` sets an effort level, and only Claude has "
+            f"an effort control; `--vendor {chosen.name}` has none. Run with "
+            f"`--vendor claude`, or drop `{flag}`."
+        )
 
 
 def resolve(args, *, with_judge: bool = False) -> Resolved:
-    """Resolve vendor defaults plus CLI overrides into one object."""
+    """Resolve vendor defaults plus CLI overrides into one object.
+
+    An effort override replaces the vendor default the way ``--model`` does,
+    and ``''`` omits the flag. A non-empty effort on a vendor without an effort
+    control (Cursor) stops the run with an error naming Claude.
+    """
 
     chosen = config(args.vendor)
     worker_bin = getattr(args, "worker_bin", None)
@@ -389,18 +451,46 @@ def resolve(args, *, with_judge: bool = False) -> Resolved:
             "`--worker-bin` or `--claude-bin`, or give both the same value"
         )
 
+    effort_override = getattr(args, "effort", None)
+    worker_effort = (
+        chosen.worker_effort if effort_override is None else effort_override
+    )
+    if effort_override is not None:
+        _require_effort_control(chosen, "--effort", effort_override)
+
     judge_model = None
+    judge_effort = None
     if with_judge:
         judge_override = getattr(args, "judge_model", None)
         judge_model = chosen.judge_model if judge_override is None else judge_override
+        judge_effort_override = getattr(args, "judge_effort", None)
+        judge_effort = (
+            chosen.judge_effort
+            if judge_effort_override is None
+            else judge_effort_override
+        )
+        if judge_effort_override is not None:
+            _require_effort_control(chosen, "--judge-effort", judge_effort_override)
 
     return Resolved(
         vendor=chosen.name,
         bin=worker_bin or legacy_claude_bin or chosen.bin,
         worker_model=chosen.worker_model if args.model is None else args.model,
+        worker_effort=worker_effort,
         judge_model=judge_model,
+        judge_effort=judge_effort,
         config=chosen,
     )
+
+
+def _check_effort_vendor(chosen: VendorConfig, effort: str) -> None:
+    """Refuse a non-empty effort for a vendor with no effort control."""
+
+    if effort and chosen.name not in EFFORT_VENDORS:
+        raise ValueError(
+            f"effort {effort!r} needs an effort control, which only Claude "
+            f"has; vendor {chosen.name!r} takes none"
+        )
 
 
 def worker_env(vendor: str) -> dict[str, str]:
@@ -424,12 +514,17 @@ def build_print_cmd(
     output_format: str | None = None,
     session_id: str | None = None,
     resume: str | None = None,
+    effort: str = "",
 ) -> list[str]:
     """Build the non-interactive worker command for one vendor.
 
     ``output_format`` defaults to plain text on Cursor and to the CLI default
     on Claude. Pass ``stream-json`` to replace Cursor's ``--output-format text``
     and to add ``--output-format stream-json --verbose`` on Claude.
+
+    A non-empty ``effort`` adds ``--effort <level>`` after ``--model`` on
+    Claude; the empty default omits it, which the preflight probes rely on.
+    Cursor has no effort control, so a non-empty effort there is an error.
 
     A Claude first turn passes ``--session-id <id>`` and a later turn passes
     ``--resume <id>``. A Cursor first turn passes no session flag and a later
@@ -440,6 +535,7 @@ def build_print_cmd(
     chosen = config(vendor)
     if session_id and resume:
         raise ValueError("pass either session_id or resume, not both")
+    _check_effort_vendor(chosen, effort)
     extras = list(extra_args or [])
     fmt = (output_format or "").strip() or None
     if chosen.name == "claude":
@@ -449,6 +545,8 @@ def build_print_cmd(
             cmd = [bin, "-p", "--permission-mode", "bypassPermissions"]
         if model:
             cmd += ["--model", model]
+        if effort:
+            cmd += ["--effort", effort]
         if resume:
             cmd += ["--resume", resume]
         elif session_id:
@@ -482,6 +580,7 @@ def build_stream_cmd(
     model: str,
     query: str,
     workspace: str | None = None,
+    effort: str = "",
 ) -> list[str]:
     """Build the stream-json worker command for one vendor.
 
@@ -489,10 +588,13 @@ def build_stream_cmd(
     Cursor takes ``--trust`` and ``--workspace`` and reads the query last. Both
     commands keep the CLI's default permission mode: neither carries
     ``--permission-mode``, ``--force``, or ``--yolo``. The runner stops each
-    worker at its first tool call, so a default-mode read is enough.
+    worker at its first tool call, so a default-mode read is enough. A
+    non-empty ``effort`` adds ``--effort <level>`` after ``--model`` on Claude,
+    as in ``build_print_cmd``.
     """
 
     chosen = config(vendor)
+    _check_effort_vendor(chosen, effort)
     if chosen.name == "claude":
         cmd = [
             bin,
@@ -505,6 +607,8 @@ def build_stream_cmd(
         ]
         if model:
             cmd += ["--model", model]
+        if effort:
+            cmd += ["--effort", effort]
         return cmd
 
     cmd = [bin, "-p", "--output-format", "stream-json", "--trust"]

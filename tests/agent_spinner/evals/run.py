@@ -8,7 +8,7 @@ script into a scratch home, runs one or more vendor-resolved print-mode turns
 that load agent_spinner, records `artefacts_read_from_micro_deployment`, then
 grades the filesystem, the roster, the briefs, and the response markers with
 grade.sh. The worker runs on Cursor by default (`agent -p`, model `auto`);
-`--vendor claude` (model `sonnet`) runs where Claude is needed or asked for,
+`--vendor claude` (model `opus` at `high` effort) runs where Claude is needed or asked for,
 and `--model ''` inherits the vendor CLI default.
 
 Three runner modes sit beside the ordinary single-turn eval. An eval with
@@ -43,7 +43,7 @@ own work never does.
 Usage:
     python3 tests/agent_spinner/evals/run.py [eval_id ...]
       # default: every `id` in evals.json, derived at startup
-      [--vendor claude|cursor] [--model sonnet|auto|'']
+      [--vendor claude|cursor] [--model opus|auto|''] [--effort high|<level>|'']
       [--workers 4] [--timeout 900] [--worker-bin <bin>]
       [--force] [--no-cache]
 """
@@ -409,6 +409,7 @@ class EvalOutcome:
     escape: list[str] = dataclasses.field(default_factory=list)
     cache_key: str | None = None
     model: str = ""
+    effort: str = ""
     duration_s: float = 0.0
     worker_rc: int = 0
     grading_output: str = ""
@@ -611,6 +612,7 @@ def preflight_resume(
                 vendor_name=resolved.vendor,
                 bin_name=resolved.bin,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 prompt=(
                     "Remember this token for the next turn: "
                     f"{token}. Reply with exactly: TOKEN_STORED"
@@ -629,6 +631,7 @@ def preflight_resume(
                 vendor_name=resolved.vendor,
                 bin_name=resolved.bin,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 prompt=(
                     "What token did I give you in the previous turn? "
                     "Reply with the token alone."
@@ -696,6 +699,7 @@ def run_one(
             return outcome
         workdir = staged["sandbox_proj"]
         model_label = resolved.worker_model or "<inherit>"
+        worker_effort_label = resolved.worker_effort or "<inherit>"
         staged_agent_names = [
             resolve_agent_path(rel).stem for rel in harness.get("agents") or []
         ]
@@ -706,6 +710,7 @@ def run_one(
                 source_roots=source_roots_for(harness),
                 harness_dir=THIS,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 eval_id=eval_id,
                 prompt=cache_prompt_value(
                     staged["prompt"], plan, worker_version, eval_id
@@ -728,7 +733,8 @@ def run_one(
                     outcome.cached = True
                     outcome.cached_detail = (
                         f"(graded {hit.get('graded_at', '?')}, "
-                        f"model={hit.get('model', '?')}) — skipped "
+                        f"model={hit.get('model', '?')}, "
+                        f"effort={hit.get('effort', '?')}) — skipped "
                         f"{resolved.config.label}; --force to re-run"
                     )
                     return outcome
@@ -745,7 +751,7 @@ def run_one(
 
         print(
             f"  [{eval_id}] running {resolved.config.label} "
-            f"(model={model_label}{suffix}) ...",
+            f"(model={model_label}, effort={worker_effort_label}{suffix}) ...",
             flush=True,
         )
         started_at = time.time()
@@ -781,6 +787,7 @@ def run_one(
                     vendor_name=resolved.vendor,
                     bin_name=resolved.bin,
                     model=resolved.worker_model,
+                    effort=resolved.worker_effort,
                     prompt=first_prompt,
                     deploy=md,
                     timeout=timeout,
@@ -838,6 +845,7 @@ def run_one(
                             vendor_name=resolved.vendor,
                             bin_name=resolved.bin,
                             model=resolved.worker_model,
+                            effort=resolved.worker_effort,
                             prompt=second_prompt,
                             deploy=md,
                             timeout=timeout,
@@ -881,6 +889,7 @@ def run_one(
             "worker_rc": rc,
             "claude_rc": rc,
             "model": model_label,
+            "effort": worker_effort_label,
             "disallowed_tools": list(plan.classes),
             "withheld_by": dict(plan.withheld_by),
             "withheld_classes": list(plan.classes),
@@ -915,6 +924,7 @@ def run_one(
         outcome.completed = completed
         outcome.passed = passed
         outcome.model = model_label
+        outcome.effort = worker_effort_label
         outcome.duration_s = duration_s
         outcome.worker_rc = rc
         outcome.grading_output = grade.stdout + grade.stderr
@@ -1039,6 +1049,7 @@ def _execute(
                 outcome.cache_key,
                 passed=outcome.passed,
                 model=outcome.model,
+                effort=outcome.effort,
                 duration_s=outcome.duration_s,
                 worker_rc=outcome.worker_rc,
                 grading_output=outcome.grading_output,
@@ -1076,6 +1087,7 @@ def main() -> int:
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
     micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
     worker_version = read_worker_version(resolved.bin)
 
@@ -1085,7 +1097,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
+        f"model: {model_label}; "
+        f"effort: {worker_effort_label}; workers: {args.workers}; evals: {ids}"
     )
 
     resume_preflight: tuple[bool, str] | None = None
@@ -1121,6 +1134,7 @@ def main() -> int:
     summary = {
         "run_dir": str(run_dir),
         "model": model_label,
+        "effort": worker_effort_label,
         "workers": args.workers,
         "passed": sum(1 for _id, passed, _cached in rows if passed),
         "total": len(rows),

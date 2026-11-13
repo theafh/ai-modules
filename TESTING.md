@@ -84,11 +84,12 @@ scenario through the runner's vendor switch. The Cursor worker is the default
 for those runs because Cursor tests are cheaper and faster: development and
 iteration happen on it (`agent -p` on model `auto`), and its results stand on
 their own without a matching Claude run. The Claude worker (`claude -p` on
-`sonnet`) runs where a test exercises a Claude-specific feature, which the test
-names, under the parity rule in `## Running Tests`, and otherwise only when the
-human operator explicitly asks for a Claude run, which happens from time to
-time; an agent never runs Claude tests in the background. Pin the worker for a
-run so results stay comparable, and keep grading on the model-free grader.
+`opus` at high effort) runs where a test exercises a Claude-specific feature,
+which the test names, under the parity rule in `## Running Tests`, and otherwise
+only when the human operator explicitly asks for a Claude run, which happens
+from time to time; an agent never runs Claude tests in the background. Pin the
+worker for a run so results stay comparable, and keep grading on the model-free
+grader.
 
 ### Harness plugin packages
 
@@ -199,24 +200,25 @@ sandbox fails the same way, so it shows the sandbox's effect and says nothing
 about whether HEAD is broken.
 
 Run behavioural evals without `--vendor`. The default is the Cursor worker
-(`agent -p` with model `auto`), because Cursor tests are cheaper and faster
-than the Claude worker; the Claude-only harnesses default to Claude and stop
-with an error on an explicit `--vendor cursor`. An eval runs and grades the
-same way on Claude and Cursor, and a harness is vendor-specific only when it
-tests a vendor-specific feature, which it names. Pass `--vendor claude`
-(`claude -p` on `sonnet`) for an eval that needs such a feature and otherwise
-only when the operator has explicitly asked for a Claude run. Pass it on a
-Claude-only harness too, where it repeats the default, so every Claude run
-shows in its command. The verdict cache keys on the worker model, so a Cursor
-result and a Claude result stay separate evidence. Grading stays model-free on
-either worker.
+(`agent -p` with model `auto`), because Cursor tests are cheaper and faster than
+the Claude worker; the Claude-only harnesses default to Claude and stop with an
+error on an explicit `--vendor cursor`. An eval runs and grades the same way on
+Claude and Cursor, and a harness is vendor-specific only when it tests a
+vendor-specific feature, which it names. Pass `--vendor claude` (`claude -p` on
+`opus` at high effort) for an eval that needs such a feature and otherwise only
+when the operator has explicitly asked for a Claude run. Pass it on a
+Claude-only harness too, where it repeats the default, so every Claude run shows
+in its command. The verdict cache keys on the worker model and effort, so a
+Cursor result, a Claude result, and Claude results at different efforts stay
+separate evidence. Grading stays model-free on either worker.
 
 Trigger evals answer a different question, whether a skill's `description:`
 loads it on a realistic message. They run on both vendors, on Cursor by
 default, through
 `python3 tests/trigger_evals/run.py --eval-set <set> --skill <name> --baseline <prior-run>`.
-Pass a baseline recorded on the same vendor; a cross-vendor baseline writes the
-results without a comparison and exits non-zero naming both vendors.
+Pass a baseline recorded on the same vendor, worker model, and worker effort; a
+baseline that differs in any of them writes the results without a comparison
+and exits non-zero naming both values.
 
 ## Re-run Economy
 

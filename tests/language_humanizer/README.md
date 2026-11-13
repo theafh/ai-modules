@@ -128,10 +128,11 @@ survived.
 
 Model policy follows the tree-wide convention in `tests/CLAUDE.md` /
 `tests/AGENTS.md` via `--vendor`: the skill under test runs on `auto` (Cursor)
-or the latest `sonnet` (Claude). The recorded measurement runs on Cursor, per
-`TESTING.md`, and it stands without a matching Claude run. A Claude-pinned
-sample runs under the same isolation contract, and only when the operator
-explicitly asks for one. The judge uses `auto` on Cursor and inherits
-the default model on Claude, so it is no longer pinned to the worker model.
+or the latest `opus` at high effort (Claude). The recorded measurement runs on
+Cursor, per `TESTING.md`, and it stands without a matching Claude run. A
+Claude-pinned sample runs under the same isolation contract, and only when the
+operator explicitly asks for one. The judge uses `auto` on Cursor and `opus` at
+`xhigh` effort on Claude, from the vendor's judge settings rather than the
+worker's.
 Other harnesses keep their meta level model-free because their grading is
 fully deterministic.

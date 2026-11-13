@@ -47,8 +47,8 @@ files.
 | `git_checkout/` | `git_checkout` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (branch resolution, the no-prune fetch, the ambiguity hold, both miss causes, both dirty-worktree branches) plus the eval runner's stop on a failed or empty stage and the inert-worker grader pin + `evals/` behavioral evals run through `evals/run.py` (stage → vendor worker → grade) in the shared `tests/lib/eval_runner` pool. |
 | `git_review/` | `git_review` | Pattern A (skill-creator-aligned) | `script_tests/` bundled-script unit tests over staged clones with real remotes (the fetch-before-diff order, the two commit walks, base-side versions of deleted files, the test merge, the head-vs-upstream relationship behind the fast-forward decision, stub-`gh` thread and thread-comment pagination, the heading-range helper, the size profile with its line counts, its conflicted files, and its binary-path listing with renamed and copied files under their new paths and a renamed file classified by its new path, and its share counting a vendored binary once, and the located secret-scan hits, Compose, YAML, Go `:=`, and suffixed and camelCase key-name assignments among them, with the manual-fallback blocks run under bash and zsh) plus the eval runner's stop on a failed or empty stage and the inert-worker grader pin + `evals/` behavioral evals over 36 fixtures run through `evals/run.py` (stage → vendor worker → grade) in the shared `tests/lib/eval_runner` pool. |
 | `git_auto_review/` | `git_auto_review` | Pattern A (skill-creator-aligned) | `script_tests/` drives the five bundled scripts (relay init with the staleness clear and the marked preseed pairs, the ledger runner's exit and per-line contract, the round-1 pre-fix artefacts `pre-fix.patch`, `pre-fix.untracked.tar`, and `pre-fix.ignored.manifest` and the once-only baseline pair, the scripted round diff (`run_round_diff.sh`) over the pre-fix state, and the Restore procedure reproducing the captured worktree with the index untouched) plus the static skill and agent contracts, the Makefile `.git_auto_review` prune, the shared isolation allowlist, and the inert-worker grader pin + `evals/` behavioral evals over staged git fixtures via `evals/run.py`, with a serial nested-loop set run one job at a time. |
-| `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract and the eval runner's stop on a failed or empty stage in `script_tests/` and the grader unit tests in `evals/test_grade.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on the default Cursor worker, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
-| `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. `evals/test_run.py` checks the style-route preflight and the runner's stop on a failed or empty stage; `evals/test_grade.py` proves an empty chat delivery makes `grade.py` exit non-zero. |
+| `language_humanizer/` | `language_humanizer` | Pattern A (prose-only skill) | `run_all.sh` drives the static SKILL.md / registration contract and the eval runner's stop on a failed or empty stage in `script_tests/`, the grader unit tests in `evals/test_grade.py`, and the judge-command unit tests in `evals/test_judge.py`; `evals/` runs 3 scenarios × fixed 5-pass denominator, each pass and judge call isolated through `tests/lib/worker_isolation.py` and recorded on the default Cursor worker, graded by deterministic `grade.py` (word counts, ledger items, prose shape) + refute-biased `judge.py`. |
+| `natural_language/` | `natural-language` | Pattern A (behavioral only) | 2 scenarios × fixed 5-pass denominator; deterministic `grade.py` (word count, pronoun openings, list-or-colon series, em dash, canary/shadow-share first-use gloss, chat length) + refute-biased `judge.py` for four source relations and shape. `evals/test_run.py` checks the style-route preflight and the runner's stop on a failed or empty stage; `evals/test_grade.py` proves an empty chat delivery makes `grade.py` exit non-zero; `evals/test_judge.py` proves the judge command carries the resolved judge model and effort. |
 | `task/` | `task` (family hub) | Pattern A (skill-creator-aligned) | `script_tests/run.sh` unit-tests the bundled `lint.py`, `discover_tasks.sh`, and `init_tasks.sh`; `script_tests/contract_run.sh` asserts the family contract across the hub, its siblings, and the family agents; `evals/test_run.py` checks that no eval grading the sandbox's whole `git status` declares an artefact the micro-deployment writes into the sandbox project, and that the runner stops on a failed or empty stage; `script_tests/run.sh` also carries the inert-worker grader pin; `evals/` holds a behavioral eval per family member, and the runner passes the captured response to the grader through `RESPONSE_FILE`. `run_all.sh` drives the two script runners and `evals/test_run.py`. |
 | `task_create/` | `task_create` | Pattern A (skill-creator-aligned) | `script_tests/run.sh` checks `evals/grade.sh` verdicts on staged fixtures carrying chosen task bodies, every fixture's git identity, and the eval runner's stop on a failed or empty stage; `evals/test_run.py` pins the parallel surface (`--workers` defaults to 4, `evals.json` id order, the `tests/task_create/workspace` run root, the `timing.json` fields the measurement reads, concurrent dispatch through `tests/lib/eval_runner.run_jobs`) and proves the host guard under two overlapping real jobs; no `run_all.sh`, so run `bash tests/task_create/script_tests/run.sh` and `python3 tests/task_create/evals/test_run.py` directly. Four staged evals over the base **Decide or label** rule and the `<prior_art>` Novel class as the create path applies them (`reconcile-recorded`, `labeled-why-open`, `guardrail-bound-surface`, and `related-precedent-novel`); the bundled scripts it drives are covered under `task/script_tests/`. |
 | `task_fix/` | `task_fix` | Pattern A (skill-creator-aligned) | `script_tests/run.sh` checks `evals/grade.sh` on staged fixtures and chosen responses, and the eval runner's stop on a failed or empty stage; `evals/test_run.py` pins the parallel surface (`--workers` defaults to 4, `evals.json` id order, the `tests/task_fix/workspace` run root, the `timing.json` fields the measurement reads, concurrent dispatch through `tests/lib/eval_runner.run_jobs`) and proves the host guard under two overlapping real jobs; no `run_all.sh`, so run `bash tests/task_fix/script_tests/run.sh` and `python3 tests/task_fix/evals/test_run.py` directly. Four staged evals over the base `<lint>` **Repeated-link react protocol**: regroup the live account and leave the archived body quiet, gather a reference page's current state and its edit into one passage, surface a gathering that would leave an Acceptance item nothing to measure, and name a repeat inside one paragraph again in plain text there. Grades the task file's bytes and the run's per-finding disposition line. |
@@ -73,7 +73,7 @@ under Pattern B.
 These are the things that bit me in practice. They apply to every
 harness here regardless of pattern.
 
-### Model policy: `--vendor` selects the worker; graders stay inherited or model-free
+### Model policy: `--vendor` selects the worker and the judge; deterministic graders stay model-free
 
 Every harness that runs a skill as a subprocess goes through
 `tests/lib/vendor.py`. The parity rule in TESTING.md's `## Running Tests`
@@ -90,21 +90,33 @@ too, although they default to Claude and stop with an error on an explicit
 `--vendor cursor`. Any other Claude run, such as a whole suite on Claude as a
 compatibility sample, happens only after the operator explicitly asks for one
 in the current session. An agent never runs Claude tests in the background.
-Do not pin dated ids such as `claude-sonnet-4-6` — Claude uses the latest
-`sonnet` alias; Cursor uses `auto`.
+Do not pin a dated model id: Claude uses the latest `opus` alias, and Cursor
+uses `auto`.
 
 | Role | `--vendor claude` | `--vendor cursor` |
 | --- | --- | --- |
 | Worker binary | `claude -p` | `agent -p` |
-| Worker model | `sonnet` (latest alias) | `auto` |
-| Judge / meta LLM | inherit (omit `--model`) | `auto` |
+| Worker model | `opus` (latest alias) at high effort (`--effort high`) | `auto`, no effort setting |
+| Judge / meta LLM | `opus` at `xhigh` effort (`--effort xhigh`) | `auto`, no effort setting |
 | Deterministic graders | model-free | model-free |
 | Second turn | `--session-id` on the first turn, `--resume` with the same id on later turns | no session flag on the first turn, `--resume` with the first stream's `session_id` on later turns |
 | Staged agents | plugin roles in the scratch config directory's `agents/`, fixture agents in the sandbox project's `.claude/agents/` | both in the sandbox project's `.cursor/agents/` |
 | Withheld tools | shell and write by `--disallowedTools`; spawn declared absent in the prompt | shell and write by deny entries in `proj/.cursor/cli.json`; spawn declared absent in the prompt |
 
-`--model` / `--judge-model` override the vendor default; `--model ''`
-inherits the CLI default. `--worker-bin` overrides the binary;
+At high effort a Claude eval runs for minutes: the 2026-11-13 measurements
+recorded in `tests/agent_spinner/evals/README.md` ran from 182 to over 500
+seconds per eval. An agent whose tool calls have a wall-clock limit therefore
+runs few evals per call, and it reports an eval that outlasts one call as
+inconclusive. A full Claude suite costs about one point of the five-hour usage
+window per eval, so it spans more than one window. A run that pauses at the
+operator's quota threshold resumes after the reset by re-running the same
+command, which replays the verdicts already cached.
+
+`--model` / `--judge-model` and `--effort` / `--judge-effort` override the
+vendor defaults; `--model ''` inherits the CLI default model, and
+`--effort ''` / `--judge-effort ''` omit the flag so the CLI applies its own
+effort. Only Claude has an effort control, so an explicit effort on Cursor
+stops the run with an error naming Claude. `--worker-bin` overrides the binary;
 `--claude-bin` remains a deprecated alias. `natural_language/` exercises
 Claude output-style selection, so it is the one Claude-only surface: it
 defaults to Claude and rejects an explicit `--vendor cursor` until a Cursor
@@ -289,8 +301,8 @@ when bash's own parse confirms the split and the id-binding preconditions hold
 the binding outside a `-`-literal guard, every sourced file resolved and free
 of rebinding, no `nocasematch`, no re-invocation of the grader), and as the
 whole file otherwise; the shared
-helpers that decide every cached verdict; the worker model; the eval id; and
-the prompt. Skill-tree hashes are whole-tree by default. An eval may carry an
+helpers that decide every cached verdict; the worker model and effort; the
+eval id; and the prompt. Skill-tree hashes are whole-tree by default. An eval may carry an
 optional `dependencies` map in `evals.json` (skill-root basename → `SKILL.md`
 stage element names). When a root's basename appears there, the key hashes
 each listed stage body from that root's `SKILL.md` and omits undeclared
@@ -893,7 +905,7 @@ directly to the deployed skill.
 
 ```text
 tests/trigger_evals/results/<skill>/<timestamp>/
-├── results.json   # {skill_name, mode, family, vendor, worker_model, results: [...], summary: {...}}
+├── results.json   # {skill_name, mode, family, vendor, worker_model, worker_effort, results: [...], summary: {...}}
 └── run.log        # config + progress + per-query [P|.][F|.] grid
 ```
 
@@ -959,10 +971,17 @@ python3 tests/trigger_evals/run.py \
   --baseline tests/trigger_evals/results/task/<prior-timestamp>
 ```
 
-Pass a baseline recorded on the same vendor. A cross-vendor baseline, or one
-with no `vendor` field (which reads as Claude), writes this run's results
-without a comparison and exits non-zero naming both vendors. `results.json`
-carries `vendor` and `worker_model` at the top level.
+Pass a baseline recorded on the same vendor, worker model, and worker effort.
+A cross-vendor baseline, or one with no `vendor` field (which reads as
+Claude), writes this run's results without a comparison and exits non-zero
+naming both vendors. A baseline whose `worker_model` or `worker_effort`
+differs from the run's does the same and names both values. A baseline with
+no `worker_effort` reads as the empty effort, so a Cursor baseline still
+compares against a Cursor run, and one with no `worker_model` reads as
+`unknown`, which matches no run. `results.json` carries `vendor`,
+`worker_model`, and `worker_effort` at the top level. A deployed run records
+its resolved effort, and a `--force-uuid` run records the empty effort,
+because skill-creator's runner behind it applies none.
 
 `--baseline` accepts the prior run's directory or its `results.json`.
 The run then diffs per query on the shared cohort and reports each

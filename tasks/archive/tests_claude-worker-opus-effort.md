@@ -2,9 +2,11 @@
 description: "Run Claude eval workers on the latest Opus at high effort and LLM judges on Opus at xhigh effort, with effort a vendor setting that reaches every command, cache key, run record, and baseline check."
 scope: tests
 created: 2026-11-13T09:25:47Z
-updated: 2026-11-13T21:49:25Z
-status: ready
+updated: 2026-11-13T23:39:34Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Run Claude evals on Opus at high effort, with effort in commands, cache keys, and baselines
@@ -19,7 +21,7 @@ The switch matters because `sonnet` verdicts measure the model's shortcuts rathe
 
 - **Vendor settings today.** `tests/lib/vendor.py` holds one `VendorConfig` per vendor in `_CONFIGS`. The Claude entry carries `worker_model="sonnet"` and `judge_model=""` (inherit the CLI default), and the Cursor entry carries `auto` for both. `add_vendor_arguments` offers `--model` and, when called with `with_judge`, `--judge-model`, and `resolve` builds a `Resolved` from them. No effort setting exists. The Claude branches of `build_print_cmd` and `build_stream_cmd` each append `--model` and nothing else.
 - **The verdict cache.** `content_key` in `tests/lib/eval_cache.py` takes a `model=` keyword and stores `model` in the cache record. Every runner that imports the cache passes `model=resolved.worker_model`; `rg -l "content_key\(" tests --glob '**/evals/run.py'` finds them. The unit tests that call `content_key` directly, found by `rg -l "content_key\(" tests --glob 'test_*.py'`, pass a literal model.
-- **The judges.** `tests/language_humanizer/evals/run.py` and `tests/natural_language/evals/run.py` pass `resolved.judge_model` to their judge calls, which `rg -n "judge_model" tests/language_humanizer tests/natural_language` finds. Neither harness imports the cache. [The language_humanizer shared-pool task](tests_language-humanizer-shared-pool.md) moves that harness's pass loop, judge call included, into the shared pool, so both tasks edit the judge call path in `tests/language_humanizer/evals/run.py`. Neither depends on the other, and whichever lands second carries the judge effort through the call as it then stands.
+- **The judges.** `tests/language_humanizer/evals/run.py` and `tests/natural_language/evals/run.py` pass `resolved.judge_model` to their judge calls, which `rg -n "judge_model" tests/language_humanizer tests/natural_language` finds. Neither harness imports the cache. [The language_humanizer shared-pool task](../tests_language-humanizer-shared-pool.md) moves that harness's pass loop, judge call included, into the shared pool, so both tasks edit the judge call path in `tests/language_humanizer/evals/run.py`. Neither depends on the other, and whichever lands second carries the judge effort through the call as it then stands.
 - **Trigger evals.** `tests/trigger_evals/run.py` resolves its deployed-mode worker through the vendor settings and writes `worker_model` into `results.json`. Its `--baseline` check refuses a baseline from another vendor and reports `baseline vendor mismatch`, but it compares no model, so a Claude run on `opus` would diff silently against a Claude baseline recorded on `sonnet`. Its `--force-uuid` path hands `--model` to skill-creator's own runner.
 - **The CLI.** `claude` 2.1.289 accepts `--model opus`, which its stream-json init event resolves to the latest Opus id, and `--effort low|medium|high|xhigh|max`, which it also accepts in print mode. Neither the init event (`per_turn_effort_active` reads `true` with and without the flag) nor `--debug` output names the effective level, but the low-effort and high-effort probe runs below behaved differently on the same evals, which shows the flag takes effect. The binary also reads a `CLAUDE_CODE_EFFORT_LEVEL` environment variable and an `effortLevel` setting.
 - **Measurements behind the defaults (2026-11-13).** Every run used `claude` 2.1.289 on agent_spinner at commit `c592b42`, and their run directories sit in local scratch space that no clone carries:

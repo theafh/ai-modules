@@ -254,6 +254,11 @@ check(not has_score_fields(results2 / "results.json"),
 # Stubbed uuid payload has an empty summary; main treats missing passed/total
 # as 0==0, so do not assert exit 0. Exit 2 is the preflight/unavailable path.
 check(rc2 != 2, "force-uuid: stubbed uuid path is not a preflight failure")
+uuid_record = json.loads((results2 / "results.json").read_text())
+check(uuid_record.get("worker_effort") == "",
+      "force-uuid: results.json records the empty worker_effort the uuid path applies")
+check(uuid_record.get("worker_model") == "opus",
+      "force-uuid: results.json still records the resolved worker_model")
 
 # (3) skill present under staged HOME → deployed stub reached
 home3 = stage_home(".claude")
@@ -405,9 +410,9 @@ def run_hermetic(vendor_name: str, root: str):
     )
     return home, results, log, rc, err
 
-for vendor_name, root, model in (
-    ("claude", ".claude", "sonnet"),
-    ("cursor", ".cursor", "auto"),
+for vendor_name, root, model, effort in (
+    ("claude", ".claude", "opus", "high"),
+    ("cursor", ".cursor", "auto", ""),
 ):
     home, results, log, rc, err = run_hermetic(vendor_name, root)
     data = json.loads((results / "results.json").read_text())
@@ -418,6 +423,10 @@ for vendor_name, root, model in (
           f"{vendor_name}: results.json carries its vendor")
     check(data["worker_model"] == model,
           f"{vendor_name}: results.json carries its worker model")
+    check(data.get("worker_effort") == effort,
+          f"{vendor_name}: results.json carries its resolved worker_effort {effort!r}")
+    check(f"effort:         {effort or '<inherit>'}" in run_log,
+          f"{vendor_name}: run.log names the worker effort")
     check(f"{root}/skills/demo" in run_log,
           f"{vendor_name}: the deployed-mode line names {root}/skills/demo")
     check(f"workers:        {m.vendor.DEFAULT_PARALLEL_WORKERS}" in run_log,
@@ -452,6 +461,20 @@ for vendor_name, root, model in (
         not any(flag in entry["argv"] for flag in ("--permission-mode", "--force", "--yolo"))
         for entry in lines
     ), f"{vendor_name}: no argv carries a permission override")
+    if vendor_name == "claude":
+        check(bool(lines) and all(
+            "--effort" in entry["argv"]
+            and entry["argv"][entry["argv"].index("--effort") + 1] == "high"
+            for entry in lines
+        ), "claude: every deployed worker argv carries --effort high")
+        check(bool(lines) and all(
+            "--model" in entry["argv"]
+            and entry["argv"][entry["argv"].index("--model") + 1] == "opus"
+            for entry in lines
+        ), "claude: every deployed worker argv carries --model opus")
+    else:
+        check(all("--effort" not in entry["argv"] for entry in lines),
+              "cursor: no deployed worker argv carries --effort")
     if vendor_name == "cursor":
         ok = True
         for entry in lines:
@@ -520,8 +543,15 @@ check(uuid_rc != 0 and "Claude-only" in uuid_err and "UUID-proxy" in uuid_err,
 check(not uuid_log.exists() or uuid_log.read_text() == "",
       "cursor --force-uuid: starts no worker")
 
-# --- baseline vendor rule --------------------------------------------------
-def baseline_run(current_vendor: str, baseline_vendor: str | None):
+# --- baseline vendor, model, and effort rule ------------------------------
+#
+# Every scenario that expects a comparison carries the run's worker_model in its
+# baseline, and its worker_effort wherever the run's resolved effort is
+# non-empty. MISSING leaves a field out of the baseline.
+MISSING = object()
+
+def baseline_run(current_vendor: str, baseline_vendor, worker_model=MISSING,
+                 worker_effort=MISSING):
     root = ".cursor" if current_vendor == "cursor" else ".claude"
     home = stage_home(root)
     deploy_skill(home, root, hermetic_src)
@@ -530,6 +560,10 @@ def baseline_run(current_vendor: str, baseline_vendor: str | None):
          "runs": 1, "precise_pass": True}]}
     if baseline_vendor is not None:
         base["vendor"] = baseline_vendor
+    if worker_model is not MISSING:
+        base["worker_model"] = worker_model
+    if worker_effort is not MISSING:
+        base["worker_effort"] = worker_effort
     base_dir = write_baseline(base)
     results = Path(tempfile.mkdtemp()) / "out"
     log = Path(tempfile.mkdtemp()) / "stub.log"
@@ -563,9 +597,43 @@ check(rc != 0 and "claude" in err and "cursor" in err,
 check(data["vendor"] == "claude" and "baseline_comparison" not in data,
       "baseline: the mismatched Claude run keeps its vendor and no comparison")
 
-rc, err, data = baseline_run("claude", None)
+rc, err, data = baseline_run("claude", None, worker_model="opus",
+                             worker_effort="high")
 check("baseline_comparison" in data,
       "baseline: a Claude run given a missing-vendor baseline compares")
+
+rc, err, data = baseline_run("claude", "claude", worker_model="opus",
+                             worker_effort="high")
+check(rc == 0 and "baseline_comparison" in data,
+      "baseline: a Claude baseline on the run's model and effort compares")
+
+rc, err, data = baseline_run("claude", "claude", worker_model="sonnet",
+                             worker_effort="high")
+check(rc != 0 and "'sonnet'" in err and "'opus'" in err,
+      "baseline: another worker_model exits non-zero naming both models")
+check("baseline_comparison" not in data and data["worker_model"] == "opus",
+      "baseline: the other-model run writes results with no comparison")
+
+rc, err, data = baseline_run("claude", "claude", worker_model="opus",
+                             worker_effort="medium")
+check(rc != 0 and "'medium'" in err and "'high'" in err,
+      "baseline: another worker_effort exits non-zero naming both efforts")
+check("baseline_comparison" not in data and data["worker_effort"] == "high",
+      "baseline: the other-effort run writes results with no comparison")
+
+rc, err, data = baseline_run("claude", "claude", worker_effort="high")
+check(rc != 0 and "'unknown'" in err and "'opus'" in err,
+      "baseline: a missing worker_model reads as unknown, exits non-zero, and names both")
+check("baseline_comparison" not in data,
+      "baseline: the missing-model run writes results with no comparison")
+
+rc, err, data = baseline_run("claude", "claude", worker_model="opus")
+check(rc != 0 and "worker_effort ''" in err and "'high'" in err,
+      "baseline: a missing worker_effort reads as empty and mismatches a high-effort run")
+
+rc, err, data = baseline_run("cursor", "cursor", worker_model="auto")
+check(rc == 0 and "baseline_comparison" in data,
+      "baseline: a Cursor baseline with worker_model auto and no worker_effort compares")
 
 # --- escape guard: a worker writing into the checkout fails the run --------
 escape_repo = Path(tempfile.mkdtemp())

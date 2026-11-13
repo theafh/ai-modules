@@ -24,11 +24,14 @@ Usage:
       --skill wiki \\
       [--vendor {claude,cursor}] \\
       [--family wiki,wiki_import,wiki_fix,wiki_wrapup] \\
-      [--model sonnet|auto|''] \\
+      [--model opus|auto|''] [--effort high|<level>|''] \\
       [--runs-per-query 3] [--timeout 45] [--workers 4]
 
 `--vendor` defaults to `cursor`. `--workers` defaults to
-`vendor.DEFAULT_PARALLEL_WORKERS`.
+`vendor.DEFAULT_PARALLEL_WORKERS`. A deployed-mode Claude worker runs on the
+vendor's worker model and effort (`opus` at `high`); `--force-uuid` hands its
+run to skill-creator's own runner, which applies no effort, so that run records
+the empty effort.
 
 Outputs `results.json` and `run.log` under
 `tests/trigger_evals/results/<skill>/<timestamp>/`.
@@ -369,6 +372,7 @@ def run_one_deployed(
             vendor=resolved.vendor,
             bin=resolved.bin,
             model=resolved.worker_model,
+            effort=resolved.worker_effort,
             query=query,
             workspace=str(worker_dir) if resolved.vendor == "cursor" else None,
         )
@@ -560,6 +564,29 @@ def run_uuid_fallback(eval_set_path: Path, source_skill_path: Path,
     return parsed
 
 
+def baseline_worker_mismatch(base: dict, current: dict) -> str | None:
+    """Name a worker model or effort difference between baseline and run.
+
+    A baseline that omits `worker_effort` reads as the empty effort, and one
+    that omits `worker_model` reads as `unknown`, which differs from every
+    resolved model. Both sides normalize the same way, so a Cursor baseline
+    that carries `worker_model` `auto` and no effort still compares against a
+    Cursor run. Returns None when both normalized values match.
+    """
+    base_model = base.get("worker_model")
+    base_model = "unknown" if base_model is None else str(base_model)
+    base_effort = str(base.get("worker_effort") or "")
+    cur_model = str(current.get("worker_model") or "")
+    cur_effort = str(current.get("worker_effort") or "")
+    if base_model == cur_model and base_effort == cur_effort:
+        return None
+    return (
+        f"recorded with worker_model {base_model!r} and worker_effort "
+        f"{base_effort!r}, this run uses worker_model {cur_model!r} and "
+        f"worker_effort {cur_effort!r}"
+    )
+
+
 def _load_results(path: Path) -> dict:
     """Load a results.json given either that file or its run directory."""
     p = path if path.is_file() else path / "results.json"
@@ -719,7 +746,7 @@ def main() -> int:
 
     log_path = out_dir / "run.log"
     results_path = out_dir / "results.json"
-    baseline_mismatch: tuple[str, str] | None = None
+    baseline_mismatch: str | None = None
 
     with log_path.open("w") as log:
         log.write(f"eval_set:       {eval_set_path}\n")
@@ -730,6 +757,7 @@ def main() -> int:
         log.write(f"vendor:         {resolved.vendor}\n")
         log.write(f"command:        {resolved.config.label}\n")
         log.write(f"model:          {resolved.worker_model or '<inherit>'}\n")
+        log.write(f"effort:         {resolved.worker_effort or '<inherit>'}\n")
         log.write(f"runs_per_query: {args.runs_per_query}\n")
         log.write(f"timeout:        {args.timeout}\n")
         log.write(f"workers:        {args.workers}\n")
@@ -756,6 +784,11 @@ def main() -> int:
 
         output["vendor"] = resolved.vendor
         output["worker_model"] = resolved.worker_model
+        # The uuid-fallback runner applies no effort, so its record names the
+        # empty effort rather than an effort that run never applied.
+        output["worker_effort"] = (
+            resolved.worker_effort if output["mode"] == "deployed" else ""
+        )
 
         baseline_cmp = None
         if args.baseline and output["mode"] == "deployed":
@@ -763,15 +796,21 @@ def main() -> int:
                 base_path = Path(args.baseline).resolve()
                 base = _load_results(base_path)
                 base_vendor = base.get("vendor", "claude")
+                worker_mismatch = baseline_worker_mismatch(base, output)
                 if base_vendor != output["vendor"]:
-                    baseline_mismatch = (base_vendor, output["vendor"])
-                    msg = (
+                    baseline_mismatch = (
                         f"baseline vendor mismatch: baseline {base_path} was "
                         f"recorded on {base_vendor}, this run is on "
                         f"{output['vendor']}. Comparison skipped."
                     )
-                    log.write("\nWARNING: " + msg + "\n")
-                    print(f"WARNING: {msg}", file=sys.stderr)
+                elif worker_mismatch is not None:
+                    baseline_mismatch = (
+                        f"baseline worker mismatch: baseline {base_path} was "
+                        f"{worker_mismatch}. Comparison skipped."
+                    )
+                if baseline_mismatch is not None:
+                    log.write("\nWARNING: " + baseline_mismatch + "\n")
+                    print(f"WARNING: {baseline_mismatch}", file=sys.stderr)
                 else:
                     baseline_cmp = compare_to_baseline(output, base_path)
                     output["baseline_comparison"] = baseline_cmp

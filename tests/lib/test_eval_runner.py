@@ -559,6 +559,7 @@ def test_write_run_artifacts() -> None:
             duration_s=1.25,
             worker_rc=0,
             model="auto",
+            effort="<inherit>",
         )
         check("writes response.txt",
               (eval_dir / "response.txt").read_text() == "worker out\n")
@@ -568,6 +569,8 @@ def test_write_run_artifacts() -> None:
         check("timing.json has worker_rc", timing["worker_rc"] == 0)
         check("timing.json has claude_rc", timing["claude_rc"] == 0)
         check("timing.json keeps eval_id", timing["eval_id"] == "eval-1")
+        check("timing.json carries effort beside model",
+              timing["model"] == "auto" and timing["effort"] == "<inherit>")
 
 
 def test_cache_skip_and_record() -> None:
@@ -584,6 +587,7 @@ def test_cache_skip_and_record() -> None:
             source_roots=[skill],
             harness_dir=harness,
             model="auto",
+            effort="",
             eval_id="e1",
             prompt="do it",
         )
@@ -598,12 +602,15 @@ def test_cache_skip_and_record() -> None:
             key,
             passed=True,
             model="auto",
+            effort="<inherit>",
             duration_s=2.0,
             worker_rc=0,
             grading_output="PASS\n",
             response_excerpt="hello",
         )
         check("cache record stores passed", recorded["passed"] is True)
+        check("cache record carries the effort it was given beside the model",
+              recorded["effort"] == "<inherit>" and recorded["model"] == "auto")
         hit_dir = root / "run" / "e1-hit"
         hit = eval_runner.cache_lookup(
             cache, "e1", key, hit_dir, force=False
@@ -615,6 +622,60 @@ def test_cache_skip_and_record() -> None:
             cache, "e1", key, root / "run" / "e1-force", force=True
         )
         check("force skips cache hit", forced is None)
+
+
+def test_fresh_and_replayed_timing_name_one_effort() -> None:
+    """A replayed eval names the effort a fresh run of it names.
+
+    For each resolved effort the runners can carry, one eval dir is written
+    fresh through ``write_run_artifacts`` and one is replayed through
+    ``write_replay_artifacts`` from the entry ``cache_record`` returned, with
+    the label every runner passes: ``"<inherit>"`` for the empty effort and
+    the level itself otherwise.
+    """
+
+    for resolved_effort, label in (("", "<inherit>"), ("high", "high")):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            cache = eval_cache.EvalCache(root / ".eval_cache")
+            fresh = root / "fresh" / "e1"
+            eval_runner.write_run_artifacts(
+                fresh,
+                stdout="out\n",
+                stderr="",
+                eval_id="e1",
+                duration_s=1.0,
+                worker_rc=0,
+                model="opus",
+                effort=resolved_effort or "<inherit>",
+            )
+            entry = eval_runner.cache_record(
+                cache,
+                "e1",
+                "key-" + label,
+                passed=True,
+                model="opus",
+                effort=resolved_effort or "<inherit>",
+                duration_s=1.0,
+                worker_rc=0,
+                grading_output="PASS\n",
+                response_excerpt="out",
+            )
+            check(f"cache_record keeps the model and effort ({label})",
+                  entry is not None and entry["model"] == "opus"
+                  and entry["effort"] == label)
+            replay = root / "replay" / "e1"
+            eval_cache.write_replay_artifacts(replay, entry or {})
+            fresh_timing = json.loads((fresh / "timing.json").read_text())
+            replay_timing = json.loads((replay / "timing.json").read_text())
+            check(
+                f"fresh and replayed timing.json carry the same effort ({label})",
+                fresh_timing["effort"] == replay_timing["effort"] == label,
+            )
+            check(
+                f"fresh and replayed timing.json carry the same model ({label})",
+                fresh_timing["model"] == replay_timing["model"] == "opus",
+            )
 
 
 def test_timeout_bytes_path() -> None:
@@ -700,6 +761,7 @@ def main() -> int:
     test_callable_owns_sandbox_staging()
     test_write_run_artifacts()
     test_cache_skip_and_record()
+    test_fresh_and_replayed_timing_name_one_effort()
     test_timeout_bytes_path()
     test_submission_order_summary()
     test_vendor_constant_unchanged()

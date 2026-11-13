@@ -2,11 +2,11 @@
 """Vendor-aware worker runner for the git_checkout behavioral evals.
 
 One vendor-resolved print-mode worker runs per eval. By default that is the
-Cursor worker (`agent -p`, model `auto`); `--vendor claude` (model `sonnet`)
-runs where Claude is needed or the operator asks for it, and `--model ''`
-inherits the vendor CLI default. Grading stays model-free: the deterministic
-`grade.sh`, plus the operator's reading of `response.txt` for the expectations
-grade.sh prints as `response` lines.
+Cursor worker (`agent -p`, model `auto`); `--vendor claude` (model `opus` at
+`high` effort) runs where Claude is needed or the operator asks for it, and
+`--model ''` inherits the vendor CLI default. Grading stays model-free: the
+deterministic `grade.sh`, plus the operator's reading of `response.txt` for the
+expectations grade.sh prints as `response` lines.
 
 Each eval is one job in the shared pool from `tests/lib/eval_runner.py`
 (`--workers`, default 4, each job with its own TMPDIR). Every job stages into
@@ -37,8 +37,8 @@ pass on the untouched sandbox an aborted run leaves behind.
 
 Usage:
     python3 tests/git_checkout/evals/run.py [eval_id ...]   # default: all
-      [--vendor claude|cursor] [--model sonnet|auto|''] [--worker-bin <bin>]
-      [--workers 4] [--timeout 300] [--force] [--no-cache]
+      [--vendor claude|cursor] [--model opus|auto|''] [--effort high|<level>|'']
+      [--worker-bin <bin>] [--workers 4] [--timeout 300] [--force] [--no-cache]
 """
 
 from __future__ import annotations
@@ -119,6 +119,7 @@ def cache_key(eval_id: str, prompt: str, resolved: vendor.Resolved) -> str:
         source_roots=source_roots_for(),
         harness_dir=THIS,
         model=resolved.worker_model,
+        effort=resolved.worker_effort,
         eval_id=eval_id,
         prompt=prompt,
         dependencies=eval_cache.dependencies_for(EVALS, eval_id),
@@ -254,6 +255,7 @@ def run_one(
     eval_dir = run_dir / eval_id
     eval_dir.mkdir(parents=True, exist_ok=True)
     model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
 
     key = cache_key(eval_id, prompt_text, resolved) if cache is not None else None
     hit = eval_runner.cache_lookup(cache, eval_id, key, eval_dir, force=force)
@@ -262,7 +264,7 @@ def run_one(
         print(
             f"  [{eval_id}] CACHED {verdict} "
             f"(graded {hit.get('graded_at', '?')}, "
-            f"model={hit.get('model', '?')}) — skipped "
+            f"model={hit.get('model', '?')}, effort={hit.get('effort', '?')}) — skipped "
             f"{resolved.config.label}; --force to re-run\n",
             flush=True,
         )
@@ -274,7 +276,7 @@ def run_one(
         workdir = staged["sandbox_repo"]
         print(
             f"  [{eval_id}] running {resolved.config.label} "
-            f"(model={model_label}) ...",
+            f"(model={model_label}, effort={worker_effort_label}) ...",
             flush=True,
         )
         started_at = time.time()
@@ -294,6 +296,7 @@ def run_one(
                 vendor_name=resolved.vendor,
                 bin_name=resolved.bin,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 prompt=prompt,
                 deploy=deploy,
                 timeout=timeout,
@@ -314,6 +317,7 @@ def run_one(
             duration_s=duration_s,
             worker_rc=rc,
             model=model_label,
+            effort=worker_effort_label,
             artefacts_read_from_micro_deployment=integrity,
             checkout_unread=checkout_unread,
             started_at=started_at,
@@ -368,6 +372,7 @@ def run_one(
                 key,
                 passed=passed,
                 model=model_label,
+                effort=worker_effort_label,
                 duration_s=duration_s,
                 worker_rc=rc,
                 grading_output=grading_output,
@@ -422,6 +427,7 @@ def main() -> int:
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
     prompts = eval_prompts()
 
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -430,7 +436,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
+        f"model: {model_label}; "
+        f"effort: {worker_effort_label}; workers: {args.workers}; evals: {ids}"
     )
     if cache is None:
         cache_mode = "off"

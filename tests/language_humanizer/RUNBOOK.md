@@ -44,7 +44,7 @@ python3 tests/language_humanizer/evals/run.py
 That is the deliverable run: three scenarios × five passes on the Cursor
 worker (`agent -p`, model `auto`), with the judge on `auto` as well, per
 `TESTING.md`. Pass `--vendor claude` for a Claude-pinned sample (`claude -p`
-on `sonnet`, judge on the inherited default model), and only after the
+on `opus` at high effort, judge on `opus` at `xhigh` effort), and only after the
 operator explicitly asks for one; record which vendor a result came from,
 because the two are separate evidence. The fifteen
 passes run four at a time (`--workers`, default 4), so budget a few minutes

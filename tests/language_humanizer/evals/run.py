@@ -45,8 +45,8 @@ Per scenario and pass the runner:
 3. Grades the staged project deterministically with `grade.py` (word counts,
    ledger items, bullet shape, harness integrity).
 4. Grades the qualitative assertions with `judge.py` using the vendor-resolved
-   judge policy: on Claude the default judge model inherits (`''`), while on
-   Cursor it defaults to `auto`.
+   judge policy: on Claude the judge runs `opus` at `xhigh` effort, while on
+   Cursor it runs `auto`, which takes no effort.
 5. Writes `response.txt` / `stderr.txt` / `timing.json` / `verdict.json` under
    `workspace/run-<ts>/<scenario>/pass-<n>/`, copies the finished sandbox to
    `pass-<n>/sandbox/` so `regrade.py` can re-grade it later, and removes the
@@ -59,8 +59,9 @@ isolation contract.
 Usage:
     python3 tests/language_humanizer/evals/run.py [scenario ...]
       [--passes 5] [--workers 4] [--vendor claude|cursor]
-      [--model sonnet|auto|''] [--timeout 600]
-      [--judge-model ''|auto|<override>] [--judge-timeout 300]
+      [--model opus|auto|''] [--effort high|<level>|''] [--timeout 600]
+      [--judge-model opus|auto|''] [--judge-effort xhigh|<level>|'']
+      [--judge-timeout 300]
       [--worker-bin <bin>] [--skip-judge]
 """
 
@@ -204,9 +205,10 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
             "this harness needs a checkout that carries the ai_editorial plugin"
         )
     worker_model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
 
     emit(f"  [{scenario} pass-{n}] running {resolved.config.label} "
-         f"(model={worker_model_label}) ...")
+         f"(model={worker_model_label}, effort={worker_effort_label}) ...")
     start = time.time()
     # The skill lands in a scratch home that hides the host's deployed skills,
     # and the prompt names that deployed path. The project (not the root) is
@@ -220,7 +222,9 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
                                       workdir=workdir, prompt=staged["prompt"])
         worker = micro_deploy.run_worker(
             vendor_name=resolved.vendor, bin_name=resolved.bin,
-            model=resolved.worker_model, prompt=prompt, deploy=md,
+            model=resolved.worker_model,
+            effort=resolved.worker_effort,
+            prompt=prompt, deploy=md,
             timeout=args.timeout, cwd=pathlib.Path(workdir),
             extra_args=worker_isolation.isolation_args(resolved.vendor),
         )
@@ -245,6 +249,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
             "worker_rc": rc,
             "claude_rc": rc,
             "model": worker_model_label,
+            "effort": worker_effort_label,
             "artefacts_read_from_micro_deployment": integrity_record,
             "checkout_unread": checkout_unread,
         },
@@ -271,7 +276,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
             scenario, pristine.read_text() if pristine.exists() else "",
             delivered_file.read_text() if delivered_file.exists() else "",
             stdout, resolved.vendor, resolved.bin, resolved.judge_model or "",
-            args.judge_timeout,
+            args.judge_timeout, effort=resolved.judge_effort or "",
         )
 
     assertions = {
@@ -410,8 +415,14 @@ def main() -> int:
     args = ap.parse_args()
     resolved = vendor.resolve(args, with_judge=True)
     worker_model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
     judge_model_label = (
-        "off" if args.skip_judge else (resolved.judge_model or "<inherit>")
+        "off"
+        if args.skip_judge
+        else (
+            f"{resolved.judge_model or '<inherit>'} "
+            f"at effort {resolved.judge_effort or '<inherit>'}"
+        )
     )
 
     scenarios = args.scenarios or SCENARIOS
@@ -425,7 +436,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"worker model: {worker_model_label}; judge: {judge_model_label}"
+        f"worker model: {worker_model_label}; worker effort: {worker_effort_label}; "
+        f"judge: {judge_model_label}"
     )
     print(f"Scenarios: {scenarios}; passes per scenario: {args.passes}\n")
 

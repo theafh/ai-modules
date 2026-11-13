@@ -208,6 +208,7 @@ def run_worker(
         vendor_name=resolved.vendor,
         bin_name=resolved.bin,
         model=resolved.worker_model,
+        effort=resolved.worker_effort,
         prompt=prompt,
         deploy=deploy,
         timeout=timeout,
@@ -403,6 +404,7 @@ def run_pass(
                 resolved.bin,
                 resolved.judge_model or "",
                 args.judge_timeout,
+                effort=resolved.judge_effort or "",
             )
 
         assertions = {

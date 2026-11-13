@@ -17,8 +17,9 @@ Behavioral runners share `tests/lib/vendor.py` and accept `--vendor {claude,curs
 (default `cursor`; the Claude-only harnesses default to `claude` and stop with an
 error on an explicit `--vendor cursor`), so run them without `--vendor` unless
 the run is on Claude. Claude
-workers use the latest `sonnet` alias; Cursor workers
-use `auto` via `agent -p`. Cursor is the project's measurement vendor because
+workers use the latest `opus` alias at high effort, and a Claude judge runs
+`opus` at `xhigh` effort; Cursor workers use `auto` via `agent -p`, with no
+effort setting. Cursor is the project's measurement vendor because
 its runs are cheaper and faster, so develop and iterate on it; it is fine to
 rely on Cursor results without running the Claude suites. A test that needs a
 Claude-specific feature runs on Claude with `--vendor claude` in its command,
@@ -182,8 +183,10 @@ files.
   (single-file directory, pseudo-XML lint, the description budget and its
   two router splits, dash-free prose, the named sections and fidelity
   rules, registration lockstep, and the eval runner's stop on a failed or
-  empty stage), and `evals/test_grade.py` proves the grader passes a
-  faithful rewrite and fails each lossy one; `run_all.sh` drives both. `evals/` runs 3 scenarios × a fixed 5-pass denominator,
+  empty stage), `evals/test_grade.py` proves the grader passes a
+  faithful rewrite and fails each lossy one, and `evals/test_judge.py`
+  proves the judge command carries the resolved judge model and effort;
+  `run_all.sh` drives all three. `evals/` runs 3 scenarios × a fixed 5-pass denominator,
   graded by a deterministic `grade.py` plus a refute-biased `judge.py`.
   Every pass and every judge call runs from an isolated root through
   `tests/lib/worker_isolation.py`, and the recorded measurement runs on
@@ -192,8 +195,9 @@ files.
 - **`natural_language/`**: Pattern A, behavioral only (the subject is an
   output style, so there is no `script_tests/`). `run_all.sh` drives the
   deterministic surface: `evals/test_run.py` (the style-route preflight and
-  the runner's stop on a failed or empty stage) and `evals/test_grade.py`
-  (the grader's wrap-collapsed matching), neither of which starts a worker.
+  the runner's stop on a failed or empty stage), `evals/test_grade.py`
+  (the grader's wrap-collapsed matching), and `evals/test_judge.py` (the
+  judge command's model and effort), none of which starts a worker.
   2 scenarios × a fixed 5-pass denominator, graded by a deterministic
   `grade.py` plus a refute-biased `judge.py`. No verdict cache: the repeated
   draws are the measurement. Workers load the style through Claude

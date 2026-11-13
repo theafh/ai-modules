@@ -26,7 +26,7 @@ misses, forcing a fresh run — whenever any of them changes:
   `nocasematch`, no re-invocation of the grader), and as the whole file
   otherwise,
 - the shared helpers in `tests/lib` that decide a verdict (`VERDICT_HELPERS`),
-- the worker model, the eval id, and the prompt.
+- the worker model and effort, the eval id, and the prompt.
 
 A hit means every input the key covers is byte-identical to a run already
 graded; a `SKILL.md` stage an eval's `dependencies` map leaves out, and a
@@ -1553,6 +1553,7 @@ def content_key(
     source_roots,
     harness_dir,
     model: str,
+    effort: str,
     eval_id: str,
     prompt: str,
     dependencies=None,
@@ -1574,7 +1575,8 @@ def content_key(
     good-faith grader contract the module docstring states. The
     shared `VERDICT_HELPERS` join every key, because the deployment, read
     check, worker command, host `tasks/` guard, and repeated-link disposition
-    reader that decide a verdict come from them.
+    reader that decide a verdict come from them. `effort` is required beside
+    `model`, so a verdict never replays across a different worker effort.
     """
     deps = _normalize_dependencies(dependencies)
     digest = hashlib.sha256()
@@ -1600,6 +1602,8 @@ def content_key(
         digest.update(_tree_hash(_HELPER_DIR / name).encode())
         digest.update(b"\0")
     digest.update(("model=" + (model or "<cli-default>")).encode())
+    digest.update(b"\0")
+    digest.update(("effort=" + (effort or "<cli-default>")).encode())
     digest.update(b"\0")
     digest.update(("eval=" + eval_id).encode())
     digest.update(b"\0")
@@ -1646,6 +1650,7 @@ class EvalCache:
         *,
         passed: bool,
         model: str,
+        effort: str,
         duration_s: float,
         worker_rc: int,
         grading_output: str,
@@ -1655,6 +1660,7 @@ class EvalCache:
         entry = {
             "passed": bool(passed),
             "model": model,
+            "effort": effort,
             "duration_s": round(duration_s, 3),
             "worker_rc": worker_rc,
             "graded_at": _now_iso(),
@@ -1697,5 +1703,6 @@ def write_replay_artifacts(eval_dir, entry: dict) -> None:
         "cached": True,
         "graded_at": entry.get("graded_at"),
         "model": entry.get("model"),
+        "effort": entry.get("effort"),
         "duration_s_original": entry.get("duration_s"),
     }, indent=2))

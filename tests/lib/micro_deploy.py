@@ -1599,6 +1599,7 @@ def run_worker(
     vendor_name: str,
     bin_name: str,
     model: str,
+    effort: str,
     prompt: str,
     deploy: MicroDeployHandle,
     timeout: int,
@@ -1615,7 +1616,8 @@ def run_worker(
     transcripts under the scratch home, read before the handle closes.
     ``stream_tools`` holds only the calls the turn's own stream carried.
     ``session_id`` opens a Claude session and ``resume`` continues one on
-    either vendor.
+    either vendor. ``effort`` is required beside ``model``, so every caller
+    names the effort its verdict was produced at; ``''`` omits ``--effort``.
     """
 
     chosen = vendor.config(vendor_name)
@@ -1623,6 +1625,7 @@ def run_worker(
         vendor=chosen.name,
         bin=bin_name,
         model=model,
+        effort=effort,
         prompt=prompt,
         workspace=str(deploy.workspace),
         extra_args=list(extra_args or []),

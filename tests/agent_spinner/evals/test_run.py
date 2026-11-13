@@ -1036,12 +1036,12 @@ def case_cache_key() -> None:
     shell_before = vendor.withheld_tool_plan("claude", ["shell"])
     none_before = vendor.withheld_tool_plan("claude", [])
     shell_key_before = eval_cache.content_key(
-        source_roots=[], harness_dir=run.THIS, model="auto",
+        source_roots=[], harness_dir=run.THIS, model="auto", effort="",
         eval_id="smoke_shell",
         prompt=run.cache_prompt_value("prompt", shell_before, "v1", "smoke_shell"),
     )
     none_key_before = eval_cache.content_key(
-        source_roots=[], harness_dir=run.THIS, model="auto",
+        source_roots=[], harness_dir=run.THIS, model="auto", effort="",
         eval_id="no_withhold",
         prompt=run.cache_prompt_value("prompt", none_before, "v1", "no_withhold"),
     )
@@ -1051,12 +1051,12 @@ def case_cache_key() -> None:
         shell_after = vendor.withheld_tool_plan("claude", ["shell"])
         none_after = vendor.withheld_tool_plan("claude", [])
         shell_key_after = eval_cache.content_key(
-            source_roots=[], harness_dir=run.THIS, model="auto",
+            source_roots=[], harness_dir=run.THIS, model="auto", effort="",
             eval_id="smoke_shell",
             prompt=run.cache_prompt_value("prompt", shell_after, "v1", "smoke_shell"),
         )
         none_key_after = eval_cache.content_key(
-            source_roots=[], harness_dir=run.THIS, model="auto",
+            source_roots=[], harness_dir=run.THIS, model="auto", effort="",
             eval_id="no_withhold",
             prompt=run.cache_prompt_value("prompt", none_after, "v1", "no_withhold"),
         )
@@ -1109,6 +1109,7 @@ def case_cache_hit() -> None:
             "passed": True,
             "graded_at": "2026-01-01T00:00:00",
             "model": "auto",
+            "effort": "<inherit>",
             "duration_s": 1.0,
             "response_excerpt": "cached reply",
             "grading_output": "cached grade",
@@ -1153,6 +1154,7 @@ def case_cached_escape() -> None:
         "passed": True,
         "graded_at": "2026-01-01T00:00:00",
         "model": "auto",
+        "effort": "<inherit>",
         "duration_s": 1.0,
         "response_excerpt": "cached reply",
         "grading_output": "cached grade",

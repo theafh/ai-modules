@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-11-04
+updated: 2026-11-13
 type: concept
 tags: [skill, repo-structure, authoring, claude, cursor, verification-gap]
 sources: [raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
@@ -66,21 +66,37 @@ One older harness predates that alignment and keeps a home-grown two-layer shape
 retained until its next significant iteration rather than migrated on principle.
 New harnesses are not brought up on it.
 
-### The model under test is pinned by vendor, the meta level inherits or stays model-free
+### The model under test is pinned by vendor, model, and effort; graders stay model-free
 
 The harnesses that run a skill as a subprocess pick a vendor through
-`--vendor claude|cursor` (`tests/lib/vendor.py`). Claude workers use the latest
-`sonnet` alias; Cursor workers use `auto`. Deterministic graders stay model-free.
-When a judge LLM exists, Claude inherits the session/CLI default and Cursor uses
-`auto`. Dated pins such as `claude-sonnet-4-6` are avoided so the harness does
-not drift stale as new Sonnet releases land.
+`--vendor claude|cursor` (`tests/lib/vendor.py`). Claude workers run the latest
+`opus` alias at high effort, and a Claude judge runs `opus` at `xhigh` effort;
+Cursor workers and judges run `auto`, which takes no effort setting.
+Deterministic graders stay model-free. Effort is a vendor setting beside the
+model, overridable per run, and it reaches every Claude worker and judge
+command. Dated pins are avoided so the harness follows each new Opus release
+through the alias instead of drifting stale.
 
 The reason the worker is pinned at all is that a result has to mean the same
 thing twice. A skill's behavior measured on a model that changes between runs
 produces a number that moves for reasons having nothing to do with the skill,
-and the harness cannot tell those reasons apart from a real regression. The
-vendor defaults keep the subject comparable across runs; leaving the meta level
-inherited (or model-free) keeps grading as capable as the session paying for it.
+and the harness cannot tell those reasons apart from a real regression. Effort
+is part of that subject, so the verdict cache keys on the worker effort beside
+the model, each run record names both, and a trigger-eval baseline recorded on
+another model or effort is refused rather than compared.
+
+The Claude default moved from `sonnet` to Opus at high effort because `sonnet`
+verdicts measured the model's shortcuts rather than the skill: on
+`agent_spinner` it reached the right answers while skipping the procedure the
+skill requires, Opus at low effort mostly skipped it too, and Opus at high
+effort followed it. The measurements and their cost, minutes per eval and
+roughly one point of the five-hour usage window per eval, are recorded under the
+2026-11-13 worker model and effort probe in
+`tests/agent_spinner/evals/README.md`. The `claude` CLI accepts `--effort` in
+print mode, yet neither its stream-json init event nor its `--debug` output
+names the effective level (build 2.1.289, observed 13 November 2026), so a run
+record names the effort the runner passed, and only the changed behaviour
+between low and high effort shows the flag takes effect.
 
 Evals run on the default vendor, Cursor, in the runners and in practice,
 because its runs are cheaper and faster. Development therefore iterates on

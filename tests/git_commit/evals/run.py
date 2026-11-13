@@ -5,7 +5,7 @@ Phase 2 (the skill actually running) used to be operator-driven in the
 host session, i.e. on whatever model the session inherited. This runner
 instead spawns one vendor-resolved print-mode worker per eval. By default
 that means the Cursor worker (`agent -p`, model `auto`); `--vendor claude`
-(model `sonnet`) runs where Claude is needed or asked for, and
+(model `opus` at `high` effort) runs where Claude is needed or asked for, and
 `--model ''` inherits the vendor CLI default. The meta level on top — the deterministic `grade.sh`,
 and any prose-verdict confirmation the operator does by reading
 `response.txt` — stays model-free.
@@ -40,8 +40,8 @@ from the captured `response.txt`.
 
 Usage:
     python3 tests/git_commit/evals/run.py [eval_id ...]   # default: every id
-      [--vendor claude|cursor] [--model sonnet|auto|''] [--worker-bin <bin>]
-      [--workers 4] [--timeout 300] [--force] [--no-cache]
+      [--vendor claude|cursor] [--model opus|auto|''] [--effort high|<level>|'']
+      [--worker-bin <bin>] [--workers 4] [--timeout 300] [--force] [--no-cache]
 """
 
 from __future__ import annotations
@@ -156,6 +156,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         staged = stage(eval_id, root, env)
         workdir = staged["sandbox_repo"]
         model_label = resolved.worker_model or "<inherit>"
+        worker_effort_label = resolved.worker_effort or "<inherit>"
 
         key = None
         if cache is not None:
@@ -163,6 +164,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 source_roots=source_roots_for(),
                 harness_dir=THIS,
                 model=resolved.worker_model,
+                effort=resolved.worker_effort,
                 eval_id=eval_id,
                 prompt=staged["prompt"],
                 dependencies=eval_cache.dependencies_for(EVALS, eval_id),
@@ -172,11 +174,13 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             verdict = "PASS" if hit["passed"] else "FAIL"
             print(f"  [eval-{eval_id}] CACHED {verdict} "
                   f"(graded {hit.get('graded_at', '?')}, "
-                  f"model={hit.get('model', '?')}) — skipped {resolved.config.label}; "
+                  f"model={hit.get('model', '?')}, "
+                  f"effort={hit.get('effort', '?')}) — skipped {resolved.config.label}; "
                   "--force to re-run\n", flush=True)
             return bool(hit["passed"]), True
 
-        print(f"  [eval-{eval_id}] running {resolved.config.label} (model={model_label}) ...",
+        print(f"  [eval-{eval_id}] running {resolved.config.label} (model={model_label}, "
+              f"effort={worker_effort_label}) ...",
               flush=True)
         started_at = time.time()
         # The skill deploys into a scratch home beside, never inside, the repo
@@ -201,7 +205,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             )
             worker = micro_deploy.run_worker(
                 vendor_name=resolved.vendor, bin_name=resolved.bin,
-                model=resolved.worker_model, prompt=prompt, deploy=md,
+                model=resolved.worker_model,
+                effort=resolved.worker_effort,
+                prompt=prompt, deploy=md,
                 timeout=timeout, cwd=pathlib.Path(workdir),
             )
             rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
@@ -217,6 +223,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             duration_s=duration_s,
             worker_rc=rc,
             model=model_label,
+            effort=worker_effort_label,
             started_at=started_at,
             ended_at=ended_at,
             fixture_overlay=fixture_overlay,
@@ -270,6 +277,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 key,
                 passed=passed,
                 model=model_label,
+                effort=worker_effort_label,
                 duration_s=duration_s,
                 worker_rc=rc,
                 grading_output=grade.stdout + grade.stderr,
@@ -307,6 +315,7 @@ def main() -> int:
     cache = None if args.no_cache else eval_cache.EvalCache(THIS / ".eval_cache")
     resolved = vendor.resolve(args)
     model_label = resolved.worker_model or "<inherit>"
+    worker_effort_label = resolved.worker_effort or "<inherit>"
 
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = WORKSPACE / f"run-{ts}"
@@ -314,7 +323,8 @@ def main() -> int:
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
-        f"model: {model_label}; workers: {args.workers}; evals: {ids}"
+        f"model: {model_label}; "
+        f"effort: {worker_effort_label}; workers: {args.workers}; evals: {ids}"
     )
     cache_mode = "off" if cache is None else ("force-refresh" if args.force else "on")
     print(f"Verdict cache: {cache_mode}\n")

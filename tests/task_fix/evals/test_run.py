@@ -58,6 +58,7 @@ TIMING_KEYS = (
     "worker_rc",
     "claude_rc",
     "model",
+    "effort",
 )
 
 ISOLATION_PASS = "PASS  isolation: no writes to the real repo's tasks/ tree"
@@ -134,6 +135,7 @@ def run_one_record() -> dict:
                     run_dir,
                     types.SimpleNamespace(
                         worker_model="probe",
+                        worker_effort="",
                         vendor="cursor",
                         bin="agent",
                         config=types.SimpleNamespace(label="probe"),
@@ -171,7 +173,8 @@ def pool_dispatch() -> tuple[list[tuple[str, bool, bool]], int]:
                 ["probe_a", "probe_b"],
                 run_dir=pathlib.Path(tmp),
                 resolved=types.SimpleNamespace(
-                    worker_model="probe", vendor="cursor", bin="agent"
+                    worker_model="probe", worker_effort="", vendor="cursor",
+                    bin="agent"
                 ),
                 timeout=1,
                 cache=None,
