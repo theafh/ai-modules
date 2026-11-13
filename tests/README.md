@@ -313,8 +313,11 @@ files.
   exercises the bundled `scripts/run_ledger.py` under the oldest and newest
   python3; `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over
   11 committed report variants (15 pass/fail checks) for
-  `explicit_spinner_on_family_job` plus the `checker_spawned_without_role`
-  route cases; `evals/test_run.py` proves the runner's
+  `explicit_spinner_on_family_job`, the `checker_spawned_without_role`
+  route cases, and the two `sweep_rewrite_hunk_blocks_sampling` checks that
+  a repair-round re-check does not count as a second initial check and that
+  a second initial check for one page still fails (20 checks in all);
+  `evals/test_run.py` proves the runner's
   wiring against a stub worker; `evals/` holds every id in `evals.json` (89
   today). Each
   behavioural eval stages one behaviour and the `smoke_*` evals check the
