@@ -9,6 +9,11 @@ scenario for a better draw. There is no verdict cache.
 Passes run concurrently (`--workers`, default `vendor.DEFAULT_PARALLEL_WORKERS`).
 Each pass owns an isolated sandbox from `tests/lib/worker_isolation.py`.
 
+Every `verdict.json`, `summary.json`, and `results/run-<ts>.json` carries the
+run's settings block (`vendor`, `worker_model`, `worker_effort`,
+`judge_model`, `judge_effort`), and the console header and the report name the
+same values, so each verdict names the settings that produced it.
+
 The harness exercises Claude output-style selection, so `--vendor cursor` is
 refused with an error while the runner defaults to Claude: a scenario run is a
 Claude run, made where a change to the style needs it, and its command names
@@ -99,6 +104,51 @@ def emit(*lines: str) -> None:
     with PRINT_LOCK:
         for line in lines:
             print(line, flush=True)
+
+
+def run_settings(resolved: vendor.Resolved, skip_judge: bool) -> dict:
+    """Return the settings block every record of this run carries.
+
+    The values are the resolved raw settings, as the trigger evals record
+    them: an empty model or effort means the flag was omitted and the CLI
+    applied its own default. A --skip-judge run records null judge fields,
+    because no judge ran.
+    """
+
+    return {
+        "vendor": resolved.vendor,
+        "worker_model": resolved.worker_model,
+        "worker_effort": resolved.worker_effort,
+        "judge_model": None if skip_judge else resolved.judge_model,
+        "judge_effort": None if skip_judge else resolved.judge_effort,
+    }
+
+
+def describe_settings(settings: dict) -> str:
+    """Name a settings block in one line for the console and the report."""
+
+    def label(value: str | None) -> str:
+        return value or "<inherit>"
+
+    if settings.get("judge_model") is None:
+        judge = "off"
+    else:
+        judge = (
+            f"{label(settings['judge_model'])} at effort "
+            f"{label(settings.get('judge_effort'))}"
+        )
+    return (
+        f"vendor {settings.get('vendor')}; "
+        f"worker model {label(settings.get('worker_model'))}; "
+        f"worker effort {label(settings.get('worker_effort'))}; "
+        f"judge {judge}"
+    )
+
+
+def header_line(settings: dict, command: str) -> str:
+    """Return the console header line naming the run's settings."""
+
+    return f"Settings: {describe_settings(settings)}; command: {command}"
 
 
 def style_name(path: pathlib.Path) -> str:
@@ -434,6 +484,7 @@ def run_pass(
         if response_path.exists() and scenario == "chat_brevity":
             shutil.copyfile(response_path, pass_dir / "response.txt")
         verdict = {
+            **run_settings(resolved, args.skip_judge),
             "scenario": scenario,
             "pass": number,
             "passed": passed,
@@ -472,8 +523,8 @@ def run_pass(
         shutil.rmtree(root, ignore_errors=True)
 
 
-def summarize(results: dict, denominator: int) -> dict:
-    summary = {"denominator": denominator, "scenarios": {}}
+def summarize(results: dict, denominator: int, settings: dict) -> dict:
+    summary = {**settings, "denominator": denominator, "scenarios": {}}
     for scenario, verdicts in results.items():
         clean = sum(1 for verdict in verdicts if verdict["passed"])
         voids = [verdict["pass"] for verdict in verdicts if verdict.get("void")]
@@ -524,6 +575,8 @@ def render(summary: dict) -> str:
         f"# natural_language eval run with a denominator of {summary['denominator']}",
         "",
         f"Run label: {summary.get('run_label', 'measurement')}",
+        "",
+        f"Settings: {describe_settings(summary)}",
         "",
         f"CLI version: {summary.get('cli_version', 'unrecorded')}",
         "",
@@ -620,8 +673,10 @@ def main() -> int:
                 f"unknown scenario: {scenario} (known: {', '.join(SCENARIOS)})"
             )
 
+    settings = run_settings(resolved, args.skip_judge)
     version = cli_version(resolved.bin)
     print(f"CLI version: {version}")
+    print(header_line(settings, resolved.config.label))
     # Workers run in the micro-deployment environment and the judge in the host
     # worker environment, so both logins are probed before the marker preflight.
     vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
@@ -691,7 +746,7 @@ def main() -> int:
     }
     print(f"\nAll {len(jobs)} passes done in {wall_s / 60:.1f} min wall-clock\n")
 
-    summary = summarize(results, args.passes)
+    summary = summarize(results, args.passes, settings)
     summary["cli_version"] = version
     summary["preflight"] = preflight
     summary["run_label"] = args.run_label

@@ -14,6 +14,17 @@ original `verdict.json`, and the run gains `summary.regrade.{json,md}`. The
 original measurement stays readable so the two can be compared and the
 correction is auditable rather than a quiet edit of history.
 
+Each re-grade record carries the original run's `vendor`, `worker_model`, and
+`worker_effort`, because the captured responses are that worker's, and the
+`judge_vendor`, `judge_model`, and `judge_effort` that produced its judge
+verdicts. The comparison with the as-run rates isolates a grader fix only when
+the judge is the one that produced the original verdicts, so a re-judged
+re-grade on another judge vendor, model, or effort, or of a run whose judge is
+unrecorded, writes its records without the comparison and exits 1 naming both
+settings, the way the trigger-eval baseline check refuses a cross-setting
+baseline. A `--skip-judge` re-grade carries the original judge verdicts and
+their settings forward, so it keeps the comparison.
+
 Usage:
     python3 regrade.py <run_dir> [scenario ...]
       [--vendor claude|cursor] [--judge-model opus|auto|'']
@@ -38,6 +49,73 @@ import vendor  # noqa: E402  (shared vendor helper in tests/lib)
 
 import judge as judge_mod  # noqa: E402  (sibling module in this harness)
 import run as run_mod  # noqa: E402  (reuse SCENARIOS, summarize, render, emit)
+
+
+def original_settings(run_dir: pathlib.Path) -> dict:
+    """Read the original run's summary.json, or nothing when it is unreadable."""
+
+    try:
+        data = json.loads((run_dir / "summary.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def regrade_settings(original: dict, resolved: vendor.Resolved,
+                     skip_judge: bool) -> dict:
+    """Return the settings block every record of this re-grade carries.
+
+    The worker fields come from the original run, because no worker re-runs.
+    The judge fields name the judge behind the re-graded judge verdicts: the
+    resolved judge when it re-runs, and the original's judge under
+    --skip-judge, which carries the original verdicts forward. A field the
+    original did not record reads as null.
+    """
+
+    record = {
+        "vendor": original.get("vendor"),
+        "worker_model": original.get("worker_model"),
+        "worker_effort": original.get("worker_effort"),
+    }
+    if skip_judge:
+        record.update({
+            "judge_vendor": original.get("vendor"),
+            "judge_model": original.get("judge_model"),
+            "judge_effort": original.get("judge_effort"),
+        })
+    else:
+        record.update({
+            "judge_vendor": resolved.vendor,
+            "judge_model": resolved.judge_model,
+            "judge_effort": resolved.judge_effort,
+        })
+    return record
+
+
+def judge_mismatch(original: dict, current: dict) -> str | None:
+    """Name a judge vendor, model, or effort difference, or return None.
+
+    Both sides normalize the way the trigger-eval baseline check does: a
+    missing effort reads as the empty effort, and a missing vendor or judge
+    model reads as `unknown`, which matches no judge, so a run recorded before
+    its judge was recorded, or one that ran with --skip-judge, never compares
+    against a re-judged re-grade.
+    """
+
+    def named(value: object) -> str:
+        return "unknown" if value is None else str(value)
+
+    base = (named(original.get("vendor")), named(original.get("judge_model")),
+            str(original.get("judge_effort") or ""))
+    cur = (named(current.get("judge_vendor")), named(current.get("judge_model")),
+           str(current.get("judge_effort") or ""))
+    if "unknown" not in base[:2] and base == cur:
+        return None
+    return (
+        f"recorded with judge vendor {base[0]!r}, judge_model {base[1]!r}, and "
+        f"judge_effort {base[2]!r}; this re-grade uses judge vendor {cur[0]!r}, "
+        f"judge_model {cur[1]!r}, and judge_effort {cur[2]!r}"
+    )
 
 
 def regrade_pass(pass_dir: pathlib.Path, scenario: str, args) -> dict:
@@ -99,6 +177,7 @@ def regrade_pass(pass_dir: pathlib.Path, scenario: str, args) -> dict:
               and all(assertions.values()) and all(integrity.values()))
 
     verdict = {
+        **args.settings,
         "scenario": scenario, "pass": n, "passed": passed, "void": void,
         "void_reason": ("worker answered but never wrote delivered.md"
                         if void else None),
@@ -149,6 +228,16 @@ def main() -> int:
     run_dir = pathlib.Path(args.run_dir).resolve()
     if not run_dir.is_dir():
         raise SystemExit(f"not a run directory: {run_dir}")
+    original = original_settings(run_dir)
+    args.settings = regrade_settings(original, args.resolved, args.skip_judge)
+    mismatch = None
+    if not args.skip_judge:
+        detail = judge_mismatch(original, args.settings)
+        if detail is not None:
+            mismatch = (
+                f"original judge mismatch: run {run_dir} was {detail}. "
+                "Comparison with the as-run rates skipped."
+            )
 
     scenarios = args.scenarios or [s for s in run_mod.SCENARIOS if (run_dir / s).is_dir()]
     jobs: list[tuple[str, pathlib.Path]] = []
@@ -190,18 +279,25 @@ def main() -> int:
 
     results = {s: [verdicts[(s, n)] for n in range(1, denominator + 1)
                    if (s, n) in verdicts] for s in scenarios}
-    summary = run_mod.summarize(results, denominator)
+    summary = run_mod.summarize(results, denominator, args.settings)
     summary["regrade_of"] = str(run_dir)
-    summary["original_rates"] = {}
-    for s, vs in results.items():
-        was = sum(1 for v in vs if v.get("original_passed"))
-        summary["original_rates"][s] = f"{was}/{denominator}"
+    if mismatch is None:
+        summary["original_rates"] = {}
+        for s, vs in results.items():
+            was = sum(1 for v in vs if v.get("original_passed"))
+            summary["original_rates"][s] = f"{was}/{denominator}"
+    else:
+        summary["original_mismatch"] = mismatch
 
     (run_dir / "summary.regrade.json").write_text(json.dumps(summary, indent=2))
     report = run_mod.render(summary)
-    report += ("\n## As-run rates before the instrument fix\n\n"
-               + "\n".join(f"- `{s}`: {r}" for s, r in summary["original_rates"].items())
-               + "\n")
+    if mismatch is None:
+        report += ("\n## As-run rates before the instrument fix\n\n"
+                   + "\n".join(f"- `{s}`: {r}"
+                               for s, r in summary["original_rates"].items())
+                   + "\n")
+    else:
+        report += f"\n## As-run comparison refused\n\n{mismatch}\n"
     (run_dir / "summary.regrade.md").write_text(report)
     run_mod.RESULTS.mkdir(parents=True, exist_ok=True)
     stem = f"{run_dir.name}-regrade"
@@ -211,6 +307,9 @@ def main() -> int:
     print("=" * 60)
     print(report)
     print(f"Recorded: {run_dir}/summary.regrade.json (original left intact)")
+    if mismatch is not None:
+        print(f"WARNING: {mismatch}", file=sys.stderr)
+        return 1
     return 0 if summary["all_scenarios_met_bar"] else 1
 
 

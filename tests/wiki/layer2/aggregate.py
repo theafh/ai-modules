@@ -10,6 +10,13 @@ Roll-ups per scenario:
 
 Compares to a previous benchmark.json (regression detection) when given.
 
+benchmark.json carries the worker settings `run.py` recorded in the run's
+`run_settings.json` (`vendor`, `worker_model`, `worker_effort`). A previous
+benchmark recorded on another vendor, worker model, or worker effort is
+refused rather than compared: the benchmark is written without regressions,
+records the reason as `baseline_mismatch`, and the run exits 1, the way the
+trigger-eval baseline check refuses a cross-setting baseline.
+
 Run:
     python3 aggregate.py <run_dir> [--previous <previous_benchmark.json>]
 """
@@ -22,6 +29,64 @@ import math
 import pathlib
 import statistics
 import sys
+
+RUN_SETTINGS = "run_settings.json"
+SETTINGS_KEYS = ("vendor", "worker_model", "worker_effort")
+
+
+def load_run_settings(run_dir: pathlib.Path) -> dict:
+    """Return the worker settings run.py recorded, or nothing when absent."""
+
+    try:
+        data = json.loads((run_dir / RUN_SETTINGS).read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {key: data[key] for key in SETTINGS_KEYS if key in data}
+
+
+def settings_mismatch(previous: dict, current: dict) -> str | None:
+    """Name a worker vendor, model, or effort difference, or return None.
+
+    Both sides normalize the way the trigger-eval baseline check does: a
+    missing effort reads as the empty effort, and a missing vendor or worker
+    model reads as `unknown`, which matches no run, so a benchmark recorded
+    before the settings were recorded never compares.
+    """
+
+    def normalized(record: dict) -> tuple[str, str, str]:
+        vendor = record.get("vendor")
+        model = record.get("worker_model")
+        return (
+            "unknown" if vendor is None else str(vendor),
+            "unknown" if model is None else str(model),
+            str(record.get("worker_effort") or ""),
+        )
+
+    base = normalized(previous)
+    cur = normalized(current)
+    if "unknown" not in base[:2] + cur[:2] and base == cur:
+        return None
+    return (
+        f"recorded on vendor {base[0]!r} with worker_model {base[1]!r} and "
+        f"worker_effort {base[2]!r}, this run is on vendor {cur[0]!r} with "
+        f"worker_model {cur[1]!r} and worker_effort {cur[2]!r}"
+    )
+
+
+def describe_settings(record: dict) -> str:
+    """Name a benchmark's worker settings in one line."""
+
+    def label(key: str) -> str:
+        if key not in record or record[key] is None:
+            return "unknown"
+        return str(record[key]) or "<inherit>"
+
+    return (
+        f"vendor {label('vendor')}; worker model {label('worker_model')}; "
+        f"worker effort {label('worker_effort')}"
+    )
 
 
 def load_pass(pass_dir: pathlib.Path) -> dict:
@@ -98,6 +163,11 @@ def build_markdown(benchmark: dict, regressions: list[str]) -> str:
     lines = []
     lines.append(f"# Wiki skill regression benchmark — {benchmark['run_id']}")
     lines.append("")
+    lines.append(f"Worker settings: {describe_settings(benchmark)}")
+    lines.append("")
+    if benchmark.get("baseline_mismatch"):
+        lines.append(f"!! COMPARE REFUSED: {benchmark['baseline_mismatch']}")
+        lines.append("")
     baseline = benchmark.get("baseline")
     if baseline:
         lines.append(
@@ -218,58 +288,71 @@ def main() -> int:
 
     benchmark = {
         "run_id": run_dir.name,
+        **load_run_settings(run_dir),
         "skill_name": evals["skill_name"],
         "n_scenarios": len(scenarios),
         "scenarios": scenarios,
     }
 
     regressions = []
+    mismatch = None
     if args.previous:
         prev_path = pathlib.Path(args.previous)
         if prev_path.is_file():
             previous = json.loads(prev_path.read_text())
-            regressions = detect_regressions(benchmark, previous)
-
-            baseline_ids = [
-                s["scenario_id"] for s in previous.get("scenarios", [])
-            ]
-            current_ids = [s["scenario_id"] for s in scenarios]
-            baseline_run_id = (
-                previous.get("run_id")
-                or prev_path.parent.name
-                or prev_path.name
-            )
-            uncovered = [
-                sid for sid in current_ids if sid not in set(baseline_ids)
-            ]
-            narrowed = bool(uncovered)
-            benchmark["baseline"] = {
-                "run_id": baseline_run_id,
-                "n_scenarios": len(baseline_ids),
-                "scenario_ids": baseline_ids,
-                "narrowed": narrowed,
-                "uncovered_scenario_ids": uncovered,
-            }
-
-            print(
-                f"Baseline: {baseline_run_id} — {len(baseline_ids)} "
-                f"scenario(s): {', '.join(baseline_ids) or '(none)'}"
-            )
-            if narrowed:
-                print(
-                    "!! COMPARE WARNING: baseline covered "
-                    f"{len(baseline_ids)} scenario(s) but the current run "
-                    f"covers {len(current_ids)}; not covered by the baseline: "
-                    f"{', '.join(uncovered) or '(none)'}. This comparison is "
-                    "narrowed. Exit status still reflects assertion/scenario "
-                    "regressions only."
+            detail = settings_mismatch(previous, benchmark)
+            if detail is not None:
+                mismatch = (
+                    f"baseline settings mismatch: baseline {prev_path} was "
+                    f"{detail}. Comparison skipped."
                 )
+                benchmark["baseline_mismatch"] = mismatch
+            else:
+                regressions = detect_regressions(benchmark, previous)
+
+                baseline_ids = [
+                    s["scenario_id"] for s in previous.get("scenarios", [])
+                ]
+                current_ids = [s["scenario_id"] for s in scenarios]
+                baseline_run_id = (
+                    previous.get("run_id")
+                    or prev_path.parent.name
+                    or prev_path.name
+                )
+                uncovered = [
+                    sid for sid in current_ids if sid not in set(baseline_ids)
+                ]
+                narrowed = bool(uncovered)
+                benchmark["baseline"] = {
+                    "run_id": baseline_run_id,
+                    "n_scenarios": len(baseline_ids),
+                    "scenario_ids": baseline_ids,
+                    "narrowed": narrowed,
+                    "uncovered_scenario_ids": uncovered,
+                }
+
+                print(
+                    f"Baseline: {baseline_run_id} — {len(baseline_ids)} "
+                    f"scenario(s): {', '.join(baseline_ids) or '(none)'}"
+                )
+                if narrowed:
+                    print(
+                        "!! COMPARE WARNING: baseline covered "
+                        f"{len(baseline_ids)} scenario(s) but the current run "
+                        f"covers {len(current_ids)}; not covered by the baseline: "
+                        f"{', '.join(uncovered) or '(none)'}. This comparison is "
+                        "narrowed. Exit status still reflects assertion/scenario "
+                        "regressions only."
+                    )
     benchmark["regressions"] = regressions
 
     (run_dir / "benchmark.json").write_text(json.dumps(benchmark, indent=2))
     (run_dir / "benchmark.md").write_text(build_markdown(benchmark, regressions))
     print(f"Wrote {run_dir}/benchmark.json")
     print(f"Wrote {run_dir}/benchmark.md")
+    if mismatch is not None:
+        print(f"WARNING: {mismatch}", file=sys.stderr)
+        return 1
     if regressions:
         print(f"\n!! REGRESSIONS DETECTED ({len(regressions)}):")
         for r in regressions:

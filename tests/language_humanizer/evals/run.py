@@ -52,6 +52,12 @@ Per scenario and pass the runner:
    `pass-<n>/sandbox/` so `regrade.py` can re-grade it later, and removes the
    temporary root.
 
+Every `verdict.json`, `summary.json`, and `results/run-<ts>.json` carries the
+run's settings block (`vendor`, `worker_model`, `worker_effort`,
+`judge_model`, `judge_effort`), and the report names the same values, so each
+verdict names the settings that produced it and `regrade.py` can tell which
+judge produced the original verdicts.
+
 The recorded measurement runs on `--vendor cursor`, per `TESTING.md`; the
 Claude worker stays available for a Claude-pinned sample under the same
 isolation contract.
@@ -111,6 +117,51 @@ def emit(*lines: str) -> None:
     with PRINT_LOCK:
         for line in lines:
             print(line, flush=True)
+
+
+def run_settings(resolved: vendor.Resolved, skip_judge: bool) -> dict:
+    """Return the settings block every record of this run carries.
+
+    The values are the resolved raw settings, as the trigger evals record
+    them: an empty model or effort means the flag was omitted and the CLI
+    applied its own default. A --skip-judge run records null judge fields,
+    because no judge ran.
+    """
+
+    return {
+        "vendor": resolved.vendor,
+        "worker_model": resolved.worker_model,
+        "worker_effort": resolved.worker_effort,
+        "judge_model": None if skip_judge else resolved.judge_model,
+        "judge_effort": None if skip_judge else resolved.judge_effort,
+    }
+
+
+def describe_settings(settings: dict) -> str:
+    """Name a settings block in one line for the report.
+
+    A re-grade record names the judge's own vendor in `judge_vendor` when it
+    carries one, because its worker settings come from the original run.
+    """
+
+    def label(value: str | None) -> str:
+        return value or "<inherit>"
+
+    if settings.get("judge_model") is None:
+        judge = "off"
+    else:
+        judge = (
+            f"{label(settings['judge_model'])} at effort "
+            f"{label(settings.get('judge_effort'))}"
+        )
+        if settings.get("judge_vendor"):
+            judge += f" on {settings['judge_vendor']}"
+    return (
+        f"vendor {settings.get('vendor') or 'unknown'}; "
+        f"worker model {label(settings.get('worker_model'))}; "
+        f"worker effort {label(settings.get('worker_effort'))}; "
+        f"judge {judge}"
+    )
 
 WORKER_PROMPT = """\
 You are running an automated skill regression eval. Do exactly this:
@@ -300,6 +351,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
               and all(assertions.values()) and all(integrity.values()))
 
     verdict = {
+        **run_settings(resolved, args.skip_judge),
         "scenario": scenario, "pass": n, "passed": passed, "void": void,
         "void_reason": ("worker answered but never wrote delivered.md"
                         if void else None),
@@ -327,8 +379,8 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
     return verdict
 
 
-def summarize(results: dict, denominator: int) -> dict:
-    summary = {"denominator": denominator, "scenarios": {}}
+def summarize(results: dict, denominator: int, settings: dict) -> dict:
+    summary = {**settings, "denominator": denominator, "scenarios": {}}
     for scenario, verdicts in results.items():
         clean = sum(1 for v in verdicts if v["passed"])
         voids = [v["pass"] for v in verdicts if v.get("void")]
@@ -362,7 +414,8 @@ def summarize(results: dict, denominator: int) -> dict:
 
 
 def render(summary: dict) -> str:
-    lines = [f"# language_humanizer eval run, denominator {summary['denominator']}", ""]
+    lines = [f"# language_humanizer eval run, denominator {summary['denominator']}", "",
+             f"Settings: {describe_settings(summary)}", ""]
     for scenario, s in summary["scenarios"].items():
         lines.append(f"## {scenario}: {s['pass_rate']} "
                      f"({'met the bar' if s['met_bar'] else 'below the bar'})")
@@ -478,7 +531,7 @@ def main() -> int:
     print(f"\nAll {len(jobs)} passes done in {wall_s / 60:.1f} min wall-clock "
           f"({workers} concurrent)\n")
 
-    summary = summarize(results, args.passes)
+    summary = summarize(results, args.passes, run_settings(resolved, args.skip_judge))
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     report = render(summary)
     (run_dir / "summary.md").write_text(report)

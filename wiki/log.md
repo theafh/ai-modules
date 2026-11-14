@@ -1457,3 +1457,13 @@ pre-existing, and the size infos stay advisory; the one on
   `natural_language`, whose summary and console header name neither, as its
   exception; the sentence pointing at the 2026-11-13 probe record drops the
   per-eval cost figures; the `updated` date moves to 2026-11-14)
+
+## [2026-11-14 13:55] update | Extend the cross-setting comparison refusal on the verification surfaces page
+
+- concepts/verification-surfaces.md (the model-pinning section now states that
+  the two judge harnesses name the judge model and effort in every record, and
+  that every comparison against a prior run refuses one recorded on another
+  vendor, model, or effort, with the trigger-eval baseline, the wiki layer 2
+  benchmark and its matching automatic baseline, and the `language_humanizer`
+  re-grade as its instances)
+- index.md (Last updated moves to 2026-11-14)

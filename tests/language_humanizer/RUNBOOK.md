@@ -164,6 +164,19 @@ for the run, never overwriting the original, so the as-run rates stay readable
 next to the corrected ones and the correction is auditable instead of a quiet
 edit of history. Report both when a fix moves a number.
 
+The comparison isolates a grader fix only when the same judge graded both
+sides, so `regrade.py` refuses it across a judge difference. Every run record
+(`verdict.json`, `summary.json`, `results/run-<ts>.json`) names the vendor and
+the worker and judge model and effort, and every re-grade record carries the
+original's worker settings beside the `judge_vendor`, `judge_model`, and
+`judge_effort` behind its judge verdicts. A re-judged re-grade on another judge
+vendor, model, or effort, or of a run whose judge is unrecorded, writes its
+records without `original_rates` or the as-run section, records
+`original_mismatch` naming both settings, and exits 1, the way the trigger
+evals refuse a cross-setting baseline. A `--skip-judge` re-grade carries the
+original judge verdicts and their settings forward, so it keeps the
+comparison.
+
 One caveat the first correction surfaced: the judge is itself a sampled
 instrument, so a re-grade can move a borderline verdict on unchanged input
 (`no_invented_content` flipped on one pass between draws). Treat a single-pass

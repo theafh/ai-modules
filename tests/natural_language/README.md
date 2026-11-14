@@ -64,7 +64,11 @@ starting a worker.
 `python3 tests/natural_language/evals/test_run.py` checks the marker-present
 route and both marker-missing version branches without starting a worker, and
 runs `tests/lib/check_stage_guard.py` so a stage that fails or names no
-sandbox project stops a scenario before any worker starts.
+sandbox project stops a scenario before any worker starts. With the stage,
+the deployment, the worker, the grader, and the judge stubbed, it also checks
+that every `verdict.json`, `summary.json` (and its `results/` copy), the
+report, and the console header name the vendor and the worker and judge model
+and effort, with null judge fields on a `--skip-judge` run.
 `python3 tests/natural_language/evals/test_grade.py` checks that a hard wrap
 at 72 columns does not change the series or pronoun-run verdicts, and that an
 empty chat delivery makes `grade.py` exit non-zero.

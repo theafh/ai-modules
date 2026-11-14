@@ -84,10 +84,18 @@ thing twice. A skill's behavior measured on a model that changes between runs
 produces a number that moves for reasons having nothing to do with the skill,
 and the harness cannot tell those reasons apart from a real regression. Effort
 is part of that subject, so the verdict cache keys on the worker effort beside
-the model, and a trigger-eval baseline recorded on another model or effort is
-refused rather than compared. The run records name the worker model and effort
-in every runner except `natural_language`, whose summary and console header
-name neither.
+the model, and every run record names both; the two judge harnesses,
+`natural_language` and `language_humanizer`, also name the judge model and
+effort in each verdict, summary, and results file. The same reasoning governs
+every comparison against a prior run: it compares only runs recorded on the
+same vendor, model, and effort, and one that differs is refused, with the new
+records written and a non-zero exit naming both values (verified 14 November
+2026 against `tests/trigger_evals/run.py`, `tests/wiki/layer2/run.py` and
+`aggregate.py`, and `tests/language_humanizer/evals/regrade.py`). The
+trigger-eval baseline applies the rule to the worker settings. The wiki layer 2
+benchmark applies it to the worker settings too, and its automatic baseline is
+the newest prior run on matching settings. The `language_humanizer` re-grade
+applies it to the judge settings behind the verdicts it compares.
 
 The Claude default moved from `sonnet` to Opus at high effort because `sonnet`
 verdicts measured the model's shortcuts rather than the skill: on

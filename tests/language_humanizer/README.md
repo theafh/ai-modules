@@ -23,6 +23,7 @@ tests/language_humanizer/
 │   ├── test_grade.py    # grader unit tests: a faithful rewrite passes, each lossy one fails
 │   ├── judge.py         # LLM grader for the assertions no regex can settle
 │   ├── test_judge.py    # judge-command unit tests: judge model and effort, refused worker flags
+│   ├── test_run.py      # runner unit tests: settings in every record, re-grade refusal
 │   ├── run.py           # multi-pass runner: worker → grade → judge → aggregate
 │   ├── regrade.py       # re-grade a captured run with the current graders
 │   └── fixtures/<id>/setup.sh

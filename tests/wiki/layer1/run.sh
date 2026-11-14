@@ -4800,7 +4800,8 @@ g1_grade_empty_delivery_exits_nonzero() {
 # the current run. The warning is informational: only assertion/scenario
 # regressions drive the exit status, so a narrowed compare still exits 0 and a
 # real regression still exits 1. A baseline that covers every scenario compares
-# without the warning and records narrowed: false.
+# without the warning and records narrowed: false. The run and both baselines
+# carry the same worker settings, so the settings check lets each compare.
 g2_aggregate_names_baseline_and_warns_on_narrowing() {
     local home run prev out rc full
     home=$(fresh_scratch g2)
@@ -4832,8 +4833,11 @@ def write_pass(scenario_id, passed):
 
 write_pass("L2-1", True)
 write_pass("L2-2", True)
+settings = {"vendor": "cursor", "worker_model": "auto", "worker_effort": ""}
+(run / "run_settings.json").write_text(json.dumps(settings))
 prev.write_text(json.dumps({
     "run_id": "run-prior-debug",
+    **settings,
     "scenarios": [{
         "scenario_id": "L2-1",
         "all_passes_clean": True,
@@ -4923,6 +4927,9 @@ def scenario(scenario_id):
 
 pathlib.Path(sys.argv[1]).write_text(json.dumps({
     "run_id": "run-prior-full",
+    "vendor": "cursor",
+    "worker_model": "auto",
+    "worker_effort": "",
     "scenarios": [scenario("L2-1"), scenario("L2-2")],
 }))
 PY
@@ -5109,10 +5116,172 @@ PY
     return 0
 }
 
+# G5: layer2 never compares across worker settings. aggregate.py copies the
+# run's run_settings.json fields into benchmark.json and refuses a --previous
+# benchmark recorded on another worker effort, on another worker model, or
+# without settings: it exits 1, writes no regressions and no baseline block,
+# and records a baseline_mismatch naming both values. The current run fails
+# an assertion the baselines held at 100%, so a compare that ran would report
+# a regression; a matching baseline does exactly that. run.py records the
+# settings through write_run_settings, and its automatic baseline choice skips
+# a newer benchmark on other settings for an older matching one.
+g5_aggregate_refuses_cross_setting_baseline() {
+    local home run out rc label
+    home=$(fresh_scratch g5)
+    run="$home/run-current"
+    python3 - "$home" <<'PY'
+import json
+import pathlib
+import sys
+
+home = pathlib.Path(sys.argv[1])
+run = home / "run-current"
+pass_dir = run / "L2-1" / "pass-1"
+pass_dir.mkdir(parents=True)
+(pass_dir / "grading.json").write_text(json.dumps({
+    "pass_rate": 0.0,
+    "passed": False,
+    "expectations": [{"text": "assertion", "passed": False}],
+}))
+(pass_dir / "timing.json").write_text(json.dumps({"duration_ms": 1000}))
+(run / "run_settings.json").write_text(json.dumps(
+    {"vendor": "claude", "worker_model": "opus", "worker_effort": "high"}))
+baselines = {
+    "other-effort": {"vendor": "claude", "worker_model": "opus",
+                     "worker_effort": "medium"},
+    "other-model": {"vendor": "claude", "worker_model": "sonnet",
+                    "worker_effort": "high"},
+    "unrecorded": {},
+    "match": {"vendor": "claude", "worker_model": "opus", "worker_effort": "high"},
+}
+for label, settings in baselines.items():
+    path = home / label / "benchmark.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({
+        "run_id": label,
+        **settings,
+        "scenarios": [{
+            "scenario_id": "L2-1",
+            "all_passes_clean": True,
+            "per_assertion": {
+                "assertion": {"pass_rate": 1.0, "passes": 1, "total": 1},
+            },
+        }],
+    }))
+PY
+
+    for label in other-effort other-model unrecorded; do
+        out=$(python3 "$SCRIPT_DIR/../layer2/aggregate.py" "$run" \
+            --previous "$home/$label/benchmark.json" 2>&1) && rc=0 || rc=$?
+        assert_eq "$label baseline exits 1" "$rc" "1" || { log "$out"; return 1; }
+        if [[ "$out" != *"WARNING: baseline settings mismatch"* ]]; then
+            log "    $label compare printed no settings-mismatch warning"
+            log "$out"
+            return 1
+        fi
+        if ! python3 - "$run" "$label" <<'PY'
+import json
+import pathlib
+import sys
+
+run = pathlib.Path(sys.argv[1])
+label = sys.argv[2]
+benchmark = json.loads((run / "benchmark.json").read_text())
+expected = {
+    "other-effort": ["worker_effort 'medium'", "worker_effort 'high'"],
+    "other-model": ["worker_model 'sonnet'", "worker_model 'opus'"],
+    "unrecorded": ["vendor 'unknown'", "worker_model 'unknown'",
+                   "vendor 'claude'"],
+}[label]
+mismatch = benchmark.get("baseline_mismatch", "")
+assert all(needle in mismatch for needle in expected), mismatch
+assert benchmark["regressions"] == [], benchmark["regressions"]
+assert "baseline" not in benchmark, benchmark.get("baseline")
+assert {key: benchmark.get(key) for key in
+        ("vendor", "worker_model", "worker_effort")} == {
+    "vendor": "claude", "worker_model": "opus", "worker_effort": "high"}
+markdown = (run / "benchmark.md").read_text()
+assert "!! COMPARE REFUSED: baseline settings mismatch" in markdown, markdown
+assert ("Worker settings: vendor claude; worker model opus; "
+        "worker effort high") in markdown, markdown
+PY
+        then
+            log "    $label baseline was not refused as expected"
+            return 1
+        fi
+    done
+
+    out=$(python3 "$SCRIPT_DIR/../layer2/aggregate.py" "$run" \
+        --previous "$home/match/benchmark.json" 2>&1) && rc=0 || rc=$?
+    assert_eq "matching baseline compares and reports the regression" "$rc" "1" \
+        || { log "$out"; return 1; }
+    if ! python3 - "$run/benchmark.json" <<'PY'
+import json
+import sys
+
+benchmark = json.load(open(sys.argv[1]))
+assert "baseline_mismatch" not in benchmark, benchmark["baseline_mismatch"]
+assert benchmark["regressions"], "a matching baseline reported no regression"
+assert benchmark["baseline"]["run_id"] == "match", benchmark["baseline"]
+PY
+    then
+        log "    the matching baseline did not compare"
+        log "$out"
+        return 1
+    fi
+
+    if ! python3 - "$SCRIPT_DIR/../layer2" "$home" <<'PY'
+import argparse
+import importlib.util
+import json
+import pathlib
+import sys
+
+layer2 = pathlib.Path(sys.argv[1]).resolve()
+home = pathlib.Path(sys.argv[2])
+spec = importlib.util.spec_from_file_location("wiki_layer2_run", layer2 / "run.py")
+run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(run)
+
+workspace = home / "workspace"
+claude = {"vendor": "claude", "worker_model": "opus", "worker_effort": "high"}
+cursor = {"vendor": "cursor", "worker_model": "auto", "worker_effort": ""}
+for name, settings in (("run-20261101-000000", claude),
+                       ("run-20261102-000000", cursor),
+                       ("run-20261103-000000", {})):
+    (workspace / name).mkdir(parents=True)
+    (workspace / name / "benchmark.json").write_text(
+        json.dumps({"run_id": name, **settings, "scenarios": []}))
+run.WORKSPACE = workspace
+
+chosen = run.latest_previous_benchmark(claude)
+assert chosen == workspace / "run-20261101-000000" / "benchmark.json", chosen
+chosen = run.latest_previous_benchmark(cursor)
+assert chosen == workspace / "run-20261102-000000" / "benchmark.json", chosen
+chosen = run.latest_previous_benchmark({**claude, "worker_effort": "medium"})
+assert chosen is None, chosen
+
+parser = argparse.ArgumentParser()
+run.vendor.add_vendor_arguments(parser)
+resolved = run.vendor.resolve(parser.parse_args(["--vendor", "claude"]))
+fresh = home / "fresh-run"
+fresh.mkdir()
+recorded = run.write_run_settings(fresh, resolved)
+on_disk = json.loads((fresh / "run_settings.json").read_text())
+assert recorded == on_disk == claude, (recorded, on_disk)
+PY
+    then
+        log "    run.py's settings record or baseline choice did not hold"
+        return 1
+    fi
+    return 0
+}
+
 scenario g1  "layer2 grade fails an empty-delivery pass"      g1_grade_empty_delivery_exits_nonzero
 scenario g2  "layer2 compare names baseline and warns"        g2_aggregate_names_baseline_and_warns_on_narrowing
 scenario g3  "layer2 report-relay assertion has three outcomes" g3_grade_sub_agent_report_relayed_outcomes
 scenario g4  "layer2 records per-pass remediation mechanism"   g4_grade_records_remediation_mechanism
+scenario g5  "layer2 refuses a cross-setting baseline"         g5_aggregate_refuses_cross_setting_baseline
 
 ###############################################################################
 # merge_log_preamble.py scenarios

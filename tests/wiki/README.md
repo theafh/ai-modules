@@ -195,16 +195,24 @@ not identify the run kind.
 `run.py` exits non-zero when `grade.py` marks any pass failed, including a
 run directory holding no pass or one whose `response.txt` is empty. The
 aggregator automatically compares against the most recent prior
-`benchmark.json`. Its compare output names that baseline run and states the
-baseline's shape: how many scenarios it covered and their ids. When the
-baseline does not cover every scenario in the current run, including when it
-covered fewer, the compare prints an explicit narrowing warning naming the
-scenarios the baseline did not cover, so a `--scenario` debug run used as the
-baseline reads as a narrowed comparison rather than a clean pass. The warning
-leaves exit status unchanged. Exit status comes only from assertion or
-scenario regressions: the aggregator exits
-non-zero when any assertion that was 100% in the prior run is <100% now, or any
-scenario that was clean across all passes now has at least one fail.
+`benchmark.json` recorded on the same vendor, worker model, and worker effort.
+The run records those settings in `run_settings.json` before its first pass,
+and `benchmark.json` carries them, so `run.py` skips a prior benchmark on other
+settings, or one recorded without them, and a run after a vendor or effort
+switch compares against the last run on its own settings. Its compare output
+names that baseline run and states the baseline's shape: how many scenarios it
+covered and their ids. When the baseline does not cover every scenario in the
+current run, including when it covered fewer, the compare prints an explicit
+narrowing warning naming the scenarios the baseline did not cover, so a
+`--scenario` debug run used as the baseline reads as a narrowed comparison
+rather than a clean pass. The warning leaves exit status unchanged. Exit status
+comes from assertion or scenario regressions and from a refused baseline: the
+aggregator exits non-zero when any assertion that was 100% in the prior run is
+<100% now, when any scenario that was clean across all passes now has at least
+one fail, or when a `--previous` benchmark named directly was recorded on other
+settings. It refuses that baseline the way the trigger evals refuse a
+cross-setting baseline, writing `benchmark.json` without regressions and with
+a `baseline_mismatch` naming both values.
 
 ## What "all passing" guarantees
 

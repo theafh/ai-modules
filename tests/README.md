@@ -184,9 +184,11 @@ files.
   two router splits, dash-free prose, the named sections and fidelity
   rules, registration lockstep, and the eval runner's stop on a failed or
   empty stage), `evals/test_grade.py` proves the grader passes a
-  faithful rewrite and fails each lossy one, and `evals/test_judge.py`
-  proves the judge command carries the resolved judge model and effort;
-  `run_all.sh` drives all three. `evals/` runs 3 scenarios × a fixed 5-pass denominator,
+  faithful rewrite and fails each lossy one, `evals/test_judge.py`
+  proves the judge command carries the resolved judge model and effort, and
+  `evals/test_run.py` proves every run and re-grade record names the vendor
+  and the worker and judge model and effort and that a re-grade refuses to
+  compare across judge settings; `run_all.sh` drives all four. `evals/` runs 3 scenarios × a fixed 5-pass denominator,
   graded by a deterministic `grade.py` plus a refute-biased `judge.py`.
   Every pass and every judge call runs from an isolated root through
   `tests/lib/worker_isolation.py`, and the recorded measurement runs on
@@ -194,8 +196,9 @@ files.
   measurement.
 - **`natural_language/`**: Pattern A, behavioral only (the subject is an
   output style, so there is no `script_tests/`). `run_all.sh` drives the
-  deterministic surface: `evals/test_run.py` (the style-route preflight and
-  the runner's stop on a failed or empty stage), `evals/test_grade.py`
+  deterministic surface: `evals/test_run.py` (the style-route preflight,
+  the runner's stop on a failed or empty stage, and the vendor, worker, and
+  judge settings every record and the console header carry), `evals/test_grade.py`
   (the grader's wrap-collapsed matching), and `evals/test_judge.py` (the
   judge command's model and effort), none of which starts a worker.
   2 scenarios × a fixed 5-pass denominator, graded by a deterministic

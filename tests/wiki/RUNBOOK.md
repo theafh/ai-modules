@@ -45,13 +45,18 @@ the scenarios the run actually covered. Read that printed summary and the
 `benchmark.json` scenario list to tell what a `run-<timestamp>/` directory covered;
 the timestamp-only directory name does not identify the run kind.
 
-The aggregator compares against the most recent prior `benchmark.json`, names
-that baseline run and its shape (scenario count and ids), and prints an
-explicit narrowing warning when the baseline does not cover every scenario in
-the current run, including when it covered fewer. The warning does not change
-exit status. The aggregator returns
-non-zero only when an assertion that was 100% in the prior run is now <100%,
-or a scenario that was clean across all passes now has a fail.
+The aggregator compares against the most recent prior `benchmark.json`
+recorded on the same vendor, worker model, and worker effort, names that
+baseline run and its shape (scenario count and ids), and prints an explicit
+narrowing warning when the baseline does not cover every scenario in the
+current run, including when it covered fewer. The warning does not change
+exit status. The run records its settings in `run_settings.json`, which
+`benchmark.json` carries, and `run.py` skips a prior benchmark on other
+settings or one recorded without them. The aggregator returns non-zero when
+an assertion that was 100% in the prior run is now <100%, when a scenario that
+was clean across all passes now has a fail, or when a `--previous` benchmark
+named directly was recorded on other settings, which it refuses to compare and
+records as `baseline_mismatch` naming both values.
 
 ## Adding a scenario
 

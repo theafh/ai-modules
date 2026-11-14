@@ -216,9 +216,14 @@ Trigger evals answer a different question, whether a skill's `description:`
 loads it on a realistic message. They run on both vendors, on Cursor by
 default, through
 `python3 tests/trigger_evals/run.py --eval-set <set> --skill <name> --baseline <prior-run>`.
-Pass a baseline recorded on the same vendor, worker model, and worker effort; a
-baseline that differs in any of them writes the results without a comparison
-and exits non-zero naming both values.
+Pass a baseline recorded on the same vendor, worker model, and worker effort.
+Every comparison against a prior run compares only runs recorded on the same
+vendor, model, and effort: one that differs in any of them writes the new
+records without the comparison and exits non-zero naming both values. The
+trigger-eval baseline applies the rule to the worker settings, the wiki layer 2
+benchmark applies it to the worker settings and picks its automatic baseline
+among matching runs, and the `language_humanizer` re-grade applies it to the
+judge settings behind the verdicts it compares.
 
 ## Re-run Economy
 

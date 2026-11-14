@@ -19,8 +19,13 @@ This is the regression-test entrypoint for the wiki skill. Each invocation:
        into the pass dir, then snapshot the root and remove it.
 2. Runs grade.py and aggregate.py, then returns non-zero when either the
    grade or the aggregate code is non-zero.
-3. Compares to the most recent prior benchmark.json (if any) and reports
-   regressions.
+3. Compares to the most recent prior benchmark.json recorded on the same
+   vendor, worker model, and worker effort (if any) and reports regressions.
+   The run records those settings in `run_settings.json` before its first
+   pass, `aggregate.py` copies them into benchmark.json, and a prior
+   benchmark on other settings, or one that predates the record, is skipped
+   rather than compared, so a run after a vendor or effort switch compares
+   against the last run on its own settings.
 
 Sandbox isolation guarantees concurrent scenarios cannot collide: each pass
 owns a fresh root under the system temporary directory and writes results to
@@ -81,18 +86,50 @@ ARTEFACTS = [
 WIKI_SCRIPTS = ["discover_wiki.sh", "init_wiki.sh", "lint.py", "compute_sha256.py"]
 
 sys.path.insert(0, str(WIKI_TESTS.parent / "lib"))
+sys.path.insert(0, str(THIS))
 import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
 import worker_isolation  # noqa: E402  (shared sandbox-root helper)
+from aggregate import RUN_SETTINGS, settings_mismatch  # noqa: E402
 
 ISOLATION_PREFIX = "wiki_layer2_"
 
 
-def latest_previous_benchmark() -> pathlib.Path | None:
+def write_run_settings(run_dir: pathlib.Path, resolved: vendor.Resolved) -> dict:
+    """Record the run's worker settings where aggregate.py reads them.
+
+    The values are the resolved raw settings, as the trigger evals record
+    them: an empty model or effort means the flag was omitted and the CLI
+    applied its own default.
+    """
+
+    settings = {
+        "vendor": resolved.vendor,
+        "worker_model": resolved.worker_model,
+        "worker_effort": resolved.worker_effort,
+    }
+    (run_dir / RUN_SETTINGS).write_text(json.dumps(settings, indent=2))
+    return settings
+
+
+def latest_previous_benchmark(settings: dict) -> pathlib.Path | None:
+    """Return the newest prior benchmark recorded on the same settings.
+
+    A benchmark on another vendor, worker model, or worker effort, or one
+    that records none, is skipped, so the regression compare never crosses
+    settings; aggregate.py refuses such a baseline when it is named directly.
+    """
+
     if not WORKSPACE.is_dir():
         return None
-    candidates = sorted(WORKSPACE.glob("run-*/benchmark.json"))
-    return candidates[-1] if candidates else None
+    for candidate in sorted(WORKSPACE.glob("run-*/benchmark.json"), reverse=True):
+        try:
+            previous = json.loads(candidate.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(previous, dict) and settings_mismatch(previous, settings) is None:
+            return candidate
+    return None
 
 
 def restage_one(
@@ -295,6 +332,7 @@ def main() -> int:
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = WORKSPACE / f"run-{timestamp}"
     run_dir.mkdir(parents=True)
+    settings = write_run_settings(run_dir, resolved)
     print(f"Run dir: {run_dir}")
     print(
         f"Worker vendor: {resolved.vendor}; command: {resolved.config.label}; "
@@ -335,11 +373,18 @@ def main() -> int:
 
     # Aggregate (with optional regression compare)
     print("\nAggregating ...")
-    prev = latest_previous_benchmark()
+    prev = latest_previous_benchmark(settings)
     cmd = [sys.executable, str(AGGREGATE), str(run_dir)]
     if prev:
         cmd += ["--previous", str(prev)]
         print(f"Comparing against {prev}")
+    else:
+        print(
+            "No prior benchmark recorded on vendor "
+            f"{settings['vendor']}, worker model "
+            f"{settings['worker_model'] or '<inherit>'}, and worker effort "
+            f"{settings['worker_effort'] or '<inherit>'}; no regression compare."
+        )
     aggregate_rc = subprocess.run(cmd).returncode
 
     # Render HTML report (best-effort)
