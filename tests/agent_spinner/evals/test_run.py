@@ -1098,6 +1098,68 @@ class FakeCache:
         return None
 
 
+def case_deploy_skills() -> None:
+    print("deploy-only skills")
+    check(
+        "a deploy_skills entry joins the deployed artefacts",
+        "task" in run.artefacts_for({"deploy_skills": ["task"]}),
+    )
+    check(
+        "a harness without deploy_skills deploys no task skill",
+        "task" not in run.artefacts_for({}),
+    )
+    specs = real_specs()
+    for eval_id in ("stamped_target_routed_to_owner", "stamp_routed_on_any_rewrite"):
+        check(
+            f"{eval_id} deploys the task skill that owns its stamped target",
+            "task" in run.artefacts_for(specs[eval_id]["harness"]),
+        )
+    check(
+        "deploy_skills adds no prompt line",
+        "task" not in "".join(
+            run.governing_paths({"deploy_skills": ["task"]}, None)
+        ),
+    )
+
+
+def case_incomplete_recorded() -> None:
+    print("incomplete worker recorded as inconclusive")
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        worker, stub_dir = make_worker(root)
+        queue(stub_dir, 1, "", rc=1, err="worker crashed")
+        spec = real_specs()["probe_definitions_no_spawn"]
+        workspace = root / "workspace"
+        with patched(
+            {"probe_definitions_no_spawn": spec}, workspace, stub_dir,
+            grade=passing_grade(root),
+        ):
+            rc, output = invoke([
+                "probe_definitions_no_spawn",
+                "--worker-bin", str(worker), "--no-cache",
+            ])
+        run_dir = latest_run(workspace)
+        summary = json.loads((run_dir / "summary.json").read_text())
+        entry = summary["results"]["probe_definitions_no_spawn"]
+        check("an incomplete eval exits non-zero", rc != 0, output)
+        check(
+            "summary.json records the eval as not completed",
+            entry.get("completed") is False,
+            json.dumps(entry),
+        )
+        check(
+            "summary.json carries the verdict note naming the cause",
+            "did not complete" in entry.get("verdict_note", ""),
+            json.dumps(entry),
+        )
+        grading = (run_dir / "probe_definitions_no_spawn" / "grading.txt").read_text()
+        check(
+            "grading.txt opens with the inconclusive marker",
+            grading.startswith("INCONCLUSIVE:"),
+            grading[:200],
+        )
+
+
 def case_cache_hit() -> None:
     print("cache hit")
     with tempfile.TemporaryDirectory() as td:
@@ -1246,8 +1308,14 @@ def case_cached_escape() -> None:
         )
         check(
             "summary.json records the blamed cached eval as failed and cached",
-            summary["results"][cached_id] == {"passed": False, "cached": True}
-            and summary["results"][sibling_id] == {"passed": True, "cached": False},
+            summary["results"][cached_id] == {
+                "passed": False, "cached": True,
+                "completed": True, "verdict_note": "",
+            }
+            and summary["results"][sibling_id] == {
+                "passed": True, "cached": False,
+                "completed": True, "verdict_note": "",
+            },
             json.dumps(summary["results"]),
         )
 
@@ -1809,6 +1877,8 @@ def main() -> int:
         bool(claude_verdict) and claude_verdict == cursor_verdict,
     )
     case_cache_key()
+    case_deploy_skills()
+    case_incomplete_recorded()
     case_cache_hit()
     case_cached_escape()
     for vendor_name in ("claude", "cursor"):

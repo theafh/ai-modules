@@ -1478,3 +1478,17 @@ pre-existing, and the size infos stay advisory; the one on
   every Claude worker and judge environment, because the 2.1.289 bundle's
   flag-settings path says the variable overrides effort, read from the bundle
   and not exercised by a run)
+
+## [2026-11-14 17:39] update | Record the near-miss rule of the micro-deployment read check
+
+- concepts/verification-surfaces.md (the micro-deployment passage now states
+  that a resolved read path naming no file stays out of the artefact check only
+  when it climbs with `..` or lies under the system temporary roots, and that a
+  missing path anywhere else still fails closed)
+
+## [2026-11-15 00:47] update | Record that an active goal keeps a Cursor print-mode turn going
+
+- entities/cursor.md (the continuation passage now records that a goal armed in
+  print mode kept one `agent -p` call working after its run had stopped, as an
+  agent_spinner eval run of 14 November 2026 showed, and the open question
+  narrows to whether a goal carries work into a separate later invocation)

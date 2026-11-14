@@ -87,7 +87,7 @@ having taken it.
 | `pause_request_stops_dispatch` | ledger dispatches + report | No second-wave dispatch is the stop fact, and the three row lists are the stop report. |
 | `continuation_armed_once` | tool record + announcement | Cursor's goal tool is the vendor-specific feature: exactly one goal creation with the run directory in its objective. On Claude, the absence of a goal tool is proven by no goal, `ScheduleWakeup`, or cron call, and the announcement names re-entry through `status` and `attach`. |
 | `explicit_spinner_on_family_job` | finder briefs + file hashes + report | Five read-only finder briefs, one per page, are the orchestrator-level look the named family job gets. Byte-identical pages and family files prove the family writer stayed the only writer. No brief addressed to the family agent names its checks or assigns a lens panel. The report carries the approval handoff. |
-| `shape_matched_no_recipe` | roster + briefs + note files + announcement | Per-artifact fan-out is the shape the enumerated imperative matches, and the empty recipe table means no recipe can match. The roster and briefs carry the five-way width, the note files are the produced artifacts, and the announcement states the shape and the no-recipe path. |
+| `shape_matched_no_recipe` | roster + briefs + note files + announcement | Per-artifact fan-out is the shape the enumerated imperative matches, and no row of the recipe table fits a job that summarizes five pages with no tracked task and no acceptance list, so no recipe matches. The roster and briefs carry the five-way width, the note files are the produced artifacts, and the announcement states the shape and the no-recipe path. |
 | `merged_deliverable_checked` | roster + report | The write that lands gets its own check row and that row is accepted, so the merged deliverable is checked rather than certified by its producer. |
 | `unapproved_hunk_after_regeneration` | file hash + briefs + report | A regenerated file's unmapped hunk is the fact; the brief carrying the approved-edit list and the report quoting the hunk are the two halves of C1's mapping rule. |
 | `acceptance_presence_on_every_surface` | page hashes + brief + report | Byte-identical pages prove nothing was written, the brief's five checklist lines prove the checklist came from the acceptance contract, and the report names the two pages that fail it. |
@@ -238,6 +238,14 @@ that mode off.
 | `needs_real_absence` | `true` | The eval's expected behaviour rests on a withheld tool being truly absent, and the runner reports a run where that absence is only declared. |
 | `tool_record` | `true` | Every turn streams its events, and the runner writes the tool calls they show to `tool_calls.jsonl` beside `response.txt`. |
 | `timeout` | seconds | The eval's own worker bound, overriding `--timeout`. A spawned-helper eval that stages several real passes needs more wall clock than the default, and this keeps the extra patience scoped to that eval. |
+| `deploy_skills` | skill names | Each named skill joins the pass's micro-deployment, and the cache key through the declaration, without adding a line to the prompt. It serves a skill the run reaches by routing rather than through a path the prompt names, as `stamp_routed_on_any_rewrite` and `stamped_target_routed_to_owner` deploy `task`, the family that owns their stamped target. |
+
+A worker that times out, exits non-zero, or returns nothing leaves an
+inconclusive eval rather than a graded failure. The runner still grades the
+state it left, but `grading.txt` then opens with an `INCONCLUSIVE:` line
+naming the cause, and the eval's entry in `summary.json` carries
+`completed: false` and that `verdict_note`, so a stored run never reads a
+timeout as a behavioural fail.
 
 ### The two response files
 
@@ -570,3 +578,107 @@ record.
 
 `phase_plan_announcement` and `clean_corpus` first outran the 900-second
 default and were graded on a re-run with `--timeout 1800`; both failed.
+
+#### Classification of the 2026-11-14 failures
+
+A failure-by-failure review on 2026-11-14 re-graded copies of the stored
+sandboxes. Most of the 24 graded failures, and two of the four integrity
+failures, said nothing about the model. Replaying the
+repaired grader over all 304 stored sandboxes (this run, the 2026-11-13 `sonnet`
+and `opus` runs, and the older Cursor runs) cleared the false failures below
+and introduced no new failure.
+
+- **Stale fixtures, already fixed by `947f043`:** `one_remediation_round`,
+  `payload_cap`, `decision_items_past_line_100`,
+  `labelled_forks_all_relayed`, `unlabelled_returns_joined_by_id`,
+  `completion_turn_advances_phase`, and `duplicate_finding_union`. Each
+  staged or between-turns return lacked the `objections` key, so the worker's
+  own `accept` refused it, as it refused the 20 unstaged evals. These seven
+  have no `opus` result on the current fixtures yet, and the sonnet comparison
+  above counts two of them against `opus` in error.
+- **`judge_flaws_capped`:** its fixture recorded no input version for the
+  candidate its judges examine, so every receipt was refused. The judge briefs
+  now pass `--target`.
+- **Grader false failures, repaired:** `judgement_surfaced`,
+  `uncited_clean_reroute`, `placeholder_figure_held`,
+  `stamped_target_routed_to_owner`, `explicit_spinner_on_family_job`,
+  `phase_plan_announcement`, and `inline_floor`. Each run did what the skill
+  asks, and the check read phrasing, a region, a record type, or a file count
+  in place of the fact the run left on disk.
+- **A contradictory prompt, repaired:** `sweep_rewrite_hunk_blocks_sampling`
+  told the worker to leave every open choice to the user, so the run correctly
+  held the reworded page as a fork. The prompt now has the worker choose the
+  wording of any reword.
+- **Integrity false positives, repaired in `tests/lib/micro_deploy.py`:** in
+  `explicit_spinner_on_family_job` a colon in a ledger label cut an in-set
+  path, and in `triage_pass_routes_missed_hit` a miscounted `..` climb named a
+  path that does not exist. The other two integrity failures,
+  `depth_one_level` and `stamp_routed_on_any_rewrite`, are real reads of the
+  operator's home, because a Claude worker keeps the real `HOME`; the second
+  also needed `task`, which the eval now deploys through `deploy_skills`.
+- **A harness timeout, raised:** `checker_spawned_through_role` spent most of
+  its fixed 1200 seconds inside two role spawns at `effort: max`, so it could
+  never finish on Claude. Its bound is now 2400 seconds.
+- **Model behaviour against a stated rule:** the opening-sentence checks in
+  `clean_corpus`, `containment_one_path`, `planted_defect`, and
+  `roster_partial_stop`, and the hand-written decision packet in
+  `unanswered_gate_stops_with_packet`. The skill states both rules only in
+  reference prose, and the backlog carries a task to make them hold.
+- **A ledger contract gap:** `triage_pass_routes_missed_hit` lost its triage
+  row because the rendered brief never says the return's `brief` key repeats
+  its token. The backlog carries a task for the brief contract.
+
+### 2026-11-14 evening, the repaired suite on Claude and on Cursor
+
+Both vendors ran all 93 evals against the working tree carrying the fixes
+above. Claude ran the worker on `opus` at `high` effort through
+`claude` 2.1.289, in batches of four from a supervising session, with
+previously failing evals first; it took one full five-hour usage window plus 6
+points of the next, and 17 points of the weekly window. Cursor ran `auto`
+through CLI 2026.10.22-27dcf5f with `--timeout 1500`. Every worker completed
+on both vendors, so no eval was inconclusive. The run directories sit under
+`../workspace/run-20261114-1[78]*` through `run-20261114-235233`, which no clone
+carries.
+
+| Vendor | Passed at run time | Passed after re-grading | Failed after re-grading |
+| --- | --- | --- | --- |
+| Claude `opus` at `high` | 72 of 93 | 81 of 93 | 12 |
+| Cursor `auto` | 82 of 93 | 86 of 93 | 7 |
+
+The re-grading column replays the grader as repaired after these runs over the
+same stored sandboxes, with no worker re-run. The review behind it found
+fourteen more false failures across the two runs: archived briefs in a
+subfolder counted as finders, quoted or backticked read material taken as a
+settled claim or as the report's own assertion, phrasing lists that missed
+"no second round" and "`close --stopped` exited 3", a packet check that
+demanded a literal option label, a probe check that read the announcement
+alone, a modified-path check bound to one word, a sampling offer written as a
+list item, a three-word gap in "later ... run", a worker's `roster.tsv.bak`
+read in place of `roster.tsv`, a writer row graded on its kind column alone,
+and read-only `finder` rows counted as writers. Replaying the repaired grader
+over every stored sandbox of this and the earlier runs changed no other
+verdict.
+
+The `clean_corpus` fixture was repaired after these runs: its pages ran the
+script by a bare name that does not resolve, and the script's comment
+overstated its argument parsing, so a careful run found real defects in a
+corpus meant to be clean. Its verdicts above predate that repair. Re-run on
+the repaired fixture on 2026-11-15, it passed on Cursor with 12 of 12 checks
+(`run-20261115-002747`) and failed on Claude on 3 checks
+(`run-20261115-002758`): the Claude run found nothing false, yet counted five
+omissions as findings, and its opening sentence missed the tier and the counts.
+
+Each remaining failure belongs to a task in the backlog:
+
+| Eval | Vendor | Failing check, in short | Owning task |
+| --- | --- | --- | --- |
+| `containment_one_path`, `roster_partial_stop`, `report_rederivation`, `skipped_close_reported` | Claude; the last also Cursor | the opening sentence misses the tier, the counts, or the close status | `ai-dev_agent-spinner-report-packet-enforcement` |
+| `roster_partial_stop` | Claude | unknown rows not settled by reading | `ai-dev_agent-spinner-ledger-terminal-states` |
+| `checker_spawned_through_role`, `snapshot_search_positive_control` | Claude; the first also Cursor | returns rejected for shapes and values the brief never stated, then lost on the identical retry | `ai-dev_agent-spinner-ledger-brief-contract` |
+| `stamped_target_routed_to_owner` | Claude | rewrote the stamped task file, then recorded the routing | `ai-dev_agent-spinner-stamped-write-routing` |
+| `widening_needs_estimate_and_ask`, `unanswered_gate_stops_with_packet` | Claude; Cursor | an unanswered fork closed cleanly, or a goal and a self-answer settled the gate | `ai-dev_agent-spinner-unanswered-fork-holds-run` |
+| `wide_run_plans_session_boundary`, `shape_matched_no_recipe` | Claude; Cursor | routed inline as a read-only diagnostic, or matched the multi-file recipe without a task | `ai-dev_agent-spinner-selector-probe-definitions` |
+| `checker_spawned_without_role` | Claude | the worker read the operator's own role definition and recorded a role route | `tests_claude-worker-scratch-home` |
+| `payload_cap`, `sweep_rewrite_hunk_blocks_sampling` | both; Cursor | brief checks that ignore the by-path branch, and a sampling cue read from a negated sentence | `tests_agent-spinner-vacuous-graders` |
+| `clean_corpus` | Claude | after the fixture repair, omissions counted as findings in a checking pass | `ai-dev_agent-spinner-check-contract-default` |
+| `one_remediation_round` | Cursor | the text never says no second round follows, though none ran | none; the behaviour held |

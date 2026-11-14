@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import filecmp
 import json
+import glob
 import os
 import pathlib
 import re
@@ -42,12 +43,15 @@ _ARTEFACT_PATH_RE = re.compile(
 
 # Shell-command path extraction. A command is cut at whitespace, quotes, and
 # shell punctuation, so each fragment is one candidate path and `$VAR/...`
-# never leaves a truncated `/...` behind. A fragment that keeps an unexpanded
+# never leaves a truncated `/...` behind. A colon cuts only where a new
+# absolute or `~` path starts after it, as in `PATH=/a:/b`; elsewhere it stays
+# inside the fragment, so a ledger label such as `find:alpha` in a path keeps
+# that path's literal prefix. A fragment that keeps an unexpanded
 # `$NAME` or a leading `~` is collected whole and fails closed; a `$` that is
 # not followed by a name (a regex anchor, say) is not a variable.
 _SHELL_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 _TILDE_RE = re.compile(r"(^|[\s=:\"'(])~(?=/|$|[\s\"';)|&])")
-_SHELL_SPLIT_RE = re.compile(r"[\s;|&<>()`'\"=:]+")
+_SHELL_SPLIT_RE = re.compile(r"[\s;|&<>()`'\"=]+|:+(?=[/~])")
 _UNEXPANDED_RE = re.compile(r"\$[A-Za-z_{(]")
 
 # The parts of a command that change how its later words resolve, read left to
@@ -1505,8 +1509,41 @@ def classify_out_of_set(
             continue
         if any(_is_under(resolved, root) for root in roots):
             continue
+        if _missing_near_miss(raw, resolved):
+            continue
         out.append(str(resolved))
     return out
+
+
+# Where every scratch home and sandbox lives: the system temporary roots.
+_TEMP_ROOTS = tuple(
+    dict.fromkeys(
+        pathlib.Path(p).resolve()
+        for p in (tempfile.gettempdir(), "/tmp", "/var/folders")
+        if os.path.isdir(p)
+    )
+)
+
+
+def _missing_near_miss(raw: str, resolved: pathlib.Path) -> bool:
+    """Whether an out-of-set path is a worker's slip toward its own deployment.
+
+    A path that names nothing on disk was read from nowhere. When it also
+    climbs with ``..`` or lies under the system temporary roots, where the
+    run's scratch home and sandbox live, it is a miscounted climb or a mistyped
+    temp-directory name aimed at the run's own files, so it stays out of the
+    out-of-set list. A missing path anywhere else, such as under a home
+    directory, still fails closed. A glob counts as present when it matches.
+    """
+    text = str(resolved)
+    if any(char in text for char in "*?["):
+        if glob.glob(text):
+            return False
+    elif os.path.lexists(text):
+        return False
+    if ".." in pathlib.PurePath(raw).parts:
+        return True
+    return any(_is_under(resolved, root) for root in _TEMP_ROOTS)
 
 
 def integrity_record(

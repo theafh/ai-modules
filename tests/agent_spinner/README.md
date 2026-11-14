@@ -46,7 +46,8 @@ tests/agent_spinner/
   `checker_spawned_without_role` route cases: a generic-spawn run passes, and
   a role-labelled established delegation fails naming the visible copy.
   `script_tests/fixture_stage.py` keeps the fixtures on the shipped ledger's
-  return contract. It runs `evals/stage.sh` for every id in `evals.json`,
+  return contract. It runs `evals/stage.sh` for every id in `evals.json`, then
+  a two-turn eval's between-turns script the way the runner does,
   fails a staged return that carries no `objections` list, and runs the
   bundled ledger's `accept` in a throwaway copy on every `dispatched` row whose
   return a fixture leaves for the run. Such a return must accept, unless its

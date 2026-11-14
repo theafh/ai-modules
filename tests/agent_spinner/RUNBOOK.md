@@ -136,10 +136,25 @@ runs per query, graded at the 50%-over-three threshold.
 | 2026-11-09 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | baseline (parent-commit name-blind text) | 8/8 | 8/8 | 2/2 |
 | 2026-11-09 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | changed (conditional sentence) | 8/8 | 8/8 | 2/2 |
 | 2026-11-10 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | trimmed description under the 1,000-character listing-risk threshold | 8/8 | 8/8 | 2/2 |
+| 2026-11-14 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | same trimmed description, deployed copy, run 1 | 7/8 | 8/8 | 2/2 |
+| 2026-11-14 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | same trimmed description, deployed copy, run 2 | 8/8 | 7/8 | 2/2 |
+| 2026-11-14 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | same trimmed description, deployed copy, run 3 | 7/8 | 7/8 | 2/2 |
 
 The 2026-11-10 Cursor run staged the trimmed description under the same
 scratch-home route; its result directory is
 `tests/trigger_evals/results/agent_spinner/2026-11-10_123721`.
+
+The 2026-11-14 runs measured the deployed copy under `~/.cursor/skills`, whose
+description matched the source, against the 2026-11-10 baseline, on the same
+CLI build. Two queries regressed from 3/3 to 0/3 in two of the three runs: the
+true query "merge what the helper agents reported into one answer without just
+counting how many of them agreed" loaded no skill, and the negative query "which
+tool names do I need for a read-only subagent on each harness we target?"
+loaded `agent_spinner`. With the description and build unchanged, the drift sits
+in the router behind `auto`; the trigger-drift task in the backlog owns the
+follow-up. The result directories are
+`tests/trigger_evals/results/agent_spinner/2026-11-14_165355`,
+`2026-11-14_165544`, and `2026-11-14_165720`.
 
 The 2026-11-09 Cursor runs used the scratch-home route above, with the baseline
 run staging the parent commit's `SKILL.md` and the changed run staging the

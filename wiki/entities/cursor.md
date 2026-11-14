@@ -1,7 +1,7 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-11-04
+updated: 2026-11-15
 type: entity
 tags: [cursor, agent, skill, frontmatter, discovery, verification-gap]
 sources:
@@ -214,8 +214,14 @@ skills folder in the user's home directory (listed 27 September 2026). The
 research recorded no run that exercised either. One orchestrator looked the goal
 tool up and left it unused (22 September 2026). A print-mode probe then called
 `CreateGoal` and `UpdateGoal`. The goal was created and later marked complete,
-and a resumed turn recalled it (4 October 2026). Whether a goal, once set, keeps
-work going past the end of a turn is untested.
+and a resumed turn recalled it (4 October 2026). An active goal keeps a
+print-mode turn from ending: in an agent_spinner eval run on 14 November 2026,
+a worker armed a goal whose completion condition was `close` exiting 0, stopped
+its run correctly, and then kept working inside the same `agent -p` call,
+whose single turn ran about twelve minutes in all, writing "Goal stays active"
+after each continuation until it settled the condition itself (the eval's
+stored response and timing record, `CLI 2026.10.22-27dcf5f`). Whether a goal
+carries work into a separate later invocation is untested.
 
 ### Helper hook events
 
@@ -379,8 +385,8 @@ records. The stream-json capture, read-only workers included, is recorded above.
 Several questions stay open. Does print mode match the IDE's skill attachment
 and its batch and notice delivery? What does `default` resolve to, and does a
 per-call model take effect? Can a subagent spawn today? Does a background helper
-outlive a headless session? Does a goal, once set, keep work going past the end
-of a turn? And what happens when the CLI is launched from the agent shell?
+outlive a headless session? Does a goal carry work into a separate later
+invocation? And what happens when the CLI is launched from the agent shell?
 
 Re-reading the help on 4 October 2026 raised two questions. The probes settled
 the deny-entry one, as the print-mode passage above records. The other stays

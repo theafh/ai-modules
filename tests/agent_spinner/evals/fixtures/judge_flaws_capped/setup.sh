@@ -21,7 +21,9 @@ run_ledger "$proj" init --phase judge --bound 240 \
   --unit judge:speed --unit judge:cost >/dev/null
 
 for judge in speed cost; do
-  run_ledger "$proj" brief "judge:$judge" \
+  # --target records candidates/one.md as the row's input version, so the
+  # staged receipt for that examined path validates under the return contract.
+  run_ledger "$proj" brief "judge:$judge" --target candidates/one.md \
     --body "Score candidates/one.md through candidates/four.md on $judge." >/dev/null
   run_ledger "$proj" dispatch "judge:$judge" >/dev/null
   write_return "$proj" "judge:$judge" "done" pass "{

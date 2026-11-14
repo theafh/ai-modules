@@ -610,7 +610,9 @@ def test_stream_parser_vendor_neutral_records() -> None:
     rendering, so a case requiring the two texts equal would fail.
     """
 
-    shared_read = "/tmp/shared/.claude/skills/agent_spinner/SKILL.md"
+    # Outside every root and outside the system temp roots, so the read stays
+    # out of set although no such file exists.
+    shared_read = "/elsewhere/shared/.claude/skills/agent_spinner/SKILL.md"
     claude_lines = "\n".join(
         [
             json.dumps(
@@ -1044,6 +1046,64 @@ def test_classifier_cases() -> None:
         )
 
 
+def test_colon_labels_and_near_misses() -> None:
+    """A colon label keeps its path in set, and a near miss stays out."""
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td).resolve()
+        scratch = root / "scratch"
+        sandbox = root / "proj"
+        fake_home = root / "home"
+        for path in (scratch, sandbox, fake_home):
+            path.mkdir()
+        home_skill = fake_home / ".claude/skills/t/SKILL.md"
+        home_skill.parent.mkdir(parents=True)
+        home_skill.write_text("t\n")
+        home_agent = fake_home / ".claude/agents/x.md"
+        home_agent.parent.mkdir(parents=True)
+        home_agent.write_text("x\n")
+
+        def out_of_set(command: str, env: dict[str, str] | None = None) -> list[str]:
+            paths = micro_deploy.shell_command_paths(command, env or {}, cwd=sandbox)
+            return micro_deploy.classify_out_of_set(
+                paths, scratch_home=scratch, sandbox_project=sandbox, cwd=sandbox
+            )
+
+        check(
+            "a ledger colon label keeps a loop's snapshot path in set",
+            out_of_set(
+                'for p in alpha beta; do cp ".claude/agents/notes_repairer.md" '
+                f'"{sandbox}/.agent_spinner/snapshots/inputs/find:$p/.claude/agents/notes_repairer.md"; done'
+            ) == [],
+        )
+        check(
+            "a colon-separated real-home path still splits and fails",
+            out_of_set(
+                "X=/a:$HOME/.claude/skills/t/SKILL.md cat x", {"HOME": str(fake_home)}
+            ) == [str(home_skill)],
+        )
+        check(
+            "a miscounted climb toward the run's own deployment stays out",
+            out_of_set(
+                f"sed -n 1,5p {sandbox}/.agent_spinner/" + "../" * 12
+                + "var/var/folders/zz/nope/.claude/skills/agent_spinner/scripts/run_ledger.py"
+            ) == [],
+        )
+        mistyped = pathlib.Path(tempfile.gettempdir()).resolve() / "zz-mistyped-hash/.claude/skills/agent_spinner/scripts/run_ledger.py"
+        check(
+            "a mistyped temp-directory path stays out",
+            out_of_set(f"cat {mistyped}") == [],
+        )
+        check(
+            "an existing real-home agent definition still fails",
+            out_of_set(f"cat {home_agent}") == [str(home_agent)],
+        )
+        check(
+            "a missing real-home path still fails closed",
+            out_of_set("cat /Users/zz-nobody/.claude/agents/x.md")
+            == ["/Users/zz-nobody/.claude/agents/x.md"],
+        )
+
+
 def test_shell_paths_expand_against_worker_env() -> None:
     def shell(command: str, tool: str = "Bash") -> micro_deploy.ToolRecord:
         return micro_deploy.ToolRecord(name=tool, input={"command": command})
@@ -1452,6 +1512,10 @@ def test_helper_reads_reach_provenance() -> None:
         sandbox = root / "proj"
         sandbox.mkdir()
         elsewhere = root / "elsewhere" / ".cursor" / "skills" / "demo" / "SKILL.md"
+        # A real file: a missing path under the temp roots is a near miss of
+        # the run's own deployment and stays out of the out-of-set list.
+        elsewhere.parent.mkdir(parents=True)
+        elsewhere.write_text("demo\n")
 
         cursor_handle = micro_deploy.micro_deploy(
             "cursor", ["language_humanizer"], sandbox, preflight=False
@@ -2496,6 +2560,7 @@ def main() -> int:
     test_stream_parser_vendor_neutral_records()
     test_classifier_cases()
     test_shell_paths_expand_against_worker_env()
+    test_colon_labels_and_near_misses()
     test_run_worker_command_shape_and_timeout()
     test_run_worker_requires_effort()
     test_helper_reads_reach_provenance()

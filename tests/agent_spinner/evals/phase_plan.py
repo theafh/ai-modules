@@ -5,8 +5,10 @@ This is the grader helper behind `grade.sh`'s phase-count assertion. It reads
 the property both the inline_floor and phase_plan_announcement evals state: the
 announcement names two to four phases. It counts distinct phase names rather
 than looking for any mention of a phase, so a single phase or five phases fail.
-A bulleted list counts only when a phase header or sentence introduces it, so
-an unrelated list of two to four items does not pass as a plan.
+A bulleted list, and a bare numbered list, counts only when a phase header or
+sentence introduces it, so an unrelated list of two to four items, such as the
+numbered checks a recipe has the announcement list, does not pass as a plan.
+A `Phase N:` line counts wherever it appears.
 
 Usage:
     python3 phase_plan.py <announcement-file>
@@ -30,6 +32,7 @@ def phase_names(text):
     numbered = re.compile(
         r"^\s*(?:phase\s+(\d+)|(\d+)[.)])\s*[:.\-]?\s*(.+)$", re.I
     )
+    intro = re.compile(r"\bphases?\b.*:\s*(?:\*\*)?\s*$", re.I)
     listed = re.compile(r"^\s*phases?\s*[:=]\s*(.+)$", re.I)
     prose = re.compile(
         r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)"
@@ -44,7 +47,7 @@ def phase_names(text):
     in_phase_section = False
     for line in text.splitlines():
         match = numbered.match(line)
-        if match:
+        if match and (match.group(1) or in_phase_section):
             name = match.group(3).strip()
             if name:
                 names.append(name)
@@ -55,8 +58,10 @@ def phase_names(text):
             names.extend(split_names(match.group(1)))
             in_phase_section = True
             continue
-        if header.match(line):
+        if header.match(line) or intro.search(line):
             in_phase_section = True
+            continue
+        if numbered.match(line):
             continue
         match = bullet.match(line)
         if match:

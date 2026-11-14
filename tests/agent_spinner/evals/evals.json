@@ -1476,6 +1476,9 @@
           "spawn"
         ],
         "extra_reads": [],
+        "deploy_skills": [
+          "task"
+        ],
         "report_contract": false
       }
     },
@@ -1516,6 +1519,9 @@
       "harness": {
         "disallowed_tools": [],
         "extra_reads": [],
+        "deploy_skills": [
+          "task"
+        ],
         "report_contract": false
       }
     },
@@ -1749,7 +1755,7 @@
         "extra_reads": [],
         "report_contract": false
       },
-      "timeout": 1200
+      "timeout": 2400
     },
     {
       "id": "checker_spawned_without_role",
@@ -1884,7 +1890,7 @@
     {
       "id": "sweep_rewrite_hunk_blocks_sampling",
       "skill": "agent_spinner",
-      "prompt": "Apply the style rule in STYLE.md in place across every page in docs/, keeping meaning, requirement strength, and length exactly as they are. Answer the calibration gates in this request: use the rule as written, keep scope to docs/, run each pass at the default depth, set the wave size to 4 so the first wave pilots all four pages, and treat no class as borderline. Any choice the request leaves open is mine to make, so state it with its cost rather than deciding it for me. State your estimate and the wave size in the announcement, and treat that estimate as approved: dispatch without stopping for any gate this request answers.",
+      "prompt": "Apply the style rule in STYLE.md in place across every page in docs/, keeping meaning, requirement strength, and length exactly as they are. Answer the calibration gates in this request: use the rule as written, keep scope to docs/, run each pass at the default depth, set the wave size to 4 so the first wave pilots all four pages, and treat no class as borderline. Choose the wording of any reword yourself and list each one for my review. Any orchestration choice the request leaves open is mine to make, so state it with its cost rather than deciding it for me. State your estimate and the wave size in the announcement, and treat that estimate as approved: dispatch without stopping for any gate this request answers.",
       "expected_output": "docs/delta.md's hunk is a sentence rewrite, not a glyph-for-glyph substitution, so the sampling condition fails. Every changed page keeps exactly one check row, and the run offers no sampled checker set.",
       "files": [
         "evals/fixtures/sweep_rewrite_hunk_blocks_sampling/setup.sh"

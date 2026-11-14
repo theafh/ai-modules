@@ -207,8 +207,12 @@ def split_agent_files(harness: dict) -> tuple[list[pathlib.Path], list[pathlib.P
 
 def artefacts_for(harness: dict) -> list[str]:
     """agent_spinner, the skills it routes work to, any governing skill this
-    eval reads, and any plugin role it stages."""
-    names = ["agent_spinner", *ROUTED_SKILLS, *governing_names(harness)]
+    eval reads, any skill the eval deploys without naming it in the prompt,
+    and any plugin role it stages."""
+    names = [
+        "agent_spinner", *ROUTED_SKILLS, *governing_names(harness),
+        *(harness.get("deploy_skills") or []),
+    ]
     names.extend(path.stem for path in split_agent_files(harness)[0])
     return list(dict.fromkeys(names))
 
@@ -935,6 +939,13 @@ def run_one(
                    else "empty response" if not stdout.strip()
                    else f"worker rc={rc}")
             outcome.verdict_note = f"worker did not complete ({why})"
+            # A run the worker never finished is inconclusive, so its grading
+            # file says so ahead of the checks graded on the state it left.
+            (eval_dir / "grading.txt").write_text(
+                f"INCONCLUSIVE: {outcome.verdict_note}; the checks below graded "
+                "the state the worker left, not a finished run.\n"
+                + grade.stdout + grade.stderr
+            )
         else:
             fail = micro_deploy.read_checks_fail_message(
                 integrity, checkout_unread, vendor=resolved.vendor
@@ -992,8 +1003,12 @@ def _execute(
     resume_preflight: tuple[bool, str] | None,
     worker_version: str,
     workers: int,
+    verdicts: dict | None = None,
 ) -> list[tuple[str, bool, bool]]:
     """Run eval_ids through the shared pool. Results follow eval_ids.
+
+    When ``verdicts`` is given, each eval's completion and verdict note land in
+    it, keyed by eval id, for the run's summary.json.
 
     The escape guard brackets every job, so an eval whose sandbox names reach
     the host checkout is blamed after its job returns and before its verdict
@@ -1055,6 +1070,11 @@ def _execute(
                 grading_output=outcome.grading_output,
                 response_excerpt=outcome.response_excerpt,
             )
+        if verdicts is not None:
+            verdicts[eval_id] = {
+                "completed": bool(outcome.completed or outcome.cached),
+                "verdict_note": outcome.verdict_note,
+            }
         rows.append((eval_id, outcome.passed, outcome.cached))
     return rows
 
@@ -1115,6 +1135,7 @@ def main() -> int:
                 f"{resolved.config.label}) — {resume_preflight[1]}"
             )
 
+    verdicts: dict = {}
     rows = _execute(
         specs,
         ids,
@@ -1126,6 +1147,7 @@ def main() -> int:
         resume_preflight=resume_preflight,
         worker_version=worker_version,
         workers=args.workers,
+        verdicts=verdicts,
     )
     eval_runner.print_summary(rows)
 
@@ -1139,7 +1161,12 @@ def main() -> int:
         "passed": sum(1 for _id, passed, _cached in rows if passed),
         "total": len(rows),
         "results": {
-            eval_id: {"passed": passed, "cached": was_cached}
+            eval_id: {
+                "passed": passed,
+                "cached": was_cached,
+                "completed": verdicts.get(eval_id, {}).get("completed", True),
+                "verdict_note": verdicts.get(eval_id, {}).get("verdict_note", ""),
+            }
             for eval_id, passed, was_cached in rows
         },
     }

@@ -187,7 +187,12 @@ checks its worker's reads two ways (`tests/lib/micro_deploy.py`): a skill, agent
 or style file read from anywhere else, the user's home and the checkout's own
 sources included, fails the pass as `artefacts_read_from_micro_deployment`, and
 any read, glob, or named path that resolves inside the repository checkout fails
-the pass as `checkout_unread`. A helper the worker spawns counts as the worker.
+the pass as `checkout_unread`. A resolved path that names no file stays out of
+the first check only when it climbs with `..` or lies under the system temporary
+roots, because there it is a worker's slip toward its own scratch deployment,
+while a missing path anywhere else still fails closed (verified 14 November 2026
+against `tests/lib/test_micro_deploy.py`). A helper the worker spawns counts as
+the worker.
 Claude's stream carries a helper's tool calls
 ([Claude Code delegation surfaces](claude-delegation-surfaces.md)), but Cursor's
 leaves them out, so on Cursor the check also reads each chat transcript the CLI

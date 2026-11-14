@@ -145,7 +145,13 @@ take it from that pass's path map. Each pass records
 spawned helper's reads included, and a read of any skill, agent, or style file
 outside the scratch home and sandbox project fails the pass, whether it is a
 copy in the user's home or a source under the checkout's `plugins/` or
-`styles/`. Each pass also records `checkout_unread` beside that check: any
+`styles/`. A resolved path that names no file and either climbs with `..` or
+lies under the system temporary roots is a worker's slip toward its own
+deployment, such as a miscounted climb or a mistyped temp-directory name, so it
+stays out of that list; a missing path anywhere else still fails the pass. A
+colon cuts a shell fragment only where a new absolute or `~` path follows it,
+so a ledger label such as `find:alpha` inside a path keeps the path whole.
+Each pass also records `checkout_unread` beside that check: any
 read, glob, or named path that resolves inside the repository checkout fails
 the pass and lists the path under `inside_checkout`. Claude's stream carries a
 helper's tool calls, but Cursor keeps them out of the parent's stream, so on
@@ -327,7 +333,8 @@ may invoke it. For `git_review` the declaration names the `git_checkout` and
 default-branch detection it follows, and the `guardrail` skill whose authority
 hierarchy it ranks findings by. For `agent_spinner` it names the
 `harness_portability` skill that agent_spinner routes per-harness questions
-to. Change any of those and the key moves,
+to, plus any skill an eval's `deploy_skills` harness key names, such as
+`task` for the two evals whose stamped target the task family owns. Change any of those and the key moves,
 so the cache misses and the eval re-runs. A hit means byte-identical inputs,
 over everything the key covers, to a run already graded; a stage an eval's
 `dependencies` map leaves out, and a `grade.sh` arm that cannot select the

@@ -133,7 +133,17 @@ changed_count() {
 count_changed_is() { [[ "$(changed_count "${@:2}")" == "$1" ]]; }
 
 STATE_DIR="$proj/.agent_spinner"
+# The ledger's roster is roster.tsv. A worker may leave a hand-made copy such
+# as roster.tsv.bak beside it, so the real file wins whenever it exists.
+# Test Integrity: a grader fix (anchoring to the ledger's file). Evidence: the
+# captured Cursor run tests/agent_spinner/workspace/run-20261114-175823/
+# merged_deliverable_checked/ holds roster.tsv.bak, which the old unsorted
+# lookups read in place of roster.tsv and its accepted check:spec.md row.
 roster_path() {
+  if [[ -f "$STATE_DIR/roster.tsv" ]]; then
+    printf '%s\n' "$STATE_DIR/roster.tsv"
+    return 0
+  fi
   find "$STATE_DIR" -maxdepth 1 -type f -name 'roster*' 2>/dev/null | sort | head -1
 }
 roster_exists() { [[ -s "$(roster_path)" ]]; }
@@ -165,12 +175,27 @@ file_present() { [[ -s "$proj/$1" ]]; }
 # A finder brief is a read-only item brief naming one notes page. The run's
 # orient and probe briefs carry no item page, and a write brief is excluded by
 # its role line.
+# Test Integrity: a grader fix (narrowing to substance). When a roster exists,
+# only a brief whose name is a roster label counts, as writer_brief_files
+# already does, so an archived copy of a superseded brief is not a finder.
+# Evidence: the captured Opus run tests/agent_spinner/workspace/
+# run-20261114-083200/explicit_spinner_on_family_job/ holds five finder rows
+# and two `*.attempt1-superseded.txt` copies, and the old count found seven.
+# The ledger writes each live brief directly under briefs/, so with a roster a
+# copy in a subfolder never counts either; run-20261114-200020 kept its
+# superseded briefs under briefs/attempt1/ with their roster names.
 finder_brief_files() {
-  local f
+  local f id r
+  r="$(roster_path)"
   brief_files | while IFS= read -r f; do
     case "$(basename "$f")" in
       orient:*|probe:*) continue ;;
     esac
+    id="$(basename "$f" .txt)"
+    if [[ -s "$r" ]]; then
+      [[ "$(dirname "$f")" == "$BRIEFS_DIR" ]] || continue
+      awk -F'\t' -v id="$id" '$1 == id {found=1} END {exit !found}' "$r" || continue
+    fi
     grep -Eiq 'notes/(alpha|beta|gamma|delta|epsilon)\.md' "$f" || continue
     grep -Eiq '^role:[[:space:]]*write' "$f" && continue
     printf '%s\n' "$f"
@@ -266,11 +291,16 @@ family_agent_briefs_clean() {
 # run tests/agent_spinner/workspace/run-20261111-110729/shape_matched_no_recipe/
 # holds five `summarize` rows with kind `summary-note`, each with its target
 # path, and wrote all five notes; the kind-only test read them as no writer.
+# Test Integrity: a grader fix (narrowing to substance). A read-only finder row
+# is a reading class, so `finder` joins the role and kind lists. Evidence: the
+# captured Cursor run tests/agent_spinner/workspace/run-20261114-175823/
+# explicit_spinner_on_family_job/ has five finder:* rows with role and kind
+# finder, which the old list counted as write briefs.
 PRODUCING_AWK='
 function producing(role, kind, path) {
   if (path == "") return 0
-  if (kind ~ /^(reader|check|probe|orient)$/) return 0
-  if (role ~ /^(check|checker|verify|probe|orient|find|read)$/) return 0
+  if (kind ~ /^(reader|check|probe|orient|finder)$/) return 0
+  if (role ~ /^(check|checker|verify|probe|orient|find|finder|read)$/) return 0
   return 1
 }
 '
@@ -577,7 +607,12 @@ accepted_check_rows_for_path() {
 }
 
 # preamble_settled_lacks <preamble> <pattern> — the settled-facts part, which
-# sits before the unverified-premises block, does not carry the claim.
+# sits before the unverified-premises block, does not carry the claim. When the
+# preamble opens its settled facts under a "Settled" heading, the region starts
+# there, so the vocabulary and severity ladder the role-prompt template puts
+# first are not read as settled claims. Inline code and quoted passages are
+# dropped before matching, because they hold read material, such as a quoted
+# source line or a search term, rather than the preamble's own claim.
 preamble_settled_lacks() {
   python3 - "$1" "$2" <<'PY'
 import re, sys
@@ -585,6 +620,10 @@ path, pattern = sys.argv[1], sys.argv[2]
 text = open(path, encoding="utf-8", errors="replace").read()
 parts = re.split(r"^\s*(?:#+\s*|\*\*)?\s*unverified\b[^\n]*$", text, maxsplit=1, flags=re.I | re.M)
 settled = parts[0]
+heading = re.search(r"^\s*(?:#+\s*|\*\*|-\s*)?\s*settled\b[^\n]*$", settled, re.I | re.M)
+if heading:
+    settled = settled[heading.end():]
+settled = re.sub(r"`[^`]*`|\"[^\"]*\"|\u201c[^\u201d]*\u201d", " ", settled)
 sys.exit(1 if re.search(pattern, settled, re.I) else 0)
 PY
 }
@@ -606,7 +645,12 @@ import re, sys
 path, claim, attribution = sys.argv[1:4]
 text = open(path, encoding="utf-8", errors="replace").read()
 parts = re.split(r"^\s*(?:#+\s*|\*\*)?\s*unverified\b[^\n]*$", text, maxsplit=1, flags=re.I | re.M)
-settled = re.sub(r"\s+", " ", parts[0])
+settled = parts[0]
+heading = re.search(r"^\s*(?:#+\s*|\*\*|-\s*)?\s*settled\b[^\n]*$", settled, re.I | re.M)
+if heading:
+    settled = settled[heading.end():]
+settled = re.sub(r"`[^`]*`|\"[^\"]*\"|\u201c[^\u201d]*\u201d", " ", settled)
+settled = re.sub(r"\s+", " ", settled)
 for sentence in re.split(r"(?<=[.!?])\s+", settled):
     if re.search(claim, sentence, re.I) and not re.search(attribution, sentence, re.I):
         sys.exit(1)
@@ -828,6 +872,56 @@ NEGATED='(^|[^a-z])(no|not|never|nor|neither)([^a-z]|$)|without|rather than|inst
 # as a move the run actually made.
 mentions_unnegated() { have_response && sentences | grep -Ei "$1" | grep -Eicv "$NEGATED" >/dev/null; }
 lacks_unnegated() { ! mentions_unnegated "$1"; }
+
+# lacks_unquoted_unnegated <pattern> — as lacks_unnegated, after dropping
+# quoted passages and code spans, which hold text the run cites rather than
+# asserts.
+lacks_unquoted_unnegated() {
+  have_response || return 0
+  if run_text | python3 -c '
+import re, sys
+text = sys.stdin.read()
+sys.stdout.write(re.sub(r"\"[^\"]*\"|\u201c[^\u201d]*\u201d|`[^`]*`", " ", text))
+' | _split | grep -Ei "$1" | grep -Eicv "$NEGATED" >/dev/null; then
+    return 1
+  fi
+  return 0
+}
+
+# ledger_findings_all_refuted — the ledger holds at least one finding record,
+# and every one carries a `refuted` disposition.
+ledger_findings_all_refuted() {
+  [[ -s "$LEDGER" ]] || return 1
+  python3 - "$LEDGER" <<'PY'
+import json, sys
+records = []
+for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    try:
+        records.append(json.loads(line))
+    except ValueError:
+        continue
+findings = [r.get("id") for r in records if r.get("type") == "finding"]
+refuted = {r.get("target") for r in records
+           if r.get("type") == "disposition" and r.get("disposition") == "refuted"}
+sys.exit(0 if findings and all(f in refuted for f in findings) else 1)
+PY
+}
+
+# zero_findings_reported — the run confirmed no finding: every candidate it
+# raised is refuted in the ledger, or its text says it found none.
+zero_findings_reported() {
+  ledger_findings_all_refuted && return 0
+  response_has 'zero findings|0 findings|no findings|nothing to report|accurately describe|no drift|hold(s)? (its|their) contract|both [^.]{0,80}(correct|accurate)'
+}
+
+# no_all_checks_verified_claim — the report keeps no "All checks verified."
+# line, and no unquoted, unnegated sentence makes that claim.
+no_all_checks_verified_claim() {
+  if [[ -s "$REPORT" ]] && grep -Eiq '^[[:space:]]*all checks verified\.?[[:space:]]*$' "$REPORT"; then
+    return 1
+  fi
+  lacks_unquoted_unnegated 'all checks verified'
+}
 
 # The closing report's own opening carries the verdict the contract puts first.
 # The run writes that report to .agent_spinner/report.md; without it, fall back
@@ -1066,6 +1160,20 @@ repo_objects_unchanged() {
      == "$(cat "$target/.objects_before")" ]]
 }
 
+# clean_verdict_routed_back — the uncited clean verdict on check:deploy went
+# back for re-checking: the ledger flags it for its citation, or the run says so.
+clean_verdict_routed_back() {
+  ledger_line_matches '"type": "flag"' '"label": "check:deploy"' 'cite|uncited|span' && return 0
+  response_has 're-?check|routes? (it |that verdict )?back|route-back|goes back|sen(d|ds|t) [^.]{0,40}back|re-?invocation|another pass'
+}
+
+# decision_left_open — the decision stays the user's: the ledger holds an open
+# fork or gate, or, for a run that keeps state by hand, its text says so.
+decision_left_open() {
+  ledger_open_fork_or_gate && return 0
+  response_has 'unsettled|for you to decide|your call|surface(d)? (it )?(rather than|for)|did not (remove|settle)|chose none|took no option|no option (was )?(taken|chosen)|left (it )?(open|to you)|held (for|on) (the|your) (gate|answer|decision)|no [a-z -]{0,20}edit landed|await(ing)? (your|the user)|decision for you|(question|gate|fork|decision)[^.]{0,40}(open|unanswered|pending)|held (pending|behind|until)|once you (choose|answer|decide|pick)'
+}
+
 # ledger_open_fork_or_gate — a fork left open for the user, or a user gate with
 # no answered record. A fork disposed as `surfaced` is routed to the user and
 # stays open until answered; only applied, refuted, or deferred closes it.
@@ -1074,6 +1182,11 @@ repo_objects_unchanged() {
 # committed_rule_deletion_surfaced/ records fork compare:plan-vs-spec:forks:0
 # with a `surfaced` disposition and no answer, which the old any-disposition
 # test read as closed while the fork was still the user's to decide.
+# Test Integrity: a grader fix (narrowing to substance). `dispose --fork ID
+# --own-decision` settles a fork on the orchestrator's own authority and writes
+# an `own_authority` record rather than a disposition, so the earlier version
+# read a self-decided fork as still open. A fork named by an `own_authority`
+# record is closed here.
 ledger_open_fork_or_gate() {
   python3 - "$LEDGER" <<'PY'
 import json, sys
@@ -1086,8 +1199,11 @@ for rec in records:
     if rec.get("type") == "disposition":
         dispositions.setdefault(rec.get("target"), []).append(rec.get("disposition"))
 answered = {r.get("gate_id") for r in records if r.get("type") == "gate_answered"}
+self_decided = {r.get("fork") for r in records if r.get("type") == "own_authority"}
 for rec in records:
     if rec.get("type") == "fork":
+        if rec.get("id") in self_decided:
+            continue
         states = dispositions.get(rec.get("id"), [])
         if not states or all(state == "surfaced" for state in states):
             sys.exit(0)
@@ -1412,6 +1528,10 @@ for field in (r"issue\s*:", r"passages? (touched|named)\s*:|anchor", r"options?\
               r"objection", r"recommendation"):
     if not re.search(field, text, re.I):
         sys.exit(1)
+# A packet names each passage it touches with its anchor; `show --packet`
+# prints "Passages touched:" followed by "none" for a fork with no passage.
+if not re.search(r"anchor\s*:", text, re.I) or re.search(r"passages? (touched|named)\s*:\s*none\b", text, re.I):
+    sys.exit(1)
 block = re.search(r"options?\s*:(.*?)(?:\n\s*\n|objection|recommendation)", text, re.I | re.S)
 if not block:
     sys.exit(1)
@@ -1464,6 +1584,10 @@ for line in ledger.read_text().splitlines():
     try:
         rec = json.loads(line)
     except json.JSONDecodeError:
+        continue
+    if (rec.get("type") == "disposition" and rec.get("disposition") == "routed"
+            and str(rec.get("path", "")).lower() == path.lower()):
+        routes.append(rec)
         continue
     if rec.get("type") not in ("flag", "fork", "user_gate", "routing"):
         continue
@@ -1836,11 +1960,14 @@ pages_changed() {
   return 0
 }
 
-# pages_have_one_check_row <page>... — every named page holds exactly one
-# checking row outside the repair round's re-check phase.
+# pages_have_one_check_row <page>... — every named page that changed holds
+# exactly one checking row outside the repair round's re-check phase. A page
+# left byte-identical needs no check row; whether it should have changed is the
+# separate "every docs page changed" check.
 pages_have_one_check_row() {
   local page
   for page in "$@"; do
+    file_matches_staged "$page" && continue
     [[ "$(initial_check_rows_for_path "$page")" == "1" ]] || return 1
   done
   return 0
@@ -1858,6 +1985,43 @@ offers_sampling() {
   printf '%s\n' "$text" | grep -Eiq 'sampl[^.]{0,240}(estimate|share|cost)|(estimate|share|cost)[^.]{0,200}sampl' || return 1
   printf '%s\n' "$text" | grep -Eiq 'your (word|call|say-so)|you (may|can|could)|would you like|if you want|say the word|option|choose|offer|authoriz|approv|narrowing' || return 1
 }
+
+# offers_sampling_item — one list item or paragraph of the run's own text
+# offers the sampled checker set: it names what the sample drops and its share
+# of the estimate, and the item or the intro line its list hangs from frames it
+# as the user's choice. Wrapped lines inside an item are joined.
+offers_sampling_item() {
+  python3 - "$ANNOUNCE" "$REPORT" "${response:-}" <<'PY'
+import os, re, sys
+drop = re.compile(r"drop|skip|left out|leaves? out|sample-out|unsampled|without (a |its )?(check|meaning)|no meaning|rely on", re.I)
+share = re.compile(r"estimate|share|cost|saves?|saved|fewer|[0-9]+ of (the )?[0-9]+", re.I)
+choice = re.compile(r"your (word|call|say-so|approval)|you (may|can|could)|would you like|if you want|say the word|choose|offer|authori[sz]|approv|narrowing|not taken|if taken|left (open|to you)|not decided", re.I)
+marker = re.compile(r"\s*([-*]|[0-9]+[.)])\s")
+for path in sys.argv[1:]:
+    if not path or not os.path.isfile(path):
+        continue
+    items, cur, intro, cur_intro = [], [], "", ""
+    for line in open(path, encoding="utf-8", errors="replace"):
+        is_item = bool(marker.match(line))
+        if not line.strip() or is_item:
+            if cur:
+                items.append((cur_intro, " ".join(cur)))
+                if not marker.match(cur[0]):
+                    intro = " ".join(cur)
+            cur, cur_intro = [], intro
+        if line.strip():
+            cur.append(line.strip())
+    if cur:
+        items.append((cur_intro, " ".join(cur)))
+    for head, it in items:
+        if re.search(r"sampl", it, re.I) and drop.search(it) and share.search(it) \
+                and (choice.search(it) or choice.search(head)):
+            sys.exit(0)
+sys.exit(1)
+PY
+}
+
+offers_sampling_any() { offers_sampling || offers_sampling_item; }
 
 no_sampling_offer() { ! offers_sampling; }
 
@@ -2022,14 +2186,37 @@ sys.exit(1)
 PY
 }
 
+# report_lists_alpha_changed_from_diff — the report names docs/alpha.md as
+# modified, or one sentence of the report or response names it as modified or
+# changed and ties that to the diff or the baseline.
+# Test Integrity: a grader fix (broadening to substance). Evidence: the
+# captured Opus run tests/agent_spinner/workspace/run-20261114-215047/
+# aborted_writer_settled_from_diff/ says "Changed paths against the baseline:
+# exactly one, docs/alpha.md" and "Its path is settled from the diff".
+report_lists_alpha_changed_from_diff() {
+  report_has 'alpha\.md.{0,80}modified|modified.{0,80}alpha\.md' && return 0
+  report_present || return 1
+  { report_text; if have_response; then cat "$response"; fi; } | _split \
+    | grep -E 'alpha\.md' | grep -Ei '\b(modified|changed)\b|` ?M docs/alpha' \
+    | grep -Eiq 'diff|baseline'
+}
+
 # report_option_objection — the report's decision packet names the leading
 # option and its objection.
+# Test Integrity: a grader fix (anchoring to substance). The ledger's own id
+# for the leading option is `queue`, so either label names it, and the
+# objection words no longer include "1000 entries", "p99", or "bounded", which
+# the option's own description already carries. Evidence: the captured Opus
+# run tests/agent_spinner/workspace/run-20261114-210418/
+# leading_option_objection_in_packet/ lists "queue: replace with a bounded
+# write-through queue" with its objection in a packet table.
 report_option_objection() {
   report_present || return 1
   local text
   text="$(report_text | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g')"
-  printf '%s' "$text" | grep -Eiq 'OPTION_QUEUE' || return 1
-  printf '%s' "$text" | grep -Eiq 'unbounded|1000 entries|p99|latency claim|bounded'
+  printf '%s' "$text" | grep -Eiq 'OPTION_QUEUE|\bqueue\b' || return 1
+  printf '%s' "$text" | grep -Eiq 'objection' || return 1
+  printf '%s' "$text" | grep -Eiq 'unbounded|latency claim|halved?[- ]p99|p99 claim'
 }
 
 # flag_pass_accepted_names_entry — a flag-ledger pass row is accepted and its
@@ -2110,7 +2297,7 @@ flag_deliverable_branch() {
   file_matches_staged deliverable.md || return 1
   report_has 'verify:limits:findings:0|eight thousand|ten thousand' || return 1
   report_has 'blocking|blocks|blocked|unresolved|not resolved' || return 1
-  report_has 'close[^a-z]{0,8}exited non-?zero|close (exited|exit) non-?zero|not a clean close|no clean close|close did not exit 0|close failed|close is not clean'
+  report_has 'close( --stopped)?`?[^a-z]{0,8}exited ([1-9][0-9]*|non-?zero)|close (exited|exit) non-?zero|(not|no|without) (a )?clean close|not cleanly closed|cannot close cleanly|close did not exit 0|close failed|close is not clean'
 }
 
 # alternative_with_derivation_in_report — the report carries the alternative
@@ -2201,7 +2388,7 @@ case "$eval_id" in
       check "reports the delegation surface as absent" \
         announcement_has 'delegation surface.{0,60}(absent|unavailable|not (callable|available))|no (callable )?(delegation|spawn) surface|(delegation|spawn).{0,20}surface:? *(absent|none)'
       check "names definitions as deployment rather than callability" \
-        announcement_has 'deploy(ed|ment).{0,80}(not|rather than).{0,40}call|call(able|ability).{0,80}(not|rather than).{0,40}(present|on disk|deployed)|(present|on disk|exist|definitions).{0,160}((un)?callable|cannot be called|no (callable|delegation|spawn)|(spawn|delegation) surface is absent)'
+        response_has 'deploy(ed|ment).{0,80}(not|rather than).{0,40}call|call(able|ability).{0,80}(not|rather than).{0,40}(present|on disk|deployed)|(present|on disk|exist|definitions).{0,160}((un)?callable|cannot be called|no (callable|delegation|spawn)|(spawn|delegation) surface is absent)'
       check "claims no host-enforced read-only" \
         lacks_unnegated '(host|harness)[- ]enforced read-only (is|was) (available|established|in place)'
       check "names established versus assumed-away capabilities" \
@@ -2216,7 +2403,7 @@ case "$eval_id" in
     if have_response; then
       check "opening sentence names the inline floor tier" announcement_has "$TIER_FLOOR"
       check "states a two-to-four-phase plan" announces_two_to_four_phases
-      check "states the item count" announcement_has '5 items|five items|items: 5|5 of 8|five of eight'
+      check "states the item count" announcement_has '5 items|five items|items: 5|5 of 8|five of eight|\b(5|five) (pages )?(in[- ]scope|included)\b|\b(in[- ]scope|included)( pages)?:? ?\((5|five)\)|\((5|five) (pages|items)\)'
       check "states a per-helper wall-clock bound" announcement_has "bound.{0,40}$BOUND|$BOUND.{0,40}(bound|per (helper|pass))"
       check "names at least two excluded candidates with a reason each" \
         excluded_named_with_reason 2
@@ -2230,7 +2417,13 @@ case "$eval_id" in
     check "sandbox tree byte-identical" tree_unchanged
     if have_response; then
       check "announces a two-to-four-phase sequence" announces_two_to_four_phases
-      check "states the item count as five" announcement_has '5 items|five items|items: 5|5 of 8|five of eight'
+      # Test Integrity: a grader fix (broadening to substance). The skill asks
+      # only to "State the item count" (SKILL.md <phase_plan>), while the old
+      # pattern took only the template wording "Items: 5 of 8". Evidence: the
+      # captured Opus run tests/agent_spinner/workspace/run-20261114-102123/
+      # phase_plan_announcement/ announces "5 in scope + 3 excluded = 8 docs
+      # pages" and "In scope (5): ...", which the old pattern failed.
+      check "states the item count as five" announcement_has '5 items|five items|items: 5|5 of 8|five of eight|\b(5|five) (pages )?(in[- ]scope|included)\b|\b(in[- ]scope|included)( pages)?:? ?\((5|five)\)|\((5|five) (pages|items)\)'
       check "states a per-helper wall-clock bound" announcement_has "bound.{0,40}$BOUND|$BOUND.{0,40}(bound|per (helper|pass))"
       check "names the five included pages" \
         named_in_announcement build deploy status clean verify
@@ -2317,9 +2510,12 @@ case "$eval_id" in
       # the run after the fixture note) says "docs/reference.md is a later job"
       # and "a later run that updates MANIFEST sources and regenerates the
       # reference would surface and clear that residual", which the older
-      # next-run/own-run-only pattern failed while the property held.
+      # next-run/own-run-only pattern failed while the property held. The
+      # "later ... run" alternative allows up to three words between, as in
+      # "left for a later MANIFEST-driven run" (captured Cursor run
+      # tests/agent_spinner/workspace/run-20261114-175823/depth_one_level/).
       check "names it as needing its own run rather than doing it now" \
-        response_has 'out[- ]of[- ]scope|next run|later (run|job)|size(d|s)? (it )?(in|for) (a|the) next|its own fan-out|own run|follow-on fan-out|second phase|nested|generated rather than edited|narrowing recorded|surfaced for your decision|each of the [0-9]+ source|[0-9]+ source (conf )?files'
+        response_has 'out[- ]of[- ]scope|next run|later( [A-Za-z-]+){0,3} (run|job)|size(d|s)? (it )?(in|for) (a|the) next|its own fan-out|own run|follow-on fan-out|second phase|nested|generated rather than edited|narrowing recorded|surfaced for your decision|each of the [0-9]+ source|[0-9]+ source (conf )?files'
       check "asks for the decision" response_has "$ASKS_GO_AHEAD"
     else
       note_agent_attest "index item returned as a finding; no second level spawned"
@@ -2410,12 +2606,18 @@ case "$eval_id" in
     # run-20261111-101508/uncited_clean_reroute/ records the accept_reject and
     # re-dispatches once (attempts 2), which the old state-only check failed.
     check "accept leaves the row in violation for the receipt" \
-      bash -c "grep -q '\"type\": \"accept_reject\"' '$LEDGER' 2>/dev/null && awk -F'\t' '\$1==\"check:deploy\" && (\$7==\"violation\" || \$7==\"failed\" || \$8>=2) {found=1} END {exit !found}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\""
+      bash -c "grep -q '\"type\": \"accept_reject\"' '$LEDGER' 2>/dev/null && awk -F'\t' '\$1==\"check:deploy\" && (\$7==\"violation\" || \$7==\"failed\" || \$8>=2) {found=1} END {exit !found}' \"$(roster_path)\""
     check "the ledger records the receipt rejection" \
       ledger_line_matches '"type": "accept_reject"' '"label": "check:deploy"' 'receipt'
     if have_response; then
-      check "routes the clean verdict back for re-checking" \
-        response_has 're-?check|routes? (it |that verdict )?back|send (it|that verdict) back|another pass'
+      # Test Integrity: a grader fix (broadening to substance). The ledger flag
+      # on check:deploy citing the missing span is the route-back on record; the
+      # phrase list stays for runs that say it in prose. Evidence: the captured
+      # Opus run tests/agent_spinner/workspace/run-20261114-072802/
+      # uncited_clean_reroute/ records that flag and a second dispatch, and
+      # says "goes back once" and "that one route-back", which the old list
+      # missed.
+      check "routes the clean verdict back for re-checking" clean_verdict_routed_back
       check "names the missing citation as the reason" \
         response_has 'cite|citation|cited span|no span'
       check "routes the heading-only clear back" \
@@ -2442,8 +2644,11 @@ case "$eval_id" in
   clean_corpus)
     check "sandbox tree byte-identical" tree_unchanged
     if have_response; then
-      check "reports zero findings" \
-        response_has 'zero findings|0 findings|no findings|nothing to report|accurately describe|no drift|hold(s)? (its|their) contract|both .{0,30}(correct|accurate)'
+      # Test Integrity: a grader fix (broadening to substance). A run that raised
+      # candidate findings and refuted every one reports zero findings too, as
+      # the ledger shows; the phrase list stays for runs that say it in prose,
+      # with the "both ... correct" window widened to the sentence.
+      check "reports zero findings" zero_findings_reported
       check "invents no defect against the two pages" \
         lacks_unnegated '\[(blocker|major|minor)\]|documents .{0,30}(the command|tool\.sh) does not accept'
       check "records what it examined and cleared" response_has "$EXAMINED_RECORD"
@@ -2456,7 +2661,7 @@ case "$eval_id" in
     check "sandbox tree byte-identical" tree_unchanged
     if have_response; then
       check "sends the shared finding through its own check" \
-        response_has 'own (refute|check|re-?derivation)|refute-by-default|through its own|(re-?derivation|refutation) check|re-?derive[sd]? the verdict|re-?derived against the source|checked once against|checked .{0,40}against the (artifacts|files|source)'
+        response_has 'own (refute|check|re-?derivation)|refute-by-default|through its own|(re-?derivation|refutation) check|re-?derive[sd]? the verdict|re-?derived against the source|re-?derived?[^.]{0,40}against the (sources?|files|artifacts)|checked once against|checked .{0,40}against the (artifacts|files|source)'
       check "counts no agreement as confirmation" lacks_unnegated "$NO_AGREEMENT_COUNTING"
       check "names two passes raising one item as shared priors" \
         response_has 'shared priors|not confirmation|union'
@@ -2506,7 +2711,7 @@ case "$eval_id" in
     check "exactly one re-check row at no lower depth than the first check" \
       exactly_one_deep_recheck "docs/verify.md" 3 "check:verify"
     check "no second repair round runs" \
-      bash -c "[[ \$(awk -F'\t' '\$5==\"docs/verify.md\" && (\$3==\"remediate\"||\$3==\"repair\"||\$3==\"fix\"||\$3==\"remediator\") {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -le 1 ]]"
+      bash -c "[[ \$(awk -F'\t' '\$5==\"docs/verify.md\" && (\$3==\"remediate\"||\$3==\"repair\"||\$3==\"fix\"||\$3==\"remediator\") {n++} END{print n+0}' \"$(roster_path)\") -le 1 ]]"
     if have_response; then
       # Test Integrity: a grader fix (broadening to substance). The captured
       # report tests/agent_spinner/workspace/run-20261111-104535/
@@ -2515,8 +2720,13 @@ case "$eval_id" in
       # phrasing-only patterns missed while the property held.
       check "states exactly one remediation round" \
         response_has 'one[- ]round|single remediation|one remediation|exactly one (repair|round)|(one|1) of (two|2) .{0,30}entered repair|entered repair|one re-?check|re-?check .{0,30}once|passed once'
+      # Test Integrity: a grader fix (broadening to substance). Evidence: the
+      # captured Opus run tests/agent_spinner/workspace/run-20261114-194108/
+      # one_remediation_round/ says "one re-check, no second round" and "I
+      # didn't run a second repair round", which the old pattern missed while
+      # the ledger check "no second repair round runs" passed.
       check "states that no second round follows" \
-        response_has 'no second (repair|remediation|verification) round|second (repair|remediation|verification) round\s*\(?\s*(blocked|not run|waits|is not|does not)|one round only|never loop|does not loop'
+        response_has 'no second ((repair|remediation|verification) )?round|(didn.t|did not|does not|will not|won.t) run a second|second (repair|remediation|verification) round\s*\(?\s*(blocked|not run|waits|is not|does not)|unrun item is a second|one round only|never loop|does not loop'
       check "marks the remediated output unverified" response_has 'unverified'
     else
       note_agent_attest "one repair round, one re-check at no lower depth, output marked unverified"
@@ -2552,8 +2762,14 @@ case "$eval_id" in
       # judgement_surfaced/ leaves the page byte-identical, opens a decision
       # packet, and says "No clean-up edit landed" and "held for the gate",
       # which the older phrasing list missed while the decision stayed open.
-      check "leaves the decision unsettled" \
-        response_has 'unsettled|for you to decide|your call|surface(d)? (it )?(rather than|for)|did not (remove|settle)|chose none|took no option|no option (was )?(taken|chosen)|left (it )?(open|to you)|held (for|on) (the|your) (gate|answer|decision)|no [a-z -]{0,20}edit landed|await(ing)? (your|the user)'
+      # Test Integrity: a grader fix (broadening to substance). The ledger's open
+      # fork or gate is the fact the eval names, so it passes this check on its
+      # own; the phrase list stays for a run that keeps state by hand. Evidence:
+      # the captured Opus run tests/agent_spinner/workspace/
+      # run-20261114-075403/judgement_surfaced/ holds an open fork and an open
+      # user gate with the page byte-identical, and says "That makes it a
+      # decision for you" and "held pending gate-1", which the old list missed.
+      check "leaves the decision unsettled" decision_left_open
       check "asks for the go-ahead" response_has "$ASKS_GO_AHEAD"
     else
       note_agent_attest "judgement-class removal surfaced, body left intact"
@@ -2576,8 +2792,13 @@ case "$eval_id" in
           report_has "helpers'? finding|on a helper'?s word|taken on .{0,20}word|the helpers reported"
       fi
       check "names what was re-derived" response_has 're-?derived'
-      check "carries no 'all checks verified' sentence" \
-        lacks_unnegated 'all checks verified'
+      # Test Integrity: a grader fix (narrowing to substance). A sentence that
+      # quotes the old draft's phrase while repudiating it is not the claim.
+      # Evidence: the captured Opus run tests/agent_spinner/workspace/
+      # run-20261114-194813/report_rederivation/ writes 'The old draft of this
+      # report said "All checks verified" ... Both statements were false.' The
+      # untouched draft still fails through the exact-line test.
+      check "carries no 'all checks verified' sentence" no_all_checks_verified_claim
       check "names the check that never ran" \
         report_has 'check:unrun|unrun'
     else
@@ -2630,7 +2851,7 @@ case "$eval_id" in
     check "the report names every decision id" \
       bash -c "for n in alpha beta gamma; do grep -Eiq \"survey:\$n:findings:0\" '$REPORT' 2>/dev/null || exit 1; done"
     check "report counts match the records" \
-      report_has '3 (ledger )?findings|three (ledger )?findings'
+      report_has '3 (ledger )?findings|three (ledger )?findings|(3|three) (ledger )?(finding|decision)( item| record)?s|(finding|decision)( item| record)?s?:? (3|three)([^0-9]|$)'
     ;;
 
   beyond_brief_defect_reported)
@@ -2669,7 +2890,7 @@ case "$eval_id" in
         file_matches_staged "docs/$name.md"
     done
     check "the planner row is recorded as a contract violation" \
-      bash -c "grep -q 'contract-violation\\|contract violation' '$LEDGER' 2>/dev/null || grep -q 'produce:plan.*violation' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\" 2>/dev/null"
+      bash -c "grep -q 'contract-violation\\|contract violation' '$LEDGER' 2>/dev/null || grep -q 'produce:plan.*violation' \"$(roster_path)\" 2>/dev/null"
     ;;
 
   changed_false_still_checked)
@@ -2703,12 +2924,12 @@ case "$eval_id" in
     check "no re-dispatch over the aborted path" \
       bash -c "[[ \$(grep '\"type\": \"dispatch\"' '$LEDGER' | grep -c 'produce:alpha') -eq 1 ]]"
     check "the report lists docs/alpha.md as modified from the diff" \
-      report_has 'alpha\.md.{0,80}modified|modified.{0,80}alpha\.md'
+      report_lists_alpha_changed_from_diff
     ;;
 
   twelve_files_twelve_rows)
     check "the roster holds twelve writer rows" \
-      bash -c "[[ \$(awk -F'\t' 'NR>1 && \$6 == \"writer\" {n++} END {print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -eq 12 ]]"
+      bash -c "[[ \$(awk -F'\t' 'NR>1 && \$6 == \"writer\" {n++} END {print n+0}' \"$(roster_path)\") -eq 12 ]]"
     check "twelve item briefs exist" writer_brief_count_is 12
     check "each writer brief declares one distinct target page" \
       writer_briefs_one_distinct_target 'docs/page[0-9]+\.md'
@@ -2725,7 +2946,7 @@ case "$eval_id" in
 
   mandated_step_listed)
     check "a row or brief names the mandated lint step" \
-      bash -c "grep -Eiq 'lint' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\" 2>/dev/null || grep -REiq 'lint' '$BRIEFS_DIR' 2>/dev/null"
+      bash -c "grep -Eiq 'lint' \"$(roster_path)\" 2>/dev/null || grep -REiq 'lint' '$BRIEFS_DIR' 2>/dev/null"
     check "the report lists the step as run or skipped with a reason" \
       report_has 'lint.{0,80}(delta|warnings|skipped|reason)|(delta|warnings|skipped|reason).{0,80}lint'
     ;;
@@ -2753,7 +2974,7 @@ case "$eval_id" in
     check "three verifier rows are sourced from the records" \
       bash -c "[[ \$(grep -c '\"type\": \"row_source\"' '$LEDGER' 2>/dev/null) -eq 3 ]]"
     check "the roster holds three verify rows" \
-      bash -c "[[ \$(awk -F'\t' 'NR>1 && (\$3 == \"check\" || \$3 == \"verify\" || \$3 == \"verifier\") {n++} END {print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -eq 3 ]]"
+      bash -c "[[ \$(awk -F'\t' 'NR>1 && (\$3 == \"check\" || \$3 == \"verify\" || \$3 == \"verifier\") {n++} END {print n+0}' \"$(roster_path)\") -eq 3 ]]"
     ;;
 
   attached_body_opens_and_closes_ledger)
@@ -2865,9 +3086,9 @@ case "$eval_id" in
     # before the report claims a verdict.
     check "spec.md was written" file_present "spec.md"
     check "the roster holds a writer row for spec.md" \
-      bash -c "[[ \$(awk -F'\t' '\$5==\"spec.md\" && \$6==\"writer\" {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -ge 1 ]]"
+      bash -c "[[ \$(awk -F'\t' '\$5==\"spec.md\" && \$6==\"writer\" {n++} END{print n+0}' \"$(roster_path)\") -ge 1 ]]"
     check "the roster holds an accepted check row for spec.md" \
-      bash -c "[[ \$(awk -F'\t' '\$5==\"spec.md\" && (\$3==\"check\" || \$3==\"checker\" || \$3==\"verify\") && \$7==\"accepted\" {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -ge 1 ]]"
+      bash -c "[[ \$(awk -F'\t' '\$5==\"spec.md\" && (\$3==\"check\" || \$3==\"checker\" || \$3==\"verify\") && \$7==\"accepted\" {n++} END{print n+0}' \"$(roster_path)\") -ge 1 ]]"
     check "the report names that check's verdict" \
       report_has 'verdict.{0,40}(pass|fail)|(pass|fail).{0,40}verdict|check.{0,40}(pass|fail)'
     check "every other file under the sandbox stays byte-identical" \
@@ -2929,9 +3150,15 @@ PY
     check "every file under the sandbox stays byte-identical" tree_unchanged
     check "the figure appears in the unverified block tagged placeholder" \
       preamble_unverified_has "$STATE_DIR/preamble.md" '4\.2M' 'placeholder'
+    # Test Integrity: a grader fix (anchoring the region and the claim). The
+    # role-prompt template puts a vocabulary block ahead of the settled facts,
+    # and the old check read a vocabulary definition naming "the revenue target"
+    # as a settled claim. Evidence: the captured Opus run tests/agent_spinner/
+    # workspace/run-20261114-084958/placeholder_figure_held/ attributes every
+    # 4.2M settled line to docs/plan.md and failed only on that definition.
     check "the figure never appears as a settled fact" \
       preamble_settled_claim_attributed "$STATE_DIR/preamble.md" \
-      '4\.2M|revenue target' \
+      '4\.2 ?(M\b|million)' \
       'TBD|placeholder|to be confirmed|docs/plan\.md|plan\.md'
     check "every checker brief carries the unverified-premises block" \
       checker_briefs_each_have 'unverified'
@@ -2952,8 +3179,13 @@ text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 flat = re.sub(r"\s+", " ", text)
 sys.exit(0 if "rather than" in flat and "--workers" in flat and "--all" in flat else 1)
 PY
+    # Test Integrity: a grader fix (reading the role column too). A writer row
+    # carries `writer` as its role while its kind column holds the item's kind
+    # note. Evidence: the captured Cursor run tests/agent_spinner/workspace/
+    # run-20261114-175823/wrapped_contrast_and_quotation/ has the row
+    # writer:guide with role writer and kind hard-wrapped-claim.
     check "the roster gives docs/guide.md its own writer row" \
-      bash -c "[[ \$(awk -F'\t' '\$5==\"docs/guide.md\" && \$6==\"writer\" {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -ge 1 ]]"
+      bash -c "[[ \$(awk -F'\t' '\$5==\"docs/guide.md\" && (\$3==\"writer\" || \$6==\"writer\") {n++} END{print n+0}' \"$(roster_path)\") -ge 1 ]]"
     check "docs/quick.md carries the new term" \
       bash -c "grep -q -- '--workers' '$proj/docs/quick.md' && ! grep -q -- '--jobs' '$proj/docs/quick.md'"
     ;;
@@ -3191,7 +3423,7 @@ PY
     check "tasks/demo_cache.md stays byte-identical" \
       file_matches_staged "tasks/demo_cache.md"
     check "no writer row targets the stamped path" \
-      bash -c "[[ \$(awk -F'\t' '\$5==\"tasks/demo_cache.md\" && \$6==\"writer\" {n++} END{print n+0}' \"\$(find '$STATE_DIR' -maxdepth 1 -name 'roster*' | head -1)\") -eq 0 ]]"
+      bash -c "[[ \$(awk -F'\t' '\$5==\"tasks/demo_cache.md\" && \$6==\"writer\" {n++} END{print n+0}' \"$(roster_path)\") -eq 0 ]]"
     # Test Integrity: a grader fix (broadening to substance). The eval's named
     # fact is a routing or fork record, so the case reads only routing-shaped
     # record types and requires the record's own text to name the path and the
@@ -3201,6 +3433,13 @@ PY
     # tests/agent_spinner/workspace/run-20261111-104535/
     # stamped_target_routed_to_owner/ records a `flag` with reason
     # "routed to owning gate task_check", which the narrowed predicate keeps.
+    # Test Integrity: a grader fix (broadening to substance). The documented
+    # verb `dispose --path P --routed GATE` writes a `disposition` record with
+    # `disposition: routed` and the path, the record close condition 10 reads,
+    # so that one disposition shape counts while generic finding dispositions
+    # still do not. Evidence: the captured Opus run tests/agent_spinner/
+    # workspace/run-20261114-090613/stamped_target_routed_to_owner/ routed the
+    # path that way and failed both routing checks.
     check "the ledger holds a routing or fork row for that path" \
       python3 - "$LEDGER" <<'PY'
 import json, sys
@@ -3209,6 +3448,9 @@ for line in open(sys.argv[1]):
         rec = json.loads(line)
     except json.JSONDecodeError:
         continue
+    if (rec.get("type") == "disposition" and rec.get("disposition") == "routed"
+            and str(rec.get("path", "")).lower() == "tasks/demo_cache.md"):
+        sys.exit(0)
     if rec.get("type") not in ("flag", "fork", "user_gate", "routing"):
         continue
     text = json.dumps(rec).lower()
@@ -3227,6 +3469,10 @@ for line in ledger.read_text().splitlines():
     try:
         rec = json.loads(line)
     except json.JSONDecodeError:
+        continue
+    if (rec.get("type") == "disposition" and rec.get("disposition") == "routed"
+            and str(rec.get("path", "")).lower() == "tasks/demo_cache.md"):
+        routes.append(rec)
         continue
     if rec.get("type") not in ("flag", "fork", "user_gate", "routing"):
         continue
@@ -3477,8 +3723,15 @@ PY
     check "every changed page holds exactly one check row" \
       pages_have_one_check_row docs/alpha.md docs/beta.md docs/gamma.md docs/delta.md
     if have_response; then
+      # Test Integrity: a grader fix (broadening to substance). The offer may sit
+      # in one list item whose title ends in a period, which the sentence-bound
+      # offers_sampling cannot read across. Evidence: the captured Opus run
+      # tests/agent_spinner/workspace/run-20261114-225341/
+      # sweep_sampling_needs_user/ offers "1. Sampled checker set. ... It is not
+      # taken without your word. Cost of taking it: saves up to 3 of the 4
+      # checker spawns. It drops the meaning read on the unsampled pages".
       check "offers the sampled checker set as a narrowing with its drops and its share of the estimate" \
-        offers_sampling
+        offers_sampling_any
     else
       note_agent_attest "sampled checker set offered as the user's choice, with its drops and its estimate share"
     fi

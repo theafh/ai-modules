@@ -10,7 +10,9 @@ rather than a paid eval run. For each id in evals/evals.json (or each id
 named on the command line) it:
 
 1. runs evals/stage.sh into a fresh temporary directory and fails the eval
-   when the stage exits non-zero;
+   when the stage exits non-zero, then runs a two-turn eval's between-turns
+   script (`harness.second_turn.between`) the way the runner does, failing the
+   eval when it exits non-zero;
 2. reads every staged return under proj/.agent_spinner/returns/ and fails
    the eval when a return whose fenced JSON block parses lacks an
    `objections` list;
@@ -73,16 +75,6 @@ EXPECTED_REFUSALS = {
     ("uncited_clean_reroute", "check:deploy"): [
         "receipt for docs/deploy.md is missing from the recorded input version",
     ],
-    # judge_flaws_capped: pinned as observed, not judged intended. The judge
-    # rows record no input version for candidates/one.md, a refusal that
-    # predates ledger phase 2 while the eval's prompt asks the run to accept
-    # both returns.
-    ("judge_flaws_capped", "judge:speed"): [
-        "examined candidates/one.md has no recorded input version",
-    ],
-    ("judge_flaws_capped", "judge:cost"): [
-        "examined candidates/one.md has no recorded input version",
-    ],
 }
 
 REFUSAL_LINE = re.compile(r"^\s+- (.*)$")
@@ -100,6 +92,17 @@ def child_env():
 def eval_ids():
     data = json.loads(EVALS_JSON.read_text(encoding="utf-8"))
     return [entry["id"] for entry in data["evals"]]
+
+
+def between_script(eval_id):
+    """The eval's between-turns script, or None for a one-turn eval."""
+    data = json.loads(EVALS_JSON.read_text(encoding="utf-8"))
+    for entry in data["evals"]:
+        if entry["id"] == eval_id:
+            second = (entry.get("harness") or {}).get("second_turn") or {}
+            between = second.get("between")
+            return EVALS_DIR / between if between else None
+    return None
 
 
 def roster_rows(state_dir):
@@ -182,6 +185,24 @@ def check_eval(eval_id, root):
             return failures, seen
 
         proj = target / "proj"
+        # A two-turn eval's between script runs before the second turn and can
+        # write a return the resumed run must accept, so it runs here first,
+        # with the runner's arguments: the sandbox target, then the project.
+        between = between_script(eval_id)
+        if between is not None:
+            proc = subprocess.run(
+                ["bash", str(between), str(target), str(proj)],
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            if proc.returncode != 0:
+                tail = [line for line in proc.stderr.splitlines() if line.strip()]
+                failures.append(
+                    "%s: between script exited %d: %s"
+                    % (eval_id, proc.returncode, " | ".join(tail[-3:]) or "no stderr")
+                )
+                return failures, seen
         state_dir = proj / ".agent_spinner"
         returns_dir = state_dir / "returns"
         for problem in missing_objections(returns_dir):

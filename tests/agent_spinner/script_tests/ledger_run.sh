@@ -1393,6 +1393,7 @@ scenario_phase_count() {
     printf '%s\n' '## Phases' '- Discovery' '- Dispatch' '- Synthesis' > "$dir/heading-bullets.txt"
     printf '%s\n' 'I will inspect the repository.' '- run the tests' '- read the docs' '- report back' > "$dir/unrelated-bullets.txt"
     printf '%s\n' 'This is one phase of the work.' '- alpha' '- beta' '- gamma' > "$dir/mention-bullets.txt"
+    printf '%s\n' 'Phase plan (three phases):' '1. Review: read each page' '2. Verify: check each finding' '3. Report: one verdict' '' 'Checks the run makes, in order:' '1. Gate-scope check' '2. Class sweep' '3. Report' > "$dir/plan-then-checks.txt"
     phase="$REPO_ROOT/tests/agent_spinner/evals/phase_plan.py"
     if "$PY" "$phase" "$dir/two.txt" >/dev/null 2>&1; then ok "phase count accepts two phases"; else bad "phase count accepts two phases"; fi
     if "$PY" "$phase" "$dir/four.txt" >/dev/null 2>&1; then ok "phase count accepts four phases"; else bad "phase count accepts four phases"; fi
@@ -1404,6 +1405,8 @@ scenario_phase_count() {
     if "$PY" "$phase" "$dir/heading-bullets.txt" >/dev/null 2>&1; then ok "phase count accepts a markdown heading over a bullet list"; else bad "phase count accepts a markdown heading over a bullet list"; fi
     if "$PY" "$phase" "$dir/unrelated-bullets.txt" >/dev/null 2>&1; then bad "phase count rejects an unrelated bullet list"; else ok "phase count rejects an unrelated bullet list"; fi
     if "$PY" "$phase" "$dir/mention-bullets.txt" >/dev/null 2>&1; then bad "phase count rejects a bare phase mention over a bullet list"; else ok "phase count rejects a bare phase mention over a bullet list"; fi
+    plan_checks=$("$PY" "$phase" "$dir/plan-then-checks.txt" 2>/dev/null)
+    if printf '%s\n' "$plan_checks" | grep -q 'phases: 3'; then ok "phase count ignores a numbered checks list after a three-phase plan"; else bad "phase count ignores a numbered checks list after a three-phase plan"; fi
 }
 
 scenario_exclude_prune() {
