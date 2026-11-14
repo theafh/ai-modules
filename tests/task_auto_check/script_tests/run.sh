@@ -398,8 +398,11 @@ s15_convergence_and_robust_returns() {
   assert_contains "empty or length-cut return is an output-budget failure" "$SKILL" "is an output-budget failure" || ok=false
   assert_contains "output-budget failure is not the spawn-echo glitch" "$SKILL" "never the spawn-echo glitch, and it earns one identical-prompt retry" || ok=false
   assert_contains "pointer return violates the contract" "$SKILL" "points at an earlier message (\"delivered above\") instead of carrying the contract" || ok=false
-  # Isolation counts reads only, and recursive searches skip the relay.
-  assert_contains "gate excludes the relay from recursive searches" "$gate" "grep -r --exclude-dir=.task_auto_check" || ok=false
+  # Isolation counts reads only. The gate searches with an ignore-aware
+  # mechanism and treats a VCS-blind walker as a violation, while the dry
+  # run's recursive searches skip the relay.
+  assert_contains "gate requires an ignore-aware search" "$gate" "Reach it with an ignore-aware search that also covers hidden paths" || ok=false
+  assert_contains "gate names a VCS-blind walker as a violation" "$gate" "A filesystem walker that ignores VCS ignore files, such as \`grep -r\`, \`find\`, or a plain recursive listing, is a contract violation" || ok=false
   assert_contains "dry run excludes the relay from recursive searches" "$dryrun" "grep -r --exclude-dir=.task_auto_check" || ok=false
   assert_contains "an empty traversal is not an out-of-bounds read" "$SKILL" "a recursive search that crossed \`.task_auto_check/\` and returned nothing from it is not one" || ok=false
   # Loop helpers run at high effort on Claude and Codex.
