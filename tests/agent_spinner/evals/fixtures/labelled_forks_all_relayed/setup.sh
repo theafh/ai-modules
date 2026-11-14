@@ -21,13 +21,22 @@ write_return "$proj" survey:alpha "done" pass '{
   "_prose": "survey:alpha — three forks.",
   "forks": [
     {"issue": "FORK_ALPHA: rewrite the page now or defer it",
-     "options": ["rewrite now", "defer to the next run"],
+     "options": [
+       {"id": "rewrite_now", "text": "rewrite now", "cost": "one page edit in this run"},
+       {"id": "defer", "text": "defer to the next run", "cost": "the page stays stale until the next run"}
+     ],
      "preferred": "rewrite now"},
     {"issue": "FORK_BETA: keep the old flag as an alias or drop it",
-     "options": ["keep the alias", "drop it"],
+     "options": [
+       {"id": "keep_alias", "text": "keep the alias", "cost": "two spellings of one flag to document"},
+       {"id": "drop_alias", "text": "drop it", "cost": "scripts that pass the old flag break"}
+     ],
      "preferred": "keep the alias"},
     {"issue": "FORK_GAMMA: widen the run to the three excluded pages or not",
-     "options": ["widen", "stay narrow"],
+     "options": [
+       {"id": "widen", "text": "widen", "cost": "three more pages to survey and check"},
+       {"id": "stay_narrow", "text": "stay narrow", "cost": "the excluded pages stay unchecked"}
+     ],
      "preferred": "stay narrow"}
   ]
 }'

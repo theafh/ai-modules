@@ -6,9 +6,10 @@
 bash tests/agent_spinner/script_tests/run.sh
 ```
 
-`run_all.sh` drives three entrypoints — `script_tests/run.sh`,
-`script_tests/ledger_run.sh`, and `evals/test_run.py` — with one aggregated
-exit code; the behavioural evals spawn workers and stay out of band.
+`run_all.sh` drives five entrypoints with one aggregated exit code:
+`script_tests/run.sh`, `script_tests/ledger_run.sh`,
+`script_tests/grade_cases.sh`, `script_tests/fixture_stage.py`, and
+`evals/test_run.py`. The behavioural evals spawn workers and stay out of band.
 
 ## Behavioral evals (Cursor worker by default)
 

@@ -9,10 +9,11 @@ ledger that keeps a run's records on disk and launches no helper.
 tests/agent_spinner/
 ├── README.md
 ├── RUNBOOK.md
-├── run_all.sh                   # drives run.sh, ledger_run.sh, grade_cases.sh, and test_run.py
+├── run_all.sh                   # drives run.sh, ledger_run.sh, grade_cases.sh, fixture_stage.py, and test_run.py
 ├── script_tests/run.sh          # SKILL.md, references, greps, registration
 ├── script_tests/ledger_run.sh   # run_ledger.py scenarios under oldest/newest python3
 ├── script_tests/grade_cases.sh  # committed pass/fail report cases for evals/grade.sh
+├── script_tests/fixture_stage.py # stages every eval and accepts each return it leaves open
 ├── script_tests/import_check.py # stdlib-only import guard
 ├── script_tests/git_guard.py    # read-only git guard
 ├── evals/
@@ -44,6 +45,14 @@ tests/agent_spinner/
   must fail on the page or approval check. It also runs the
   `checker_spawned_without_role` route cases: a generic-spawn run passes, and
   a role-labelled established delegation fails naming the visible copy.
+  `script_tests/fixture_stage.py` keeps the fixtures on the shipped ledger's
+  return contract. It runs `evals/stage.sh` for every id in `evals.json`,
+  fails a staged return that carries no `objections` list, and runs the
+  bundled ledger's `accept` in a throwaway copy on every `dispatched` row whose
+  return a fixture leaves for the run. Such a return must accept, unless its
+  fixture stages a refusal on purpose; the script's `EXPECTED_REFUSALS` map
+  pins each of those with the exact refusal lines, so a ledger change that
+  leaves a fixture behind fails `make test` before any paid eval run.
 - **ledger_run.sh**: the bundled ledger's scenarios under the oldest and newest
   python3 the machine offers, each staged in its own repository. It covers the
   frozen verb set and `--help`, the run-directory contract, roster and return

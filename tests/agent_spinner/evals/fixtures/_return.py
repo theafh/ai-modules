@@ -23,6 +23,7 @@ data = {
     "checklist": [],
     "findings": [],
     "forks": [],
+    "objections": [],
     "beyond_brief": [],
     "incidents": [],
     "own_authority": [],
