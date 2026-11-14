@@ -747,6 +747,10 @@ def main() -> int:
     log_path = out_dir / "run.log"
     results_path = out_dir / "results.json"
     baseline_mismatch: str | None = None
+    # The uuid-fallback runner applies no effort, so both records of that run,
+    # run.log and results.json, name the empty effort rather than an effort
+    # that run never applied.
+    applied_effort = resolved.worker_effort if deployed_root else ""
 
     with log_path.open("w") as log:
         log.write(f"eval_set:       {eval_set_path}\n")
@@ -757,7 +761,7 @@ def main() -> int:
         log.write(f"vendor:         {resolved.vendor}\n")
         log.write(f"command:        {resolved.config.label}\n")
         log.write(f"model:          {resolved.worker_model or '<inherit>'}\n")
-        log.write(f"effort:         {resolved.worker_effort or '<inherit>'}\n")
+        log.write(f"effort:         {applied_effort or '<inherit>'}\n")
         log.write(f"runs_per_query: {args.runs_per_query}\n")
         log.write(f"timeout:        {args.timeout}\n")
         log.write(f"workers:        {args.workers}\n")
@@ -784,11 +788,7 @@ def main() -> int:
 
         output["vendor"] = resolved.vendor
         output["worker_model"] = resolved.worker_model
-        # The uuid-fallback runner applies no effort, so its record names the
-        # empty effort rather than an effort that run never applied.
-        output["worker_effort"] = (
-            resolved.worker_effort if output["mode"] == "deployed" else ""
-        )
+        output["worker_effort"] = applied_effort
 
         baseline_cmp = None
         if args.baseline and output["mode"] == "deployed":

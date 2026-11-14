@@ -10,8 +10,9 @@ result without misleading yourself.
 bash tests/language_humanizer/run_all.sh
 ```
 
-It runs the static contract (`script_tests/run.sh`) and the grader unit tests
-(`evals/test_grade.py`) in a few seconds with no model call, so run it first
+It runs the static contract (`script_tests/run.sh`), the grader unit tests
+(`evals/test_grade.py`), and the judge-command unit tests
+(`evals/test_judge.py`) in a few seconds with no model call, so run it first
 after any edit to the skill, its READMEs, or the graders. A grader change that
 breaks a faithful or lossy case fails here, before a measurement spends a
 worker call on it.

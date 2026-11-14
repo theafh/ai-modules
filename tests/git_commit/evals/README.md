@@ -72,7 +72,8 @@ per eval. By default that is the Cursor worker (`agent -p` on model
 `auto`), the project's measurement vendor. `--vendor claude` runs the
 Claude worker (`claude -p` on the latest `opus` alias at high effort) where an eval
 needs a Claude-specific feature or the operator asks for a Claude run, and
-`--model` and `--effort` override either default (see `tests/CLAUDE.md`). On both
+`--model` overrides either default and `--effort` overrides the Claude effort
+(see `tests/CLAUDE.md`). On both
 vendors the worker loads git_commit from the per-pass micro-deployment.
 The deterministic `grade.sh` uses no model, and the prose-verdict
 expectations stay for you to confirm by reading the captured

@@ -624,6 +624,56 @@ def test_cache_skip_and_record() -> None:
         check("force skips cache hit", forced is None)
 
 
+def test_run_record_helpers_require_effort() -> None:
+    """Effort is required at both run-record helpers.
+
+    A ``write_run_artifacts`` or ``cache_record`` call without ``effort``
+    raises before it writes anything, so no runner can record a verdict that
+    leaves out the effort it ran at.
+    """
+
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        eval_dir = root / "eval-1"
+        try:
+            eval_runner.write_run_artifacts(  # type: ignore[call-arg]
+                eval_dir,
+                stdout="out\n",
+                stderr="",
+                eval_id="eval-1",
+                duration_s=1.0,
+                worker_rc=0,
+                model="opus",
+            )
+            raised = False
+        except TypeError as err:
+            raised = "effort" in str(err)
+        check("a write_run_artifacts call without effort raises TypeError",
+              raised)
+        check("a write_run_artifacts call without effort writes no timing.json",
+              not (eval_dir / "timing.json").exists())
+
+        cache = eval_cache.EvalCache(root / ".eval_cache")
+        try:
+            eval_runner.cache_record(  # type: ignore[call-arg]
+                cache,
+                "e1",
+                "key-e1",
+                passed=True,
+                model="opus",
+                duration_s=1.0,
+                worker_rc=0,
+                grading_output="PASS\n",
+                response_excerpt="out",
+            )
+            raised = False
+        except TypeError as err:
+            raised = "effort" in str(err)
+        check("a cache_record call without effort raises TypeError", raised)
+        check("a cache_record call without effort records no entry",
+              cache.lookup("e1", "key-e1") is None)
+
+
 def test_fresh_and_replayed_timing_name_one_effort() -> None:
     """A replayed eval names the effort a fresh run of it names.
 
@@ -761,6 +811,7 @@ def main() -> int:
     test_callable_owns_sandbox_staging()
     test_write_run_artifacts()
     test_cache_skip_and_record()
+    test_run_record_helpers_require_effort()
     test_fresh_and_replayed_timing_name_one_effort()
     test_timeout_bytes_path()
     test_submission_order_summary()

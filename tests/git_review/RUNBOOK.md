@@ -77,8 +77,8 @@ reaches, with undeclared files and non-stage bytes still fail-closed), the
 (those sibling roots stay whole-tree until a map names them), the `evals/`
 harness with `grade.sh` arm-split by eval id when bash confirms the split
 and the id-binding preconditions hold (the whole file otherwise), the shared verdict helpers under `tests/lib`
-(`eval_cache.VERDICT_HELPERS`), the worker model, the eval id, and the
-prompt. Change any of those and the eval re-runs. `tests/CLAUDE.md` under
+(`eval_cache.VERDICT_HELPERS`), the worker model and effort, the eval id,
+and the prompt. Change any of those and the eval re-runs. `tests/CLAUDE.md` under
 the verdict-cache section is the shared policy statement.
 
 - `--force` re-runs everything and refreshes the cache. Use it to resample the

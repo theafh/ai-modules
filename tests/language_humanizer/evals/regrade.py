@@ -141,6 +141,9 @@ def main() -> int:
                     help="Re-run only the deterministic grader and carry the "
                          "original judge verdicts forward unchanged.")
     args = ap.parse_args()
+    if args.model is not None or args.effort is not None:
+        ap.error("regrade starts no worker, so it takes --judge-model and "
+                 "--judge-effort in place of --model and --effort")
     args.resolved = vendor.resolve(args, with_judge=True)
 
     run_dir = pathlib.Path(args.run_dir).resolve()

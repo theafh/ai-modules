@@ -1446,3 +1446,14 @@ pre-existing, and the size infos stay advisory; the one on
   points at the 2026-11-13 probe record for the measurements, and records that
   the CLI names no effective effort level in its init event or debug output)
 - index.md (Last updated moves to 2026-11-13)
+
+## [2026-11-14 02:39] update | Scope the effort claims on the verification surfaces page to the runners that carry effort
+
+- concepts/verification-surfaces.md (the model-pinning heading now says that
+  deterministic graders stay model-free; the claim that effort reaches the
+  Claude worker and judge commands names the trigger evals' `--force-uuid`
+  path, which hands skill-creator's runner the model alone, as its exception;
+  the claim that run records name the worker model and effort names
+  `natural_language`, whose summary and console header name neither, as its
+  exception; the sentence pointing at the 2026-11-13 probe record drops the
+  per-eval cost figures; the `updated` date moves to 2026-11-14)

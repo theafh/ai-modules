@@ -100,8 +100,9 @@ class Resolved:
 
 # Claude runs the latest Opus alias at high effort for the worker, the level the
 # operator's own sessions run at, and at xhigh for the judge. The measurements
-# behind these defaults are recorded under the 2026-11-13 worker model and
-# effort probe in tests/agent_spinner/evals/README.md.
+# behind the worker default are recorded under the 2026-11-13 worker model and
+# effort probe in tests/agent_spinner/evals/README.md. Those runs measured only
+# the worker, so no run there backs the judge default.
 _CONFIGS = {
     "claude": VendorConfig(
         name="claude",
@@ -379,6 +380,7 @@ def add_vendor_arguments(
     parser.add_argument(
         "--effort",
         default=None,
+        choices=("", *EFFORT_LEVELS),
         help=(
             "Worker effort override on Claude ("
             + "|".join(EFFORT_LEVELS)
@@ -410,6 +412,7 @@ def add_vendor_arguments(
         parser.add_argument(
             "--judge-effort",
             default=None,
+            choices=("", *EFFORT_LEVELS),
             help=(
                 "Judge effort override on Claude ("
                 + "|".join(EFFORT_LEVELS)
@@ -786,10 +789,16 @@ def stage_agents(
 
 
 def _claude_worker_env() -> dict[str, str]:
-    """Return an env dict for a nested `claude -p` worker."""
+    """Return an env dict for a nested `claude -p` worker.
+
+    A host `CLAUDE_CODE_EFFORT_LEVEL` would override the `--effort` flag the
+    runner passes, while the cache key and run records name the flag's level,
+    so the worker never inherits it.
+    """
 
     env = os.environ.copy()
     env.pop("CLAUDECODE", None)
+    env.pop("CLAUDE_CODE_EFFORT_LEVEL", None)
     env.pop("CLAUDE_CODE_SDK_HAS_OAUTH_REFRESH", None)
     env.pop("CLAUDE_CODE_SDK_HAS_HOST_AUTH_REFRESH", None)
     if not env.get("CLAUDE_CODE_OAUTH_TOKEN"):

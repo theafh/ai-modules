@@ -466,11 +466,13 @@ unchanged. The blast radius is therefore the two new ids alone.
 
 ### 2026-11-13, Claude Code 2.1.289, worker model and effort probe
 
-These three Claude runs are the measurements behind the Claude defaults in
-`tests/lib/vendor.py`: the worker on the latest `opus` alias at `high` effort,
-and the judge on `opus` at `xhigh`. Every run used `claude` 2.1.289 on
-agent_spinner at commit `c592b42`. Their run directories sit in local scratch
-space that no clone carries, so this section is the record.
+These three Claude runs are the measurements behind the Claude worker default
+in `tests/lib/vendor.py`, the latest `opus` alias at `high` effort. They
+measured only the worker: agent_spinner's evals grade through `grade.sh` with
+no judge, so no run here backs the judge default of `opus` at `xhigh`. Every
+run used `claude` 2.1.289 on agent_spinner at commit `c592b42`. Their run
+directories sit in local scratch space that no clone carries, so this section
+is the record.
 
 - **`sonnet`, full suite.** The whole suite ran on `--vendor claude` with the
   then-default `sonnet` worker. 56 of 93 evals passed and 36 failed.
@@ -480,8 +482,9 @@ space that no clone carries, so this section is the record.
   `sonnet` failures came from skipped procedure rather than wrong answers: the
   worker reached the expected conclusions while leaving out the steps the skill
   requires.
-- **Opus at low effort.** The set was the 36 `sonnet` failures plus six `sonnet`
-  passes, run with `--no-cache` through a wrapper around the worker binary that
+- **Opus at low effort.** The set was the 36 `sonnet` failures, six `sonnet`
+  passes, and the inconclusive `checker_spawned_through_role`, run with
+  `--no-cache` through a wrapper around the worker binary that
   added `--effort low` to every `claude` command. It fixed 8 of the 36, failed
   `blind_pass_by_prompt` where `sonnet` had passed, and left
   `checker_spawned_through_role` inconclusive again. Most remaining failures hit
@@ -509,3 +512,58 @@ On the new defaults, `smoke_inline_body` passed on `--vendor claude` with the
 worker on `opus` at `high` in `../workspace/run-20261114-001102`, whose
 `timing.json` and cache record name both. A re-run with `--effort medium` took
 no cache hit and passed in `../workspace/run-20261114-001331`.
+
+### 2026-11-14, Claude Code 2.1.289, full suite on `opus` at `high`
+
+The whole suite ran on `--vendor claude` with the new defaults, the worker on
+the latest `opus` alias at `high` effort, at commit `a54b92c` with that
+commit's review fixes still uncommitted in the working tree. The evals ran four
+at a time in 24 batches, as supervised background commands with the runner's
+own timeouts, because at high effort most evals outlast the ten-minute limit of
+one foreground tool call. Of the 72 evals that reached a grade, the median run
+took 289 seconds, 16 took longer than 540 seconds, and the longest took 958
+seconds. The run cost about 77 points of the five-hour usage window and about
+13 points of the weekly window. The run directories sit under
+`../workspace/run-20261114-*`, which no clone carries, so this section is the
+record.
+
+- **48 passed and 24 failed** of the 72 evals that reached a grade.
+- **20 never reached the worker**, because `stage.sh` rejected a staged helper
+  return with `required key missing: objections`. The ledger phase 2 change
+  made that key required, and these fixtures still stage returns without it:
+  `checker_reads_return_by_path`, `confirmation_provenance`,
+  `confirmed_class_swept_before_clean`, `known_false_control_caught`,
+  `leading_option_objection_in_packet`, `move_integrity_flags_low_similarity`,
+  `pause_request_stops_dispatch`, `refuter_alternative_becomes_fork`,
+  `remediator_refutes_false_finding`, `repair_list_keyed_on_severity`,
+  `report_rederivation`, `role_depth_recorded`,
+  `routed_premise_sentences_landed`, `ruling_applies_to_class`,
+  `skipped_close_reported`, `survived_lenses_labelled_recall`,
+  `unnarrowed_flag_blocks_deliverable`, `unverified_band_sampled`,
+  `verdict_waits_for_open_checker`, and `verifier_rows_from_findings`.
+  Seventeen of them passed on `sonnet` on 2026-11-13, before that change.
+- **1 stayed inconclusive.** `checker_spawned_through_role` outran its fixed
+  1200-second per-eval timeout, as it did on every earlier Claude run.
+- **4 of the failures are the integrity check, not the grader.** The workers
+  for `depth_one_level`, `explicit_spinner_on_family_job`,
+  `stamp_routed_on_any_rewrite`, and `triage_pass_routes_missed_hit` read files
+  under the host's real `~/.claude/agents` or `~/.claude/skills` outside the
+  micro-deployment, so `artefacts_read_from_micro_deployment` failed.
+- **Against the 2026-11-13 `sonnet` run**, on the 72 evals graded both times
+  and across the skill changes between `c592b42` and `a54b92c`: `opus` passed
+  16 evals `sonnet` failed (`aborted_writer_settled_from_diff`,
+  `checker_spawned_without_role`, `count_check_cannot_clear_meaning`,
+  `cross_model_checker_recorded`, `declared_shape_switch_named`,
+  `documented_absence_stays_conditional`, `ledger_unavailable_by_hand`,
+  `probe_definitions_no_spawn`, `procedure_page_conflict`,
+  `residual_selector`, `shape_matched_no_recipe`,
+  `snapshot_search_positive_control`, `twelve_files_twelve_rows`,
+  `unreturned_bound`, `wide_run_plans_session_boundary`, and
+  `widening_needs_estimate_and_ask`), and it failed 7 evals `sonnet` passed
+  (`depth_one_level`, `judgement_surfaced`, `labelled_forks_all_relayed`,
+  `stamped_target_routed_to_owner`, `unanswered_gate_stops_with_packet`,
+  `uncited_clean_reroute`, and `unlabelled_returns_joined_by_id`). Both models
+  failed the other 17 failures.
+
+`phase_plan_announcement` and `clean_corpus` first outran the 900-second
+default and were graded on a re-run with `--timeout 1800`; both failed.

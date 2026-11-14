@@ -257,6 +257,8 @@ check(rc2 != 2, "force-uuid: stubbed uuid path is not a preflight failure")
 uuid_record = json.loads((results2 / "results.json").read_text())
 check(uuid_record.get("worker_effort") == "",
       "force-uuid: results.json records the empty worker_effort the uuid path applies")
+check("\neffort:         <inherit>\n" in (results2 / "run.log").read_text(),
+      "force-uuid: run.log names the same empty effort as results.json")
 check(uuid_record.get("worker_model") == "opus",
       "force-uuid: results.json still records the resolved worker_model")
 

@@ -9,6 +9,8 @@ Run:
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import pathlib
@@ -413,6 +415,19 @@ def main() -> int:
         ),
         "only Claude has an effort control",
     )
+    for label, argv in (
+        ("an unlisted --effort level stops the parser with exit status 2",
+         ["--vendor", "claude", "--effort", "hgih"]),
+        ("an unlisted --judge-effort level stops the parser with exit status 2",
+         ["--vendor", "claude", "--judge-effort", "XHIGH"]),
+    ):
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                effort_parser.parse_args(argv)
+        except SystemExit as err:
+            check(label, err.code == 2)
+        else:
+            check(label, False)
     cursor_empty = vendor.resolve(
         effort_parser.parse_args(["--vendor", "cursor", "--effort", ""]),
         with_judge=True,
@@ -428,6 +443,24 @@ def main() -> int:
     except ValueError as err:
         refused = "only Claude" in str(err)
     check("the cursor builder refuses a non-empty effort", refused)
+    # A host CLAUDE_CODE_EFFORT_LEVEL would override --effort in the worker,
+    # so the Claude worker env drops it. The token is preset so the env
+    # builder skips its keychain lookup.
+    saved_env = {
+        key: os.environ.get(key)
+        for key in ("CLAUDE_CODE_EFFORT_LEVEL", "CLAUDE_CODE_OAUTH_TOKEN")
+    }
+    try:
+        os.environ["CLAUDE_CODE_EFFORT_LEVEL"] = "low"
+        os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = "test-token"
+        check("the claude worker env drops a host CLAUDE_CODE_EFFORT_LEVEL",
+              "CLAUDE_CODE_EFFORT_LEVEL" not in vendor.worker_env("claude"))
+    finally:
+        for key, value in saved_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
     for name, argv in (
         ("claude", vendor.build_stream_cmd(

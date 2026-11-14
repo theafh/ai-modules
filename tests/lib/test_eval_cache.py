@@ -313,6 +313,18 @@ def main() -> int:
               and hit["model"] == "claude-sonnet-4-6")
         check("wrong key misses", cache.lookup("e1", "deadbeef") is None)
         check("wrong eval_id misses", cache.lookup("e2", k) is None)
+        try:
+            cache.record(  # type: ignore[call-arg]
+                "no-effort", k, passed=True, model="m", duration_s=1.0,
+                worker_rc=0, grading_output="PASS\n", response_excerpt="x",
+            )
+            missing_effort_raised = False
+        except TypeError as err:
+            missing_effort_raised = "effort" in str(err)
+        check("a record call without effort raises TypeError",
+              missing_effort_raised)
+        check("a record call without effort stores no entry",
+              cache.lookup("no-effort", k) is None)
 
         # 8. Recording a superseding key for the same eval keeps both entries.
         cache.record("e1", "otherkey", passed=False, model="m", effort="",

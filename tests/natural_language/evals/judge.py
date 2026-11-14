@@ -274,6 +274,11 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--out")
     args = parser.parse_args()
+    if args.model is not None or args.effort is not None:
+        parser.error(
+            "the standalone judge starts no worker, so it takes --judge-model "
+            "and --judge-effort in place of --model and --effort"
+        )
     resolved = vendor.resolve(args, with_judge=True)
     vendor.require_vendor_allowed(resolved.vendor, "natural_language")
 
