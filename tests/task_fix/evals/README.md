@@ -70,6 +70,6 @@ what an operator confirms from `response.txt`.
 
 `.eval_cache/<id>.json` holds the last conclusive verdict, keyed on the
 `task_fix` skill, the base `task` skill, the `auto_*_task` agents, this
-directory, the model, and the prompt. Editing the react protocol invalidates
-it. Timeouts and crashes are never cached. They are environmental, not a
-property of the inputs.
+directory, the worker model and effort, and the prompt. Editing the react
+protocol invalidates it. Timeouts and crashes are never cached. They are
+environmental, not a property of the inputs.

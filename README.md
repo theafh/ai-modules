@@ -101,13 +101,14 @@ ai-modules/
 ├── scripts/                 # repo-wide tooling (strict frontmatter gate)
 ├── tasks/                   # this repo's own backlog, kept with the shipped task skill
 │   └── archive/             # finished and deferred tasks
+├── tests/                   # regression harnesses: deterministic script tests and behavioural evals (tests/README.md)
 ├── wiki/                    # this repo's own knowledge base, kept with the shipped wiki skill
 ├── CHARTER.md               # this repo's own guardrail doc, enforced by the charter_guardrail hook
 ├── TESTING.md               # verification methodology: harness discipline and re-run economy
 ├── AGENTS.md                # standing repo instructions for coding agents
 ├── CLAUDE.md                # the same instructions for Claude Code
 ├── CHANGELOG.md             # day-grouped history, written by the shipped update_changelog skill
-└── Makefile                 # deploy, update, uninstall, lint, and fix entry points
+└── Makefile                 # deploy, update, uninstall, test, lint, and fix entry points
 ```
 
 The repo runs on the components it ships. Its backlog, knowledge base, charter, and
@@ -221,6 +222,7 @@ make deploy      # deploy artefacts to global config dirs (aliases: global, inst
 make update      # refresh every scope the deploy log records from this checkout
 make uninstall   # remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 make clean       # remove managed deployment backups
+make test        # run every deterministic test surface (tests/run_all.sh)
 make lint        # report lint issues across md / json / sh / frontmatter (Python 3)
 make fix         # auto-fix lint issues where possible (markdown only)
 ```
@@ -232,3 +234,7 @@ For finer-grained control, call `deployment/deployment.sh` directly. See [deploy
 `make lint` and `make fix` use `markdownlint-cli`, `jq`, `shellcheck`, and Python 3 (install the first three via Homebrew on macOS; Python 3 ships with the Xcode command line tools and most Linux distributions). The frontmatter check is `scripts/lint_frontmatter.py`, which also runs skill_doctor's `discovery_safety.py` in place over every tracked `SKILL.md`.
 
 Markdown rules live in [.markdownlint.jsonc](.markdownlint.jsonc). Inline-HTML checks (`MD033`) are off, because skill prompts use pseudo-XML on purpose.
+
+### Tests
+
+`make test` runs every deterministic test surface, meaning each harness's script tests and the shared `tests/lib` unit tests, and starts no model. The behavioural evals run per harness, each through its own runner, such as `tests/git_commit/evals/run.py`. They default to Cursor's `auto` model because its runs are cheaper and faster, and `--vendor claude` runs the worker on the latest `opus` alias at high effort and any LLM judge on `opus` at `xhigh` effort. [tests/README.md](tests/README.md) describes each harness, and [TESTING.md](TESTING.md) the methodology behind them.

@@ -96,7 +96,9 @@ four source-relation assertions (`contrast_kept`, `two_reasons_kept`,
 (`paragraphs_open_with_point`, `figures_tied`,
 `arithmetic_opens_with_conclusion`, `connected_prose`). The judge starts in
 its own isolated root with no staged output style and no `outputStyle`
-selection.
+selection. Run on its own, `judge.py` takes `--judge-model` and
+`--judge-effort` and stops with an error on `--model` or `--effort`, because
+it starts no worker.
 
 ## Grader validation
 

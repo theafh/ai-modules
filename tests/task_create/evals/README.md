@@ -52,6 +52,7 @@ notes for what an operator confirms from `response.txt`.
 ## Verdict cache
 
 `.eval_cache/<id>.json` holds the last conclusive verdict, keyed on the
-`task_create` and base `task` skill sources, this directory, the model, and the
-prompt. Editing either skill invalidates it. Timeouts and crashes are never
-cached. They are environmental, not a property of the inputs.
+`task_create` and base `task` skill sources, this directory, the worker model
+and effort, and the prompt. Editing either skill invalidates it. Timeouts and
+crashes are never cached. They are environmental, not a property of the
+inputs.

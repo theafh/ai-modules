@@ -124,9 +124,9 @@ CLAUDE_CONFIG_DIR="$HOME/.claude" CLAUDE_SECURESTORAGE_CONFIG_DIR= \
   --baseline tests/trigger_evals/results/git_review/2026-10-28_090023
 ```
 
-Record the run's date, the CLI build (`claude --version`), the worker model,
-each entry's per-query trigger counts, and each rewritten `description:`'s
-`len()` as `plugins/ai_dev/skills/skill_doctor/scripts/discovery_safety.py`
+Record the run's date, the CLI build (`claude --version`), the worker model
+and effort, each entry's per-query trigger counts, and each rewritten
+`description:`'s `len()` as `plugins/ai_dev/skills/skill_doctor/scripts/discovery_safety.py`
 measures it against `LISTING_BUDGET_RISK_CHARS` (1000).
 
 | Measurement | `git_review` | `git_auto_review` |

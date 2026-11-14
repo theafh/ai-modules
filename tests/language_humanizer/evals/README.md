@@ -13,9 +13,9 @@ scenario exercises and a `passes` field recording the intended denominator.
 | `fixtures/<id>/setup.sh <target>` | Writes the fixture document into `<target>/proj/` and prints that project path. The header comment enumerates the fixture's load-bearing items, so the fixture and its assertion set can be checked against each other by reading one file. |
 | `grade.py <id> <proj> <source> [--json]` | Deterministic grader. Exits 0 when every mechanical and integrity check passed. |
 | `test_grade.py` | Grader unit tests with no model call. Stages each real fixture, feeds `grade.py` a faithful rewrite that must pass every check, then lossy variants that must fail on exactly the check naming what they dropped. |
-| `judge.py <id> <fixture> <delivered> <response>` | LLM grader for the qualitative assertions, refute-biased, one JSON verdict per rubric line. |
+| `judge.py <id> <fixture> <delivered> <response>` | LLM grader for the qualitative assertions, refute-biased, one JSON verdict per rubric line. It runs on the vendor's judge model and effort, overridable with `--judge-model` and `--judge-effort`, and stops with an error on `--model` or `--effort`, because it starts no worker. |
 | `run.py [scenario ...]` | Drives worker → `grade.py` → `judge.py` per pass, four passes at a time by default, each from an isolated root through `tests/lib/worker_isolation.py`, then aggregates the per-scenario rate. |
-| `regrade.py <run_dir>` | Re-measures an existing run's captured responses with the current graders, spawning no worker. Writes `verdict.regrade.json` / `summary.regrade.*` beside the originals. |
+| `regrade.py <run_dir>` | Re-measures an existing run's captured responses with the current graders, spawning no worker. Writes `verdict.regrade.json` / `summary.regrade.*` beside the originals. It takes `--judge-model` and `--judge-effort`, stops with an error on `--model` or `--effort`, and refuses the as-run comparison when its judge settings differ from the run's (`../RUNBOOK.md` has the rule). |
 
 ## Where each expectation is graded
 

@@ -103,11 +103,26 @@ verdicts measured the model's shortcuts rather than the skill: on
 skill requires, Opus at low effort mostly skipped it too, and Opus at high
 effort followed it. The measurements and their cost are recorded under the
 2026-11-13 worker model and effort probe in
-`tests/agent_spinner/evals/README.md`. The `claude` CLI accepts `--effort` in
-print mode, yet neither its stream-json init event nor its `--debug` output
-names the effective level (build 2.1.289, observed 13 November 2026), so a run
-record names the effort the runner passed, and only the changed behaviour
-between low and high effort shows the flag takes effect.
+`tests/agent_spinner/evals/README.md`. The same file records the full-suite run
+on the new default from 14 November 2026: Opus at high effort passed 48 of the
+72 evals that reached a grade, passing 16 that `sonnet` had failed and failing
+7 that `sonnet` had passed. Twenty more evals never reached the worker, because
+their fixtures staged helper returns without the `objections` key the run
+ledger had made required. A later fixture fix added the key, so those 20 evals
+stage again but have no Opus result yet.
+
+The `claude` CLI accepts `--effort` in print mode, yet neither its stream-json
+init event nor its `--debug` output names the effective level (build 2.1.289,
+observed 13 November 2026), so a run record names the effort the runner passed,
+and only the changed behaviour between low and high effort shows the flag takes
+effect. A host-exported `CLAUDE_CODE_EFFORT_LEVEL` would break that record,
+because the same build's flag-settings path carries the message
+"CLAUDE_CODE_EFFORT_LEVEL overrides effort for this session": the worker would
+run at the variable's level while the cache key and the run record name the
+flag's. The runners therefore drop the variable from every Claude worker and
+judge environment they build through `tests/lib/vendor.py`. That precedence was
+read from the installed 2.1.289 bundle on 14 November 2026 and has not been
+exercised by a run.
 
 Evals run on the default vendor, Cursor, in the runners and in practice,
 because its runs are cheaper and faster. Development therefore iterates on

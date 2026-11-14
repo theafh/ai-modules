@@ -530,7 +530,8 @@ record.
 - **48 passed and 24 failed** of the 72 evals that reached a grade.
 - **20 never reached the worker**, because `stage.sh` rejected a staged helper
   return with `required key missing: objections`. The ledger phase 2 change
-  made that key required, and these fixtures still stage returns without it:
+  made that key required, and at `a54b92c` these fixtures still staged returns
+  without it:
   `checker_reads_return_by_path`, `confirmation_provenance`,
   `confirmed_class_swept_before_clean`, `known_false_control_caught`,
   `leading_option_objection_in_packet`, `move_integrity_flags_low_similarity`,
@@ -542,6 +543,8 @@ record.
   `unnarrowed_flag_blocks_deliverable`, `unverified_band_sampled`,
   `verdict_waits_for_open_checker`, and `verifier_rows_from_findings`.
   Seventeen of them passed on `sonnet` on 2026-11-13, before that change.
+  Commit `947f043` has since given every fixture return the key, so all 20
+  stage again, but none of them has an `opus` result yet.
 - **1 stayed inconclusive.** `checker_spawned_through_role` outran its fixed
   1200-second per-eval timeout, as it did on every earlier Claude run.
 - **4 of the failures are the integrity check, not the grader.** The workers

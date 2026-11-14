@@ -1467,3 +1467,14 @@ pre-existing, and the size infos stay advisory; the one on
   benchmark and its matching automatic baseline, and the `language_humanizer`
   re-grade as its instances)
 - index.md (Last updated moves to 2026-11-14)
+
+## [2026-11-14 16:23] update | Record the full Opus suite run and the effort variable drop on the verification surfaces page
+
+- concepts/verification-surfaces.md (the model-pinning section now summarizes
+  the 14 November 2026 full `agent_spinner` suite on Opus at high effort, 48 of
+  72 graded evals passed, 16 passes and 7 failures against `sonnet`, and 20
+  evals unstaged on the missing `objections` key until a later fixture fix; it
+  now also states that the runners drop a host `CLAUDE_CODE_EFFORT_LEVEL` from
+  every Claude worker and judge environment, because the 2.1.289 bundle's
+  flag-settings path says the variable overrides effort, read from the bundle
+  and not exercised by a run)

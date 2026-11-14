@@ -324,6 +324,9 @@ files.
   route cases, and the two `sweep_rewrite_hunk_blocks_sampling` checks that
   a repair-round re-check does not count as a second initial check and that
   a second initial check for one page still fails (20 checks in all);
+  `script_tests/fixture_stage.py` stages every eval and fails a helper return
+  that breaks the shipped ledger's return contract, so a ledger change that
+  leaves a fixture behind fails `make test` before any paid eval run;
   `evals/test_run.py` proves the runner's
   wiring against a stub worker; `evals/` holds every id in `evals.json` (93
   today). Each

@@ -23,8 +23,9 @@ python3 tests/task_fix/evals/run.py regroup_live_skip_archived
 
 A verdict is cached under `evals/.eval_cache/` keyed on the `task_fix` skill,
 the base `task` skill, the `auto_*_task` agents, this harness directory, the
-model, and the prompt. Edit the react protocol or any of those artefacts and
-the cache invalidates on its own. To force a fresh run anyway:
+worker model and effort, and the prompt. Edit the react protocol or any of
+those artefacts and the cache invalidates on its own. To force a fresh run
+anyway:
 
 ```bash
 python3 tests/task_fix/evals/run.py --force

@@ -31,9 +31,9 @@ python3 tests/task_create/evals/run.py reconcile-recorded
 ## Re-running past the verdict cache
 
 A verdict is cached under `evals/.eval_cache/` keyed on the `task_create` and
-base `task` skill sources, this harness directory, the model, and the prompt.
-Edit either skill and the cache invalidates on its own. To force a fresh run
-anyway:
+base `task` skill sources, this harness directory, the worker model and
+effort, and the prompt. Edit either skill and the cache invalidates on its
+own. To force a fresh run anyway:
 
 ```bash
 python3 tests/task_create/evals/run.py --force
