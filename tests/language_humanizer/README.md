@@ -3,16 +3,17 @@
 Pattern A (skill-creator-aligned) harness for the `language_humanizer` skill
 in the `ai_editorial` plugin. The skill ships no bundled scripts, so its
 deterministic surface is a static contract over `SKILL.md` and its
-registration, plus unit tests that prove the grader can fail and that the
-judge command carries the resolved judge model and effort. `run_all.sh`
-drives all three. The measurement itself is behavioral and runs out-of-band
+registration, plus unit tests that prove the grader can fail, that the
+judge command carries the resolved judge model and effort, and that every
+run and re-grade record names its settings. `run_all.sh` drives all four.
+The measurement itself is behavioral and runs out-of-band
 through `evals/run.py`.
 
 ```text
 tests/language_humanizer/
 ├── README.md            # this file: what the harness covers and why
 ├── RUNBOOK.md           # how to run it and how to read the result
-├── run_all.sh           # the deterministic surface: static contract + grader and judge-command tests
+├── run_all.sh           # the deterministic surface: static contract + grader, judge-command, and runner tests
 ├── script_tests/
 │   └── run.sh           # static SKILL.md / README / registration contract, runner stage guard
 ├── results/             # one run-<ts>.{json,md} per recorded measurement
