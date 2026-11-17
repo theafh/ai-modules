@@ -2,8 +2,8 @@
 description: "Give auto_gate_task's search audit its own Evidence line so isolation stays confirmed or the reads, and fix how auto_verifier_task's proposal items open, what fields they carry, and how values read."
 scope: plugins/ai_dev/agents
 created: 2026-11-15T06:22:10Z
-updated: 2026-11-17T10:06:07Z
-status: open
+updated: 2026-11-17T13:05:24Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -27,12 +27,13 @@ All agent paths are under `plugins/ai_dev/agents/`. Evidence comes from the 2026
 **Settled here.** These choices rest on the agents' own text:
 
 - **Empty searches.** A non-ignore-aware search that returned nothing out of bounds goes on the new mechanisms line as a contract violation, together with its ignore-aware re-run, and leaves `isolation: confirmed`. The basis is the gate rule's own "a search that crossed an excluded directory and returned nothing from it is not a read", which `task_auto_check`'s SKILL.md repeats as "an empty traversal is not an out-of-bounds read".
+- **Named reads.** An out-of-bounds read on the `isolation:` line is written `out-of-bounds read: <artifact read> — via <mechanism>`, one entry per read, separated by a semicolon and a space, so the line reads exactly `confirmed` or those entries and nothing else. The basis is the gate rule's own "otherwise name each one there and name the search mechanism used", which the template placeholder and the pin's pass case both carry.
 - **Approval reasons.** An approved edit gains a `reason:` field, because the template's rejection items already carry `reason: <grounded reason>`, and models that lack a field invent one.
 - **Item opening.** An item opens with its first field on the number line, as in `1. id: e1` or `1. issue: …`, because that is the shape the loop and the grader already parse.
 
 ## Approach
 
-1. In `auto_gate_task.md`, add `- search mechanisms: <each mechanism used, with each non-ignore-aware one marked as a violation and its ignore-aware re-run named>` to the `## Evidence` template, directly after the `isolation:` line. Rewrite the audit sentence of the "Judge the task file as it stands" rule in place so the list goes on that line, and so `isolation:` reads exactly `confirmed` or names each out-of-bounds read, each with the mechanism that produced it. Keep the two sentences s15 pins word for word.
+1. In `auto_gate_task.md`, add `- search mechanisms: <each mechanism used, with each non-ignore-aware one marked as a violation and its ignore-aware re-run named>` to the `## Evidence` template, directly after the `isolation:` line. Rewrite the audit sentence of the "Judge the task file as it stands" rule in place so the list goes on that line, and so `isolation:` reads exactly `confirmed` or the named-read entries settled above, with the template placeholder changed in the same edit from `<confirmed | each out-of-bounds read>` to `<confirmed | out-of-bounds read: <artifact read> — via <mechanism>; one entry per read>`. Keep the two sentences s15 pins word for word.
 2. In `auto_verifier_task.md`'s proposal-mode template, state the layout once, above both lists:
    - Each numbered item opens with its first field on the number line, as in `1. id: e1` or `1. issue: …`.
    - An item carries only its template's fields.
@@ -41,12 +42,12 @@ All agent paths are under `plugins/ai_dev/agents/`. Evidence comes from the 2026
    - The message ends with the last item of `## Rejections and routes`, or with its `None.`.
 3. Add `- reason: <grounded reason for approval, naming the files and spans it rests on>` to the approved-edit fields.
 4. In `task_auto_check`'s SKILL.md, state where `<apply_repairs>` and `<audit_delta>` read an anchor or replacement that the verifier sent as a fenced block: the block's content is the exact text. Apply the same reading to `affected_passages:` and `gate_fix:`.
-5. Align `verifier_returns_keep_contract` in `tests/task_auto_check/evals/grade.sh` with the stated layout, so it unwraps a fenced value and accepts `reason:`. Add a strict pin that fails a gate return whose `isolation:` value carries anything other than `confirmed` or named reads. Give each grader change a pass case and a fail case in `tests/task_auto_check/script_tests/`.
+5. Align `verifier_returns_keep_contract` in `tests/task_auto_check/evals/grade.sh` with the stated layout, so it unwraps a fenced value and accepts `reason:`. Add a strict pin, `isolation_shape`, that fails a gate return whose `isolation:` value carries anything other than `confirmed` or named reads — the settled form, so it accepts `confirmed` alone or one `out-of-bounds read: … — via …` entry per read, its pass case writes a named-read line, and its fail case writes `confirmed (search mechanisms: rg --hidden)`. The pin is a new check beside the existing predicate, not a tightening of it: `relay_checks.isolation_confirmed` keeps its leading-token read and `accepted_gates` keeps filtering on it, so `first_gate()`'s `- isolation: confirmed (search mechanisms: rg --hidden)` fixture and `test_isolation_reads_the_leading_token`'s prose values keep their current values and stay accepted. Call the pin from the grade blocks of `regate_isolated`, `relay_by_path`, and `stray_hunk_reverted` as `check "every gate return writes the settled isolation shape" relay_check isolation_shape <task-stem>`, the pattern of the existing `check "every gate return confirms isolation" relay_check isolation_evidence api_isolated-regate` in `regate_isolated`. The isolation pin's pass and fail cases join `tests/task_auto_check/script_tests/test_relay_checks.py`, the file `s12` already runs. Move `verifier_returns_keep_contract`'s body out of `grade.sh`'s top level into a `tests/lib/` helper that `grade.sh` sources the way it sources `host_tasks_guard.sh` and `repeated_link_disposition.sh`, so the helper loads without the grader's `$1`/`$2` case, and give that helper a pass case and a fail case in `tests/task_auto_check/script_tests/test_verifier_return_contract.py`, run by a new `s19` scenario in `tests/task_auto_check/script_tests/run.sh`.
 
 ## Acceptance
 
-1. `auto_gate_task.md`'s `## Evidence` template carries the `search mechanisms:` line, its audit sentence sends the list there, and `bash tests/task_auto_check/script_tests/run.sh` still passes s15.
+1. `auto_gate_task.md`'s `## Evidence` template carries the `search mechanisms:` line, its audit sentence sends the list there, its `isolation:` placeholder reads `<confirmed | out-of-bounds read: <artifact read> — via <mechanism>; one entry per read>` in place of `<confirmed | each out-of-bounds read>`, and `bash tests/task_auto_check/script_tests/run.sh` still passes s15.
 2. `auto_verifier_task.md`'s proposal-mode template states the item opening, the field set including the approval `reason:`, the raw and fenced value forms, and the message end. The old template no longer stands without that layout.
 3. `task_auto_check`'s SKILL.md states that a fenced anchor, replacement, affected passage, or gate fix is read as the block's content.
-4. `bash tests/task_auto_check/run_all.sh` passes, including the new pass and fail cases for the isolation pin and the fenced-value reading.
-5. `relay_by_path`, `stray_hunk_reverted`, and `regate_isolated` run on the default vendor, and their verdicts are recorded in `tests/task_auto_check/evals/README.md`. Every gate return in those runs keeps `isolation:` to `confirmed` or named reads, and every proposal-mode verifier return passes `verifier_returns_keep_contract`. If a return still breaks the layout, the record quotes the offending line and the task stays open.
+4. `bash tests/task_auto_check/run_all.sh` passes, including the new pass and fail cases for the isolation pin in `test_relay_checks.py`, for the fenced-value reading, and for the `tests/lib/` helper that `verifier_returns_keep_contract` becomes, which the new `s19` scenario runs.
+5. `relay_by_path`, `stray_hunk_reverted`, and `regate_isolated` run on the default vendor, and their verdicts are recorded in `tests/task_auto_check/evals/README.md`. Every gate return in those runs keeps `isolation:` to `confirmed` or named reads, and every proposal-mode verifier return passes `verifier_returns_keep_contract`. Each of those three eval grade blocks calls the `isolation_shape` check, so a return whose `isolation:` line carries anything other than `confirmed` or named reads fails its eval. If a return still breaks the layout, the record quotes the offending line and the task stays open.

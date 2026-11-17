@@ -1266,7 +1266,10 @@ def cmd_dispatch(args):
     row = led.find_row(args.label)
     if row.get("phase") == "probe" and not led.run:
         die("probe row needs an open run; run init first")
-    if row.get("state") in ("accepted", "inability", "failed", "unreturned", "dropped"):
+    # An unreturned row is terminal and still earns the contract's single
+    # re-invocation, so it is the one terminal state a dispatch moves back to
+    # dispatched. The attempt cap below refuses a third dispatch.
+    if row.get("state") in ("accepted", "inability", "failed", "dropped"):
         die("row %s is already terminal (%s)" % (args.label, row.get("state")))
     if int(row.get("attempts") or 0) >= 2:
         die("row %s already had two attempts; a third is refused" % args.label)
@@ -1912,6 +1915,15 @@ def cmd_accept(args):
     if args.log_format:
         return audit_helper_log(led, row, args)
     if args.wait:
+        bound = int(led.run.get("bound", 900))
+
+        def past_bound(row):
+            deadline_dt = parse_utc(row.get("dispatched_at"))
+            if deadline_dt is None:
+                return False
+            age = (datetime.datetime.now(datetime.timezone.utc) - deadline_dt).total_seconds()
+            return age > bound
+
         deadline = time.time() + 90
         while time.time() < deadline:
             pending = [
@@ -1923,18 +1935,19 @@ def cmd_accept(args):
             ]
             if not pending:
                 break
+            # The wait is bounded by the run's own bound too: once every row
+            # still out is past it, the row is unreturned and waiting longer
+            # buys nothing.
+            if all(past_bound(r) for r in pending):
+                break
             time.sleep(0.5)
         for r in led.rows:
             if r.get("state") != "dispatched":
                 continue
             if os.path.exists(led.path("returns", "%s.md" % r.get("label"))):
                 continue
-            deadline_dt = parse_utc(r.get("dispatched_at"))
-            bound = int(led.run.get("bound", 900))
-            if deadline_dt is not None:
-                age = (datetime.datetime.now(datetime.timezone.utc) - deadline_dt).total_seconds()
-                if age > bound:
-                    r["state"] = "unreturned"
+            if past_bound(r):
+                r["state"] = "unreturned"
         led.save_rows()
 
     text, source = read_accept_text(led, args)
@@ -1966,7 +1979,13 @@ def cmd_accept(args):
             for rec in led.records()
             if rec.get("type") == "accept_reject" and rec.get("label") == args.label
         ]
-        row["state"] = "violation" if not prior else "failed"
+        if prior:
+            row["state"] = "failed"
+            # A failed row carries the channel its last return came through,
+            # so condition 8 can clear the way `accepted` and `inability` do.
+            row["source"] = source
+        else:
+            row["state"] = "violation"
         led.append(
             {
                 "type": "accept_reject",
@@ -2097,6 +2116,26 @@ def cmd_rows(args):
 def cmd_dispose(args):
     led = Ledger()
     changed = False
+    dropped_rows = []
+    if args.rows:
+        if not args.narrowing:
+            die("--rows needs --narrowing")
+        labels = []
+        for label in args.rows.split(","):
+            label = label.strip()
+            if label and label not in labels:
+                labels.append(label)
+        if not labels:
+            die("--rows names no label")
+        # Validate every label before writing anything, so a refusal leaves
+        # the roster and the ledger as they were.
+        for label in labels:
+            row = led.row_or_none(label)
+            if row is None:
+                die("no roster row labelled %s" % label)
+            if row.get("state") != "pending":
+                die("row %s is %s, not pending" % (label, row.get("state")))
+        dropped_rows = labels
     if args.id:
         targets = [
             rec
@@ -2153,6 +2192,12 @@ def cmd_dispose(args):
         changed = True
     if args.narrowing:
         led.append({"type": "narrowing", "text": args.narrowing, "drops": args.drops or ""})
+        for label in dropped_rows:
+            row = led.find_row(label)
+            row["state"] = "dropped"
+            led.append({"type": "dropped", "label": label, "reason": args.narrowing})
+        if dropped_rows:
+            led.save_rows()
         changed = True
     if args.open_gate:
         led.append(
@@ -2892,9 +2937,26 @@ def cmd_close(args):
         row_paths = set(norm_path(led.root, r.get("path")) for r in led.rows if r.get("path"))
         for path in sorted(row_paths - set(changed)):
             print("  %s" % path)
-        print("unknown:")
+        # Every row that is not terminal lands under exactly one heading.
+        # Only `init` creates a pending row, so a pending row was never
+        # dispatched; a dispatched row with no return file was in flight at the
+        # stop, and an unknown row is one the orchestrator marked in flight.
+        groups = {"unknown": [], "not dispatched": [], "violation": []}
         for row in led.rows:
-            if row.get("state") not in TERMINAL:
+            state = row.get("state")
+            if state in TERMINAL:
+                continue
+            if state in ("dispatched", "unknown"):
+                groups["unknown"].append(row)
+            elif state == "pending":
+                groups["not dispatched"].append(row)
+            elif state == "violation":
+                groups["violation"].append(row)
+            else:
+                groups["unknown"].append(row)
+        for heading in ("unknown", "not dispatched", "violation"):
+            print("%s:" % heading)
+            for row in groups[heading]:
                 print("  %s state=%s" % (row.get("label"), row.get("state")))
     for rec in led.records():
         if rec.get("type") == "confirmation" and rec.get("provenance") == "recall-confirmed":
@@ -3060,6 +3122,10 @@ def build_parser():
     p.add_argument("--why", help="the reason behind a surfaced packet's recommendation")
     p.add_argument("--narrowing")
     p.add_argument("--drops")
+    p.add_argument(
+        "--rows",
+        help="comma-separated pending labels the narrowing retires as dropped",
+    )
     p.add_argument("--open-gate")
     p.add_argument("--question")
     p.add_argument("--gate")

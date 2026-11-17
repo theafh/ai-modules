@@ -29,7 +29,7 @@ Across the 71 Opus reports of that run, 29 carried the tier and dispatched-again
 
 **The decision packet.** `references/report-shapes.md` says a packet carries "each passage the fork touches verbatim with its anchor", and its stop-report example shows a "Passages touched:" block with "anchor: request, sentence 2". `references/run-protocol.md` asks to "Render each decision packet with `show --packet ID` … rather than by hand". But the fork schema there says "A fork may also carry `passages`", `validate_return` in `scripts/run_ledger.py` checks `passages` only when it is present, and `show --packet` prints "Passages touched:" followed by "none" for a fork that carries none. A fully compliant run can therefore render a packet with no passage. `unanswered_gate_stops_with_packet` failed because its worker wrote the packet by hand without passages; the gap would survive a run that used `show`.
 
-This task, [the terminal-states task](ai-dev_agent-spinner-ledger-terminal-states.md), and [the brief-contract task](ai-dev_agent-spinner-ledger-brief-contract.md) all edit `scripts/run_ledger.py` and `references/run-protocol.md`. Land this one after both.
+This task, [the terminal-states task](archive/ai-dev_agent-spinner-ledger-terminal-states.md), and [the brief-contract task](ai-dev_agent-spinner-ledger-brief-contract.md) all edit `scripts/run_ledger.py` and `references/run-protocol.md`. Land this one after both.
 
 ## Approach
 

@@ -2581,7 +2581,14 @@ case "$eval_id" in
     if have_response; then
       check "enumerates modified artifacts" response_has 'modified'
       check "enumerates untouched artifacts" response_has 'untouched'
-      check "accounts for unknown-state artifacts" response_has 'unknown'
+      # Test Integrity: a grader fix (broadening to substance). The property is
+      # that the report accounts for the rows the stop left unsettled. Once
+      # `close --stopped` splits never-dispatched rows from in-flight ones, a
+      # compliant report lists this fixture's two never-dispatched rows under
+      # "not dispatched:" and may carry "Unknown: none." The old literal
+      # `unknown` failed that form although the property held; the
+      # roster-partial case in script_tests/grade_cases.sh stages it.
+      check "accounts for unknown-state artifacts" response_has 'unknown|not dispatched'
       check "settles the unknown ones by reading the files" \
         response_has 'read(ing)? the files|by reading|re-?read'
     else
@@ -3014,7 +3021,14 @@ case "$eval_id" in
       bash -c "[[ \$(grep '\"type\": \"dispatch\"' '$LEDGER' | grep -c 'produce:three') -eq 0 && \$(grep '\"type\": \"dispatch\"' '$LEDGER' | grep -c 'produce:four') -eq 0 ]]"
     check "the stop report lists modified rows" report_has 'modified'
     check "the stop report lists untouched rows" report_has 'untouched'
-    check "the stop report lists unknown rows" report_has 'unknown'
+    # Test Integrity: a grader fix (broadening to substance). The property is
+    # that the stop report accounts for the rows the stop left unsettled. Once
+    # `close --stopped` splits never-dispatched rows from in-flight ones, a
+    # compliant report lists this fixture's two never-dispatched rows under
+    # "not dispatched:" and may carry "Unknown: none." The old literal `unknown`
+    # failed that form although the property held; the pause-request case in
+    # script_tests/grade_cases.sh stages it.
+    check "the stop report lists unknown rows" report_has 'unknown|not dispatched'
     ;;
 
   continuation_armed_once)
@@ -3591,7 +3605,14 @@ PY
       report_carries_decision_packet
     check "the report lists modified rows" report_has 'modified'
     check "the report lists untouched rows" report_has 'untouched'
-    check "the report lists unknown rows" report_has 'unknown'
+    # Test Integrity: a grader fix (broadening to substance). The property is
+    # that the report accounts for the rows the stop left unsettled. Once
+    # `close --stopped` splits never-dispatched rows from in-flight ones, a
+    # compliant report lists this fixture's never-dispatched rows under
+    # "not dispatched:" and may carry "Unknown: none." The old literal `unknown`
+    # failed that form although the property held; the two unanswered-gate cases
+    # in script_tests/grade_cases.sh stage both forms.
+    check "the report lists unknown rows" report_has 'unknown|not dispatched'
     ;;
 
   role_depth_recorded)

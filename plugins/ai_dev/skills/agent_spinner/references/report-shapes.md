@@ -127,9 +127,10 @@ Helper's preferred end state (fork record survey:reference:forks:0):
 
 ## Stop report
 
-Built from `close --stopped`, which prints the tally block and the three row
-lists. While any row is non-terminal it prints them and refuses, exiting
-non-zero, so the stop report says so in its opening sentence.
+Built from `close --stopped`, which prints the tally block and the modified,
+untouched, unknown, not dispatched, and violation row lists. While any row is
+non-terminal it prints them and refuses, exiting non-zero, so the stop report
+says so in its opening sentence.
 
 ```text
 Stopped after 2 of 4 writers, at the spawned-roles tier, 2 dispatched against
@@ -137,7 +138,8 @@ Stopped after 2 of 4 writers, at the spawned-roles tier, 2 dispatched against
 
 Modified: docs/setup.md, docs/deploy.md.
 Untouched: docs/upgrade.md, docs/rollback.md.
-Unknown at stop, now settled by reading: docs/upgrade.md, docs/rollback.md.
+Unknown: none.
+Not dispatched: docs/upgrade.md, docs/rollback.md.
 
 **Established.** Both modified pages carry the flag NOTES.txt records,
 re-derived from the files after the stop.
@@ -150,8 +152,9 @@ Yield: 2 helpers dispatched for 2 edits, against an estimate of 2.
 ```
 
 On a host with no later turn the run cannot wait for the user's answer, so the
-stop report carries the unanswered decision packet above the three lists. The
-run closes with `close --stopped` rather than waiting.
+stop report carries the unanswered decision packet above the modified,
+untouched, unknown, not dispatched, and violation lists. The run closes with
+`close --stopped` rather than waiting.
 
 ```text
 Stopped before dispatch at the inline floor, 0 dispatched against 0 returned.

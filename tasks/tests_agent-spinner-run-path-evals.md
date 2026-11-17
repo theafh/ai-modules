@@ -2,8 +2,8 @@
 description: "Add agent_spinner evals for six untested run paths: residual sweep, pause with no planted STOP, a twice-failed item, unprompted verification, the family variant past approval, beyond-brief finds."
 scope: tests/agent_spinner/evals
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-14T16:08:26Z
-status: open
+updated: 2026-11-17T12:38:29Z
+status: checked
 reported-by: Andreas Hoffmann
 ---
 

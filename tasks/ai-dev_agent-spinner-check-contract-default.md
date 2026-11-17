@@ -2,8 +2,8 @@
 description: "Say what an agent_spinner checking pass checks when the request names no acceptance contract: claims against their source, with omissions left to a completeness critic unless asked."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T23:45:46Z
-updated: 2026-11-17T10:06:07Z
-status: open
+updated: 2026-11-17T13:10:00Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -22,10 +22,13 @@ The run's other two failures belong elsewhere: its verifier returns were rejecte
 
 ## Approach
 
-1. Rewrite the SKILL.md `<checking>` sentence in place so it names the default contract: when the request names no acceptance contract, the checklist holds one line per claim the artifact makes, each tested against the source the request names. State that a missing claim is a completeness finding, raised only when the request asks what is missing, and point at the completeness-critic row.
-2. Make the matching passage in `references/checks.md` say the same, and have the checker template in `references/role-prompts.md` carry the default when the brief names no contract.
+1. Rewrite the SKILL.md `<checking>` sentence in place so it names the default contract: when the checking brief names none of C1 step 4's three contract sources (the item brief, an approved-edit list, an acceptance list), the checklist holds one line per claim the artifact makes, in artifact order, each tested against the source it describes, which the request's named source identifies. State that a missing claim is a completeness finding, raised only when the request asks what is missing and otherwise recorded as a dropped suspicion, and name the `<completeness_critic>` block. State that a brief naming any of those three sources is outside the default, so a write run's paired refute check, whose brief names the item brief, keeps its hunk mapping.
+2. Make `references/checks.md` C2 items 1–2 say the same, with item 2 keeping the old-form test only for rewrite items, the pairing `references/recipes/multi-file-task.md` already states, and item 1's `brief --acceptance PATH[#Heading]` renderer sentence scoped to a brief that names an acceptance source, since `--acceptance` is optional in `scripts/run_ledger.py`. Have the `## Checking pass` template in `references/role-prompts.md` name what its checklist is built from when the brief names no contract.
+3. Pin the shipped sentences in `tests/agent_spinner/script_tests/run.sh`, one check per fact: the default contract with its claim unit and artifact order in `<checking>`, the same in C2, the old `<checking>` sentence absent, and the template's contract source inside its `## Checking pass` block. Give each check the scratch-copy negative control that file already uses, so a green run proves it can fail.
 
 ## Acceptance
 
-- SKILL.md `<checking>` and `references/checks.md` state the default contract and where omissions go, and the old sentence no longer stands without it.
-- `clean_corpus` and `planted_defect` run on the default vendor, with verdicts recorded in `tests/agent_spinner/evals/README.md`. `clean_corpus` reports zero findings and `planted_defect` still names its planted defect. If a run still reports omissions on `clean_corpus`, the record quotes the rubric line it used and the task stays open.
+- SKILL.md `<checking>` and `references/checks.md` C2 items 1–2 state the default contract, its claim unit and artifact order, and where omissions go (a missing claim recorded as a dropped suspicion, routed to `<completeness_critic>` only when the request asks), key the default on a brief naming none of C1 step 4's three contract sources (the item brief, an approved-edit list, an acceptance list), so a write run's checker brief naming only the item brief stays outside the default, and a grep finds the old `<checking>` sentence absent; C2 item 2's old-form test now applies to rewrite items alone, and C2 item 1's `brief --acceptance` renderer sentence is scoped to a brief that names an acceptance source.
+- The `## Checking pass` template in `references/role-prompts.md` names what its checklist is built from when the brief names no contract, and a brief rendered from it with no contract named carries that sentence rather than a bare `1. [check one]`.
+- The new `script_tests` checks pass on the shipped files and fail on a scratch copy carrying the old sentence, a checklist with no claim unit or order, or the bare template line.
+- `clean_corpus` and `planted_defect` run on the default vendor as a regression guard, with verdicts recorded in `tests/agent_spinner/evals/README.md` beside their pre-change runs (`run-20261115-002747`, `run-20261111-111927`); `clean_corpus` reports zero findings and `planted_defect` still names its planted defect. If a default-vendor `clean_corpus` run still reports omissions, the record quotes the rubric line the checker used and the task stays unimplemented.

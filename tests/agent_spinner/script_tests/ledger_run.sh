@@ -2287,6 +2287,160 @@ scenario_objection_close() {
     fi
 }
 
+scenario_failed_source() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    printf 'prose only, no sentinel\n' > "$dir/.agent_spinner/returns/produce:a.md"
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'still no sentinel\n' > "$dir/.agent_spinner/returns/produce:a.md"
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    state=$(awk -F'\t' '$1=="produce:a"{print $7}' "$dir/.agent_spinner/roster.tsv")
+    source=$(awk -F'\t' '$1=="produce:a"{print $20}' "$dir/.agent_spinner/roster.tsv")
+    check "a twice-rejected row ends failed" test "$state" = failed
+    check "a failed row records its last return's source" test "$source" = file
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
+    printf '\n# Report\n' >> "$dir/.agent_spinner/report.md"
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "close exits 0 once the failed row carries its source"
+    else
+        bad "close exits 0 once the failed row carries its source"
+    fi
+}
+
+scenario_dispose_rows() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit produce:b --unit produce:c >/dev/null 2>&1
+    ledger "$dir" dispose --narrowing "stop after two writers" --rows produce:a,produce:b >/dev/null 2>&1
+    state_a=$(awk -F'\t' '$1=="produce:a"{print $7}' "$dir/.agent_spinner/roster.tsv")
+    state_b=$(awk -F'\t' '$1=="produce:b"{print $7}' "$dir/.agent_spinner/roster.tsv")
+    check "dispose --rows drops the first named row" test "$state_a" = dropped
+    check "dispose --rows drops the second named row" test "$state_b" = dropped
+    check "the ledger carries one dropped record per named row" \
+        bash -c "[ \"\$(grep -c '\"type\": \"dropped\"' '$dir/.agent_spinner/ledger.jsonl')\" -eq 2 ]"
+    check "each dropped record names its row with the narrowing as its reason" \
+        bash -c "grep -q '\"label\": \"produce:a\".*\"reason\": \"stop after two writers\"' '$dir/.agent_spinner/ledger.jsonl' && grep -q '\"label\": \"produce:b\".*\"reason\": \"stop after two writers\"' '$dir/.agent_spinner/ledger.jsonl'"
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    if grep -q 'condition 1: row produce:a' "$dir/.agent_spinner/close.out"; then
+        bad "close lists no condition 1 entry for the first dropped row"
+    else
+        ok "close lists no condition 1 entry for the first dropped row"
+    fi
+    if grep -q 'condition 1: row produce:b' "$dir/.agent_spinner/close.out"; then
+        bad "close lists no condition 1 entry for the second dropped row"
+    else
+        ok "close lists no condition 1 entry for the second dropped row"
+    fi
+    if grep -q 'condition 1: row produce:c' "$dir/.agent_spinner/close.out"; then
+        ok "close still lists the pending row the narrowing left"
+    else
+        bad "close still lists the pending row the narrowing left"
+    fi
+
+    cp "$dir/.agent_spinner/roster.tsv" "$dir/roster.before"
+    if ledger "$dir" dispose --narrowing "second narrowing" --rows produce:c,produce:a >/dev/null 2>&1; then
+        bad "dispose --rows refuses a label that is not pending"
+    else
+        ok "dispose --rows refuses a label that is not pending"
+    fi
+    if cmp -s "$dir/roster.before" "$dir/.agent_spinner/roster.tsv"; then
+        ok "a refused dispose --rows leaves every row unchanged"
+    else
+        bad "a refused dispose --rows leaves every row unchanged"
+    fi
+    check "a refused dispose --rows appends no dropped record" \
+        bash -c "[ \"\$(grep -c '\"type\": \"dropped\"' '$dir/.agent_spinner/ledger.jsonl')\" -eq 2 ]"
+}
+
+scenario_unreturned_redispatch() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --bound 1 >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    # The wait stops at the row's bound and marks it unreturned; the accept then
+    # finds no return text and exits non-zero, leaving the roster marking saved.
+    ledger "$dir" accept produce:a --wait >/dev/null 2>&1
+    state=$(awk -F'\t' '$1=="produce:a"{print $7}' "$dir/.agent_spinner/roster.tsv")
+    check "accept --wait marks a row past its bound unreturned" test "$state" = unreturned
+    if ledger "$dir" dispatch produce:a >/dev/null 2>&1; then
+        ok "an unreturned row is re-dispatched once"
+    else
+        bad "an unreturned row is re-dispatched once"
+    fi
+    state=$(awk -F'\t' '$1=="produce:a"{print $7}' "$dir/.agent_spinner/roster.tsv")
+    attempts=$(awk -F'\t' '$1=="produce:a"{print $8}' "$dir/.agent_spinner/roster.tsv")
+    check "the re-dispatch moves the row back to dispatched" test "$state" = dispatched
+    check "the re-dispatch counts as the second attempt" test "$attempts" = 2
+    if ledger "$dir" dispatch produce:a >/dev/null 2>&1; then
+        bad "a third dispatch of the row is refused"
+    else
+        ok "a third dispatch of the row is refused"
+    fi
+}
+
+scenario_stopped_row_lists() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit produce:b --unit produce:c --unit produce:d >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    "$PY" - "$dir/.agent_spinner/roster.tsv" <<'PY'
+import sys
+
+path = sys.argv[1]
+states = {"produce:c": "unknown", "produce:d": "violation"}
+rows = []
+for line in open(path):
+    parts = line.rstrip("\n").split("\t")
+    if parts[0] in states:
+        parts[6] = states[parts[0]]
+    rows.append("\t".join(parts))
+open(path, "w").write("\n".join(rows) + "\n")
+PY
+    ledger "$dir" close --stopped > "$dir/close.out" 2>&1
+    if "$PY" - "$dir/close.out" <<'PY'
+import sys
+
+lines = [line.rstrip("\n") for line in open(sys.argv[1])]
+headings = ("modified", "untouched", "unknown", "not dispatched", "violation")
+groups = {}
+heading = None
+for line in lines:
+    name = line[:-1] if line.endswith(":") else None
+    if name in headings:
+        heading = name
+        groups.setdefault(name, [])
+        continue
+    if heading and line.startswith("  ") and line.strip():
+        groups[heading].append(line.strip())
+errors = []
+wanted = [
+    ("unknown", "produce:a state=dispatched"),
+    ("unknown", "produce:c state=unknown"),
+    ("not dispatched", "produce:b state=pending"),
+    ("violation", "produce:d state=violation"),
+]
+for name, entry in wanted:
+    if entry not in groups.get(name, []):
+        errors.append("%s missing from %s:" % (entry, name))
+seen = []
+for name in ("unknown", "not dispatched", "violation"):
+    seen.extend(entry.split()[0] for entry in groups.get(name, []))
+if sorted(seen) != ["produce:a", "produce:b", "produce:c", "produce:d"]:
+    errors.append("row lists cover %s" % sorted(seen))
+for error in errors:
+    sys.stderr.write(error + "\n")
+raise SystemExit(1 if errors else 0)
+PY
+    then
+        ok "close --stopped routes each unsettled row to its own list"
+    else
+        bad "close --stopped routes each unsettled row to its own list"
+    fi
+}
+
 scenario_tally_coverage() {
     dir="$1"
     setup_repo "$dir"
@@ -2444,6 +2598,10 @@ run_all_scenarios() {
     scenario_checklist_lint "$root/checklist"
     scenario_packets "$root/packets"
     scenario_objection_close "$root/objection-close"
+    scenario_failed_source "$root/failed-source"
+    scenario_dispose_rows "$root/dispose-rows"
+    scenario_unreturned_redispatch "$root/unreturned-redispatch"
+    scenario_stopped_row_lists "$root/stopped-rows"
     scenario_audit "$root/audit"
     scenario_repeat_audit_incidents "$root/audit-repeat"
     scenario_own_session_windows "$root/own-session-windows"

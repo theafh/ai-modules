@@ -396,7 +396,10 @@ Record what became of each record.
 - `--path PATH`, `--routed GATE`: record `routed` as a changed-path disposition
   for a path `init` recorded as stamped or marked. The gate must be the owner
   `init` recorded for that path.
-- `--narrowing TEXT`, `--drops TEXT`: a named narrowing and the checks it drops.
+- `--narrowing TEXT`, `--drops TEXT`, `--rows LABEL[,LABEL...]`: a named
+  narrowing, the checks it drops, and the pending rows it retires as `dropped`.
+  Every label `--rows` names must be a pending roster row; the verb refuses the
+  whole call otherwise and changes nothing.
 - `--open-gate ID`, `--question TEXT`: open a user gate.
 - `--gate ID`, `--answered TEXT`: answer a user gate.
 - `--fork ID`, `--own-decision TEXT`: record an own-authority decision.
@@ -468,7 +471,8 @@ any close condition holds:
     disposition naming its owning gate nor a fork record whose `path` field
     names the path.
 
-`close --stopped` also prints the modified, untouched, and unknown rows.
+`close --stopped` also prints the modified, untouched, unknown, not dispatched,
+and violation rows.
 
 ### Roster columns
 
