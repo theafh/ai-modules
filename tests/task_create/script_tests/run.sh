@@ -2,7 +2,8 @@
 # Grader-level checks for tests/task_create/evals/grade.sh. Each grader case
 # stages an eval with evals/stage.sh outside the checkout, installs a chosen
 # task body under the sandbox's tasks/ (or leaves it empty), grades it, and
-# reads one check's PASS or FAIL line from the grader's output.
+# reads one check's PASS or FAIL line from the grader's output. The response
+# cases grade a chosen captured turn through RESPONSE_FILE instead.
 #
 # These cases back grader edits with evidence in the tree, as TESTING.md asks.
 # The bodies carry the label forms recorded worker draws produced, so the forms
@@ -57,26 +58,40 @@ install_task() {
   } > "$dest"
 }
 
-# grade_output <eval_id> <body file|-> -> the grader's output on a freshly
-# staged sandbox carrying that body as its one task file, or no task file for
-# "-". No response is readable, so the response checks fail; no case here
-# reads them.
+# grade_output <eval_id> <body file|-> [response file] -> the grader's output on
+# a freshly staged sandbox carrying that body as its one task file, or no task
+# file for "-". Without a response file no response is readable, so the
+# response checks fail; only the response cases name one.
 grade_output() {
-  local eval_id=$1 body=$2 target
+  local eval_id=$1 body=$2 response=${3:-$ROOT/no-response.txt} target
   target="$(mktemp -d "$ROOT/$eval_id.XXXXXX")"
   bash "$EVALS/stage.sh" "$eval_id" "$target" >/dev/null || return 1
   if [[ "$body" != "-" ]]; then
     install_task "$target/proj/tasks/$TASK_NAME" "$body"
   fi
-  RESPONSE_FILE="$ROOT/no-response.txt" bash "$EVALS/grade.sh" "$eval_id" "$target/proj" 2>&1
+  RESPONSE_FILE="$response" bash "$EVALS/grade.sh" "$eval_id" "$target/proj" 2>&1
+}
+
+# verdict_of <check label> -> PASS or FAIL for that check, read from the
+# grader output on stdin and matched on the whole line.
+verdict_of() {
+  awk -v l="$1" '$0 == "  PASS  " l { print "PASS" } $0 == "  FAIL  " l { print "FAIL" }'
 }
 
 # grader_says <eval_id> <body file|-> <check label> <PASS|FAIL> -> the grader
 # prints that verdict for that check, matched on the whole line.
 grader_says() {
   local eval_id=$1 body=$2 label=$3 want=$4 got
-  got="$(grade_output "$eval_id" "$body" \
-    | awk -v l="$label" '$0 == "  PASS  " l { print "PASS" } $0 == "  FAIL  " l { print "FAIL" }')"
+  got="$(grade_output "$eval_id" "$body" | verdict_of "$label")"
+  [[ "$got" == "$want" ]]
+}
+
+# response_says <eval_id> <response file> <check label> <PASS|FAIL> -> the
+# grader prints that verdict for that response check on a sandbox with no task
+# file, since the response checks read the captured turn alone.
+response_says() {
+  local eval_id=$1 response=$2 label=$3 want=$4 got
+  got="$(grade_output "$eval_id" - "$response" | verdict_of "$label")"
   [[ "$got" == "$want" ]]
 }
 
@@ -87,6 +102,7 @@ GB_WHY_OPEN="the label carries a guardrail-bound why-open clause"
 WHY_OPEN="the label carries a why-open clause"
 BOTH_PATHS="the label names both crossing paths (rich / non-rich styling)"
 ZERO_FILES="exactly one task file created under tasks/ (got 0)"
+INVITES="the response hands the choice back to the user"
 
 # --- bodies ------------------------------------------------------------------
 
@@ -508,6 +524,16 @@ lwo_inline_body "$BODIES/options_either_or_elsewhere.md" \
 
 Put the backoff loop in either `send` or a new `retry` helper.'
 
+# A bare "<path one>, or <path two>" lead-in with an unbolded label and a
+# "cannot settle" reason, as the Cursor draw run-20261115-074230 wrote it.
+lwo_inline_body "$BODIES/options_comma_or.md" \
+  'Open decision: after a run of consecutive failures for one endpoint, auto-disable that endpoint so later deliveries skip it, or keep calling it on every future send with no disable path — user preference on failure lifecycle (risk appetite) the codebase and standing rules cannot settle; suggested default: keep retrying forever (no auto-disable), since the registry has no enabled flag today.'
+
+# A one-path label whose default, past the lead-in's first clause, says
+# "…, or …".
+lwo_inline_body "$BODIES/options_comma_or_in_default.md" \
+  '**Open decision:** whether to auto-disable an endpoint that keeps failing. Suggested default: auto-disable it after five consecutive failures, or after ten when the operator prefers. Why open: the call rests on the user'"'"'s own risk appetite.'
+
 # A real Context label carrying its own options and default that also mentions
 # Approach, beside the Approach label: two labels.
 {
@@ -640,6 +666,12 @@ check "an either-way idiom in a one-path label fails the both-options check" \
   grader_says labeled-why-open "$BODIES/options_either_way.md" "$BOTH_OPTIONS" FAIL
 check "an either-or outside the lead-in block fails the both-options check" \
   grader_says labeled-why-open "$BODIES/options_either_or_elsewhere.md" "$BOTH_OPTIONS" FAIL
+check "a bare comma-or lead-in passes the both-options check" \
+  grader_says labeled-why-open "$BODIES/options_comma_or.md" "$BOTH_OPTIONS" PASS
+check "a comma-or inside a one-path label's default fails the both-options check" \
+  grader_says labeled-why-open "$BODIES/options_comma_or_in_default.md" "$BOTH_OPTIONS" FAIL
+check "a reason naming what cannot settle the fork passes the why-open check" \
+  grader_says labeled-why-open "$BODIES/options_comma_or.md" "$WHY_OPEN" PASS
 
 # --- the why-open check accepts the guardrail-bound ground -------------------
 
@@ -678,6 +710,64 @@ check "rich-only: the standard library offers no colour fails the both-paths che
   grader_says guardrail-bound-surface "$BODIES/rich_only_standard_library_no_colour.md" "$BOTH_PATHS" FAIL
 check "rich-only: colour on the standard console adapter fails the both-paths check" \
   grader_says guardrail-bound-surface "$BODIES/rich_only_colour_on_standard.md" "$BOTH_PATHS" FAIL
+
+# --- the hand-back check reads the ask by substance --------------------------
+
+# The ask in its own words, as the recorded Claude draw worded it: "up to you",
+# "Do you want to settle it now ..., or leave it open". The old alternation
+# matched none of it.
+cat > "$ROOT/response_settle_or_leave_open.txt" <<'EOF'
+I created tasks/hooks_sender-retry-backoff.md with status open.
+
+Open decision: auto-disable vs. retry forever. I left this in the task as the
+one open decision. My suggestion is (a) auto-disable after 10 consecutive
+failures. Nothing in the code or repo rules decides this, so it's up to you.
+Do you want to settle it now (I'd update the task to match), or leave it open
+for the readiness check?
+EOF
+
+# The same report with the decision and the suggestion, and no ask at all.
+cat > "$ROOT/response_no_ask.txt" <<'EOF'
+I created tasks/hooks_sender-retry-backoff.md with status open.
+
+Open decision: auto-disable vs. retry forever. I left this in the task as the
+one open decision. My suggestion is (a) auto-disable after 10 consecutive
+failures. The task's checks cover both options.
+EOF
+
+check "a turn asking to settle it now or leave it open passes the hand-back check" \
+  response_says labeled-why-open "$ROOT/response_settle_or_leave_open.txt" "$INVITES" PASS
+check "a turn that reports the decision with no ask fails the hand-back check" \
+  response_says labeled-why-open "$ROOT/response_no_ask.txt" "$INVITES" FAIL
+
+# The guardrail-bound ask as the recorded Claude draw worded it: "Decision for
+# you", "settling this now", "leave it in the file". The old alternations
+# matched none of it.
+cat > "$ROOT/response_decision_for_you.txt" <<'EOF'
+**Decision for you:** your project rules conflict, so I couldn't pick where the
+colouring code goes. Every option breaks one of them.
+
+I suggest (a). I recommend settling this now, because the task's Approach and
+Acceptance already assume (a). Or you can leave it in the file for task_check.
+This run had no way to ask, so the decision is currently left in the task file.
+EOF
+
+# A turn that settled the fork itself and asks nothing.
+cat > "$ROOT/response_settled_itself.txt" <<'EOF'
+I created the task with option (a) as its path, because CHARTER.md outranks
+ARCHITECTURE.md, and wrote that choice into the Approach. The suggestion I
+followed is the stdlib console adapter.
+EOF
+
+SURFACES="the response surfaces the open decision"
+check "a Decision for you section passes the surface check" \
+  response_says guardrail-bound-surface "$ROOT/response_decision_for_you.txt" "$SURFACES" PASS
+check "settling this now or leaving it in the file passes the hand-back check" \
+  response_says guardrail-bound-surface "$ROOT/response_decision_for_you.txt" "$INVITES" PASS
+check "a turn that settled the fork itself fails the surface check" \
+  response_says guardrail-bound-surface "$ROOT/response_settled_itself.txt" "$SURFACES" FAIL
+check "a turn that settled the fork itself fails the hand-back check" \
+  response_says guardrail-bound-surface "$ROOT/response_settled_itself.txt" "$INVITES" FAIL
 
 # --- an empty sandbox reports zero files -------------------------------------
 

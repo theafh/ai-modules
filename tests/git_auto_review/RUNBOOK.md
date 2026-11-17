@@ -121,7 +121,7 @@ CLAUDE_CONFIG_DIR="$HOME/.claude" CLAUDE_SECURESTORAGE_CONFIG_DIR= \
   --eval-set tests/trigger_evals/git_review.json --skill git_review \
   --skill-path plugins/ai_dev/skills/git_review \
   --family git_review,git_auto_review --runs-per-query 3 --timeout 45 --workers 6 \
-  --baseline tests/trigger_evals/results/git_review/2026-10-28_090023
+  --baseline tests/trigger_evals/results/git_review/<2026-10-28 baseline run>
 ```
 
 Record the run's date, the CLI build (`claude --version`), the worker model
@@ -138,11 +138,9 @@ measures it against `LISTING_BUDGET_RISK_CHARS` (1000).
 | Per-entry counts | 17/17 entries at the `precise_n / n >= 0.5` predicate | — |
 | `deployed_root:` line | `~/.claude/skills/git_review` | — |
 
-Both recorded lengths sit under the 1000-character threshold. The run is
-`tests/trigger_evals/results/git_review/2026-10-30_193724/`; every entry
+Both recorded lengths sit under the 1000-character threshold. Every entry
 triggered its expected skill at the predicate, so precise and family both
-read 17/17, and the baseline comparison against
-`tests/trigger_evals/results/git_review/2026-10-28_090023/` reports no
+read 17/17, and the baseline comparison against the 2026-10-28 baseline run reports no
 per-query precise change on the 16 shared queries.
 
 | Entry | Expected | Triggered per run |

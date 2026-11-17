@@ -44,7 +44,7 @@ PY
 ## Output
 
 ```text
-Run dir: <repo>/tests/agent_spinner/evals/workspace/run-20261031-221043
+Run: 2026-10-31 22:10:43 (run-output directory is gitignored, not committed)
 Worker vendor: cursor; command: agent -p; model: auto
   [probe_definitions_no_spawn] FAIL — stage.sh failed for eval probe_definitions_no_spawn (rc=3): fixture setup failed
 
@@ -64,7 +64,7 @@ The same command with one id shows one eval's stage failure contained to that
 eval:
 
 ```text
-Run dir: <repo>/tests/agent_spinner/evals/workspace/run-20261031-221733
+Run: 2026-10-31 22:17:33 (run-output directory is gitignored, not committed)
 Worker vendor: cursor; command: agent -p; model: auto
   [probe_definitions_no_spawn] FAIL — stage.sh failed for eval probe_definitions_no_spawn (rc=3): fixture setup failed
 

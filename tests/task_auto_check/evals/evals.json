@@ -4,6 +4,7 @@
     {
       "id": "mechanical_lint_ready",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_lint-ready.md.",
       "expected_output": "The loop gates through task_check, then mechanical lint finalization rewrites the overlong description within budget, preserves the API retry-header scope, leaves the body unchanged, and updates the timestamp once for the mechanical edit. The gate may stamp ready, or checked when it reads the over-budget description as a gate-visible finding; either way the description repair happens in finalization and readiness is never recomputed outside task_check.",
       "files": [
@@ -13,7 +14,7 @@
         "The task ends status: ready or status: checked, written only by task_check.",
         "The overlong description is replaced by one canonical description within the task linter budget.",
         "The replacement description preserves the named API retry-header scope.",
-        "The task body is unchanged.",
+        "Mechanical lint finalization leaves the task body unchanged; any body change comes from a verified ordinary repair round before it.",
         "The updated timestamp changes because the mechanical edit changed the file.",
         "The response reports one gate call, zero body edit rounds, and one mechanical-lint edit group.",
         "The response names the base task linter and reports no remaining target-file lint findings.",
@@ -59,6 +60,7 @@
     {
       "id": "mechanical_lint_markdown",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_errors-ready.md.",
       "expected_output": "The loop gates through task_check, then mechanical lint finalization converts the Obsidian wikilink [[api_error-codes]] the task linter blocks to a standard markdown link targeting the determinable sibling api_error-codes.md, and bumps updated once. The gate may stamp ready, or checked when it holds body findings beyond the wikilink; either way the conversion happens in finalization and readiness is never recomputed outside task_check.",
       "files": [
@@ -78,6 +80,7 @@
     {
       "id": "mechanical_lint_oversized_surface",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_audit-log-ready.md.",
       "expected_output": "The target is a single cohesive doc task that exceeds the 300-line linter ceiling. Oversize is a judgement-call split, not a mechanically fixable finding, so the loop surfaces it for human or auto_shaper_task routing and never truncates, guts, auto-splits, or collapses the 320-field enumeration into a summary or code pointer. Small verified repairs of unrelated nits and the gate's status/updated stamp are permitted; the enumeration and the oversize remain.",
       "files": [
@@ -129,6 +132,7 @@
     {
       "id": "drift_gate_narrowing_clean",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_search-results.md.",
       "expected_output": "The uncommitted rewrite drops CSV export into Out of scope and renames the title to the narrower pagination scope. auto_drift_task classifies clean, the gate runs, and no intention check is surfaced.",
       "files": [
@@ -191,6 +195,7 @@
     {
       "id": "repair_to_ready",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_retry-after.md and stop when task_check reports ready.",
       "expected_output": "A not-ready task with concrete, fixable readiness issues is repaired by reviewer proposals and verifier-approved minimum edits, then task_check reports ready and the loop stops.",
       "files": [
@@ -208,6 +213,7 @@
     {
       "id": "relay_by_path",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_relay-by-path.md and stop when task_check reports ready.",
       "expected_output": "A one-round repair reaches ready while every helper hand-off travels through the retained .task_auto_check/api_relay-by-path relay directory. The directory is ignored by git, stores frozen intent, each helper prompt, and each helper return. Proposal-mode verifier prompts point to the gate and reviewer returns without copying or steering their content.",
       "files": [
@@ -231,6 +237,7 @@
     {
       "id": "stray_hunk_reverted",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_stray-hunk-reverted.md and stop when task_check reports ready. Environment note: while applying the first approved edit group for the first time, also replace the exact Context phrase '`test_throttled_response_is_429` in `tests/test_throttle.py` already asserts the 429 status.' with 'No existing test covers throttled responses.' Continue the loop so the delta audit checks that apply fault.",
       "expected_output": "The first delta audit identifies the planted Context rewrite as an unmapped hunk. The loop reverts it from the pre-apply snapshot while keeping every approved edit, audits the corrected delta once more, and continues only after the later delta return records a clean map. The final task retains the already-specific Context sentence the fault rewrote, contains none of the planted replacement, and carries every approved edit's replacement.",
       "files": [
@@ -264,6 +271,7 @@
     {
       "id": "fidelity_rejects_drift",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_rate-limit.md.",
       "expected_output": "A tempting candidate repair would broaden the objective from per-user rate limiting to global abuse prevention; the verifier rejects or narrows that change and preserves the original Goal.",
       "files": [
@@ -279,6 +287,7 @@
     {
       "id": "no_verified_fix",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_product-decision.md.",
       "expected_output": "The remaining issue requires unavailable product input, so no verifier-approved fix remains; the loop stops as checked and surfaces stuck for a human.",
       "files": [
@@ -357,6 +366,7 @@
     {
       "id": "guard_rebaseline_after_gate",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_idempotency.md and stop when task_check reports ready.",
       "expected_output": "The first gate call stamps checked and bumps updated, diverging the file from the freeze-time snapshot; the loop adopts that post-gate content as the new concurrent-modification baseline instead of misreading the gate's own stamp as a concurrent edit, applies verified repairs, and reaches ready through a later gate call without ever reporting a concurrent-modification stop.",
       "files": [
@@ -373,6 +383,7 @@
     {
       "id": "interaction_scan_surfaces",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_page-size-config.md and stop when task_check reports ready.",
       "expected_output": "The task adds a page_size config key for the default API page size but is silent about src/api/limits.py, where the shipped MAX_PAGE_SIZE = 100 hard cap silently clamps any effective page_size — directly contradicting the task's acceptance promise of 500-item pages. The base <readiness_checklist> Interaction scan lens derives the page_size touch-point, searches the repo over it, reaches the unlinked limits.py through that reference (never needing the decoy src/api/auth.py), and classifies the cap as an unattended interaction. task_check surfaces it as a readiness issue with a code-versus-change juxtaposition; the loop reconciles against the documented hard cap through a verifier-approved, intent-preserving body edit that refreshes the task to respect MAX_PAGE_SIZE and adds an edit-supersedes Acceptance item proving a configured value above the cap is handled rather than silently clamped, then reaches ready.",
       "files": [
@@ -392,6 +403,7 @@
     {
       "id": "immediate_ready_citations_survive",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_retry-header.md.",
       "expected_output": "The task starts at status: open and gates clean on the first task_check call: the gate stamps ready with an empty issue list, every checklist line clean, and a citation on each content-lens line. That first-call zero-issue approval matches the immediate-ready refutation signature, so the loop sends the verdict's citations through auto_verifier_task framed as whether each citation supports the clean claim it was written for. Every citation survives because each cited span, read in place in the staged artifacts, settles its checklist item. The ready stamp stands, the run proceeds to mechanical lint finalization with zero body edits, and the report names the trigger firing, the citations surviving, the stamp standing, and task_implement as the next step.",
       "files": [
@@ -426,6 +438,7 @@
     {
       "id": "interaction_scan_no_false_alarm",
       "skill": "task_auto_check",
+      "timeout": 3600,
       "prompt": "Run task_auto_check on tasks/api_request-id.md.",
       "expected_output": "The task adds a self-contained new_request_id() UUID4 helper in a new module src/api/request_id.py. Its interaction surface — request_id, new_request_id, uuid, tracing — shares no touch-point with any surrounding code (pagination.py, limits.py, auth.py, tests/test_auth.py, docs/api.md), and the task explicitly scopes out docs and call-site wiring. The base Interaction scan lens derives that surface, searches the populated repo over it, finds no interacting caller, consumer, alternate definition, or invariant, and raises no contradiction or unattended-interaction finding. The task is otherwise ready-quality, so the loop makes one gate call, applies no interaction-driven repair, and leaves the task ready.",
       "files": [

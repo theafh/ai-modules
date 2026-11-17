@@ -44,10 +44,10 @@ The bundled-script surface is covered separately by
 | `lossless_single` | task_create | collapses a one-unit source into a single task that still carries every relevant detail; does not skip the coverage check just because one task results; leaves the source untouched |
 | `check_boundary_contradiction` | task_check | the extended Contradictions lens surfaces a body-versus-boundary contradiction (an Acceptance item proves work the `**Out of scope:**` block excludes) as a numbered issue, routes disposition through Decide or label, withholds `ready` |
 | `check_boundary_clean` | task_check | the optional convention stays invisible: a task carrying NO `**Out of scope:**` block draws no boundary finding |
-| `implement_boundary_cross` | task_implement | the crossing backstop: delivering the Goal requires editing a file the `**Out of scope:**` block rejects, so it quotes the conflicting passages, applies reconcile-or-surface, and holds with no edit |
+| `implement_boundary_cross` | task_implement | the crossing backstop: delivering the Goal requires editing a file the `**Out of scope:**` block rejects, so it quotes the conflicting passages, applies reconcile-or-surface, and holds with no code edit: the only file change is the labeled `Open decision:` written into the task body (exactly one lead-in, plain or bold) and its `updated` bump, the task stays `ready`, and the response surfaces the same decision |
 | `implement_boundary_agree` | task_implement | the boundary agrees with the body: an `**Out of scope:**` deferral to a live owner draws no interruption; builds the in-scope work, skips the deferred work, leaves the owner task open |
 | `create_scope_trim` | task_create | scope trimmed while authoring lands in the new file's `**Out of scope:**` block as a deferral/rejection, never a silent drop, with no prompt added beyond the create flow |
-| `create_regroup_owner_account` | task_create | the create path answers a repeated-link warn by reorganizing the draft: a task that builds on a live sibling and defers named work to that same sibling links it once, keeps the body's account of the sibling in one section, still names the sibling as the deferral's owner, and keeps `created` equal to `updated`; a draft linking the sibling from Context and again from its `**Out of scope:**` entry fails, and so does one that tells the sibling's background in Context and links it only from the deferral |
+| `create_regroup_owner_account` | task_create | the create path answers a repeated-link warn by reorganizing the draft: a task that builds on a live sibling and defers named work to that same sibling links it once, outside the `**Out of scope:**` block and in the section that tells the sibling's background (other sections may name it in plain text), still names the sibling as the deferral's owner, and keeps `created` equal to `updated`; a draft linking the sibling from Context and again from its `**Out of scope:**` entry fails, and so does one that tells the sibling's background in Context and links it only from the deferral |
 | `check_exclusion_requirement` | task_check | the not-for side of the block: a guardrail the task builds AND a meta not-an-exclusion note, both filed in `**Out of scope:**`: the guardrail surfaces as a contradiction-rank issue (relocate) that withholds `ready`, and the meta note lands under `## Notes` (drop) |
 | `check_exclusion_requirement_control` | task_check | the precision control: a block holding only genuine work-not-done rejections draws no miscategorization finding and reaches `ready` |
 | `check_exclusion_waiver` | task_check | an `**Out of scope:**` entry exempting the task's own change from the root `make lint` gate fires the Rule-waiving exclusions finding on the ordinary Decide-or-label path (no CHARTER.md), withholding `ready` |
@@ -189,3 +189,27 @@ Per `tests/CLAUDE.md`, lean on filesystem-state and structured-field checks
 first. The grader reads the response through `RESPONSE_FILE` for the subject
 and verdict checks each eval carries; `agent-attest` covers only the
 judgements no check can decide.
+
+## Recorded results
+
+### 2026-11-15: Cursor `auto` and Claude `opus` at `high` effort
+
+On current inputs every eval passes on both vendors except two, and each of those has an open task: `audit_clean` fails on Claude and `implement_boundary_cross` fails on Cursor.
+
+**Cursor.** The full suite, `../workspace/run-20261115-011731`, passed 47 of 47 on the inputs of that hour. The repairs that followed were checked again on Cursor:
+
+- The seven packaging evals pass 7 of 7 on their repaired fixtures in `run-20261115-102128`.
+- `fix_coherence_reconcile_escalated` failed its ordering check (a) in `run-20261115-075922`, and that run re-grades to 27 of 27 under the widened check.
+- `implement_boundary_cross` fails in `run-20261115-073331`. Cursor surfaced the open decision in its reply but left the task body unchanged, and the 011731 run, which predates the body-label check, did the same. [The boundary-decision task](../../../tasks/task-family_implement-writes-boundary-decision.md) covers it.
+
+**Claude** (`--vendor claude`, Claude Code 2.1.289). The full suite, `run-20261115-011950` through `run-20261115-022756`, passed 42 of 47. `fix_coherence_reconcile_escalated` timed out at 1800 seconds on its first try and passed with `--timeout 3600` in `run-20261115-022756`. The five failures and where each stands:
+
+| Eval | Cause | Verdict of record |
+| --- | --- | --- |
+| `audit_clean` | `task_audit` never says whether a missing `design-extended` on a newly implemented task withholds `audited` | fails; [the audit-severity task](../../../tasks/ai-dev_task-audit-design-extended-severity.md) |
+| `implement_boundary_cross` | the grader required a bold `Open decision:` lead-in, and it now accepts exactly one, plain or bold | passes on re-grade of `run-20261115-101941` |
+| `check_exclusion_waiver_control` | packaging fixture defect | passes in `run-20261115-120635` |
+| `create_regroup_owner_account` | the grader matched surface wording | passes in `run-20261115-101941` |
+| `fix_coherence` | fixture defect behind check (g) | passes in `run-20261115-101326` |
+
+The packaging fixtures needed a second repair. In the first Claude re-runs, `check_exclusion_requirement_control` (`run-20261115-101111`) and `standing_rules_check` (`run-20261115-101326`) stamped `checked`, because the fixtures never said how the script finds a top-level key. Each fixture now states the `grep` method, and all seven packaging evals pass in `run-20261115-120434` and `run-20261115-120635`.

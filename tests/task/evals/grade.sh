@@ -503,6 +503,16 @@ case "$eval_id" in
     copied_rule_absent() {
       ! unwrapped_file "$f" | grep -Fq 'Use Make plus POSIX shell for repo automation.'
     }
+    # Test Integrity: a fixture fix; this check is unchanged. The packaging-smoke
+    # body described the bad fixtures only as "without name" and "without
+    # version", so a gate could read `{}` as a valid seed that fails this
+    # control's per-file field-name Acceptance item, a blocking ambiguity
+    # beside the citation under test. The six packaging fixtures that share
+    # that sentence now say which field each bad fixture keeps, identically on
+    # both sides of each eval/control pair, and this control's expected-bad
+    # Acceptance item names the file its Approach promises. Evidence: the
+    # Cursor run tests/task/workspace/run-20261115-073331/
+    # standing_rules_check_control/ withheld ready over that ambiguity alone.
     check "status stamped ready for the cited-rule control" status_ready
     check "control task cites the standing/repo rules"      citation_present
     check "control task does not copy the standing rule"    copied_rule_absent
@@ -1010,7 +1020,56 @@ case "$eval_id" in
     report_untouched()    {
       unwrapped_file "$proj/src/report.py" | grep -Fq 'format_line(line) for line in lines'
     }
-    check "backstop held: sandbox git tree unchanged (no crossing edit)"   git_tree_clean
+    a_rel="tasks/report_colored-lines.md"
+    # Test Integrity: a grader fix (broadening to substance). The base <body>
+    # **Decide or label** rule makes both halves of a surfaced fork mandatory:
+    # the labeled "Open decision:" is written into the body and the user hears
+    # it, and task_implement's hold routes a boundary crossing there. The old
+    # git_tree_clean check failed the run that wrote exactly that label and its
+    # `updated` bump, so the backstop now asserts the confined edit instead: no
+    # changed path but the task file, a frontmatter that moved only in
+    # `updated`, and a body diff that only adds lines. Evidence: the captured
+    # Claude run tests/task/workspace/run-20261115-013108/
+    # implement_boundary_cross/, whose only change is that label paragraph.
+    only_task_file_changed() {
+      local changed
+      changed="$(git -C "$proj" status --porcelain 2>/dev/null \
+        | grep -Ev '(^|/)(__pycache__/|\.pytest_cache/)|\.pyc$' \
+        | sed -E 's/^.{3}//')"
+      [[ -z "$changed" || "$changed" == "$a_rel" ]]
+    }
+    frontmatter_moved_only_updated() {
+      diff <(git -C "$proj" show "HEAD:$a_rel" 2>/dev/null \
+               | sed -n '/^---$/,/^---$/p' | grep -v '^updated:') \
+           <(sed -n '/^---$/,/^---$/p' "$a" | grep -v '^updated:')
+    }
+    # The diff is captured before the match: under pipefail, diff's own exit 1
+    # would otherwise decide the negated pipeline whatever grep found.
+    body_only_adds_lines() {
+      local d
+      d="$(diff <(git -C "$proj" show "HEAD:$a_rel" 2>/dev/null | sed -n '/^# /,$p') \
+                <(sed -n '/^# /,$p' "$a"))"
+      ! grep -q '^<' <<<"$d"
+    }
+    # Test Integrity: a grader tightening. A hold that surfaces the decision in
+    # chat alone leaves no trace in the file, which the same rule names as a
+    # violation ("an ask that left no trace in the file"), so the body must now
+    # carry exactly one **Open decision:** lead-in. Evidence: the captured
+    # Cursor run tests/task/workspace/run-20261115-011731/
+    # implement_boundary_cross/ left the tree clean, wrote no label, and passed
+    # the old check. The base skill names the label "Open decision:" without
+    # prescribing bold, so a lead-in counts with or without the ** wrapping,
+    # after an optional list marker. Claude's run
+    # tests/task/workspace/run-20261115-101941/implement_boundary_cross/ wrote
+    # a plain "Open decision:" lead-in and failed the bold-only match.
+    one_open_decision_label() {
+      [[ "$(sed -n '/^# /,$p' "$a" \
+              | grep -cE '^[[:space:]]*([-*+][[:space:]]+)?(\*\*)?Open decision:' )" == "1" ]]
+    }
+    check "backstop held: no changed path but the task file (no crossing edit)" only_task_file_changed
+    check "the task's frontmatter changed only in updated"                 frontmatter_moved_only_updated
+    check "the task's body diff only adds lines (no rewrite of the seed)"  body_only_adds_lines
+    check "the task body carries exactly one Open decision: lead-in"       one_open_decision_label
     check "task left status ready (backstop made no status change)"        a_still_ready
     check "task has no implemented-by stamp"                               a_no_implemented_by
     check "src/theme.py left byte-for-byte unchanged (boundary honored)"   theme_untouched
@@ -1018,6 +1077,7 @@ case "$eval_id" in
     check "the response names the boundary file src/theme.py"              resp_has 'src/theme\.py'
     note_agent_attest "response surfaces the body-versus-boundary contradiction: the Goal and the 'format_line wraps its text in ANSI color codes' acceptance require editing src/theme.py, which the **Out of scope:** block rejects"
     note_agent_attest "response quotes the conflicting passages, applies the reconcile-or-surface disposition, and holds without crossing the boundary (no user resolution available in a headless run)"
+    note_agent_attest "the body's Open decision: lead-in names the conflicting options, a suggested default, and why the fork is open, and the response surfaces that same decision to the user"
     ;;
 
   implement_boundary_agree)
@@ -1107,38 +1167,54 @@ case "$eval_id" in
           /^## / { sec=$0; next }
           sec != "" && $0 ~ /\]\([^)]*cli_output-format-registry\.md/ { print sec; exit }'
       }
-      # Sections naming the sibling outside the Out of scope block, by its slug
-      # or as a task: "sibling" or "registry task". A Context that tells the
-      # sibling's background in prose and leaves the only link to the deferral
-      # splits the account across two sections, so prose naming counts too.
-      # The generic phrase "output-format registry" stays uncounted, since
-      # Approach names the registry module it registers with, which is code
-      # rather than an account of the sibling. The block runs from its label
-      # to the next H2 heading, so a deferral pointer that names the owner in
-      # plain text is not counted as a second account. Each section is read
-      # with its hard wraps joined, so a phrase split across lines still counts.
-      sections_naming_outside_oos() {
+      # Where the one link sits: "oos" inside the **Out of scope:** block, which
+      # runs from its label to the next H2 heading, and "body" anywhere else.
+      link_place() {
         sed -n '/^# /,$p' "$f" | awk '
-          /^## / { sec=$0; inoos=0; next }
+          /^## / { inoos=0 }
           /\*\*Out of scope:\*\*/ { inoos=1 }
-          !inoos && sec != "" { txt[sec] = txt[sec] " " tolower($0) }
-          END {
-            for (k in txt)
-              if (txt[k] ~ /cli_output-format-registry|sibling|registry task/) print k
-          }'
+          $0 ~ /\]\([^)]*cli_output-format-registry\.md/ { print (inoos ? "oos" : "body"); exit }'
       }
-      account_in_one_section() {
-        local linked
-        linked="$(link_section)"
-        [[ -n "$linked" ]] || return 1
-        ! sections_naming_outside_oos | grep -vxF -- "$linked" | grep -q .
+      # Whether ## Context names the sibling by its slug or as a task
+      # ("sibling", "registry task"), read with its hard wraps joined so a
+      # phrase split across lines still counts. The generic phrase
+      # "output-format registry" stays uncounted, since it names the registry
+      # module rather than the sibling task.
+      context_names_sibling() {
+        sed -n '/^# /,$p' "$f" | awk '
+          /^## / { inctx = ($0 ~ /^## Context/); next }
+          inctx { t = t " " tolower($0) }
+          END { exit !(t ~ /cli_output-format-registry|sibling|registry task/) }'
+      }
+      # Test Integrity: a grader fix (broadening to substance). The old check
+      # failed every section outside the block that named the sibling as
+      # "sibling" or "registry task" without holding the link, so an Approach
+      # step reading "at the same site the registry task registers the
+      # `--yaml` writer" failed a body whose account of the sibling sits in
+      # Context under its one link. The hub's **Repeated-link react protocol**
+      # lets a pointer left behind name the target in plain text, and the
+      # Cursor run tests/task/workspace/run-20261115-011731/
+      # create_regroup_owner_account/ made the same point in code and passed.
+      # The check now asks for two conditions: the one link sits outside the
+      # block, and it sits in Context whenever Context names the sibling. Both
+      # named failures stay caught: a link from Context and again from the
+      # block fails linked_once and no_repeated_link, and a Context that tells
+      # the background while the only link sits in the block fails here.
+      # Evidence: the captured Claude run tests/task/workspace/
+      # run-20261115-013248/create_regroup_owner_account/.
+      link_with_sibling_account() {
+        [[ "$(link_place)" == "body" ]] || return 1
+        if context_names_sibling; then
+          [[ "$(link_section)" == "## Context" ]] || return 1
+        fi
+        return 0
       }
       created_eq_updated() { [[ "$(fm_field "$f" created)" == "$(fm_field "$f" updated)" ]]; }
       check "the new file carries no repeated-link finding"                      no_repeated_link
       check "the new file links the sibling exactly once"                        linked_once
       check "the Out of scope block names the --yaml work"                       oos_names_yaml
       check "the Out of scope block names the sibling as its owner"              oos_names_owner
-      check "every section naming the sibling outside the block is the linked one" account_in_one_section
+      check "the link sits outside the block, in Context whenever Context names the sibling" link_with_sibling_account
       check "created == updated (one creation timestamp)"                        created_eq_updated
     fi
     note_agent_attest "the --yaml deferral stays a one-line pointer, and the sibling's background and the work it owns are told once"
@@ -1227,6 +1303,17 @@ case "$eval_id" in
     carveout_entry_preserved() {
       unwrapped_file "$f" | grep -Fq 'Hand-formatting the generated manifest fixtures'
     }
+    # Test Integrity: a fixture fix; this check is unchanged. The shared
+    # packaging-smoke body promised "a POSIX shell script and Make target" while
+    # every Acceptance item ran only `make check-plugin-manifests`, an unpaired
+    # promise the hub's **Acceptance coverage** item blocks on, so the control
+    # carried a second readiness gap beside the exclusion under test. Every
+    # fixture the selector `grep -l "a POSIX shell script and Make target"
+    # tests/task/evals/fixtures/*/setup.sh` finds now carries an Acceptance item
+    # that runs the script and ties the Make recipe to it, identically on both
+    # sides of each eval/control pair. Evidence: the captured Claude run
+    # tests/task/workspace/run-20261115-013448/check_exclusion_waiver_control/
+    # withheld ready over that gap alone and raised no waiver finding.
     check "status stamped ready for the carve-out control"              status_ready
     check "fixture sanity: the root rule provides the fixtures carve-out" carveout_rule_seeded
     check "fixture sanity: the gate is satisfiable (Makefile lint target)" grep -q '^lint:' "$proj/Makefile"
@@ -1348,6 +1435,16 @@ case "$eval_id" in
     check "(f) the dependent sibling is tied to the unsettled fork by name" \
       rep_near 'tool_severity-registry' 'config-format'
     # (g) the clean task, (h) the invalidated premise.
+    # Test Integrity: a fixture fix; this check is unchanged. Plant (g) asked to
+    # document "the reserved code a checker crash returns" while the seeded
+    # tool/cli.py reserved none, so a premise check correctly read the task as
+    # invalidated. The fixture now reserves code 2 as `EXIT_CRASH` in
+    # tool/cli.py, which `run()` returns when `main()` raises, and the task
+    # names it. Evidence: the captured Claude runs
+    # tests/task/workspace/run-20261115-013832/fix_coherence/ and
+    # tests/task/workspace/run-20261115-022756/fix_coherence_reconcile_escalated/
+    # marked docs_exit-code-table a defer candidate because no crash code
+    # existed.
     check "(g) the clean task is ship-as-is"     verdict_is docs_exit-code-table 'ship.as.is'
     check "(h) the invalidated premise is a defer candidate" \
       verdict_is tool_json-output 'defer'
@@ -1405,9 +1502,14 @@ case "$eval_id" in
     # demanding the verify-only wording alone would fail a correct repair.
     # An order names its prerequisite in any words ("after the rename lands",
     # "only after <linked task> lands"), so "after ... lands" within one
-    # sentence counts as well as "after this task lands".
+    # sentence counts as well as "after this task lands". A period followed by
+    # a non-space character, as in a linked `.md` file name, stays inside the
+    # sentence (Test Integrity: a grader fix, broadening to substance; the
+    # Cursor run tests/task/workspace/run-20261115-075922/
+    # fix_coherence_reconcile_escalated/ wrote "Ship after
+    # [tool_severity-label-rename.md](…) has landed `display_label`").
     check "(a) one owner is named and the counterpart verifies or follows in order" \
-      bash -c 'pat="verif(y|ies|ied|ication)|own(s|er|ed|ing)|follows|runs after|depends on|prerequisite|sequence|(must |should |will |has |have )?land(s|ed|ing)? (first|after|before)|after (this|that) task land(s|ed)?|after [^.]{0,160}land(s|ed)([^a-z]|$)";
+      bash -c 'pat="verif(y|ies|ied|ication)|own(s|er|ed|ing)|follows|runs after|depends on|prerequisite|sequence|(must |should |will |has |have )?land(s|ed|ing)? (first|after|before)|after (this|that) task land(s|ed)?|after ([^.]|\.[^[:space:]]){0,200}land(s|ed)([^a-z]|$)";
         unwrapped_file() { tr "\n" " " < "$1" | tr -s " "; };
         unwrapped_file "'"$TASKS"'/tool_severity-label-docstring.md" | grep -qiE "$pat" \
         || unwrapped_file "'"$TASKS"'/tool_severity-label-rename.md" | grep -qiE "$pat"'

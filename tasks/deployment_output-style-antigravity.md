@@ -2,7 +2,7 @@
 description: Deploy the output style to Antigravity as an always-on rule, at global scope as a marked block in the single rules file and at project scope as an ordinary workspace rule file.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-17T10:35:47Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -33,7 +33,7 @@ Under `--global`, write it as one ordinary file into the modular `~/.gemini/conf
 
 Check the generated content against the 24,000-byte per-file cap before writing, and fail with a message naming the actual size and the limit when it does not fit, rather than truncating or writing a file the harness will reject.
 
-Generate rather than copy. Strip the Claude frontmatter and emit `trigger: always_on` for the workspace rule; rewrite the one clause in the style body naming Claude's `keep-coding-instructions` mechanism, using the per-tool substitution facility in `deployment/deployment.conf`.
+Generate rather than copy. Strip the Claude frontmatter and emit `trigger: always_on` for the workspace rule; rewrite the `<engineering_behavior>` element that names Claude's `keep-coding-instructions` mechanism, following `generate_cursor_style_rule` in `deployment/deployment.sh`, which replaces that element wholesale. The style source carries no `$VAR$` token, so no `replace:` rule applies to it.
 
 **Out of scope:**
 

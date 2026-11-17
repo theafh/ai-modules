@@ -37,7 +37,9 @@ proves the other, so the grader reads both.
   failure mode those three evals exist to catch.
 
 The **`related-precedent-novel`** eval grades the written half only: one open
-task whose `## Context` links the archived related precedent. Stopping at a
+task whose `## Context` links the archived related precedent. The fixture's
+precedent is the only source of the stub rule and of its rejected import move,
+so the cross-link discipline's settling test keeps that link. Stopping at a
 Partially covered ask leaves zero task files and fails the universal one-file
 check.
 
@@ -56,3 +58,12 @@ notes for what an operator confirms from `response.txt`.
 and effort, and the prompt. Editing either skill invalidates it. Timeouts and
 crashes are never cached. They are environmental, not a property of the
 inputs.
+
+## Recorded results
+
+### 2026-11-15: Cursor `auto` and Claude `opus` at `high` effort
+
+All four evals pass on both vendors on current inputs.
+
+- **Cursor.** `../workspace/run-20261115-011323` passed 3 of 4. `related-precedent-novel` failed there because its fixture contradicted the eval's premise, and after the restaging it passed in `run-20261115-072202`, `run-20261115-072336`, and `run-20261115-072439`. `labeled-why-open` failed two label checks in `run-20261115-074230` and re-grades to 15 of 15 under the graders that now read the label by substance.
+- **Claude** (`--vendor claude`, Claude Code 2.1.289). `run-20261115-011438` passed 2 of 4, failing `labeled-why-open` on a grader that matched surface wording and `related-precedent-novel` on the same fixture defect as Cursor. The re-run `run-20261115-120209` passed both. Its `guardrail-bound-surface` failed the two response checks, because Claude wrote "Decision for you:" and offered to "leave it in the file" instead of the phrases those checks matched. Both checks now read the surfaced decision and the hand-back by substance, and the run re-grades to 16 of 16.

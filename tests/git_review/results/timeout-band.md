@@ -11,17 +11,14 @@ the harness default to the observed upper bound plus 300 seconds.
 python3 tests/git_review/evals/run.py --workers 4 --force 18 41 2
 ```
 
-Run dir: `tests/git_review/workspace/run-20261101-004055`.
-
 | Eval | Fixture | `duration_s` |
 | --- | --- | --- |
 | 18 | `deep_file_defect` | 125.554 |
 | 41 | `push_approval` | 166.474 |
 | 2 | `clean_change` | 95.017 |
 
-A serial `--workers 1 --force 41` latency sample in
-`run-20261101-004525` measured 188.070s. A later `--force` pair of ids 18 and 2
-at the default worker count (`run-20261101-010447`) measured eval 18 at
+A serial `--workers 1 --force 41` latency sample measured 188.070s. A later
+`--force` pair of ids 18 and 2 at the default worker count measured eval 18 at
 312.555s and eval 2 at 79.234s.
 
 ## Outcome: leave `--timeout` at 600

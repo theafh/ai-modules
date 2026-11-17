@@ -2,7 +2,7 @@
 description: Rewrite the natural-language style so a rewrite keeps each source relation's marker, even when it moves or splits the claim, and record a baseline and refined five-pass Claude measurement.
 scope: styles
 created: 2026-10-09T21:16:07Z
-updated: 2026-11-12T08:32:23Z
+updated: 2026-11-17T10:06:07Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,10 +15,10 @@ Rewrite the relation rules in `styles/natural-language.md` so that a worker rest
 
 ## Context
 
-- **The shipped rule and how it fails.** `<keep_the_relations>` in `styles/natural-language.md` already tells a worker to keep a source's "but" or "yet" in the sentence that carries the contrast, and the contrast `<validation>` in `<output_contract>` repeats the check. Workers still drop the marker from the contrast sentence that `tests/natural_language/evals/fixtures/connected_rewrite/setup.sh` stages: "The new build can pass every automated check in the gate, but a quiet failure in one client library still reaches users who never opted into the trial." Three Claude runs on 9 October failed `contrast_kept` on it:
-  - `run-20261009-222235` wrote "and still fail quietly in one client library, and that failure reaches users".
-  - `run-20261009-143216` wrote the same "and still" form and let the failure only "would then reach" those users.
-  - `run-20261009-142349` turned the contrast into a cause: "because those checks miss failures in the client library".
+- **The shipped rule and how it fails.** `<keep_the_relations>` in `styles/natural-language.md` already tells a worker to keep a source's "but" or "yet" in the sentence that carries the contrast, and the contrast `<validation>` in `<output_contract>` repeats the check. Workers still drop the marker from the contrast sentence that `tests/natural_language/evals/fixtures/connected_rewrite/setup.sh` stages: "The new build can pass every automated check in the gate, but a quiet failure in one client library still reaches users who never opted into the trial." Three Claude runs on 9 October failed `contrast_kept` on it, writing:
+  - "and still fail quietly in one client library, and that failure reaches users";
+  - the same "and still" form, with the failure only "would then reach" those users;
+  - a cause instead of a contrast: "because those checks miss failures in the client library".
 
   The sentence beginning "Swap but for and still" in `<keep_the_relations>` names exactly the "and still" and counterfactual shapes these workers wrote, as exceptions for a source that used them.
 - **Rules that pull a claim away from its marker.** Two of the three failures moved the claim out of the opening section into the later section on why passing checks is not enough. `<report_once>` tells a restyling to leave each section's conclusion in that section rather than previewing it earlier, and `<one_theme>` gives each paragraph one theme, so both invite that move, while no rule says what a moved claim keeps. `<one_idea>` already lets a split sentence carry its relation into the next one with "But", "So" or "That is why". `<mark_the_relation>` tells a worker to mark how a sentence relates to the one before with "because", "so", "but" or "which means", so it overlaps the contrast rule from the other direction: it could grow a second statement of what a contrast keeps. The relation language therefore belongs in `<keep_the_relations>` as the one statement of class and marker, and `<mark_the_relation>` keeps its sentence-connective guidance pointing at that statement rather than restating the contrast marker rule. `plugins/ai_editorial/skills/language_humanizer/SKILL.md` states the missing rule for its own rewrites in the passage beginning "When a move relocates a claim or splits its sentence": every joint attached to the claim travels with it into the same sentence or the next one, opened by the joining word that names the link, and a contrast keeps both sides in one sentence or two adjacent ones.

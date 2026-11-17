@@ -13,7 +13,6 @@ python3 tests/guardrail_audit/evals/run.py --workers 4 --force
 ```
 
 - Vendor: Cursor (`agent -p`, model `auto`)
-- Run dir: `tests/guardrail_audit/workspace/run-20261105-232114-45172`
 - Graded summary: 5/6 passed, 0 from cache
 
 ## Windows

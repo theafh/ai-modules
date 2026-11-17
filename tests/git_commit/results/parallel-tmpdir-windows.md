@@ -5,7 +5,7 @@ concurrently through `tests/lib/eval_runner`, each with its own `TMPDIR`.
 
 - **Vendor:** Cursor default (`agent -p`, model `auto`), no `--vendor`.
 - **Command:** `python3 tests/git_commit/evals/run.py --workers 4 --force`
-- **Run dir:** `tests/git_commit/workspace/run-20261021-164358`
+- **Run label:** `run-20261021-164358`
 - **Result:** `graded: 8/9 evals passed (0 from cache)`. All nine evals ran
   uncached, and every worker exited with `worker_rc` 0.
 
@@ -53,10 +53,10 @@ eval 5 on 2026-09-05 and 2026-10-15 under the sequential runner with a shared
 
 ## Companion runs
 
-- `python3 tests/git_commit/evals/run.py` (default 4 workers, uncached) in
-  `tests/git_commit/workspace/run-20261021-164042`: `graded: 9/9 evals passed
+- `python3 tests/git_commit/evals/run.py` (default 4 workers, uncached), run label
+  `run-20261021-164042`: `graded: 9/9 evals passed
   (0 from cache)`. Evals 1 to 4 started together, and each worker's context
   file and each grader's scan used that eval's own job `TMPDIR`.
-- `python3 tests/git_commit/evals/run.py --workers 1` in
-  `tests/git_commit/workspace/run-20261021-164333`: `graded: 9/9 evals passed
+- `python3 tests/git_commit/evals/run.py --workers 1`, run label
+  `run-20261021-164333`: `graded: 9/9 evals passed
   (9 from cache)`, replaying the verdicts the default run had just recorded.

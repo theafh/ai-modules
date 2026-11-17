@@ -2,7 +2,7 @@
 description: "Turn make install into environment preparation: declare the runtime and development tool floor in one file, report and install what is missing or too old, and free the name from the deploy alias."
 scope: "repo toolchain"
 created: 2026-09-18T11:48:56Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-17T10:06:07Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -29,7 +29,7 @@ The development floor is not stock. `make lint` needs `markdownlint` and `shellc
 
 The name collision is recorded in three places that move together. The Makefile defines `install: deploy` as an alias, and both standing repo instruction files carry the same sentence presenting `global` and `install` as aliases of `make deploy`. The README's target listing repeats it in the comment beside `make deploy`. Those four passages are the edit sites for freeing the name; the standing instruction files are named here because they are themselves the implementation target.
 
-A sibling repository solves the same problem with a declarative tool manifest read by a version manager, driven by an `install` target whose help text reads `prepare environment and install dependencies`. That precedent sets the target's name and meaning for this task. It does not set the mechanism: this repository's standing rules hold the toolchain to Make, shell, and Markdown, with jq, git, and Python 3 as the accepted standing dependencies, and add a package manager only on an explicit request. The declaration therefore lands in a form plain shell can read, which leaves a version manager available later as a backend over the same declaration rather than as a new prerequisite now.
+A declarative tool manifest read by a version manager is a common convention: it drives an `install` target whose help text reads `prepare environment and install dependencies`. This task adopts that target name and meaning. The convention does not set the mechanism: this repository's standing rules hold the toolchain to Make, shell, and Markdown, with jq, git, and Python 3 as the accepted standing dependencies, and add a package manager only on an explicit request. The declaration therefore lands in a form plain shell can read, which leaves a version manager available later as a backend over the same declaration rather than as a new prerequisite now.
 
 ## Approach
 

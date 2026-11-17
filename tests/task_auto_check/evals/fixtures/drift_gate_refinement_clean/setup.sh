@@ -8,6 +8,48 @@ source "$HERE/../_common.sh"
 target="${1:?target dir required}"
 init_proj "$target"
 
+mkdir -p "$target/proj/src/api" "$target/proj/docs"
+
+# The files the Context names exist, and docs/timeout.md stays absent as the
+# committed Context says, so the gate's premise check holds and the eval
+# measures the freeze-time drift check on an ordinary gate path.
+cat > "$target/proj/src/api/timeouts.py" <<'EOF'
+"""Request timeouts for the public API."""
+
+DEFAULT_TIMEOUT_SECONDS = 30
+MAX_TIMEOUT_SECONDS = 120
+
+
+def request_timeout(headers):
+    """Read the client's Request-Timeout header, clamped to the server maximum."""
+    try:
+        wanted = int(headers.get("Request-Timeout", DEFAULT_TIMEOUT_SECONDS))
+    except ValueError:
+        wanted = DEFAULT_TIMEOUT_SECONDS
+    return max(1, min(wanted, MAX_TIMEOUT_SECONDS))
+
+
+def timeout_response(timeout_seconds):
+    """Return the HTTP 504 response sent when a request exceeds its timeout."""
+    return {
+        "status": 504,
+        "headers": {
+            "Content-Type": "application/json",
+            "Retry-After": str(timeout_seconds),
+            "X-Timeout-Seconds": str(timeout_seconds),
+        },
+        "body": '{"error": "request timed out"}',
+    }
+EOF
+
+cat > "$target/proj/docs/api.md" <<'EOF'
+# API reference
+
+## Response headers
+
+- `Content-Type` — the media type of the response body.
+EOF
+
 cat > "$target/proj/tasks/api_timeout-headers.md" <<'EOF'
 ---
 description: Document API timeout headers.

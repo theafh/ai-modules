@@ -11,7 +11,7 @@ Measurement of the `skill_doctor` behavioral evals running in the shared
 python3 tests/skill_doctor/evals/run.py
 ```
 
-- Run dir: `tests/skill_doctor/workspace/run-20261106-222840`
+- Run label: `run-20261106-222840`
 - Pool: 4 workers (run header: `workers: 4`)
 - Graded summary: `graded: 8/8 evals passed (0 from cache)`
 
@@ -41,7 +41,7 @@ python3 tests/skill_doctor/evals/run.py --workers 4 --force \
   scope_hub_family scope_prefix_only
 ```
 
-- Run dir: `tests/skill_doctor/workspace/run-20261106-223115`
+- Run label: `run-20261106-223115`
 - Pool: 4 workers (run header: `workers: 4`)
 - Graded summary: `graded: 2/2 evals passed (0 from cache)` — both evals
   were uncached, so both windows are real worker time.

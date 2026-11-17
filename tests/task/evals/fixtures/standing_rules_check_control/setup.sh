@@ -63,8 +63,12 @@ Create \`scripts/check-plugin-manifests.sh\`, a root \`Makefile\` carrying a
 project has no Makefile yet, so this task creates it. Seed
 \`fixtures/plugin-manifests/good/valid.json\` with top-level
 "name" and "version" fields, seed \`fixtures/plugin-manifests/bad/missing-name.json\`
-without "name", and seed \`fixtures/plugin-manifests/bad/missing-version.json\`
-without "version". The script scans \`fixtures/plugin-manifests/good/*.json\`
+with "version" but without "name", and seed
+\`fixtures/plugin-manifests/bad/missing-version.json\` with "name" but without
+"version". Each seeded fixture is a flat JSON object with one field per line
+and no nested object, so the script finds a top-level field by matching its
+quoted key with \`grep\`, as in \`grep -q '"name"[[:space:]]*:'\`, and needs no
+JSON parser. The script scans \`fixtures/plugin-manifests/good/*.json\`
 and \`fixtures/plugin-manifests/bad/*.json\`, confirms every good fixture has
 both required fields, and confirms every bad fixture is rejected with an error
 naming the missing field. When a \`bad/*.json\` fixture instead passes field
@@ -83,7 +87,10 @@ passed validation, naming the file.
   \`make check-plugin-manifests\` exit non-zero and name the missing field.
 - Adding both required fields to \`fixtures/plugin-manifests/bad/missing-name.json\`
   makes \`make check-plugin-manifests\` exit non-zero and report that an
-  expected-bad fixture passed validation.
+  expected-bad fixture passed validation, naming that file.
+- \`sh scripts/check-plugin-manifests.sh\` run from the repository root exits 0
+  with the seeded fixtures in place, and the \`check-plugin-manifests\` recipe
+  in the \`Makefile\` invokes that script.
 EOF
 
 git_commit_all "$proj" "seed: cited standing-rule task"

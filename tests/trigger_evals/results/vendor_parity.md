@@ -13,7 +13,6 @@ Cursor, the default vendor. It sits beside the per-run output directories under
 | CLI version | `2026.10.22-27dcf5f` |
 | Worker model | `auto` |
 | Date | 2026-11-04 |
-| Run directory | `tests/trigger_evals/results/wiki/2026-11-04_144439` |
 | Runs per query | 3 |
 | Timeout | 45 s |
 | Workers | `vendor.DEFAULT_PARALLEL_WORKERS` (4) |
@@ -59,7 +58,7 @@ carries no cross-change baseline comparison.
 
 ## Earlier runs
 
-- `tests/trigger_evals/results/wiki/2026-11-04_143521` scored precise 20/20 and
+- An earlier run labelled `2026-11-04_143521` scored precise 20/20 and
   family 20/20 with a summed precise-trigger count of 27, on the same eval set,
   vendor, CLI, and model. It ran before a robustness fix that waits briefly
   after stdout EOF so a clean exit is not misread as a timeout; that fix does

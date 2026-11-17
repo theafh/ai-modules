@@ -76,7 +76,7 @@ The script walks up from its own location until it finds a directory containing 
 #tool                     Section heading: vscode, cursor, claude, codex, antigravity, opencode
 disallow:path             Skip a path (relative to repo root) for this tool. Trailing slash matches a subtree. Glob patterns supported (* and **).
 replace:path VAR=value    Substitute $VAR$ in matching deployed copies.
-style:<name>              Active output-style name for this tool. Claude merges it as settings `outputStyle`.
+style:<name>              Active output-style name for this tool. Only the Claude arm acts on it, merging settings `outputStyle`; every other target deploys a style file without consulting this line.
 ```
 
 The current config disallows any path matching `*legacy*` for every target, so any plugin or artifact tagged as legacy is kept in the repo but never deployed. Claude also sets `style:natural-language` so a style deploy activates that tracked style.

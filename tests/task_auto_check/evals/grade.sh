@@ -375,11 +375,14 @@ PY
 # rejection at its `issue:` field, and every item carries each field the
 # contract gives it, with a rejection's decision one the contract names. A
 # missing section, and one summarized into a line with no items behind it, fail.
+# A rejection item may also carry the route fields affected_passages, gate_fix,
+# and options, which the contract gives a human_routed decision; they are
+# optional because a rejected or unassessable item omits them.
 # Inside a section, a numbered line at any indentation and every other column-0
 # line must open an item at the section's lead field, set a contract field its
-# item still lacks, or continue an open anchor or replacement value, the fields
-# that copy task text verbatim; the None form before any item is the one other
-# column-0 line allowed. Any other such line is a pointer or summary standing
+# item still lacks, or continue an open anchor, replacement, affected_passages,
+# or gate_fix value, the fields that copy task or gate text verbatim; the None
+# form before any item is the one other column-0 line allowed. Any other such line is a pointer or summary standing
 # in for items and fails, also after real items. The header's
 # approved_edit_count must equal the approved items and its human_routed_count
 # the human_routed rejections, so a dropped item fails even when every
@@ -407,7 +410,8 @@ column0 = re.compile(r"^\S")
 none_lead = re.compile(r"""^\s*["'`*]*none\b""", re.I)
 approved_fields = ("id", "issue", "source_stance", "base_rule_cited", "anchor", "replacement", "edit", "fidelity")
 rejection_fields = ("issue", "source_stance", "decision", "reason")
-verbatim_fields = ("anchor", "replacement")
+route_fields = ("affected_passages", "gate_fix", "options")
+verbatim_fields = ("anchor", "replacement", "affected_passages", "gate_fix")
 decisions = {"rejected", "human_routed", "unassessable"}
 
 
@@ -436,13 +440,14 @@ def header_count(body, key):
     return None
 
 
-def items(lines, lead, fields):
+def items(lines, lead, fields, optional=()):
     found, current, last = [], None, None
+    known = fields + optional
     for line in lines:
         if not line.strip():
             continue
         match = key_line.match(line)
-        name = match.group(1) if match and match.group(1) in fields else None
+        name = match.group(1) if match and match.group(1) in known else None
         fresh = current is not None and name is not None and name not in current
         if name == lead:
             current, last = {}, None
@@ -464,10 +469,10 @@ def items(lines, lead, fields):
     return [{k: " ".join(v).strip() for k, v in item.items()} for item in found]
 
 
-def keeps(lines, lead, fields):
+def keeps(lines, lead, fields, optional=()):
     if lines is None:
         return False
-    found = items(lines, lead, fields)
+    found = items(lines, lead, fields, optional)
     if found is None:
         return False
     if not found:
@@ -522,10 +527,12 @@ for path in proposal:
     round_n = re.fullmatch(r"r([0-9]+)-verifier(?:-[0-9]+)?\.txt", path.name).group(1)
     approved = section(text, "Approved edits")
     rejections = section(text, "Rejections and routes")
-    if not keeps(approved, "id", approved_fields) or not keeps(rejections, "issue", rejection_fields):
+    if not keeps(approved, "id", approved_fields) or not keeps(
+        rejections, "issue", rejection_fields, route_fields
+    ):
         raise SystemExit(1)
     approved_items = items(approved, "id", approved_fields)
-    rejection_items = items(rejections, "issue", rejection_fields)
+    rejection_items = items(rejections, "issue", rejection_fields, route_fields)
     routed = 0
     for item in rejection_items:
         decision = bare(item["decision"]).lower()
@@ -603,18 +610,107 @@ case "$eval_id" in
     stale_description_gone() {
       ! grep -q 'overly elaborated explanatory sentence that should disappear' "$f"
     }
+    relay="$proj/.task_auto_check/api_lint-ready"
     body_preserved() {
       git -C "$proj" show HEAD:tasks/api_lint-ready.md >"$target/.before.md" \
         && body_text "$target/.before.md" >"$target/.before.body" \
         && body_text "$f" >"$target/.after.body" \
         && cmp -s "$target/.before.body" "$target/.after.body"
     }
+    # audited_body_round <relay> <task> -> when the relay holds an applied
+    # repair round, print the last such round's last delta return, provided
+    # the final body equals r<N>-pre-apply.txt patched with
+    # r<N>-apply.diff.txt (so finalization changed no body line); print
+    # nothing when no round applied an edit; fail when the bodies differ.
+    audited_body_round() {
+      python3 - "$1" "$2" <<'PY'
+import pathlib
+import re
+import sys
+
+relay = pathlib.Path(sys.argv[1])
+task = pathlib.Path(sys.argv[2])
+
+
+def body(lines):
+    # The body_text rule: drop the leading frontmatter block only.
+    out, front, seen = [], False, False
+    for line in lines:
+        if line == "---" and not seen:
+            front, seen = True, True
+        elif line == "---" and front:
+            front = False
+        elif not front:
+            out.append(line)
+    return out
+
+
+def patched(old, diff):
+    out, pos, hunk = [], 0, False
+    for line in diff.splitlines():
+        head = re.match(r"@@ -([0-9]+)(?:,([0-9]+))? \+[0-9]+(?:,[0-9]+)? @@", line)
+        if head:
+            start, count = int(head.group(1)), int(head.group(2) or 1)
+            stop = start if count == 0 else start - 1
+            if stop < pos:
+                raise SystemExit(1)
+            out.extend(old[pos:stop])
+            pos, hunk = stop, True
+        elif not hunk or line.startswith("\\"):
+            continue
+        elif line.startswith("+"):
+            out.append(line[1:])
+        elif line.startswith("-") or line.startswith(" ") or line == "":
+            text = line[1:]
+            if pos >= len(old) or old[pos] != text:
+                raise SystemExit(1)
+            if not line.startswith("-"):
+                out.append(text)
+            pos += 1
+    return out + old[pos:]
+
+
+applied = sorted(
+    int(m.group(1)) for p in relay.glob("r*-apply.diff.txt")
+    if (m := re.fullmatch(r"r([0-9]+)-apply\.diff\.txt", p.name))
+)
+if not applied:
+    raise SystemExit(0)
+n = applied[-1]
+pre = relay / f"r{n}-pre-apply.txt"
+if not pre.is_file():
+    raise SystemExit(1)
+expected = patched(pre.read_text().splitlines(), (relay / f"r{n}-apply.diff.txt").read_text())
+if body(expected) != body(task.read_text().splitlines()):
+    raise SystemExit(1)
+deltas = [
+    (int(m.group(1) or 1), p) for p in relay.glob(f"r{n}-delta*.txt")
+    if (m := re.fullmatch(rf"r{n}-delta(?:-([0-9]+))?\.txt", p.name))
+]
+if not deltas:
+    raise SystemExit(1)
+print(max(deltas)[1])
+PY
+    }
+    # Byte-identity holds when no repair round applied an edit. A gate that
+    # confirms a blocking issue draws a verified ordinary repair first, so
+    # then the last applied round's delta return must map its diff and the
+    # final body must equal that round's audited post-apply body.
+    finalize_body_unchanged() {
+      local delta
+      delta="$(audited_body_round "$relay" "$f")" || return 1
+      if [[ -z "$delta" ]]; then
+        body_preserved
+        return
+      fi
+      delta_return_maps_diff "$relay" "$delta"
+    }
     updated_changed() { [[ "$(fm_field "$f" updated)" != "2026-01-01T00:00:00Z" ]]; }
     check "task remains status: ready" status_ready
     check "description is within linter budget" description_within_budget
     check "description preserves API Retry-After throttling scope" description_scope_preserved
     check "stale overlong description wording is gone" stale_description_gone
-    check "task body is unchanged by mechanical lint cleanup" body_preserved
+    check "mechanical lint finalization leaves the body unchanged" finalize_body_unchanged
     check "updated timestamp changes for the mechanical edit" updated_changed
     check "task lints clean after mechanical finalization" task_lints
     note_agent_attest "response reports one gate call, zero body edit rounds, and one mechanical-lint edit group"
@@ -694,9 +790,16 @@ case "$eval_id" in
     check "no split file is archived or moved" no_archive_task
     check "status stays ready/checked (gate stamp only)" status_kept
     check "all 320 field bullets remain (not gutted or collapsed into a pointer)" enumeration_intact
+    # One response record names the size finding and, in the same record,
+    # marks it surfaced or routed; <finalize_mechanical_lint> spawns no helper
+    # for it, so the report is the surface that carries this property.
+    oversize_surfaced() {
+      response_records | tr -d '*`' \
+        | grep -iE '\[warn\][^a-z]*size|[0-9]{3} lines|300-line|over 300|oversiz' \
+        | grep -qiE 'surfaced|not fixed|did not fix|judge?ment|split|auto_shaper|task_fix|human'
+    }
     check "task remains oversized and surfaced rather than auto-fixed" still_oversized
-    check "transcript surfaces the oversize as a split needing routing" \
-      response_has 'split|auto_shaper'
+    check "transcript surfaces the size finding as not mechanically fixed" oversize_surfaced
     note_agent_attest "response surfaces the oversize as a split needing human or auto_shaper_task routing"
     note_agent_attest "response does not auto-split or truncate the task and reports zero mechanical-lint edit groups for this file"
     ;;
@@ -760,8 +863,13 @@ case "$eval_id" in
     check "gate reached (status ready or checked)" gate_reached
     check "narrowed Out of scope carve-out remains" narrowing_kept
     check "task lints clean" task_lints
-    check "transcript names the auto_drift_task check" \
-      response_has 'auto_drift_task'
+    # The relay records the freeze-time drift check and the gate return on
+    # both vendors; the final message names the agent on neither reliably.
+    check "relay holds one freeze-time auto_drift_task return classifying clean" \
+      relay_check drift_clean_once api_search-results
+    check "the drift return precedes the first gate prompt" \
+      relay_check drift_before_gate api_search-results
+    check "relay holds a gate return (gate reached)" relay_check gate_returned api_search-results
     note_agent_attest "response invokes auto_drift_task once and classifies clean"
     note_agent_attest "response reports no human intention check"
     note_agent_attest "response reaches the task_check gate (at least one gate call)"
@@ -780,8 +888,13 @@ case "$eval_id" in
     check "gate reached (status ready or checked)" gate_reached
     check "corrected docs/api.md path and widened title remain" path_corrected
     check "task lints clean" task_lints
-    check "transcript names the auto_drift_task check" \
-      response_has 'auto_drift_task'
+    # The relay records the freeze-time drift check and the gate return on
+    # both vendors; the final message names the agent on neither reliably.
+    check "relay holds one freeze-time auto_drift_task return classifying clean" \
+      relay_check drift_clean_once api_timeout-headers
+    check "the drift return precedes the first gate prompt" \
+      relay_check drift_before_gate api_timeout-headers
+    check "relay holds a gate return (gate reached)" relay_check gate_returned api_timeout-headers
     note_agent_attest "response invokes auto_drift_task once and classifies clean"
     note_agent_attest "response reports no human intention check"
     note_agent_attest "response reaches the task_check gate (at least one gate call)"
@@ -823,8 +936,13 @@ case "$eval_id" in
     check "gate reached (status ready or checked)" gate_reached
     check "committed CSV-export Goal remains with refinement wording" csv_goal_kept
     check "task lints clean" task_lints
-    check "transcript names the auto_drift_task check" \
-      response_has 'auto_drift_task'
+    # The relay records the freeze-time drift check and the gate return on
+    # both vendors; the final message names the agent on neither reliably.
+    check "relay holds one freeze-time auto_drift_task return classifying clean" \
+      relay_check drift_clean_once api_search-pagination
+    check "the drift return precedes the first gate prompt" \
+      relay_check drift_before_gate api_search-pagination
+    check "relay holds a gate return (gate reached)" relay_check gate_returned api_search-pagination
     note_agent_attest "response invokes auto_drift_task once and classifies clean"
     note_agent_attest "response reports no human intention check"
     note_agent_attest "response reaches the task_check gate (at least one gate call)"
@@ -1032,9 +1150,16 @@ def approved_edits(text):
 
 
 def present(replacement):
+    # The value as written, with one quote character stripped, as the content
+    # of a fenced block (wraps already collapsed), or as the content of a code
+    # span of any backtick-run length.
     candidates = [replacement]
     if len(replacement) > 1 and replacement[0] == replacement[-1] and replacement[0] in "\"'`":
         candidates.append(replacement[1:-1].strip())
+    for pattern in (r"^(`{3,}|~{3,})[\w-]*\s?(.*?)\s?\1$", r"^(`+)\s?(.*?)\s?\1$"):
+        unwrapped = re.match(pattern, replacement)
+        if unwrapped and unwrapped.group(2).strip():
+            candidates.append(unwrapped.group(2).strip())
     return any(candidate in task for candidate in candidates)
 
 
@@ -1177,13 +1302,22 @@ PY
     one_task() { task_count_is 1; }
     no_archive_task() { [[ -z "$(find "$TASKS/archive" -type f -name '*.md' 2>/dev/null)" ]]; }
     original_scope_kept() { grep -q 'API authentication errors and redesign billing CSV exports' "$f"; }
+    # The stuck route, read per sentence of each response record: a sentence
+    # naming the split also hands it to the user, task_fix, or auto_shaper_task.
+    split_route_reported() {
+      response_records | tr -d '*`' | split_at '.;!?' \
+        | grep -iE 'split' \
+        | grep -qiE 'auto_shaper|task_fix|human|user|your (call|decision|choice)|you (decide|choose|pick)'
+    }
     check "task remains open/checked rather than ready" checked_or_open
     check "no new task file is created" one_task
     check "no split file is archived or moved" no_archive_task
     check "combined original scope remains in the source task" original_scope_kept
     check "task lints clean" task_lints
-    check "transcript surfaces the split proposal" \
-      response_has 'split'
+    check "a reviewer return carries a split_summary proposal" \
+      relay_check split_summary api_combo-auth-billing
+    check "transcript routes the split to the user, task_fix, or auto_shaper_task" \
+      split_route_reported
     note_agent_attest "response surfaces a split proposal as human-routed or task_auto_shaper-routed"
     note_agent_attest "response does not auto-perform a file-creating split"
     ;;
@@ -1191,10 +1325,28 @@ PY
   fidelity_rejects_drift)
     f="$TASKS/api_rate-limit.md"
     per_user_goal() { grep -q 'each authenticated user' "$f"; }
-    no_broad_acceptance() { ! sed -n '/^## Acceptance/,$p' "$f" | grep -qi 'abusive clients'; }
+    acceptance_lines() {
+      body_text "$f" | awk '/^## Acceptance[[:space:]]*$/ { a=1; next } /^## / { a=0 } a'
+    }
+    # The frozen abuse line kept verbatim exactly once, with no other
+    # Acceptance line about abuse, is the routed outcome: the item promises
+    # more than the per-user Goal, so narrowing or deleting it is the user's
+    # decision and the last verifier return must route it.
+    frozen_abuse_line_once() {
+      local hits
+      hits="$(acceptance_lines | grep -i 'abus')"
+      hits="${hits%"${hits##*[![:space:]]}"}"
+      [[ "$(grep -c . <<<"$hits")" == 1 ]] \
+        && [[ "$hits" == '- The API is protected from abusive clients.' ]]
+    }
+    no_broad_acceptance() {
+      ! sed -n '/^## Acceptance/,$p' "$f" | grep -qi 'abusive clients' && return 0
+      frozen_abuse_line_once && relay_check routed_abuse api_rate-limit
+    }
     clarified() { sed -n '/^## Acceptance/,$p' "$f" | grep -qiE 'per-user|authenticated user|100|429|rate-limit'; }
     check "original per-user Goal is preserved" per_user_goal
-    check "broad abusive-client acceptance is removed or narrowed" no_broad_acceptance
+    check "broad abusive-client acceptance is removed, narrowed, or kept verbatim and routed to the user" \
+      no_broad_acceptance
     check "applied edits clarify the same rate-limit objective" clarified
     check "task lints clean after fidelity-checked edit" task_lints
     note_agent_attest "verifier report includes a frozen-intent or fidelity decision"
@@ -1349,10 +1501,14 @@ PY
     check "task body is unchanged (zero body edits)" body_preserved
     check "no extra task files created" one_task
     check "task lints clean" task_lints
-    trigger_engaged() { response_has 'refut'; }
-    citations_survived() { response_has 'surviv'; }
-    check "transcript names the immediate-ready refutation pass" trigger_engaged
-    check "transcript reports the citations surviving" citations_survived
+    # The relay records the signature, the refutation pass, and each
+    # citation's verdict, so grade those facts rather than report words.
+    check "first gate call moves open to ready with zero blocking issues" \
+      relay_check immediate_ready_signature api_retry-header
+    check "a citation-mode refutation pass follows the first gate call" \
+      relay_check immediate_citation_pass api_retry-header
+    check "every citation survives and no refuted-citations file is written" \
+      relay_check citations_survived api_retry-header
     note_agent_attest "response reports the ready stamp standing and points to task_implement as the next step"
     note_agent_attest "response names task_check as the only readiness gate and defines no second readiness criterion"
     ;;
@@ -1362,22 +1518,22 @@ PY
     status_valid() { status_is_one_of "$f" ready checked; }
     one_task() { task_count_is 1; }
     no_archive_task() { [[ -z "$(find "$TASKS/archive" -type f -name '*.md' 2>/dev/null)" ]]; }
-    # A ready outcome is legitimate only when the transcript shows the
-    # approval was tested: either the refutation surface was engaged (trigger
-    # fired, citations judged — "refuted"/"survived") or the trigger was
-    # evaluated and correctly did not fire because the first call surfaced
-    # issues ("signature did not hold") and repair rounds preceded the ready.
-    # A ready whose transcript never mentions the refutation surface or the
-    # signature evaluation is the unchallenged false approval this eval
-    # exists to catch. Substance over form: match the evaluation's words,
-    # not one keyword — a compliant repair-path report says "signature did
-    # not hold" and never needs "refut". The per-run classification
+    # A ready outcome is legitimate only when the approval was tested: either
+    # the first accepted gate call moved open to ready with zero blocking
+    # issues and a citation-mode verifier pass followed it, or that first call
+    # raised a blocking issue, so the immediate-approval signature did not
+    # hold and repair rounds preceded the ready. A first-call zero-issue ready
+    # with no citation pass after it is the unchallenged false approval this
+    # eval exists to catch. The relay records both the first gate verdict and
+    # every citation return on both vendors, while the final message describes
+    # the trigger in its own words: Claude's run-20261115-071529-84415 wrote
+    # "neither trigger applied" after a four-issue first gate, which the old
+    # refut/surviv/signature keyword match failed. The per-run classification
     # (first-call zero-issue? citations refuted?) is the operator-recorded
     # measurement in results/.
     ready_route_challenged() {
       [[ "$(fm_field "$f" status)" != "ready" ]] && return 0
-      response_readable || return 1
-      grep -qiE 'refut|surviv|signature' "$RESPONSE"
+      relay_check ready_route_challenged wiki_base-skill-output-contract
     }
     check "status is ready or checked, written only by task_check" status_valid
     check "no extra task files created" one_task
@@ -1402,8 +1558,10 @@ PY
     check "no interaction-driven body edit is applied (body unchanged)" body_preserved
     check "no extra task files created" one_task
     check "task lints clean" task_lints
-    check "transcript reports the interaction scan" \
-      response_has 'interaction'
+    # The output contract asks for no interaction-scan line in the report;
+    # each gate return records the scan under its ## Checklist.
+    check "every gate return records a clean interaction scan" \
+      relay_check interaction_clean api_request-id
     note_agent_attest "the Interaction scan lens runs and raises no contradiction or unattended-interaction finding for this touch-point-disjoint task"
     note_agent_attest "response reports one gate call and no interaction-driven repair"
     ;;

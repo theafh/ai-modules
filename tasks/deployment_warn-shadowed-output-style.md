@@ -2,7 +2,7 @@
 description: Warn on a style deploy when a settings file the run can read shadows the outputStyle just written, and state the override caveat on every global run for the repos it cannot read.
 scope: deployment
 created: 2026-08-10T09:56:32Z
-updated: 2026-11-04T10:49:57Z
+updated: 2026-11-17T10:15:03Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -19,7 +19,7 @@ The split exists because silence has to stay meaningless: a run that inspected o
 
 ## Context
 
-The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise.
+The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise. This task lands after [the state-relocation task](deployment_relocate-state-to-home.md), so that call reads the relocated conf in `$HOME` rather than the in-repo `deployment.conf`.
 
 The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) has shipped and rewrote the same arm's `STYLE_MAP` lookup into an indexed-array read, so this task builds on that shipped shape rather than the one quoted here.
 

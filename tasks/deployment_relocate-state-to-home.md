@@ -2,7 +2,7 @@
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
 created: 2026-06-02T16:58:04Z
-updated: 2026-11-12T08:32:23Z
+updated: 2026-11-17T10:42:06Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -87,7 +87,7 @@ Ship `deployment/ai_asset_deploy.conf.template` (the `.template` suffix is an un
 #                         Glob patterns supported (* matches within a segment, ** matches across segments)
 #   replace:path VAR=value Replace $VAR$ inside matching deployed copies. A trailing slash
 #                         applies to a whole subtree.
-#   style:<name>           Active output-style name for that tool (merged into the tool's settings)
+#   style:<name>           Active output-style name for that tool (read by the Claude arm only, which merges it as settings outputStyle)
 #
 # Assets not listed under a tool section are deployed to that tool.
 # Assets listed under disallow: are skipped for that tool.
@@ -114,19 +114,25 @@ disallow:*legacy*
 
 The template is the generic starting point. Any per-tool rule a machine adds beyond these defaults is **that machine's local customization**, not a shared default, so it belongs in the home conf and not the template.
 
+**Ship order.** One live task consumes this conf and lands after this one: [the shadow-warning task](deployment_warn-shadowed-output-style.md) reads it through `merge_json_key "$DEPLOYMENT_CONF" …` in the Claude style arm.
+
+### Validate the conf the script reads
+
+The relocation turns the conf into a file a user edits by hand, so `parse_deployment_conf` reports a line it cannot use instead of dropping it. It warns, names the line, and continues with that line skipped, in two cases: a non-blank, non-comment line that is neither a `#tool` section heading nor a recognised directive, such as a misspelled `disalow:*legacy*`; and a recognised directive that appears above the first `#tool` section, where no tool owns it. Comment lines and section headings stay silent, so the file's own usage header raises nothing. A misspelled directive then surfaces as a warning rather than silently deploying the assets it meant to skip.
+
 ### One-time migration of the current setup (required)
 
 The point of this task is that the current working setup is **retained**, not reset. On the relocation:
 
-1. **Copy the current live log into home.** `deployment/deployed_artefacts.log`, carrying this machine's real entries, must be **copied to `~/.ai_asset_deploy/deployed.log`** so every already-deployed artifact stays uninstallable. Do this before removing it from the repo.
+1. **Copy the current live log into home.** An existing installation's `deployment/deployed_artefacts.log`, carrying that installation's real entries, must be **copied to `~/.ai_asset_deploy/deployed.log`** so every already-deployed artifact stays uninstallable. Do this before removing it from the repo.
 2. **Seed the home conf from the current live conf, not the template.** `~/.ai_asset_deploy/config` must be created from `deployment/deployment.conf` exactly as it stands at migration time, so the machine's actual behaviour carries over unchanged, including any rule the generic template does not ship.
 3. **Stop tracking the in-repo files.** `git rm` the tracked `deployment.conf`, remove the in-repo `deployed_artefacts.log`, commit the `.template`, and drop the now-obsolete `.gitignore` entry for the log (nothing left in the tree to ignore).
 
-The script may automate the seeding on first run (if no home conf/log exists but the in-repo ones do, copy them up), or it can be a documented one-time manual step, but the end state for this machine is: home conf carrying the live conf's content unchanged, home log carrying all current entries.
+The script may automate the seeding on first run (if no home conf/log exists but the in-repo ones do, copy them up), or it can be a documented one-time manual step, but the end state for an existing installation is: home conf carrying the live conf's content unchanged, home log carrying all current entries.
 
 ### Test deploys
 
-Seed each scratch home before a micro-deployment runs the script: in `tests/lib/micro_deploy.py`, write `<scratch home>/.ai_asset_deploy/config` from the committed template, with a `style:<name>` line under `#claude` for the style the pass's declaration names, if it names one. The scratch `HOME` makes that file the conf the script reads, so the style deploy still sets `outputStyle`, and test deploys stop depending on this machine's live conf. Point `DEPLOY_LOG` in `tests/lib/test_micro_deploy.py` at `~/.ai_asset_deploy/deployed.log` under the real home. In `tests/deployment/script_tests/run.sh`, `style_run.sh`, and `update_run.sh`, replace the copy-aside of the in-repo log with a scratch log that `DEPLOYED_ARTIFACTS_LOG` names, and read entries from that log.
+Seed each scratch home before a micro-deployment runs the script: in `tests/lib/micro_deploy.py`, write `<scratch home>/.ai_asset_deploy/config` from the committed template, with a `style:<name>` line under `#claude` for the style the pass's declaration names, if it names one. The scratch `HOME` makes that file the conf the script reads, so the style deploy still sets `outputStyle`, and test deploys stop depending on the host's live conf. Point `DEPLOY_LOG` in `tests/lib/test_micro_deploy.py` at `~/.ai_asset_deploy/deployed.log` under the real home. In `tests/deployment/script_tests/run.sh`, `style_run.sh`, and `update_run.sh`, replace the copy-aside of the in-repo log with a scratch log that `DEPLOYED_ARTIFACTS_LOG` names, and read entries from that log.
 
 ### Guardrails
 
@@ -149,10 +155,11 @@ Considered and set aside for this task; revisit only if asked:
 - Conf and log resolve to `~/.ai_asset_deploy/config` and `~/.ai_asset_deploy/deployed.log`, with documented precedence: the conf reads home, then the template; the log uses `DEPLOYED_ARTIFACTS_LOG` when it is set, and home otherwise.
 - `deployment.conf` and `deployed_artefacts.log` are no longer in the repo; a committed `deployment/ai_asset_deploy.conf.template` carries the generic defaults: every tool section with `disallow:*legacy*` and **no** Claude-specific rule.
 - The current live log is **copied** to `~/.ai_asset_deploy/deployed.log` so the setup is retained: verify the pre-relocation entries are present and that `--uninstall` cleanly removes a previously-deployed artifact afterward.
-- `~/.ai_asset_deploy/config` on this machine reproduces the live `deployment.conf` byte-for-byte at migration time; confirm a `--dry-run` produces the same per-tool exclusions and the same active style after relocation as before it.
+- `~/.ai_asset_deploy/config` on an installation that had a live `deployment.conf` reproduces that conf byte-for-byte at migration time; confirm a `--dry-run` produces the same per-tool exclusions and the same active style after relocation as before it.
 - A fresh checkout with no home conf falls back to the template and deploys with the generic defaults (`*legacy*` skipped for every tool, Claude **not** excluded); confirm via `./deployment/deployment.sh --global --dry-run`.
 - `deployment/README.md`, root `README.md`, `.gitignore`, and `wiki/concepts/deployment-model.md` (edited through the wiki skill family) are updated to the new paths, and none of them still names `deployment/deployed_artefacts.log` or the in-repo `deployment.conf`.
 - `./deployment/deployment.sh --global --dry-run` runs without error and shows the resolved `~/.ai_asset_deploy/` conf/log paths in its banner.
+- A conf line the script cannot use draws a warning and the run continues: a misspelled `disalow:*legacy*` and a recognised directive placed above the first `#tool` section each print a warning naming the line, while the file's own comment header raises none, and a `tests/deployment/script_tests/run.sh` scenario stages both lines and pins the two warnings.
 - `python3 tests/lib/test_micro_deploy.py` passes with `DEPLOY_LOG` naming `~/.ai_asset_deploy/deployed.log`, and its check that a Claude micro-deployment of `natural-language` sets `outputStyle` holds against a scratch home whose `.ai_asset_deploy/config` the helper seeded.
 - `bash tests/deployment/run_all.sh` passes, and none of `script_tests/run.sh`, `script_tests/style_run.sh`, or `script_tests/update_run.sh` names `deployment/deployed_artefacts.log`.
 - `git ls-files deployment/deployment.conf deployment/deployed_artefacts.log` returns nothing, so neither file is tracked, and the deploy log and the user conf both live under `$HOME` (`~/.ai_asset_deploy/deployed.log` and `~/.ai_asset_deploy/config`).

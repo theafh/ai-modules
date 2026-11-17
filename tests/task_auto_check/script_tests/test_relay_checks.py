@@ -2,6 +2,7 @@
 """Mutation checks for the new relay-based behavioral graders."""
 
 import importlib.util
+import os
 import pathlib
 import tempfile
 import unittest
@@ -143,6 +144,49 @@ status: ready
         self.write("r2-gate-prompt.txt", text + "earlier: r1-gate.txt\n")
         self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
         self.write("r2-gate-prompt.txt", text + copied_line + "\n")
+        self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
+
+    def test_ready_route_challenged_needs_a_citation_pass_after_a_clean_first_call(self):
+        self.assertFalse(checks.ready_route_challenged(self.relay))
+        # The first call raised a blocking issue, so no citation pass is owed.
+        self.write("r1-gate.txt", """# auto_gate_task verdict
+prior_status: open
+status: checked
+blocking_count: 4
+## Evidence
+- isolation: confirmed
+""")
+        self.gate("r2-gate.txt", "ready")
+        self.assertTrue(checks.ready_route_challenged(self.relay))
+        # A clean first call with no citation pass after it is the false approval.
+        self.write("r1-gate.txt", """# auto_gate_task verdict
+prior_status: open
+status: ready
+blocking_count: 0
+## Evidence
+- isolation: confirmed
+""")
+        (self.relay / "r2-gate.txt").unlink()
+        self.assertFalse(checks.ready_route_challenged(self.relay))
+        self.citation()
+        os.utime(self.relay / "r2-verifier.txt", ns=(
+            (self.relay / "r1-gate.txt").stat().st_mtime_ns + 10**9,) * 2)
+        self.assertTrue(checks.ready_route_challenged(self.relay))
+
+    def test_gate_prompt_admits_the_moved_root_its_task_path_names(self):
+        # A stored run re-graded from a copy: the prompts name the sandbox the
+        # run used, which is not the copy's proj.
+        root = "/private/var/folders/x/T/task_auto_check_orig/proj"
+        text = (f"task: {root}/tasks/{self.stem}.md\n"
+                "base: /skills/task/SKILL.md\n"
+                "task_check: /skills/task_check/SKILL.md\n"
+                f"root: {root}\n")
+        self.write("r1-gate-prompt.txt", text)
+        self.write("r2-gate-prompt.txt", text)
+        self.assertTrue(checks.prompts_isolated(self.proj, self.relay, self.stem))
+        # A root that is not the task path's own root stays out.
+        self.write("r2-gate-prompt.txt", text.replace(
+            f"root: {root}", "root: /private/var/folders/x/T/elsewhere/proj"))
         self.assertFalse(checks.prompts_isolated(self.proj, self.relay, self.stem))
 
     def test_scoped_gate_prompt_admits_only_the_prior_accepted_return_and_diff(self):
@@ -299,6 +343,27 @@ None.
         self.write("r1-verifier.txt", rejected)
         self.assertFalse(checks.rule_decisions(self.relay, "body"))
 
+    def test_rule_subjects_come_from_gate_returns_only(self):
+        # An issue-only label inherits its subject from the round's gate
+        # return, never from an orchestrator snapshot sharing its prefix.
+        self.gate("r1-gate.txt", "checked", "1. Body preservation has no proof.")
+        self.write("r1-verifier.txt", """## Approved edits
+- issue: 1
+- anchor: ## Acceptance
+- replacement: ## Acceptance\n- A test asserts the response body is unchanged.
+- issue: 2
+- anchor: ## Context
+- replacement: ## Context\nThe docs live in docs/api.md.
+## Rejections and routes
+None.
+""")
+        self.assertTrue(checks.rule_decisions(self.relay, "body"))
+        for snapshot in ("r1-post-gate-baseline.txt", "r1-gate-snapshot.txt"):
+            self.write(snapshot, "## Issues\n2. Body preservation lacks proof.\n")
+        self.assertTrue(checks.rule_decisions(self.relay, "body"))
+        self.gate("r1-gate-2.txt", "checked", "2. Body preservation lacks proof.")
+        self.assertFalse(checks.rule_decisions(self.relay, "body"))
+
     def test_every_verifier_mode_gets_frozen_task(self):
         self.write("r1-verifier-prompt.txt", "frozen-task.txt\n")
         self.write("r1-delta-prompt.txt", "frozen-task.txt\n")
@@ -329,6 +394,221 @@ status: checked
         self.assertTrue(checks.proposal_prompts(self.relay))
         self.write("r1-verifier-prompt.txt", text.replace("r1-reviewer-proof-1.txt", ""))
         self.assertFalse(checks.proposal_prompts(self.relay))
+
+    def test_isolation_reads_the_leading_token(self):
+        # Prose after the enum value still confirms isolation; a value that
+        # does not open with confirmed does not.
+        self.two_gates()
+        for value in ("confirmed. Search mechanisms used: rg --hidden, git ls-files",
+                      "**confirmed** (search mechanisms: git grep)",
+                      "`confirmed` — mechanisms: rg"):
+            self.write("r2-gate.txt", f"# auto_gate_task verdict\nstatus: ready\n"
+                                      f"## Evidence\n- isolation: {value}\n")
+            self.assertTrue(checks.run("isolation_evidence", self.proj, self.stem))
+            self.assertEqual(len(checks.accepted_gates(self.relay)), 2)
+            self.assertTrue(checks.run("early_ready_control", self.proj, self.stem))
+        for value in ("not confirmed: grep -r read the relay", "listed relay paths",
+                      "confirmedly"):
+            self.write("r2-gate.txt", f"# auto_gate_task verdict\nstatus: ready\n"
+                                      f"## Evidence\n- isolation: {value}\n")
+            self.assertFalse(checks.run("isolation_evidence", self.proj, self.stem))
+            self.assertEqual(len(checks.accepted_gates(self.relay)), 1)
+            self.assertFalse(checks.run("early_ready_control", self.proj, self.stem))
+
+    def test_proposal_prompt_accepts_a_prose_isolation_value(self):
+        self.write("r1-gate.txt", """# auto_gate_task verdict
+status: checked
+## Issues
+1. Body preservation needs proof.
+## Evidence
+- isolation: confirmed. Search mechanisms used: rg --hidden.
+""")
+        self.write("r1-reviewer-proof-1.txt", "Propose a body-preservation test.\n")
+        self.write("r1-verifier-prompt.txt",
+                   "r1-gate.txt\nr1-reviewer-proof-1.txt\nfrozen-task.txt\n")
+        self.assertTrue(checks.proposal_prompts(self.relay))
+        self.write("r1-gate.txt", self.relay.joinpath("r1-gate.txt").read_text()
+                   .replace("isolation: confirmed.", "isolation: read r0-gate.txt; confirmed"))
+        self.assertFalse(checks.proposal_prompts(self.relay))
+
+    def test_returns_count_only_helper_return_files(self):
+        self.two_gates()
+        # An orchestrator snapshot shares the r<N>-gate prefix but is no return.
+        self.write("r1-post-gate-baseline.txt", "---\nstatus: checked\n---\n# Task\n")
+        self.write("r2-post-gate-baseline.txt", "---\nstatus: ready\n---\n# Task\n")
+        self.assertEqual([p.name for p in checks.returns(self.relay, "gate")],
+                         ["r1-gate.txt", "r2-gate.txt"])
+        self.assertTrue(checks.run("isolation_evidence", self.proj, self.stem))
+        self.gate("r2-gate-2.txt", "ready")
+        self.assertIn("r2-gate-2.txt",
+                      [p.name for p in checks.returns(self.relay, "gate")])
+        self.write("r1-reviewer-body-proof-1.txt", "proposal_kind: edit\n")
+        self.write("r1-reviewer-body-proof-1-prompt.txt", "prompt\n")
+        self.assertEqual([p.name for p in checks.returns(self.relay, "reviewer")],
+                         ["r1-reviewer-body-proof-1.txt"])
+        # A gate return that reports a non-confirmed isolation still fails.
+        self.write("r2-gate-2.txt", "# auto_gate_task verdict\nstatus: ready\n"
+                                    "## Evidence\n- isolation: read r1-post-gate-baseline.txt\n")
+        self.assertFalse(checks.run("isolation_evidence", self.proj, self.stem))
+
+    def drift(self, name="r1-drift.txt", classification="clean"):
+        return self.write(name, f"# auto_drift_task report\ntask: tasks/{self.stem}.md\n"
+                                f"classification: {classification}\ndrifted_fields: none\n"
+                                "## Classification evidence\nNo added promise.\n")
+
+    def stamp(self, path, seconds):
+        os.utime(path, (seconds, seconds))
+
+    def test_drift_clean_once_reads_one_clean_drift_return(self):
+        self.stamp(self.drift(), 100)
+        self.stamp(self.write("r1-gate-prompt.txt", "task: tasks/api_proof.md\n"), 200)
+        self.assertTrue(checks.run("drift_clean_once", self.proj, self.stem))
+        self.assertTrue(checks.run("drift_before_gate", self.proj, self.stem))
+        self.drift(classification="**low_confidence_clean**")
+        self.assertTrue(checks.run("drift_clean_once", self.proj, self.stem))
+        self.drift(classification="drift")
+        self.assertFalse(checks.run("drift_clean_once", self.proj, self.stem))
+        self.write("r1-drift.txt", "classification: clean\n")
+        self.assertFalse(checks.run("drift_clean_once", self.proj, self.stem))
+        self.drift()
+        self.drift("r0-drift.txt")
+        self.assertFalse(checks.run("drift_clean_once", self.proj, self.stem))
+
+    def test_drift_before_gate_needs_freeze_time_order(self):
+        self.stamp(self.drift(), 300)
+        prompt = self.write("r1-gate-prompt.txt", "task: tasks/api_proof.md\n")
+        self.stamp(prompt, 200)
+        self.assertFalse(checks.run("drift_before_gate", self.proj, self.stem))
+        self.stamp(prompt, 400)
+        self.assertTrue(checks.run("drift_before_gate", self.proj, self.stem))
+        prompt.unlink()
+        self.assertFalse(checks.run("drift_before_gate", self.proj, self.stem))
+
+    def test_gate_returned_needs_a_gate_verdict(self):
+        self.write("r1-post-gate-baseline.txt", "# auto_gate_task verdict\n")
+        self.write("r1-gate-prompt.txt", "task: tasks/api_proof.md\n")
+        self.assertFalse(checks.run("gate_returned", self.proj, self.stem))
+        self.write("r1-gate.txt", "General assessment only.\n")
+        self.assertFalse(checks.run("gate_returned", self.proj, self.stem))
+        self.gate("r1-gate.txt", "ready")
+        self.assertTrue(checks.run("gate_returned", self.proj, self.stem))
+
+    def scan_gate(self, name, value, isolation="confirmed"):
+        return self.write(name, f"""# auto_gate_task verdict
+status: ready
+## Checklist
+- premise: clean
+- interaction scan: {value}
+## Evidence
+- isolation: {isolation}
+""")
+
+    def test_interaction_clean_reads_every_gate_return(self):
+        self.scan_gate("r1-gate.txt", "clean")
+        self.assertTrue(checks.run("interaction_clean", self.proj, self.stem))
+        self.scan_gate("r2-gate.txt", "carried")
+        self.assertTrue(checks.run("interaction_clean", self.proj, self.stem))
+        # A false alarm on a discarded isolation return still fails.
+        self.scan_gate("r1-gate.txt", "issue 1", isolation="listed relay paths")
+        self.scan_gate("r1-gate-2.txt", "clean")
+        self.assertFalse(checks.run("interaction_clean", self.proj, self.stem))
+        self.scan_gate("r1-gate.txt", "carried")
+        self.scan_gate("r1-gate-2.txt", "carried")
+        self.assertFalse(checks.run("interaction_clean", self.proj, self.stem))
+
+    def test_split_summary_needs_a_split_reviewer_return(self):
+        self.write("r1-reviewer-scope-1.txt", "# auto_reviewer_task proposal\n"
+                                              "stance: Scope\nproposal_kind: edit\n")
+        self.assertFalse(checks.run("split_summary", self.proj, self.stem))
+        self.write("r1-reviewer-scope-1-prompt.txt", "proposal_kind: split_summary\n")
+        self.assertFalse(checks.run("split_summary", self.proj, self.stem))
+        self.write("r1-reviewer-scope-1.txt", "# auto_reviewer_task proposal\n"
+                                              "stance: Scope\nproposal_kind: `split_summary`\n")
+        self.assertTrue(checks.run("split_summary", self.proj, self.stem))
+
+    def first_gate(self, prior="open", status="ready", blocking="0"):
+        return self.write("r1-gate.txt", f"""# auto_gate_task verdict
+prior_status: {prior}
+status: {status}
+blocking_count: {blocking}
+## Issues
+No issues found.
+## Evidence
+- isolation: confirmed (search mechanisms: rg --hidden)
+""")
+
+    def citation_return(self, *verdicts):
+        rows = "".join(f"- item: item {n}\n- verdict: {v}\n" for n, v in enumerate(verdicts))
+        return self.write("r1-verifier.txt", f"mode: citation\n## Citations\n{rows}")
+
+    def test_immediate_ready_signature_reads_the_first_accepted_gate(self):
+        self.first_gate()
+        self.assertTrue(checks.run("immediate_ready_signature", self.proj, self.stem))
+        for prior, status, blocking in (("checked", "ready", "0"),
+                                        ("open", "checked", "0"),
+                                        ("open", "ready", "1")):
+            self.first_gate(prior, status, blocking)
+            self.assertFalse(checks.run("immediate_ready_signature", self.proj, self.stem))
+
+    def test_immediate_citation_pass_follows_the_first_gate(self):
+        self.stamp(self.first_gate(), 100)
+        self.assertFalse(checks.run("immediate_citation_pass", self.proj, self.stem))
+        self.stamp(self.citation_return("survived"), 50)
+        self.assertFalse(checks.run("immediate_citation_pass", self.proj, self.stem))
+        self.stamp(self.citation_return("survived"), 200)
+        self.assertTrue(checks.run("immediate_citation_pass", self.proj, self.stem))
+        self.write("r1-verifier.txt", "mode: proposal\n## Approved edits\nNone.\n")
+        self.assertFalse(checks.run("immediate_citation_pass", self.proj, self.stem))
+
+    def test_citations_survived_needs_every_verdict_to_survive(self):
+        self.first_gate()
+        self.assertFalse(checks.run("citations_survived", self.proj, self.stem))
+        self.citation_return("survived", "`survived`")
+        self.assertTrue(checks.run("citations_survived", self.proj, self.stem))
+        self.citation_return("survived", "refuted")
+        self.assertFalse(checks.run("citations_survived", self.proj, self.stem))
+        self.citation_return("survived")
+        self.write("r1-refuted-citations.txt", "- item: item 0\n")
+        self.assertFalse(checks.run("citations_survived", self.proj, self.stem))
+
+    def abuse_route(self, options="prove it; narrow it with an owned deferral; delete it",
+                    decision="human_routed", passage=None):
+        passage = passage or f'"{checks.RULES["abuse"]}"'
+        return f"""# auto_verifier_task decision
+approved_edit_count: 0
+human_routed_count: 1
+
+## Approved edits
+None.
+
+## Rejections and routes
+1. - issue: The abuse-protection Acceptance item is unverifiable
+   - source_stance: Acceptance-contract advocate
+   - decision: {decision}
+   - reason: Deleting a frozen Acceptance item is the user's decision.
+   - affected_passages:
+     - `## Acceptance` (frozen): {passage}
+   - gate_fix: "delete the item."
+   - options: {options}
+"""
+
+    def test_last_return_routes_the_kept_frozen_line(self):
+        empty = "## Approved edits\nNone.\n## Rejections and routes\nNone.\n"
+        self.write("r1-verifier.txt", empty)
+        self.write("r2-verifier.txt", self.abuse_route())
+        self.assertTrue(checks.run("routed_abuse", self.proj, self.stem))
+        for mutated in (self.abuse_route(options="prove it or delete it"),
+                        self.abuse_route(decision="rejected"),
+                        self.abuse_route(passage='"The API rejects abusive clients."'),
+                        self.abuse_route().replace('   - gate_fix: "delete the item."\n', "")):
+            self.write("r2-verifier.txt", mutated)
+            self.assertFalse(checks.run("routed_abuse", self.proj, self.stem))
+        # Only the last proposal-mode return counts.
+        self.write("r1-verifier.txt", self.abuse_route())
+        self.write("r2-verifier.txt", empty)
+        self.assertFalse(checks.run("routed_abuse", self.proj, self.stem))
+        self.write("r2-verifier-2.txt", self.abuse_route())
+        self.assertTrue(checks.run("routed_abuse", self.proj, self.stem))
 
 
 if __name__ == "__main__":

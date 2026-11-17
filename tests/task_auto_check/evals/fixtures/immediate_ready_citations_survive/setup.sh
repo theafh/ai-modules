@@ -62,7 +62,7 @@ EOF
 
 cat > "$target/proj/tasks/api_retry-header.md" <<'EOF'
 ---
-description: Add a Retry-After header to API throttling responses so clients know when to retry after HTTP 429.
+description: Add and document a Retry-After header on API throttling responses so clients know when to retry after HTTP 429.
 scope: src/api
 created: 2026-01-01T00:00:00Z
 updated: 2026-01-01T00:00:00Z
@@ -70,7 +70,7 @@ status: open
 reported-by: Harness
 ---
 
-# Retry-After header on throttling responses
+# Retry-After header on throttling responses and its API docs entry
 
 ## Goal
 
@@ -89,14 +89,15 @@ window. `docs/api.md` documents public response headers under its
 ## Approach
 
 Update `build_throttle_response()` to include `Retry-After` in its headers,
-valued as `THROTTLE_WINDOW_SECONDS` in seconds, then document the header in
-the `## Response headers` section of `docs/api.md`.
+valued as `str(THROTTLE_WINDOW_SECONDS)`, the window in seconds as a decimal
+string like the existing header values, then document the header in the
+`## Response headers` section of `docs/api.md`.
 
 ## Acceptance
 
 - A pytest test added to the existing `tests/test_throttle.py` confirms the
   throttled response carries HTTP 429 and a `Retry-After` header value equal
-  to `THROTTLE_WINDOW_SECONDS`.
+  to `str(THROTTLE_WINDOW_SECONDS)`.
 - `docs/api.md` lists `Retry-After` under its `## Response headers` section.
 EOF
 

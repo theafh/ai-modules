@@ -2,7 +2,7 @@
 description: "Build slop_catch in ai_editorial: a ported Python detector plus a structural-tell ruleset that score a draft's AI-tell density and return replacements, run as the humanizer's check pass."
 scope: "ai_editorial plugin"
 created: 2026-06-01T21:31:06Z
-updated: 2026-11-12T08:32:23Z
+updated: 2026-11-17T10:06:07Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -21,15 +21,15 @@ Three commitments shape what the skill delivers:
 
 The skill delivers that through two detection layers that stay distinct end to end:
 
-- A **literal layer**, carried by a bundled Python detector ported from the `ai_slop_detector` browser extension, which finds tells decidable from the characters on the page — slop vocabulary, phrase templates, and typographic anomalies — and returns exact spans, replacements, and the density score.
+- A **literal layer**, carried by a bundled Python detector that ports an existing AI-slop term and format-pattern table, which finds tells decidable from the characters on the page — slop vocabulary, phrase templates, and typographic anomalies — and returns exact spans, replacements, and the density score.
 - A **judgement layer**, carried by a reference ruleset the agent reads the draft against, which finds tells that live in sentence shape, framing, and rhythm rather than in any fixed string — the "it is not X, but Y" construction and its relatives.
 
 ## Context
 
 - The plugin shell is built (`ai-editorial_plugin-scaffold.md`, archived). This skill lands in `plugins/ai_editorial/skills/slop_catch/`.
-- **Source to port.** The literal layer's detection data lives in the `ai_slop_detector` browser extension — a separate repository checked out beside this one, reachable as `../ai_slop_detector` from this repo root. Its `content.js` carries two top-level definitions: `const SLOP_TERMS`, an array of case-insensitive global regexes split by the in-file comment markers `=== SINGLE WORDS ===` and `=== MULTI-WORD PHRASES ===`, and `const FORMAT_PATTERNS`, an object of eight named character-class regexes. The same repo's `notes/slop_vocab.md` carries the vocabulary as a plain term-and-phrase list, which reads more cleanly than the regexes for the port's word data. Should that checkout be absent, ask the user for those two files rather than reconstructing the lists from memory; the pattern inventory this task records below fixes what a complete port contains, while the terms themselves come from the source.
-- **What the source contains, as the port's completeness contract.** `SLOP_TERMS` holds 67 patterns: 35 single-word entries and 32 multi-word phrase entries. A single-word entry carries the term with its morphological variants in one alternation, so `delve` ships as `delve|delves|delving` and `facilitate` as `facilitate|facilitates|facilitated|facilitating|facilitation`. A phrase entry tolerates variable whitespace between tokens, and several also tolerate apostrophe and dash variants, so `in today's fast-paced world` matches across straight and curly apostrophes and across the whole dash family. The extension emits one record per match carrying the pattern identity, the layer it came from, the matched text, and the offset.
-- **The eight `FORMAT_PATTERNS` classes, recorded here as codepoints** because their character sets are the part of the source that resists reconstruction, and because several of them are invisible on screen or near-identical to their plain-ASCII counterparts:
+- **Source to port.** The literal layer's detection data is an existing AI-slop term-and-pattern table the operator supplies: a term list split into single-word entries and multi-word phrase entries, plus a format-pattern table of named character classes. The source's term list tolerates variable whitespace between phrase tokens and several apostrophe and dash variants, and it carries the term with its morphological variants in one alternation. The completeness contract this task records below fixes what a correct port contains; where the operator has not supplied the two tables, ask for them rather than reconstructing the lists from memory.
+- **What the source contains, as the port's completeness contract.** The term table holds 67 patterns: 35 single-word entries and 32 multi-word phrase entries. A single-word entry carries the term with its morphological variants in one alternation, so `delve` ships as `delve|delves|delving` and `facilitate` as `facilitate|facilitates|facilitated|facilitating|facilitation`. A phrase entry tolerates variable whitespace between tokens, and several also tolerate apostrophe and dash variants, so `in today's fast-paced world` matches across straight and curly apostrophes and across the whole dash family. The detector emits one record per match carrying the pattern identity, the layer it came from, the matched text, and the offset.
+- **The eight format-pattern classes, recorded here as codepoints** because their character sets are the part of the source that resists reconstruction, and because several of them are invisible on screen or near-identical to their plain-ASCII counterparts:
   - `unusualDashes` — `U+2013`, `U+2014`, `U+2053`, `U+301C` (en dash, em dash, swung dash, wave dash)
   - `unusualQuotes` — `U+2018`, `U+2019`, `U+201C`, `U+201D` (curly single and double quotes)
   - `unusualSpaces` — `U+2000`–`U+200A`, `U+202F`, `U+205F`, `U+3000` (en quad through hair space, narrow and medium mathematical spaces, ideographic space)
@@ -38,7 +38,7 @@ The skill delivers that through two detection layers that stay distinct end to e
   - `suspiciousBackticks` — a run of 15 or more non-newline characters enclosed in plain backticks
   - `exoticBackticks` — `U+02CB`, `U+02C8`, `U+2035`, `U+2032`, `U+2033`, `U+2034` (modifier grave accent, modifier vertical line, reversed prime, prime, double prime, triple prime)
   - `exoticPunctuation` — `U+2026`, `U+2022`, `U+2023`, `U+2043`, `U+204C`, `U+204D` (ellipsis, bullet, triangular bullet, hyphen bullet, black leftwards bullet, black rightwards bullet)
-- **Why the port changes context, not content.** The extension highlights live web pages, where every hit is worth a colour and a lone curly quote costs nothing. This skill judges a draft about to reach a reader, where the same curly quote most often came from a word processor and where the author needs to know whether the text is broadly slopped or merely carries one reachable word. The port keeps every pattern and adds the tiering, scoring, and replacement data the Approach defines.
+- **Why the port changes context, not content.** A browser extension highlights live web pages, where every hit is worth a colour and a lone curly quote costs nothing. This skill judges a draft about to reach a reader, where the same curly quote most often came from a word processor and where the author needs to know whether the text is broadly slopped or merely carries one reachable word. The port keeps every pattern and adds the tiering, scoring, and replacement data the Approach defines.
 - Write the skill `description:` so it triggers both on checking text a writing skill just delivered and on reviewing any draft for AI tells, and so a router can tell it from the two prose skills beside it: this skill diagnoses, scores, and proposes replacements while leaving the text untouched, and the other two deliver rewritten text.
 - **Authoring authorities.** The `SKILL.md` and the reference ruleset are instructions an AI consumes, so they follow `ai_instruction_writing` for positive, action-oriented carriers and `ai_instruction_formatting` for the pseudo-XML body. A tell entry describes a pattern to recognize and what to write instead, which keeps those entries positive without strain.
 - Follow the standing repo rules for skill authoring and for bundling a skill's helper scripts; this task supplies the `slop_catch`-specific detector workflow, source-port contract, scoring model, tell set, and Python style-guide requirement.
@@ -49,7 +49,7 @@ Build three artefacts under `plugins/ai_editorial/skills/slop_catch/`.
 
 ### 1. The detector — `scripts/detect_slop.py`
 
-Port both `SLOP_TERMS` and `FORMAT_PATTERNS` into Python, preserving every pattern and its case-insensitive matching, and hold the ported table as a module-level data structure so the script stays one self-contained file. The script adheres to the `format_python` style guide.
+Port both the term table and the format-pattern table into Python, preserving every pattern and its case-insensitive matching, and hold the ported table as a module-level data structure so the script stays one self-contained file. The script adheres to the `format_python` style guide.
 
 **Input.** Accept an optional path argument naming the draft file, and read the draft from standard input when no path is given.
 
@@ -122,7 +122,7 @@ The output contract leads with the verdict — the band, the density figure, and
 
 - Rewriting the flagged prose. [ai-editorial_language-humanizer-skill.md](archive/ai-editorial_language-humanizer-skill.md) and [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md) produce and rewrite prose; this skill checks what they produced and returns replacements for them to apply. The handoff needs nothing on their side, since the skill takes delivered text as its input, so build this one to be invocable that way rather than reaching into either skill's workflow. Keep the structural-tell ruleset readable as a standalone reference, because `ghost_writer`'s task weighs referencing it directly to keep the two consistent.
 - Wiring this check into either writing skill's own workflow, which changes that skill's contract and belongs to its task; this task delivers `slop_catch` so it can be invoked that way.
-- Changing the `ai_slop_detector` extension, which is read-only input to this port.
+- Changing the source extension the term and pattern tables come from, which is read-only input to this port.
 - Scoring whether a text was machine-generated, whether by statistical means such as perplexity and burstiness or by watermark detection. The density score rates how heavily a draft carries known tells, for an author to act on, rather than issuing an authorship verdict.
 
 ## Acceptance

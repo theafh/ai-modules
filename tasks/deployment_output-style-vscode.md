@@ -2,7 +2,7 @@
 description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-09T10:01:28Z
+updated: 2026-11-17T10:35:47Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -27,7 +27,7 @@ Generate a VS Code variant of the style and write it as a single Markdown file, 
 
 The wiki's [GitHub Copilot in VS Code](../wiki/entities/github-copilot-vs-code.md) page records the mechanism today. Confirm during implementation what each scope expects of the filename, since the workspace-scoped files use the `.instructions.md` form while the user-profile root may accept a plain `.md`. Follow whichever the installed VS Code accepts at each scope, and record both answers there so the next reader does not repeat the check. Where the project-scoped file supports an `applyTo` glob, write the value that scopes it to every file rather than leaving the field out, so the rule is unambiguously always-on.
 
-Generate rather than copy. Strip the Claude frontmatter, which this target does not implement, and rewrite the one clause in the style body naming Claude's `keep-coding-instructions` mechanism, using the per-tool substitution facility in `deployment/deployment.conf` that the groundwork task's Claude path already leaves in place.
+Generate rather than copy. Strip the Claude frontmatter, which this target does not implement, and rewrite the `<engineering_behavior>` element that names Claude's `keep-coding-instructions` mechanism, following `generate_cursor_style_rule` in `deployment/deployment.sh`, which replaces that element wholesale. The style source carries no `$VAR$` token, so no `replace:` rule applies to it.
 
 Close the instructions adoption path in the same pass, so the deployed file is the only route this style reaches VS Code by. VS Code reads user-level instructions from `~/.claude/rules` as well as its own root, and `chat.instructionsFilesLocations` maps a path to a boolean where a `false` disables it even when it is a documented default. Merge `{"~/.claude/rules": false}` into the user's VS Code settings through a nested settings-map entry merge shared with the hook-routing sibling; `merge_json_key` supplies only the prior capture and restore log shape, since it writes the whole key. That path captures the prior value on first write and restores it on uninstall, and narrows the merge to that one path so every other entry the user set survives. The hook counterpart of this switch, covering `.claude/settings.json` and `~/.claude/settings.json`, belongs to [deployment_vscode-hook-routing.md](deployment_vscode-hook-routing.md); the two tasks merge sibling keys into the same settings file, so whichever lands second reuses the first's merge helper rather than adding a second one.
 

@@ -5,10 +5,10 @@ Recorded evidence for the task_auto_check parallel runner.
 - **Vendor:** Cursor default (`agent -p`, model `auto`), no `--vendor`.
 - **Isolated pool:** default `--workers` 4. The serial nested-loop set runs after that pool at 1 worker.
 - **Workers-1 run:** `python3 tests/task_auto_check/evals/run.py --force --workers 1 already_ready mechanical_lint_ready`
-- **Workers-1 run dir:** `tests/task_auto_check/workspace/run-20261016-123228-96875`
+- **Workers-1 run label:** `20261016-123228`
 - **Workers-1 result:** `graded: 2/2 evals passed (0 from cache)`
 - **Default run:** `python3 tests/task_auto_check/evals/run.py --force`
-- **Default run dir:** `tests/task_auto_check/workspace/run-20261016-125642-95903`
+- **Default run label:** `20261016-125642-95903`
 - **Default result:** `graded: 15/32 evals passed (0 from cache)`, covering every id in `evals.json`.
 
 ## Comparison with the 15 October cache

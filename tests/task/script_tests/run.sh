@@ -12,10 +12,16 @@
 # this file is the full mechanical surface for the whole family.
 #
 # Coverage groups:
-#   d* discover_tasks.sh — git-toplevel resolution, marker walk, exit
-#      codes (0 when tasks/ exists, 1 when not, 2 on bad arg), --help.
+#   d* discover_tasks.sh — git-toplevel resolution, marker walk, CWD
+#      fallback, exit codes (0 when tasks/ exists, 1 when not, 2 on bad
+#      arg), --help.
 #   i* init_tasks.sh     — scaffold tasks/+archive/, idempotency,
 #      refusal on a non-directory target, arg/exit handling, --help.
+#   l-auto* lint.py run the way the hub documents it, with no TASKS_PATH
+#      (`--quiet`, and `--file tasks/archive/<name>.md --quiet`), so
+#      tasks/ resolves through discover_tasks.sh from the CWD: from the
+#      project root, from a subdirectory, a relative --file scope, and
+#      the init_tasks.sh hint when no tasks/ exists.
 #   l* lint.py body link resolution (check_local_links) over task files:
 #      on a default / --include-archive run the check covers the links
 #      written in the task files the run covers (live files by default,
@@ -40,9 +46,9 @@
 #      normalization, clean tree.
 #
 # Each scenario stages a throwaway tasks/ tree under
-# tests/task/script_tests/scratch/<id>/. The d*/i* scenarios stage
-# OUTSIDE the repo (mktemp) so the surrounding ai-modules git tree does
-# not shadow the discovery logic under test.
+# tests/task/script_tests/scratch/<id>/. The d*/i*/l-auto* scenarios
+# stage OUTSIDE the repo (mktemp) so the surrounding ai-modules git tree
+# does not shadow the discovery logic under test.
 
 set -uo pipefail
 
@@ -61,20 +67,21 @@ FAIL=0
 SKIP=0
 FAILED_IDS=()
 
-# External (out-of-repo) temp dirs created for the discover/init
-# scenarios. Cleaned on exit so the surrounding git tree never matters.
-EXT_TMPS=()
+# External (out-of-repo) temp dirs for the scenarios that must sit
+# outside any git tree (d*, i*, l-auto*, am3). One per-run parent is
+# created here in the main shell, and ext_tmp creates each scenario's
+# directory inside it. Scenarios call `dir=$(ext_tmp)` in a
+# command-substitution subshell, which cannot report back to this shell,
+# so the EXIT trap removes the whole parent instead of a per-call list.
+EXT_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/tasks_st.XXXXXX") || {
+    printf 'cannot create the external temp root under %s\n' "${TMPDIR:-/tmp}" >&2
+    exit 1
+}
 ext_tmp() {
-    local d
-    d=$(mktemp -d "${TMPDIR:-/tmp}/tasks_st.XXXXXX")
-    EXT_TMPS+=("$d")
-    printf '%s' "$d"
+    mktemp -d "$EXT_ROOT/tasks_st.XXXXXX"
 }
 cleanup_ext() {
-    local d
-    for d in "${EXT_TMPS[@]:-}"; do
-        [[ -n "$d" && -d "$d" ]] && rm -rf "$d"
-    done
+    [[ -n "${EXT_ROOT:-}" && -d "$EXT_ROOT" ]] && rm -rf "$EXT_ROOT"
 }
 trap cleanup_ext EXIT
 
@@ -153,6 +160,16 @@ run_lint_in() {
     local dir=$1 tasks=$2 out rc
     shift 2 || true
     out=$(cd "$dir" && python3 "$LINT" "$tasks" "$@" 2>&1) && rc=0 || rc=$?
+    printf '%s|%s' "$rc" "$out"
+}
+
+# run_lint_auto_in <dir> [args...] -> echoes "<exit>|<combined output>",
+# running lint.py with CWD set to <dir> and no TASKS_PATH, so the linter
+# resolves tasks/ through discover_tasks.sh the way the hub documents it.
+run_lint_auto_in() {
+    local dir=$1 out rc
+    shift
+    out=$(cd "$dir" && python3 "$LINT" "$@" 2>&1) && rc=0 || rc=$?
     printf '%s|%s' "$rc" "$out"
 }
 
@@ -1093,6 +1110,41 @@ d5_help_exits_zero() {
     $ok
 }
 
+d6_cwd_fallback_without_git_or_marker() {
+    local dir; dir=$(ext_tmp)
+    local cwd; cwd=$(cd "$dir" && pwd -P)
+    # The CWD fallback needs a directory outside any git tree with no
+    # project marker at or above it; skip when the temp root carries one.
+    if in_git_tree "$cwd"; then
+        log "    [temp dir sits inside a git tree — CWD fallback N/A]"
+        return 2
+    fi
+    local level=$cwd marker
+    while true; do
+        for marker in .git package.json pyproject.toml Cargo.toml go.mod \
+                      CLAUDE.md AGENTS.md Makefile .project-root; do
+            if [[ -e "$level/$marker" ]]; then
+                log "    [marker $level/$marker at or above the temp dir — CWD fallback N/A]"
+                return 2
+            fi
+        done
+        [[ "$level" == / ]] && break
+        level=$(dirname "$level")
+    done
+    local ret; ret=$(run_discover_in "$cwd")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (no tasks/ at the CWD yet)" "$rc" "1" || ok=false
+    assert_eq "prints <cwd>/tasks" "$out" "$cwd/tasks" || ok=false
+
+    mkdir -p "$cwd/tasks"
+    ret=$(run_discover_in "$cwd")
+    rc=${ret%%|*}; out=${ret#*|}
+    assert_eq "exit 0 (tasks/ now exists at the CWD)" "$rc" "0" || ok=false
+    assert_eq "still prints <cwd>/tasks" "$out" "$cwd/tasks" || ok=false
+    $ok
+}
+
 ###############################################################################
 # init_tasks.sh scenarios — staged outside the repo.
 ###############################################################################
@@ -1148,6 +1200,113 @@ i5_help_exits_zero() {
     local ok=true
     assert_eq "exit 0 (--help)" "$rc" "0" || ok=false
     assert_contains "help shows usage" "$out" "init_tasks.sh — create" || ok=false
+    $ok
+}
+
+###############################################################################
+# lint.py autodiscovery scenarios — staged outside the repo.
+#
+# The hub runs the linter with no TASKS_PATH (`python3 scripts/lint.py
+# --quiet` after a create, `--file tasks/archive/<name>.md --quiet` at the
+# archive close-out), so lint.py resolves tasks/ through discover_tasks.sh
+# from its CWD. Each scenario stages its own scratch git project outside
+# the repo, so neither the ai-modules tree nor its live tasks/ backlog can
+# become the discovered root.
+###############################################################################
+
+# stage_auto_project -> echoes the physical path of a fresh scratch git
+# project outside the repo, holding no tasks/ yet.
+stage_auto_project() {
+    local dir; dir=$(ext_tmp)
+    git -C "$dir" init -q
+    (cd "$dir" && pwd -P)
+}
+
+# stage_auto_clean_project -> echoes a scratch project root whose tasks/
+# holds one clean live task and an empty archive/.
+stage_auto_clean_project() {
+    local root; root=$(stage_auto_project)
+    mkdir -p "$root/tasks/archive"
+    write_task "$root/tasks" "test_clean.md" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf '%s' "$root"
+}
+
+la1_autodiscovered_quiet_run_is_clean() {
+    local root; root=$(stage_auto_clean_project)
+    local ret; ret=$(run_lint_auto_in "$root" --quiet)
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (autodiscovered tree is clean)" "$rc" "0" || ok=false
+    assert_eq "reports clean for the project's tasks/" "$out" "clean — no issues in $root/tasks" || ok=false
+    $ok
+}
+
+la2_autodiscovered_from_subdir_finds_root_tasks() {
+    local root; root=$(stage_auto_clean_project)
+    mkdir -p "$root/src/deep"
+    local ret; ret=$(run_lint_auto_in "$root/src/deep" --quiet)
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 0 (subdirectory run resolves the root tasks/)" "$rc" "0" || ok=false
+    assert_eq "reports clean for the project's tasks/" "$out" "clean — no issues in $root/tasks" || ok=false
+    $ok
+}
+
+la3_autodiscovered_file_scope_lints_one_page() {
+    local root; root=$(stage_auto_clean_project)
+    local tasks="$root/tasks" now; now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    # A live neighbour and the archived page under test each carry a
+    # blocking invalid status; the scoped run must name only the latter.
+    emit "$tasks/test_live-defect.md" <<EOF
+---
+description: live page with a blocking defect
+scope: "test"
+created: $now
+updated: $now
+status: wip
+reported-by: Test User
+---
+
+# Live defect
+EOF
+    emit "$tasks/archive/test_archived-defect.md" <<EOF
+---
+description: archived page with a blocking defect
+scope: "test"
+created: $now
+updated: $now
+status: wip
+reported-by: Test User
+---
+
+# Archived defect
+EOF
+    local ok=true
+    # Unscoped, the live neighbour's defect surfaces, so its absence from
+    # the scoped run below is the scoping at work.
+    local ret; ret=$(run_lint_auto_in "$root" --quiet)
+    local rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit 1 (unscoped run sees the live defect)" "$rc" "1" || ok=false
+    assert_contains "unscoped run names the live neighbour" "$out" "test_live-defect.md" || ok=false
+
+    ret=$(run_lint_auto_in "$root" --file tasks/archive/test_archived-defect.md --quiet)
+    rc=${ret%%|*}; out=${ret#*|}
+    assert_eq "exit 1 (scoped blocking defect)" "$rc" "1" || ok=false
+    assert_contains "audits the project's tasks/" "$out" "audit of $tasks" || ok=false
+    assert_contains "names the scoped archived page" "$out" "archive/test_archived-defect.md" || ok=false
+    assert_contains "reports its invalid status" "$out" "invalid status" || ok=false
+    assert_not_contains "leaves the live neighbour out" "$out" "test_live-defect" || ok=false
+    $ok
+}
+
+la4_autodiscovered_missing_tasks_names_init() {
+    local root; root=$(stage_auto_project)
+    local ret; ret=$(run_lint_auto_in "$root" --quiet)
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit 1 (no tasks/ to lint)" "$rc" "1" || ok=false
+    assert_contains "names init_tasks.sh" "$out" "init_tasks.sh" || ok=false
+    assert_contains "names the project's tasks/ path" "$out" "$root/tasks" || ok=false
     $ok
 }
 
@@ -3452,12 +3611,18 @@ scenario d2 "discover: missing tasks/ signals exit 1"          d2_missing_tasks_
 scenario d3 "discover: project-marker walk from a subdir"      d3_marker_walk_from_subdir
 scenario d4 "discover: bad argument exits 2"                    d4_bad_argument_exits_two
 scenario d5 "discover: --help exits 0"                          d5_help_exits_zero
+scenario d6 "discover: CWD fallback without git or marker"     d6_cwd_fallback_without_git_or_marker
 
 scenario i1 "init: scaffolds tasks/ and archive/"              i1_scaffolds_tasks_and_archive
 scenario i2 "init: idempotent on an existing tree"             i2_idempotent_on_existing
 scenario i3 "init: refuses a non-directory target"            i3_refuses_non_directory_target
 scenario i4 "init: missing PATH argument exits 2"              i4_no_argument_exits_two
 scenario i5 "init: --help exits 0"                             i5_help_exits_zero
+
+scenario l-auto1 "lint: autodiscovered --quiet run is clean"    la1_autodiscovered_quiet_run_is_clean
+scenario l-auto2 "lint: autodiscovery from a subdir finds tasks/" la2_autodiscovered_from_subdir_finds_root_tasks
+scenario l-auto3 "lint: autodiscovered --file lints one page"   la3_autodiscovered_file_scope_lints_one_page
+scenario l-auto4 "lint: autodiscovery without tasks/ names init" la4_autodiscovered_missing_tasks_names_init
 
 scenario n1  "lint: bad filename blocks"                       n1_bad_filename_blocks
 scenario f1  "lint: missing frontmatter blocks"                f1_missing_frontmatter_blocks

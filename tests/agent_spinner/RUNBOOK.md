@@ -140,9 +140,10 @@ runs per query, graded at the 50%-over-three threshold.
 | 2026-11-14 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | same trimmed description, deployed copy, run 2 | 8/8 | 7/8 | 2/2 |
 | 2026-11-14 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | same trimmed description, deployed copy, run 3 | 7/8 | 7/8 | 2/2 |
 
+Run output stays local and is not committed, so the table rows above are the record.
+
 The 2026-11-10 Cursor run staged the trimmed description under the same
-scratch-home route; its result directory is
-`tests/trigger_evals/results/agent_spinner/2026-11-10_123721`.
+scratch-home route.
 
 The 2026-11-14 runs measured the deployed copy under `~/.cursor/skills`, whose
 description matched the source, against the 2026-11-10 baseline, on the same
@@ -152,15 +153,11 @@ counting how many of them agreed" loaded no skill, and the negative query "which
 tool names do I need for a read-only subagent on each harness we target?"
 loaded `agent_spinner`. With the description and build unchanged, the drift sits
 in the router behind `auto`; the trigger-drift task in the backlog owns the
-follow-up. The result directories are
-`tests/trigger_evals/results/agent_spinner/2026-11-14_165355`,
-`2026-11-14_165544`, and `2026-11-14_165720`.
+follow-up.
 
 The 2026-11-09 Cursor runs used the scratch-home route above, with the baseline
 run staging the parent commit's `SKILL.md` and the changed run staging the
-working tree's. Their result directories are
-`tests/trigger_evals/results/agent_spinner/baseline-cursor-20261109-135739` and
-`tests/trigger_evals/results/agent_spinner/changed-cursor-20261109-135850`.
+working tree's.
 
 **Deploy-time obligation.** The first `make deploy` that installs
 `agent_spinner` is the moment its description starts competing for triggers, so

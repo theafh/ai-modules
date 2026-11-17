@@ -1,7 +1,7 @@
 # Grader-authoring discipline — task-family Cursor eval summary
 
 Vendor: `cursor` (`agent -p`, model `auto`).
-Run directory: `tests/task/evals/workspace/run-20261004-222734`.
+Run label: `run-20261004-222734`.
 Command: `python3 tests/task/evals/run.py --vendor cursor`.
 Overall: **18/43** evals fully green; **291** behaviours passed, **25** behaviours failed.
 

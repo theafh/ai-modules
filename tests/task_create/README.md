@@ -13,7 +13,7 @@ directly.
 
 | Surface | Where | What it covers | Runner |
 | --- | --- | --- | --- |
-| Grader | `script_tests/` | `evals/grade.sh` verdicts on chosen task bodies: the one-label count reading only block-start lead-ins (heading-form labels included) and skipping a Context pointer to the Approach label, wrapped or not, the guardrail-bound why-open ground, both options named by uppercase markers or an either-or sentence, a non-`rich` styling path named by its substance, and an empty sandbox reporting zero files, each beside a control that still fails; plus every fixture's git identity and the eval runner's stop on a failed or empty stage through `tests/lib/check_stage_guard.py` | `bash tests/task_create/script_tests/run.sh` |
+| Grader | `script_tests/` | `evals/grade.sh` verdicts on chosen task bodies: the one-label count reading only block-start lead-ins (heading-form labels included) and skipping a Context pointer to the Approach label, wrapped or not, the guardrail-bound why-open ground, both options named by uppercase markers or an either-or sentence, a non-`rich` styling path named by its substance, the response's surface of the decision read by substance (an open decision, a decision for the user, or one left in the task file) and its hand-back of the choice read the same way (an ask to settle it now or leave it open or in the file), and an empty sandbox reporting zero files, each beside a control that still fails; plus every fixture's git identity and the eval runner's stop on a failed or empty stage through `tests/lib/check_stage_guard.py` | `bash tests/task_create/script_tests/run.sh` |
 | Runner surface | `evals/test_run.py` | the parallel contract (`--workers` defaults to 4, ids in `evals.json` file order, the `tests/task_create/workspace` run root, the `timing.json` fields the measurement reads, and `_execute` dispatching jobs through `tests/lib/eval_runner.run_jobs`), the runner's stop on a failed or empty stage, and a hermetic host-guard case whose two overlapping real jobs leave a temporary host mirror's `tasks/` tree untouched while a planted newer host file carrying one eval's fixture name fails that eval | `python3 tests/task_create/evals/test_run.py` |
 | Skill behavior | `evals/` | the base **Decide or label** rule and the `<prior_art>` Novel class as the create path applies them: reconcile silently, else label *and* surface; classify related-but-uncovering precedent as Novel and write the task (stage → agent → grade) | `python3 tests/task_create/evals/run.py` |
 
@@ -57,7 +57,10 @@ and the worker's reply carries only the decision under test.
 - **`related-precedent-novel`**: an archived finished task covered a sibling
   function in the same module and settled a pattern the new work reuses, while
   covering none of the requested work. The prior-art gate classifies that hit
-  as Novel, writes the task, and links the precedent in `## Context`.
+  as Novel, writes the task, and links the precedent in `## Context`. The
+  precedent is the only source of the stub rule and of its rejected
+  alternative, moving the import into `render_chart()`, since `TESTING.md`
+  holds only the standing gate, so the cross-link discipline keeps the link.
 
 ## Running
 

@@ -33,11 +33,19 @@ verdicts visible. A few seconds in total, no LLM cost.
 Stages a throwaway tree per scenario. Groups:
 
 - **`d*` discover_tasks.sh**: git-toplevel resolution, project-marker
-  walk, exit codes (0 when `tasks/` exists, 1 when not, 2 on bad arg),
-  `--help`. Staged **outside** the repo (`mktemp`) so the surrounding
-  ai-modules git tree doesn't shadow the discovery logic under test.
+  walk, the CWD fallback when neither applies, exit codes (0 when
+  `tasks/` exists, 1 when not, 2 on bad arg), `--help`. Staged
+  **outside** the repo (`mktemp`) so the surrounding ai-modules git tree
+  doesn't shadow the discovery logic under test.
 - **`i*` init_tasks.sh**: scaffolds `tasks/` + `archive/`, idempotency,
   refusal on a non-directory target, arg/exit handling, `--help`.
+- **`l-auto*` lint.py autodiscovery**: the linter run the way the hub
+  documents it, with no tasks path (`--quiet`, and
+  `--file tasks/archive/<name>.md --quiet`), so `tasks/` resolves through
+  `discover_tasks.sh` from the project root and from a subdirectory, a
+  relative `--file` lints only the named page, and a project without
+  `tasks/` exits 1 naming `init_tasks.sh`. Staged outside the repo like
+  the `d*` scenarios.
 - **`l*` lint.py link resolution**: task-dir and project-root fallback.
 - **`n*`/`f*`/`loc*`/`prov*`/`col*`/`md*`/`sc*`/`sz*`/`c*` lint.py rule set**:
   filename naming, frontmatter completeness/validity, provenance,

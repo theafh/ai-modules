@@ -9,7 +9,7 @@ Command:
 python3 tests/git_review/evals/run.py --workers 4 --force 18 41 2
 ```
 
-Run dir: `tests/git_review/workspace/run-20261101-004055`.
+Run label: `run-20261101-004055`.
 
 ## Overlapping wall-clock windows
 

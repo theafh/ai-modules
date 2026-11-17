@@ -440,14 +440,14 @@
       "id": "implement_boundary_cross",
       "skill": "task_implement",
       "prompt": "Implement the task tasks/report_colored-lines.md.",
-      "expected_output": "The task's Goal and an Acceptance item require coloring output inside src/theme.py, while its own `**Out of scope:**` block rejects editing src/theme.py — delivering the Goal crosses a declared boundary. task_implement's crossing backstop surfaces the contradiction with the conflicting passages quoted, applies the reconcile-or-surface disposition, and holds before the crossing edit (a headless run has no user to resolve it). The sandbox git tree stays clean and the task stays ready.",
+      "expected_output": "The task's Goal and an Acceptance item require coloring output inside src/theme.py, while its own `**Out of scope:**` block rejects editing src/theme.py — delivering the Goal crosses a declared boundary. task_implement's crossing backstop surfaces the contradiction with the conflicting passages quoted, applies the reconcile-or-surface disposition, and holds before the crossing edit (a headless run has no user to resolve it). Both halves of the surfaced fork land: the labeled **Open decision:** is written into the task body and the response surfaces it. No code changes; the only file change is that label and the task's `updated` bump, and the task stays ready.",
       "files": [
         "evals/fixtures/implement_boundary_cross/setup.sh"
       ],
       "expectations": [
         "The response surfaces the body-versus-boundary contradiction: the Goal and the 'format_line wraps its text in ANSI color codes' acceptance require editing src/theme.py, which the **Out of scope:** block rejects.",
         "The response quotes the conflicting passages, applies the base Decide or label reconcile-or-surface disposition, and holds rather than silently crossing the boundary or under-delivering.",
-        "No code edit and no status change: the sandbox git tree is unchanged, src/theme.py keeps `return text`, src/report.py is unchanged, and report_colored-lines stays status ready with no implemented-by."
+        "No code edit and no status change: the only file change is the labeled open decision in the task and its `updated` bump (exactly one Open decision: lead-in, plain or bold, added to the body, which otherwise only gains lines, and a frontmatter that moves only in `updated`), src/theme.py keeps `return text`, src/report.py is unchanged, and report_colored-lines stays status ready with no implemented-by."
       ]
     },
     {
@@ -494,7 +494,7 @@
         "The linter reports no repeated-link finding on the new file.",
         "The new file links the sibling exactly once.",
         "The **Out of scope:** block names the --yaml work and names the sibling as its owner, linked or in plain text.",
-        "Every section that names the sibling outside the **Out of scope:** block is the section that carries its link, so the body's account of the sibling sits in one section.",
+        "The one link sits outside the **Out of scope:** block, in the section that tells the sibling's background: whenever ## Context names the sibling (by its slug, as the sibling, or as the registry task), the link sits in ## Context. Other sections may name the sibling in plain text.",
         "created equals updated, because reorganizing the draft belongs to the creation and keeps its one timestamp.",
         "A created file that links the sibling from Context and again from its **Out of scope:** entry fails the eval.",
         "A created file that tells the sibling's background in Context without its link and links the sibling only from its **Out of scope:** entry fails the eval."

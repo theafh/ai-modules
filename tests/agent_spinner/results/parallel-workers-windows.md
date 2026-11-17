@@ -12,7 +12,7 @@ python3 tests/agent_spinner/evals/run.py --workers 4 --force \
   smoke_inline_body smoke_withheld_shell
 ```
 
-- Run dir: `tests/agent_spinner/workspace/run-20261106-230911`
+- Run label: `run-20261106-230911`
 - Pool: 4 workers (run header: `workers: 4`)
 - Graded summary: `graded: 2/2 evals passed (0 from cache)` — `--force` made
   both evals uncached, so both windows are real worker time.

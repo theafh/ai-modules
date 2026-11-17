@@ -44,7 +44,7 @@ PY
 ## Output
 
 ```text
-Run dir: <repo>/tests/guardrail_audit/evals/workspace/run-20261031-221046
+Run dir: <gitignored run dir> run-20261031-221046
 Worker vendor: cursor; command: agent -p; model: auto
   [presence_gate] FAIL — stage.sh failed for eval presence_gate (rc=3): fixture setup failed
 
@@ -64,7 +64,7 @@ The same command with one id shows one eval's stage failure contained to that
 eval:
 
 ```text
-Run dir: <repo>/tests/guardrail_audit/evals/workspace/run-20261031-221733
+Run dir: <gitignored run dir> run-20261031-221733
 Worker vendor: cursor; command: agent -p; model: auto
   [presence_gate] FAIL — stage.sh failed for eval presence_gate (rc=3): fixture setup failed
 

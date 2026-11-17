@@ -12,6 +12,18 @@
 # ## Context. Classifying it as Partially covered and stopping to ask is the
 # failure this eval catches.
 #
+# The precedent holds constraints no other source in the sandbox carries, so
+# the <markdown_policy> cross-link discipline keeps the link: reading it
+# changes how the new test is written. Its ## Approach carries the stub rule
+# (register the stub in sys.modules with unittest.mock.patch.dict, leave the
+# production import where it is, add no runtime dependency), and its
+# **Out of scope:** block rejects moving `import chartkit` into
+# render_chart() because external callers patch render.chartkit at module
+# scope, which the code cannot show. TESTING.md keeps only the standing gate.
+# An earlier version also put the stub rule in TESTING.md; reading the
+# precedent then changed nothing, and both vendors correctly left the
+# relatedness-only link out.
+#
 # The sandbox is a git repository with its own identity, so
 # `git config user.name` supplies `reported-by` without asking the user for a
 # name.
@@ -42,14 +54,6 @@ cat > "$proj/TESTING.md" <<'EOF'
 Every test runs offline, on a machine with no built artifacts and no optional
 dependencies installed. The standing gate is
 `python3 -m unittest discover -s tests`.
-
-## Reaching code behind a heavy module-scope import
-
-A module that imports an optional heavy dependency at module scope is imported
-under a stub: register the stub in `sys.modules` with
-`unittest.mock.patch.dict` before importing the module under test. Leave the
-production import where it is, and never add a runtime dependency just to make
-a module importable from a test.
 EOF
 
 mkdir -p "$proj/src/report" "$proj/tests"
@@ -122,14 +126,21 @@ without the optional chart backend being installed anywhere.
 
 \`src/report/render.py\` imports the chart backend at module scope, so
 importing the module at all pulls the dependency in, even for a test of a pure
-helper. The standing repo rules on testing settle how a test reaches such a
-module.
+helper, while the standing offline gate runs with no optional dependency
+installed. This task settles how a test reaches such a module.
 
 ## Approach
 
-Register a stub for the backend in \`sys.modules\` with
-\`unittest.mock.patch.dict\` before importing the module under test, and leave
-the production import untouched.
+A module that imports an optional heavy dependency at module scope is imported
+under a stub: register the stub in \`sys.modules\` with
+\`unittest.mock.patch.dict\` before importing the module under test. Leave the
+production import where it is, and never add a runtime dependency just to make
+a module importable from a test.
+
+**Out of scope:**
+
+- Moving \`import chartkit\` into \`render_chart()\`: external callers patch
+  \`render.chartkit\` at module scope, so the import stays put.
 
 ## Acceptance
 

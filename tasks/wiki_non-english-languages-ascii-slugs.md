@@ -2,7 +2,7 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T13:26:15Z
-updated: 2026-11-11T20:03:05Z
+updated: 2026-11-17T10:06:07Z
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -24,16 +24,16 @@ This is both a small feature (new linter check + autofix + language guidance) an
 
 ### Originating incident
 
-In a German personal-wiki session (2026-06-09, `myself` repo) a concept page was named `künstliche-evolution.md` with an **NFD-decomposed `ü`** (base `u` + combining diaeresis) in the slug. That broke two things:
+In a German-language personal wiki on 2026-06-09 a concept page was named `künstliche-evolution.md` with an **NFD-decomposed `ü`** (base `u` + combining diaeresis) in the slug. That broke two things:
 
 - **Cross-platform git sync (macOS ↔ Linux).** macOS's `core.precomposeUnicode` behaviour and NFD/NFC mismatch meant the byte sequence of the filename differed between the machine the wiki was created on (Linux) and the editing machine (Mac). The page showed up as deleted-and-re-added rather than a stable path.
 - **The wiki linter's byte comparison.** Path-matching logic drifted because the two normalization forms aren't byte-equal.
 
-The fix applied manually in that session is the convention this task formalizes: rename to a **pure-ASCII, ASCII-folded slug** (`kuenstliche-evolution.md`), keep the readable German title `Künstliche Evolution` in frontmatter/H1, and re-point all references (9 in that case). ASCII-folding eliminates the entire NFC/NFD bug class permanently instead of repairing each instance. The user flagged the linter side as "basically a bug, handle it separately later". This is that follow-up.
+The fix applied manually in that session is the convention this task formalizes: rename to a **pure-ASCII, ASCII-folded slug** (`kuenstliche-evolution.md`), keep the readable German title `Künstliche Evolution` in frontmatter/H1, and re-point all references (9 in that case). ASCII-folding eliminates the entire NFC/NFD bug class permanently instead of repairing each instance. The linter side was flagged as "basically a bug, handle it separately later". This is that follow-up.
 
 ### Why this is mostly formalizing an existing convention
 
-The user's wiki **already** uses content-language ASCII slugs (`steinbildhauerei`, `lebensziele`, …). The umlaut slug was the lone off-convention file. The current scaffold half-states the rule at [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md), in the `## Conventions` "File names:" bullet. Extend that bullet to "pure ASCII; transliterate non-ASCII", with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here:
+Wikis already following the convention use content-language ASCII slugs (`steinbildhauerei`, `lebensziele`, …); the umlaut slug was the lone off-convention file. The current scaffold half-states the rule at [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md), in the `## Conventions` "File names:" bullet. Extend that bullet to "pure ASCII; transliterate non-ASCII", with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here:
 
 > File names: lowercase, hyphens, no spaces (e.g., `transformer-architecture.md`)
 
@@ -67,7 +67,7 @@ Give the German transliteration map explicitly (`ä→ae, ö→oe, ü→ue, ß�
 ### Linter check
 
 - New `check_filename_ascii`: for every wiki page path (including `raw/<kind>/<slug>.md` sidecars, which are filenames too), if any character in the filename is non-ASCII, emit `Issue(SEV_WARN, "filename", page, …)`. Message names the path and suggests the folded slug. If feasible, additionally detect NFD-decomposed names (compare `unicodedata.normalize("NFC", name)` to the raw bytes) and call that out, since that was the exact failure mode.
-- `warn`, not blocking, per the user's instruction. Rationale to record: the non-ASCII filename doesn't break the linter run itself, it breaks downstream git sync; warn keeps the wiki usable while surfacing the issue. (If the user later wants it blocking, only the severity constant changes.)
+- `warn`, not blocking, because the non-ASCII filename leaves the linter run working while it breaks downstream git sync; warn keeps the wiki usable while surfacing the issue. (A later decision to make it blocking changes only the severity constant.)
 
 ### Auto_shaper remediation
 

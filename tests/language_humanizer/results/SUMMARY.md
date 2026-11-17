@@ -17,8 +17,7 @@ deliverable, and the decision on what to do about the miss belongs to the user.
   for which that holds.
 - **Instrument:** the thirteen-item `fidelity_padded` ledger, graded by
   `grade.py` (including the 340 ms check) and the thirteen-item judge rubric.
-- **Skill version:** fix iteration 4, the `SKILL.md` each pass recorded under
-  `workspace/run-20261008-122138/<scenario>/pass-<n>/sandbox/`.
+- **Skill version:** fix iteration 4.
 
 | Scenario | Pass rate | Diverging assertions |
 | --- | --- | --- |

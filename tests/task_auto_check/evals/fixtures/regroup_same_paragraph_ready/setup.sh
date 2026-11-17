@@ -58,6 +58,12 @@ def test_throttled_response_body_names_the_error():
     assert "too many requests" in response["body"]
 EOF
 
+# A root conftest.py puts the project root on sys.path, so a bare `pytest`
+# run imports src.api.throttle.
+cat > "$target/proj/conftest.py" <<'EOF'
+"""Put the project root on sys.path for pytest."""
+EOF
+
 cat > "$target/proj/docs/api.md" <<'EOF'
 # API reference
 
@@ -74,6 +80,17 @@ EOF
 
 # The sibling the target links twice. Its own body says nothing about the
 # target, so the regroup has no reason to touch this file.
+# The sibling keeps the window a module-level int, and the target's Acceptance
+# sets a non-default window and checks the literal header it must produce.
+# Both earlier forms drew a blocking gate issue on 2026-11-15. Claude's gate
+# (run-20261115-161511-79037) blocked a header compared with
+# str(THROTTLE_WINDOW_SECONDS), which still passes once the sibling's "thin
+# accessor" turns the name into a callable. Cursor's gate
+# (run-20261115-163040-30187) blocked a header pinned to "60", which a
+# hardcoded header also passes. Claude's citation re-gate
+# (run-20261115-181110-53623) then found that a plain assignment leaks 120
+# into later tests and that a bare `pytest` run cannot import src, so the
+# Acceptance names monkeypatch and the project carries a root conftest.py.
 cat > "$target/proj/tasks/api_throttle-window-config.md" <<'EOF'
 ---
 description: Move the throttle window constant out of src/api/throttle.py into the service config so operators can tune it without a deploy.
@@ -99,7 +116,8 @@ scope. Every caller reads the constant directly.
 ## Approach
 
 Read the window from the service config with the current value as its
-default, and leave the module-level name as a thin accessor.
+default, and keep `THROTTLE_WINDOW_SECONDS` a module-level int that the
+config sets at import, so every caller keeps reading it directly.
 
 ## Acceptance
 
@@ -115,7 +133,7 @@ EOF
 # move.
 cat > "$target/proj/tasks/api_retry-header.md" <<'EOF'
 ---
-description: Add a Retry-After header to API throttling responses so clients know when to retry after HTTP 429.
+description: Add and document a Retry-After header on API throttling responses so clients know when to retry after HTTP 429.
 scope: src/api
 created: 2026-01-01T00:00:00Z
 updated: 2026-01-01T00:00:00Z
@@ -123,7 +141,7 @@ status: ready
 reported-by: Harness
 ---
 
-# Retry-After header on throttling responses
+# Retry-After header on throttling responses and its API docs entry
 
 ## Goal
 
@@ -147,15 +165,17 @@ current 429 response with pytest.
 ## Approach
 
 Update `build_throttle_response()` to include `Retry-After` in its headers,
-valued as `THROTTLE_WINDOW_SECONDS` in seconds and read through the
-module-level name rather than inlining 60. Then document the header in the
+valued as `str(THROTTLE_WINDOW_SECONDS)`, the window in seconds as a decimal
+string like the existing header values, read through the module-level name
+rather than inlining 60. Then document the header in the
 `## Response headers` section of `docs/api.md`.
 
 ## Acceptance
 
-- A pytest test added to the existing `tests/test_throttle.py` confirms the
-  throttled response carries HTTP 429 and a `Retry-After` header value equal
-  to `THROTTLE_WINDOW_SECONDS`.
+- A pytest test added to the existing `tests/test_throttle.py` uses pytest's
+  `monkeypatch` fixture to set `THROTTLE_WINDOW_SECONDS` to `120`, and
+  confirms the throttled response carries HTTP 429 and a `Retry-After`
+  header value of `"120"`.
 - `docs/api.md` lists `Retry-After` under its `## Response headers` section.
 EOF
 

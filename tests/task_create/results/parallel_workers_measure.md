@@ -5,7 +5,7 @@
 - Command: `python3 tests/task_create/evals/run.py --workers 4 --force`
 - Vendor: `cursor` (the default; no `--vendor` flag)
 - Model: `auto`
-- Run directory: `tests/task_create/workspace/run-20261104-123523`
+- Run directory: gitignored local run output, label `run-20261104-123523` (not in the repository)
 - Log: `tests/task_create/results/parallel_workers_measure.log`
 - First job `started_at`: 2026-11-04T12:35:34.108+01:00
 - Last job `ended_at`: 2026-11-04T12:38:02.018+01:00
@@ -68,7 +68,7 @@ Verdict: MET.
 A subsequent `python3 tests/task_create/evals/run.py` with no flags replayed
 the four cached verdicts at the default worker count and printed
 `graded: 2/4 evals passed (4 from cache)` with one row per id in `evals.json`
-order, in `tests/task_create/workspace/run-20261104-123835`.
+order, in a second gitignored local run directory, label `run-20261104-123835`.
 
 Verdict: MET.
 

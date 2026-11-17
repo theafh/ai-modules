@@ -465,6 +465,14 @@ scenario s15 "blocking bar, scoped rounds, stall and compaction stops, and robus
 scenario s16 "inert worker: no eval grades PASS on an empty response" s16_inert_worker_probe_pin
 scenario s17 "live-task ordering forks resolve through dependency_signals evidence" s17_live_task_ordering_fork
 
+# evals/run.py reads a per-eval budget only from evals.json, so a RUNBOOK
+# timeout row without the matching key documents a budget no run receives.
+s18_timeout_table_matches_evals() {
+  python3 "$REPO_ROOT/tests/task_auto_check/script_tests/test_timeout_table.py"
+}
+
+scenario s18 "RUNBOOK per-eval timeout table matches the evals.json timeouts" s18_timeout_table_matches_evals
+
 log ""
 log "================================================================"
 log "  $((PASS + FAIL)) scenarios — $PASS pass, $FAIL fail"

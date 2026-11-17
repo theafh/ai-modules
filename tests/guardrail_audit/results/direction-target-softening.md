@@ -14,7 +14,6 @@ python3 tests/guardrail_audit/evals/run.py --force direction_target
 
 - Vendor: Cursor (`agent -p`, model `auto`), the default vendor with no
   `--vendor` flag
-- Run dir: `tests/guardrail_audit/workspace/run-20261110-174955-98230`
 - Graded summary: 1/1 evals passed (0 from cache)
 
 ## Graded checks

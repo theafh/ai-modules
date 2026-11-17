@@ -32,7 +32,9 @@
 #       As a fork inside ONE task it was correctly dismissed as a per-task
 #       readiness matter; the joint read only owns it once a sibling depends on
 #       the unsettled choice.
-#   (g) clean: tool_exit-code-doc.md has no cross-task or premise defect.
+#   (g) clean: docs_exit-code-table.md has no cross-task or premise defect.
+#       It documents code 2, `EXIT_CRASH` in tool/cli.py, which `run()`
+#       returns when `main()` raises, so the code it asks to document exists.
 #   (h) invalidated premise: tool_json-output.md claims there is no JSON
 #       output mode; tool/report_json.py exists and cli.py wires it.
 #   (i) Goal-altering repair: tool_drop-legacy-module.md wants tool/legacy.py
@@ -57,7 +59,7 @@
 # to alter a frozen Goal — turning a repairable alter finding into the
 # Goal-altering class (i) plants deliberately.
 #
-# Four plants had to be re-scoped after measured runs. Keep the reasons: each
+# Five plants had to be re-scoped after measured runs. Keep the reasons: each
 # one is a way a coherence fixture can look right on paper and plant nothing.
 #   * (e) first differed on WHICH defect each check reports (unresolved path
 #     versus non-matching glob). A reasonable assessor read that as a principled
@@ -86,12 +88,22 @@
 #     cross-task one (l) exists to plant. Its Acceptance now rests on the bar
 #     counting info findings, which is exactly what the accepted-info exception
 #     takes away.
+#   * (g) first asked to document "the reserved code a checker crash returns"
+#     while tool/cli.py reserved none: exit_code returned only 0 or 1 and an
+#     uncaught exception exited 1 like a finding. A premise check correctly
+#     read the "clean" task as invalidated (Claude run 2026-11-15). The code
+#     now reserves EXIT_CRASH = 2 behind a run() wrapper, and the task names
+#     it, while the claims (b), (h), (i), (k), and (l) make about tool/cli.py
+#     still hold: it calls reachable_clean_bar, wires report_json, renders
+#     non-JSON runs through legacy.render_compat, prints one line per finding
+#     and nothing after them, and offers no way to narrow the output.
 #
-# The lesson under three of these four: a coherence plant is only real when the
-# CODE leaves the task something to do. Check every premise against the seeded
-# artifacts before trusting the prose — an already-satisfied premise turns the
-# intended cross-task finding into a defer candidate and silently unplants
-# whatever depended on it.
+# The lesson under three of the first four: a coherence plant is only real when
+# the CODE leaves the task something to do. Check every premise against the
+# seeded artifacts before trusting the prose — an already-satisfied premise
+# turns the intended cross-task finding into a defer candidate and silently
+# unplants whatever depended on it. (g) is the mirror case: a premise the code
+# never made true turns a clean task into a defer candidate just as surely.
 #
 # The backlog is seeded lint-clean and git-committed, so any post-run diff or
 # lint finding is attributable to the run. The prompt asks for the assessment
@@ -164,6 +176,21 @@ def main(argv, findings):
 
 def exit_code(findings):
     return 0 if reachable_clean_bar(findings) else 1
+
+
+# Reserved for a checker crash, so a caller can tell a crash apart from a run
+# that found something. exit_code never returns it for a finding.
+EXIT_CRASH = 2
+
+
+def run(argv, findings):
+    """Print one run's output and return its exit code."""
+    try:
+        output = main(argv, findings)
+    except Exception:
+        return EXIT_CRASH
+    print(output)
+    return exit_code(findings)
 EOF
 
 # Five check modules: path_check and glob_check carry a module docstring,
@@ -649,17 +676,20 @@ caller can tell a crash apart from a run that found something.
 
 ## Context
 
+[tool/cli.py](../tool/cli.py) reserves code 2, \`EXIT_CRASH\`, which \`run()\`
+returns when \`main()\` raises, while \`exit_code()\` returns only 0 or 1.
 [docs/exit-codes.md](../docs/exit-codes.md) documents codes 0 and 1 and stops
 there.
 
 ## Approach
 
-Add one row to the table in docs/exit-codes.md for the reserved crash code and
-state that it is never returned for a finding.
+Add one row to the table in docs/exit-codes.md for code 2, \`EXIT_CRASH\` in
+\`tool/cli.py\`, and state that it is never returned for a finding.
 
 ## Acceptance
 
-- The table in docs/exit-codes.md carries a third row for the crash code.
+- The table in docs/exit-codes.md carries a third row for code 2, the crash
+  code.
 - The table states that the crash code is never returned for a finding.
 EOF
 

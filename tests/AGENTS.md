@@ -148,8 +148,12 @@ the deployment, so that fragment fails closed too. A `plugins/` or `styles/`
 path behind such a variable stays unchecked for artefacts, because a sandbox
 fixture tree can share its shape; a path that still carries an unexpanded
 variable also stays unflagged for `checkout_unread`, because it cannot be
-placed. Each run probes authentication once inside a micro-deployment
-environment before its first pass.
+placed. The worker also gets no pointer to the checkout to follow: the
+micro-deployment removes the deploy script's log from the scratch home before
+any worker starts, because each log line names an artefact's source path inside
+the checkout, and the worker environment drops `OLDPWD` and sets `PWD` to the
+worker's working directory. Each run probes authentication once inside a
+micro-deployment environment before its first pass.
 
 Each runner declares the artefacts its workers may load once, as an
 `ARTEFACTS` list or an `artefacts_for()` function. Those names feed the deploy

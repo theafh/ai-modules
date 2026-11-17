@@ -9,7 +9,7 @@ with no `--vendor` flag.
 python3 tests/task_fix/evals/run.py --workers 4 --force
 ```
 
-Run directory: `tests/task_fix/workspace/run-20261105-073044-34294/`. Every id
+Run started 2026-11-05 07:30:44 in a fresh timestamped run directory. Every id
 in `evals.json` was uncached (the run printed `0 from cache`), the runner
 graded `4/4 evals passed`, and it exited 0.
 

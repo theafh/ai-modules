@@ -2,7 +2,7 @@
 description: "Commit the plugin work on the repository's main branch, with the temporary handoff note removed before the commit."
 scope: harness-plugins/opencode_v2
 created: 2026-11-05T14:07:12Z
-updated: 2026-11-05T20:22:00Z
+updated: 2026-11-17T10:50:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -40,6 +40,6 @@ Do not push to a work remote. Do not publish until the user asks.
 - The commit contains the plugin source, tests, package manifests, READMEs, the
   harness repository rules, `.gitignore`, and the tasks.
 - `HANDOFF.md` is absent from the working tree and from the commit.
-- The local identity is `Andreas Hoffmann <me@theafh.net>`.
+- The commit's author identity is the operator's own, as `git config user.name` and `user.email` report it, and not a work identity.
 - The working branch is `main` and is ahead of the remote by that commit.
 - No work remote or work identity is configured.

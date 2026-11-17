@@ -17,7 +17,7 @@ set -euo pipefail
 #   #tool                     Section heading
 #   disallow:path             Relative path to exclude for that tool
 #   replace:path VAR=value    Replace $VAR$ in matching deployed copies
-#   style:<name>              Active output-style name for that tool
+#   style:<name>              Active output-style name for that tool (read by the Claude arm only)
 #
 # Features:
 #   --global         Deploy into global config dirs (explicit mode)

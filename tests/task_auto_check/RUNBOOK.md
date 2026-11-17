@@ -145,7 +145,9 @@ lowered a value.
 
 `evals/run.py` takes a per-eval `"timeout"` from `evals.json`, falling back to
 its `--timeout` default. These evals declare their own budget to cover deeper
-repair paths and additional verifier or gate calls:
+repair paths and additional verifier or gate calls. Every row here carries the
+same budget as that eval's `evals.json` key, and every key has a row; the
+deterministic suite fails when the two disagree:
 
 | Eval | Budget | Why |
 | --- | --- | --- |
@@ -157,6 +159,7 @@ repair paths and additional verifier or gate calls:
 | `relay_by_path` | 3600s | Full nested repair loop with relay grading and a dry run each round; raised from the 2305s default for dry-run wall-clock headroom. |
 | `stray_hunk_reverted` | 3600s | Fault-injected apply plus corrected delta under a dry run each round; raised from the 2305s default after a dry-run rollout timeout. |
 | `fidelity_rejects_drift` | 3600s | Fidelity-checked repair under a dry run each round; raised from the 2305s default after a dry-run rollout timeout. |
+| `no_verified_fix` | 3600s | Three repair rounds under a dry run each round before the no-verified-fix stop; raised from the 2305s default after a converged 2026-11-15 Cursor draw was cut off at that ceiling while composing its report. |
 | `guard_rebaseline_after_gate` | 3600s | Post-gate re-baseline under a dry run each round; raised from the 2305s default after a dry-run rollout timeout. |
 | `interaction_scan_surfaces` | 3600s | Interaction-scan repair under a dry run each round; raised from the 2305s default after a dry-run rollout timeout. |
 | `immediate_ready_citations_survive` | 3600s | Immediate-ready citation path with a pre-gate dry run; raised from the 2305s default for dry-run wall-clock headroom. |

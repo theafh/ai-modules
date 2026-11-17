@@ -9,7 +9,7 @@ Command:
 python3 tests/git_review/evals/run.py --force 41
 ```
 
-Run dir: `tests/git_review/workspace/run-20261102-210402`.
+Run label: `20261102-210402` (eval 41 `--force` run).
 
 `agent --version`:
 

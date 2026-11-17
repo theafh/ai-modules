@@ -2,7 +2,7 @@
 description: Replace the diff-jargon term hunk with plain English across the auto_shaper_wiki agent, rename its two hunk tags, and update the Layer 1 contract test and live tasks that pin the old wording.
 scope: plugins/knowledge_management
 created: 2026-08-24T23:08:56Z
-updated: 2026-11-12T18:32:22Z
+updated: 2026-11-17T10:06:07Z
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -65,7 +65,7 @@ The rename sweeps both live tasks above; whichever lands second refreshes the na
 - The classification rule and the example-kinds list keep the behaviour they had before the rename: the four classification outcomes and the open-list framing of the example kinds read the same, with only the vocabulary changed. No rewritten passage reads `diff diff` or `deletion diff blocks`, and `diff block` stays the full compound rather than a bare `block` at every rewritten site.
 - The `require(...)` call in `tests/wiki/layer1/agent_contract.py` whose failure message read `template reads are not hunk-scoped` is superseded in place, so its pattern matches the rewritten agent wording and its failure message names the new vocabulary rather than the old.
 - The default `tests/wiki/run_all.sh` Layer 1 run passes against the rewritten agent, with the template-read contract among the checks that pass rather than skipped.
-- `git grep -ni "hunk" -- tests/wiki` returns no match over the harness's tracked authored files, so the Layer 1 harness carries neither the old pinned regex wording nor the old `hunk-scoped` failure message. `git grep` reads the working-tree content of tracked files, so the edited `tests/wiki/layer1/agent_contract.py` is measured before it is committed. The selector is a tracked-file search because a plain recursive `grep` over `tests/wiki/` also walks the regenerated, gitignored run output under `tests/wiki/layer2/workspace/` — snapshot copies of the pre-rename agent — and the ignored `__pycache__` bytecode, none of which this change produces or cleans up.
+- `git grep -ni "hunk" -- tests/wiki` returns no match over the harness's tracked authored files, so the Layer 1 harness carries neither the old pinned regex wording nor the old `hunk-scoped` failure message. `git grep` reads the working-tree content of tracked files, so the edited `tests/wiki/layer1/agent_contract.py` is measured before it is committed. The selector is a tracked-file search because a plain recursive `grep` over `tests/wiki/` also walks the regenerated run output the harness keeps out of git — snapshot copies of the pre-rename agent — and the ignored `__pycache__` bytecode, none of which this change produces or cleans up.
 - `grep -rlE '<hunk_classification>|<common_hunk_kinds>' tasks/*.md | grep -v 'tasks/wiki_diff-block-vocabulary.md'` returns no live task, so every other live task that quoted the old tag names now quotes the new ones, and each file edited in that sweep carries a bumped `updated`. The broader `grep -rniE "\bhunk" tasks/*.md` may still match unrelated live tasks that use the word in their own diff vocabulary.
 - Every live task refreshed in that sweep keeps its `status` and its Goal, Approach, and Acceptance semantics unchanged, so the sweep reads as a rename and never as a re-scope.
 - The sweep stays bounded: the change's file set contains no path under `tasks/archive/` and does not contain `CHANGELOG.md`.

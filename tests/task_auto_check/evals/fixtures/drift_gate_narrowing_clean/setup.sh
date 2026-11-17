@@ -8,6 +8,34 @@ source "$HERE/../_common.sh"
 target="${1:?target dir required}"
 init_proj "$target"
 
+mkdir -p "$target/proj/src/api" "$target/proj/docs"
+
+# The files the Context names exist, so the gate's premise check holds and
+# the eval measures the freeze-time drift check on an ordinary gate path.
+cat > "$target/proj/src/api/search.py" <<'EOF'
+"""Public API search endpoint."""
+
+PAGE_SIZE = 20
+
+
+def search(index, query):
+    """Return the first page of results matching the query."""
+    matches = [item for item in index if query.lower() in item["title"].lower()]
+    return {"results": matches[:PAGE_SIZE]}
+EOF
+
+cat > "$target/proj/docs/api.md" <<'EOF'
+# API reference
+
+## Search
+
+`GET /search` returns the first page of results for a query.
+
+| Parameter | Description |
+| --- | --- |
+| `q` | Case-insensitive text matched against result titles. |
+EOF
+
 cat > "$target/proj/tasks/api_search-results.md" <<'EOF'
 ---
 description: Add cursor pagination and CSV export for public API search results.

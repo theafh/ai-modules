@@ -454,6 +454,11 @@ def test_run_worker_passes_launch_path() -> None:
                 finally:
                     subprocess.run = real_run  # type: ignore[assignment]
                 env = seen[-1]
+                check(
+                    f"{vendor_name} worker PWD is its working directory",
+                    env.get("PWD") == str(md.sandbox_project)
+                    and "OLDPWD" not in env,
+                )
                 if vendor_name == "cursor":
                     check(
                         "cursor worker carries its launch PATH for the profiles",
@@ -480,6 +485,8 @@ def test_worker_env_overlays() -> None:
                     "HOME",
                     "CLAUDE_CONFIG_DIR",
                     "CLAUDE_SECURESTORAGE_CONFIG_DIR",
+                    "PWD",
+                    "OLDPWD",
                 }
                 preserved = [
                     key
@@ -2548,6 +2555,104 @@ def test_sub_agent_report_extraction() -> None:
         )
 
 
+def files_naming_checkout(*roots: pathlib.Path) -> list[str]:
+    """Every file under ``roots`` whose name or bytes carry the checkout path.
+
+    The walk follows no symlink, so the scratch home's ``Library`` links into
+    the real home stay out of it. A symlink that resolves inside the checkout
+    counts as naming it, because a worker that follows the link reads there.
+    """
+
+    needle = str(REPO_ROOT).encode()
+    hits: list[str] = []
+    for root in roots:
+        for dirpath, dirnames, filenames in os.walk(root):
+            for name in dirnames + filenames:
+                path = pathlib.Path(dirpath) / name
+                if str(REPO_ROOT) in str(path):
+                    hits.append(str(path))
+                    continue
+                if path.is_symlink():
+                    try:
+                        path.resolve().relative_to(REPO_ROOT)
+                    except ValueError:
+                        continue
+                    hits.append(str(path))
+                    continue
+                if name in filenames and path.is_file():
+                    if needle in path.read_bytes():
+                        hits.append(str(path))
+    return hits
+
+
+def test_no_checkout_path_reaches_worker() -> None:
+    """Neither the scratch home nor the worker env names the checkout.
+
+    Each deploy-log line carries an artefact's absolute source path inside the
+    checkout, and the runner's PWD and OLDPWD name the directory it was
+    launched from. A Cursor worker once listed its scratch home, read that
+    log, and reached the checkout's fixtures, so the log goes before any
+    worker starts and both variables are rewritten.
+    """
+
+    saved = {name: os.environ.get(name) for name in ("PWD", "OLDPWD")}
+    os.environ["PWD"] = str(REPO_ROOT)
+    os.environ["OLDPWD"] = str(REPO_ROOT / "tests")
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            sandbox = pathlib.Path(td) / "proj"
+            sandbox.mkdir()
+            for vendor_name in ("cursor", "claude"):
+                with micro_deploy.micro_deploy(
+                    vendor_name,
+                    ["language_humanizer", "auto_shaper_wiki"],
+                    sandbox,
+                    preflight=False,
+                ) as md:
+                    check(
+                        f"{vendor_name} deploy log is gone before the worker",
+                        not (md.scratch_home / "deployed_artefacts.log").exists(),
+                    )
+                    hits = files_naming_checkout(md.scratch_home, md.sandbox_project)
+                    check(
+                        f"{vendor_name} no scratch-home or sandbox file names the checkout"
+                        + (f" (found {hits[:3]})" if hits else ""),
+                        not hits,
+                    )
+                    check(
+                        f"{vendor_name} worker env carries no OLDPWD",
+                        "OLDPWD" not in md.env,
+                    )
+                    check(
+                        f"{vendor_name} worker env PWD is the sandbox project",
+                        md.env.get("PWD") == str(md.sandbox_project),
+                    )
+                    check(
+                        f"{vendor_name} no worker env value names the checkout",
+                        not any(
+                            str(REPO_ROOT) in value for value in md.env.values()
+                        ),
+                    )
+            # Control: the scan flags a planted log line and a link into the
+            # checkout, so a clean result above is not a scan that sees nothing.
+            planted = pathlib.Path(td) / "planted"
+            planted.mkdir()
+            (planted / "deployed_artefacts.log").write_text(
+                f"x\tclaude\tskill\t{REPO_ROOT}/plugins/x/SKILL.md\n"
+            )
+            (planted / "link").symlink_to(REPO_ROOT / "tests")
+            check(
+                "control: the scan flags a planted checkout path and link",
+                len(files_naming_checkout(planted)) == 2,
+            )
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
 def main() -> int:
     print("test_micro_deploy")
     test_layouts_and_path_map()
@@ -2556,6 +2661,7 @@ def main() -> int:
     test_login_profiles_restore_worker_path()
     test_run_worker_passes_launch_path()
     test_worker_env_overlays()
+    test_no_checkout_path_reaches_worker()
     test_stream_parser_and_provenance()
     test_stream_parser_vendor_neutral_records()
     test_classifier_cases()

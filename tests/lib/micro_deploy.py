@@ -299,9 +299,17 @@ def _deployed_path(
 
 
 def _build_env(
-    vendor_name: str, scratch_home: pathlib.Path
+    vendor_name: str,
+    scratch_home: pathlib.Path,
+    sandbox_project: pathlib.Path,
 ) -> dict[str, str]:
     env = vendor.worker_env(vendor_name)
+    # The runner's own PWD and OLDPWD name the checkout it was launched from,
+    # and a worker that echoes either one learns where the repository lives.
+    # The worker starts in the sandbox project, so PWD names that directory
+    # and OLDPWD is dropped.
+    env.pop("OLDPWD", None)
+    env["PWD"] = str(sandbox_project)
     if vendor_name == "cursor":
         env["HOME"] = str(scratch_home)
     else:
@@ -479,13 +487,17 @@ def micro_deploy(
                 home=scratch_home,
                 log_path=log_path,
             )
+            # Each log line carries the artefact's absolute source path inside
+            # the checkout, and the worker can list its scratch home, so the
+            # log goes before any worker starts.
+            log_path.unlink(missing_ok=True)
 
             for name, art_type, _source in typed:
                 path_map[name] = _deployed_path(
                     chosen.name, name, art_type, scratch_home, sandbox_project
                 )
 
-        env = _build_env(chosen.name, scratch_home)
+        env = _build_env(chosen.name, scratch_home, sandbox_project)
         handle = MicroDeployHandle(
             vendor=chosen.name,
             scratch_home=scratch_home,
@@ -1673,6 +1685,7 @@ def run_worker(
     )
     workdir = pathlib.Path(cwd or deploy.sandbox_project)
     env = dict(deploy.env)
+    env["PWD"] = str(workdir)
     if chosen.name == "cursor":
         # Taken at launch, so a PATH the runner changed after micro_deploy
         # (a stub `gh` first, say) is the one the login profiles put back.

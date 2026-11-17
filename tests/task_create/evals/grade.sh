@@ -239,6 +239,23 @@ label_window() { label_lines "$1" | tr '\n' ' ' | tr -s ' '; }
 # unrelated either-or later in the section add no options.
 EITHER_OR_CLAUSE='(^|[^a-z])either[[:space:]]([^.]|\.[^[:space:]])*[^a-z]or[[:space:]]'
 
+# COMMA_OR_CLAUSE matches the bare two-path form "<path one>, or <path two>"
+# in the lead-in's first clause, as the Cursor draw recorded in
+# tests/task_create/workspace/run-20261115-074230/labeled-why-open/ wrote it:
+# "Open decision: after a run of consecutive failures for one endpoint,
+# auto-disable that endpoint so later deliveries skip it, or keep calling it
+# on every future send with no disable path — …". Test Integrity: a grader fix
+# (broadening to substance); a reader counts two options there, and the old
+# count read zero because the sentence carries no "either", marker, or bullet.
+# lead_in_first_clause cuts the lead-in at its first sentence end, dash,
+# semicolon, or default/why-open marker, so a one-path label whose default or
+# reason later says "…, or …" adds no option.
+COMMA_OR_CLAUSE=',[[:space:]]+or[[:space:]]+[a-z]'
+lead_in_first_clause() {
+  lead_in_blocks "$1" \
+    | sed -E 's/(—|–|[[:space:]]-[[:space:]]|;|suggested|why open|default:).*//; s/[.!?]([[:space:]].*|$)//'
+}
+
 # lead_in_blocks <file> -> the "L" lines of lead_in_kinds, lowercased, with the
 # "either way" idiom removed: the label's own lead-in block, the one place an
 # either-or names the label's two paths.
@@ -270,6 +287,7 @@ enum_count() {
   alpha=$(grep -oiE '\([a-d1-4]\)' <<<"$w" | sort -uf | wc -l | tr -d ' ')
   blocks=$(lead_in_blocks "$1")
   if grep -qE -- "$EITHER_OR_CLAUSE" <<<"$blocks"; then either_or=2; fi
+  if grep -qE -- "$COMMA_OR_CLAUSE" <<<"$(lead_in_first_clause "$1")"; then either_or=2; fi
   printf '%s\n' "$bullets" "$opts" "$alpha" "$either_or" | sort -rn | head -1
 }
 
@@ -280,8 +298,12 @@ enum_count() {
 # Anchoring on that subject keeps a bare reason-connective search from matching
 # "Suggested default: (a) stateless, because it keeps this task scoped ..." —
 # the default explaining itself — and so passing a label whose why-open clause
-# was deleted outright. Evidence-phrased clauses ("the evidence base does not
-# settle it", "this is the user's call") satisfy the same part, and so does the
+# was deleted outright. A clause naming what cannot settle the fork, such as
+# "the codebase and standing rules cannot settle" from the Cursor draw in
+# tests/task_create/workspace/run-20261115-074230/labeled-why-open/, counts
+# too (Test Integrity: a grader fix, broadening to substance).
+# Evidence-phrased clauses ("the evidence base does not settle it", "this is
+# the user's call") satisfy the same part, and so does the
 # guardrail-bound ground stated in its own terms: "guardrail-bound" followed
 # directly by its own clause saying every or each path or option crosses a
 # boundary, rewrites a guardrail document, or routes around one, as in
@@ -296,7 +318,7 @@ enum_count() {
 # inside one sentence while letting a file name such as `CHARTER.md` sit in it.
 WHY_OPEN_GUARDRAIL_BOUND='guardrail.?bound[)*_]*[[:space:]]*(:|,|—|–|-)?[)*_]*[[:space:]]*((because|since|as)[[:space:]]+)?(every|each|all|both|any)[[:space:]]+([a-z-]+[[:space:]]+){0,2}(path|option|route|choice)s?([^.;]|\.[^[:space:]])*(cross|rewrit|rout|break|violat)'
 why_open_clause() {
-  window_has "$1" "why open|why it is open|why this is open|open because|genuinely open|this fork|the fork (is|rests|remains|stays)|this decision (is|rests|remains|stays)|the decision (is|rests|remains|stays)|left (for|to) the user|user-owned|user.?s call|evidence (base )?(does not|cannot|fails to|will not) settle|evidence.*(silent|insufficient)|tiers.*(silent|do not settle|cannot settle)|does not settle|$WHY_OPEN_GUARDRAIL_BOUND"
+  window_has "$1" "why open|why it is open|why this is open|open because|genuinely open|this fork|the fork (is|rests|remains|stays)|this decision (is|rests|remains|stays)|the decision (is|rests|remains|stays)|left (for|to) the user|user-owned|user.?s call|evidence (base )?(does not|cannot|fails to|will not) settle|evidence.*(silent|insufficient)|tiers.*(silent|do not settle|cannot settle)|does not settle|(cannot|can ?not|can'?t|could not|will not) (settle|decide)|$WHY_OPEN_GUARDRAIL_BOUND"
 }
 window_has() { label_window "$1" | grep -qiE -- "$2"; }
 
@@ -333,15 +355,39 @@ response_readable() { [[ -s "$RESPONSE" ]]; }
 response_has() {
   response_readable && unwrapped "$RESPONSE" | grep -qiE -- "$1"
 }
-response_surfaces_decision() { response_has 'open decision'; }
+# Test Integrity: a grader fix (broadening to substance). The surface names
+# the decision as the user's to make; "open decision" is one wording of that,
+# and "Decision for you:" or a decision left in the task file are others. The
+# captured Claude run
+# tests/task_create/workspace/run-20261115-120209/guardrail-bound-surface/
+# opened a "**Decision for you:**" section and said the decision "is currently
+# left in the task file", and the literal match failed it. A turn that settled
+# the fork itself names none of these forms, and ../script_tests/run.sh pins
+# that it still fails.
+response_surfaces_decision() {
+  response_has 'open decision|decision (is )?for you|your (decision|call|choice)|(needs|awaits) your (decision|input|call|choice)|left (open|undecided)|left (it )?in the (task )?file'
+}
 # The surface is an ask, not a mention: the turn names a suggested path and
 # hands the choice back. Match the substance rather than step 9's literal
 # "resolve it now or defer it" phrasing — a turn that offers the same choice in
 # its own words has met the obligation, and grading the wording would score
 # surface form over what the rule requires.
 response_names_suggestion() { response_has 'suggest|default|recommend'; }
+# Test Integrity: a grader fix (broadening to substance). The old alternation
+# matched none of "it's up to you. Do you want to settle it now (I'd update the
+# task to match), or leave it open for the readiness check?", a turn that hands
+# the choice back in its own words. The added forms are the ask itself: settle
+# it, leave it open, up to you, do/would you want/like/prefer, and which option
+# or one do/would you pick. Evidence: the captured Claude run
+# tests/task_create/workspace/run-20261115-011438/labeled-why-open/, pinned in
+# ../script_tests/run.sh beside a response with no ask that still fails.
+# "settling this now" and "leave it in the file" joined the same alternation
+# after the captured Claude run
+# tests/task_create/workspace/run-20261115-120209/guardrail-bound-surface/
+# offered "I recommend settling this now ... Or you can leave it in the file
+# for task_check" and failed.
 response_invites_the_user() {
-  response_has "resolve|defer|say so|let me know|tell me|your call|if you (want|prefer|would rather|take|choose)"
+  response_has "resolve|defer|say so|let me know|tell me|your call|if you (want|prefer|would rather|take|choose)|settl(e|ing) (it|this)|leave it (open|in)|up to you|(do|would) you (want|like|prefer)|which (option|one) (do|would) you"
 }
 
 file_untouched() {

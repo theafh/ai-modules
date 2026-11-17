@@ -15,6 +15,9 @@ RULES = {
     "header": ("- Header preservation rule: Preserve the existing `Content-Type` "
                "header unchanged."),
     "body": "- Body preservation rule: Preserve the existing response body unchanged.",
+    # fidelity_rejects_drift's frozen Acceptance item, which promises more
+    # than the per-user Goal and therefore routes to the user when kept.
+    "abuse": "- The API is protected from abusive clients.",
 }
 
 
@@ -30,10 +33,27 @@ def field(text: str, name: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+def leading_token(value: str) -> str:
+    # A helper may write prose after an enum value ("confirmed. Search
+    # mechanisms used: ...", "confirmed (search mechanisms: ...)", or
+    # "**clean** - no finding"), so compare the value's leading word with
+    # markdown and trailing punctuation stripped.
+    match = re.match(r"[a-z0-9]+(?:[_-][a-z0-9]+)*",
+                     re.sub("[*`\"']", "", value).strip().lower())
+    return match.group(0) if match else ""
+
+
 def returns(relay: pathlib.Path, helper: str) -> list[pathlib.Path]:
+    # Only a helper's own return files count: r<N>-<helper>.txt, its
+    # r<N>-<helper>-<k>.txt re-call, or r<N>-reviewer-<stance>-<issue>.txt.
+    # An orchestrator snapshot such as r<N>-post-gate-baseline.txt is no
+    # gate return even though it shares the r<N>-gate prefix.
+    name = (r"r\d+-reviewer-.+\.txt" if helper == "reviewer"
+            else rf"r\d+-{re.escape(helper)}(?:-\d+)?\.txt")
     return sorted(
         (path for path in relay.glob(f"r*-{helper}*.txt")
-         if not path.name.endswith("-prompt.txt")),
+         if not path.name.endswith("-prompt.txt")
+         and re.fullmatch(name, path.name)),
         key=lambda path: path.stat().st_mtime_ns,
     )
 
@@ -43,11 +63,15 @@ def verdict(path: pathlib.Path) -> str:
     return text.split("# auto_gate_task verdict", 1)[-1]
 
 
+def isolation_confirmed(path: pathlib.Path) -> bool:
+    value = field(section(verdict(path), "Evidence"), "isolation")
+    return leading_token(value) == "confirmed"
+
+
 def accepted_gates(relay: pathlib.Path) -> list[pathlib.Path]:
     # An isolation replacement is the same assessment, even though both
     # physical returns remain in the relay for inspection.
-    return [path for path in returns(relay, "gate")
-            if field(section(verdict(path), "Evidence"), "isolation") == "confirmed"]
+    return [path for path in returns(relay, "gate") if isolation_confirmed(path)]
 
 
 def section(text: str, name: str) -> str:
@@ -112,10 +136,9 @@ def rule_decisions(relay: pathlib.Path, rule: str) -> bool:
             continue
         # An issue-only label inherits its subject from this round's gate.
         round_prefix = path.name.split("-", 1)[0]
-        gates = sorted(relay.glob(f"{round_prefix}-gate*.txt"))
         gate_text = "\n".join(
-            section(verdict(gate), "Issues") for gate in gates
-            if not gate.name.endswith("-prompt.txt")
+            section(verdict(gate), "Issues") for gate in returns(relay, "gate")
+            if gate.name.startswith(f"{round_prefix}-")
         )
         gate_issues = re.split(r"(?m)^\s*(?=\d+[.)]\s)", gate_text)
         touched = False
@@ -233,6 +256,15 @@ def prompts_isolated(proj: pathlib.Path, relay: pathlib.Path, stem: str) -> bool
     for prompt in prompts:
         text = prompt.read_text()
         scoped = scoped_inputs(relay, prompt)
+        # A stored run re-graded from a copy names the sandbox it ran in, which
+        # is no longer proj. The project root still counts as admitted when it
+        # is the root of the target task path the same prompt names.
+        task_suffix = f"/tasks/{stem}.md"
+        named_roots = {
+            token[: -len(task_suffix)]
+            for token in re.findall(r"(?:/[^\s,;/]+){2,}", text.replace("`", ""))
+            if token.endswith(task_suffix)
+        }
         residual = []
         for line in text.splitlines():
             if not line.strip() or line.strip().startswith("```"):
@@ -253,6 +285,7 @@ def prompts_isolated(proj: pathlib.Path, relay: pathlib.Path, stem: str) -> bool
                 allowed = (
                     is_project_root
                     or token == str(proj)
+                    or token in named_roots
                     or token.endswith(f"tasks/{stem}.md")
                     or token.endswith("/task_check/SKILL.md")
                     or token.endswith("/task/SKILL.md")
@@ -323,8 +356,7 @@ def proposal_prompts(relay: pathlib.Path) -> bool:
         # The latest assessment before this proposal call is authoritative.
         # An isolation replacement leaves the discarded return on disk, but
         # does not make that discarded evidence a verifier input.
-        if (not gates or not reviewers or
-                field(section(verdict(gates[-1]), "Evidence"), "isolation") != "confirmed"):
+        if not gates or not reviewers or not isolation_confirmed(gates[-1]):
             return False
         sources = [gates[-1], *reviewers]
         if any(source.name not in text for source in sources):
@@ -338,6 +370,154 @@ def proposal_prompts(relay: pathlib.Path) -> bool:
         if any(marker in text.lower() for marker in markers):
             return False
     return True
+
+
+def gate_verdicts(relay: pathlib.Path) -> list[pathlib.Path]:
+    # Every physical gate return that carries the agent's verdict, a
+    # discarded isolation return included.
+    return [path for path in returns(relay, "gate")
+            if "# auto_gate_task verdict" in path.read_text()]
+
+
+def gate_prompts(relay: pathlib.Path) -> list[pathlib.Path]:
+    return sorted(
+        (path for path in relay.glob("r*-gate*-prompt.txt")
+         if re.fullmatch(r"r\d+-gate(?:-\d+)?-prompt\.txt", path.name)),
+        key=lambda path: path.stat().st_mtime_ns,
+    )
+
+
+def drift_clean_once(relay: pathlib.Path) -> bool:
+    # One auto_drift_task return in the agent's own report shape whose
+    # classification lets the run proceed to the gate.
+    drifts = returns(relay, "drift")
+    if len(drifts) != 1:
+        return False
+    text = drifts[0].read_text()
+    return (text.lstrip().startswith("# auto_drift_task report") and
+            leading_token(field(text, "classification"))
+            in {"clean", "low_confidence_clean"})
+
+
+def drift_before_gate(relay: pathlib.Path) -> bool:
+    # Freeze time: every drift return was written before the first gate prompt.
+    drifts = returns(relay, "drift")
+    prompts = gate_prompts(relay)
+    return bool(drifts) and bool(prompts) and all(
+        path.stat().st_mtime_ns <= prompts[0].stat().st_mtime_ns for path in drifts
+    )
+
+
+def interaction_clean(relay: pathlib.Path) -> bool:
+    # Every gate return, not only the accepted ones, reads clean on the
+    # interaction-scan line (a scoped re-check may carry it), so a false
+    # alarm that a later repair cleared still fails.
+    values = [leading_token(field(section(verdict(path), "Checklist"),
+                                  "interaction scan"))
+              for path in gate_verdicts(relay)]
+    return "clean" in values and all(v in {"clean", "carried"} for v in values)
+
+
+def split_summary(relay: pathlib.Path) -> bool:
+    return any(leading_token(field(path.read_text(), "proposal_kind")) == "split_summary"
+               for path in returns(relay, "reviewer"))
+
+
+def citation_returns(relay: pathlib.Path) -> list[pathlib.Path]:
+    return [path for path in returns(relay, "verifier")
+            if leading_token(field(path.read_text(), "mode")) == "citation"]
+
+
+def immediate_ready_signature(relay: pathlib.Path) -> bool:
+    # The first accepted gate call moved open to ready with no blocking issue.
+    gates = accepted_gates(relay)
+    if not gates:
+        return False
+    text = verdict(gates[0])
+    return (leading_token(field(text, "prior_status")) == "open" and
+            leading_token(field(text, "status")) == "ready" and
+            leading_token(field(text, "blocking_count")) == "0")
+
+
+def immediate_citation_pass(relay: pathlib.Path) -> bool:
+    gates = accepted_gates(relay)
+    return bool(gates) and any(
+        path.stat().st_mtime_ns > gates[0].stat().st_mtime_ns
+        for path in citation_returns(relay)
+    )
+
+
+def ready_route_challenged(relay: pathlib.Path) -> bool:
+    # A first-call zero-issue ready is challenged only by a citation pass after
+    # that gate. A first call that raised a blocking issue or stayed below
+    # ready needs none, because the repair rounds after it tested the task.
+    return bool(accepted_gates(relay)) and (
+        not immediate_ready_signature(relay) or immediate_citation_pass(relay))
+
+
+def citations_survived(relay: pathlib.Path) -> bool:
+    values = [
+        leading_token(value)
+        for path in citation_returns(relay)
+        for value in re.findall(
+            r"(?m)^\s*(?:(?:[-*]|\d+[.)])\s+)*verdict:\s*([^\n]*)",
+            path.read_text().replace("**", ""),
+        )
+    ]
+    refuted_files = [path for path in relay.glob("r*-refuted-citations.txt")
+                     if re.fullmatch(r"r\d+-refuted-citations\.txt", path.name)]
+    return (bool(values) and all(v == "survived" for v in values)
+            and not refuted_files)
+
+
+ROUTE_FIELDS = r"issue|source_stance|decision|reason|affected_passages|gate_fix|options"
+ROUTE_LEAD = r"^\s*(?:(?:[-*]|\d+[.)])\s+)*"
+
+
+def route_records(text: str) -> list[str]:
+    # One record per issue field; a numbered item may open with a bullet
+    # inside it ("1. - issue: ...").
+    return re.split(rf"(?m)(?={ROUTE_LEAD}issue:)", text.replace("**", ""))[1:]
+
+
+def route_field(record: str, name: str) -> str:
+    match = re.search(
+        rf"(?ms){ROUTE_LEAD}{name}:[ \t]*(.*?)(?={ROUTE_LEAD}(?:{ROUTE_FIELDS}):|\Z)",
+        record,
+    )
+    return match.group(1) if match else ""
+
+
+def last_proposal_return(relay: pathlib.Path) -> pathlib.Path | None:
+    calls = []
+    for path in returns(relay, "verifier"):
+        name = re.fullmatch(r"r(\d+)-verifier(?:-(\d+))?\.txt", path.name)
+        text = path.read_text()
+        if (name and "## Approved edits" in text
+                and leading_token(field(text, "mode")) != "citation"):
+            calls.append(((int(name.group(1)), int(name.group(2) or 1)), path))
+    return max(calls)[1] if calls else None
+
+
+def last_return_routes(relay: pathlib.Path, rule: str) -> bool:
+    # The last proposal-mode verifier return routes the kept frozen line to
+    # the user: a human_routed record whose affected_passages carries that
+    # line verbatim, with the gate's fix text and the prove, narrow, and
+    # delete options.
+    last = last_proposal_return(relay)
+    if last is None:
+        return False
+    frozen = plain(RULES[rule].lstrip("- "))
+    for record in route_records(section(last.read_text(), "Rejections and routes")):
+        if leading_token(route_field(record, "decision")) != "human_routed":
+            continue
+        gate_fix = plain(route_field(record, "gate_fix")).strip(" \"'").lower()
+        options = plain(route_field(record, "options")).lower()
+        if (frozen in plain(route_field(record, "affected_passages"))
+                and gate_fix not in {"", "n/a", "none"}
+                and all(word in options for word in ("prove", "narrow", "delete"))):
+            return True
+    return False
 
 
 def run(check: str, proj: pathlib.Path, stem: str) -> bool:
@@ -362,14 +542,26 @@ def run(check: str, proj: pathlib.Path, stem: str) -> bool:
                         for p in relay.glob("*.txt")))
     if check == "isolation_evidence":
         gates = returns(relay, "gate")
-        return len(gates) >= 2 and all(
-            field(section(verdict(p), "Evidence"), "isolation") == "confirmed"
-            for p in gates
-        )
+        return len(gates) >= 2 and all(isolation_confirmed(p) for p in gates)
     if check == "prompts_isolated":
         return prompts_isolated(proj, relay, stem)
     if check == "proposal_prompts":
         return proposal_prompts(relay)
+    if check.startswith("routed_"):
+        return last_return_routes(relay, check.removeprefix("routed_"))
+    simple = {
+        "drift_clean_once": drift_clean_once,
+        "drift_before_gate": drift_before_gate,
+        "gate_returned": lambda r: bool(gate_verdicts(r)),
+        "interaction_clean": interaction_clean,
+        "split_summary": split_summary,
+        "immediate_ready_signature": immediate_ready_signature,
+        "immediate_citation_pass": immediate_citation_pass,
+        "citations_survived": citations_survived,
+        "ready_route_challenged": ready_route_challenged,
+    }
+    if check in simple:
+        return simple[check](relay)
     raise ValueError(f"Unknown relay check: {check}")
 
 

@@ -5,7 +5,7 @@
 - Command: `python3 tests/task/evals/run.py --workers 4 --force`
 - Vendor: `cursor` (the default; no `--vendor` flag)
 - Model: `auto`
-- Run directory: `tests/task/workspace/run-20261102-174912`
+- Run directory: a local `tests/task/workspace/` run directory labelled `20261102-174912` (gitignored, not committed)
 - Log: `tests/task/results/parallel_workers_measure.log`
 - First job `started_at`: 2026-11-02T17:49:37.900+01:00
 - Last job `ended_at`: 2026-11-02T18:25:12.583+01:00

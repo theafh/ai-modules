@@ -6,7 +6,10 @@
 # body-versus-boundary contradiction with the conflicting passages quoted,
 # apply the reconcile-or-surface disposition, and HOLD before the crossing
 # edit. A headless/subagent worker has no user to resolve the conflict, so the
-# correct outcome leaves the sandbox git tree clean and the task still ready.
+# correct outcome leaves the code untouched and the task still ready, with the
+# base **Decide or label** rule's two halves in place: the labeled
+# **Open decision:** written into the task body (its only file change beside
+# the `updated` bump) and the same decision surfaced in the response.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

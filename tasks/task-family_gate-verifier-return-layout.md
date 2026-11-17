@@ -1,0 +1,52 @@
+---
+description: "Give auto_gate_task's search audit its own Evidence line so isolation stays confirmed or the reads, and fix how auto_verifier_task's proposal items open, what fields they carry, and how values read."
+scope: plugins/ai_dev/agents
+created: 2026-11-15T06:22:10Z
+updated: 2026-11-17T10:06:07Z
+status: open
+reported-by: Andreas Hoffmann
+---
+
+# Give the gate's search audit and the verifier's proposal items a fixed return layout
+
+## Goal
+
+`auto_gate_task` lists the search mechanisms it used on an Evidence line of their own, and its `isolation:` line reads exactly `confirmed` or names each out-of-bounds read. `auto_verifier_task`'s proposal-mode return states how a numbered item opens, which fields an approved edit carries, how a one-line and a multi-line value are written, and where the message ends. The `task_auto_check` loop and the eval graders then read both returns the same way on Claude and Cursor, so a return's layout never decides whether its content counts.
+
+## Context
+
+All agent paths are under `plugins/ai_dev/agents/`. Evidence comes from the 2026-11-15 `task_auto_check` runs on both vendors.
+
+- **The gate's audit has no line of its own.** In `auto_gate_task.md`, the `<policy>` rule that opens "Judge the task file as it stands" ends with "audit your own search calls: list each mechanism you used", and tells the gate to "report the discarded result under `isolation:` as a violation" when a search was not ignore-aware. The `## Evidence` template line reads `- isolation: <confirmed | each out-of-bounds read>`, and the same rule says "a search that crossed an excluded directory and returned nothing from it is not a read". So the audit has nowhere to go but the isolation line, and the rule calls an empty non-ignore-aware search both a non-read and an isolation violation.
+- **Models now append the audit to the isolation line.** Commit 39e771e (2026-11-12) added the audit sentence. Before it, 372 of 439 stored gate returns read exactly `confirmed`. On 2026-11-15, 26 of 54 Cursor returns and 37 of 38 Claude returns carried more, such as "confirmed. Search mechanisms used: …" or "confirmed (search mechanisms: …)". In Cursor's `scope_split_stuck` run, a gate return's isolation value lacked `confirmed` although nothing out of bounds was read, and the run stopped after the isolation replacement reported the same.
+- **The loop reads the isolation line.** `task_auto_check`'s `<gate>` re-runs, in a fresh call, any verdict whose isolation line names an out-of-bounds read, and its report lists each isolation re-run. A mechanism list on that line looks like a named read to any reader that takes the line at its word.
+- **The verifier template leaves the item layout open.** The `<output_contract>` of `auto_verifier_task.md` gives `<numbered list, or "None.">`, then "Each approved edit includes:" and "Each item includes:" field lists, and ends with "write nothing after it: no recap and no pointer to an earlier message". Rejection items carry `reason: <grounded reason>`, while approved edits carry no reason field. The template says nothing about how an item opens or how to write a value that spans lines or contains backticks.
+- **The two vendors fill that gap differently.** In all four Claude proposal-mode returns of 2026-11-15, each item opens with a title (`1. Approach rewrite`, then `- id: e1`), carries invented sub-fields such as "Reason for approval:" and "Grounding:", wraps values in double-backtick spans or fences, and ends with a paragraph after the last rejection that lists the files the decision rested on. Cursor writes `1. id: e1` with raw values, so a multi-line `affected_passages:` value puts a frozen bullet such as `- The retry behavior works properly.` at column 0. The loop's anchored apply and the delta audit read these values.
+- **The graders.** `tests/task_auto_check/evals/relay_checks.py` reads the gate's isolation value by its leading token, so its checks grade what the gate read rather than the line's shape. `verifier_returns_keep_contract` in `tests/task_auto_check/evals/grade.sh` accepts only Cursor's `1. id:` opening and stops at the closing paragraph. Scenario s15 of `tests/task_auto_check/script_tests/run.sh` pins two sentences of the gate rule verbatim: "Reach it with an ignore-aware search that also covers hidden paths", and "A filesystem walker that ignores VCS ignore files, such as `grep -r`, `find`, or a plain recursive listing, is a contract violation".
+
+**Settled here.** These choices rest on the agents' own text:
+
+- **Empty searches.** A non-ignore-aware search that returned nothing out of bounds goes on the new mechanisms line as a contract violation, together with its ignore-aware re-run, and leaves `isolation: confirmed`. The basis is the gate rule's own "a search that crossed an excluded directory and returned nothing from it is not a read", which `task_auto_check`'s SKILL.md repeats as "an empty traversal is not an out-of-bounds read".
+- **Approval reasons.** An approved edit gains a `reason:` field, because the template's rejection items already carry `reason: <grounded reason>`, and models that lack a field invent one.
+- **Item opening.** An item opens with its first field on the number line, as in `1. id: e1` or `1. issue: …`, because that is the shape the loop and the grader already parse.
+
+## Approach
+
+1. In `auto_gate_task.md`, add `- search mechanisms: <each mechanism used, with each non-ignore-aware one marked as a violation and its ignore-aware re-run named>` to the `## Evidence` template, directly after the `isolation:` line. Rewrite the audit sentence of the "Judge the task file as it stands" rule in place so the list goes on that line, and so `isolation:` reads exactly `confirmed` or names each out-of-bounds read, each with the mechanism that produced it. Keep the two sentences s15 pins word for word.
+2. In `auto_verifier_task.md`'s proposal-mode template, state the layout once, above both lists:
+   - Each numbered item opens with its first field on the number line, as in `1. id: e1` or `1. issue: …`.
+   - An item carries only its template's fields.
+   - A one-line value is written raw after its field name.
+   - A multi-line value, or one containing a backtick, is a fenced block on the lines after the field name. The block's fence is longer than any backtick run in the value, and its content is the exact text.
+   - The message ends with the last item of `## Rejections and routes`, or with its `None.`.
+3. Add `- reason: <grounded reason for approval, naming the files and spans it rests on>` to the approved-edit fields.
+4. In `task_auto_check`'s SKILL.md, state where `<apply_repairs>` and `<audit_delta>` read an anchor or replacement that the verifier sent as a fenced block: the block's content is the exact text. Apply the same reading to `affected_passages:` and `gate_fix:`.
+5. Align `verifier_returns_keep_contract` in `tests/task_auto_check/evals/grade.sh` with the stated layout, so it unwraps a fenced value and accepts `reason:`. Add a strict pin that fails a gate return whose `isolation:` value carries anything other than `confirmed` or named reads. Give each grader change a pass case and a fail case in `tests/task_auto_check/script_tests/`.
+
+## Acceptance
+
+1. `auto_gate_task.md`'s `## Evidence` template carries the `search mechanisms:` line, its audit sentence sends the list there, and `bash tests/task_auto_check/script_tests/run.sh` still passes s15.
+2. `auto_verifier_task.md`'s proposal-mode template states the item opening, the field set including the approval `reason:`, the raw and fenced value forms, and the message end. The old template no longer stands without that layout.
+3. `task_auto_check`'s SKILL.md states that a fenced anchor, replacement, affected passage, or gate fix is read as the block's content.
+4. `bash tests/task_auto_check/run_all.sh` passes, including the new pass and fail cases for the isolation pin and the fenced-value reading.
+5. `relay_by_path`, `stray_hunk_reverted`, and `regate_isolated` run on the default vendor, and their verdicts are recorded in `tests/task_auto_check/evals/README.md`. Every gate return in those runs keeps `isolation:` to `confirmed` or named reads, and every proposal-mode verifier return passes `verifier_returns_keep_contract`. If a return still breaks the layout, the record quotes the offending line and the task stays open.

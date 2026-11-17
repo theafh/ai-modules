@@ -31,3 +31,29 @@ The runner captures each worker transcript and deterministic grade under
 self-tests exercise passing evidence and mutations that violate each property.
 The runner derives `DEFAULT_IDS` from `evals.json`, so new entries join the
 ordinary suite automatically.
+
+## Recorded results
+
+### 2026-11-15: Cursor `auto` and Claude `opus` at `high` effort
+
+On each eval's latest run, re-graded with the current graders, Cursor passes 29 of the 33 evals and Claude passes 27. Each remaining failure has an open task. The first full suites passed 21 of 33 on Cursor (`../workspace/run-20261115-020037-15631`) and 19 of 33 on Claude (`run-20261115-025041-38226` through `run-20261115-090126-14852`). Most of the difference came from grader and fixture defects that both runs exposed.
+
+| Eval | Cursor | Claude | Cause | Task |
+| --- | --- | --- | --- | --- |
+| `immediate_ready_citations_survive` | fails | fails | The verifier refutes every citation that clears a lens judged by absence. On Claude the re-gate also read the base skill back from Claude Code's `tool-results` store and stopped as a helper failure | [absence citations](../../../tasks/task-family_gate-absence-citation-form.md), [paged reads](../../../tasks/task-family_gate-paged-reads-of-large-files.md) |
+| `scope_split_stuck` | passes | fails | Claude's gate treats a small bundle of independent items as a note under the **Blocking bar** | [independent items](../../../tasks/task-family_independent-items-split-blocks.md) |
+| `regroup_immediate_ready` | passes | fails | When an ordinary repair round lands the regroup, Claude's report drops the `repeated-link:` disposition line | [disposition line](../../../tasks/task-family_auto-check-disposition-line-every-path.md) |
+| `relay_by_path` | fails | fails | Cursor stopped human-routed on a frozen Acceptance item no check can prove. Claude's verifier return breaks the source-contract layout check | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md), [return layout](../../../tasks/task-family_gate-verifier-return-layout.md) |
+| `stray_hunk_reverted` | passes | fails | Claude's proposal-mode verifier return breaks the layout check | [return layout](../../../tasks/task-family_gate-verifier-return-layout.md) |
+| `repair_to_ready` | passes | fails | Claude cannot replace a frozen Acceptance item that names no checkable result | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md) |
+| `guard_rebaseline_after_gate` | fails | passes | Cursor routed the same kind of frozen item to the user and stopped at `checked` | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md) |
+| `regroup_same_paragraph_ready` | fails | passes | Cursor's worker passed all 14 grader checks but read the checkout's `evals.json` | [harness copies](../../../tasks/tests_harness-copy-read-check.md) |
+
+The runs exposed these grader and fixture defects, which are now repaired:
+
+- **The gate's isolation line.** Both vendors now append their search audit to the `isolation:` line, so `relay_checks.py` reads its leading token. `prompts_isolated` also admits a moved sandbox root named in the prompt's own task path, and the `immediate_ready_citations_overturn` arm accepts a ready route that the citation pass challenged.
+- **Premise stops by accident.** `scope_split_stuck`, `fidelity_rejects_drift`, and the three `drift_gate_*_clean` fixtures named source files they never staged, so a gate could stop on an invalidated premise. They now stage those files.
+- **The `Retry-After` value.** The three immediate-ready fixtures left open whether the header holds an integer or a string. The two regroup fixtures needed three more passes, because each gate found a new gap in the target's test. The sibling task now keeps `THROTTLE_WINDOW_SECONDS` a module-level int. The test uses pytest's `monkeypatch` to set the window to `120` and expects the header `"120"`, and the project stages a root `conftest.py` so a bare `pytest` run imports `src`.
+- **Timeouts.** `no_verified_fix` was killed at 2306 seconds while it composed its report, so the slow evals now carry 3600-second bounds in `evals.json`.
+
+Cursor's workers on these evals often search outside the sandbox for the fixtures and grader. Five Cursor passes failed `checkout_unread` on 2026-11-15. Two of them first read leftover checkout copies in the system temp folder, and a sixth pass read those copies without reaching the checkout, so no read check failed it. The leftover copies were deleted, and [the harness-copy task](../../../tasks/tests_harness-copy-read-check.md) adds the check for copies outside the checkout.
