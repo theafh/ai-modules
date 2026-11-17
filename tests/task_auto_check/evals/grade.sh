@@ -40,6 +40,8 @@ TASKS="$proj/tasks"
 RESPONSE="${RESPONSE_FILE:-$target/../response.txt}"
 # shellcheck source=../../lib/repeated_link_disposition.sh
 . "$HERE/../../lib/repeated_link_disposition.sh"
+# shellcheck source=../../lib/verifier_return_contract.sh
+. "$HERE/../../lib/verifier_return_contract.sh"
 
 pass=0
 fail=0
@@ -365,189 +367,6 @@ for line in section(text, "Approved edit ids"):
         statuses[current] = bare(value).lower()
 if any(statuses.get(edit_id) != "applied" for edit_id in approved):
     raise SystemExit(1)
-PY
-}
-
-# verifier_returns_keep_contract <relay dir> -> every saved proposal-mode
-# verifier return r<N>-verifier[-k].txt carries the agent's proposal-mode output
-# contract in full. `## Approved edits` and `## Rejections and routes` each read
-# "None." or list items, an approved item opening at its `id:` field and a
-# rejection at its `issue:` field, and every item carries each field the
-# contract gives it, with a rejection's decision one the contract names. A
-# missing section, and one summarized into a line with no items behind it, fail.
-# A rejection item may also carry the route fields affected_passages, gate_fix,
-# and options, which the contract gives a human_routed decision; they are
-# optional because a rejected or unassessable item omits them.
-# Inside a section, a numbered line at any indentation and every other column-0
-# line must open an item at the section's lead field, set a contract field its
-# item still lacks, or continue an open anchor, replacement, affected_passages,
-# or gate_fix value, the fields that copy task or gate text verbatim; the None
-# form before any item is the one other column-0 line allowed. Any other such line is a pointer or summary standing
-# in for items and fails, also after real items. The header's
-# approved_edit_count must equal the approved items and its human_routed_count
-# the human_routed rejections, so a dropped item fails even when every
-# remaining item is whole. Indented continuation lines belong to the field
-# above them, so a wrapped replacement or reason reads as one value. Stance
-# accounting: every saved reviewer return of that round contributes its
-# `stance:` value, and each must appear among the verifier return's
-# `source_stance:` values (approved or rejection), after the same normalize
-# (lowercase, drop markdown punctuation and a trailing "advocate", fold
-# non-alphanumerics to "-") with substring match so a merged source_stance
-# covers each named stance. That catches a return that keeps one rejection
-# and elides the rest behind an indented pointer, or that replaces every
-# rejection with "None." while reviewer returns remain. A citation-mode
-# return keeps its own shape and is skipped.
-verifier_returns_keep_contract() {
-  python3 - "$1" <<'PY'
-import pathlib
-import re
-import sys
-
-relay = pathlib.Path(sys.argv[1])
-key_line = re.compile(r"^\s*(?:[0-9]+[.)]\s+)?(?:[-*]\s+)?\**([a-z_]+)\**\s*:\**\s*(.*?)\s*$")
-item_line = re.compile(r"^\s*[0-9]+[.)]\s")
-column0 = re.compile(r"^\S")
-none_lead = re.compile(r"""^\s*["'`*]*none\b""", re.I)
-approved_fields = ("id", "issue", "source_stance", "base_rule_cited", "anchor", "replacement", "edit", "fidelity")
-rejection_fields = ("issue", "source_stance", "decision", "reason")
-route_fields = ("affected_passages", "gate_fix", "options")
-verbatim_fields = ("anchor", "replacement", "affected_passages", "gate_fix")
-decisions = {"rejected", "human_routed", "unassessable"}
-
-
-def bare(value):
-    return value.strip("`*\"' ")
-
-
-def normalize_stance(value):
-    text = bare(value).lower()
-    text = re.sub(r"[`*_\[\]()'\".,:;]+", "", text)
-    text = re.sub(r"\s+advocate\s*$", "", text)
-    return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
-
-
-def section(body, heading):
-    found = re.search(rf"(?ms)^## {re.escape(heading)}[ \t]*$(.*?)(?=^## |\Z)", body)
-    return found.group(1).splitlines() if found else None
-
-
-def header_count(body, key):
-    head = re.split(r"(?m)^## ", body, maxsplit=1)[0]
-    for line in head.splitlines():
-        match = key_line.match(line)
-        if match and match.group(1) == key:
-            return int(bare(match.group(2))) if bare(match.group(2)).isdigit() else None
-    return None
-
-
-def items(lines, lead, fields, optional=()):
-    found, current, last = [], None, None
-    known = fields + optional
-    for line in lines:
-        if not line.strip():
-            continue
-        match = key_line.match(line)
-        name = match.group(1) if match and match.group(1) in known else None
-        fresh = current is not None and name is not None and name not in current
-        if name == lead:
-            current, last = {}, None
-            found.append(current)
-        elif last in verbatim_fields:
-            pass
-        elif item_line.match(line):
-            return None
-        elif column0.match(line) and not fresh:
-            if current is None and none_lead.match(line):
-                continue
-            return None
-        if current is None:
-            continue
-        if name and name not in current:
-            current[name], last = [match.group(2)], name
-        else:
-            current[last].append(line.strip())
-    return [{k: " ".join(v).strip() for k, v in item.items()} for item in found]
-
-
-def keeps(lines, lead, fields, optional=()):
-    if lines is None:
-        return False
-    found = items(lines, lead, fields, optional)
-    if found is None:
-        return False
-    if not found:
-        content = [line for line in lines if line.strip()]
-        return bool(content) and bool(none_lead.match(content[0]))
-    return all(all(field in item for field in fields) for item in found)
-
-
-def reviewer_stances(round_n):
-    found = []
-    for path in relay.glob(f"r{round_n}-reviewer*.txt"):
-        if "-prompt" in path.name:
-            continue
-        if not re.fullmatch(rf"r{round_n}-reviewer-.+\.txt", path.name):
-            continue
-        match = re.search(r"(?m)^stance:\s*(.+?)\s*$", path.read_text())
-        if match:
-            found.append(match.group(1))
-    return found
-
-
-def source_stances(approved_items, rejection_items):
-    values = []
-    for item in approved_items + rejection_items:
-        values.append(item.get("source_stance", ""))
-    return values
-
-
-def stances_accounted(reviewer, sources):
-    norms = [normalize_stance(s) for s in sources if normalize_stance(s)]
-    for stance in reviewer:
-        want = normalize_stance(stance)
-        if not want:
-            continue
-        if not any(want in have for have in norms):
-            return False
-    return True
-
-
-returns = [
-    path for path in relay.glob("r*-verifier*.txt")
-    if re.fullmatch(r"r[0-9]+-verifier(?:-[0-9]+)?\.txt", path.name)
-]
-proposal = [
-    path for path in returns
-    if not re.search(r"(?m)^mode:\s*citation\s*$", path.read_text())
-]
-if not proposal:
-    raise SystemExit(1)
-for path in proposal:
-    text = path.read_text()
-    round_n = re.fullmatch(r"r([0-9]+)-verifier(?:-[0-9]+)?\.txt", path.name).group(1)
-    approved = section(text, "Approved edits")
-    rejections = section(text, "Rejections and routes")
-    if not keeps(approved, "id", approved_fields) or not keeps(
-        rejections, "issue", rejection_fields, route_fields
-    ):
-        raise SystemExit(1)
-    approved_items = items(approved, "id", approved_fields)
-    rejection_items = items(rejections, "issue", rejection_fields, route_fields)
-    routed = 0
-    for item in rejection_items:
-        decision = bare(item["decision"]).lower()
-        if decision not in decisions or not item["reason"]:
-            raise SystemExit(1)
-        routed += decision == "human_routed"
-    if header_count(text, "approved_edit_count") != len(approved_items):
-        raise SystemExit(1)
-    if header_count(text, "human_routed_count") != routed:
-        raise SystemExit(1)
-    if not stances_accounted(
-        reviewer_stances(round_n),
-        source_stances(approved_items, rejection_items),
-    ):
-        raise SystemExit(1)
 PY
 }
 
@@ -999,6 +818,8 @@ PY
     check "first gate finds the unproven body promise" relay_check raises_body api_isolated-regate
     check "gate prompts contain only admitted inputs and no copied returns" relay_check prompts_isolated api_isolated-regate
     check "every gate return confirms isolation" relay_check isolation_evidence api_isolated-regate
+    check "every gate return writes the settled isolation shape" \
+      relay_check isolation_shape api_isolated-regate
     check "earlier-run decoy remains available and unchanged" decoy_unchanged
     check "frozen task is the exact initial file" relay_check frozen_copy api_isolated-regate
     check "task lints after isolated re-gate" task_lints
@@ -1095,6 +916,8 @@ PY
     check ".task_auto_check is ignored with a one-line * rule" relay_ignored
     check "relay retains frozen intent and each helper surface" relay_layout_complete
     check "gate, reviewer, and verifier returns retain their source contracts" relay_returns_are_source_returns
+    check "every gate return writes the settled isolation shape" \
+      relay_check isolation_shape api_relay-by-path
     check "proposal verifier prompts contain pointers without copied or steering text" verifier_prompts_are_pointer_only
     check "the first delta audit of the fault-free apply is clean and maps every hunk" first_delta_clean
     check "every delta return was saved before the next helper prompt" \
@@ -1291,6 +1114,8 @@ PY
     check "a delta that marks the planted Context rewrite unmapped is followed by a clean delta that maps every hunk" delta_sequence_records_repair
     check "every proposal-mode verifier return keeps its source contract" \
       verifier_returns_keep_contract "$relay"
+    check "every gate return writes the settled isolation shape" \
+      relay_check isolation_shape api_stray-hunk-reverted
     check "every delta return was saved before the next helper prompt" \
       delta_returns_precede_next_prompt "$relay"
     check "task lints clean after repair" task_lints

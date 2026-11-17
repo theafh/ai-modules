@@ -379,6 +379,26 @@ def gate_verdicts(relay: pathlib.Path) -> list[pathlib.Path]:
             if "# auto_gate_task verdict" in path.read_text()]
 
 
+# The settled isolation line: exactly `confirmed`, or one
+# `out-of-bounds read: <artifact read> — via <mechanism>` entry per read,
+# separated by a semicolon and a space. The search-mechanism audit has its own
+# line, so a mechanism list never rides the isolation value.
+NAMED_READ = re.compile(r"^out-of-bounds read: .+ — via .+$")
+
+
+def isolation_settled(path: pathlib.Path) -> bool:
+    value = field(section(verdict(path), "Evidence"), "isolation").strip()
+    if value == "confirmed":
+        return True
+    entries = [entry.strip() for entry in value.split(";")]
+    return bool(entries) and all(NAMED_READ.fullmatch(entry) for entry in entries)
+
+
+def isolation_shape(relay: pathlib.Path) -> bool:
+    gates = gate_verdicts(relay)
+    return bool(gates) and all(isolation_settled(path) for path in gates)
+
+
 def gate_prompts(relay: pathlib.Path) -> list[pathlib.Path]:
     return sorted(
         (path for path in relay.glob("r*-gate*-prompt.txt")
@@ -543,6 +563,8 @@ def run(check: str, proj: pathlib.Path, stem: str) -> bool:
     if check == "isolation_evidence":
         gates = returns(relay, "gate")
         return len(gates) >= 2 and all(isolation_confirmed(p) for p in gates)
+    if check == "isolation_shape":
+        return isolation_shape(relay)
     if check == "prompts_isolated":
         return prompts_isolated(proj, relay, stem)
     if check == "proposal_prompts":

@@ -403,6 +403,10 @@ s15_convergence_and_robust_returns() {
   # run's recursive searches skip the relay.
   assert_contains "gate requires an ignore-aware search" "$gate" "Reach it with an ignore-aware search that also covers hidden paths" || ok=false
   assert_contains "gate names a VCS-blind walker as a violation" "$gate" "A filesystem walker that ignores VCS ignore files, such as \`grep -r\`, \`find\`, or a plain recursive listing, is a contract violation" || ok=false
+  assert_contains "gate carries the search mechanisms line" "$gate" "- search mechanisms: <each mechanism used, with each non-ignore-aware one marked as a violation and its ignore-aware re-run named>" || ok=false
+  assert_contains "gate writes the settled isolation placeholder" "$gate" "- isolation: <confirmed | out-of-bounds read: <artifact read> — via <mechanism>; one entry per read>" || ok=false
+  assert_contains "gate sends the search audit to the mechanisms line" "$gate" "list each mechanism you used on the \`search mechanisms:\` line of \`## Evidence\`" || ok=false
+  assert_contains "gate keeps isolation to confirmed or named reads" "$gate" "so the value reads exactly \`confirmed\` or those entries and nothing else" || ok=false
   assert_contains "dry run excludes the relay from recursive searches" "$dryrun" "grep -r --exclude-dir=.task_auto_check" || ok=false
   assert_contains "an empty traversal is not an out-of-bounds read" "$SKILL" "a recursive search that crossed \`.task_auto_check/\` and returned nothing from it is not one" || ok=false
   # Loop helpers run at high effort on Claude and Codex.
@@ -472,6 +476,26 @@ s18_timeout_table_matches_evals() {
 }
 
 scenario s18 "RUNBOOK per-eval timeout table matches the evals.json timeouts" s18_timeout_table_matches_evals
+
+# The verifier's proposal-mode layout, the fenced-value reading the loop
+# applies to an anchor, replacement, affected passage, or gate fix, and the
+# shared contract helper that moved into tests/lib.
+s19_verifier_return_layout() {
+  local ok=true verifier="$AGENTS_DIR/auto_verifier_task.md" skill="$SKILL"
+  python3 "$REPO_ROOT/tests/task_auto_check/script_tests/test_verifier_return_contract.py" || ok=false
+  assert_contains "verifier states the item opening" "$verifier" "Each numbered item opens with its first field on the number line" || ok=false
+  assert_contains "verifier states the field set" "$verifier" "An item carries only its template's fields." || ok=false
+  assert_contains "verifier states the raw value form" "$verifier" "A one-line value is written raw after its field name." || ok=false
+  assert_contains "verifier states the fenced value form" "$verifier" "A multi-line value, or one containing a backtick, is a fenced block on the lines after the field name." || ok=false
+  assert_contains "verifier states the message end" "$verifier" "The message ends with the last item of \`## Rejections and routes\`, or with its \`None.\`." || ok=false
+  assert_contains "approved edits carry an approval reason" "$verifier" "- reason: <grounded reason for approval, naming the files and spans it rests on>" || ok=false
+  assert_contains "skill reads a fenced anchor and replacement as its content" "$skill" "A value the verifier sent as a fenced block is read as the block's content, which is the exact text" || ok=false
+  assert_contains "skill reads route values the same way" "$skill" "applies the same way to an \`affected_passages:\` or \`gate_fix:\` value" || ok=false
+  assert_contains "delta audit reads the fenced value the same way" "$skill" "An approved edit whose anchor or replacement arrived as a fenced block is read here the way \`<apply_repairs>\` reads it" || ok=false
+  $ok
+}
+
+scenario s19 "verifier return layout, fenced-value reading, and the shared contract helper are pinned" s19_verifier_return_layout
 
 log ""
 log "================================================================"

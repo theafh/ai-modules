@@ -2,9 +2,11 @@
 description: "Give auto_gate_task's search audit its own Evidence line so isolation stays confirmed or the reads, and fix how auto_verifier_task's proposal items open, what fields they carry, and how values read."
 scope: plugins/ai_dev/agents
 created: 2026-11-15T06:22:10Z
-updated: 2026-11-17T13:05:24Z
-status: ready
+updated: 2026-11-17T23:53:43Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Give the gate's search audit and the verifier's proposal items a fixed return layout

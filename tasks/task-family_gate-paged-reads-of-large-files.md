@@ -20,7 +20,7 @@ reported-by: Andreas Hoffmann
 - **Why this file.** The base `task` SKILL.md is about 100 KB, more than one Bash or Read output holds on Claude, so a whole-file read of it always takes the persisted path there. Cursor has no such store, which is why Cursor runs never show the read.
 - **The dry-run agent is unaffected.** `auto_dryrun_task.md` closes the relay directory and helper transcripts but names no harness state store, so its reads of the same file break no rule.
 
-[The return-layout task](task-family_gate-verifier-return-layout.md) rewrites the audit sentence of the same gate rule, so whichever task lands second rewrites on top of the other's text.
+[The return-layout task](archive/task-family_gate-verifier-return-layout.md) rewrites the audit sentence of the same gate rule, so whichever task lands second rewrites on top of the other's text.
 
 ## Approach
 

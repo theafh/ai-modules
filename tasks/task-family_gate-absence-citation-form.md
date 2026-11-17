@@ -26,7 +26,7 @@ All agent paths are under `plugins/ai_dev/agents/`.
   - A Claude run, on the fixed fixture, refuted the same three lenses. Its spans were the `CLAUDE.md` line "run the bundled task linter after edits", an Approach sentence about editing `build_throttle_response()`, and the `reported-by` frontmatter field, and its reasons say the first two show only that something exists and the third lies outside the body the item judges.
 - **Where citations came from.** [The gate-evidence task](archive/task-family_gate-evidence-and-refutation.md) introduced the citation on every cleared line and the existence rule. This task adds the absence form that task left out.
 
-[The return-layout task](task-family_gate-verifier-return-layout.md) edits the same two agents' output contracts, so land this task after it.
+[The return-layout task](archive/task-family_gate-verifier-return-layout.md) edits the same two agents' output contracts, so land this task after it.
 
 ## Approach
 

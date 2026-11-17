@@ -395,6 +395,36 @@ status: checked
         self.write("r1-verifier-prompt.txt", text.replace("r1-reviewer-proof-1.txt", ""))
         self.assertFalse(checks.proposal_prompts(self.relay))
 
+    def test_isolation_shape_accepts_only_confirmed_or_named_reads(self):
+        # The settled layout: `confirmed` alone, or one named-read entry per
+        # out-of-bounds read, with the search audit on its own line. This pin
+        # sits beside the leading-token predicate, which keeps its own read.
+        self.two_gates()
+        self.assertTrue(checks.run("isolation_shape", self.proj, self.stem))
+        named = ("out-of-bounds read: .task_auto_check/api_proof/r1-gate.txt — "
+                 "via grep -r")
+        self.write("r2-gate.txt", "# auto_gate_task verdict\nstatus: ready\n"
+                                  f"## Evidence\n- isolation: {named}\n")
+        self.assertTrue(checks.run("isolation_shape", self.proj, self.stem))
+        # One entry per read, separated by a semicolon and a space.
+        self.write("r2-gate.txt", "# auto_gate_task verdict\nstatus: ready\n"
+                                  f"## Evidence\n- isolation: {named}; "
+                                  "out-of-bounds read: tasks/api.md — via find\n")
+        self.assertTrue(checks.run("isolation_shape", self.proj, self.stem))
+        # The fail case: the search audit appended to the isolation line.
+        for value in ("confirmed (search mechanisms: rg --hidden)",
+                      "confirmed. Search mechanisms used: rg --hidden",
+                      "out-of-bounds read: tasks/api.md",
+                      "out-of-bounds read: tasks/api.md — via "):
+            self.write("r2-gate.txt", "# auto_gate_task verdict\nstatus: ready\n"
+                                      f"## Evidence\n- isolation: {value}\n")
+            self.assertFalse(checks.run("isolation_shape", self.proj, self.stem))
+        # The leading-token predicate keeps accepting the prose value, so the
+        # new pin tightens the layout without changing that predicate.
+        self.write("r2-gate.txt", "# auto_gate_task verdict\nstatus: ready\n"
+                                  "## Evidence\n- isolation: confirmed (search mechanisms: rg --hidden)\n")
+        self.assertTrue(checks.run("isolation_evidence", self.proj, self.stem))
+
     def test_isolation_reads_the_leading_token(self):
         # Prose after the enum value still confirms isolation; a value that
         # does not open with confirmed does not.

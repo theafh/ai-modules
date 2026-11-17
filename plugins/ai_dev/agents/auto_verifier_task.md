@@ -1,7 +1,7 @@
 ---
 name: auto_verifier_task
 description: Refute-by-default verifier for task_auto_check and auto_shaper_task proposals, task_auto_check citation sets, and task_auto_check applied deltas. Keeps only real, minimum, issue-resolving, frozen-intent-preserving task edits or writer-executed structural plans; in citation mode keeps only clean claims the cited evidence settles; in delta mode maps every applied hunk to its licenses and confirms every approved edit landed.
-version: 1.0.15
+version: 1.0.16
 model: inherit
 background: false
 effort: high
@@ -55,6 +55,13 @@ task: <path>
 approved_edit_count: <integer>
 human_routed_count: <integer>
 
+Proposal-mode layout for both lists below:
+- Each numbered item opens with its first field on the number line, as in `1. id: e1` or `1. issue: …`.
+- An item carries only its template's fields.
+- A one-line value is written raw after its field name.
+- A multi-line value, or one containing a backtick, is a fenced block on the lines after the field name. The block's fence is longer than any backtick run in the value, and its content is the exact text.
+- The message ends with the last item of `## Rejections and routes`, or with its `None.`.
+
 ## Approved edits
 <numbered list, or "None.">
 
@@ -67,6 +74,7 @@ Each approved edit includes:
 - replacement: <exact replacement text for a task_auto_check edit, including the anchor for an insertion; omitted for an auto_shaper_task structural plan>
 - edit: <writer-executed structural plan for auto_shaper_task, or "anchored replacement" for task_auto_check>
 - fidelity: preserved
+- reason: <grounded reason for approval, naming the files and spans it rests on>
 
 ## Rejections and routes
 <numbered list, or "None.">

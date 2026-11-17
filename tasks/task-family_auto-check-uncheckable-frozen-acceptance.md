@@ -30,7 +30,7 @@ When a frozen Acceptance item names no checkable result, such as "The retry beha
 - **The fourth kind.** The fourth ordinary-path kind follows from `<frozen_intent>`'s own "make acceptance checks verifiable" and from the repo's graders, which expect the replacement.
 - **The stop scope.** A route stops only the repair it governs, because `<structural_split_boundary>`, the channel the route reports through, stops "the auto-edit path for that issue".
 
-Land this task after [the return-layout task](task-family_gate-verifier-return-layout.md). That task adds the approved edit's `reason:` field, which carries the pairing here, and it edits the same verifier template.
+Land this task after [the return-layout task](archive/task-family_gate-verifier-return-layout.md). That task adds the approved edit's `reason:` field, which carries the pairing here, and it edits the same verifier template.
 
 ## Approach
 
