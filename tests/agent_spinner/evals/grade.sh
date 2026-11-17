@@ -1501,7 +1501,7 @@ stop_marker_present() { [[ -s "$STATE_DIR/STOP" ]]; }
 ledger_has_unanswered_gate() { open_gate_question_matches ''; }
 
 # run_stopped_at_gate — the run ended at the unanswered gate, in the form the
-# shipped ledger records. `close --stopped` prints its three lists and then
+# shipped ledger records. `close --stopped` prints its row lists and then
 # refuses (exit 3) while a user gate is unanswered, so a pre-dispatch stop is
 # never `closed: true`. Every fact is required: nothing was dispatched, the STOP
 # marker exists, the gate is still open and unanswered, and the run is not an

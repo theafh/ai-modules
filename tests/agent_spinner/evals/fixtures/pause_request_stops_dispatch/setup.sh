@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # pause_request_stops_dispatch: the first wave has returned and a STOP file is
 # planted before the second wave. No second-wave row is dispatched, and the
-# stop report lists the modified, untouched, and unknown rows.
+# stop report lists the modified, untouched, unknown, and not dispatched rows.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
