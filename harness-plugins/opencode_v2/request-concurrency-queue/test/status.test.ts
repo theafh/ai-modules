@@ -94,17 +94,19 @@ describe("providerRows", () => {
 })
 
 describe("loadColor", () => {
-  test("anchors the six scale points from dark green to dark red", () => {
+  test("anchors the eight scale points from dark green to magenta", () => {
     expect(loadColor(0)).toBe("hsl(145 60% 28%)")
     expect(loadColor(100)).toBe("hsl(120 60% 60%)")
     expect(loadColor(150)).toBe("hsl(60 85% 70%)")
     expect(loadColor(200)).toBe("hsl(32 95% 55%)")
     expect(loadColor(250)).toBe("hsl(12 90% 68%)")
     expect(loadColor(300)).toBe("hsl(0 70% 35%)")
+    expect(loadColor(350)).toBe("hsl(-24 75% 42%)")
+    expect(loadColor(400)).toBe("hsl(-40 70% 30%)")
   })
 
   test("warms continuously as the load climbs between anchors", () => {
-    const hue = (percent: number): number => Number(loadColor(percent).match(/^hsl\((\d+)/)?.[1])
+    const hue = (percent: number): number => Number(loadColor(percent).match(/^hsl\((-?\d+)/)?.[1])
 
     expect(hue(0)).toBeGreaterThan(hue(50))
     expect(hue(50)).toBeGreaterThan(hue(100))
@@ -116,10 +118,14 @@ describe("loadColor", () => {
     expect(hue(225)).toBeGreaterThan(hue(250))
     expect(hue(250)).toBeGreaterThan(hue(275))
     expect(hue(275)).toBeGreaterThan(hue(300))
+    expect(hue(300)).toBeGreaterThan(hue(325))
+    expect(hue(325)).toBeGreaterThan(hue(350))
+    expect(hue(350)).toBeGreaterThan(hue(375))
+    expect(hue(375)).toBeGreaterThan(hue(400))
   })
 
-  test("holds dark red past 300 and treats a negative or missing load as zero", () => {
-    expect(loadColor(450)).toBe(loadColor(300))
+  test("holds magenta past 400 and treats a negative or missing load as zero", () => {
+    expect(loadColor(450)).toBe(loadColor(400))
     expect(loadColor(-10)).toBe(loadColor(0))
     expect(loadColor(Number.NaN)).toBe(loadColor(0))
   })

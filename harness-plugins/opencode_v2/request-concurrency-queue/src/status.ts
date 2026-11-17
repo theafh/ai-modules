@@ -22,10 +22,13 @@ export interface ProviderRow {
 }
 
 /**
- * The load scale's six anchor points: dark green at zero, light green at 100%,
- * light yellow at 150%, orange at 200%, light red at 250%, and dark red at 300%
- * and beyond. Between anchors the color is interpolated, so a row warms up as
- * its load climbs instead of snapping between bands.
+ * The load scale's eight anchor points: dark green at zero, light green at
+ * 100%, light yellow at 150%, orange at 200%, light red at 250%, dark red at
+ * 300%, dark pink at 350%, and magenta at 400% and beyond. Between anchors the
+ * color is interpolated, so a row warms up as its load climbs instead of
+ * snapping between bands. Past dark red the hue keeps falling below zero —
+ * dark pink at -24 is 336°, magenta at -40 is 320° — so interpolation travels
+ * the short way around the wheel instead of jumping back through green.
  */
 const LOAD_ANCHORS = [
   { percent: 0, hue: 145, saturation: 60, lightness: 28 },
@@ -34,12 +37,14 @@ const LOAD_ANCHORS = [
   { percent: 200, hue: 32, saturation: 95, lightness: 55 },
   { percent: 250, hue: 12, saturation: 90, lightness: 68 },
   { percent: 300, hue: 0, saturation: 70, lightness: 35 },
+  { percent: 350, hue: -24, saturation: 75, lightness: 42 },
+  { percent: 400, hue: -40, saturation: 70, lightness: 30 },
 ] as const
 
 /**
- * The color for a load percentage on the dark-green-to-dark-red scale. A value
+ * The color for a load percentage on the dark-green-to-magenta scale. A value
  * below zero or one that is not a number reads as no load; a value at or past
- * 300% holds the dark red anchor.
+ * 400% holds the magenta anchor.
  */
 export function loadColor(percent: number): string {
   const value = Number.isFinite(percent) ? Math.max(0, percent) : 0

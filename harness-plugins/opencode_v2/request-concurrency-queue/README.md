@@ -219,10 +219,11 @@ interval, so a missed event recovers, and the dialog renders that same snapshot.
 Each provider gets one row with its in-flight count, configured maximum, and
 queue depth as absolute numbers, and its utilization and demand as percentages.
 A header labels the columns, and the counts are right-aligned in tabular figures
-so a row reads as one line. The numbers are coloured on a six-anchor load scale:
+so a row reads as one line. The numbers are coloured on an eight-anchor load scale:
 dark green at 0%, light green at 100%, light yellow at 150%, orange at 200%,
-light red at 250%, and dark red from 300% on, interpolated between those anchors
-and held at dark red above 300%. The active count and utilization use the
+light red at 250%, dark red at 300%, dark pink at 350%, and magenta from 400% on,
+interpolated between those anchors and held at magenta above 400%. The active
+count and utilization use the
 `active / max` load, while the combined count, queued count, and demand use
 `(active + queued) / max`. Below the provider rows, a compact monospace feed
 lists the recent transitions newest first with their timestamp, kind, provider,

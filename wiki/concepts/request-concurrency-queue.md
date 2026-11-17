@@ -122,9 +122,10 @@ subscription refetches on every `changed` event and on a slow interval, so a
 missed event recovers, and the dialog renders that same snapshot: each provider
 row shows its in-flight count, configured maximum, and queue depth as absolute
 numbers, and its utilization and demand as percentages. The numbers are coloured
-on a six-anchor load scale: dark green at 0%, light green at 100%, light yellow
-at 150%, orange at 200%, light red at 250%, and dark red from 300% on,
-interpolated between those anchors and held at dark red above 300%. The active
+on an eight-anchor load scale: dark green at 0%, light green at 100%, light
+yellow at 150%, orange at 200%, light red at 250%, dark red at 300%, dark pink
+at 350%, and magenta from 400% on, interpolated between those anchors and held
+at magenta above 400%. The active
 count and utilization follow the `active / max` load, while the combined count,
 queued count, and demand follow `(active + queued) / max`. Below the provider
 rows, a compact monospace feed lists the recent transitions newest first with
