@@ -2,9 +2,11 @@
 description: "Make task_auto_check's report print the repeated-link disposition line beside the edit group that regrouped the finding, so the line survives when an ordinary repair round lands the regroup."
 scope: plugins/ai_dev/skills/task_auto_check
 created: 2026-11-15T18:18:40Z
-updated: 2026-11-17T12:53:50Z
-status: ready
+updated: 2026-11-18T22:44:06Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Print the repeated-link disposition line on the ordinary repair path

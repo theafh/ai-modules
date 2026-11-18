@@ -1,7 +1,7 @@
 ---
 name: task_auto_check
 description: Autonomously drive one task from open or checked to ready through task_check, verifier-approved body repairs, and final mechanical task-lint cleanup. Use when a user asks to auto-fix readiness issues, make a task ready, refresh a stale task against the current codebase, or run an autonomous readiness loop without implementing the task. A task whose premise the code invalidates stops the loop and surfaces deferral as the user's option.
-version: 1.0.30
+version: 1.0.31
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -237,7 +237,7 @@ Report the loop result with concrete evidence:
 - For a context-compaction stop: the signal that fired (an advance notice or a trace after the fact), the round and step reached as read from the relay directory, whether the last applied edits passed their delta audit, and the options presented for the operator's decision.
 - The notes the final gate verdict carried, reported as notes and left unrepaired.
 - For the freeze-time drift check: the `auto_drift_task` classification, the baseline commit whose version served as the baseline, the recovered-versus-current juxtaposition, any attestation relied on, whether the run halted before `<gate>`, and the exact human intention check message when surfaced.
-- For each applied edit group: the cited issue it addressed, whether a `task_check` issue or a lint-originated `repeated-link` finding, the reviewer stance(s) that proposed it, the verifier decision, and the base repair rule cited.
+- For each applied edit group: the cited issue it addressed, whether a `task_check` issue or a lint-originated `repeated-link` finding, the reviewer stance(s) that proposed it, the verifier decision, and the base repair rule cited. An edit group that answers a lint-originated `repeated-link` finding closes with that finding's disposition line, printed verbatim in the base `<lint>` **Repeated-link disposition line** shape on a line of its own, even when the group's entry also narrates the change in prose.
 - Relay directory path retained after the run.
 - For each delta audit: hunks mapped, hunks reverted, and approved edits applied late.
 - For each rejected or human-routed issue: the reason it was rejected or routed.

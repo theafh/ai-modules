@@ -34,6 +34,34 @@ ordinary suite automatically.
 
 ## Recorded results
 
+### 2026-11-18: Cursor `auto`, the disposition line on the ordinary repair path
+
+Both evals ran twice on the default vendor with
+`python3 tests/task_auto_check/evals/run.py regroup_immediate_ready --force` and
+`python3 tests/task_auto_check/evals/run.py regroup_via_reviewer --force`,
+measured against the 2026-11-15 Cursor row, where `regroup_immediate_ready`
+passes and `regroup_via_reviewer` carries no failure row. The
+`<output_contract>` edit-group bullet now closes an edit group that answers a
+lint-originated `repeated-link` finding with that finding's disposition line,
+so a regroup landing in an ordinary repair round still prints it.
+
+| Eval | Run | Path the regroup took | Verdict | Disposition check(s) |
+| :--- | :--- | :--- | :--- | :--- |
+| `regroup_immediate_ready` | `../workspace/run-20261118-220012-8368` | Gate repeated-link repair round (r3) after a first-call `ready` and a refuted-citation re-gate that kept it | passes, 14/14 | "the ready path reports a regrouped or surfaced disposition": PASS; "the reported disposition matches the file state it claims": PASS |
+| `regroup_immediate_ready` | `../workspace/run-20261118-221513-80201` | Gate repeated-link repair round (r3) after a first-call `ready` and a refuted-citation re-gate that kept it | passes, 14/14 | "the ready path reports a regrouped or surfaced disposition": PASS; "the reported disposition matches the file state it claims": PASS |
+| `regroup_via_reviewer` | `../workspace/run-20261118-223550-61115` | Ordinary repair round (r2), after a refuted-citation re-gate moved `ready` to `checked` | passes, 11/11 | `disposition_line_regrouped`: PASS |
+| `regroup_via_reviewer` | `../workspace/run-20261118-230501-45689` | Ordinary repair round (r2), after a refuted-citation re-gate moved `ready` to `checked` | passes, 11/11 | `disposition_line_regrouped`: PASS |
+
+Both `regroup_via_reviewer` runs landed the regroup in an ordinary repair round,
+which is the path this change repairs: each response carries
+`repeated-link: api_quota-retry-header.md -> api_quota-reset-config.md, linked
+from Context, Approach, regrouped`. The two `regroup_immediate_ready` runs kept
+the regroup on the gate repeated-link round, so they confirm the line survives
+there and add no ordinary-round evidence; the discriminating proof for that path
+is the rewritten `<output_contract>` bullet and its script pin in scenario s15.
+The 2026-11-15 Claude misses came from the ordinary repair path, so a Claude run
+that confirms the fix remains the operator's call.
+
 ### 2026-11-17: Cursor `auto`, the gate and verifier return layout
 
 The three evals the return-layout change names ran on the default vendor with
@@ -66,7 +94,7 @@ On each eval's latest run, re-graded with the current graders, Cursor passes 29 
 | --- | --- | --- | --- | --- |
 | `immediate_ready_citations_survive` | fails | fails | The verifier refutes every citation that clears a lens judged by absence. On Claude the re-gate also read the base skill back from Claude Code's `tool-results` store and stopped as a helper failure | [absence citations](../../../tasks/task-family_gate-absence-citation-form.md), [paged reads](../../../tasks/task-family_gate-paged-reads-of-large-files.md) |
 | `scope_split_stuck` | passes | fails | Claude's gate treats a small bundle of independent items as a note under the **Blocking bar** | [independent items](../../../tasks/task-family_independent-items-split-blocks.md) |
-| `regroup_immediate_ready` | passes | fails | When an ordinary repair round lands the regroup, Claude's report drops the `repeated-link:` disposition line | [disposition line](../../../tasks/task-family_auto-check-disposition-line-every-path.md) |
+| `regroup_immediate_ready` | passes | fails | When an ordinary repair round lands the regroup, Claude's report drops the `repeated-link:` disposition line | [disposition line](../../../tasks/archive/task-family_auto-check-disposition-line-every-path.md) (archived) |
 | `relay_by_path` | fails | fails | Cursor stopped human-routed on a frozen Acceptance item no check can prove. Claude's verifier return breaks the source-contract layout check | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md), [return layout](../../../tasks/archive/task-family_gate-verifier-return-layout.md) |
 | `stray_hunk_reverted` | passes | fails | Claude's proposal-mode verifier return breaks the layout check | [return layout](../../../tasks/archive/task-family_gate-verifier-return-layout.md) |
 | `repair_to_ready` | passes | fails | Claude cannot replace a frozen Acceptance item that names no checkable result | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md) |

@@ -398,6 +398,10 @@ s15_convergence_and_robust_returns() {
   assert_contains "empty or length-cut return is an output-budget failure" "$SKILL" "is an output-budget failure" || ok=false
   assert_contains "output-budget failure is not the spawn-echo glitch" "$SKILL" "never the spawn-echo glitch, and it earns one identical-prompt retry" || ok=false
   assert_contains "pointer return violates the contract" "$SKILL" "points at an earlier message (\"delivered above\") instead of carrying the contract" || ok=false
+  # The ordinary repair path prints the disposition line beside the edit group
+  # that landed the regroup, not only in the shared every-path bullet at the
+  # end of the list.
+  assert_contains "edit-group bullet requires the disposition line on the ordinary path" "$SKILL" "An edit group that answers a lint-originated \`repeated-link\` finding closes with that finding's disposition line, printed verbatim in the base \`<lint>\` **Repeated-link disposition line** shape on a line of its own, even when the group's entry also narrates the change in prose." || ok=false
   # Isolation counts reads only. The gate searches with an ignore-aware
   # mechanism and treats a VCS-blind walker as a violation, while the dry
   # run's recursive searches skip the relay.
