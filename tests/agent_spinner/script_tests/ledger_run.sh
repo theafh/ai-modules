@@ -1183,6 +1183,25 @@ scenario_stray_close() {
     else
         bad "close refuses a stray path with exit 3 and names the scratch home beside condition 5 (rc=$rc)"
     fi
+
+    dir2="$dir/tracked"
+    setup_repo "$dir2"
+    ledger "$dir2" init --unit produce:a >/dev/null 2>&1
+    printf 'changed\n' >> "$dir2/a.txt"
+    ledger "$dir2" close > "$dir2/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 5: tree guard sees a.txt with no disposition$' "$dir2/.agent_spinner/close.out"; then
+        ok "close refuses a modified tracked path without the scratch home hint"
+    else
+        bad "close refuses a modified tracked path without the scratch home hint (rc=$rc)"
+    fi
+    out=$(ledger "$dir2" status 2>&1)
+    block=$(printf '%s\n' "$out" | sed -n '/^stray paths:$/,/^resume:$/p')
+    if printf '%s\n' "$block" | grep -qx '  none'; then
+        ok "the stray paths block leaves tracked paths to close condition 5"
+    else
+        bad "the stray paths block leaves tracked paths to close condition 5"
+    fi
 }
 
 scenario_no_helper() {

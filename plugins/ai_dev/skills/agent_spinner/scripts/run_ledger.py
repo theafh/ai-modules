@@ -2901,12 +2901,16 @@ def close_open_items(led):
         )
 
     known = set(c.get("path") for c in led.run.get("changes", []))
-    current = set(path for code, path in stray_entries(led, known))
-    for path in sorted(current):
-        open_items.append(
-            "condition 5: tree guard sees %s with no disposition; orchestrator "
-            "scratch belongs in .agent_spinner/scratch/" % path
-        )
+    for code, path in sorted(stray_entries(led, known), key=lambda entry: entry[1]):
+        if code == "??":
+            open_items.append(
+                "condition 5: tree guard sees %s with no disposition; "
+                "orchestrator scratch belongs in .agent_spinner/scratch/" % path
+            )
+        else:
+            open_items.append(
+                "condition 5: tree guard sees %s with no disposition" % path
+            )
     if git_head(led.root) != led.run.get("baseline_commit", "") and "<HEAD>" not in known:
         open_items.append("condition 5: HEAD moved with no disposition")
     if git_stash_list(led.root) != read_text(led.path("baseline", "stash-list")).strip() and "<stash>" not in known:
@@ -3193,7 +3197,8 @@ def build_parser():
             "Show where the run stands: the tally, open rows, open gates, "
             "the repair list, stamped paths awaiting routing with their "
             "owning gates, the open packet ids, the blind rows with their "
-            "derived labels, the stray paths block, and the resume hashes."
+            "derived labels, the stray paths block of untracked paths, and "
+            "the resume hashes."
         ),
     )
     p.set_defaults(func=cmd_status)

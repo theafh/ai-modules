@@ -438,7 +438,10 @@ Show where the run stands: run id, open or closed, the tally, each open row
 with its deadline, each open gate, the repair list, each stamped path awaiting
 routing with its owning gate, the open packet ids, each blind row with its
 derived label, the stray paths block, the resume hashes, and the
-start-to-return intervals.
+start-to-return intervals. The stray paths block lists the working-root paths
+git reports as untracked that the run recorded no disposition for and that the
+baseline status did not already carry; it leaves tracked paths to `close`'s
+condition 5, which refuses every undisposed path.
 
 ### `show`
 
