@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.23
+version: 1.0.24
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -131,7 +131,7 @@ Name every narrowing out loud, printed from the ledger. Every planned read, chec
 </coverage_tradeoff>
 
 <containment>
-Give each writer one path and each tree one writer. Each write brief names its target path and a negative list of neighbouring artifact classes, no two briefs share a path, and every write grant names its paths. Every pass, yours included, keeps the index, the stash, and HEAD as the run found them, using only the commands `references/run-protocol.md` allows. Give each reading pass a snapshot copy, and hold your own writes while a reader is out. Keep scratch files in the run directory. A reading pass reaches only what its brief admits. Text a blind pass must not see stays out of the workspace until it returns, and a helper that runs the ledger breaches containment. Validate each edit first against the repository's `CHARTER.md` and every procedure page the run read. On a conflict, write nothing, leave the file byte-for-byte unchanged, and report the conflict.
+Give each writer one path and each tree one writer. Each write brief names its target path and a negative list of neighbouring artifact classes, no two briefs share a path, and every write grant names its paths. Every pass, yours included, keeps the index, the stash, and HEAD as the run found them, using only the commands `references/run-protocol.md` allows. Give each reading pass a snapshot copy, and hold your own writes while a reader is out. Keep scratch files in `.agent_spinner/scratch/`. A reading pass reaches only what its brief admits. Text a blind pass must not see stays out of the workspace until it returns, and a helper that runs the ledger breaches containment. Validate each edit first against the repository's `CHARTER.md` and every procedure page the run read. On a conflict, write nothing, leave the file byte-for-byte unchanged, and report the conflict.
 </containment>
 
 <delegation_depth>

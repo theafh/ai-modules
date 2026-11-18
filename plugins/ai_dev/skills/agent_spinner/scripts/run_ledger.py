@@ -910,6 +910,7 @@ def cmd_init(args):
         "gates",
         "outbound",
         "controls",
+        "scratch",
         "history",
     ):
         os.makedirs(led.path(sub), exist_ok=True)
@@ -2621,6 +2622,14 @@ def cmd_status(args):
         print("  %s %s" % (label, state))
     if not blind:
         print("  none")
+    print("stray paths:")
+    strays = sorted(set(path for code, path in stray_entries(led) if code == "??"))
+    for path in strays:
+        print("  %s" % path)
+    if strays:
+        print("  orchestrator scratch belongs in .agent_spinner/scratch/")
+    else:
+        print("  none")
     print("resume:")
     for row in led.rows:
         if row.get("brief_hash"):
@@ -2839,6 +2848,29 @@ def change_covered(led, change, dispositions):
     return False
 
 
+def stray_entries(led, known=None):
+    """Return working-root status entries the run recorded no disposition for.
+
+    A path counts as stray unless the run recorded it in ``changes`` or the
+    baseline status already carried it. Both the ``status`` block and close
+    condition 5 subtract those two sets, so a recorded deliverable is never
+    reported as stray.
+    """
+    if known is None:
+        known = set(c.get("path") for c in led.run.get("changes", []))
+    baseline_paths = set()
+    for line in read_text(led.path("baseline", "status")).splitlines():
+        if line.strip() and len(line) > 3:
+            baseline_paths.add(line[3:])
+    return [
+        (code, path)
+        for code, path in git_status(led.root)
+        if not under_run_dir(led.root, path)
+        and path not in known
+        and path not in baseline_paths
+    ]
+
+
 def close_open_items(led):
     open_items = []
     counts = led.state_counts()
@@ -2868,14 +2900,13 @@ def close_open_items(led):
             % (rel, target.get("gate"))
         )
 
-    current = set(path for code, path in git_status(led.root) if not under_run_dir(led.root, path))
     known = set(c.get("path") for c in led.run.get("changes", []))
-    baseline_paths = set()
-    for line in read_text(led.path("baseline", "status")).splitlines():
-        if line.strip() and len(line) > 3:
-            baseline_paths.add(line[3:])
-    for path in sorted(current - known - baseline_paths):
-        open_items.append("condition 5: tree guard sees %s with no disposition" % path)
+    current = set(path for code, path in stray_entries(led, known))
+    for path in sorted(current):
+        open_items.append(
+            "condition 5: tree guard sees %s with no disposition; orchestrator "
+            "scratch belongs in .agent_spinner/scratch/" % path
+        )
     if git_head(led.root) != led.run.get("baseline_commit", "") and "<HEAD>" not in known:
         open_items.append("condition 5: HEAD moved with no disposition")
     if git_stash_list(led.root) != read_text(led.path("baseline", "stash-list")).strip() and "<stash>" not in known:
@@ -3161,8 +3192,8 @@ def build_parser():
         description=(
             "Show where the run stands: the tally, open rows, open gates, "
             "the repair list, stamped paths awaiting routing with their "
-            "owning gates, the open packet ids, and the blind rows with "
-            "their derived labels."
+            "owning gates, the open packet ids, the blind rows with their "
+            "derived labels, the stray paths block, and the resume hashes."
         ),
     )
     p.set_defaults(func=cmd_status)

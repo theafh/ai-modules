@@ -289,10 +289,16 @@ scenario_help() {
     else
         ok "unknown verb exits non-zero"
     fi
-    if ledger "$dir" status --help > "$dir/status-help.txt" 2>&1 && grep -q 'blind rows' "$dir/status-help.txt"; then
+    ledger "$dir" status --help > "$dir/status-help.txt" 2>&1
+    if grep -q 'blind rows' "$dir/status-help.txt"; then
         ok "status --help names the blind rows listing"
     else
         bad "status --help names the blind rows listing"
+    fi
+    if grep -q 'stray paths' "$dir/status-help.txt"; then
+        ok "status --help names the stray paths block"
+    else
+        bad "status --help names the stray paths block"
     fi
 }
 
@@ -896,6 +902,19 @@ scenario_run_directory() {
     if find "$dir/.agent_spinner/history" -name roster.tsv | grep -q .; then ok "the next init moves the closed run under history"; else bad "the next init moves the closed run under history"; fi
 }
 
+scenario_scratch_directory() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    check "init creates .agent_spinner/scratch as a directory" test -d "$dir/.agent_spinner/scratch"
+    printf 'intermediate\n' > "$dir/.agent_spinner/scratch/note.txt"
+    if ! git -C "$dir" status --porcelain | grep -q '.agent_spinner'; then
+        ok "a file written into scratch stays out of git status"
+    else
+        bad "a file written into scratch stays out of git status"
+    fi
+}
+
 scenario_repo_safety() {
     dir="$1"
     setup_repo "$dir"
@@ -1094,6 +1113,76 @@ PY
     if grep -q 'repair-one\|a.txt' "$dir/status.txt"; then ok "status prints the repair list"; else bad "status prints the repair list"; fi
     resume=$(grep -c '^  [0-9a-f]\{64\} ' "$dir/status.txt")
     check "status resume lists one line per recorded brief" test "$resume" = 2
+}
+
+scenario_stray_paths() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    printf 'stray\n' > "$dir/stray.txt"
+    out=$(ledger "$dir" status 2>&1)
+    if printf '%s\n' "$out" | grep -q '^stray paths:$'; then
+        ok "status prints a stray paths block"
+    else
+        bad "status prints a stray paths block"
+    fi
+    block=$(printf '%s\n' "$out" | sed -n '/^stray paths:$/,/^resume:$/p')
+    if printf '%s\n' "$block" | grep -qx '  stray.txt'; then
+        ok "the stray paths block names the stray file"
+    else
+        bad "the stray paths block names the stray file"
+    fi
+    if printf '%s\n' "$block" | grep -qF '.agent_spinner/scratch/'; then
+        ok "the stray paths block names the orchestrator scratch home"
+    else
+        bad "the stray paths block names the orchestrator scratch home"
+    fi
+
+    dir2="$dir/clean"
+    setup_repo "$dir2"
+    ledger "$dir2" init --unit produce:a >/dev/null 2>&1
+    out=$(ledger "$dir2" status 2>&1)
+    block=$(printf '%s\n' "$out" | sed -n '/^stray paths:$/,/^resume:$/p')
+    if printf '%s\n' "$block" | grep -qx '  none'; then
+        ok "an empty stray paths block prints none"
+    else
+        bad "an empty stray paths block prints none"
+    fi
+}
+
+scenario_stray_paths_recorded() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    printf 'recorded\n' > "$dir/recorded.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    printf 'unrecorded\n' > "$dir/unrecorded.txt"
+    out=$(ledger "$dir" status 2>&1)
+    block=$(printf '%s\n' "$out" | sed -n '/^stray paths:$/,/^resume:$/p')
+    if printf '%s\n' "$block" | grep -qx '  unrecorded.txt'; then
+        ok "status lists the unrecorded file as stray"
+    else
+        bad "status lists the unrecorded file as stray"
+    fi
+    if printf '%s\n' "$block" | grep -qx '  recorded.txt'; then
+        bad "status leaves a recorded deliverable out of the stray paths block"
+    else
+        ok "status leaves a recorded deliverable out of the stray paths block"
+    fi
+}
+
+scenario_stray_close() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    printf 'stray\n' > "$dir/stray.txt"
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 5: tree guard sees stray.txt with no disposition; orchestrator scratch belongs in .agent_spinner/scratch/' "$dir/.agent_spinner/close.out"; then
+        ok "close refuses a stray path with exit 3 and names the scratch home beside condition 5"
+    else
+        bad "close refuses a stray path with exit 3 and names the scratch home beside condition 5 (rc=$rc)"
+    fi
 }
 
 scenario_no_helper() {
@@ -2581,6 +2670,7 @@ run_all_scenarios() {
     scenario_gate_expect "$root/gate-expect"
     scenario_close_conditions "$root/close"
     scenario_run_directory "$root/run-directory"
+    scenario_scratch_directory "$root/scratch-directory"
     scenario_repo_safety "$root/repo-safety"
     scenario_accept_stdin "$root/accept-stdin"
     scenario_attach "$root/attach"
@@ -2588,6 +2678,9 @@ run_all_scenarios() {
     scenario_show_search "$root/show-search"
     scenario_snapshot "$root/snapshot"
     scenario_status "$root/status"
+    scenario_stray_paths "$root/stray-paths"
+    scenario_stray_paths_recorded "$root/stray-recorded"
+    scenario_stray_close "$root/stray-close"
     scenario_no_helper "$root/no-helper"
     scenario_gate_scope "$root/gate-scope"
     scenario_hostile_git "$root/hostile-git"

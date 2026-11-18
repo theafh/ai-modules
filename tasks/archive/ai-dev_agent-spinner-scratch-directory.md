@@ -2,9 +2,11 @@
 description: "Give agent_spinner orchestrator scratch a named, git-hidden home inside the run directory, and make status and close name stray untracked paths."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T22:33:19Z
-updated: 2026-11-17T12:47:28Z
-status: ready
+updated: 2026-11-18T13:32:24Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Give agent_spinner scratch a named home inside the run directory

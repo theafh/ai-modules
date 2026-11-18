@@ -34,7 +34,9 @@ The ledger keeps one open run per working root under `.agent_spinner/`. `init`
 refuses while a run is open and names `attach`. The directory holds `run.json`,
 `roster.tsv`, `ledger.jsonl`, the baseline copies and hashes, `briefs/`,
 `returns/`, `snapshots/`, `diffs/`, `gates/`, `controls/`, `access/`, `kinds/`,
-`items/`, and `history/`. Its own `.gitignore` hides it from git.
+`items/`, `scratch/`, and `history/`. `.agent_spinner/scratch/` is the
+orchestrator's own scratch area, where the intermediate files it keeps for
+itself belong. Its own `.gitignore` hides it from git.
 
 Every brief keeps its helper out of the directory, apart from the helper's own
 brief, start marker, and return, and the inputs its brief names, snapshot
@@ -435,7 +437,8 @@ Make read copies.
 Show where the run stands: run id, open or closed, the tally, each open row
 with its deadline, each open gate, the repair list, each stamped path awaiting
 routing with its owning gate, the open packet ids, each blind row with its
-derived label, the resume hashes, and the start-to-return intervals.
+derived label, the stray paths block, the resume hashes, and the
+start-to-return intervals.
 
 ### `show`
 
