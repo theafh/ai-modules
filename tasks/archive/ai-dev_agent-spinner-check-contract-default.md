@@ -2,9 +2,11 @@
 description: "Say what an agent_spinner checking pass checks when the request names no acceptance contract: claims against their source, with omissions left to a completeness critic unless asked."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T23:45:46Z
-updated: 2026-11-17T13:10:00Z
-status: ready
+updated: 2026-11-18T08:28:07Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Say what a checking pass checks when the request names no contract
@@ -18,7 +20,7 @@ A request such as "run a checking pass over these pages against the tool" gets t
 - **The rule assumes a contract.** SKILL.md `<checking>` says "Build the checklist from the artifact's acceptance contract, one line per item, testing the required form present and the old form absent", and `references/checks.md` repeats the term, but neither says where the contract comes from when the request names none. SKILL.md `<selector>` keeps omissions apart: "A finished body needing a what-is-missing read: a completeness critic."
 - **What happened.** `clean_corpus` asks for a checking pass over two accurate pages against `bin/tool.sh`, and expects zero findings. After its fixture was repaired on 2026-11-15, the Cursor run passed 12 of 12 checks. A Claude run (`opus` at high effort) said "Neither page under docs/ says anything false about bin/tool.sh", yet wrote its own rubric including omissions and reported five minor findings, such as the status page never giving its success exit code. Earlier Claude runs of the same eval reported omissions too.
 
-The run's other two failures belong elsewhere: its verifier returns were rejected on shape ([the brief-contract task](ai-dev_agent-spinner-ledger-brief-contract.md)), and its opening sentence missed the tier and counts (the report-and-packet task).
+The run's other two failures belong elsewhere: its verifier returns were rejected on shape ([the brief-contract task](../ai-dev_agent-spinner-ledger-brief-contract.md)), and its opening sentence missed the tier and counts (the report-and-packet task).
 
 ## Approach
 

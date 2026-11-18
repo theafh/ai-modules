@@ -149,6 +149,12 @@ per-file diff under [the diff path].
 Open from this position: the work is incomplete or wrong. Concede it only
 after running this checklist, and cite the span that settled each line:
 
+Build the checklist from the brief's acceptance contract where it names one of
+C1 step 4's three contract sources. Where it names none, hold one line per
+claim the artifact makes, in artifact order, each tested against the source the
+request names, and record a missing claim as a dropped suspicion unless the
+request asks what is missing, which sends it to a completeness critic.
+
 1. [check one]
 2. [check two]
 3. [check three]

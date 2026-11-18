@@ -58,13 +58,21 @@ another row, a covering gate, or an unverified disposition.
 
 A checker's brief carries nothing that could steer its verdict.
 
-1. Aim the check at the artifact or edit that will ship. Copy the checklist
-   verbatim from the artifact's acceptance contract, one line per item, and
-   render it with `brief --acceptance PATH[#Heading]`, which refuses a
-   checklist shorter than the acceptance items or one whose lines omit an
-   item.
-2. Write each line to test that the required form is present on every governed
-   surface and that the old form is absent.
+1. Aim the check at the artifact or edit that will ship. When the brief names an
+   acceptance source, copy the checklist verbatim from that contract, one line
+   per item, and render it with `brief --acceptance PATH[#Heading]`, which
+   refuses a checklist shorter than the acceptance items or one whose lines
+   omit an item. When the brief names none of C1 step 4's three contract
+   sources (the item brief, an approved-edit list, an acceptance list), the
+   default contract holds one line per claim the artifact makes, in artifact
+   order, each tested against the source it describes, which the request's
+   named source identifies. A missing claim is a completeness finding, raised
+   only when the request asks what is missing, through the completeness critic,
+   and otherwise recorded as a dropped suspicion.
+2. Write each contract line to test that the required form is present on every
+   governed surface. Give a rewrite item the old-form test as well, paired with
+   that presence test, so the old form is absent where the required new form
+   lands, and keep the old-form test off a line that adds new content.
 3. Split compound findings into atomic claims, and treat a recommendation's
    direction as a claim.
 4. Use the closed verdict set: confirmed; narrowed, with corrected wording

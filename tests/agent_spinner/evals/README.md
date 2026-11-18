@@ -680,5 +680,24 @@ Each remaining failure belongs to a task in the backlog:
 | `wide_run_plans_session_boundary`, `shape_matched_no_recipe` | Claude; Cursor | routed inline as a read-only diagnostic, or matched the multi-file recipe without a task | `ai-dev_agent-spinner-selector-probe-definitions` |
 | `checker_spawned_without_role` | Claude | the worker read the operator's own role definition and recorded a role route | `tests_claude-worker-scratch-home` |
 | `payload_cap`, `sweep_rewrite_hunk_blocks_sampling` | both; Cursor | brief checks that ignore the by-path branch, and a sampling cue read from a negated sentence | `tests_agent-spinner-vacuous-graders` |
-| `clean_corpus` | Claude | after the fixture repair, omissions counted as findings in a checking pass | `ai-dev_agent-spinner-check-contract-default` |
 | `one_remediation_round` | Cursor | the text never says no second round follows, though none ran | none; the behaviour held |
+
+### 2026-11-18, Cursor CLI 2026.11.13-eacade1, model `auto` — checking-pass default contract
+
+`clean_corpus` and `planted_defect` ran fresh (`--force`) after the `<checking>`
+rewrite, the C2 items 1–2 rewrite, and the `## Checking pass` template change.
+The change reaches no other eval: the fixtures, the grader, and every other
+prompt are untouched, so each eval outside this pair keeps its recorded verdict.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `clean_corpus` | pass (12 of 12 checks) | `../workspace/run-20261118-085843` |
+| `planted_defect` | pass (13 of 13 checks) | `../workspace/run-20261118-085843` |
+
+`clean_corpus` reports zero findings and records what it examined and cleared.
+That verdict follows the pre-change Cursor pass on the repaired fixture,
+`run-20261115-002747`, and it answers the Claude run `run-20261115-002758`,
+whose checking pass counted five omissions as findings. `planted_defect` still
+names its planted defect, against its pre-change run
+`run-20261111-111927`. The `clean_corpus` row in the failure table above is
+cleared and removed, because its omission counting no longer reproduces.

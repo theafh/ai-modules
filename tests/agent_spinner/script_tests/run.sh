@@ -18,6 +18,8 @@ REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
 SKILL_DIR="$REPO_ROOT/plugins/ai_dev/skills/agent_spinner"
 SKILL="$SKILL_DIR/SKILL.md"
 REFS="$SKILL_DIR/references"
+CHECKS="$REFS/checks.md"
+ROLE_PROMPTS="$REFS/role-prompts.md"
 SCRIPTS="$SKILL_DIR/scripts"
 LEDGER="$SCRIPTS/run_ledger.py"
 AGENTS_DIR="$REPO_ROOT/plugins/ai_dev/agents"
@@ -44,13 +46,62 @@ file_has() { grep -Eq "$2" "$1"; }
 
 # section_has <file> <tag> <pattern> — match inside one pseudo-XML block, so a
 # pin proves the rule landed in the section that owns it.
-section_has() {
+section_block() {
   awk -v tag="$2" '
     index($0, "<" tag ">") { inside = 1 }
     inside                 { print }
     index($0, "</" tag ">") { inside = 0 }
-  ' "$1" | grep -Eq "$3"
+  ' "$1"
 }
+
+section_has() { section_block "$1" "$2" | grep -Eq "$3"; }
+
+# collapsed_has <pattern> — read a block on stdin and collapse the line breaks
+# a paragraph wraps at, so a pin matches the prose phrase rather than one
+# particular wrap.
+collapsed_has() {
+  tr '\n' ' ' | tr -s '[:space:]' ' ' | grep -Eq "$1"
+}
+
+section_has_collapsed() { section_block "$1" "$2" | collapsed_has "$3"; }
+
+# heading_block <file> <heading> — one `## heading` section up to the next
+# heading, so a pin reads the template that owns the rule.
+heading_block() {
+  awk -v h="## $2" '
+    $0 == h                { inside = 1; next }
+    inside && /^## /       { inside = 0 }
+    inside                 { print }
+  ' "$1"
+}
+
+heading_block_has_collapsed() { heading_block "$1" "$2" | collapsed_has "$3"; }
+
+# checks_c2_block <checks.md> — the C2 section alone.
+checks_c2_block() {
+  awk '
+    /^## C2\. /                                { inside = 1 }
+    inside && /^## C[0-9]+\. / && !/^## C2\. / { inside = 0 }
+    inside                                     { print }
+  ' "$1"
+}
+
+c2_has_collapsed() { checks_c2_block "$1" | collapsed_has "$2"; }
+
+# c2_item <checks.md> <number> — one numbered step of C2, so a pin reads the
+# item that owns the rule rather than the whole check.
+c2_item() {
+  awk -v n="$2" '
+    /^## C2\. /                    { inside = 1; next }
+    inside && /^## C[0-9]+\. /     { inside = 0 }
+    inside && $0 ~ ("^" n "\\.")   { item = 1; print; next }
+    inside && item && /^[0-9]+\./  { item = 0 }
+    inside && item                 { print }
+  ' "$1"
+}
+
+c2_item_has() { c2_item "$1" "$2" | grep -Eq "$3"; }
+c2_item_has_collapsed() { c2_item "$1" "$2" | collapsed_has "$3"; }
 
 description_under() {
   python3 - "$1" "$2" <<'PY'
@@ -277,6 +328,35 @@ aggregation_show_list_correct() {
   printf '%s\n' "$clause" | grep -Eq 'alternatives' \
     && printf '%s\n' "$block" | grep -Eq '`dispose --flag' \
     && ! printf '%s\n' "$block" | grep -Eqi 'contradictions|beyond-brief finds'
+}
+
+# checking_omission_route <skill.md> — a missing claim is recorded as a dropped
+# suspicion, and the completeness critic is named as the route only when the
+# request asks what is missing.
+checking_omission_route() {
+  section_has_collapsed "$1" checking 'recorded as a dropped suspicion' \
+    && section_has "$1" checking '`<completeness_critic>`'
+}
+
+# old_checking_sentence_absent <skill.md> — the pre-default <checking> sentence
+# built every checklist from the acceptance contract, with no fallback.
+old_checking_sentence_absent() {
+  ! grep -Fq "Build the checklist from the artifact's acceptance contract, one line per item" "$1"
+}
+
+# c2_renderer_scoped <checks.md> — the `brief --acceptance` renderer applies
+# only where the brief names an acceptance source, since `--acceptance` is
+# optional.
+c2_renderer_scoped() {
+  c2_item_has_collapsed "$1" 1 'When the brief names an acceptance source, copy the checklist verbatim' \
+    && c2_item_has "$1" 1 'brief --acceptance PATH\[#Heading\]'
+}
+
+# c2_rewrite_pairing <checks.md> — the old-form test is paired with the
+# presence test on a rewrite item alone.
+c2_rewrite_pairing() {
+  c2_item_has_collapsed "$1" 2 'Give a rewrite item the old-form test' \
+    && c2_item_has_collapsed "$1" 2 'old form is absent where the required new form lands'
 }
 
 oldest_python3() {
@@ -881,6 +961,139 @@ sys.exit(0 if blocks and all(
 "
 check "no template claims precedence over the surrounding conversation" \
   tree_lacks "$REFS" 'takes? precedence|override[s]? (any|all|the)|ignore (all |any )?(previous|prior|earlier)|supersede[s]? (any|all)|regardless of (any|all)|highest authority'
+
+# --- the checking pass's default contract -----------------------------------
+#
+# <checking> and C2 name the contract a checking brief builds its checklist
+# from: the acceptance contract where the brief names one of C1 step 4's three
+# sources (the item brief, an approved-edit list, an acceptance list), and
+# otherwise one line per claim the artifact makes, in artifact order. A missing
+# claim is a completeness finding only when the request asks what is missing,
+# so a checking pass over an accurate corpus reports zero findings.
+
+check "<checking> takes the default contract, one line per claim in artifact order" \
+  section_has_collapsed "$SKILL" checking 'one line per claim the artifact makes, in artifact order'
+check "<checking> keys the default on a brief naming none of the three contract sources" \
+  section_has_collapsed "$SKILL" checking 'A brief naming none of those three sources takes the default contract'
+check "<checking> records a missing claim as a dropped suspicion and names the completeness critic" \
+  checking_omission_route "$SKILL"
+check "the old <checking> acceptance-contract sentence is absent" \
+  old_checking_sentence_absent "$SKILL"
+check "C2 takes the same default contract, one line per claim in artifact order" \
+  c2_has_collapsed "$CHECKS" 'one line per claim the artifact makes, in artifact order'
+check "C2 item 1 scopes the brief --acceptance renderer to a brief naming an acceptance source" \
+  c2_renderer_scoped "$CHECKS"
+check "C2 item 2 gives the old-form test to rewrite items alone" \
+  c2_rewrite_pairing "$CHECKS"
+check "the Checking pass template names what its checklist is built from" \
+  heading_block_has_collapsed "$ROLE_PROMPTS" 'Checking pass' 'Where it names none, hold one line per claim the artifact makes, in artifact order'
+
+# Each check fails on a scratch copy carrying the pre-change form, so a green
+# run proves it can fail rather than passing vacuously.
+CC_SCRATCH="$SCRATCH/check-contract"
+mkdir -p "$CC_SCRATCH"
+
+cp "$SKILL" "$CC_SCRATCH/no-claim-unit.md"
+python3 - "$CC_SCRATCH/no-claim-unit.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "one line per claim the artifact makes, in artifact order"
+if old not in text:
+    raise SystemExit("claim-unit sentence not found")
+open(path, "w").write(text.replace(old, "one line per item", 1))
+PY
+check "the claim-unit check fails on a checklist with no claim unit or order" \
+  not section_has_collapsed "$CC_SCRATCH/no-claim-unit.md" checking 'one line per claim the artifact makes, in artifact order'
+
+cp "$SKILL" "$CC_SCRATCH/no-source-key.md"
+python3 - "$CC_SCRATCH/no-source-key.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "A brief naming none of those three sources takes the default contract"
+if old not in text:
+    raise SystemExit("source-key sentence not found")
+open(path, "w").write(text.replace(old, "A brief naming no source takes the default contract", 1))
+PY
+check "the source-key check fails on a default contract not keyed on the three sources" \
+  not section_has_collapsed "$CC_SCRATCH/no-source-key.md" checking 'A brief naming none of those three sources takes the default contract'
+
+cp "$SKILL" "$CC_SCRATCH/no-dropped-suspicion.md"
+python3 - "$CC_SCRATCH/no-dropped-suspicion.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "recorded as a dropped suspicion"
+if old not in text:
+    raise SystemExit("dropped-suspicion sentence not found")
+open(path, "w").write(text.replace(old, "recorded as a finding", 1))
+PY
+check "the omission check fails when a missing claim is recorded as a finding" \
+  not checking_omission_route "$CC_SCRATCH/no-dropped-suspicion.md"
+
+cp "$SKILL" "$CC_SCRATCH/old-checking-sentence.md"
+printf '\nBuild the checklist from the artifact'"'"'s acceptance contract, one line per item, testing the required form present and the old form absent.\n' \
+  >> "$CC_SCRATCH/old-checking-sentence.md"
+check "the old-sentence check fails on the pre-default sentence" \
+  not old_checking_sentence_absent "$CC_SCRATCH/old-checking-sentence.md"
+
+cp "$CHECKS" "$CC_SCRATCH/c2-no-claim-unit.md"
+python3 - "$CC_SCRATCH/c2-no-claim-unit.md" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+text, n = re.subn(r"one line per claim the artifact makes,\s+in artifact\s+order",
+                  "one line per item", text, count=1)
+if n != 1:
+    raise SystemExit("C2 claim-unit sentence not found")
+open(path, "w").write(text)
+PY
+check "the C2 claim-unit check fails on a checklist with no claim unit or order" \
+  not c2_has_collapsed "$CC_SCRATCH/c2-no-claim-unit.md" 'one line per claim the artifact makes, in artifact order'
+
+cp "$CHECKS" "$CC_SCRATCH/c2-unscoped-renderer.md"
+python3 - "$CC_SCRATCH/c2-unscoped-renderer.md" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+text, n = re.subn(r"When the brief names an\s+acceptance source",
+                  "When the brief names a contract", text, count=1)
+if n != 1:
+    raise SystemExit("renderer scope sentence not found")
+open(path, "w").write(text)
+PY
+check "the renderer check fails on an unscoped brief --acceptance sentence" \
+  not c2_renderer_scoped "$CC_SCRATCH/c2-unscoped-renderer.md"
+
+cp "$CHECKS" "$CC_SCRATCH/c2-old-form-every-item.md"
+python3 - "$CC_SCRATCH/c2-old-form-every-item.md" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+text, n = re.subn(r"Give a rewrite item the old-form test",
+                  "Give each item the old-form test", text, count=1)
+if n != 1:
+    raise SystemExit("rewrite-item sentence not found")
+open(path, "w").write(text)
+PY
+check "the rewrite-pairing check fails when the old-form test reaches every item" \
+  not c2_rewrite_pairing "$CC_SCRATCH/c2-old-form-every-item.md"
+
+cp "$ROLE_PROMPTS" "$CC_SCRATCH/bare-checking-template.md"
+python3 - "$CC_SCRATCH/bare-checking-template.md" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+text, n = re.subn(
+    r"Build the checklist from the brief's acceptance contract where it names one of.*?sends it to a completeness critic\.\n\n",
+    "", text, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit("checking-template contract sentence not found")
+open(path, "w").write(text)
+PY
+check "the template check fails on the bare 1. [check one] list" \
+  not heading_block_has_collapsed "$CC_SCRATCH/bare-checking-template.md" 'Checking pass' 'Where it names none, hold one line per claim the artifact makes, in artifact order'
 
 # --- eval harness -----------------------------------------------------------
 # The eval runner's stage() raises on a stage.sh that fails, and on one that
