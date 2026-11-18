@@ -411,7 +411,7 @@ scenario_brief_contract() {
     check "the closing block states the forks fields" \
         grep -Fq -- '- forks: objects with `issue`, `options`, `preferred`;' "$text"
     check "the closing block states the fork option fields" \
-        grep -Fq 'each with `id` and `cost`' "$text"
+        grep -Fq 'each with `id`, `text`, and `cost`' "$text"
     check "the closing block states the objections fields" \
         grep -Fq -- '- objections: objects with `text`, `fork`, `option`;' "$text"
     for key in examined checklist findings forks objections; do
@@ -424,12 +424,15 @@ scenario_brief_contract() {
         not grep -Fq '`gaps`' "$text"
 
     ledger "$dir" dispatch check:r >/dev/null 2>&1
-    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"checklist":[{"n":1,"verdict":"pass","span":"a.txt:1"}],"findings":[{"claim":"one defect","severity":"minor","quote":"alpha","anchor":"a.txt:1"}],"forks":[{"issue":"two ways","options":[{"id":"a","cost":"small"},{"id":"b","cost":"large"}],"preferred":"a"}]}'
+    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"checklist":[{"n":1,"verdict":"pass","span":"a.txt:1"}],"findings":[{"claim":"one defect","severity":"minor","quote":"alpha","anchor":"a.txt:1"}],"forks":[{"issue":"two ways","options":[{"id":"a","text":"the first way","cost":"small"},{"id":"b","text":"the second way","cost":"large"}],"preferred":"a"}]}'
     if ledger "$dir" accept check:r >/dev/null 2>&1; then
         ok "a return built from the rendered contract is accepted"
     else
         bad "a return built from the rendered contract is accepted"
     fi
+    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"checklist":[{"n":1,"verdict":"pass","span":"a.txt:1"}],"findings":[{"claim":"one defect","severity":"minor","quote":"alpha","anchor":"a.txt:1"}],"forks":[{"issue":"two ways","options":[{"id":"a","cost":"small"},{"id":"b","text":"the second way","cost":"large"}],"preferred":"a"}]}'
+    check "an option with no rendered text is refused" \
+        ledger_has "$dir" "fork option 'a' has no text" accept check:r
 }
 
 scenario_reader_two_inputs() {

@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.26
+version: 1.0.27
 author: Andreas F. Hoffmann
 license: MIT
 ---

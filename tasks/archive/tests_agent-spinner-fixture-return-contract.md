@@ -2,8 +2,8 @@
 description: "Bring agent_spinner eval fixture returns up to the ledger phase 2 return contract (objections key, fork option objects) and gate every fixture's staging and open returns in make test."
 scope: tests/agent_spinner
 created: 2026-11-14T12:46:51Z
-updated: 2026-11-14T13:11:22Z
-status: implemented
+updated: 2026-11-18T16:17:00Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -17,7 +17,7 @@ Every agent_spinner behavioural eval stages cleanly again, and every helper retu
 
 ## Context
 
-[The ledger phase 2 task](archive/ai-dev_agent-spinner-ledger-phase-2.md) made `objections` a required return key and required each fork option to be an object with a stable `id` and a `cost`. The contract now lives in `plugins/ai_dev/skills/agent_spinner/references/run-protocol.md` under `### Return contract`, and `validate_return` in `plugins/ai_dev/skills/agent_spinner/scripts/run_ledger.py` enforces it: `accept` refuses a return with `required key missing: objections`, refuses a fork whose option is not an object with `fork option is not an object`, and refuses an objection whose `fork` names no fork of the same return or whose `option` names no option id of that fork.
+[The ledger phase 2 task](ai-dev_agent-spinner-ledger-phase-2.md) made `objections` a required return key and required each fork option to be an object with a stable `id` and a `cost`. The contract now lives in `plugins/ai_dev/skills/agent_spinner/references/run-protocol.md` under `### Return contract`, and `validate_return` in `plugins/ai_dev/skills/agent_spinner/scripts/run_ledger.py` enforces it: `accept` refuses a return with `required key missing: objections`, refuses a fork whose option is not an object with `fork option is not an object`, and refuses an objection whose `fork` names no fork of the same return or whose `option` names no option id of that fork.
 
 Every fixture writes its returns through the shared writer `tests/agent_spinner/evals/fixtures/_return.py`, whose default key set has no `objections`. That breaks fixtures in two ways:
 

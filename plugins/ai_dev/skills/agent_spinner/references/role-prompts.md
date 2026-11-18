@@ -86,8 +86,8 @@ Each list key holds objects: `examined` with `path`, `how` (`full`, `searched`,
 or `unreachable`), and `receipt`; `checklist` with `verdict` (`pass` or
 `fail`) and `span`; `findings` with `claim`, `severity` (one value from the
 run's severity ladder), `quote`, and `anchor`; `forks` with `issue`, `options`
-(two to four objects, each with `id` and `cost`), and `preferred`; `objections`
-with `text`, `fork`, and `option`.
+(two to four objects, each with `id`, `text`, and `cost`), and `preferred`;
+`objections` with `text`, `fork`, and `option`.
 
 End with: END [label]
 

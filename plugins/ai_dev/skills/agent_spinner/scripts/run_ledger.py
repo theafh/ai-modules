@@ -94,7 +94,7 @@ RETURN_LIST_FIELDS = (
     ("objections", ("text", "fork", "option")),
 )
 RETURN_LIST_KEY_FIELDS = dict(RETURN_LIST_FIELDS)
-FORK_OPTION_FIELDS = ("id", "cost")
+FORK_OPTION_FIELDS = ("id", "text", "cost")
 RECORD_LISTS = [
     "findings",
     "forks",
@@ -1127,7 +1127,7 @@ def render_return_block(led, label, token):
             examined[0],
         ),
         "checklist": "`%s` takes %s, and `%s` cites the line, required on "
-        "a `pass` line"
+        "every checklist line"
         % (checklist[0], " | ".join(CHECKLIST_VERDICT_VALUES), checklist[1]),
         "findings": "`%s` takes %s" % (findings[1], ladder_text),
         "forks": "`%s` holds %d to %d option objects, each with %s"
@@ -1135,11 +1135,12 @@ def render_return_block(led, label, token):
             forks[1],
             FORK_OPTION_MIN,
             FORK_OPTION_MAX,
-            " and ".join("`%s`" % field for field in FORK_OPTION_FIELDS),
+            ", ".join("`%s`" % field for field in FORK_OPTION_FIELDS[:-1])
+            + ", and `%s`" % FORK_OPTION_FIELDS[-1],
         ),
-        "objections": "`%s` names a fork's `%s`, and `%s` names an option `%s` "
-        "of that fork"
-        % (objections[1], forks[0], objections[2], FORK_OPTION_FIELDS[0]),
+        "objections": "`%s` names a fork as `forks:<index>`, where the index "
+        "is 0-based, and `%s` names an option `%s` of that fork"
+        % (objections[1], objections[2], FORK_OPTION_FIELDS[0]),
     }
     lines = ["## Return"]
     lines.append(
@@ -1602,8 +1603,9 @@ def validate_return(led, row, text, source):
             if str(option_id) in seen_option_ids:
                 errors.append("fork option id %r repeats" % option_id)
             seen_option_ids.add(str(option_id))
-            if is_placeholder(option.get(FORK_OPTION_FIELDS[1])):
-                errors.append("fork option %r has no cost" % option_id)
+            for field in FORK_OPTION_FIELDS[1:]:
+                if is_placeholder(option.get(field)):
+                    errors.append("fork option %r has no %s" % (option_id, field))
         if is_placeholder(fork.get(fork_fields[2])):
             errors.append("fork preferred end state is a placeholder")
         passages = fork.get("passages")
