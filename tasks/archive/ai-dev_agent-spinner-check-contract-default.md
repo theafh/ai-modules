@@ -2,7 +2,7 @@
 description: "Say what an agent_spinner checking pass checks when the request names no acceptance contract: claims against their source, with omissions left to a completeness critic unless asked."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T23:45:46Z
-updated: 2026-11-18T08:28:07Z
+updated: 2026-11-18T09:21:23Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

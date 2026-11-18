@@ -62,7 +62,10 @@ A checker's brief carries nothing that could steer its verdict.
    acceptance source, copy the checklist verbatim from that contract, one line
    per item, and render it with `brief --acceptance PATH[#Heading]`, which
    refuses a checklist shorter than the acceptance items or one whose lines
-   omit an item. When the brief names none of C1 step 4's three contract
+   omit an item. When the brief names the item brief or an approved-edit list
+   and no acceptance list, copy the checklist from that source, one line per
+   item, and keep the `brief --acceptance` renderer for the acceptance-list
+   case alone. When the brief names none of C1 step 4's three contract
    sources (the item brief, an approved-edit list, an acceptance list), the
    default contract holds one line per claim the artifact makes, in artifact
    order, each tested against the source it describes, which the request's

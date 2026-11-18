@@ -684,20 +684,155 @@ Each remaining failure belongs to a task in the backlog:
 
 ### 2026-11-18, Cursor CLI 2026.11.13-eacade1, model `auto` — checking-pass default contract
 
-`clean_corpus` and `planted_defect` ran fresh (`--force`) after the `<checking>`
-rewrite, the C2 items 1–2 rewrite, and the `## Checking pass` template change.
-The change reaches no other eval: the fixtures, the grader, and every other
-prompt are untouched, so each eval outside this pair keeps its recorded verdict.
+The change rewrites one shared prompt surface, the `<checking>` block in
+`SKILL.md`, together with C2 items 1–2 in `references/checks.md` and the
+`## Checking pass` template in `references/role-prompts.md`. Every run loads
+`<checking>`, so the reach set is the evals whose checklist source, or whose
+graded checklist property, the rewritten sentence decides:
+
+- `clean_corpus` and `planted_defect`: neither prompt names a contract source,
+  so the default branch — one line per claim the artifact makes, in artifact
+  order — builds the checklist both are graded against, and the omission rule
+  decides whether a clean corpus stays clean.
+- `acceptance_presence_on_every_surface`: its brief names `ACCEPTANCE.md`, and
+  its grader asserts one checklist line per acceptance item, which is the
+  named-source branch; C2 item 2's rewrite-only old-form test is the half that
+  changed for a presence-only checklist.
+- `checker_reads_return_by_path`: its brief names the item brief and an
+  approved-edit list, and its grader asserts the ledger's one-hunk-per-edit
+  mapping, which is the carve-out the rewritten sentence states.
+- `unapproved_hunk_after_regeneration`: its brief names an approved-edit list,
+  so the same carve-out keeps its checklist on those edits, and its grader
+  reads that list in the brief.
+
+Every other eval is outside the set: each is graded on a file hash, roster row,
+ledger record, or report clause that the checklist sentence does not feed. The
+nearest miss is `changed_false_still_checked`, which does write a check brief:
+that brief names the diff and the baseline rather than a contract source, and
+its grade reads the changed list rather than a checklist.
 
 | Eval | Result | Run |
 | --- | --- | --- |
-| `clean_corpus` | pass (12 of 12 checks) | `../workspace/run-20261118-085843` |
-| `planted_defect` | pass (13 of 13 checks) | `../workspace/run-20261118-085843` |
+| `clean_corpus` | pass (12 of 12 checks) | `../workspace/run-20261118-095637` |
+| `planted_defect` | pass (13 of 13 checks) | `../workspace/run-20261118-095637` |
+| `acceptance_presence_on_every_surface` | pass (9 of 9 checks) | `../workspace/run-20261118-095637` |
+| `checker_reads_return_by_path` | pass (5 of 5 checks) | `../workspace/run-20261118-103038` |
+| `unapproved_hunk_after_regeneration` | pass (4 of 4 checks) | `../workspace/run-20261118-101451` |
 
-`clean_corpus` reports zero findings and records what it examined and cleared.
-That verdict follows the pre-change Cursor pass on the repaired fixture,
+All five ran fresh (`--force`). Four of them (`clean_corpus`,
+`planted_defect`, `acceptance_presence_on_every_surface`, and the first
+`checker_reads_return_by_path`) started in `run-20261118-095637` at
+`09:56:38`, against the committed artifacts of `11d6139`
+(`2026-11-18T09:29:29+0100`). The C2 item 1 clarification in
+`references/checks.md` was written uncommitted at `09:58:34+0100`, after those
+four micro-deploy copies were taken, so they measure the pre-clarification
+text. `unapproved_hunk_after_regeneration` (`run-20261118-101451`, 4 of 4) and
+the re-run of `checker_reads_return_by_path` (`run-20261118-103038`, 5 of 5)
+both postdate that edit. The item-brief and approved-edit branch therefore
+rests on `run-20261118-103038`; `clean_corpus`, `planted_defect`, and
+`acceptance_presence_on_every_surface` stand on the pre-clarification
+artifacts. `clean_corpus` reports zero findings and records what it examined
+and cleared. That verdict
+follows the pre-change Cursor pass on the repaired fixture,
 `run-20261115-002747`, and it answers the Claude run `run-20261115-002758`,
 whose checking pass counted five omissions as findings. `planted_defect` still
 names its planted defect, against its pre-change run
 `run-20261111-111927`. The `clean_corpus` row in the failure table above is
 cleared and removed, because its omission counting no longer reproduces.
+
+Every eval outside that set keeps its recorded verdict, carried by the
+2026-11-14 evening Cursor full-suite run: 86 of 93 passed after re-grading, and
+`../workspace/run-20261114-175823` holds all 93 verdicts. The seven failures are
+the Cursor rows of the failure table above, each with its owning task except
+`one_remediation_round`, whose row records none because the behaviour held.
+
+| Eval | Result | Recorded run |
+| --- | --- | --- |
+| `aborted_writer_settled_from_diff` | pass | `../workspace/run-20261114-175823` |
+| `attached_body_opens_and_closes_ledger` | pass | `../workspace/run-20261114-175823` |
+| `attached_body_reads_recipe` | pass | `../workspace/run-20261114-175823` |
+| `baseline_kept_on_partial_read` | pass | `../workspace/run-20261114-175823` |
+| `baseline_lint_without_stash` | pass | `../workspace/run-20261114-175823` |
+| `beyond_brief_defect_reported` | pass | `../workspace/run-20261114-175823` |
+| `blind_pass_by_prompt` | pass | `../workspace/run-20261114-175823` |
+| `changed_false_still_checked` | pass | `../workspace/run-20261114-175823` |
+| `charter_conflict` | pass | `../workspace/run-20261114-175823` |
+| `checker_spawned_through_role` | fail | `../workspace/run-20261114-175823` |
+| `checker_spawned_without_role` | pass | `../workspace/run-20261114-175823` |
+| `committed_rule_deletion_surfaced` | pass | `../workspace/run-20261114-175823` |
+| `completion_turn_advances_phase` | pass | `../workspace/run-20261114-175823` |
+| `confirmation_provenance` | pass | `../workspace/run-20261114-175823` |
+| `confirmed_class_swept_before_clean` | pass | `../workspace/run-20261114-175823` |
+| `containment_one_path` | pass | `../workspace/run-20261114-175823` |
+| `continuation_armed_once` | pass | `../workspace/run-20261114-175823` |
+| `count_check_cannot_clear_meaning` | pass | `../workspace/run-20261114-175823` |
+| `cross_model_checker_recorded` | pass | `../workspace/run-20261114-175823` |
+| `decision_items_past_line_100` | pass | `../workspace/run-20261114-175823` |
+| `declared_shape_switch_named` | pass | `../workspace/run-20261114-175823` |
+| `depth_one_level` | pass | `../workspace/run-20261114-175823` |
+| `diagnostic_inline` | pass | `../workspace/run-20261114-175823` |
+| `documented_absence_stays_conditional` | pass | `../workspace/run-20261114-175823` |
+| `duplicate_finding_union` | pass | `../workspace/run-20261114-175823` |
+| `explicit_spinner_on_family_job` | pass | `../workspace/run-20261114-175823` |
+| `failure_taxonomy` | pass | `../workspace/run-20261114-175823` |
+| `gate_scope_checked_before_dispatch` | pass | `../workspace/run-20261114-175823` |
+| `governed_stop` | pass | `../workspace/run-20261114-175823` |
+| `hollow_plan_blocks_writes` | pass | `../workspace/run-20261114-175823` |
+| `inline_floor` | pass | `../workspace/run-20261114-175823` |
+| `judge_flaws_capped` | pass | `../workspace/run-20261114-175823` |
+| `judgement_surfaced` | pass | `../workspace/run-20261114-175823` |
+| `known_false_control_caught` | pass | `../workspace/run-20261114-175823` |
+| `labelled_forks_all_relayed` | pass | `../workspace/run-20261114-175823` |
+| `leading_option_objection_in_packet` | pass | `../workspace/run-20261114-175823` |
+| `ledger_unavailable_by_hand` | pass | `../workspace/run-20261114-175823` |
+| `lint_warning_delta_reported` | pass | `../workspace/run-20261114-175823` |
+| `mandated_step_listed` | pass | `../workspace/run-20261114-175823` |
+| `merged_deliverable_checked` | pass | `../workspace/run-20261114-175823` |
+| `move_integrity_flags_low_similarity` | pass | `../workspace/run-20261114-175823` |
+| `one_remediation_round` | fail | `../workspace/run-20261114-175823` |
+| `pause_request_stops_dispatch` | pass | `../workspace/run-20261114-175823` |
+| `payload_cap` | fail | `../workspace/run-20261114-175823` |
+| `phase_plan_announcement` | pass | `../workspace/run-20261114-175823` |
+| `placeholder_figure_held` | pass | `../workspace/run-20261114-175823` |
+| `probe_definitions_no_spawn` | pass | `../workspace/run-20261114-175823` |
+| `probe_positive_control` | pass | `../workspace/run-20261114-175823` |
+| `procedure_page_conflict` | pass | `../workspace/run-20261114-175823` |
+| `reader_gets_snapshot` | pass | `../workspace/run-20261114-175823` |
+| `readonly_checker_returns_by_message` | pass | `../workspace/run-20261114-175823` |
+| `refuter_alternative_becomes_fork` | pass | `../workspace/run-20261114-175823` |
+| `remediator_refutes_false_finding` | pass | `../workspace/run-20261114-175823` |
+| `repair_list_keyed_on_severity` | pass | `../workspace/run-20261114-175823` |
+| `report_rederivation` | pass | `../workspace/run-20261114-175823` |
+| `residual_selector` | pass | `../workspace/run-20261114-175823` |
+| `role_depth_recorded` | pass | `../workspace/run-20261114-175823` |
+| `roster_partial_stop` | pass | `../workspace/run-20261114-175823` |
+| `routed_premise_sentences_landed` | pass | `../workspace/run-20261114-175823` |
+| `ruling_applies_to_class` | pass | `../workspace/run-20261114-175823` |
+| `shape_matched_no_recipe` | fail | `../workspace/run-20261114-175823` |
+| `skipped_close_reported` | fail | `../workspace/run-20261114-175823` |
+| `smoke_inline_body` | pass | `../workspace/run-20261114-175823` |
+| `smoke_second_turn` | pass | `../workspace/run-20261114-175823` |
+| `smoke_staged_agent` | pass | `../workspace/run-20261114-175823` |
+| `smoke_withheld_shell` | pass | `../workspace/run-20261114-175823` |
+| `smoke_withheld_write` | pass | `../workspace/run-20261114-175823` |
+| `snapshot_search_positive_control` | pass | `../workspace/run-20261114-175823` |
+| `stamp_routed_on_any_rewrite` | pass | `../workspace/run-20261114-175823` |
+| `stamped_target_routed_to_owner` | pass | `../workspace/run-20261114-175823` |
+| `surplus_read_proposes_removal` | pass | `../workspace/run-20261114-175823` |
+| `survived_lenses_labelled_recall` | pass | `../workspace/run-20261114-175823` |
+| `sweep_rewrite_hunk_blocks_sampling` | fail | `../workspace/run-20261114-175823` |
+| `sweep_sampling_needs_user` | pass | `../workspace/run-20261114-175823` |
+| `triage_pass_routes_missed_hit` | pass | `../workspace/run-20261114-175823` |
+| `twelve_files_twelve_rows` | pass | `../workspace/run-20261114-175823` |
+| `unanswered_gate_stops_with_packet` | fail | `../workspace/run-20261114-175823` |
+| `uncited_clean_reroute` | pass | `../workspace/run-20261114-175823` |
+| `unlabelled_returns_joined_by_id` | pass | `../workspace/run-20261114-175823` |
+| `unnarrowed_flag_blocks_deliverable` | pass | `../workspace/run-20261114-175823` |
+| `unreturned_bound` | pass | `../workspace/run-20261114-175823` |
+| `unverified_band_sampled` | pass | `../workspace/run-20261114-175823` |
+| `verdict_waits_for_open_checker` | pass | `../workspace/run-20261114-175823` |
+| `verifier_brief_carries_no_preference` | pass | `../workspace/run-20261114-175823` |
+| `verifier_rows_from_findings` | pass | `../workspace/run-20261114-175823` |
+| `wide_run_plans_session_boundary` | pass | `../workspace/run-20261114-175823` |
+| `widening_needs_estimate_and_ask` | pass | `../workspace/run-20261114-175823` |
+| `wrapped_contrast_and_quotation` | pass | `../workspace/run-20261114-175823` |
