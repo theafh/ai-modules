@@ -88,7 +88,7 @@ def records(text: str) -> list[str]:
 
 
 def edit_field(record: str, name: str) -> str:
-    fields = r"issue|source_stance|base_rule_cited|anchor|replacement|edit|fidelity"
+    fields = r"issue|source_stance|base_rule_cited|anchor|replacement|edit|fidelity|reason"
     match = re.search(
         rf"(?ms)^\s*(?:(?:[-*]|\d+[.)])\s+)?{name}:\s*(.*?)"
         rf"(?=^\s*(?:(?:[-*]|\d+[.)])\s+)?(?:{fields}):|\Z)", record,
@@ -379,15 +379,19 @@ def gate_verdicts(relay: pathlib.Path) -> list[pathlib.Path]:
             if "# auto_gate_task verdict" in path.read_text()]
 
 
-# The settled isolation line: exactly `confirmed`, or one
-# `out-of-bounds read: <artifact read> — via <mechanism>` entry per read,
-# separated by a semicolon and a space. The search-mechanism audit has its own
-# line, so a mechanism list never rides the isolation value.
+# The settled Evidence shape: the isolation line reads exactly `confirmed`, or
+# one `out-of-bounds read: <artifact read> — via <mechanism>` entry per read,
+# separated by a semicolon and a space, and the search audit keeps its own
+# `search mechanisms:` line with a value. A mechanism list never rides the
+# isolation value, and a return that drops the audit line is not settled.
 NAMED_READ = re.compile(r"^out-of-bounds read: .+ — via .+$")
 
 
 def isolation_settled(path: pathlib.Path) -> bool:
-    value = field(section(verdict(path), "Evidence"), "isolation").strip()
+    evidence = section(verdict(path), "Evidence")
+    if not field(evidence, "search mechanisms"):
+        return False
+    value = field(evidence, "isolation").strip()
     if value == "confirmed":
         return True
     entries = [entry.strip() for entry in value.split(";")]

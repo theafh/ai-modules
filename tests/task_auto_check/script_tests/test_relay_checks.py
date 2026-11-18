@@ -37,6 +37,7 @@ status: {status}
 {issues}
 ## Evidence
 - isolation: confirmed
+- search mechanisms: rg --hidden
 """)
 
     def citation(self, verdict="survived"):
@@ -280,6 +281,23 @@ None.
         )
         self.assertFalse(checks.rule_decisions(self.relay, "body"))
 
+    def test_approval_reason_never_bleeds_into_a_verbatim_value(self):
+        # The contract gives an approved edit a `reason:` field and fixes no
+        # field order beyond the item's opening, so a reason written between
+        # `replacement:` and `edit:` must read as its own field. Absorbed into
+        # the replacement it would put prose, and any rule that prose quotes,
+        # inside the verbatim value the anchored apply compares against.
+        record = """1. id: e1
+- issue: 1
+- anchor: ## Acceptance
+- replacement: ## Acceptance
+- reason: The body preservation rule stays untouched here.
+- edit: anchored replacement
+- fidelity: preserved
+"""
+        self.assertNotIn("body preservation", checks.edit_field(record, "replacement"))
+        self.assertIn("body preservation", checks.edit_field(record, "reason"))
+
     def test_deletion_route_needs_original_and_options(self):
         self.gate("r1-gate.txt", "checked", "1. Body preservation has no proof.")
         text = f"""## Approved edits
@@ -397,19 +415,22 @@ status: checked
 
     def test_isolation_shape_accepts_only_confirmed_or_named_reads(self):
         # The settled layout: `confirmed` alone, or one named-read entry per
-        # out-of-bounds read, with the search audit on its own line. This pin
-        # sits beside the leading-token predicate, which keeps its own read.
+        # out-of-bounds read, with the search audit on its own line carrying a
+        # value. This pin sits beside the leading-token predicate, which keeps
+        # its own read.
         self.two_gates()
         self.assertTrue(checks.run("isolation_shape", self.proj, self.stem))
         named = ("out-of-bounds read: .task_auto_check/api_proof/r1-gate.txt — "
                  "via grep -r")
         self.write("r2-gate.txt", "# auto_gate_task verdict\nstatus: ready\n"
-                                  f"## Evidence\n- isolation: {named}\n")
+                                  f"## Evidence\n- isolation: {named}\n"
+                                  "- search mechanisms: rg --hidden\n")
         self.assertTrue(checks.run("isolation_shape", self.proj, self.stem))
         # One entry per read, separated by a semicolon and a space.
         self.write("r2-gate.txt", "# auto_gate_task verdict\nstatus: ready\n"
                                   f"## Evidence\n- isolation: {named}; "
-                                  "out-of-bounds read: tasks/api.md — via find\n")
+                                  "out-of-bounds read: tasks/api.md — via find\n"
+                                  "- search mechanisms: rg --hidden\n")
         self.assertTrue(checks.run("isolation_shape", self.proj, self.stem))
         # The fail case: the search audit appended to the isolation line.
         for value in ("confirmed (search mechanisms: rg --hidden)",
@@ -417,7 +438,14 @@ status: checked
                       "out-of-bounds read: tasks/api.md",
                       "out-of-bounds read: tasks/api.md — via "):
             self.write("r2-gate.txt", "# auto_gate_task verdict\nstatus: ready\n"
-                                      f"## Evidence\n- isolation: {value}\n")
+                                      f"## Evidence\n- isolation: {value}\n"
+                                      "- search mechanisms: rg --hidden\n")
+            self.assertFalse(checks.run("isolation_shape", self.proj, self.stem))
+        # The audit line is part of the shape: a return that drops it, or
+        # writes it with no value, is not settled.
+        for audit in ("", "- search mechanisms: \n"):
+            self.write("r2-gate.txt", "# auto_gate_task verdict\nstatus: ready\n"
+                                      f"## Evidence\n- isolation: confirmed\n{audit}")
             self.assertFalse(checks.run("isolation_shape", self.proj, self.stem))
         # The leading-token predicate keeps accepting the prose value, so the
         # new pin tightens the layout without changing that predicate.

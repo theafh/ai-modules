@@ -48,8 +48,10 @@ The three evals the return-layout change names ran on the default vendor with
 Every gate return in the three runs writes `isolation: confirmed` and nothing
 else, so the search audit stays on its own `search mechanisms:` line. Every
 proposal-mode verifier return in those runs passes `verifier_returns_keep_contract`,
-whose helper reads a fenced value as the block's content and accepts the
-approved edit's `reason:` field.
+which accepts the approved edit's `reason:` field. The helper also reads a fenced
+value as the block's content, which the `run-20261117-223821-43956` returns
+exercise; the `relay_by_path` return under `run-20261117-235012-36891` writes its
+values with a trailing pipe and indented lines instead.
 
 `relay_by_path`'s first run (`../workspace/run-20261117-223821-43956`) failed the
 source-contract check: the verifier fenced its values with an info string
@@ -73,7 +75,7 @@ On each eval's latest run, re-graded with the current graders, Cursor passes 29 
 
 The runs exposed these grader and fixture defects, which are now repaired:
 
-- **The gate's isolation line.** Both vendors now append their search audit to the `isolation:` line, so `relay_checks.py` reads its leading token. `prompts_isolated` also admits a moved sandbox root named in the prompt's own task path, and the `immediate_ready_citations_overturn` arm accepts a ready route that the citation pass challenged.
+- **The gate's isolation line.** `isolation:` reads exactly `confirmed` or one `out-of-bounds read: <artifact read> — via <mechanism>` entry per read, and the search audit has its own `search mechanisms:` line, so `isolation_shape` rejects a mechanism list that rides the isolation value while `relay_checks.py` keeps reading the leading token. `prompts_isolated` also admits a moved sandbox root named in the prompt's own task path, and the `immediate_ready_citations_overturn` arm accepts a ready route that the citation pass challenged.
 - **Premise stops by accident.** `scope_split_stuck`, `fidelity_rejects_drift`, and the three `drift_gate_*_clean` fixtures named source files they never staged, so a gate could stop on an invalidated premise. They now stage those files.
 - **The `Retry-After` value.** The three immediate-ready fixtures left open whether the header holds an integer or a string. The two regroup fixtures needed three more passes, because each gate found a new gap in the target's test. The sibling task now keeps `THROTTLE_WINDOW_SECONDS` a module-level int. The test uses pytest's `monkeypatch` to set the window to `120` and expects the header `"120"`, and the project stages a root `conftest.py` so a bare `pytest` run imports `src`.
 - **Timeouts.** `no_verified_fix` was killed at 2306 seconds while it composed its report, so the slow evals now carry 3600-second bounds in `evals.json`.

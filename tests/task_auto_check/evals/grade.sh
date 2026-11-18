@@ -951,7 +951,7 @@ relay = pathlib.Path(sys.argv[1])
 task = " ".join(pathlib.Path(sys.argv[2]).read_text().split())
 item = re.compile(r"^\s*(?:[0-9]+\.|[-*])\s+id:\s*(e[0-9]+)\s*$")
 field = re.compile(
-    r"^\s*(?:[-*]\s+)?(issue|source_stance|base_rule_cited|anchor|replacement|edit|fidelity):[ \t]?(.*)$"
+    r"^\s*(?:[-*]\s+)?(issue|source_stance|base_rule_cited|anchor|replacement|edit|fidelity|reason):[ \t]?(.*)$"
 )
 
 
