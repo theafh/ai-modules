@@ -295,6 +295,23 @@ role_prompt_headings_present() {
   done
 }
 
+# closing_block_checklist_fields <role-prompts.md> — the closing block's
+# `checklist` entry names exactly `verdict` and `span`, the two fields the
+# ledger's rendered block and validate_return use, and names no `n`.
+closing_block_checklist_fields() {
+  local file="$1" fields tokens
+  [[ -f "$file" ]] || return 1
+  fields="$(awk '
+    /^## Closing block$/ { inside = 1; next }
+    inside && /^## / { exit }
+    inside { print }
+  ' "$file" | tr '\n' ' ' | sed -n 's/.*`checklist` with \([^;]*\);.*/\1/p')"
+  [[ -n "$fields" ]] || return 1
+  tokens="$(printf '%s\n' "$fields" | sed 's/([^)]*)//g' | grep -oE '`[^`]+`' | tr -d '`' | sort -u | tr '\n' ' ')"
+  [[ "$tokens" == "span verdict " ]] || return 1
+  ! printf '%s\n' "$fields" | grep -Eq '`n`'
+}
+
 # references_cite_no_step_number <references dir> — a run-protocol step is
 # cited by its P label alone, never by a step number that a later edit to
 # run-protocol.md can renumber out from under it.
@@ -769,6 +786,21 @@ PY
 check "the role-heading check fails on a missing judge template" \
   not role_prompt_headings_present "$SCRATCH/refs-missing-judge/role-prompts.md"
 
+mkdir -p "$SCRATCH/refs-closing-checklist"
+cp -R "$REFS/." "$SCRATCH/refs-closing-checklist/"
+python3 - "$SCRATCH/refs-closing-checklist/role-prompts.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "`checklist` with `verdict` (`pass` or\n`fail`) and `span`"
+new = "`checklist` with `n`, `verdict` (`pass` or\n`fail`), and `span`"
+if old not in text:
+    raise SystemExit("closing-block checklist entry not found")
+open(path, "w").write(text.replace(old, new, 1))
+PY
+check "the closing-block checklist check fails when the entry names n" \
+  not closing_block_checklist_fields "$SCRATCH/refs-closing-checklist/role-prompts.md"
+
 mkdir -p "$SCRATCH/refs-step-number"
 cp -R "$REFS/." "$SCRATCH/refs-step-number/"
 printf '\nSee P3 step 2 for the return rules.\n' \
@@ -790,6 +822,8 @@ check "references/checks.md holds the ten C1-to-C10 headings in order" \
 check "references/edit-mechanics.md exists" test -f "$REFS/edit-mechanics.md"
 check "role-prompts.md carries the four kept, four added, and two block headings" \
   role_prompt_headings_present "$REFS/role-prompts.md"
+check "role-prompts.md closing block names only the rendered checklist fields" \
+  closing_block_checklist_fields "$REFS/role-prompts.md"
 check "no file under references/ cites a run-protocol step by number" \
   references_cite_no_step_number "$REFS"
 check "references/role-prompts.md exists" test -f "$REFS/role-prompts.md"

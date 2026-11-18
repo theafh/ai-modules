@@ -277,8 +277,9 @@ read what they claim to have read.
    input. `accept` checks each receipt against the input version its row
    recorded, never against the live file. That version is the baseline copy for
    a writer's target and the snapshot for a reader.
-5. Earn one re-invocation for a mismatched receipt, then report the unit
-   unreviewed.
+5. Treat a mismatched receipt as a contract violation under `SKILL.md`'s
+   `<helper_failure>`, which sets the retry policy; when no accepted receipt
+   follows, report the unit unreviewed.
 6. State, criterion by criterion, what an empty return examined and the span
    that cleared it.
 7. Quote the text that settles the line, with its anchor, for a settling span.

@@ -2,7 +2,7 @@
 description: "Fix agent_spinner's ledger terminal states: a failed row records its source, a narrowing retires its rows, an unreturned row gets its one re-dispatch, and stop reports split unknown rows."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-17T14:24:44Z
+updated: 2026-11-18T17:34:57Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -26,7 +26,7 @@ All four paths live in `plugins/ai_dev/skills/agent_spinner/scripts/run_ledger.p
 
 The 2026-11-14 Claude suite run (`opus` at high effort) hit the failed-row, narrowing, and unknown-label paths. `containment_one_path` could not close on condition 8 alone, `planted_defect` partly on it, and `clean_corpus` and `roster_partial_stop` on condition 1 after narrowings that dropped rows. In the stop report, `roster_partial_stop`'s worker settled the "unknown" clash by calling never-dispatched rows "pending (never dispatched)". Each of these runs follows the skill's retry and narrowing rules, so the defect sits in the ledger, not in the model.
 
-This task, [the brief-contract task](../ai-dev_agent-spinner-ledger-brief-contract.md), and [the report-and-packet task](../ai-dev_agent-spinner-report-packet-enforcement.md) all edit `run_ledger.py`, `references/run-protocol.md`, and `tests/agent_spinner/script_tests/ledger_run.sh`. Land them one at a time in that order, each on top of the one before.
+This task, [the brief-contract task](ai-dev_agent-spinner-ledger-brief-contract.md), and [the report-and-packet task](../ai-dev_agent-spinner-report-packet-enforcement.md) all edit `run_ledger.py`, `references/run-protocol.md`, and `tests/agent_spinner/script_tests/ledger_run.sh`. Land them one at a time in that order, each on top of the one before.
 
 ## Approach
 

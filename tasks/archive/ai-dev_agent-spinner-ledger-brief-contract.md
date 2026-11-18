@@ -2,9 +2,11 @@
 description: "Make agent_spinner briefs carry the contract the ledger enforces: a labelled brief token, a recorded version for every mandated input, and a corrected re-brief for a brief-caused rejection."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-17T13:06:12Z
-status: ready
+updated: 2026-11-18T17:34:57Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Make agent_spinner briefs carry the return contract the ledger enforces
@@ -21,7 +23,7 @@ Everything here lives under `plugins/ai_dev/skills/agent_spinner/`:
 - **A reader can record only one input version.** `brief --target` takes a single path. `snapshot` writes its copies to `snapshots/<label>/<path>`, while `recorded_input_path`, which `validate_return` consults for each examined path, reads `snapshots/inputs/<label>/<path>` and two `baseline/` locations. A judge or lens reading several committed files therefore cannot carry a valid receipt for more than one of them, and the documented `snapshot` verb never satisfies the check. That conflicts with `references/checks.md` C8 ("Take a read receipt of its path and one verbatim line for every mandated input") and with `references/run-protocol.md`'s "Every reading pass reads a snapshot, a file copy under `snapshots/` made by `snapshot`". The `judge_flaws_capped` fixture reads a single candidate per judge, so it records that one input through `brief --target` and needs no multi-input support.
 - **The retry rule repeats a brief-caused violation.** SKILL.md `<helper_failure>` gives "a **contract violation**, meaning a return `accept` rejects" one "identical-prompt re-invocation". When the brief caused the violation, the identical prompt reproduces it. Workers handled this three ways in the 2026-11-14 run: they applied the rule literally and lost the row, they hand-repaired the return JSON, or they re-briefed and then rebuilt the overwritten first brief by hand, because `brief` overwrites `briefs/<label>.txt` on a second call. The same block's "inline redo only after the user chooses it" also leaves open whether the one re-invocation may itself run inline at the inline floor; one run read it each way.
 
-This task, [the terminal-states task](archive/ai-dev_agent-spinner-ledger-terminal-states.md), and [the report-and-packet task](ai-dev_agent-spinner-report-packet-enforcement.md) all edit `run_ledger.py`, `references/run-protocol.md`, and `tests/agent_spinner/script_tests/ledger_run.sh`. Land the terminal-states task first and this one second.
+This task, [the terminal-states task](ai-dev_agent-spinner-ledger-terminal-states.md), and [the report-and-packet task](../ai-dev_agent-spinner-report-packet-enforcement.md) all edit `run_ledger.py`, `references/run-protocol.md`, and `tests/agent_spinner/script_tests/ledger_run.sh`. Land the terminal-states task first and this one second.
 
 ## Approach
 

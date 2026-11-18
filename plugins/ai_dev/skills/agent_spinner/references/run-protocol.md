@@ -33,9 +33,10 @@ inline floor, batch delivery, and notice delivery rows.
 The ledger keeps one open run per working root under `.agent_spinner/`. `init`
 refuses while a run is open and names `attach`. The directory holds `run.json`,
 `roster.tsv`, `ledger.jsonl`, the baseline copies and hashes, `briefs/`,
-`returns/`, `snapshots/`, `diffs/`, `gates/`, `controls/`, `access/`, `kinds/`,
-`items/`, `scratch/`, and `history/`. `.agent_spinner/scratch/` is the
-orchestrator's own scratch area, where the intermediate files it keeps for
+`attempts/`, `returns/`, `snapshots/`, `diffs/`, `gates/`, `controls/`, `access/`,
+`kinds/`, `items/`, `scratch/`, and `history/`. `attempts/` holds a superseded
+brief once a second `brief` call re-renders a label. `.agent_spinner/scratch/` is
+the orchestrator's own scratch area, where the intermediate files it keeps for
 itself belong. Its own `.gitignore` hides it from git.
 
 Every brief keeps its helper out of the directory, apart from the helper's own
@@ -144,8 +145,8 @@ different treatment, and item briefs.
 `brief` renders each brief from those blocks and appends the closing block.
 That block carries the role's return template, the return channel P3 assigns,
 the END line, the no-delegation clause, the capabilities as facts, the bound,
-and a brief token as the last line. The brief token is a short code the return
-must repeat. A file-writing helper's closing block adds the start-marker
+and a labelled brief token. The brief token is a short code the return repeats
+in its `brief` key. A file-writing helper's closing block adds the start-marker
 instruction and an END-line-only final message.
 
 Relay upstream material, meaning earlier returns, by path with a read-in-full
@@ -158,9 +159,9 @@ with only its hash on the roster.
 
 **Checks.** Every item row has a brief file before its dispatch. Shared blocks
 hash identically within a phase. No brief lists a path or command under both
-permits and forbids. Each brief ends with the return template, the END line, the
-bound, and the token. A blind row's `input_versions` carries only the withheld
-hash.
+permits and forbids. Each brief carries the return template with its labelled
+brief token, the return channel, the END line, and the bound. A blind row's
+`input_versions` carries only the withheld hash.
 
 ## P3, return files and the acceptance gate
 
@@ -169,11 +170,11 @@ and repeats the brief token, and the line `END <label>`. A helper whose brief
 grants writes writes `returns/<label>.md` as its last act. A helper whose lever
 or brief withholds writes ends with the block and END line as its final message.
 The orchestrator pipes that message verbatim into `accept --stdin <label>`, and
-the report names every relayed return. The template puts the verdict first and
-lists its fields as the shipped ledger requires them.
+the report names every relayed return. The template opens with the echoed
+`label` and lists its keys and their shapes as the shipped ledger renders them.
 
-`accept` applies every rejection rule below. A rejected return gets one
-identical-prompt re-invocation; a second rejection marks the row failed. A
+`accept` applies every rejection rule below. A rejected return's retry policy is
+`SKILL.md`'s `<helper_failure>`, which also fixes when the row ends failed. A
 helper that reports it cannot do its item returns status `inability`, which is
 a completed result with no retry.
 
@@ -259,9 +260,11 @@ again leaves the row's state unchanged.
 
 No pass runs a whole-tree version-control state command: stash, reset, clean,
 commit, bulk staging, a branch switch, or a checkout or restore of other paths.
-Every reading pass reads a snapshot, a file copy under `snapshots/` made by
-`snapshot`, and a blind pass reads `snapshot --base`. The run writes no ref,
-tree, commit, or object into the user's repository.
+Every reading pass reads a snapshot, a file copy under `snapshots/inputs/<label>/`
+made by `snapshot`, and a blind pass reads `snapshot --base`. One `snapshot` call
+records every path it names for the row, so a pass that reads several committed
+files carries a receipt for each. The run writes no ref, tree, commit, or object
+into the user's repository.
 
 A reading brief names its files and reads each in full or searches it by
 explicit path. It never searches a directory under the run directory. It
@@ -346,6 +349,12 @@ Write one helper's instructions and record its brief hash and token.
   whose lines omit an item, naming each unmatched item. It records the
   source's version on the row.
 
+A second `brief` call for one label keeps the earlier text at
+`attempts/<label>.<n>.txt`, outside the `briefs/` tree, writes the new text to
+`briefs/<label>.txt`, and appends a `rebrief` ledger event carrying both hashes.
+A corrected re-brief is therefore a recorded event, not a brief a second call
+silently overwrote.
+
 ### `dispatch`
 
 Record that a helper was sent.
@@ -426,10 +435,13 @@ Run a check command.
 
 ### `snapshot`
 
-Make read copies.
+Make read copies for one row. Each copy lands at
+`snapshots/inputs/<label>/<path>`, the location `recorded_input_path` reads and
+`brief --target` writes, so one call records every mandated input of a reading
+row and `accept` finds a recorded version for each examined path.
 
 - `label` (positional): the snapshot label.
-- `paths...` (positional): the files to copy.
+- `paths...` (positional): the files to copy; one call records them all.
 - `--base`: copy each path at the baseline commit instead of the working tree.
 
 ### `status`

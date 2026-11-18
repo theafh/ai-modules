@@ -64,17 +64,32 @@ access, credentials, other helpers' transcripts, and the ledger].
 ## Closing block
 
 `brief` appends this block to every brief. It carries the return channel, the
-route by which the return reaches the orchestrator, and the END line.
+return template the ledger enforces, the route by which the return reaches the
+orchestrator, and the END line.
 
 ```text
 Return your result through [the return channel: write returns/<label>.md as
 your last act, or end your final message with the block].
 
-Route: [how the return reaches the orchestrator].
+Return template: one fenced JSON block with these keys, in this order: `label`,
+`brief`, `status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
+`objections`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
+`brief_corrections`, `dropped_suspicions`, `notes`.
+
+Repeat the brief token: [token]. The return's `brief` key carries that token
+verbatim, and `label` echoes [label].
+
+Accepted values: `status` is `done` or `inability`; `verdict` is `pass` or
+`fail`.
+
+Each list key holds objects: `examined` with `path`, `how` (`full`, `searched`,
+or `unreachable`), and `receipt`; `checklist` with `verdict` (`pass` or
+`fail`) and `span`; `findings` with `claim`, `severity` (one value from the
+run's severity ladder), `quote`, and `anchor`; `forks` with `issue`, `options`
+(two to four objects, each with `id` and `cost`), and `preferred`; `objections`
+with `text`, `fork`, and `option`.
 
 End with: END [label]
-
-Repeat the brief token: [token].
 
 Delegate no part of your item; perform your own item.
 
@@ -126,7 +141,7 @@ Sibling passes cover the other angles, so spend your effort on depth under
 this lens rather than breadth across the others.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `confirmations`,
+`status`, `verdict`, `examined`, `checklist`, `findings`,
 `forks`, `objections`, `beyond_brief`, `incidents`, `own_authority`,
 `alternatives`, `brief_corrections`, `dropped_suspicions`, `notes`. Put findings
 under this
@@ -251,7 +266,7 @@ Run the surplus read beside this pass: name what to remove, and propose turning
 each restated rule into a citation.
 
 Return: a fenced JSON block with these keys, in this order: `label`, `brief`,
-`status`, `verdict`, `examined`, `checklist`, `findings`, `gaps`, `forks`,
+`status`, `verdict`, `examined`, `checklist`, `findings`, `forks`,
 `objections`, `beyond_brief`, `incidents`, `own_authority`, `alternatives`,
 `brief_corrections`, `dropped_suspicions`, `notes`. Put the gap units in
 `gaps`, one full brief per entry, the confirmed-present items with their anchors

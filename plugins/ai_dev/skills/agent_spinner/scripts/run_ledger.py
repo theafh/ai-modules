@@ -75,6 +75,26 @@ RETURN_KEYS = [
     "dropped_suspicions",
     "notes",
 ]
+RETURN_STATUS_VALUES = ("done", "inability")
+RETURN_VERDICT_VALUES = ("pass", "fail")
+EXAMINED_HOW_VALUES = ("full", "searched", "unreachable")
+CHECKLIST_VERDICT_VALUES = ("pass", "fail")
+FORK_OPTION_MIN = 2
+FORK_OPTION_MAX = 4
+# The five list keys validate_return inspects, each with the fields it requires
+# of an entry. `cmd_brief` renders these same lists into the closing block, and
+# `validate_return` reads its field names from them, so the template a helper
+# reads and the checks `accept` runs cannot drift. `checklist` carries no `n`
+# here because `accept` never requires one.
+RETURN_LIST_FIELDS = (
+    ("examined", ("path", "how", "receipt")),
+    ("checklist", ("verdict", "span")),
+    ("findings", ("claim", "severity", "quote", "anchor")),
+    ("forks", ("issue", "options", "preferred")),
+    ("objections", ("text", "fork", "option")),
+)
+RETURN_LIST_KEY_FIELDS = dict(RETURN_LIST_FIELDS)
+FORK_OPTION_FIELDS = ("id", "cost")
 RECORD_LISTS = [
     "findings",
     "forks",
@@ -1088,6 +1108,62 @@ def render_permission_block(perms):
     return "\n".join(lines) + "\n"
 
 
+def render_return_block(led, label, token):
+    """Render the closing block from the same sets validate_return enforces."""
+    ladder = list(led.run.get("severity_ladder") or [])
+    ladder_text = " | ".join(ladder) if ladder else "the run's severity ladder"
+    examined = RETURN_LIST_KEY_FIELDS["examined"]
+    checklist = RETURN_LIST_KEY_FIELDS["checklist"]
+    findings = RETURN_LIST_KEY_FIELDS["findings"]
+    forks = RETURN_LIST_KEY_FIELDS["forks"]
+    objections = RETURN_LIST_KEY_FIELDS["objections"]
+    details = {
+        "examined": "`%s` takes %s, and `%s` repeats a verbatim line from "
+        "the recorded input version for `%s`"
+        % (
+            examined[1],
+            " | ".join(EXAMINED_HOW_VALUES),
+            examined[2],
+            examined[0],
+        ),
+        "checklist": "`%s` takes %s, and `%s` cites the line, required on "
+        "a `pass` line"
+        % (checklist[0], " | ".join(CHECKLIST_VERDICT_VALUES), checklist[1]),
+        "findings": "`%s` takes %s" % (findings[1], ladder_text),
+        "forks": "`%s` holds %d to %d option objects, each with %s"
+        % (
+            forks[1],
+            FORK_OPTION_MIN,
+            FORK_OPTION_MAX,
+            " and ".join("`%s`" % field for field in FORK_OPTION_FIELDS),
+        ),
+        "objections": "`%s` names a fork's `%s`, and `%s` names an option `%s` "
+        "of that fork"
+        % (objections[1], forks[0], objections[2], FORK_OPTION_FIELDS[0]),
+    }
+    lines = ["## Return"]
+    lines.append(
+        "Return template: one fenced json block with these keys, in this order: %s."
+        % ", ".join(RETURN_KEYS)
+    )
+    lines.append("Repeat the brief token: %s" % token)
+    lines.append(
+        "The return's `brief` key carries that token verbatim, and `label` echoes %s."
+        % label
+    )
+    lines.append(
+        "Accepted values `accept` enforces: status %s; verdict %s."
+        % (" | ".join(RETURN_STATUS_VALUES), " | ".join(RETURN_VERDICT_VALUES))
+    )
+    lines.append("Each list key holds objects with these fields:")
+    for key, fields in RETURN_LIST_FIELDS:
+        lines.append(
+            "- %s: objects with %s; %s."
+            % (key, ", ".join("`%s`" % field for field in fields), details[key])
+        )
+    return "\n".join(lines) + "\n"
+
+
 def cmd_brief(args):
     led = Ledger()
     row = led.find_row(args.label)
@@ -1202,15 +1278,12 @@ def cmd_brief(args):
         if hits:
             warning = "warning: checker brief carries steering words: %s\n" % ", ".join(hits)
 
-    closing = []
-    closing.append("## Return")
-    closing.append("Return template: fenced json block with label, brief, status, verdict, examined, checklist, findings, forks, objections, beyond_brief, incidents, own_authority, alternatives, brief_corrections, dropped_suspicions, notes.")
+    closing = [render_return_block(led, args.label, token).rstrip("\n")]
     closing.append("Return channel: write returns/%s.md as your last act." % args.label)
     closing.append("End with: END %s" % args.label)
     closing.append("Delegate no part of your item; perform your own item.")
     closing.append("Capabilities stated as facts: use only what this brief establishes.")
     closing.append("Bound: %d seconds." % int(led.run.get("bound", 900)))
-    closing.append(token)
 
     text = (
         "# Brief %s\n\nphase: %s\nrole: %s\nitem: %s\n\n%s\n\n%s\n\n%s\n%s"
@@ -1226,11 +1299,35 @@ def cmd_brief(args):
         )
     )
     dest = led.path("briefs", "%s.txt" % args.label)
+    prior_hash = row.get("brief_hash", "")
+    superseded = ""
+    if os.path.exists(dest):
+        attempts_dir = led.path("attempts")
+        os.makedirs(attempts_dir, exist_ok=True)
+        attempt = 1
+        while os.path.exists(os.path.join(attempts_dir, "%s.%d.txt" % (args.label, attempt))):
+            attempt += 1
+        superseded = "attempts/%s.%d.txt" % (args.label, attempt)
+        shutil.move(dest, os.path.join(led.run_dir, superseded))
     atomic_write(dest, text)
     row["brief_hash"] = sha256_text(text)
     row["input_versions"] = json.dumps(input_versions, sort_keys=True)
     row["stamp_owner"] = args.stamp_owner or row.get("stamp_owner", "")
     led.save()
+    if superseded:
+        # A re-brief is a ledger event, so a corrected brief is recorded rather
+        # than reconstructed by hand from a brief the second call overwrote.
+        led.append(
+            {
+                "type": "rebrief",
+                "label": args.label,
+                "phase": phase,
+                "attempt": superseded.rsplit(".", 2)[-2],
+                "superseded": superseded,
+                "superseded_hash": prior_hash,
+                "brief_hash": row["brief_hash"],
+            }
+        )
     if warning:
         sys.stderr.write(warning)
     print("brief: %s" % args.label)
@@ -1402,11 +1499,12 @@ def validate_return(led, row, text, source):
     for key in RETURN_KEYS:
         if key not in data:
             errors.append("required key missing: %s" % key)
-    if data.get("status") not in ("done", "inability"):
+    if data.get("status") not in RETURN_STATUS_VALUES:
         errors.append("status %r is outside done|inability" % data.get("status"))
-    if data.get("verdict") not in ("pass", "fail"):
+    if data.get("verdict") not in RETURN_VERDICT_VALUES:
         errors.append("verdict %r is outside pass|fail" % data.get("verdict"))
 
+    examined_fields = RETURN_LIST_KEY_FIELDS["examined"]
     examined = data.get("examined") or []
     if not isinstance(examined, list):
         errors.append("examined is not a list")
@@ -1416,13 +1514,13 @@ def validate_return(led, row, text, source):
         if not isinstance(entry, dict):
             errors.append("examined entry is not an object")
             continue
-        path = entry.get("path", "")
-        how = entry.get("how", "")
-        receipt = entry.get("receipt", "")
+        path = entry.get(examined_fields[0], "")
+        how = entry.get(examined_fields[1], "")
+        receipt = entry.get(examined_fields[2], "")
         examined_paths.append(path)
         if is_placeholder(path):
             errors.append("examined path is a placeholder: %r" % path)
-        if how not in ("full", "searched", "unreachable"):
+        if how not in EXAMINED_HOW_VALUES:
             errors.append("examined how %r is outside full|searched|unreachable" % how)
         if is_placeholder(receipt):
             errors.append("examined receipt is a placeholder for %s" % path)
@@ -1441,6 +1539,7 @@ def validate_return(led, row, text, source):
         if required not in examined_paths:
             errors.append("examined list does not cover obligation %s" % required)
 
+    checklist_fields = RETURN_LIST_KEY_FIELDS["checklist"]
     checklist = data.get("checklist") or []
     if not isinstance(checklist, list):
         errors.append("checklist is not a list")
@@ -1449,20 +1548,21 @@ def validate_return(led, row, text, source):
         if not isinstance(entry, dict):
             errors.append("checklist entry is not an object")
             continue
-        verdict = entry.get("verdict")
-        if verdict not in ("pass", "fail"):
+        verdict = entry.get(checklist_fields[0])
+        if verdict not in CHECKLIST_VERDICT_VALUES:
             errors.append("checklist verdict %r is outside pass|fail" % verdict)
-        span = entry.get("span", "")
+        span = entry.get(checklist_fields[1], "")
         if is_placeholder(span):
             errors.append("checklist line cites a placeholder span: %r" % span)
         elif verdict == "pass" and not str(span).strip():
             errors.append("a passing checklist line cites no span")
 
+    finding_fields = RETURN_LIST_KEY_FIELDS["findings"]
     for finding in data.get("findings") or []:
         if not isinstance(finding, dict):
             errors.append("finding is not an object")
             continue
-        for key in ("claim", "severity", "quote", "anchor"):
+        for key in finding_fields:
             if is_placeholder(finding.get(key)):
                 errors.append("finding %s is a placeholder or missing" % key)
         ladder = led.run.get("severity_ladder", [])
@@ -1477,14 +1577,17 @@ def validate_return(led, row, text, source):
             if value in recorded:
                 errors.append("a blind row returned the withheld text it must not see")
 
+    fork_fields = RETURN_LIST_KEY_FIELDS["forks"]
     for fork in data.get("forks") or []:
         if not isinstance(fork, dict):
             errors.append("fork is not an object")
             continue
-        if is_placeholder(fork.get("issue")):
+        if is_placeholder(fork.get(fork_fields[0])):
             errors.append("fork issue is a placeholder")
-        options = fork.get("options") or []
-        if not isinstance(options, list) or not (2 <= len(options) <= 4):
+        options = fork.get(fork_fields[1]) or []
+        if not isinstance(options, list) or not (
+            FORK_OPTION_MIN <= len(options) <= FORK_OPTION_MAX
+        ):
             errors.append("fork needs two to four options")
             options = []
         seen_option_ids = set()
@@ -1492,16 +1595,16 @@ def validate_return(led, row, text, source):
             if not isinstance(option, dict):
                 errors.append("fork option is not an object")
                 continue
-            option_id = option.get("id")
+            option_id = option.get(FORK_OPTION_FIELDS[0])
             if is_placeholder(option_id):
                 errors.append("fork option id is a placeholder or missing")
                 continue
             if str(option_id) in seen_option_ids:
                 errors.append("fork option id %r repeats" % option_id)
             seen_option_ids.add(str(option_id))
-            if is_placeholder(option.get("cost")):
+            if is_placeholder(option.get(FORK_OPTION_FIELDS[1])):
                 errors.append("fork option %r has no cost" % option_id)
-        if is_placeholder(fork.get("preferred")):
+        if is_placeholder(fork.get(fork_fields[2])):
             errors.append("fork preferred end state is a placeholder")
         passages = fork.get("passages")
         if passages is not None:
@@ -1517,6 +1620,7 @@ def validate_return(led, row, text, source):
                     if is_placeholder(passage.get("anchor")):
                         errors.append("fork passage anchor is a placeholder")
 
+    objection_fields = RETURN_LIST_KEY_FIELDS["objections"]
     objections = data.get("objections") or []
     if not isinstance(objections, list):
         errors.append("objections is not a list")
@@ -1525,21 +1629,21 @@ def validate_return(led, row, text, source):
         if not isinstance(entry, dict):
             errors.append("objection is not an object")
             continue
-        if is_placeholder(entry.get("text")):
+        if is_placeholder(entry.get(objection_fields[0])):
             errors.append("objection text is a placeholder")
-        _, fork = resolve_fork_entry(data, entry.get("fork"))
+        _, fork = resolve_fork_entry(data, entry.get(objection_fields[1]))
         if fork is None:
-            errors.append("objection names no fork: %r" % entry.get("fork"))
+            errors.append("objection names no fork: %r" % entry.get(objection_fields[1]))
             continue
         option_ids = set(
-            str(option.get("id"))
-            for option in (fork.get("options") or [])
-            if isinstance(option, dict) and option.get("id") is not None
+            str(option.get(FORK_OPTION_FIELDS[0]))
+            for option in (fork.get(fork_fields[1]) or [])
+            if isinstance(option, dict) and option.get(FORK_OPTION_FIELDS[0]) is not None
         )
-        if str(entry.get("option")) not in option_ids:
+        if str(entry.get(objection_fields[2])) not in option_ids:
             errors.append(
                 "objection option %r names no option of fork %r"
-                % (entry.get("option"), entry.get("fork"))
+                % (entry.get(objection_fields[2]), entry.get(objection_fields[1]))
             )
 
     return errors, data
@@ -2530,7 +2634,10 @@ def cmd_snapshot(args):
     copied = 0
     for rel in args.paths:
         rel = norm_path(led.root, rel)
-        dest = led.path("snapshots", args.label, rel)
+        # Recorded inputs live at snapshots/inputs/<label>/<path>, the location
+        # recorded_input_path reads and `brief --target` writes, so one row can
+        # carry a receipt for every mandated input it reads.
+        dest = led.path("snapshots", "inputs", args.label, rel)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         if args.base:
             proc = git(["show", "%s:%s" % (led.run.get("baseline_commit", "HEAD"), rel)], led.root)

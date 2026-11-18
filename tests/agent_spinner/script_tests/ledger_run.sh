@@ -128,7 +128,22 @@ ledger_has() {
 token_of() {
     dir="$1"
     label="$2"
-    tail -1 "$dir/.agent_spinner/briefs/$label.txt"
+    case "$label" in
+        probe:*)
+            # A probe brief is rendered before a run exists, so it still ends
+            # in the bare token and has no run.json entry to read.
+            tail -1 "$dir/.agent_spinner/briefs/$label.txt"
+            ;;
+        *)
+            "$PY" - "$dir/.agent_spinner/run.json" "$label" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1]))
+sys.stdout.write(data.get("brief_tokens", {}).get(sys.argv[2], ""))
+PY
+            ;;
+    esac
 }
 
 emit_return() {
@@ -362,6 +377,163 @@ scenario_brief_lint() {
     check "command refusal writes no brief" test ! -f "$dir2/.agent_spinner/briefs/produce:a.txt"
 
     if ledger_has "$dir2" -i 'steering' brief produce:a --body "You will find the bug is real." --checker; then ok "checker steering word warns"; else bad "checker steering word warns"; fi
+}
+
+scenario_brief_contract() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit check:r --unit-path check:r=a.txt >/dev/null 2>&1
+    ledger "$dir" brief check:r --body "B" --target a.txt --kind reader >/dev/null 2>&1
+    text="$dir/.agent_spinner/briefs/check:r.txt"
+    token=$(token_of "$dir" check:r)
+    check "the closing block labels the token line" \
+        grep -Fxq "Repeat the brief token: $token" "$text"
+    check "the closing block names the brief key and its token" \
+        grep -Fq 'The return'"'"'s `brief` key carries that token verbatim' "$text"
+    check "the closing block lists the accepted status values" \
+        grep -Fq 'status done | inability' "$text"
+    check "the closing block lists the accepted verdict values" \
+        grep -Fq 'verdict pass | fail' "$text"
+    check "the closing block lists the accepted how set" \
+        grep -Fq '`how` takes full | searched | unreachable' "$text"
+    check "the closing block lists the accepted checklist verdict set" \
+        grep -Fq '`verdict` takes pass | fail' "$text"
+    check "the closing block renders the run's severity ladder" \
+        grep -Fq '`severity` takes blocker | major | minor' "$text"
+    check "the closing block states the two-to-four fork option bound" \
+        grep -Fq '2 to 4 option objects' "$text"
+    check "the closing block states the examined fields" \
+        grep -Fq -- '- examined: objects with `path`, `how`, `receipt`;' "$text"
+    check "the closing block states the checklist fields" \
+        grep -Fq -- '- checklist: objects with `verdict`, `span`;' "$text"
+    check "the closing block states the findings fields" \
+        grep -Fq -- '- findings: objects with `claim`, `severity`, `quote`, `anchor`;' "$text"
+    check "the closing block states the forks fields" \
+        grep -Fq -- '- forks: objects with `issue`, `options`, `preferred`;' "$text"
+    check "the closing block states the fork option fields" \
+        grep -Fq 'each with `id` and `cost`' "$text"
+    check "the closing block states the objections fields" \
+        grep -Fq -- '- objections: objects with `text`, `fork`, `option`;' "$text"
+    for key in examined checklist findings forks objections; do
+        check "the closing block renders the $key object shape" \
+            grep -Fq -- "- $key: objects with" "$text"
+    done
+    check "the closing block leaves confirmations out of the template" \
+        not grep -Fq 'confirmations' "$text"
+    check "the closing block leaves gaps out of the template" \
+        not grep -Fq '`gaps`' "$text"
+
+    ledger "$dir" dispatch check:r >/dev/null 2>&1
+    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"checklist":[{"n":1,"verdict":"pass","span":"a.txt:1"}],"findings":[{"claim":"one defect","severity":"minor","quote":"alpha","anchor":"a.txt:1"}],"forks":[{"issue":"two ways","options":[{"id":"a","cost":"small"},{"id":"b","cost":"large"}],"preferred":"a"}]}'
+    if ledger "$dir" accept check:r >/dev/null 2>&1; then
+        ok "a return built from the rendered contract is accepted"
+    else
+        bad "a return built from the rendered contract is accepted"
+    fi
+}
+
+scenario_reader_two_inputs() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit check:r --unit-path check:r=a.txt >/dev/null 2>&1
+    ledger "$dir" brief check:r --body "B" --target a.txt --kind reader >/dev/null 2>&1
+    ledger "$dir" snapshot check:r b.txt >/dev/null 2>&1
+    ledger "$dir" dispatch check:r >/dev/null 2>&1
+    token=$(token_of "$dir" check:r)
+    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"},{"path":"b.txt","how":"full","receipt":"gamma"}]}'
+    if ledger "$dir" accept check:r >/dev/null 2>&1; then
+        ok "one reading row records a receipt for each of two inputs"
+    else
+        bad "one reading row records a receipt for each of two inputs"
+    fi
+
+    dir2="$dir/altered"
+    setup_repo "$dir2"
+    ledger "$dir2" init --unit check:r --unit-path check:r=a.txt >/dev/null 2>&1
+    ledger "$dir2" brief check:r --body "B" --target a.txt --kind reader >/dev/null 2>&1
+    ledger "$dir2" snapshot check:r b.txt >/dev/null 2>&1
+    ledger "$dir2" dispatch check:r >/dev/null 2>&1
+    token=$(token_of "$dir2" check:r)
+    emit_return "$dir2" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"},{"path":"b.txt","how":"full","receipt":"delta"}]}'
+    out=$(ledger "$dir2" accept check:r 2>&1)
+    if printf '%s\n' "$out" | grep -Fq 'receipt for b.txt is missing from the recorded input version'; then
+        ok "an altered receipt for one of two inputs is refused"
+    else
+        bad "an altered receipt for one of two inputs is refused"
+    fi
+}
+
+scenario_snapshot_receipt() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit check:s >/dev/null 2>&1
+    ledger "$dir" brief check:s --body "S" >/dev/null 2>&1
+    check "the brief records no input for the reading row" \
+        test ! -e "$dir/.agent_spinner/snapshots/inputs/check:s/a.txt"
+    ledger "$dir" snapshot check:s a.txt >/dev/null 2>&1
+    check "snapshot records the reading row's input" \
+        test -f "$dir/.agent_spinner/snapshots/inputs/check:s/a.txt"
+    printf 'changed\n' > "$dir/a.txt"
+    ledger "$dir" dispatch check:s >/dev/null 2>&1
+    token=$(token_of "$dir" check:s)
+    emit_return "$dir" check:s "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    if ledger "$dir" accept check:s >/dev/null 2>&1; then
+        ok "a receipt matching the snapshot copy is accepted after the live file changed"
+    else
+        bad "a receipt matching the snapshot copy is accepted after the live file changed"
+    fi
+
+    dir2="$dir/live"
+    setup_repo "$dir2"
+    ledger "$dir2" init --unit check:s >/dev/null 2>&1
+    ledger "$dir2" brief check:s --body "S" >/dev/null 2>&1
+    ledger "$dir2" snapshot check:s a.txt >/dev/null 2>&1
+    printf 'changed\n' > "$dir2/a.txt"
+    ledger "$dir2" dispatch check:s >/dev/null 2>&1
+    token=$(token_of "$dir2" check:s)
+    emit_return "$dir2" check:s "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"changed"}]}'
+    if ledger "$dir2" accept check:s >/dev/null 2>&1; then
+        bad "a receipt matching only the live file is refused"
+    else
+        ok "a receipt matching only the live file is refused"
+    fi
+}
+
+scenario_rebrief() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit sweep:docs --unit writer:draft --unit check:review >/dev/null 2>&1
+    for label in sweep:docs writer:draft check:review; do
+        ledger "$dir" brief "$label" --body "$label" >/dev/null 2>&1
+    done
+    cp "$dir/.agent_spinner/briefs/writer:draft.txt" "$dir/first-brief.txt"
+    find_before=$(cd "$dir" && find .agent_spinner/briefs -type f ! -name 'probe:*' | sort)
+    glob_before=$(cd "$dir" && for f in .agent_spinner/briefs/sweep:*.txt .agent_spinner/briefs/writer:*.txt .agent_spinner/briefs/check:*.txt; do
+        [ -e "$f" ] && printf '%s\n' "$f"
+    done | sort)
+
+    ledger "$dir" brief writer:draft --body "corrected" >/dev/null 2>&1
+
+    check "a second brief keeps the first at attempts/<label>.1.txt" \
+        test -f "$dir/.agent_spinner/attempts/writer:draft.1.txt"
+    check "the kept first brief matches the text the first call wrote" \
+        cmp -s "$dir/first-brief.txt" "$dir/.agent_spinner/attempts/writer:draft.1.txt"
+    check "the live brief stays at briefs/<label>.txt" \
+        test -f "$dir/.agent_spinner/briefs/writer:draft.txt"
+    check "the live brief carries the corrected text" \
+        not cmp -s "$dir/first-brief.txt" "$dir/.agent_spinner/briefs/writer:draft.txt"
+    check "the kept brief sits outside the briefs tree" \
+        test ! -e "$dir/.agent_spinner/briefs/attempts"
+    check "the ledger records the re-brief" \
+        grep -Fq '"type": "rebrief"' "$dir/.agent_spinner/ledger.jsonl"
+    find_after=$(cd "$dir" && find .agent_spinner/briefs -type f ! -name 'probe:*' | sort)
+    glob_after=$(cd "$dir" && for f in .agent_spinner/briefs/sweep:*.txt .agent_spinner/briefs/writer:*.txt .agent_spinner/briefs/check:*.txt; do
+        [ -e "$f" ] && printf '%s\n' "$f"
+    done | sort)
+    check "the briefs tree keeps the same files across a re-brief" \
+        test "$find_before" = "$find_after"
+    check "the briefed-row globs keep the same files across a re-brief" \
+        test "$glob_before" = "$glob_after"
 }
 
 scenario_dispatch() {
@@ -882,6 +1054,11 @@ scenario_run_directory() {
     token=$(token_of "$dir" produce:a)
     emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
     ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" snapshot produce:a a.txt >/dev/null 2>&1
+    check "snapshot records a nested input before close" \
+        test -f "$dir/.agent_spinner/snapshots/inputs/produce:a/a.txt"
+    snap_before=$(find "$dir/.agent_spinner/snapshots" -type f 2>/dev/null | wc -l | tr -d ' ')
+    check "the snapshot tree holds files before close" test "$snap_before" -gt 0
     ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
     printf '\n# Report\n' >> "$dir/.agent_spinner/report.md"
     if ledger "$dir" close >/dev/null 2>&1; then ok "hand-supplied run-directory files reach close"; else bad "hand-supplied run-directory files reach close"; fi
@@ -1084,11 +1261,11 @@ scenario_snapshot() {
     ledger "$dir" brief check:b --body "B" --target a.txt >/dev/null 2>&1
     printf 'changed\n' > "$dir/a.txt"
     ledger "$dir" snapshot check:b a.txt NOTES.md >/dev/null 2>&1
-    check "snapshot copies a changed file byte for byte" cmp -s "$dir/a.txt" "$dir/.agent_spinner/snapshots/check:b/a.txt"
-    check "snapshot copies an unchanged file byte for byte" cmp -s "$dir/NOTES.md" "$dir/.agent_spinner/snapshots/check:b/NOTES.md"
+    check "snapshot copies a changed file byte for byte" cmp -s "$dir/a.txt" "$dir/.agent_spinner/snapshots/inputs/check:b/a.txt"
+    check "snapshot copies an unchanged file byte for byte" cmp -s "$dir/NOTES.md" "$dir/.agent_spinner/snapshots/inputs/check:b/NOTES.md"
     ledger "$dir" snapshot check:b a.txt --base >/dev/null 2>&1
     git -C "$dir" show HEAD:a.txt > "$dir/base-a.txt"
-    check "snapshot --base copies the base commit's content" cmp -s "$dir/base-a.txt" "$dir/.agent_spinner/snapshots/check:b/a.txt"
+    check "snapshot --base copies the base commit's content" cmp -s "$dir/base-a.txt" "$dir/.agent_spinner/snapshots/inputs/check:b/a.txt"
 }
 
 scenario_status() {
@@ -2696,6 +2873,10 @@ run_all_scenarios() {
     scenario_rows "$root/rows"
     scenario_show_search "$root/show-search"
     scenario_snapshot "$root/snapshot"
+    scenario_brief_contract "$root/brief-contract"
+    scenario_reader_two_inputs "$root/reader-two-inputs"
+    scenario_snapshot_receipt "$root/snapshot-receipt"
+    scenario_rebrief "$root/rebrief"
     scenario_status "$root/status"
     scenario_stray_paths "$root/stray-paths"
     scenario_stray_paths_recorded "$root/stray-recorded"

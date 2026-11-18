@@ -2321,7 +2321,7 @@ sweeper_briefs_name_control() {
     grep -Fq 'max_attempts' "$f" || return 1
   done
   (( count == 2 )) || return 1
-  grep -Rqs 'max_attempts' "$proj/.agent_spinner/snapshots/sources" || return 1
+  grep -Rqs 'max_attempts' "$proj/.agent_spinner/snapshots/inputs/sources" || return 1
   return 0
 }
 

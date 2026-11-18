@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.25
+version: 1.0.26
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -158,12 +158,13 @@ Record how a finding survived. One a pass was shown and did not refute is **reca
 Classify a non-result before acting on it, and record the class on its ledger row.
 
 - A **deliberate self-reported inability** is a completed result: record its reason, spend no retry, and route it to the user.
-- A **spawn glitch** (a near-instant return with no tool use and only host boilerplate), a **spawn failure or mid-run death**, and a **contract violation**, meaning a return `accept` rejects, each earn one identical-prompt re-invocation.
+- A **spawn glitch** (a near-instant return with no tool use and only host boilerplate), and a **spawn failure or mid-run death**, each earn one identical-prompt re-invocation.
+- A **contract violation**, meaning a return `accept` rejects, also earns exactly one re-invocation. Where the brief itself caused the rejection, because it lacked or misstated what `accept` checks, re-render the brief through `brief` with the missing or wrong contract text corrected and re-invoke on that corrected brief; the corrected call keeps the earlier brief under `attempts/` and records the re-brief as a ledger event. Every other contract violation earns its re-invocation on the identical prompt. This one re-invocation carries no user gate, on the same footing as the spawn-glitch and spawn-failure re-invocations, so it may run inline at the inline floor without a user choice.
 - A helper the user aborted, or one past its bound that may have written, has its paths settled from the diff before anything is re-dispatched over them.
 
 A helper that may write files writes its return file, and its final message is its END line. A helper whose read-only lever or brief withholds file writes ends with its return block and END line as its final message, and never writes through a shell. Relay that message verbatim to `accept --stdin`, which records the return as relayed.
 
-Completion is an accepted return. A notice, a quiet interval, or a tree predicate is only a hint to run `status`. Wait inside the turn in bounded `accept --wait` polls until every row of the wave is terminal or past its bound. While a foreground batch blocks you, record each bound and mark a row that returned late as over its bound. A row past its bound is unreturned, earns the same single re-invocation, and then stays unreturned, distinct from a helper that found nothing. When a re-invocation fails again, mark the item failed and report it, and take a degraded path such as an inline redo only after the user chooses it. Guard every step against a dead or rejected upstream.
+Completion is an accepted return. A notice, a quiet interval, or a tree predicate is only a hint to run `status`. Wait inside the turn in bounded `accept --wait` polls until every row of the wave is terminal or past its bound. While a foreground batch blocks you, record each bound and mark a row that returned late as over its bound. A row past its bound is unreturned, earns the same single re-invocation, and then stays unreturned, distinct from a helper that found nothing. When a re-invocation fails again, mark the item failed and report it. A degraded path such as an inline redo of a failed item waits for the user's choice, distinct from the single re-invocation above, which carries no user gate. Guard every step against a dead or rejected upstream.
 </helper_failure>
 
 <remediation>
