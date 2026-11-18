@@ -704,12 +704,16 @@ graded checklist property, the rewritten sentence decides:
 - `unapproved_hunk_after_regeneration`: its brief names an approved-edit list,
   so the same carve-out keeps its checklist on those edits, and its grader
   reads that list in the brief.
+- `count_check_cannot_clear_meaning`: its prompt names no contract source, so
+  the default branch builds its checklist, and its grade reads the ledger
+  finding that checklist produces ("The ledger holds a finding quoting the
+  inverted sentence").
 
 Every other eval is outside the set: each is graded on a file hash, roster row,
 ledger record, or report clause that the checklist sentence does not feed. The
-nearest miss is `changed_false_still_checked`, which does write a check brief:
-that brief names the diff and the baseline rather than a contract source, and
-its grade reads the changed list rather than a checklist.
+closest remaining case is `changed_false_still_checked`, which does write a
+check brief: that brief names the diff and the baseline rather than a contract
+source, and its grade reads the changed list rather than a checklist.
 
 | Eval | Result | Run |
 | --- | --- | --- |
@@ -718,8 +722,9 @@ its grade reads the changed list rather than a checklist.
 | `acceptance_presence_on_every_surface` | pass (9 of 9 checks) | `../workspace/run-20261118-095637` |
 | `checker_reads_return_by_path` | pass (5 of 5 checks) | `../workspace/run-20261118-103038` |
 | `unapproved_hunk_after_regeneration` | pass (4 of 4 checks) | `../workspace/run-20261118-101451` |
+| `count_check_cannot_clear_meaning` | pass (5 of 5 checks) | `../workspace/run-20261118-114337` |
 
-All five ran fresh (`--force`). Four of them (`clean_corpus`,
+All six ran fresh (`--force`). Four of them (`clean_corpus`,
 `planted_defect`, `acceptance_presence_on_every_surface`, and the first
 `checker_reads_return_by_path`) started in `run-20261118-095637` at
 `09:56:38`, against the committed artifacts of `11d6139`
@@ -728,7 +733,9 @@ All five ran fresh (`--force`). Four of them (`clean_corpus`,
 four micro-deploy copies were taken, so they measure the pre-clarification
 text. `unapproved_hunk_after_regeneration` (`run-20261118-101451`, 4 of 4) and
 the re-run of `checker_reads_return_by_path` (`run-20261118-103038`, 5 of 5)
-both postdate that edit. The item-brief and approved-edit branch therefore
+both postdate that edit. `count_check_cannot_clear_meaning`
+(`run-20261118-114337`, 5 of 5) postdates every artifact above and the owner's
+reach-set decision. The item-brief and approved-edit branch therefore
 rests on `run-20261118-103038`; `clean_corpus`, `planted_defect`, and
 `acceptance_presence_on_every_surface` stand on the pre-clarification
 artifacts. `clean_corpus` reports zero findings and records what it examined
@@ -765,7 +772,6 @@ the Cursor rows of the failure table above, each with its owning task except
 | `confirmed_class_swept_before_clean` | pass | `../workspace/run-20261114-175823` |
 | `containment_one_path` | pass | `../workspace/run-20261114-175823` |
 | `continuation_armed_once` | pass | `../workspace/run-20261114-175823` |
-| `count_check_cannot_clear_meaning` | pass | `../workspace/run-20261114-175823` |
 | `cross_model_checker_recorded` | pass | `../workspace/run-20261114-175823` |
 | `decision_items_past_line_100` | pass | `../workspace/run-20261114-175823` |
 | `declared_shape_switch_named` | pass | `../workspace/run-20261114-175823` |

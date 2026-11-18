@@ -352,6 +352,15 @@ c2_renderer_scoped() {
     && c2_item_has "$1" 1 'brief --acceptance PATH\[#Heading\]'
 }
 
+# c2_source_branch_scoped <checks.md> — a brief naming the item brief or an
+# approved-edit list and no acceptance list copies its checklist from that
+# source, and the `brief --acceptance` renderer stays on the acceptance-list
+# case alone.
+c2_source_branch_scoped() {
+  c2_item_has_collapsed "$1" 1 'When the brief names the item brief or an approved-edit list and no acceptance list, copy the checklist from that source' \
+    && c2_item_has_collapsed "$1" 1 'keep the `brief --acceptance` renderer for the acceptance-list case alone'
+}
+
 # c2_rewrite_pairing <checks.md> — the old-form test is paired with the
 # presence test on a rewrite item alone.
 c2_rewrite_pairing() {
@@ -983,6 +992,8 @@ check "C2 takes the same default contract, one line per claim in artifact order"
   c2_has_collapsed "$CHECKS" 'one line per claim the artifact makes, in artifact order'
 check "C2 item 1 scopes the brief --acceptance renderer to a brief naming an acceptance source" \
   c2_renderer_scoped "$CHECKS"
+check "C2 item 1 copies the checklist from the item brief or approved-edit list and keeps the renderer on the acceptance-list case alone" \
+  c2_source_branch_scoped "$CHECKS"
 check "C2 item 2 gives the old-form test to rewrite items alone" \
   c2_rewrite_pairing "$CHECKS"
 check "the Checking pass template names what its checklist is built from" \
@@ -1065,6 +1076,21 @@ open(path, "w").write(text)
 PY
 check "the renderer check fails on an unscoped brief --acceptance sentence" \
   not c2_renderer_scoped "$CC_SCRATCH/c2-unscoped-renderer.md"
+
+cp "$CHECKS" "$CC_SCRATCH/c2-no-source-branch.md"
+python3 - "$CC_SCRATCH/c2-no-source-branch.md" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+text, n = re.subn(
+    r"When the brief names the item brief or an approved-edit list\s+and no acceptance list,.*?acceptance-list\s+case alone\.\s*",
+    "", text, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit("item-brief branch sentence not found")
+open(path, "w").write(text)
+PY
+check "the source-branch check fails when the item-brief and approved-edit-list branch is removed" \
+  not c2_source_branch_scoped "$CC_SCRATCH/c2-no-source-branch.md"
 
 cp "$CHECKS" "$CC_SCRATCH/c2-old-form-every-item.md"
 python3 - "$CC_SCRATCH/c2-old-form-every-item.md" <<'PY'
