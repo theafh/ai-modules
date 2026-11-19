@@ -885,8 +885,9 @@ second-person verbs (`you choose|answer|decide|pick`); the captured sandbox was
 re-graded after that broadening and passes 6 of 6.
 
 The go-ahead cue also accepts a plain user-directed question
-(`open question for you|for you to approve|which … should|or another option you
-name|you name`), because two captured compliant runs ask in interrogative form
+(`open question for you|for you to approve|or another option you name`), so a
+statement such as "The section which you should remove is the legacy one" never
+satisfies it. Two captured compliant runs ask in interrogative form
 rather than naming a decision: `run-20261114-175823/judgement_surfaced` asks
 "Which reading of 'clean the page up' should Design take … or another option
 you name?" and `run-20261113-092948/depth_one_level` asks "Open question for

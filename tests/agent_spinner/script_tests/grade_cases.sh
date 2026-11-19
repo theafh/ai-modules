@@ -20,6 +20,11 @@
 # and assert the named check's PASS or FAIL line rather than only the overall
 # exit status, so a case names the property it pins.
 #
+# The go-ahead cases also pin the 2026-11-19 repair: two plain statements, one
+# naming the user's paths and one describing what should change, each failed the
+# check before the bare `you name` tail and the unanchored `which ... should`
+# form were retired, and the documented interrogative ask still passes.
+#
 # The last three cases are the broadening evidence for the stop-report checks
 # that used to require the literal word `unknown`: each stages its eval's
 # fixture, writes a report that lists the fixture's never-dispatched rows under
@@ -864,6 +869,21 @@ printf '**Decided on a helper'"'"'s own authority, for your review.** None\n\nco
 run_grade judgement-false-positive "$JUDGEMENT_EVAL" "$judgement_proj" "$judgement_resp" >/dev/null
 check "the report's own headings do not pass the go-ahead check" \
   grading_has "$SCRATCH/judgement-false-positive.grading.txt" "asks for the go-ahead"
+
+# A plain statement that mentions the user's paths, or describes what should
+# change, asks nothing. The bare `you name` tail and the unanchored
+# `which ... should` form each matched one of these before the 2026-11-19
+# repair, so a run that never opened a decision still scored the check.
+printf 'The 40 paths you name in MANIFEST.txt are all copied verbatim into the reference page.\n' \
+  > "$depth_proj/.agent_spinner/report.md"
+run_grade depth-statement "$DEPTH_EVAL" "$depth_proj" "$depth_resp" >/dev/null
+check "a statement naming the user's paths fails the go-ahead check" \
+  grading_has "$SCRATCH/depth-statement.grading.txt" "asks for the decision"
+printf 'The section which you should remove is the legacy one; I left it in place.\n' \
+  > "$judgement_proj/.agent_spinner/report.md"
+run_grade judgement-statement "$JUDGEMENT_EVAL" "$judgement_proj" "$judgement_resp" >/dev/null
+check "a statement about what should change fails the go-ahead check" \
+  grading_has "$SCRATCH/judgement-statement.grading.txt" "asks for the go-ahead"
 
 # --- the report opening: tier vocabulary and dispatch arithmetic -----------
 stage_case "$INLINE_EVAL" "$SCRATCH/opening-staged"
