@@ -319,17 +319,18 @@ files.
   runner's stop on a failed or empty stage), and `script_tests/ledger_run.sh`
   exercises the bundled `scripts/run_ledger.py` under the oldest and newest
   python3; `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over
-  11 committed report variants (15 pass/fail checks) for
-  `explicit_spinner_on_family_job`, the `checker_spawned_without_role`
-  route cases, and the two `sweep_rewrite_hunk_blocks_sampling` checks that
-  a repair-round re-check does not count as a second initial check and that
-  a second initial check for one page still fails (20 checks in all);
+  every case it carries, one per graded surface: the
+  `explicit_spinner_on_family_job` report variants, the
+  `checker_spawned_without_role` route cases, the two
+  `sweep_rewrite_hunk_blocks_sampling` checks that a repair-round re-check
+  does not count as a second initial check and that a second initial check for
+  one page still fails, and each run-path eval's passing case beside its
+  on-disk and ledger fail branches;
   `script_tests/fixture_stage.py` stages every eval and fails a helper return
   that breaks the shipped ledger's return contract, so a ledger change that
   leaves a fixture behind fails `make test` before any paid eval run;
   `evals/test_run.py` proves the runner's
-  wiring against a stub worker; `evals/` holds every id in `evals.json` (93
-  today). Each
+  wiring against a stub worker; `evals/` holds every id in `evals.json`. Each
   behavioural eval stages one behaviour and the `smoke_*` evals check the
   runner's modes, driven by `evals/run.py` on the default Cursor worker in
   the shared `tests/lib/eval_runner` pool at the default 4 workers, with a

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# beyond_brief_defect_reported: a writer return carries a defect outside its
-# brief. The run records it as a flag record and the report quotes it with its
-# path.
+# beyond_brief_find_reported: a writer return carries a defect outside its
+# brief. The run records the find in its ledger form and the report quotes it
+# with its path.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,4 +28,4 @@ write_return "$proj" produce:alpha "done" pass '{
 }'
 
 seal_open_run "$target" "$proj"
-echo "beyond_brief_defect_reported sandbox staged at $proj"
+echo "beyond_brief_find_reported sandbox staged at $proj"

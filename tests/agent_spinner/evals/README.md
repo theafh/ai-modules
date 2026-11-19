@@ -1,6 +1,6 @@
 # agent_spinner behavioral evals
 
-Every id in `evals.json` (ninety-three today). Each behavioural eval stages one
+Every id in `evals.json`. Each behavioural eval stages one
 behaviour; the `smoke_*` evals check the runner's modes, so a failing eval
 names one behaviour rather than a conjoined verdict. The static body and grep
 items stay under `script_tests/`.
@@ -66,7 +66,12 @@ having taken it.
 | `smoke_withheld_shell` | `tool_calls.jsonl` plus marker absence | The shell class is withheld, so the marker stays absent and the record shows the class missing from the offered tools or every shell attempt failed. Results: `## Runner modes`. |
 | `smoke_withheld_write` | `tool_calls.jsonl` plus marker absence | The write class is withheld, so the marker stays absent and the record shows the class missing from the offered tools or every write attempt failed. Results: `## Runner modes`. |
 | `decision_items_past_line_100` | ledger records + report | Three long returns each carry one decision item past line 100 and a self-tally that misses it, so the ledger record and the report count are the ground truth the self-tallies cannot supply. |
-| `beyond_brief_defect_reported` | ledger flag record + report | The ledger imports no beyond-brief record, so the run records the defect as a flag; the report's beyond-brief part is where its path and quote must land. |
+| `beyond_brief_find_reported` | ledger record (flag or beyond_brief) + report | The shipped ledger imports no beyond-brief record type, so a run records the find as a flag; a ledger that gains the record type records it as one. The grade accepts either shape and only one of them, and the report's beyond-brief part is where its path and quote must land. |
+| `residual_sweep_finds_missed_target` | ledger records + page bytes + report | The accepted `residual:sweep` row and its finding are the sweep's own record, the `missed` class and the repair row prove it entered repair, and the page's bytes prove the target no longer matches. The report check keeps a run from claiming a clean sweep before the repair. |
+| `pause_request_writes_stop` | STOP marker + ledger dispatch count | The pause request arrives in the second turn with no STOP planted, so the marker is the run's own act; the between script records the dispatch count at the request, and the ledger's count after it is the no-new-dispatch fact. |
+| `twice_failed_item_marked_failed` | roster state + page bytes + report | A second rejected return is the ledger's own transition to `failed`, a byte-identical page proves no degraded path ran, and the report's inline-redo offer is the user's choice the contract defers. |
+| `unprompted_verification_before_write` | `row_source` records + brief order + ledger disposition + page bytes | The three verify rows sourced from the findings are the ledger fact, the brief mtimes are the before-any-writer ordering fact, the refuted disposition with its span is the re-derivation, and the contradicted page's bytes prove no edit landed. |
+| `family_job_post_write_check` | run gate record + roster + `run.json` changes | The `notes_lint` `gate_result` is the pointer-only page's post-write check, the accepted check row is the claim-changing page's, and each changed family page's attribution plus its family-writer route proves the orchestrator wrote no family file. |
 | `labelled_forks_all_relayed` | ledger records + report | Three fork records prove the import, and the report proves none was dropped. |
 | `unlabelled_returns_joined_by_id` | report | Joining by arrival order is a synthesis decision, so the echoed id or the missing-id list is the witness. |
 | `hollow_plan_blocks_writes` | file hashes + roster | Five byte-identical files prove nothing was written from a placeholder plan, and the roster state proves the contract violation. |
@@ -366,7 +371,6 @@ run.
 | `aborted_writer_settled_from_diff` | pass | `../workspace/run-20261108-180638` |
 | `acceptance_presence_on_every_surface` | pass | `../workspace/run-20261111-103456` |
 | `attached_body_opens_and_closes_ledger` | pass | `../workspace/run-20261108-180638` |
-| `beyond_brief_defect_reported` | pass | `../workspace/run-20261108-180638` |
 | `changed_false_still_checked` | pass | `../workspace/run-20261108-180638` |
 | `charter_conflict` | pass | `../workspace/run-20261015-095519` |
 | `completion_turn_advances_phase` | pass | `../workspace/run-20261108-180638` |
@@ -760,7 +764,6 @@ the Cursor rows of the failure table above, each with its owning task except
 | `attached_body_reads_recipe` | pass | `../workspace/run-20261114-175823` |
 | `baseline_kept_on_partial_read` | pass | `../workspace/run-20261114-175823` |
 | `baseline_lint_without_stash` | pass | `../workspace/run-20261114-175823` |
-| `beyond_brief_defect_reported` | pass | `../workspace/run-20261114-175823` |
 | `blind_pass_by_prompt` | pass | `../workspace/run-20261114-175823` |
 | `changed_false_still_checked` | pass | `../workspace/run-20261114-175823` |
 | `charter_conflict` | pass | `../workspace/run-20261114-175823` |
@@ -921,3 +924,65 @@ sampling offer). With a one-word response instead of an empty one, the guarded
 report checks fail too (`asks for the decision`, `asks for the go-ahead`, the
 opening tier and dispatch arithmetic, the yield clause, and the established
 list), so no repaired check passes on a run that left nothing behind.
+
+### 2026-11-19, Cursor CLI 2026.11.13-eacade1, model `auto` — run-path evals
+
+Six evals cover run paths no earlier eval exercised: the residual sweep, a
+pause request with no planted STOP, an item failed twice, unprompted
+verification, the family job past approval, and the beyond-brief find. All six
+ran fresh (`--force`) on the default vendor in `../workspace/run-20261119-203239`,
+after the last edit to `grade.sh`, `evals.json`, and every fixture `setup.sh`,
+so each verdict postdates every artifact under test. Three pass and three fail;
+the failures are behaviour findings and no grader, fixture, or expectation was
+changed to clear them.
+
+| Eval | Result | Failing check |
+| --- | --- | --- |
+| `residual_sweep_finds_missed_target` | pass (8 of 8) | — |
+| `pause_request_writes_stop` | pass (3 of 3) | — |
+| `twice_failed_item_marked_failed` | fail (3 of 4) | `the report offers the inline redo as the user's choice` |
+| `unprompted_verification_before_write` | fail (5 of 7) | `a verify row exists for each of the three findings`; `every verify brief predates the first writer brief` |
+| `family_job_post_write_check` | fail (3 of 4) | `no orchestrator write lands on a family file` |
+| `beyond_brief_find_reported` | pass (5 of 5) | — |
+
+The first run (`run-20261119-195829`) showed three fixtures or graders at
+fault, and each was corrected before the fresh run above. Its
+`residual_sweep_finds_missed_target` fixture left the three rewritten pages
+carrying the target, so the run correctly found four residuals where the
+fixture meant one, and its class lived on the finding's claim ("missed
+residual(s) of hyphenated email class") rather than on the disposition. The
+fixture now rewrites the three pages, and the class check reads the finding
+record or its disposition, which is where C8.2 puts the class. Its
+`twice_failed_item_marked_failed` fixture staged a second invalid return for
+the run to accept, but the run re-invoked the item and produced a valid
+return, so the item was repaired rather than failed — the fixture's premise was
+unsatisfiable. The fixture now records the second rejection itself and leaves
+the row `failed`. Its `family_job_post_write_check` fixture's pointer-only page
+linked a file that existed, so it was corrected to link a missing `INSTALL.md`.
+
+**Skill finding — `twice_failed_item_marked_failed`.** The run leaves the row
+`failed` and `docs/alpha.md` byte-identical, but it never puts the inline redo
+to the user: its only sentence is "a degraded inline redo waits for the user's
+choice and was not started", a third-person status line. `the report offers the
+inline redo as the user's choice` needs a user-directed offer, and no sentence
+addresses the user. The run named the choice without offering it.
+
+**Skill finding — `unprompted_verification_before_write`.** The run verified
+all three findings and refuted the contradicted one with its settling span, but
+it recorded that work as `recheck:` rows after the writer rows. Its roster goes
+survey → three writer rows → three recheck rows → two check rows, and no row
+carries a verifying role with a `row_source` naming one of the three findings,
+so `a verify row exists for each of the three findings` and `every verify brief
+predates the first writer brief` fail. The verification is real, yet the ledger
+cannot establish that it happened before the writes, which is the property this
+eval grades.
+
+**Skill finding — `family_job_post_write_check`.** The family writer changed
+all five notes pages, and the run recorded the post-write `notes_lint` gate
+result and five accepted check rows, but only `notes/alpha.md` carries a roster
+row that names `notes_repairer`: the four other writer rows are `dropped` with
+no path, and each changed page's diff is attributed to the finder that reported
+it (`find:beta`, `find:gamma`, `find:delta`, `find:epsilon`). `no orchestrator
+write lands on a family file` therefore fails, because the ledger cannot
+attribute four of the five changed pages to the family writer rather than the
+orchestrator.

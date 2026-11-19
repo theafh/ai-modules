@@ -626,14 +626,14 @@
     },
     {
       "skill": "agent_spinner",
-      "id": "beyond_brief_defect_reported",
-      "prompt": "A writer returned on docs/alpha.md and reported a defect outside its brief. Accept the return, record the beyond-brief defect on the ledger with `dispose --flag`, and report the run.",
-      "expected_output": "The ledger holds a beyond-brief record, and the report's beyond-brief part quotes the defect with its path.",
+      "id": "beyond_brief_find_reported",
+      "prompt": "A writer returned on docs/alpha.md and reported a defect outside its brief. Accept the return, record what it found, and report the run.",
+      "expected_output": "The ledger holds the beyond-brief find in the shape the shipped ledger supports, and the report's beyond-brief part quotes the defect with its path.",
       "files": [
-        "evals/fixtures/beyond_brief_defect_reported/setup.sh"
+        "evals/fixtures/beyond_brief_find_reported/setup.sh"
       ],
       "expectations": [
-        "The ledger holds a flag record naming the beyond-brief defect.",
+        "The ledger holds the beyond-brief find, as a flag record or a beyond_brief record.",
         "The report quotes the beyond-brief defect with its path."
       ],
       "harness": {
@@ -2027,6 +2027,127 @@
         "report_contract": false
       },
       "timeout": 1800
+    },
+    {
+      "id": "residual_sweep_finds_missed_target",
+      "skill": "agent_spinner",
+      "prompt": "The prose sweep's rewrite and check waves have returned and their returns are accepted. Finish the run and report it here.",
+      "expected_output": "The residual sweep runs over the final tree, finds the target docs/delta.md still carries, classes it missed, repairs that page, and reports the residual with its repair.",
+      "files": [
+        "evals/fixtures/residual_sweep_finds_missed_target/setup.sh"
+      ],
+      "expectations": [
+        "The residual:sweep row is accepted.",
+        "The ledger holds a residual finding naming docs/delta.md.",
+        "The ledger classes that residual as missed.",
+        "A repair row is created from the residual finding.",
+        "docs/delta.md no longer carries the target.",
+        "No report sentence claims the sweep found no residual before the repair."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1200
+    },
+    {
+      "id": "pause_request_writes_stop",
+      "skill": "agent_spinner",
+      "prompt": "An open run has returned its first wave. Continue it.",
+      "expected_output": "The pause request writes the STOP file, no row is dispatched after the request, and the report lists where the run stands.",
+      "files": [
+        "evals/fixtures/pause_request_writes_stop/setup.sh"
+      ],
+      "expectations": [
+        "The run directory holds a STOP marker.",
+        "No dispatch record follows the pause request."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false,
+        "second_turn": {
+          "prompt": "Pause this run now: stop any new dispatch and then report where the run stands.",
+          "between": "fixtures/pause_request_writes_stop/between_turns.sh"
+        }
+      }
+    },
+    {
+      "id": "twice_failed_item_marked_failed",
+      "skill": "agent_spinner",
+      "prompt": "An open run holds one item that has failed twice. Report where the run stands.",
+      "expected_output": "The second rejection marks the row failed, the target stays byte-identical, and the report offers the inline redo as the user's choice.",
+      "files": [
+        "evals/fixtures/twice_failed_item_marked_failed/setup.sh"
+      ],
+      "expectations": [
+        "The row is recorded as failed.",
+        "docs/alpha.md stays byte-identical.",
+        "The report offers the inline redo as the user's choice."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      }
+    },
+    {
+      "id": "unprompted_verification_before_write",
+      "skill": "agent_spinner",
+      "prompt": "A survey returned three findings and they are accepted. Repair what they report and report the run.",
+      "expected_output": "The run verifies every finding before any writer brief, refutes the finding docs/beta.md contradicts with its settling span, repairs the two true findings, and leaves docs/beta.md byte-identical.",
+      "files": [
+        "evals/fixtures/unprompted_verification_before_write/setup.sh"
+      ],
+      "expectations": [
+        "A verify row exists for each of the three findings.",
+        "Every verify brief predates the first writer brief.",
+        "The contradicted finding is refuted with its settling span.",
+        "docs/beta.md stays byte-identical.",
+        "docs/alpha.md and docs/gamma.md are repaired."
+      ],
+      "harness": {
+        "disallowed_tools": [
+          "spawn"
+        ],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 1200
+    },
+    {
+      "id": "family_job_post_write_check",
+      "skill": "agent_spinner",
+      "prompt": "Use agent_spinner for this job. The mock family skill at family/mock_notes/SKILL.md governs the repair; read it and follow its contract. Fix the five pages under notes/. Gate answers: the scope is all five pages, and the estimate is five finders plus one family writer. The approval of the family writer's scope is not given; it stays the user's to decide.",
+      "expected_output": "The run finds over the five pages, then takes the user's approval of the family writer's scope in the second turn, lets the family writer make every change, and checks the write: a check row for a page whose diff changes a claim, and the notes_lint gate result for the pointer-only page notes/beta.md.",
+      "files": [
+        "evals/fixtures/family_job_post_write_check/setup.sh"
+      ],
+      "expectations": [
+        "The post-write check runs the notes_lint gate and records it as a non-baseline result with ok true.",
+        "An accepted check row exists for notes/alpha.md.",
+        "No orchestrator write lands on a family file."
+      ],
+      "harness": {
+        "agents": [
+          "fixtures/family_job_post_write_check/agents/notes_repairer.md"
+        ],
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false,
+        "second_turn": {
+          "prompt": "The user approved the family writer's scope for all five pages. Read the answer in .agent_spinner/answer.txt and carry the run to its close.",
+          "between": "fixtures/family_job_post_write_check/between_turns.sh"
+        }
+      },
+      "timeout": 2400
     }
   ]
 }
