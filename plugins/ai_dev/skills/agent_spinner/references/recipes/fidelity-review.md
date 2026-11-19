@@ -84,7 +84,7 @@ Ask about scope and the estimate before dispatch, with the estimate beside any s
 </stop_and_ask>
 
 <report>
-Build the report from the tally block, the counts `close` prints (P6). The opening sentence counts the helpers dispatched, returned, and accepted in each phase. Coverage splits into read in full by tool evidence, claimed by receipt only, only searched, and unexamined, and each unexamined class names the check that would cover it. Findings are counted raised, verified, narrowed, and refuted per lens, split into recall-confirmed and independently surfaced. Each unverified band carries its sample rate, and a zero refutation rate is named as a calibration question. List the paths written, reviewed, repaired, and re-checked, the open items by id, and each hand-off with the rows it names as examined.
+Build the report from the tally block, the counts `close` prints (P6). The opening sentence gives the answer, the tier, helpers dispatched against returned, and whether `close` exited 0, then counts the helpers dispatched, returned, and accepted in each phase. Coverage splits into read in full by tool evidence, claimed by receipt only, only searched, and unexamined, and each unexamined class names the check that would cover it. Findings are counted raised, verified, narrowed, and refuted per lens, split into recall-confirmed and independently surfaced. Each unverified band carries its sample rate, and a zero refutation rate is named as a calibration question. List the paths written, reviewed, repaired, and re-checked, the open items by id, and each hand-off with the rows it names as examined.
 
 Report each repaired item as re-checked once, recall-limited, and unverified end to end, or as failed after repair (C5).
 </report>

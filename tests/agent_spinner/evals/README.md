@@ -986,3 +986,53 @@ it (`find:beta`, `find:gamma`, `find:delta`, `find:epsilon`). `no orchestrator
 write lands on a family file` therefore fails, because the ledger cannot
 attribute four of the five changed pages to the family writer rather than the
 orchestrator.
+
+### 2026-11-19, Cursor CLI 2026.11.13-eacade1, model `auto` — report opening and fork passages
+
+The change makes every restatement of the report's opening carry all four facts
+(the answer, the tier, helpers dispatched against returned, and whether `close`
+exited 0) or point at `<reporting>`, and makes an anchored `passages` entry part
+of the fork contract in `validate_return`, `show --packet`, the rendered closing
+block, and every prose surface that states the fork shape.
+
+The set is the selector the acceptance names, derived from the files at run
+time: every member of `REPORT_CONTRACT_EVALS` in `grade.sh`
+(`inline_floor`, `phase_plan_announcement`, `containment_one_path`,
+`roster_partial_stop`, `planted_defect`, `clean_corpus`, `report_rederivation`),
+plus every eval branch calling `opening_has`
+(`verdict_waits_for_open_checker`, `skipped_close_reported`) and every branch
+calling `report_carries_decision_packet`
+(`unanswered_gate_stops_with_packet`). All ten ran fresh (`--force`,
+`--timeout 1800`) on the default vendor in `run-20261119-224618`, after the last
+edit to `SKILL.md` and `references/report-shapes.md` (the `<reporting>`
+no-clean-close wording repair) and after the last edit to
+`script_tests/run.sh`. `run.sh` is a static contract test outside the eval path,
+so it feeds no eval verdict; it is named here because this record postdates it.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `inline_floor` | pass | `../workspace/run-20261119-224618` |
+| `phase_plan_announcement` | pass | `../workspace/run-20261119-224618` |
+| `containment_one_path` | pass | `../workspace/run-20261119-224618` |
+| `roster_partial_stop` | fail (15 of 16) | `../workspace/run-20261119-224618` |
+| `planted_defect` | pass | `../workspace/run-20261119-224618` |
+| `clean_corpus` | pass | `../workspace/run-20261119-224618` |
+| `report_rederivation` | pass | `../workspace/run-20261119-224618` |
+| `verdict_waits_for_open_checker` | pass | `../workspace/run-20261119-224618` |
+| `skipped_close_reported` | pass | `../workspace/run-20261119-224618` |
+| `unanswered_gate_stops_with_packet` | pass (8 of 8) | `../workspace/run-20261119-224618` |
+
+The one remaining failure is not an opening or packet check, so this change's
+rule is not what it grades:
+
+- `roster_partial_stop` passes every closing-report check, including the
+  opening's verdict, tier, and dispatch arithmetic. Its one failure is
+  `settles the unknown ones by reading the files`, the unknown-row settlement
+  owned by `ai-dev_agent-spinner-ledger-terminal-states`.
+
+`skipped_close_reported` passes 3 of 3 in the same run, so the wording repair in
+`<reporting>` (the opening says "there is no clean close, in those words, rather
+than only naming the exit code") is under test here with no grader change.
+`unanswered_gate_stops_with_packet` passes 8 of 8 in the same run, including
+`the report carries a decision packet with every field` and its anchored
+passages.

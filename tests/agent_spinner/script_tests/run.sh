@@ -312,6 +312,207 @@ closing_block_checklist_fields() {
   ! printf '%s\n' "$fields" | grep -Eq '`n`'
 }
 
+# closing_block_forks_fields <role-prompts.md> — the closing block's `forks`
+# entry names `issue`, `options`, `preferred`, and `passages`, the four fields
+# the ledger's rendered block and validate_return use.
+closing_block_forks_fields() {
+  local file="$1" fields
+  [[ -f "$file" ]] || return 1
+  fields="$(awk '
+    /^## Closing block$/ { inside = 1; next }
+    inside && /^## / { exit }
+    inside { print }
+  ' "$file" | tr '\n' ' ' | sed -n 's/.*`forks` with \([^;]*\);.*/\1/p')"
+  [[ -n "$fields" ]] || return 1
+  for field in issue options preferred passages; do
+    printf '%s\n' "$fields" | grep -q "\`$field\`" || return 1
+  done
+}
+
+# opening_sentence_sites_ok <skill dir> — every passage in SKILL.md and
+# references/ that contains the phrase "opening sentence" carries all four
+# report facts (the tokens `answer`, `tier`, `dispatched`, `returned`, and
+# `exited`), or the literal `<reporting>` pointer, or is the pre-dispatch
+# announcement — the `<degradation>` block or the Probe step of
+# degradation-examples.md — naming the tier and none of answer, dispatched, or
+# exited. It prints each matched site by file and line, so a site added later
+# shows up as a named failure rather than being skipped.
+opening_sentence_sites_ok() {
+  python3 - "$1" <<'PY'
+import os
+import re
+import sys
+
+root = sys.argv[1]
+files = [os.path.join(root, "SKILL.md")]
+refs = os.path.join(root, "references")
+for dirpath, _, names in os.walk(refs):
+    for name in names:
+        if name.endswith(".md"):
+            files.append(os.path.join(dirpath, name))
+files.sort()
+
+PARAGRAPH = re.compile(r"(?:[^\n]|\n(?!\s*\n))+")
+FACTS = ("answer", "tier", "dispatched", "returned", "exited")
+
+
+def paragraphs(text):
+    for match in PARAGRAPH.finditer(text):
+        chunk = match.group(0)
+        if chunk.strip():
+            yield text.count("\n", 0, match.start()) + 1, chunk
+
+
+def block_paragraphs(text, tag):
+    body = re.search(r"^<%s>\n(.*?)^</%s>" % (tag, tag), text, re.M | re.S)
+    if not body:
+        return set()
+    return {chunk.strip() for _, chunk in paragraphs(body.group(1))}
+
+
+failures = []
+sites = 0
+for path in files:
+    rel = os.path.relpath(path, root)
+    text = open(path, encoding="utf-8").read()
+    announcement = set()
+    if rel == "SKILL.md":
+        announcement = block_paragraphs(text, "degradation")
+    elif rel == os.path.join("references", "degradation-examples.md"):
+        announcement = {
+            chunk.strip()
+            for _, chunk in paragraphs(text)
+            if re.match(r"^\s*[0-9]+\.\s+\*\*Probe\.\*\*", chunk)
+        }
+    for line, chunk in paragraphs(text):
+        low = chunk.lower()
+        if "opening sentence" not in low:
+            continue
+        sites += 1
+        stripped = chunk.strip()
+        phrase = " ".join(stripped.split())
+        index = phrase.lower().find("opening sentence")
+        phrase = phrase[max(0, index - 20):index + 40]
+        carries = all(token in low for token in FACTS)
+        pointer = "<reporting>" in chunk
+        tier_only = (
+            stripped in announcement
+            and any(token in low for token in ("tier", "inline floor", "spawned roles"))
+            and not any(token in low for token in ("answer", "dispatched", "exited"))
+        )
+        if carries or pointer or tier_only:
+            print("  site %s:%d \"%s\" ok" % (rel, line, phrase))
+        else:
+            print(
+                "  site %s:%d \"%s\" carries none of the four facts, no "
+                "<reporting> pointer, and is no tier-only announcement"
+                % (rel, line, phrase)
+            )
+            failures.append("%s:%d" % (rel, line))
+if not sites:
+    print("  no passage carries the phrase 'opening sentence'")
+    failures.append("no site")
+sys.exit(1 if failures else 0)
+PY
+}
+
+# p6_check_carries_opening_facts <run-protocol.md> — P6's self-check names all
+# four report facts in the opening sentence.
+p6_check_carries_opening_facts() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+match = re.search(r"^\*\*Checks\.\*\* Every finding.*?(?=\n\n)", text, re.M | re.S)
+if not match:
+    sys.exit(1)
+low = match.group(0).lower()
+sys.exit(0 if all(t in low for t in ("answer", "tier", "dispatched", "returned", "exited")) else 1)
+PY
+}
+
+# stop_template_first_sentence_facts <report-shapes.md> — every stop-report
+# template opens with one sentence carrying the answer, the tier, helpers
+# dispatched against returned, and the close exit.
+stop_template_first_sentence_facts() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+sentences = []
+for block in re.findall(r"```text\n(.*?)```", text, re.S):
+    stripped = block.strip()
+    if not stripped.startswith("Stopped"):
+        continue
+    sentences.append(re.split(r"(?<=\.)\s", stripped, maxsplit=1)[0].lower())
+if not sentences:
+    sys.exit(1)
+need = ("dispatched", "returned", "exited")
+ok = all(
+    all(token in sentence for token in need)
+    and re.search(r"tier|inline floor|spawned roles", sentence)
+    and re.search(r"answer|stopped|verdict", sentence)
+    for sentence in sentences
+)
+sys.exit(0 if ok else 1)
+PY
+}
+
+# degradation_states_tier_only <skill.md> — the <degradation> block states the
+# tier for the pre-dispatch announcement, and names no close exit, no
+# dispatched-against-returned count, and no answer.
+degradation_states_tier_only() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+match = re.search(r"^<degradation>\n(.*?)^</degradation>", text, re.M | re.S)
+if not match:
+    sys.exit(1)
+low = match.group(1).lower()
+tier = any(token in low for token in ("tier", "inline floor", "spawned roles"))
+banned = any(token in low for token in ("answer", "dispatched", "exited"))
+sys.exit(0 if tier and not banned else 1)
+PY
+}
+
+# fork_contract_requires_passages <run-protocol.md> — P3's fork rejection
+# bullet and the `forks` bullet of `### Return contract` each require an
+# anchored `passages` entry, neither states it as optional, and the pre-change
+# sentence is gone.
+fork_contract_requires_passages() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+p3 = re.search(r"^- A fork that is not an object.*?(?=\n- |\n\n)", text, re.M | re.S)
+contract = re.search(r"^- `forks` is a list.*?(?=\n- |\n\n)", text, re.M | re.S)
+if not p3 or not contract:
+    sys.exit(1)
+problems = []
+for name, match in (
+    ("P3 fork rejection bullet", p3),
+    ("Return-contract forks bullet", contract),
+):
+    entry = match.group(0)
+    if "`passages`" not in entry:
+        problems.append("%s names no `passages`" % name)
+    if "`anchor`" not in entry:
+        problems.append("%s names no `anchor`" % name)
+    if re.search(r"may also carry|optional", entry, re.I):
+        problems.append("%s states `passages` as optional" % name)
+if "A fork may also carry `passages`" in text:
+    problems.append("the pre-change optional sentence survives")
+for line in problems:
+    sys.stderr.write(line + "\n")
+sys.exit(1 if problems else 0)
+PY
+}
+
 # references_cite_no_step_number <references dir> — a run-protocol step is
 # cited by its P label alone, never by a step number that a later edit to
 # run-protocol.md can renumber out from under it.
@@ -458,6 +659,24 @@ check "every run_ledger.py path is skill-relative" \
 # --- <aggregation>'s `show` read set ----------------------------------------
 check "<aggregation> show read set matches the ledger's imported record types" \
   aggregation_show_list_correct "$SKILL"
+
+# --- the report's opening and the fork's passages ---------------------------
+check "<reporting> states the four opening facts" \
+  section_has_collapsed "$SKILL" reporting 'The opening sentence gives the answer, the tier, helpers dispatched against returned, and whether `close` exited 0'
+printf '\nopening-sentence sites (four facts, a <reporting> pointer, or the tier-only announcement):\n'
+opening_sentence_sites_ok "$SKILL_DIR" || true
+check "every passage naming the opening sentence carries the four facts, a <reporting> pointer, or the tier-only announcement" \
+  opening_sentence_sites_ok "$SKILL_DIR"
+check "P6's self-check carries all four opening facts" \
+  p6_check_carries_opening_facts "$REFS/run-protocol.md"
+check "the stop template's first sentence carries all four opening facts" \
+  stop_template_first_sentence_facts "$REFS/report-shapes.md"
+check "<degradation> states the tier for the pre-dispatch announcement alone" \
+  degradation_states_tier_only "$SKILL"
+check "the fork contract requires an anchored passages entry on every surface" \
+  fork_contract_requires_passages "$REFS/run-protocol.md"
+check "role-prompts.md closing block names the fork passages field" \
+  closing_block_forks_fields "$REFS/role-prompts.md"
 
 # --- the six shapes, each with its four elements ----------------------------
 SHAPES=(
@@ -1154,6 +1373,96 @@ open(path, "w").write(text)
 PY
 check "the template check fails on the bare 1. [check one] list" \
   not heading_block_has_collapsed "$CC_SCRATCH/bare-checking-template.md" 'Checking pass' 'Where it names none, hold one line per claim the artifact makes, in artifact order'
+
+# --- the opening rule and the fork passage rule -----------------------------
+#
+# Each check fails on a scratch copy carrying the pre-change form, so a green
+# run proves it can fail rather than passing vacuously.
+
+OPEN_SCRATCH="$SCRATCH/opening"
+mkdir -p "$OPEN_SCRATCH/references"
+cp "$SKILL" "$OPEN_SCRATCH/SKILL.md"
+cp -R "$REFS/." "$OPEN_SCRATCH/references/"
+printf '\nThe opening sentence names the tier alone.\n' \
+  >> "$OPEN_SCRATCH/references/probe.md"
+check "the opening-sentence sweep fails on a one-fact restatement" \
+  not opening_sentence_sites_ok "$OPEN_SCRATCH"
+
+cp "$REFS/run-protocol.md" "$SCRATCH/p6-no-facts.md"
+python3 - "$SCRATCH/p6-no-facts.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "The opening sentence carries the answer, the\ntier, helpers dispatched against returned, and whether `close` exited 0."
+new = "The opening sentence states whether `close`\nexited 0."
+if old not in text:
+    raise SystemExit("P6 check sentence not found")
+open(path, "w").write(text.replace(old, new, 1))
+PY
+check "the P6 fact check fails on a close-status-only self-check" \
+  not p6_check_carries_opening_facts "$SCRATCH/p6-no-facts.md"
+
+cp "$REFS/report-shapes.md" "$SCRATCH/stop-no-facts.md"
+python3 - "$SCRATCH/stop-no-facts.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "2 returned, and `close --stopped` exited 3"
+new = "2 returned. `close --stopped` exited 3"
+if old not in text:
+    raise SystemExit("stop template sentence not found")
+open(path, "w").write(text.replace(old, new, 1))
+PY
+check "the stop-template check fails when the exit moves to a second sentence" \
+  not stop_template_first_sentence_facts "$SCRATCH/stop-no-facts.md"
+
+cp "$SKILL" "$SCRATCH/degradation-with-close.md"
+python3 - "$SCRATCH/degradation-with-close.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = "State the tier the run reaches in the announcement before the first helper:"
+new = "State the tier the run reaches in the announcement before the first helper, and whether `close` exited 0:"
+if old not in text:
+    raise SystemExit("degradation sentence not found")
+open(path, "w").write(text.replace(old, new, 1))
+PY
+check "the degradation check fails when it names a close exit" \
+  not degradation_states_tier_only "$SCRATCH/degradation-with-close.md"
+
+cp "$REFS/run-protocol.md" "$SCRATCH/forks-optional.md"
+python3 - "$SCRATCH/forks-optional.md" <<'PY'
+import re
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text, n = re.subn(
+    r"  `preferred`, and `passages`\. Each option object carries.*?orchestrator silently editing a stamp another family owns\.",
+    "  `preferred`. A fork may also carry `passages`, a list of objects each holding\n  `text` and `anchor`. A fork whose change touches a stamped or marked path\n  carries `path`, the path the fork names; that field clears condition 10 for\n  the path it names, so the owning gate is handed the choice rather than the\n  orchestrator silently editing a stamp another family owns.",
+    text, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit("forks bullet not found")
+open(path, "w").write(text)
+PY
+check "the fork-contract check fails on the optional-passages sentence" \
+  not fork_contract_requires_passages "$SCRATCH/forks-optional.md"
+
+cp "$ROLE_PROMPTS" "$SCRATCH/closing-no-passages.md"
+python3 - "$SCRATCH/closing-no-passages.md" <<'PY'
+import re
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text, n = re.subn(
+    r"`preferred`, and\n`passages` \(one or more objects, each with `text` and `anchor`, naming verbatim\neach passage the fork touches\)",
+    "and `preferred`",
+    text, count=1)
+if n != 1:
+    raise SystemExit("closing-block forks clause not found")
+open(path, "w").write(text)
+PY
+check "the closing-block forks check fails when passages is dropped" \
+  not closing_block_forks_fields "$SCRATCH/closing-no-passages.md"
 
 # --- eval harness -----------------------------------------------------------
 # The eval runner's stage() raises on a stage.sh that fails, and on one that

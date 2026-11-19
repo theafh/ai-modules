@@ -130,11 +130,13 @@ Helper's preferred end state (fork record survey:reference:forks:0):
 Built from `close --stopped`, which prints the tally block and the modified,
 untouched, unknown, not dispatched, and violation row lists. While any row is
 non-terminal it prints them and refuses, exiting non-zero, so the stop report
-says so in its opening sentence.
+says so first, in its opening sentence, which carries the answer, the tier,
+helpers dispatched against returned, and whether `close` exited 0, and names
+the result as no clean close rather than only an exit code.
 
 ```text
 Stopped after 2 of 4 writers, at the spawned-roles tier, 2 dispatched against
-2 returned. `close --stopped` exited 3, refusing while 2 rows were pending.
+2 returned, and `close --stopped` exited 3, refusing while 2 rows were pending.
 
 Modified: docs/setup.md, docs/deploy.md.
 Untouched: docs/upgrade.md, docs/rollback.md.
@@ -157,8 +159,8 @@ untouched, unknown, not dispatched, and violation lists. The run closes with
 `close --stopped` rather than waiting.
 
 ```text
-Stopped before dispatch at the inline floor, 0 dispatched against 0 returned.
-`close --stopped` exited 3, refusing while 1 gate was open.
+Stopped before dispatch at the inline floor, 0 dispatched against 0 returned,
+and `close --stopped` exited 3, refusing while 1 gate was open.
 
 Decision packet: fork-1
 
@@ -204,8 +206,9 @@ checkers return.
 
 ## Closing report
 
-Built from the tally block `close` prints. Its opening sentence says whether
-`close` exited 0.
+Built from the tally block `close` prints. Its opening sentence carries the
+answer, the tier, helpers dispatched against returned, and whether `close`
+exited 0.
 
 ```text
 Five of the five surveyed pages hold their stated contract, reached at the

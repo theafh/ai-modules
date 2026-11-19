@@ -90,7 +90,7 @@ RETURN_LIST_FIELDS = (
     ("examined", ("path", "how", "receipt")),
     ("checklist", ("verdict", "span")),
     ("findings", ("claim", "severity", "quote", "anchor")),
-    ("forks", ("issue", "options", "preferred")),
+    ("forks", ("issue", "options", "preferred", "passages")),
     ("objections", ("text", "fork", "option")),
 )
 RETURN_LIST_KEY_FIELDS = dict(RETURN_LIST_FIELDS)
@@ -1130,13 +1130,16 @@ def render_return_block(led, label, token):
         "every checklist line"
         % (checklist[0], " | ".join(CHECKLIST_VERDICT_VALUES), checklist[1]),
         "findings": "`%s` takes %s" % (findings[1], ladder_text),
-        "forks": "`%s` holds %d to %d option objects, each with %s"
+        "forks": "`%s` holds %d to %d option objects, each with %s, and `%s` "
+        "holds one or more objects each with `text` and `anchor`, the passages "
+        "the fork touches"
         % (
             forks[1],
             FORK_OPTION_MIN,
             FORK_OPTION_MAX,
             ", ".join("`%s`" % field for field in FORK_OPTION_FIELDS[:-1])
             + ", and `%s`" % FORK_OPTION_FIELDS[-1],
+            forks[3],
         ),
         "objections": "`%s` names a fork as `forks:<index>`, where the index "
         "is 0-based, and `%s` names an option `%s` of that fork"
@@ -1609,18 +1612,20 @@ def validate_return(led, row, text, source):
         if is_placeholder(fork.get(fork_fields[2])):
             errors.append("fork preferred end state is a placeholder")
         passages = fork.get("passages")
-        if passages is not None:
-            if not isinstance(passages, list):
-                errors.append("fork passages is not a list")
-            else:
-                for passage in passages:
-                    if not isinstance(passage, dict):
-                        errors.append("fork passage is not an object")
-                        continue
-                    if is_placeholder(passage.get("text")):
-                        errors.append("fork passage text is a placeholder")
-                    if is_placeholder(passage.get("anchor")):
-                        errors.append("fork passage anchor is a placeholder")
+        if not isinstance(passages, list) or not passages:
+            errors.append(
+                "fork carries no anchored passage: add one or more `passages` "
+                "entries, each with its `text` and `anchor`"
+            )
+        else:
+            for passage in passages:
+                if not isinstance(passage, dict):
+                    errors.append("fork passage is not an object")
+                    continue
+                if is_placeholder(passage.get("text")):
+                    errors.append("fork passage text is a placeholder")
+                if is_placeholder(passage.get("anchor")):
+                    errors.append("fork passage anchor is a placeholder")
 
     objection_fields = RETURN_LIST_KEY_FIELDS["objections"]
     objections = data.get("objections") or []
@@ -2788,8 +2793,12 @@ def render_packet(led, packet_id):
             % (packet_id, fork_id)
         )
     passages = fork.get("passages")
-    if passages is None:
-        passages = [fork.get("passage")] if fork.get("passage") else []
+    if not isinstance(passages, list) or not passages:
+        die(
+            "fork %s carries no anchored passage; the packet cannot name the "
+            "passages it touches without a `passages` entry holding `text` and "
+            "`anchor`" % fork_id
+        )
     objections = [
         rec
         for rec in led.records()
@@ -2810,8 +2819,6 @@ def render_packet(led, packet_id):
             lines.append("  anchor: %s" % passage.get("anchor", ""))
         else:
             lines.append('- "%s"' % passage)
-    if not passages:
-        lines.append("  none")
     lines.append("")
     lines.append("Options:")
     for index, option in enumerate(options, 1):

@@ -409,9 +409,11 @@ scenario_brief_contract() {
     check "the closing block states the findings fields" \
         grep -Fq -- '- findings: objects with `claim`, `severity`, `quote`, `anchor`;' "$text"
     check "the closing block states the forks fields" \
-        grep -Fq -- '- forks: objects with `issue`, `options`, `preferred`;' "$text"
+        grep -Fq -- '- forks: objects with `issue`, `options`, `preferred`, `passages`;' "$text"
     check "the closing block states the fork option fields" \
         grep -Fq 'each with `id`, `text`, and `cost`' "$text"
+    check "the closing block states the fork passage fields" \
+        grep -Fq 'one or more objects each with `text` and `anchor`' "$text"
     check "the closing block states the objections fields" \
         grep -Fq -- '- objections: objects with `text`, `fork`, `option`;' "$text"
     for key in examined checklist findings forks objections; do
@@ -424,13 +426,13 @@ scenario_brief_contract() {
         not grep -Fq '`gaps`' "$text"
 
     ledger "$dir" dispatch check:r >/dev/null 2>&1
-    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"checklist":[{"n":1,"verdict":"pass","span":"a.txt:1"}],"findings":[{"claim":"one defect","severity":"minor","quote":"alpha","anchor":"a.txt:1"}],"forks":[{"issue":"two ways","options":[{"id":"a","text":"the first way","cost":"small"},{"id":"b","text":"the second way","cost":"large"}],"preferred":"a"}]}'
+    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"checklist":[{"n":1,"verdict":"pass","span":"a.txt:1"}],"findings":[{"claim":"one defect","severity":"minor","quote":"alpha","anchor":"a.txt:1"}],"forks":[{"issue":"two ways","options":[{"id":"a","text":"the first way","cost":"small"},{"id":"b","text":"the second way","cost":"large"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"a"}]}'
     if ledger "$dir" accept check:r >/dev/null 2>&1; then
         ok "a return built from the rendered contract is accepted"
     else
         bad "a return built from the rendered contract is accepted"
     fi
-    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"checklist":[{"n":1,"verdict":"pass","span":"a.txt:1"}],"findings":[{"claim":"one defect","severity":"minor","quote":"alpha","anchor":"a.txt:1"}],"forks":[{"issue":"two ways","options":[{"id":"a","cost":"small"},{"id":"b","text":"the second way","cost":"large"}],"preferred":"a"}]}'
+    emit_return "$dir" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"checklist":[{"n":1,"verdict":"pass","span":"a.txt:1"}],"findings":[{"claim":"one defect","severity":"minor","quote":"alpha","anchor":"a.txt:1"}],"forks":[{"issue":"two ways","options":[{"id":"a","cost":"small"},{"id":"b","text":"the second way","cost":"large"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"a"}]}'
     check "an option with no rendered text is refused" \
         ledger_has "$dir" "fork option 'a' has no text" accept check:r
 }
@@ -2536,6 +2538,65 @@ PY
     fi
 }
 
+scenario_fork_passages() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Keep the page or retire it?","options":[{"id":"keep","text":"Keep it","cost":"one edit"},{"id":"retire","text":"Retire it","cost":"a dead link"}],"preferred":"keep"}]}'
+    out=$(ledger "$dir" accept produce:a 2>&1)
+    if printf '%s\n' "$out" | grep -Fq 'fork carries no anchored passage'; then
+        ok "a fork with no anchored passage is refused with the missing passage named"
+    else
+        bad "a fork with no anchored passage is refused with the missing passage named"
+    fi
+    state=$(awk -F'\t' '$1=="produce:a"{print $7}' "$dir/.agent_spinner/roster.tsv")
+    check "the passage-less fork leaves the row a violation" test "$state" = violation
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Keep the page or retire it?","options":[{"id":"keep","text":"Keep it","cost":"one edit"},{"id":"retire","text":"Retire it","cost":"a dead link"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"keep"}]}'
+    if ledger "$dir" accept produce:a >/dev/null 2>&1; then
+        ok "the same fork with an anchored passage is accepted"
+    else
+        bad "the same fork with an anchored passage is accepted"
+    fi
+
+    legacy="$dir/legacy"
+    setup_repo "$legacy"
+    ledger "$legacy" init --unit produce:a >/dev/null 2>&1
+    "$PY" - "$legacy/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+record = {
+    "type": "fork",
+    "id": "produce:a:forks:0",
+    "row": "produce:a",
+    "label": "produce:a",
+    "list": "forks",
+    "issue": "Keep the page or retire it?",
+    "options": [
+        {"id": "keep", "text": "Keep it", "cost": "one edit"},
+        {"id": "retire", "text": "Retire it", "cost": "a dead link"},
+    ],
+    "preferred": "keep",
+}
+with open(path, "a") as fh:
+    fh.write(json.dumps(record) + "\n")
+PY
+    ledger "$legacy" dispose --id 'produce:a:forks:0' --disposition surfaced --packet pkt-legacy >/dev/null 2>&1
+    if ledger "$legacy" show --packet pkt-legacy > "$legacy/packet.txt" 2>&1; then
+        bad "show --packet refuses a legacy fork with no anchored passage"
+    else
+        if grep -Fq 'no anchored passage' "$legacy/packet.txt"; then
+            ok "show --packet names the missing passage on a legacy fork"
+        else
+            bad "show --packet names the missing passage on a legacy fork"
+        fi
+    fi
+}
+
 scenario_objection_close() {
     dir="$1"
     setup_repo "$dir"
@@ -2893,6 +2954,7 @@ run_all_scenarios() {
     scenario_markers "$root/markers"
     scenario_checklist_lint "$root/checklist"
     scenario_packets "$root/packets"
+    scenario_fork_passages "$root/fork-passages"
     scenario_objection_close "$root/objection-close"
     scenario_failed_source "$root/failed-source"
     scenario_dispose_rows "$root/dispose-rows"

@@ -25,17 +25,26 @@ write_return "$proj" survey:alpha "done" pass '{
        {"id": "rewrite_now", "text": "rewrite now", "cost": "one page edit in this run"},
        {"id": "defer", "text": "defer to the next run", "cost": "the page stays stale until the next run"}
      ],
+     "passages": [
+       {"text": "Run `tool.sh alpha --jobs 4`.", "anchor": "docs/alpha.md:3"}
+     ],
      "preferred": "rewrite now"},
     {"issue": "FORK_BETA: keep the old flag as an alias or drop it",
      "options": [
        {"id": "keep_alias", "text": "keep the alias", "cost": "two spellings of one flag to document"},
        {"id": "drop_alias", "text": "drop it", "cost": "scripts that pass the old flag break"}
      ],
+     "passages": [
+       {"text": "Run `tool.sh alpha --jobs 4`.", "anchor": "docs/alpha.md:3"}
+     ],
      "preferred": "keep the alias"},
     {"issue": "FORK_GAMMA: widen the run to the three excluded pages or not",
      "options": [
        {"id": "widen", "text": "widen", "cost": "three more pages to survey and check"},
        {"id": "stay_narrow", "text": "stay narrow", "cost": "the excluded pages stay unchecked"}
+     ],
+     "passages": [
+       {"text": "Run `tool.sh alpha --jobs 4`.", "anchor": "docs/alpha.md:3"}
      ],
      "preferred": "stay narrow"}
   ]

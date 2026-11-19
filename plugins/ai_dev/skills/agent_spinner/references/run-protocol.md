@@ -197,7 +197,9 @@ a completed result with no retry.
   anchor, or a severity outside the ladder.
 - A fork that is not an object, a placeholder issue, fewer than two or more than
   four options, an option with no stable `id` or no `cost`, a placeholder
-  preferred end state, or a passage with no text or no anchor.
+  preferred end state, or no anchored `passages` entry: a fork carries one or
+  more passages, each with its own `text` and `anchor`, and a passage with no
+  text or no anchor is refused.
 - An objection that is not an object, a placeholder text, a `fork` field naming
   no fork of the return, or an `option` field naming no option id of that fork.
 - A blind row returning the withheld text it must not see.
@@ -287,12 +289,13 @@ surfaced, rather than by hand. Coverage comes from tool evidence (checks.md
 C8), and verification and confirmations are split by provenance (checks.md
 C10). The report lint flags an assertion word, such as verified or complete,
 that carries no ledger citation. A report on a run with no clean `close` says
-so in its opening sentence.
+so first, in its opening sentence, which carries the answer, the tier, helpers
+dispatched against returned, and whether `close` exited 0.
 
 **Checks.** Every finding, incident, alternative, and objection record has a
 disposition record. Every fork is surfaced or decided. `report.md` carries the
-current tally block verbatim. The opening sentence states whether `close`
-exited 0.
+current tally block verbatim. The opening sentence carries the answer, the
+tier, helpers dispatched against returned, and whether `close` exited 0.
 
 ## Command reference
 
@@ -460,7 +463,8 @@ condition 5, which refuses every undisposed path.
 Print one row's records in full. Takes `label` (positional), or
 `--packet ID` to render the decision packet surfaced under that id in the
 shape `references/report-shapes.md` defines. It refuses an id with no surfaced
-fork.
+fork, and refuses a fork that carries no anchored passage, naming the missing
+passage.
 
 ### `search`
 
@@ -520,10 +524,13 @@ A return is optional prose, exactly one fenced JSON block, and the line
   carrying that gap unit's full brief.
 - `confirmations` is an optional list beside `findings`, one object per cleared
   unit carrying the unit's `path` and the `span` that cleared it.
-- `forks` is a list of objects with `issue`, two to four `options`, and
-  `preferred`. Each option object carries a stable `id`, its `text`, and its
-  `cost`. A fork may also carry `passages`, a list of objects each holding
-  `text` and `anchor`. A fork whose change touches a stamped or marked path
+- `forks` is a list of objects with `issue`, two to four `options`,
+  `preferred`, and `passages`. Each option object carries a stable `id`, its
+  `text`, and its `cost`. `passages` is a list of one or more objects each
+  holding `text` and `anchor`, naming verbatim each passage the fork touches; a
+  fork that touches only the request names the request sentence as its passage.
+  `accept` refuses a fork that carries no anchored passage, and `show --packet`
+  refuses to render one. A fork whose change touches a stamped or marked path
   carries `path`, the path the fork names; that field clears condition 10 for
   the path it names, so the owning gate is handed the choice rather than the
   orchestrator silently editing a stamp another family owns.
