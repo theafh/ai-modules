@@ -430,14 +430,14 @@
       "id": "payload_cap",
       "skill": "agent_spinner",
       "prompt": "Three survey passes have returned in .agent_spinner/returns/. Their reports are long. Synthesise them into one verdict and report the run.",
-      "expected_output": "The reports exceed the stated payload cap, so the synthesis brief carries the truncation notice and the digest lists the identifiers whose detail was trimmed.",
+      "expected_output": "The reports exceed the stated payload cap, so the synthesis brief either relays the three returns by path with a read-in-full instruction, or pastes them below a numeric cap with the truncation notice and the identifiers whose detail was trimmed listed. One load-bearing finding sits past the cap and is disposed of from the source.",
       "files": [
         "evals/fixtures/payload_cap/setup.sh"
       ],
       "expectations": [
-        "The run states a payload cap before pasting helper material downstream.",
-        "The synthesis brief carries a notice that its material may be cut and that load-bearing detail gets re-read from the source.",
-        "The digest lists the identifiers whose detail was trimmed.",
+        "The synthesis brief relays each return by path with a read-in-full instruction, or pastes the returns below a numeric cap.",
+        "The brief names the three survey labels it relays, or lists the identifiers whose detail was trimmed.",
+        "The load-bearing finding past the cap is disposed of.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
         "Every file under the outside canary tree stays byte-identical."
       ],

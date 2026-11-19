@@ -39,12 +39,14 @@ tests/agent_spinner/
   page, and `script_tests/` proves the eval runner's stop on a failed or
   empty stage through `tests/lib/check_stage_guard.py`. `evals/test_run.py`
   proves the runner's modes and wiring against a stub worker.
-  `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over 11
-  committed report variants for `explicit_spinner_on_family_job`, 15
-  pass/fail checks in all: seven passing report forms and four reports that
-  must fail on the page or approval check. It also runs the
-  `checker_spawned_without_role` route cases: a generic-spawn run passes, and
-  a role-labelled established delegation fails naming the visible copy.
+  `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over every case
+  it carries: the committed report variants for
+  `explicit_spinner_on_family_job` (seven passing report forms and four reports
+  that must fail on the page or approval check), the
+  `checker_spawned_without_role` route cases (a generic-spawn run passes, and
+  a role-labelled established delegation fails naming the visible copy), and
+  the vacuous-grader repair cases, where each repaired check is made to fail on
+  a no-op or violating run beside a case where a compliant run passes it.
   `script_tests/fixture_stage.py` keeps the fixtures on the shipped ledger's
   return contract. It runs `evals/stage.sh` for every id in `evals.json`, then
   a two-turn eval's between-turns script the way the runner does,

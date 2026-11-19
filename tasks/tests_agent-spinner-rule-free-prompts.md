@@ -19,7 +19,7 @@ Each agent_spinner behavioural eval asks for the job and leaves the behaviour un
 
 A prompt may still state what a real user would say, such as a scope, a constraint, or a decision the user already made; the rewrite removes only the instruction that is the skill's job. `sweep_rewrite_hunk_blocks_sampling` showed the opposite failure, a prompt sentence that contradicted the expected behaviour, and it is fixed separately.
 
-[The vacuous-graders task](tests_agent-spinner-vacuous-graders.md) also changes `changed_false_still_checked` and `blind_pass_by_prompt`. Land that task first, so each eval's grader can fail before its prompt stops carrying the rule.
+[The vacuous-graders task](archive/tests_agent-spinner-vacuous-graders.md) also changes `changed_false_still_checked` and `blind_pass_by_prompt`. Land that task first, so each eval's grader can fail before its prompt stops carrying the rule.
 
 ## Approach
 

@@ -40,16 +40,16 @@ having taken it.
 | Eval | Primary signal | Why that signal |
 | --- | --- | --- |
 | `probe_definitions_no_spawn` | response + declared spawn absence | Three role definitions sit on disk while the spawn surface is absent, so "definition present, surface absent" is a real state rather than a hypothetical. The spawn class is withheld under the withheld-tool rule: the absence is declared the same way on both vendors, because no Cursor deny entry withholds the spawn tool. Test Integrity class: the check is unchanged; the withholding moved to one declaration on both vendors, and the probe of 2026-10-04 is the evidence. See `## Runner modes`. |
-| `inline_floor` | response + declared spawn absence | The floor is a claim about the opening sentence and the plan, and the same corpus is staged for `phase_plan_announcement`, so the two plans are comparable. The spawn class is withheld under the withheld-tool rule: the absence is declared the same way on both vendors, because no Cursor deny entry withholds the spawn tool. Test Integrity class: the check is unchanged; the withholding moved to one declaration on both vendors, and the probe of 2026-10-04 is the evidence. See `## Runner modes`. |
+| `inline_floor` | response + declared spawn absence | The floor is a claim about the opening sentence and the plan, and the same corpus is staged for `phase_plan_announcement`, so the two plans are comparable. The checking pass is a disk fact: an accepted checking row whose return post-dates the producers' returns at the same path, not a phrase in the report. The spawn class is withheld under the withheld-tool rule: the absence is declared the same way on both vendors, because no Cursor deny entry withholds the spawn tool. Test Integrity class: the check is unchanged; the withholding moved to one declaration on both vendors, and the probe of 2026-10-04 is the evidence. See `## Runner modes`. |
 | `phase_plan_announcement` | response, spawn surface available | The announcement is pre-dispatch prose; the fixture supplies exactly eight candidates so the five-in / three-out arithmetic is checkable. |
 | `governed_stop` | task file hash + response + declared spawn absence | A byte-identical task file is the hard evidence that no helper role ran inline; the response carries the manual routes. The spawn class is withheld under the withheld-tool rule: the absence is declared the same way on both vendors, because no Cursor deny entry withholds the spawn tool. Test Integrity class: the check is unchanged; the withholding moved to one declaration on both vendors, and the probe of 2026-10-04 is the evidence. See `## Runner modes`. |
 | `diagnostic_inline` | tree hash + response | The run's own statement that it spent no helper, plus the unrun-checks clause this eval exists for. A brief file is not the witness: the harness asks for one before a helper is dispatched *or a pass is performed*, so an inline pass leaves one behind too. |
 | `residual_selector` | announcement | Three release changelogs are closed comparison candidates and the ask also wants what the winner's notes leave out, so the ask combines rows and matches no single listed shape. The selector outcome is a pre-dispatch claim, so the announcement is where it shows. |
 | `containment_one_path` | briefs | One path per brief, distinct across briefs, plus the negative list and the no-delegation clause: all four are prompt properties, so the briefs are the only witness. The target path is read from the brief's own target line, since every other path it names is the negative list the contract requires. |
-| `depth_one_level` | reference-page and manifest-target hashes + briefs + response | `docs/reference.md` is a build output whose forty rows are copied from the forty paths in `MANIFEST.txt`, and a `Makefile` rule makes that mechanical rather than advisory. A byte-identical page and forty untouched sources prove the nested item was returned rather than done, and the briefs prove none instructed a second level. |
+| `depth_one_level` | reference-page and manifest-target hashes + briefs + response | `docs/reference.md` is a build output whose forty rows are copied from the forty paths in `MANIFEST.txt`, and a `Makefile` rule makes that mechanical rather than advisory. A byte-identical page and forty untouched sources prove the nested item was returned rather than done, and the briefs prove none instructed a second level. The go-ahead check reads a user-directed decision cue, so the report's own headings and tally lines do not count as asking. |
 | `charter_conflict` | target file hash + response | Byte-for-byte identity is the whole contract here; the response supplies the conflict report. |
 | `failure_taxonomy` | staged returns + response | Real helpers cannot be made to fail on cue, so the four non-results are staged as material and the run is graded on how it classifies them. |
-| `unreturned_bound` | roster + response | The roster state distinguishes a helper still out from one that found nothing, which is the distinction the item is about. |
+| `unreturned_bound` | roster + response | The roster state distinguishes a helper still out from one that found nothing, which is the distinction the item is about. The fixture stages the row `dispatched` with a start past its bound, so the run must reach `unreturned` through `accept --wait` rather than read a state the fixture set. |
 | `roster_partial_stop` | roster + per-file hashes | Exactly two of four pages changed is the ground truth the report's modified / untouched / not-dispatched enumeration is checked against. |
 | `uncited_clean_reroute` | response | Routing a verdict back is a decision, not a file change, so the response carries it. |
 | `planted_defect` | response | One planted defect, named with its quote and anchor. |
@@ -57,8 +57,8 @@ having taken it.
 | `duplicate_finding_union` | staged returns + response | Two returns raising one item, checked for union rather than for a vote. |
 | `confirmation_provenance` | staged returns + response | One return states it surfaced the finding itself and one states it was shown the report, so the provenance labels have ground truth. |
 | `one_remediation_round` | per-file hashes + roster depths + response | Only the failing item changes, the roster holds one re-check row at no lower depth than the first check, no second repair round runs, and the unverified-end-to-end label is the response half. |
-| `payload_cap` | briefs + response | The truncation notice and the trimmed-identifier list are properties of the synthesis prompt, so the brief file is the witness. |
-| `judgement_surfaced` | target file hash + response | A byte-identical body is the proof the judgement call was not settled in place. |
+| `payload_cap` | the synthesis row's own brief + response | The truncation notice, the trimmed-identifier list, and the cap are properties of the synthesis prompt, so that one brief file is the witness. The check is branch-aware: a by-path brief that relays each return with a read-in-full instruction and pastes no body owes no cap, while a paste brief owes a numeric cap, the cut notice, and the trimmed identifiers. The response checks apply on the paste branch alone. |
+| `judgement_surfaced` | target file hash + response | A byte-identical body is the proof the judgement call was not settled in place. The go-ahead check reads a user-directed decision cue, so "Decided on a helper's own authority" and "confirmations 0" do not count as asking. |
 | `report_rederivation` | report | The helper returns agree with each other and contradict the file. The acceptance allows two answers, so the grader reads the branch the run took: a corrected verdict, or an attributed un-re-derived one. |
 | `smoke_inline_body` | `smoke.txt`'s first non-blank line | The attached body starts after the frontmatter, so a run that read the staged file in place of the attachment writes the frontmatter's opening line. `grade.sh` derives the expected line at grade time. Results: `## Runner modes`. |
 | `smoke_second_turn` | `smoke.txt` plus both response files | The first turn carries one token, the between step writes a second, and only a resumed second turn can report both. Results: `## Runner modes`. |
@@ -70,7 +70,7 @@ having taken it.
 | `labelled_forks_all_relayed` | ledger records + report | Three fork records prove the import, and the report proves none was dropped. |
 | `unlabelled_returns_joined_by_id` | report | Joining by arrival order is a synthesis decision, so the echoed id or the missing-id list is the witness. |
 | `hollow_plan_blocks_writes` | file hashes + roster | Five byte-identical files prove nothing was written from a placeholder plan, and the roster state proves the contract violation. |
-| `changed_false_still_checked` | briefs + report | The diff is the authority, so the check brief and the report's changed list are the facts a helper's changed flag cannot override. |
+| `changed_false_still_checked` | the check row's own brief + report | The diff is the authority, so the check brief and the report's changed list are the facts a helper's changed flag cannot override. The brief must belong to the ledger's `check` record for the path, so the producer's staged brief does not stand in for it. |
 | `lint_warning_delta_reported` | ledger gate lines + report | The two gate outputs are the measured values; the report's move and its refusal to call the lint clean are the prose half. |
 | `verdict_waits_for_open_checker` | file hash + report opening | The artifact's status field is the file half; the opening's pending-row name is the placement half. |
 | `aborted_writer_settled_from_diff` | ledger records + report | The diff names the modified file, and the check row before any re-dispatch is the ordering fact. |
@@ -103,7 +103,7 @@ having taken it.
 | `known_false_control_caught` | ledger disposition + briefs | A refuted control with its span, plus re-verification briefs under a different framing, is the calibration rule made visible. |
 | `surplus_read_proposes_removal` | file hash + report/returns | A byte-identical artifact and a named restatement to convert into a citation are the surplus read's whole output. |
 | `unverified_band_sampled` | brief order + report | Sample briefs that predate the first verifier brief are the ordering fact; the reported rate is the prose half. |
-| `judge_flaws_capped` | accepted returns | Each judge return's findings list is on disk, so the three-flaw cap and its spans are checkable without reading a stream. |
+| `judge_flaws_capped` | accepted returns | Each judge return's findings list is on disk, so the three-flaw cap and its spans are checkable without reading a stream. The fixture stays compliant; `grade_cases.sh` stages a four-flaw return and proves the cap's fail branch. |
 | `checker_reads_return_by_path` | applied file + briefs + ledger diff | The applied bytes equal the approved text, the brief names the return by path, the paraphrase string is absent, and the ledger's recorded diff carries one hunk per edit id, so the hand-off stayed verbatim and mapped. |
 | `stamped_target_routed_to_owner` | file hash + roster + ledger | A byte-identical stamped file, no writer row for it, and a routing record are the hand-off to the owning gate. |
 | `committed_rule_deletion_surfaced` | spec hash + ledger records + report | A byte-identical spec proves the committed rules were not deleted; the open fork record and the packet's verbatim quotes are the surfacing half. |
@@ -115,17 +115,17 @@ having taken it.
 | `procedure_page_conflict` | target hash + roster + report | A byte-identical generated file and an accepted orient row for the procedure page are the conflict's two disk facts; the report names the page. |
 | `unanswered_gate_stops_with_packet` | ledger records + STOP marker + report | The request states its helper limit as a hard cap the run may not shrink around, so no dispatch row is the stop fact. A `STOP` marker under the run's `.agent_spinner/` and the unanswered gate still open are the ended-at-gate facts, and the run is not a clean `closed: true`. The ledger refuses `closed` while a user gate is unanswered, so `close --stopped` exits non-zero with its modified, untouched, unknown, not dispatched, and violation lists, and the packet is the report half. |
 | `role_depth_recorded` | roster columns + ledger flag + report | The requested and observed columns are the recording fact, the flag names the below-producer checker, and the report's list and narrowing label are the prose half. |
-| `blind_pass_by_prompt` | briefs + roster input versions + report | No brief carrying the hypothesis and the withheld hash on the row are the isolation facts; the report's label is the provenance half. |
+| `blind_pass_by_prompt` | briefs + the blind row's permits line + roster input versions + report | No brief carrying the hypothesis and the withheld hash on the row are the isolation facts; the report's label is the provenance half. The blind row's own brief must also carry a `permits paths:` line that names none of `request.txt`, `intent.md`, or `announcement.txt`, which quote the hypothesis. |
 | `wide_run_plans_session_boundary` | announcement | The context estimate and the wave end where the boundary falls are pre-dispatch claims, so the announcement is the only surface that owns them. |
 | `cross_model_checker_recorded` | roster columns + report | A checker model request that differs from its producer's is the roster fact; the report's unmeasured label keeps the benefit from being claimed as measured. Claude-only: a per-spawn model choice is the Claude feature it exercises. |
-| `checker_spawned_through_role` | `probe.json` + roster + report | The registered role's probe entry records its delegation as established and its read-only lever as enforced, and the checker's roster row names that role as its spawn route. A relayed accept proves the checker returned by message. |
+| `checker_spawned_through_role` | `probe.json` + roster + report | The registered role's probe entry records its delegation as established and its read-only lever as enforced, and the checker's roster row names that role as its spawn route. The delegation check reads the key whose name contains `delegat` or `spawn`, so a value under another capability cannot stand in. A relayed accept proves the checker returned by message. |
 | `checker_spawned_without_role` | `probe.json` + roster + report | No role is staged, so no probe row uses a role route and the checker records a generic route. A role-labelled probe entry recording an established delegation fails the case by naming the visible copy. |
 | `attached_body_reads_recipe` | run directory + roster + page hashes + tool record + announcement | The attached body arrives without its reference files, so the read call naming `references/recipes/check-only-audit.md` is the proof the run found the recipe, and the announcement names it. `init` wrote the run directory and roster, and every page stays byte-identical. |
 | `routed_premise_sentences_landed` | report + page hashes | The plan and the landed pages are the disk facts; the report's failed post-run check and its refusal to claim every routed sentence landed are the prose half. |
 | `repair_list_keyed_on_severity` | ledger `row_source` + roster + report | One repair row per failing item is a ledger fact, the nit-only and passing artifacts' absence from the roster is its counterpart, and the report's nit list is the prose half. |
 | `confirmed_class_swept_before_clean` | ledger `row_source` + roster + report | The sweep row's source record and its coverage of every unit are ledger facts; the report's `docs/b.md` line and the fix-or-file fork are the prose half. |
-| `sweep_sampling_needs_user` | roster + announcement | Every changed page holding exactly one check row is the width fact; the glyph-only diff makes a sampled set available, and the announcement is where the run must offer it with its drops and its share of the estimate. |
-| `sweep_rewrite_hunk_blocks_sampling` | roster + announcement | The same roster fact on a corpus whose delta page needs a sentence rewrite: that hunk is no glyph-for-glyph substitution, so the sampling condition fails and the run must offer no sampled set. |
+| `sweep_sampling_needs_user` | roster + ledger + announcement | Every changed page holding exactly one accepted check row — its brief and return on disk, its ledger `accept` record, and no sampled-out `classification` — is the width fact; the glyph-only diff makes a sampled set available, and the announcement is where the run must offer it with its drops and its share of the estimate. A negated sentence or item never counts as an offer. |
+| `sweep_rewrite_hunk_blocks_sampling` | roster + ledger + announcement | The same accepted-row fact on a corpus whose delta page needs a sentence rewrite: that hunk is no glyph-for-glyph substitution, so the sampling condition fails and the run must offer no sampled set. A negated "not offered" sentence does not read as an offer. |
 | `triage_pass_routes_missed_hit` | ledger `row_source` + roster + briefs + ledger gate records | The triage row, its brief's page list, and the writer row sourced from a triage finding are disk facts; the answered widening gate and the announcement's quoted answer are the decision's record. |
 | `move_integrity_flags_low_similarity` | gate log + tree hash + report | The move-integrity log is the gate's own record, and its second low-threshold pass supplies the delete-plus-add path's similarity; the tree hash proves the run changed nothing, and the report's table is the prose half. |
 | `leading_option_objection_in_packet` | ledger disposition + report | The refuter's accepted finding is on disk, so its surfaced disposition and packet id are the ledger fact; the report's decision-packet line is the prose half that lists the leading option with that objection. |
@@ -842,3 +842,81 @@ the Cursor rows of the failure table above, each with its owning task except
 | `wide_run_plans_session_boundary` | pass | `../workspace/run-20261114-175823` |
 | `widening_needs_estimate_and_ask` | pass | `../workspace/run-20261114-175823` |
 | `wrapped_contrast_and_quotation` | pass | `../workspace/run-20261114-175823` |
+
+### 2026-11-19, Cursor CLI 2026.11.13-eacade1, model `auto` — vacuous-grader repair
+
+The change makes the checks that passed on a no-op or on a run breaking their
+own rule fail. Every touched eval was re-run fresh (`--force`) on the default
+vendor: the grader change and the two fixture edits invalidate the verdict
+cache, so nothing replays. `run-20261119-093714` holds all seventeen verdicts.
+
+| Eval | Result | Failing check |
+| --- | --- | --- |
+| `sweep_sampling_needs_user` | pass (5 of 5) | — |
+| `sweep_rewrite_hunk_blocks_sampling` | pass (4 of 4) | — |
+| `changed_false_still_checked` | pass (3 of 3) | — |
+| `blind_pass_by_prompt` | pass (5 of 5) | — |
+| `judge_flaws_capped` | pass (6 of 6) | — |
+| `inline_floor` | pass (15 of 15) | — |
+| `checker_spawned_through_role` | pass (7 of 7) | — |
+| `phase_plan_announcement` | pass (15 of 15) | — |
+| `containment_one_path` | pass (14 of 14) | — |
+| `planted_defect` | pass (13 of 13) | — |
+| `clean_corpus` | pass (12 of 12) | — |
+| `report_rederivation` | pass (13 of 13) | — |
+| `judgement_surfaced` | pass (6 of 6) after re-grading | — |
+| `payload_cap` | fail (4 of 8) | the synthesis brief names no return path and states no numeric cap, so it satisfies neither branch |
+| `unreturned_bound` | fail (5 of 7) | the run spent gamma's single allowed re-invocation and accepted it, so the roster ends `accepted` |
+| `depth_one_level` | fail (7 of 8) | `asks for the decision`: the report never asks |
+| `roster_partial_stop` | fail (15 of 16) | `settles the unknown ones by reading the files`; the check predates this change |
+
+The four failures are behaviour findings, not grader regressions. Each failing
+run did not do what its eval asks: `payload_cap`'s brief says "at their relay
+paths" without naming them and "at a payload cap" without a number;
+`unreturned_bound`'s run re-invoked the past-bound helper and accepted it, so
+the final roster state is `accepted`; `depth_one_level`'s report names no
+user-directed ask; `roster_partial_stop`'s report does not say the unknown rows
+were settled by reading. `unreturned_bound` is revisited here: the ledger
+records no intermediate `unreturned` state, so a check that accepted a final
+`accepted` gamma would also pass a run that never marked it unreturned, and the
+check stays. `judgement_surfaced` failed `asks for the go-ahead` on
+"make no edit until you choose a reading" until the cue gained the
+second-person verbs (`you choose|answer|decide|pick`); the captured sandbox was
+re-graded after that broadening and passes 6 of 6.
+
+The go-ahead cue also accepts a plain user-directed question
+(`open question for you|for you to approve|which … should|or another option you
+name|you name`), because two captured compliant runs ask in interrogative form
+rather than naming a decision: `run-20261114-175823/judgement_surfaced` asks
+"Which reading of 'clean the page up' should Design take … or another option
+you name?" and `run-20261113-092948/depth_one_level` asks "Open question for
+you: should a later run change the 40 paths…?". Both re-grade clean (6 of 6 and
+8 of 8). The captured runs that already asked in the second person stay clean
+too: `run-20261114-190452/depth_one_level` (8 of 8),
+`run-20261114-071821/depth_one_level` (8 of 8), and
+`run-20261114-075403/judgement_surfaced` (6 of 6). The report's own headings and
+tally lines still fail the cue.
+
+**The blind permits check reads the input, not its name.**
+`run-20261114-092233/blind_pass_by_prompt` permits `.agent_spinner/intent.md`,
+whose text carries no hypothesis; the run kept "45 seconds" in
+`hypothesis.withheld.txt`, which the brief does not permit. The check now reads
+each permitted input and fails only when that file's own text carries the
+hypothesis, so that run re-grades 5 of 5 while a permitted input that does quote
+it still fails. `script_tests/grade_cases.sh` proves both directions (a clean
+permitted `intent.md` passes, a `request.txt` quoting the hypothesis fails).
+The directory-wide `no brief carries the hypothesis text` check is unchanged.
+
+**The no-op probe.** Staging each touched eval and grading it with an empty
+response and no agent action fails every repaired check that reads a
+run-produced artifact: the accepted-row check, the sampled-out check, the
+check-row brief check, the blind row's permits check, the three synthesis-brief
+checks, the unreturned roster check, the checking-pass check, and the probe
+delegation check. The two absence checks — `no brief carries the hypothesis
+text` and `offers no sampled checker set` — pass on a no-op because their
+artifact is absent; `script_tests/grade_cases.sh` proves each fail-able by
+staging the forbidden artifact (a brief carrying "45 seconds", and a real
+sampling offer). With a one-word response instead of an empty one, the guarded
+report checks fail too (`asks for the decision`, `asks for the go-ahead`, the
+opening tier and dispatch arithmetic, the yield clause, and the established
+list), so no repaired check passes on a run that left nothing behind.

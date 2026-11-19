@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # unreturned_bound: one helper passes its stated wall-clock bound with no
 # return. The run stops waiting at that bound and reports the item as
-# unreturned rather than as a clean pass. The fixture stages the row in the
-# state `accept --wait` reaches past the bound, without waiting out the poll.
+# unreturned rather than as a clean pass. The fixture stages the row
+# `dispatched` with a start past the bound, so the run must reach the
+# `unreturned` state through `accept --wait` rather than read a state the
+# fixture set.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,9 +41,11 @@ write_return "$proj" survey:beta "done" pass '{
   ]
 }'
 
-# survey-gamma.md is deliberately absent: that helper is still out, past its
-# bound. Record the row the way `accept --wait` settles it.
-ledger_set_state "$proj" survey:gamma unreturned "$(python3 - <<'PY'
+# survey-gamma.md is deliberately absent: that helper is still out. The row is
+# staged `dispatched` with a back-dated start, so the run has to reach the
+# `unreturned` state itself through `accept --wait` rather than reading a state
+# the fixture set.
+ledger_set_state "$proj" survey:gamma dispatched "$(python3 - <<'PY'
 import datetime
 print((datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=300)).replace(microsecond=0).isoformat())
 PY

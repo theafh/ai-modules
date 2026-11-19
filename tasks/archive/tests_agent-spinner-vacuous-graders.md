@@ -2,9 +2,11 @@
 description: "Make agent_spinner eval checks that pass on a no-op or on a run breaking their own rule fail where they should, each proven by a grade_cases.sh case on the fail branch."
 scope: tests/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-17T16:38:11Z
-status: ready
+updated: 2026-11-19T10:55:00Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make the vacuous agent_spinner eval checks able to fail
