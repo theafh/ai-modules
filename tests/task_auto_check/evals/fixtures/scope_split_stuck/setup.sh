@@ -10,9 +10,10 @@ init_proj "$target"
 
 mkdir -p "$target/proj/src/api" "$target/proj/src/billing"
 
-# Both files the Context names exist, so the premise holds and the two
-# unrelated deliverables (the auth failure response and the CSV columns)
-# leave scope/focus as the substantive readiness issue.
+# Both files the Context names exist, so the premise holds, and the two
+# unrelated deliverables (the auth failure response and the CSV columns) are
+# independent items, which the base sizing rule splits before continuing and
+# the **Blocking bar** therefore blocks by definition.
 cat > "$target/proj/src/api/auth.py" <<'EOF'
 """Authenticate public API requests by API key."""
 

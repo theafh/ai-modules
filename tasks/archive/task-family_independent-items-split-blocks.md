@@ -2,9 +2,11 @@
 description: "Make task_check block ready on a task that bundles independent items, so every vendor judges such a bundle alike and scope_split_stuck reliably reaches task_auto_check's split boundary."
 scope: plugins/ai_dev/skills/task
 created: 2026-11-15T15:07:43Z
-updated: 2026-11-18T17:28:08Z
-status: ready
+updated: 2026-11-20T22:09:57Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Block ready on a bundle of independent items

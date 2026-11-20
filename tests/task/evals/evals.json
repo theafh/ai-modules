@@ -34,7 +34,7 @@
         "The response leads with a '# General assessment' heading and one short readiness paragraph.",
         "The response has a '## Issues' section.",
         "Because the task is under-specified, the Issues section is NOT 'No issues found.' — it lists concrete problems (empty Approach/Acceptance, vague goal), ranked most-problematic-first.",
-        "Each issue follows the '**[short title]**: where it sits, what is wrong, the wrong result a literal implementer would produce, and the minimum fix' shape, locating the issue by label or unambiguous description (heading, tag, quoted phrase) per the soft-pointer rule.",
+        "Each issue follows the '**[short title]**: where it sits, what is wrong, the wrong result a literal implementer would produce for a blocking issue outside a by-definition class, and the minimum fix' shape, locating the issue by label or unambiguous description (heading, tag, quoted phrase) per the soft-pointer rule.",
         "Issues are grounded against the repo (the checked file was actually read); an unverifiable suspicion appears only as a question in the general assessment, never as a numbered issue.",
         "Findings below the base Blocking bar, if any, sit in a '## Notes' section after the list — the numbered list carries blocking implementation-divergence risks exclusively.",
         "The task file is changed only to stamp status: checked and bump updated."

@@ -88,18 +88,20 @@ fence. The helper now accepts the info string, and the re-run passes.
 
 ### 2026-11-15: Cursor `auto` and Claude `opus` at `high` effort
 
-On each eval's latest run, re-graded with the current graders, Cursor passes 29 of the 33 evals and Claude passes 27. Each remaining failure has an open task. The first full suites passed 21 of 33 on Cursor (`../workspace/run-20261115-020037-15631`) and 19 of 33 on Claude (`run-20261115-025041-38226` through `run-20261115-090126-14852`). Most of the difference came from grader and fixture defects that both runs exposed.
+On each eval's latest run, re-graded with the current graders, Cursor passes 29 of the 33 evals and Claude passes 28. Each remaining failure has an open task. The first full suites passed 21 of 33 on Cursor (`../workspace/run-20261115-020037-15631`) and 19 of 33 on Claude (`run-20261115-025041-38226` through `run-20261115-090126-14852`). Most of the difference came from grader and fixture defects that both runs exposed.
 
 | Eval | Cursor | Claude | Cause | Task |
 | --- | --- | --- | --- | --- |
 | `immediate_ready_citations_survive` | fails | fails | The verifier refutes every citation that clears a lens judged by absence. On Claude the re-gate also read the base skill back from Claude Code's `tool-results` store and stopped as a helper failure | [absence citations](../../../tasks/task-family_gate-absence-citation-form.md), [paged reads](../../../tasks/task-family_gate-paged-reads-of-large-files.md) |
-| `scope_split_stuck` | passes | fails | Claude's gate treats a small bundle of independent items as a note under the **Blocking bar** | [independent items](../../../tasks/task-family_independent-items-split-blocks.md) |
+| `scope_split_stuck` | passes | passes | Both vendors block the independent-items bundle by definition under the **Blocking bar** and route the split to the user | [independent items](../../../tasks/archive/task-family_independent-items-split-blocks.md) |
 | `regroup_immediate_ready` | passes | fails | When an ordinary repair round lands the regroup, Claude's report drops the `repeated-link:` disposition line | [disposition line](../../../tasks/archive/task-family_auto-check-disposition-line-every-path.md) (archived) |
 | `relay_by_path` | fails | fails | Cursor stopped human-routed on a frozen Acceptance item no check can prove. Claude's verifier return breaks the source-contract layout check | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md), [return layout](../../../tasks/archive/task-family_gate-verifier-return-layout.md) |
 | `stray_hunk_reverted` | passes | fails | Claude's proposal-mode verifier return breaks the layout check | [return layout](../../../tasks/archive/task-family_gate-verifier-return-layout.md) |
 | `repair_to_ready` | passes | fails | Claude cannot replace a frozen Acceptance item that names no checkable result | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md) |
 | `guard_rebaseline_after_gate` | fails | passes | Cursor routed the same kind of frozen item to the user and stopped at `checked` | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md) |
 | `regroup_same_paragraph_ready` | fails | passes | Cursor's worker passed all 14 grader checks but read the checkout's `evals.json` | [harness copies](../../../tasks/tests_harness-copy-read-check.md) |
+
+A 2026-11-20 Claude re-run (`../workspace/run-20261120-211544-96726`) moved `scope_split_stuck` to passes: its first gate return records the Scope sizing / Focus issue on the independent-items bundle and routes the split to the user.
 
 The runs exposed these grader and fixture defects, which are now repaired:
 
