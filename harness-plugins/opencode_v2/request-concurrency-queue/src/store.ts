@@ -177,6 +177,9 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
 
     // A store created by an older build may hold a scheduler without the newer
     // in-place method, so fall back to replacing the bucket.
+    // Changing a budget keeps what is left in it: an edit must not hand back
+    // tokens the provider has already been asked for. Adding one starts full,
+    // because there is no earlier fill to keep.
     if (budgetOptions && current && typeof limit.scheduler.reconfigureBudget === "function") {
       limit.scheduler.reconfigureBudget(budgetOptions)
     } else if (budgetOptions) {

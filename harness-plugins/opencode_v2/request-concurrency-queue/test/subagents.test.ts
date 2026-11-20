@@ -146,8 +146,13 @@ describe("extractSessionID", () => {
     expect(extractSessionID({ content: [], metadata: { sessionID: "ses_b" } })).toBe("ses_b")
   })
 
-  test("finds a session ID inside a nested result", () => {
-    expect(extractSessionID({ content: [{ type: "text", text: "started ses_c" }] })).toBe("ses_c")
+  test("finds a session ID that is a whole nested value", () => {
+    expect(extractSessionID({ content: [{ type: "text", text: "ses_c" }] })).toBe("ses_c")
+  })
+
+  test("ignores a session ID merely mentioned in prose", () => {
+    // Binding to a mentioned ID would hold a slot for the wrong child.
+    expect(extractSessionID({ content: [{ type: "text", text: "started ses_c" }] })).toBeUndefined()
   })
 
   test("returns undefined when no session ID is present", () => {

@@ -282,17 +282,37 @@ export class SubagentGate {
 }
 
 /** Finds the child session ID in a subagent tool result, whatever its shape. */
+/** A whole string that is a session ID, never a fragment of prose. */
+const SESSION_ID = /^ses_[A-Za-z0-9]+$/
+
+/**
+ * Finds the child session ID in a subagent tool result.
+ *
+ * Only a string that is entirely a session ID counts. Matching the first
+ * `ses_…` anywhere in the result would pick up an ID the tool merely mentions,
+ * bind the permit to the wrong child, and hold that slot until the session ends.
+ */
 export function extractSessionID(result: unknown): string | undefined {
-  if (!result || typeof result !== "object") return undefined
-  const record = result as Record<string, unknown>
-  if (typeof record.sessionID === "string") return record.sessionID
-  const metadata = record.metadata as Record<string, unknown> | undefined
-  if (metadata && typeof metadata.sessionID === "string") return metadata.sessionID
-  try {
-    return JSON.stringify(result).match(/ses_[A-Za-z0-9]+/)?.[0]
-  } catch {
+  return findSessionID(result, 0)
+}
+
+function findSessionID(value: unknown, depth: number): string | undefined {
+  if (depth > 4 || value === null || value === undefined) return undefined
+  if (typeof value === "string") return SESSION_ID.test(value) ? value : undefined
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findSessionID(item, depth + 1)
+      if (found) return found
+    }
     return undefined
   }
+  if (typeof value === "object") {
+    for (const item of Object.values(value as Record<string, unknown>)) {
+      const found = findSessionID(item, depth + 1)
+      if (found) return found
+    }
+  }
+  return undefined
 }
 
 function cancelledError(reason = "the session was interrupted"): Error {

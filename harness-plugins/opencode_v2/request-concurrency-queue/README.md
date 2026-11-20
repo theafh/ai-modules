@@ -172,8 +172,8 @@ the same dedicated config file.
      "scheduler": {
        "contextCapacity": 1200000,
        "contextCeiling": 1200000,
-       "queueDeadlineMs": 240000,
-       "breaker": { "threshold": 2, "cooldownMs": 60000, "mode": "fail" }
+       "queueDeadlineMs": 0,
+       "breaker": { "threshold": 3, "cooldownMs": 60000, "mode": "fail" }
      },
      "subagents": {
        "max": 8,
@@ -195,7 +195,10 @@ the same dedicated config file.
    `reserveShare` keeps part of the token budget available for requests above
    `smallShare` of capacity, and `agingMs` lets an old waiter ignore that
    reserve. A request that cannot be admitted waits before it takes a slot, so a
-   large burst cannot starve small requests behind it.
+   large burst cannot starve small requests behind it. A waiting request is
+   checked again as soon as the bucket refills, the reserve lifts, or the
+   cooldown ends, and at least every two seconds, so it never depends on another
+   request finishing before it can start.
    `subagents` is optional. `max` is the hard ceiling on live child sessions and
    is required when the section is present, because the right number follows
    each account's own concurrency allowance. `hostAware` defaults to `false`;
@@ -333,9 +336,10 @@ bun run build:gui
 
 ## Limitations
 
-- The plugin does not handle token-budget limits such as a provider's
-  `burst_protection`, nor request-size rejections such as
-  `cold_request_too_large`. Those are separate from concurrency.
+- A provider's `burst_protection` is handled only when that provider has a
+  `tokens` entry, because the budget numbers are provider-specific. A
+  request-size rejection such as `cold_request_too_large` is not handled: the
+  provider answers it, and the plugin neither predicts nor retries it.
 - The queue is in memory. A server restart clears it.
 - A primary request that never completes holds its slot until the user aborts
   the session or the session fails. This is intentional: the plugin has no

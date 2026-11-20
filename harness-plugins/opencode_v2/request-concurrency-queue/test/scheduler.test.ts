@@ -377,6 +377,95 @@ describe("half-open probe recovery", () => {
   })
 })
 
+/** Resolves true when `promise` settles within `ms` of real time. */
+function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+  return Promise.race([
+    promise.then(
+      () => true,
+      () => true,
+    ),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), ms)),
+  ])
+}
+
+// These run on the real clock: the bug they pin is a timer that was never
+// armed, which a frozen clock cannot show. Every request the tests queue is
+// admitted without any slot being released and without a new request arriving,
+// which is the state a fan-out reaches when every session waits on its own
+// queued request.
+describe("RequestScheduler wakes queued requests without a release", () => {
+  test("small requests held by the reserve are admitted once the bucket refills", async () => {
+    // 10 tokens per millisecond; the reserve is 250 and a small request is at most 100.
+    const budget = new TokenBudget({ capacity: 1000, refillPerMinute: 600_000 })
+    const scheduler = new RequestScheduler({
+      maxSlots: 8,
+      budget,
+      reserveShare: 0.25,
+      smallShare: 0.1,
+      agingMs: 60_000,
+    })
+
+    const big = await scheduler.acquire("big", { newTokens: 900, contextTokens: 0 })
+    const small = Array.from({ length: 7 }, (_, index) =>
+      scheduler.acquire(`small-${index}`, { newTokens: 50, contextTokens: 0 }),
+    )
+    expect(scheduler.queuedCount).toBe(7)
+
+    expect(await settlesWithin(Promise.all(small), 1_000)).toBe(true)
+    expect(scheduler.queuedCount).toBe(0)
+    expect(scheduler.activeCount).toBe(8)
+
+    for (const slot of await Promise.all(small)) slot.release()
+    big.release()
+    scheduler.cancelAll()
+  })
+
+  test("a small request the bucket cannot refill for is admitted once it ages", async () => {
+    // One token per second: the reserve would take minutes to refill.
+    const budget = new TokenBudget({ capacity: 1000, refillPerMinute: 60 })
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      budget,
+      reserveShare: 0.25,
+      smallShare: 0.1,
+      agingMs: 30,
+    })
+    budget.spend(900)
+
+    const small = scheduler.acquire("small", { newTokens: 50, contextTokens: 0 })
+    expect(scheduler.queuedCount).toBe(1)
+
+    expect(await settlesWithin(small, 1_000)).toBe(true)
+    expect(scheduler.queuedCount).toBe(0)
+
+    ;(await small).release()
+    scheduler.cancelAll()
+  })
+
+  test("a held small request does not cancel a large request's refill wake-up", async () => {
+    // One token per millisecond; the large request needs about 50 ms of refill.
+    const budget = new TokenBudget({ capacity: 1000, refillPerMinute: 60_000 })
+    const scheduler = new RequestScheduler({
+      maxSlots: 8,
+      budget,
+      reserveShare: 0.25,
+      smallShare: 0.1,
+      agingMs: 60_000,
+    })
+    budget.spend(900)
+
+    const large = scheduler.acquire("large", { newTokens: 150, contextTokens: 0 })
+    const small = scheduler.acquire("small", { newTokens: 20, contextTokens: 0 })
+    expect(scheduler.queuedCount).toBe(2)
+
+    expect(await settlesWithin(large, 1_000)).toBe(true)
+
+    ;(await large).release()
+    scheduler.cancelAll()
+    await small.catch(() => {})
+  })
+})
+
 describe("oversized token cost", () => {
   test("a request larger than the bucket is admitted instead of waiting forever", async () => {
     const now = { value: 0 }

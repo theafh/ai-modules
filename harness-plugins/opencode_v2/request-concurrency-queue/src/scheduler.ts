@@ -456,7 +456,16 @@ export class RequestScheduler {
     this.armTimer()
   }
 
-  /** Re-runs admission when the bucket refills or the cooldown ends. */
+  /**
+   * Re-runs admission when the next time-driven gate lifts: the bucket refills,
+   * the reserve stops holding a small request, or the cooldown ends.
+   *
+   * A queued request must never depend on another request's release to be
+   * checked again. In a fan-out every session can be waiting on its own queued
+   * request, so no release comes, and a gate that lifts with time alone would
+   * otherwise leave free slots and a full bucket idle. The recheck interval
+   * bounds that idle time for any gate without a computed wake-up.
+   */
   private armTimer(): void {
     if (this.timer) {
       clearTimeout(this.timer)
@@ -465,19 +474,30 @@ export class RequestScheduler {
     if (this.waiters.length === 0) return
 
     const now = this.now()
-    let soonest = Number.POSITIVE_INFINITY
-    if (this.openUntil > now) soonest = this.openUntil - now
+    let soonest = RECHECK_MS
+    if (this.openUntil > now) soonest = Math.min(soonest, this.openUntil - now)
     if (this.budget) {
       for (const waiter of this.waiters) {
         if (!this.fitsContext(waiter) && this.contextInFlight > 0) continue
-        soonest = Math.min(soonest, this.budget.waitFor(waiter.cost.newTokens))
+        const wait = this.budgetDelay(waiter, now)
+        if (wait > 0) soonest = Math.min(soonest, wait)
       }
     }
-    if (!Number.isFinite(soonest) || soonest <= 0) return
     this.timer = setTimeout(() => {
       this.timer = undefined
       this.schedule()
-    }, soonest)
+    }, Math.max(1, Math.ceil(soonest)))
+  }
+
+  /**
+   * Milliseconds until the budget lets this waiter through, the reserve
+   * included; 0 when the budget already does.
+   */
+  private budgetDelay(waiter: Waiter, now: number): number {
+    if (!this.budget) return 0
+    const wait = this.budget.waitFor(waiter.cost.newTokens)
+    if (wait > 0) return wait
+    return this.reserveDelay(waiter, now)
   }
 
   private canAdmit(waiter: Waiter, now: number): boolean {
@@ -507,11 +527,25 @@ export class RequestScheduler {
    * the reserve and competes for what is available.
    */
   private holdsReserve(waiter: Waiter): boolean {
-    if (!this.budget) return false
-    if (waiter.cost.newTokens > this.smallShare * this.budget.capacity) return false
-    if (this.now() - waiter.enqueuedAt >= this.agingMs) return false
-    const available = this.budget.snapshot().available
-    return available - waiter.cost.newTokens < this.reserveShare * this.budget.capacity
+    return this.reserveDelay(waiter, this.now()) > 0
+  }
+
+  /**
+   * Milliseconds until the reserve stops holding this waiter back; 0 when it
+   * does not hold it. The hold ends at whichever comes first: the waiter ages
+   * past `agingMs`, or the bucket refills enough to cover the request and still
+   * keep the reserve. A request that can never fit beside the reserve waits for
+   * aging alone.
+   */
+  private reserveDelay(waiter: Waiter, now: number): number {
+    if (!this.budget) return 0
+    if (waiter.cost.newTokens > this.smallShare * this.budget.capacity) return 0
+    const aging = waiter.enqueuedAt + this.agingMs - now
+    if (aging <= 0) return 0
+    const needed = waiter.cost.newTokens + this.reserveShare * this.budget.capacity
+    const refill = needed > this.budget.capacity ? Number.POSITIVE_INFINITY : this.budget.waitFor(needed)
+    if (refill <= 0) return 0
+    return Math.min(aging, refill)
   }
 
   /** Open blocks everything; half-open admits exactly one probe. */
@@ -604,6 +638,13 @@ function queueTimeoutError(deadlineMs: number): Error {
 
 /** How long a half-open probe may run before it is treated as inconclusive. */
 const PROBE_LEASE_MS = 330_000
+
+/**
+ * Longest a queued request goes without being checked again. It covers the
+ * gates that lift without a release and carry no computed wake-up, such as a
+ * probe lease running out.
+ */
+const RECHECK_MS = 2_000
 
 function probeInFlightError(): Error {
   const error = new Error(

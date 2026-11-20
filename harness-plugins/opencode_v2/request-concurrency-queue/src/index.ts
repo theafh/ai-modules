@@ -3,8 +3,8 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { estimateTokens, parseRetryAfter, type TokenBudgetOptions } from "./budget.js"
-import type { Slot } from "./limiter.js"
 import { statusRpc, type ConfigSnapshot, type SaveResult } from "./rpc.js"
+import type { SchedulerSlot } from "./scheduler.js"
 import {
   adoptStore,
   applyConfig,
@@ -63,7 +63,7 @@ interface Entry {
   readonly sessionID: string
   readonly providerID: string
   readonly kind: RequestKind
-  readonly slot: Slot
+  readonly slot: SchedulerSlot
   released: boolean
 }
 
@@ -125,7 +125,7 @@ export default Plugin.define({
       sessionID: string,
       providerID: string,
       kind: RequestKind,
-      slot: Slot,
+      slot: SchedulerSlot,
       request: Request,
     ): Entry => {
       const entry: Entry = { sessionID, providerID, kind, slot, released: false }
@@ -368,7 +368,7 @@ export default Plugin.define({
       // An auxiliary response must not fall through to the session's primary
       // entry while that primary body is still streaming.
       if (event.kind !== "primary") return
-      const entry = byRequest.get(event.request) ?? firstEntry(bySession.get(event.sessionID))
+      const entry = byRequest.get(event.request) ?? soleEntry(bySession.get(event.sessionID))
       if (!entry) return
 
       const limit = limits.get(event.model.providerID)
@@ -871,12 +871,23 @@ export function envProviders(): string[] | Record<string, number> | undefined {
   return result
 }
 
-function firstEntry(entries: Set<Entry> | undefined): Entry | undefined {
+/**
+ * The session's entry when exactly one primary request is unreleased.
+ *
+ * The response hook prefers the entry keyed by the request object; this is only
+ * the fallback for a runtime that hands back a different object. Releasing the
+ * wrong entry would free another request's slot, so an ambiguous session
+ * releases nothing and lets the idle/delete path clean up.
+ */
+function soleEntry(entries: Set<Entry> | undefined): Entry | undefined {
   if (!entries) return undefined
+  let found: Entry | undefined
   for (const entry of entries) {
-    if (!entry.released) return entry
+    if (entry.released || entry.kind !== "primary") continue
+    if (found) return undefined
+    found = entry
   }
-  return undefined
+  return found
 }
 
 function envMaxConcurrency(): number | undefined {

@@ -248,3 +248,38 @@ describe("live subagent config", () => {
     expect(store.subagents).toBeUndefined()
   })
 })
+
+describe("budget fill across a config edit", () => {
+  test("changing the budget keeps what is left in it", async () => {
+    const store = createStore(
+      new Map([["acme", 1]]),
+      new Map([["acme", { capacity: 1_000, refillPerMinute: 1 }]]),
+    )
+    const scheduler = store.providers.get("acme")!.scheduler
+    const slot = await scheduler.acquire("a", { newTokens: 400, contextTokens: 0 })
+    expect(scheduler.budgetSnapshot?.available).toBe(600)
+
+    applyConfig(store, {
+      providers: new Map([["acme", 1]]),
+      tokens: new Map([["acme", { capacity: 2_000, refillPerMinute: 1 }]]),
+      adaptive: false,
+    })
+
+    // The capacity grew, but the 400 already spent is not handed back.
+    expect(scheduler.budgetSnapshot?.capacity).toBe(2_000)
+    expect(scheduler.budgetSnapshot?.available).toBe(600)
+    slot.release()
+  })
+
+  test("adding a budget starts it full", () => {
+    const store = createStore(new Map([["acme", 1]]))
+
+    applyConfig(store, {
+      providers: new Map([["acme", 1]]),
+      tokens: new Map([["acme", { capacity: 1_000, refillPerMinute: 1 }]]),
+      adaptive: false,
+    })
+
+    expect(store.providers.get("acme")!.scheduler.budgetSnapshot?.available).toBe(1_000)
+  })
+})
