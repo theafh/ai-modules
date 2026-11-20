@@ -40,13 +40,7 @@ tests/agent_spinner/
   empty stage through `tests/lib/check_stage_guard.py`. `evals/test_run.py`
   proves the runner's modes and wiring against a stub worker.
   `script_tests/grade_cases.sh` runs the real `evals/grade.sh` over every case
-  it carries: the committed report variants for
-  `explicit_spinner_on_family_job` (seven passing report forms and four reports
-  that must fail on the page or approval check), the
-  `checker_spawned_without_role` route cases (a generic-spawn run passes, and
-  a role-labelled established delegation fails naming the visible copy), and
-  the vacuous-grader repair cases, where each repaired check is made to fail on
-  a no-op or violating run beside a case where a compliant run passes it.
+  it carries.
   `script_tests/fixture_stage.py` keeps the fixtures on the shipped ledger's
   return contract. It runs `evals/stage.sh` for every id in `evals.json`, then
   a two-turn eval's between-turns script the way the runner does,
@@ -61,7 +55,7 @@ tests/agent_spinner/
   frozen verb set and `--help`, the run-directory contract, roster and return
   contracts, every close condition, the no-helper audit-hook proof, and the
   hostile-git and repository-safety checks.
-- **evals**: every id in `evals.json` (89 today). Each behavioural eval
+- **evals**: every id in `evals.json`. Each behavioural eval
   stages one behaviour, and the `smoke_*` evals check the runner's modes. Every
   compound acceptance bullet was split into its own eval, so a failure names
   one behaviour rather than a conjoined verdict.
@@ -86,7 +80,7 @@ blames the eval only for new host paths whose basename appears in that eval's
 preserved sandbox copy. The evals run at the default 4 workers, so
 overlapping siblings stay attributable: an escape fails the eval whose sandbox
 names it, and a sibling's own work never does. The run set is every id in
-`evals.json` (89 today), derived at startup rather than frozen. The run's own
+`evals.json`, derived at startup rather than frozen. The run's own
 instrumentation output under `proj/.agent_spinner/` is excluded from the
 `proj/` inventory on both sides, so writing a roster never reads as editing
 the corpus.
