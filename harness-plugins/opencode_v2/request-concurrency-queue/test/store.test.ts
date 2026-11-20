@@ -1,5 +1,18 @@
 import { describe, expect, test } from "bun:test"
-import { createStore, fingerprintOf, publish, snapshotOf, subscribeStore, TransitionBuffer, TRANSITION_LIMIT } from "../src/store.js"
+import {
+  adoptStore,
+  applyConfig,
+  clearGlobalStore,
+  createStore,
+  fingerprintOf,
+  globalStore,
+  publish,
+  releaseStore,
+  snapshotOf,
+  subscribeStore,
+  TransitionBuffer,
+  TRANSITION_LIMIT,
+} from "../src/store.js"
 import type { TransitionRecord } from "../src/rpc.js"
 
 function transition(index: number): TransitionRecord {
@@ -25,7 +38,7 @@ describe("createStore", () => {
     expect([...store.providers.keys()]).toEqual(["acme", "other"])
     expect(snapshotOf(store).providers.map((provider) => provider.max)).toEqual([2, 1])
 
-    const slot = await store.providers.get("acme")?.limiter.acquire("session-a")
+    const slot = await store.providers.get("acme")?.scheduler.acquire("session-a")
     expect(snapshotOf(store).providers[0]).toMatchObject({ providerID: "acme", active: 1, max: 2 })
     slot?.release()
     expect(snapshotOf(store).providers[0]).toMatchObject({ active: 0 })
@@ -35,7 +48,7 @@ describe("createStore", () => {
     const first = createStore(new Map([["acme", 1]]))
     const second = createStore(new Map([["acme", 1]]))
 
-    const slot = await first.providers.get("acme")?.limiter.acquire("session-a")
+    const slot = await first.providers.get("acme")?.scheduler.acquire("session-a")
     expect(snapshotOf(first).providers[0]).toMatchObject({ active: 1 })
     expect(snapshotOf(second).providers[0]).toMatchObject({ active: 0 })
     slot?.release()
@@ -52,7 +65,7 @@ describe("createStore", () => {
       second += 1
     })
 
-    const slot = await store.providers.get("acme")?.limiter.acquire("session-a")
+    const slot = await store.providers.get("acme")?.scheduler.acquire("session-a")
     expect({ first, second }).toEqual({ first: 1, second: 1 })
 
     unsubscribeFirst()
@@ -85,8 +98,8 @@ describe("createStore", () => {
   test("the status snapshot carries the transitions the limiter recorded", async () => {
     const store = createStore(new Map([["acme", 1]]))
 
-    const slot = await store.providers.get("acme")?.limiter.acquire("session-a")
-    const queued = store.providers.get("acme")?.limiter.acquire("session-b")
+    const slot = await store.providers.get("acme")?.scheduler.acquire("session-a")
+    const queued = store.providers.get("acme")?.scheduler.acquire("session-b")
     slot?.release()
     await queued
 
@@ -124,5 +137,114 @@ describe("TransitionBuffer", () => {
     first.pop()
 
     expect(buffer.recent()).toHaveLength(1)
+  })
+})
+
+
+describe("reload grace", () => {
+  test("a reload within the grace adopts the store and serves its waiters", async () => {
+    const limits = new Map([["acme", 1]])
+    const store = adoptStore(limits)
+    const scheduler = store.providers.get("acme")!.scheduler
+
+    const held = await scheduler.acquire("a")
+    let admitted = false
+    const waiting = scheduler.acquire("b").then((slot) => {
+      admitted = true
+      return slot
+    })
+    await Promise.resolve()
+    expect(admitted).toBe(false)
+
+    // The old instance disposes; a reload arrives before the grace expires.
+    releaseStore(store, 100)
+    const reloaded = adoptStore(limits)
+    expect(reloaded).toBe(store)
+    expect(globalStore()).toBe(store)
+
+    held.release()
+    const slot = await waiting
+    expect(admitted).toBe(true)
+    slot.release()
+
+    releaseStore(reloaded, 0)
+    expect(globalStore()).toBeUndefined()
+  })
+
+  test("without a reload the grace expires and cancels the waiters", async () => {
+    const store = adoptStore(new Map([["acme", 1]]))
+    const scheduler = store.providers.get("acme")!.scheduler
+
+    const held = await scheduler.acquire("a")
+    let error: Error | undefined
+    const waiting = scheduler.acquire("b").catch((err) => {
+      error = err
+    })
+    await Promise.resolve()
+
+    releaseStore(store, 10)
+    await new Promise((resolve) => setTimeout(resolve, 40))
+
+    expect(error?.message).toContain("the queue plugin was unloaded")
+    expect(globalStore()).toBeUndefined()
+    held.release()
+    await waiting
+  })
+
+  test("a disposing instance stops admitting until the reload adopts it", async () => {
+    const limits = new Map([["acme", 1]])
+    const store = adoptStore(limits)
+    const scheduler = store.providers.get("acme")!.scheduler
+
+    const held = await scheduler.acquire("a")
+    let admitted = false
+    const waiting = scheduler.acquire("b").then((slot) => {
+      admitted = true
+      return slot
+    })
+    await Promise.resolve()
+
+    scheduler.beginDrain()
+    held.release()
+    await Promise.resolve()
+    expect(admitted).toBe(false)
+
+    const reloaded = adoptStore(limits)
+    const slot = await waiting
+    expect(admitted).toBe(true)
+    slot.release()
+    releaseStore(reloaded, 0)
+    clearGlobalStore()
+  })
+})
+
+describe("adopting an older store", () => {
+  test("a store whose scheduler lacks a newer method still adopts", () => {
+    const limits = new Map([["acme", 1]])
+    const store = adoptStore(limits)
+    // Simulate a store created by a build that predates `endDrain`.
+    const scheduler = store.providers.get("acme")!.scheduler as unknown as Record<string, unknown>
+    scheduler.endDrain = undefined
+
+    expect(() => adoptStore(limits)).not.toThrow()
+    expect(globalStore()).toBe(store)
+
+    clearGlobalStore()
+  })
+})
+
+describe("live subagent config", () => {
+  test("clearing the subagent setting turns the gate off", () => {
+    const store = createStore(new Map([["acme", 1]]), new Map(), undefined, { max: 2 })
+    expect(store.subagents).toBeDefined()
+
+    applyConfig(store, {
+      providers: new Map([["acme", 1]]),
+      tokens: new Map(),
+      subagents: undefined,
+      adaptive: false,
+    })
+
+    expect(store.subagents).toBeUndefined()
   })
 })

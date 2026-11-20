@@ -25,8 +25,49 @@ request.
   request's slot stays held.
 - When no slot is free, the request waits in a FIFO queue. The oldest waiting
   request is served first.
-- There is no timeout. A request waits until a slot is released or the request
-  is aborted.
+- The queue itself has no timeout. A request waits until it is admitted or the
+  request is aborted. `scheduler.queueDeadlineMs` is an optional aid, off by
+  default: when the client's own header timeout counts time spent waiting in
+  the queue, a long wait is killed by the client anyway, and setting a shorter
+  deadline only replaces that opaque error with a `QueueTimeoutError` that
+  names the queue. It never prevents a failure the client would not have
+  caused, and it can reject a request that a deep-but-healthy queue would have
+  served. Leave it at `0` unless you want that clearer error.
+- A provider that stops serving is detected by a circuit breaker. Two
+  consecutive attempts that produce no response — a transport stall, a header
+  timeout, or a `5xx` — open the circuit for `scheduler.breaker.cooldownMs`
+  (default 60000). In `fail` mode (the default) every queued request is
+  rejected at once and new requests fail fast with a `CircuitOpenError`, so a
+  dead provider cannot keep growing the queue. In `wait` mode requests stay
+  queued and are admitted when the cooldown ends. After the cooldown one probe
+  is allowed: a success closes the circuit, another stall reopens it. A `429`
+  never counts as a stall, because the provider answered.
+- A waiting request whose session ends — idle, deleted, failed, or interrupted —
+  is removed from the queue and rejected, so it is never dispatched for a
+  session nobody is listening to. A request already holding a slot is released
+  as before.
+- When a provider has a token budget configured, a request must also fit that
+  provider's new-context allowance. It waits for the bucket to refill, and a
+  `Retry-After` on a `429` pauses the whole provider for the stated time.
+- With `adaptive` enabled, the effective maximum halves only on a capacity
+  signal: a concurrency `429`, a transport failure such as a header timeout, or
+  a `5xx`. A `429` carrying `burst_protection` pauses the token bucket instead,
+  and an invalid-request, context-size, or plan/quota error never narrows the
+  width. Four clean completions restore one step, up to the configured maximum,
+  which remains the hard ceiling.
+- With `subagents` configured, the plugin wraps the built-in `subagent` tool and
+  limits how many child sessions run at once. Because that tool returns at
+  launch, each permit is bound to the child's session ID and released when the
+  child goes idle; launches beyond the limit wait in FIFO order. With
+  `hostAware`, the effective ceiling also drops from the machine's one-minute
+  load average and a critical-memory floor, so a loaded host queues fan-out
+  instead of accepting it.
+- A plugin reload keeps queued work. When the last instance is disposed the
+  store stays adoptable for a grace period (`reloadGraceMs`, default 5000), so
+  a redeploy hands the queue, its waiters, and the live child sessions to the
+  new instance instead of cancelling them. Admission pauses during that window
+  so a freed slot cannot be dispatched ungated. If no reload arrives, the grace
+  expires and the waiters are cancelled with a message that names the unload.
 - The queue counts in-flight requests, not sessions. A session that is running
   a tool or waiting for a subagent does not hold a slot.
 - The queue spans one server process. A separate OpenCode server process, or
@@ -35,6 +76,18 @@ request.
   for the process. A later instance configured differently keeps the existing
   queue and logs the mismatch (with `log` enabled), so one location cannot
   change another location's cap.
+
+## Configuring from the window
+
+Open the Concurrency dialog from the status bar to edit the settings in place:
+provider maximums, the token budget, the context cap and lanes, the circuit
+breaker, the subagent ceiling, and `adaptive`. Each field is checked on the
+server before anything is written; a rejected value returns an error list and
+leaves the file untouched. **Save** writes the config file atomically and
+applies the change to the running store, so in-flight requests and queued
+waiters survive it. Adding or removing a provider changes the set of limiters
+those requests are already using, so that one edit reports
+`restartRequired: true` instead of half-applying.
 
 ## Configuration
 
@@ -107,9 +160,47 @@ the same dedicated config file.
    {
      "providers": {
        "openrouter": 4
+     },
+     "tokens": {
+       "openrouter": {
+         "capacity": 400000,
+         "refillPerMinute": 400000,
+         "safetyFactor": 1.1
+       }
+     },
+     "adaptive": true,
+     "scheduler": {
+       "contextCapacity": 1200000,
+       "contextCeiling": 1200000,
+       "queueDeadlineMs": 240000,
+       "breaker": { "threshold": 2, "cooldownMs": 60000, "mode": "fail" }
+     },
+     "subagents": {
+       "max": 8,
+       "hostAware": true
      }
    }
    ```
+
+   `tokens` is optional and per provider. `capacity` and `refillPerMinute` are
+   the provider's documented new-context budget; `safetyFactor` multiplies the
+   request-size estimate, and the estimate itself already errs high (3.5 bytes
+   per token). `adaptive` is optional and defaults to off.
+   `scheduler` is optional. `contextCapacity` caps the total context tokens in
+   flight, which is what a wide fan-out exhausts even when the request count is
+   within the provider's concurrency allowance; `0` disables the cap.
+   `contextCeiling` bounds its adaptive recovery after transport stalls.
+   `queueDeadlineMs` bounds how long a request may wait for admission, and
+   `breaker` decides how a provider that stops answering is handled.
+   `reserveShare` keeps part of the token budget available for requests above
+   `smallShare` of capacity, and `agingMs` lets an old waiter ignore that
+   reserve. A request that cannot be admitted waits before it takes a slot, so a
+   large burst cannot starve small requests behind it.
+   `subagents` is optional. `max` is the hard ceiling on live child sessions and
+   is required when the section is present, because the right number follows
+   each account's own concurrency allowance. `hostAware` defaults to `false`;
+   set it to `true` to let the machine's load average lower the ceiling (never
+   below one) and queue the rest.
 
    Add one entry per provider. Set the path with
    `OPENCODE_REQUEST_CONCURRENCY_CONFIG` if the file lives elsewhere. The

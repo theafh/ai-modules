@@ -192,3 +192,119 @@ describe("FifoLimiter transitions", () => {
     ])
   })
 })
+
+describe("FifoLimiter cancellation", () => {
+  test("cancelSession removes that session's waiters and leaves the rest", async () => {
+    const limiter = new FifoLimiter(1)
+    const held = await limiter.acquire("a")
+
+    let bRejected = false
+    const b = limiter.acquire("b").catch(() => {
+      bRejected = true
+    })
+    const cPromise = limiter.acquire("c")
+    await Promise.resolve()
+    expect(limiter.queuedCount).toBe(2)
+
+    expect(limiter.cancelSession("b")).toBe(1)
+    await b
+    expect(bRejected).toBe(true)
+    expect(limiter.queuedCount).toBe(1)
+
+    held.release()
+    const c = await cPromise
+    expect(c).toBeDefined()
+  })
+
+  test("cancelSession ignores a session that holds a slot", async () => {
+    const limiter = new FifoLimiter(1)
+    const held = await limiter.acquire("a")
+    expect(limiter.cancelSession("a")).toBe(0)
+    expect(limiter.activeCount).toBe(1)
+    held.release()
+  })
+
+  test("cancelAll rejects every waiter", async () => {
+    const limiter = new FifoLimiter(1)
+    const held = await limiter.acquire("a")
+    let rejected = 0
+    const waiters = ["b", "c", "d"].map((sessionID) =>
+      limiter.acquire(sessionID).catch(() => {
+        rejected += 1
+      }),
+    )
+    await Promise.resolve()
+    expect(limiter.cancelAll()).toBe(3)
+    await Promise.all(waiters)
+    expect(rejected).toBe(3)
+    expect(limiter.queuedCount).toBe(0)
+    held.release()
+  })
+
+  test("a cancelled waiter is never dispatched", async () => {
+    const limiter = new FifoLimiter(1)
+    const held = await limiter.acquire("a")
+    let dispatched = false
+    const queued = limiter.acquire("b").then(
+      () => {
+        dispatched = true
+      },
+      () => {},
+    )
+    await Promise.resolve()
+    limiter.cancelSession("b")
+    held.release()
+    await queued
+    expect(dispatched).toBe(false)
+  })
+})
+
+describe("FifoLimiter adaptive maximum", () => {
+  test("raising the maximum serves a waiting request at once", async () => {
+    const limiter = new FifoLimiter(1)
+    const held = await limiter.acquire("a")
+
+    let bAcquired = false
+    const bPromise = limiter.acquire("b").then(() => {
+      bAcquired = true
+    })
+    await Promise.resolve()
+    expect(bAcquired).toBe(false)
+
+    limiter.setMax(2)
+    await bPromise
+    expect(bAcquired).toBe(true)
+    expect(limiter.activeCount).toBe(2)
+    held.release()
+  })
+
+  test("lowering the maximum admits nothing until active drops below it", async () => {
+    const limiter = new FifoLimiter(4)
+    const slots = await Promise.all(["a", "b", "c", "d"].map((sessionID) => limiter.acquire(sessionID)))
+
+    limiter.setMax(2)
+    let nextAcquired = false
+    const next = limiter.acquire("next").then(() => {
+      nextAcquired = true
+    })
+    await Promise.resolve()
+
+    slots[0].release()
+    await Promise.resolve()
+    expect(nextAcquired).toBe(false)
+
+    slots[1].release()
+    await Promise.resolve()
+    expect(nextAcquired).toBe(false)
+
+    slots[2].release()
+    await next
+    expect(nextAcquired).toBe(true)
+    expect(limiter.activeCount).toBe(2)
+  })
+
+  test("rejects a maximum below one", () => {
+    const limiter = new FifoLimiter(1)
+    expect(() => limiter.setMax(0)).toThrow("positive integer")
+  })
+})

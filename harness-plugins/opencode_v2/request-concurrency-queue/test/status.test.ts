@@ -23,8 +23,15 @@ function provider(overrides: Partial<ProviderStatus> & Pick<ProviderStatus, "pro
     active,
     queued,
     max,
+    ceiling: overrides.ceiling ?? max,
     utilization: overrides.utilization ?? (max === 0 ? 0 : active / max),
     demand: overrides.demand ?? (max === 0 ? 0 : (active + queued) / max),
+    tokensAvailable: overrides.tokensAvailable ?? 0,
+    tokensCapacity: overrides.tokensCapacity ?? 0,
+    tokensPausedUntil: overrides.tokensPausedUntil ?? 0,
+    breaker: overrides.breaker ?? "closed",
+    breakerRetryAfterMs: overrides.breakerRetryAfterMs ?? 0,
+    stalls: overrides.stalls ?? 0,
   }
 }
 
@@ -75,13 +82,34 @@ describe("providerRows", () => {
         active: 2,
         queued: 1,
         max: 4,
+        ceiling: 4,
         total: 3,
         utilization: "50%",
         demand: "75%",
         utilizationColor: loadColor(50),
         demandColor: loadColor(75),
+        tokensAvailable: 0,
+        tokensCapacity: 0,
+        tokensPausedUntil: 0,
+        tokensLabel: "",
+        tokensColor: "",
       },
     ])
+  })
+
+  test("formats a token budget compactly and colours it by the remaining share", () => {
+    const [row] = providerRows(
+      snapshot(provider({ providerID: "acme", tokensAvailable: 300_000, tokensCapacity: 400_000 })),
+    )
+
+    expect(row.tokensLabel).toBe("300k / 400k")
+    expect(row.tokensColor).toBe(loadColor(75))
+  })
+
+  test("renders no token label when the provider has no budget", () => {
+    const [row] = providerRows(snapshot(provider({ providerID: "acme" })))
+    expect(row.tokensLabel).toBe("")
+    expect(row.tokensColor).toBe("")
   })
 
   test("colors the active count by utilization and the combined count by demand", () => {

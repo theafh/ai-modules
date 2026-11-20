@@ -2,8 +2,8 @@
 description: "Repoint task_auto_check scenario s15's gate isolation pin from the retired `grep -r --exclude-dir` recipe to the ignore-aware search rule auto_gate_task now carries."
 scope: tests/task_auto_check
 created: 2026-11-14T12:42:55Z
-updated: 2026-11-14T12:45:55Z
-status: implemented
+updated: 2026-11-19T17:33:23Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -17,7 +17,7 @@ Scenario s15 of the `task_auto_check` script tests asserts the search-isolation 
 
 ## Context
 
-Scenario s15 ("blocking bar, scoped rounds, stall and compaction stops, and robust returns are pinned") in `tests/task_auto_check/script_tests/run.sh` checks `plugins/ai_dev/agents/auto_gate_task.md` with the assertion labelled `gate excludes the relay from recursive searches`, whose needle is `grep -r --exclude-dir=.task_auto_check`. That needle comes from the **Isolation counts reads.** item of [the robust-helper-returns task](archive/task-family_auto-check-robust-helper-returns.md), which asked both the gate and the dry-run agent to name that recipe.
+Scenario s15 ("blocking bar, scoped rounds, stall and compaction stops, and robust returns are pinned") in `tests/task_auto_check/script_tests/run.sh` checks `plugins/ai_dev/agents/auto_gate_task.md` with the assertion labelled `gate excludes the relay from recursive searches`, whose needle is `grep -r --exclude-dir=.task_auto_check`. That needle comes from the **Isolation counts reads.** item of [the robust-helper-returns task](task-family_auto-check-robust-helper-returns.md), which asked both the gate and the dry-run agent to name that recipe.
 
 Commit 39e771e ("Harden auto_gate_task's search isolation") later rewrote the gate's isolation rule, the `<rule>` that opens "Judge the task file as it stands", on purpose. The rule now admits only what git would commit, requires an ignore-aware search such as `rg --hidden` or `git grep` plus `git ls-files --others --exclude-standard`, and names `grep -r`, `find`, and a plain recursive listing as contract violations. The old needle is gone from the gate, so s15 fails today and keeps the deterministic test gate red. No commit after 39e771e touched the gate file, so `git show 39e771e^:plugins/ai_dev/agents/auto_gate_task.md` yields the pre-hardening text exactly.
 

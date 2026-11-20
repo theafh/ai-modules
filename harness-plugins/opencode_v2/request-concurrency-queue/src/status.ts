@@ -5,7 +5,10 @@ export interface ProviderRow {
   readonly providerID: string
   readonly active: number
   readonly queued: number
+  /** The effective maximum, which adaptive control may lower and raise. */
   readonly max: number
+  /** The configured maximum that adaptive control never exceeds. */
+  readonly ceiling: number
   /** Active plus queued, the bar's combined load count. */
   readonly total: number
   /** Utilization as a whole-percent string, e.g. `50%`. */
@@ -19,6 +22,16 @@ export interface ProviderRow {
    * `(active + queued) / max`.
    */
   readonly demandColor: string
+  /** Whole tokens the new-context bucket holds. */
+  readonly tokensAvailable: number
+  /** The bucket's capacity; 0 when the provider has no token budget. */
+  readonly tokensCapacity: number
+  /** Epoch milliseconds until which a `Retry-After` pauses requests; 0 when not paused. */
+  readonly tokensPausedUntil: number
+  /** Compact `available / capacity` label, or an empty string when there is no budget. */
+  readonly tokensLabel: string
+  /** CSS color for the token count, green when full and red when nearly empty. */
+  readonly tokensColor: string
 }
 
 /**
@@ -103,17 +116,35 @@ export const DEFAULT_REFETCH_INTERVAL_MS = 5000
 
 /** Turns one provider's snapshot record into its rendered row. */
 export function providerRow(provider: ProviderStatus): ProviderRow {
+  const tokens = provider.tokensCapacity
   return {
     providerID: provider.providerID,
     active: provider.active,
     queued: provider.queued,
     max: provider.max,
+    ceiling: provider.ceiling,
     total: provider.active + provider.queued,
     utilization: percent(provider.utilization),
     demand: percent(provider.demand),
     utilizationColor: loadColor(provider.utilization * 100),
     demandColor: loadColor(provider.demand * 100),
+    tokensAvailable: provider.tokensAvailable,
+    tokensCapacity: provider.tokensCapacity,
+    tokensPausedUntil: provider.tokensPausedUntil,
+    tokensLabel:
+      tokens === 0
+        ? ""
+        : `${formatTokens(provider.tokensAvailable)} / ${formatTokens(tokens)}`,
+    tokensColor: tokens === 0 ? "" : loadColor((provider.tokensAvailable / tokens) * 100),
   }
+}
+
+/** Formats a token count compactly, e.g. `400k` or `1.2m`. */
+export function formatTokens(tokens: number): string {
+  const value = Number.isFinite(tokens) ? Math.max(0, tokens) : 0
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k`
+  return String(Math.round(value))
 }
 
 /** Turns every provider in a snapshot into its rendered row, in snapshot order. */

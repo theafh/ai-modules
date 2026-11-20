@@ -76,6 +76,7 @@ interface TestRpc {
 
 interface TestContext {
   hooks: Map<string, Hook>
+  tools: Map<string, any>
   /** Emits one server event, as the real subscription would deliver it. */
   emit: (type: string, sessionID: string) => Promise<void>
   /** The type filter and abort signal the plugin passed to `subscribe`. */
@@ -86,6 +87,7 @@ interface TestContext {
 
 function makeContext(options: Record<string, unknown>): any {
   const hooks = new Map<string, Hook>()
+  const tools = new Map<string, any>()
   const stream = makeEventStream()
   const subscriptions: Array<{ types: readonly string[]; signal?: AbortSignal }> = []
   const emits: Array<{ name: string; data: unknown }> = []
@@ -110,6 +112,7 @@ function makeContext(options: Record<string, unknown>): any {
   return {
     options,
     hooks,
+    tools,
     subscriptions,
     rpc: {
       register: rpc.register,
@@ -122,6 +125,22 @@ function makeContext(options: Record<string, unknown>): any {
     session: {
       hook: async (name: string, callback: Hook) => {
         hooks.set(name, callback)
+        return { dispose: async () => {} }
+      },
+    },
+    tool: {
+      transform: async (callback: (editor: any) => void) => {
+        const editor = {
+          list: () => [...tools.values()],
+          get: (id: string) => tools.get(id),
+          add: (tool: any) => tools.set(tool.name, tool),
+          update: (id: string, update: (tool: any) => void) => {
+            const tool = tools.get(id)
+            if (tool) update(tool)
+          },
+          remove: (id: string) => tools.delete(id),
+        }
+        callback(editor)
         return { dispose: async () => {} }
       },
     },
@@ -140,11 +159,17 @@ function makeContext(options: Record<string, unknown>): any {
   }
 }
 
-async function setup(options: Record<string, unknown>): Promise<TestContext> {
-  const ctx = makeContext(options)
+async function setup(
+  options: Record<string, unknown>,
+  seedTools?: (tools: Map<string, any>) => void,
+): Promise<TestContext> {
+  // Tests dispose and re-create quickly, so they opt out of the reload grace.
+  const ctx = makeContext({ reloadGraceMs: 0, ...options })
+  seedTools?.(ctx.tools)
   const cleanup = await plugin.setup(ctx)
   return {
     hooks: ctx.hooks,
+    tools: ctx.tools,
     subscriptions: ctx.subscriptions,
     rpc: ctx.rpc,
     emit: async (type: string, sessionID: string) => {
@@ -254,7 +279,7 @@ describe("request-concurrency-queue plugin", () => {
     const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
 
     expect(await statusSnapshot(rpc)).toEqual({
-      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, utilization: 0, demand: 0 }],
+      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
       transitions: [],
     })
 
@@ -861,16 +886,24 @@ describe("request-concurrency-queue plugin", () => {
     await requestHook(hooks, "a", request("https://example.test/a2"))
 
     let queuedAcquired = false
-    const queued = requestHook(hooks, "b", request("https://example.test/b")).then(() => {
-      queuedAcquired = true
-    })
+    let queuedRejected = false
+    const queued = requestHook(hooks, "b", request("https://example.test/b")).then(
+      () => {
+        queuedAcquired = true
+      },
+      () => {
+        queuedRejected = true
+      },
+    )
     await tick()
     expect(queuedAcquired).toBe(false)
 
-    // Disposal must not leave a waiter hanging, so it releases every entry.
+    // Disposal must not leave a waiter hanging, and must not dispatch work the
+    // unloaded plugin would no longer gate.
     await cleanup()
     await queued
-    expect(queuedAcquired).toBe(true)
+    expect(queuedAcquired).toBe(false)
+    expect(queuedRejected).toBe(true)
   })
 
   test("disposal aborts the event subscription", async () => {
@@ -967,7 +1000,7 @@ describe("process-wide store", () => {
       try {
         // The first instance's provider set and maximum stay authoritative.
         expect((await statusSnapshot(second.rpc)).providers).toEqual([
-          { providerID: "acme", active: 0, queued: 0, max: 1, utilization: 0, demand: 0 },
+          { providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 },
         ])
         expect(messages.some((message) => message.includes("config mismatch"))).toBe(true)
       } finally {
@@ -1086,5 +1119,538 @@ describe("config file", () => {
 
   test("options override file config", () => {
     expect([...resolveProviderLimits({ providers: { a: 3 } }, { providers: { a: 2 } })]).toEqual([["a", 3]])
+  })
+})
+
+/** A response hook call with a custom status and headers. */
+async function responseHookWith(
+  hooks: Map<string, Hook>,
+  sessionID: string,
+  req: Request,
+  init: ResponseInit,
+  providerID = "acme",
+  body = "ok",
+): Promise<Response> {
+  const hook = hooks.get("http.response")
+  if (!hook) throw new Error("missing http.response hook")
+  const event = {
+    sessionID,
+    model: { providerID, id: "test" },
+    kind: "primary",
+    request: req,
+    response: new Response(body, init),
+  }
+  await hook(event)
+  return event.response
+}
+
+function bodyRequest(url: string, bytes: number): Request {
+  return new Request(url, { method: "POST", body: "x".repeat(bytes) })
+}
+
+describe("queued waiter cancellation", () => {
+  test("a session that ends while its request waits is never dispatched", async () => {
+    const { hooks, emit, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+
+    let rejected = false
+    const b = request("https://example.test/b")
+    const bPromise = requestHook(hooks, "b", b).catch(() => {
+      rejected = true
+    })
+    await tick()
+    expect(rejected).toBe(false)
+
+    await emit("session.idle", "b")
+    await bPromise
+    expect(rejected).toBe(true)
+
+    // Releasing the held slot must not dispatch the cancelled waiter.
+    const aResponse = await responseHook(hooks, "a", a, "a-body")
+    await aResponse.text()
+    await tick()
+    expect(rejected).toBe(true)
+
+    await cleanup()
+  })
+
+  test("dispose cancels a waiter that never got a slot", async () => {
+    const { hooks, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+
+    let rejected = false
+    const bPromise = requestHook(hooks, "b", request("https://example.test/b")).catch(() => {
+      rejected = true
+    })
+    await tick()
+
+    await cleanup()
+    await bPromise
+    expect(rejected).toBe(true)
+  })
+})
+
+describe("token budget gate", () => {
+  test("waits for the bucket and reports the remaining budget", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 2,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 10, refillPerMinute: 60_000 } },
+    })
+
+    const before = (await statusSnapshot(rpc)).providers[0]
+    expect(before.tokensCapacity).toBe(10)
+    expect(before.tokensAvailable).toBe(10)
+
+    // 35 bytes at 3.5 bytes per token is 10 tokens: the whole bucket.
+    const a = bodyRequest("https://example.test/a", 35)
+    await requestHook(hooks, "a", a)
+    expect((await statusSnapshot(rpc)).providers[0].tokensAvailable).toBe(0)
+
+    // A second session must wait for the refill before it is dispatched.
+    const b = bodyRequest("https://example.test/b", 35)
+    await requestHook(hooks, "b", b)
+    expect((await statusSnapshot(rpc)).providers[0].tokensAvailable).toBeLessThan(10)
+
+    await cleanup()
+  })
+
+  test("a rate limit pauses the bucket and halves the width", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 4,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 1000, refillPerMinute: 60_000 } },
+      adaptive: true,
+    })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    const response = await responseHookWith(hooks, "a", a, {
+      status: 429,
+      headers: { "retry-after": "30" },
+    })
+    await response.text()
+
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    expect(provider.max).toBe(2)
+    expect(provider.ceiling).toBe(4)
+    expect(provider.tokensPausedUntil).toBeGreaterThan(Date.now())
+
+    await cleanup()
+  })
+
+  test("clean completions raise the width back toward the ceiling", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 4,
+      providers: ["acme"],
+      adaptive: true,
+    })
+
+    const fail = request("https://example.test/fail")
+    await requestHook(hooks, "a", fail)
+    const failed = await responseHookWith(hooks, "a", fail, {
+      status: 429,
+      headers: { "retry-after": "1" },
+    })
+    await failed.text()
+    expect((await statusSnapshot(rpc)).providers[0].max).toBe(2)
+
+    for (let index = 0; index < 4; index += 1) {
+      const ok = request(`https://example.test/ok-${index}`)
+      await requestHook(hooks, "a", ok)
+      const response = await responseHook(hooks, "a", ok, "ok-body")
+      await response.text()
+    }
+
+    expect((await statusSnapshot(rpc)).providers[0].max).toBe(3)
+    await cleanup()
+  })
+})
+
+describe("subagent fan-out gate", () => {
+  test("holds the second launch until the first child goes idle", async () => {
+    const executed: string[] = []
+    const { tools, emit, cleanup } = await setup(
+      { maxConcurrency: 1, providers: ["acme"], subagents: { max: 1 } },
+      (seed) => {
+        seed.set("subagent", {
+          name: "subagent",
+          execute: async (input: { agent: string }) => {
+            executed.push(input.agent)
+            return { sessionID: `ses_${input.agent}` }
+          },
+        })
+      },
+    )
+
+    const tool = tools.get("subagent")
+    const first = tool.execute({ agent: "a" }, { sessionID: "parent" })
+    const second = tool.execute({ agent: "b" }, { sessionID: "parent" })
+    await tick()
+    expect(executed).toEqual(["a"])
+
+    await emit("session.idle", "ses_a")
+    await Promise.all([first, second])
+    expect(executed).toEqual(["a", "b"])
+
+    await cleanup()
+  })
+
+  test("a result without a session ID frees the permit at once", async () => {
+    const executed: string[] = []
+    const { tools, cleanup } = await setup(
+      { maxConcurrency: 1, providers: ["acme"], subagents: { max: 1 } },
+      (seed) => {
+        seed.set("subagent", {
+          name: "subagent",
+          execute: async (input: { agent: string }) => {
+            executed.push(input.agent)
+            return { ok: true }
+          },
+        })
+      },
+    )
+
+    const tool = tools.get("subagent")
+    await Promise.all([
+      tool.execute({ agent: "a" }, { sessionID: "parent" }),
+      tool.execute({ agent: "b" }, { sessionID: "parent" }),
+    ])
+    expect(executed).toEqual(["a", "b"])
+
+    await cleanup()
+  })
+
+  test("a failed launch frees its permit", async () => {
+    const { tools, cleanup } = await setup(
+      { maxConcurrency: 1, providers: ["acme"], subagents: { max: 1 } },
+      (seed) => {
+        seed.set("subagent", {
+          name: "subagent",
+          execute: async () => {
+            throw new Error("launch failed")
+          },
+        })
+      },
+    )
+
+    const tool = tools.get("subagent")
+    await expect(tool.execute({}, { sessionID: "parent" })).rejects.toThrow("launch failed")
+    await expect(tool.execute({}, { sessionID: "parent" })).rejects.toThrow("launch failed")
+
+    await cleanup()
+  })
+
+  test("stays inactive when the subagent tool is not exposed", async () => {
+    const { cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"], subagents: { max: 1 } })
+    await cleanup()
+  })
+
+  test("reports live and queued children in the status snapshot", async () => {
+    const { tools, rpc, cleanup } = await setup(
+      { maxConcurrency: 1, providers: ["acme"], subagents: { max: 1 } },
+      (seed) => {
+        seed.set("subagent", {
+          name: "subagent",
+          execute: async (input: { agent: string }) => ({ sessionID: `ses_${input.agent}` }),
+        })
+      },
+    )
+
+    const tool = tools.get("subagent")
+    await tool.execute({ agent: "a" }, { sessionID: "parent" })
+    const queued = tool.execute({ agent: "b" }, { sessionID: "parent" })
+    await tick()
+
+    expect((await statusSnapshot(rpc)).subagents).toEqual({
+      live: 1,
+      queued: 1,
+      max: 1,
+      capacity: 1,
+    })
+
+    await cleanup()
+    await queued.catch(() => {})
+  })
+})
+
+describe("failure classification", () => {
+  test("a burst-protection 429 pauses the bucket without narrowing the width", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 4,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 1000, refillPerMinute: 60_000 } },
+      adaptive: true,
+    })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    const response = await responseHookWith(
+      hooks,
+      "a",
+      a,
+      { status: 429, headers: { "retry-after": "30" } },
+      "acme",
+      JSON.stringify({ error: { code: "burst_protection" } }),
+    )
+    await response.text()
+
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    expect(provider.max).toBe(4)
+    expect(provider.tokensPausedUntil).toBeGreaterThan(Date.now())
+    await cleanup()
+  })
+
+  test("a concurrency 429 narrows the width", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 4, providers: ["acme"], adaptive: true })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    const response = await responseHookWith(
+      hooks,
+      "a",
+      a,
+      { status: 429, headers: { "retry-after": "2" } },
+      "acme",
+      JSON.stringify({ error: { code: "concurrency_limit" } }),
+    )
+    await response.text()
+
+    expect((await statusSnapshot(rpc)).providers[0].max).toBe(2)
+    await cleanup()
+  })
+
+  test("a transport retry narrows the width", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 4, providers: ["acme"], adaptive: true })
+    // A stall only counts for an attempt that was actually dispatched.
+    await requestHook(hooks, "a", request("https://example.test/a"))
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "Timed out waiting for response headers" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    expect((await statusSnapshot(rpc)).providers[0].max).toBe(2)
+    await cleanup()
+  })
+
+  test("an invalid-request retry leaves the width alone", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 4, providers: ["acme"], adaptive: true })
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.invalid-request", message: "At most 50 images per request.", status: 400 },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    expect((await statusSnapshot(rpc)).providers[0].max).toBe(4)
+    await cleanup()
+  })
+
+  test("a 429 retry does not narrow the width twice", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 4, providers: ["acme"], adaptive: true })
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.rate-limit", message: "rate limited", status: 429 },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    expect((await statusSnapshot(rpc)).providers[0].max).toBe(4)
+    await cleanup()
+  })
+})
+
+describe("provider circuit breaker", () => {
+  test("a stalled retry opens the circuit and the next request fails fast", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 4,
+      providers: ["acme"],
+      scheduler: { contextCapacity: 0, breaker: { threshold: 1, cooldownMs: 60_000, mode: "fail" } },
+    })
+    await requestHook(hooks, "a", request("https://example.test/a"))
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "Timed out waiting for response headers" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("open")
+
+    await expect(requestHook(hooks, "b", request("https://example.test/b"))).rejects.toThrow(
+      "provider circuit open",
+    )
+
+    await cleanup()
+  })
+
+  test("a served response closes the circuit", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 4,
+      providers: ["acme"],
+      scheduler: { contextCapacity: 0, breaker: { threshold: 1, cooldownMs: 1, mode: "fail" } },
+    })
+    await requestHook(hooks, "a", request("https://example.test/a"))
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "stalled" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+    expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("open")
+
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    const response = await responseHook(hooks, "a", a, "ok")
+    await response.text()
+
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    expect(provider.breaker).toBe("closed")
+    expect(provider.stalls).toBe(0)
+
+    await cleanup()
+  })
+
+  test("a queued request is rejected at the queue deadline", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 1,
+      providers: ["acme"],
+      scheduler: { contextCapacity: 0, queueDeadlineMs: 20 },
+    })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+
+    await expect(requestHook(hooks, "b", request("https://example.test/b"))).rejects.toThrow(
+      "no slot within",
+    )
+    expect((await statusSnapshot(rpc)).providers[0].queued).toBe(0)
+
+    await cleanup()
+  })
+})
+
+describe("breaker feedback", () => {
+  test("a rejection produced by the plugin is not counted as a provider stall", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 2,
+      providers: ["acme"],
+      scheduler: { contextCapacity: 0, breaker: { threshold: 2, cooldownMs: 60_000, mode: "fail" } },
+    })
+    await requestHook(hooks, "a", request("https://example.test/a"))
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "Timed out waiting for response headers" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+    expect((await statusSnapshot(rpc)).providers[0].stalls).toBe(1)
+
+    // The circuit's own rejection comes back through the same hook.
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: {
+        type: "provider.transport",
+        message: "request-concurrency-queue: provider circuit open after repeated stalls; retry in 57s",
+      },
+      attempt: 3,
+      decision: { retry: true, delay: 1 },
+    })
+
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    expect(provider.stalls).toBe(1)
+    expect(provider.breaker).toBe("closed")
+
+    await cleanup()
+  })
+})
+
+describe("stall attribution", () => {
+  test("a request that died while queued is not counted as a provider stall", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 1,
+      providers: ["acme"],
+      scheduler: { contextCapacity: 0, breaker: { threshold: 1, cooldownMs: 60_000, mode: "fail" } },
+    })
+
+    // A holds the only slot; B never leaves the queue.
+    await requestHook(hooks, "a", request("https://example.test/a"))
+    const b = requestHook(hooks, "b", request("https://example.test/b")).catch(() => {})
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "b",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "Timed out waiting for response headers" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    expect(provider.stalls).toBe(0)
+    expect(provider.breaker).toBe("closed")
+
+    await cleanup()
+    await b
+  })
+})
+
+describe("token cursor lifetime", () => {
+  test("the cursor survives idle so the next turn is charged only its delta", async () => {
+    const { hooks, emit, rpc, cleanup } = await setup({
+      maxConcurrency: 2,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 100_000, refillPerMinute: 1 } },
+    })
+
+    // 350 bytes at 3.5 bytes per token is 100 tokens.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a", 350))
+    const afterFirst = (await statusSnapshot(rpc)).providers[0].tokensAvailable
+    expect(afterFirst).toBe(99_900)
+
+    await emit("session.idle", "a")
+
+    // The next turn's body is 700 bytes: 200 total, but only 350 bytes are new.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a", 700))
+    const afterSecond = (await statusSnapshot(rpc)).providers[0].tokensAvailable
+
+    // Charging the delta costs 100 tokens; charging the whole body would cost 200.
+    expect(afterFirst - afterSecond).toBe(100)
+
+    await cleanup()
   })
 })

@@ -2081,7 +2081,7 @@
       "id": "twice_failed_item_marked_failed",
       "skill": "agent_spinner",
       "prompt": "An open run holds one item that has failed twice. Report where the run stands.",
-      "expected_output": "The second rejection marks the row failed, the target stays byte-identical, and the report offers the inline redo as the user's choice.",
+      "expected_output": "The row is recorded as failed, the page stays byte-identical, and the report offers the inline redo as the user's choice.",
       "files": [
         "evals/fixtures/twice_failed_item_marked_failed/setup.sh"
       ],

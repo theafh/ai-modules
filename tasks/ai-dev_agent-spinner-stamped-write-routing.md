@@ -2,8 +2,8 @@
 description: "Make routing a write to a stamped artifact hand the write to its owning family: no agent_spinner writer runs on an owned target, and the ledger refuses a writer before the routing record."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T23:20:22Z
-updated: 2026-11-14T23:54:21Z
-status: open
+updated: 2026-11-19T18:24:39Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -29,12 +29,14 @@ This task lands after the terminal-states, brief-contract, report-and-packet, an
 
 1. Rewrite SKILL.md `<judgement>`'s stamped-write sentence and `references/checks.md` C9 in place: routing to the owning gate hands the write to that family and dispatches no writer on the path; routing to the user is a fork, answered only by an explicit gate answer or a request that names the artifact and authorizes the run's own write.
 2. In SKILL.md `<invocation_boundary>`, state that an orchestrator running a family's workflow inline is not that family's writer.
-3. In `scripts/run_ledger.py`, refuse `brief` and `dispatch` for a writer row whose target is an owned target unless an answered fork naming that path predates it, and make `close` condition 10 fail when a writer on an owned target precedes the path's routing record. Document both in `references/run-protocol.md`.
-4. Keep `tests/agent_spinner/evals/` as it is unless a check reads the old order; both stamped evals already grade the hand-off.
+3. In `scripts/run_ledger.py`, refuse `brief` and `dispatch` for a writer row whose target is an owned target unless an answered fork naming that path predates it — a `fork` record whose `path` field names the target together with the `gate_answered` record whose `gate_id` names either that fork's `id` or the `packet` id the fork's `surfaced` disposition carries, where an `own_authority` record never counts as an answer and an answer the request supplies is recorded as that `gate_answered`. Make `close` condition 10 compare the path's first writer `dispatch` record against its `dispose --routed` disposition: a changed owned-target path whose routed disposition postdates that dispatch fails condition 10 naming the path, and a path whose only route is an answered fork, carrying no routed disposition, is cleared by the guard's prior ordering check rather than re-tested. Rewrite the same two rules into the passages that state the old clearing rather than adding a second sentence beside it: `references/run-protocol.md` `### brief` and `### dispatch` name the owned-target refusal, `### close` condition 10 and the `forks` bullet's `path` sentence carry the ordering test and the refusals in place of the superseded clearing, and `references/checks.md` C9's **Checks** paragraph is replaced to match. Condition 10's clause keeps its `10. A changed path` opening and keeps a `path` field phrase as the answered-fork branch, so `scenario_docs`'s pinned regex still matches, and `scenario_docs` is updated wherever its pinned text changes.
+4. Keep `tests/agent_spinner/evals/` as it is unless a check reads the old order; both stamped evals already grade the hand-off. Rebuild `scenario_markers` in `tests/agent_spinner/script_tests/ledger_run.sh` around an answered fork: its base case and its `fork` and `fork-dot` sub-cases each brief `produce:a` on the owned target `a.txt:task:task_finish` before any fork exists, so the new refusal stops the brief, `token_of` reads no token, `accept` rejects the return, no fork record lands, and both fork-clears-condition-10 assertions report FAIL; record each case's answered fork before its brief, and restate every condition-10 assertion the new ordering rule makes unreachable — including the base case's no-routing failure and its status listing — so the scenario proves the ordering and the fork route under the new refusal.
 
 ## Acceptance
 
-- A `ledger_run.sh` scenario: a writer brief on an owned target with no answered fork is refused; with an answered fork naming the path it is accepted.
-- A `ledger_run.sh` scenario: a writer accepted on an owned target before its `dispose --routed` record leaves `close` refusing on condition 10.
+- A `ledger_run.sh` scenario: a writer brief and a `dispatch` of a writer row on an owned target with no answered fork are each refused; with an answered fork naming the path each is accepted.
+- A `ledger_run.sh` scenario: a writer accepted on an owned target under an answered fork naming the path, with its `dispose --routed` record written after the writer, leaves `close` refusing on condition 10 and naming the path; the same run with the routed disposition written before the writer, and a run whose only route is the answered fork with no routed disposition, both close clean.
 - SKILL.md `<judgement>`, `<invocation_boundary>`, and `references/checks.md` C9 carry the hand-off rule, and the old sentence no longer stands without it.
+- `references/run-protocol.md` `### brief`, `### dispatch`, and `### close` condition 10, its `forks` bullet, and `references/checks.md` C9's **Checks** paragraph state the owned-target refusals and the ordering test in place, with no superseded clearing left standing beside them, and `tests/agent_spinner/script_tests/ledger_run.sh`'s `scenario_docs` passes against the rewritten text.
 - `stamped_target_routed_to_owner` and `stamp_routed_on_any_rewrite` run on the default vendor, and their verdicts are recorded in `tests/agent_spinner/evals/README.md`. If either still writes the stamped file, the record names the step and the task stays open.
+- `bash tests/agent_spinner/script_tests/ledger_run.sh` passes, with `scenario_markers` rebuilt around an answered fork and its condition-10 assertions restated to the ordering rule.

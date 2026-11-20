@@ -2,8 +2,8 @@
 description: "State in task_audit that a missing design-extended on an implement-stamped task is a recording note, and only a signal that mismatches the built change is a gap blocking audited."
 scope: plugins/ai_dev/skills/task_audit
 created: 2026-11-15T06:30:39Z
-updated: 2026-11-15T06:30:39Z
-status: open
+updated: 2026-11-19T18:15:23Z
+status: ready
 reported-by: "Andreas Hoffmann"
 ---
 
@@ -55,22 +55,46 @@ same stamp on every vendor.
    distinction, since the rule no longer depends on a task's age and the audit
    has no reliable test for it.
 2. In **Stamp the verdict.**, rewrite the clause "the `design-extended` signal
-   check is confirmed" so it points at that rule: the check is confirmed when
-   the recorded or absent signal matches the change, and a recording note
-   leaves it confirmed.
+   check is confirmed" so it points at the verify step's rule instead of
+   restating it: the check is confirmed when that rule holds, and a recording
+   note leaves it confirmed.
 3. In `<output_contract>`, rewrite the full-compliance bullet's "Supporting
    evidence may precede it" clause so it names a recording note from the
    verify step as part of that evidence, which leaves the verdict a full pass.
 4. Make `audit_clean` the pin for the absent case in `tests/task/evals/`. Add
    a check to its arm in `grade.sh` that the task file still carries no
    `design-extended` line after the run, since the audit's only permitted task
-   edit is its status stamp. Rewrite the fixture header in
-   `fixtures/audit_clean/setup.sh`, the `audit_clean` row in `README.md`, and
-   the eval's `expected_output` in `evals.json` to say that the seeded task
-   carries no `design-extended` field and the audit still stamps `audited`,
-   and add an expectation that the response names the missing field at most as
-   a recording note, never as a `Gaps:` item. Keep the fixture task without
-   the field.
+   edits are its status stamp and the `updated` bump. Add two response checks
+   to the same arm: one that a line of the response is exactly `Success: full
+   task compliance confirmed.`, and one that no line of the response opens a
+   `Gaps:` list, so a response that lists the missing field as a gap fails the
+   eval. Rewrite the fixture header in `fixtures/audit_clean/setup.sh` and the
+   eval's `expected_output` in `evals.json` to say that the seeded task
+   carries no `design-extended` field and the audit still stamps `audited`.
+   The `evals.json` `expectations` stay documentation no grader reads, so the
+   Gaps-versus-note behaviour is pinned by the `grade.sh` checks rather than
+   by a new expectation there. Update every `audit_clean` site in `tests/task/evals/README.md`, found at
+   implementation time by `rg -n "audit_clean" tests/task/evals/README.md`: the
+   eval-set row gains that same absent-field wording, and the recorded-results
+   sentence and the verdict-of-record row naming this task are rewritten in
+   place. Rewrite the recorded-results sentence as a whole sentence rather than
+   by substituting a fragment of it: it reads "On current inputs every eval but
+   two passes on both vendors: `implement_boundary_cross` fails on Cursor and
+   has an open task named below, and `audit_clean`'s Claude result is unrecorded
+   — its wording is fixed, but its Claude re-run is still owed and is the
+   operator's to schedule." The "each of those has an open task" clause goes
+   with the old sentence. The verdict cell of the verdict-of-record row reads
+   "wording fixed; Claude re-run owed (operator to schedule)", dropping its
+   `fails;` label and its link naming this task, so no site still reports the
+   old failure or names this task as its open owner. Keep the fixture task
+   without the field.
+
+5. Record the proof boundary the vendor rule sets. The wording change is
+   vendor-neutral, and `TESTING.md` forbids an unsolicited `--vendor claude`
+   run, so this task proves the reading on the default vendor only and claims
+   no Claude pass. The Claude failure recorded for `audit_clean` in
+   `tests/task/evals/README.md` is retired as step 4 describes, with the
+   re-run named as the operator's to schedule.
 
 **Out of scope:**
 
@@ -98,11 +122,27 @@ same stamp on every vendor.
   the fixture whose task carries a `design-extended` line.
 - The `audit_clean` entry in `tests/task/evals/evals.json`, the fixture header
   in `tests/task/evals/fixtures/audit_clean/setup.sh`, and the `audit_clean`
-  row in `tests/task/evals/README.md` each name the absent-field case the eval
-  pins.
+  eval-set row in `tests/task/evals/README.md` each name the absent-field case
+  the eval pins. `rg -n "audit_clean" tests/task/evals/README.md` shows no site
+  still reporting a Claude failure or naming this task as the fix's open
+  owner: the recorded-results sentence and the verdict-of-record row read
+  "wording fixed; Claude re-run owed", naming the re-run as the operator's to
+  schedule. The recorded-results sentence is the settled whole-sentence
+  rewrite rather than a fragment substitution, so
+  `rg -n "each of those has an open task" tests/task/evals/README.md` returns
+  no match.
+  `rg -n "every eval passes on both vendors except" tests/task/evals/README.md`
+  returns no match, so no sentence claims a both-vendors pass and then names
+  only `implement_boundary_cross` as its exception, leaving `audit_clean`
+  inside that claim.
+  `rg -n "Claude result is unrecorded" tests/task/evals/README.md` finds the
+  recorded-results sentence, which names `audit_clean`'s Claude result as
+  unrecorded pending the operator's re-run.
 - `python3 tests/task/evals/run.py audit_clean`, run on the default vendor
-  with no `--vendor` flag, grades PASS, with status `audited` and the verdict
-  line exactly `Success: full task compliance confirmed.` on its own line. A
-  FAIL on the stamp check means the rewritten wording still reads the missing
-  field as a gap: revise the wording and re-run, leaving the grader's stamp
-  check as it is.
+  with no `--vendor` flag, grades PASS, with status `audited`. The
+  `audit_clean` arm of `tests/task/evals/grade.sh` checks the response for a
+  line that is exactly `Success: full task compliance confirmed.` and for no
+  line that opens a `Gaps:` list, so a response that lists the missing field
+  under `Gaps:` fails the eval. A FAIL on either response check means the
+  rewritten wording still reads the missing field as a gap: revise the wording
+  and re-run, leaving the grader's checks as they are.

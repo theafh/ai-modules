@@ -1,0 +1,392 @@
+import { describe, expect, test } from "bun:test"
+import { TokenBudget } from "../src/budget.js"
+import { RequestScheduler } from "../src/scheduler.js"
+
+/** Resolves true when `promise` settles before the next macrotask. */
+function settled(promise: Promise<unknown>): Promise<boolean> {
+  return Promise.race([
+    promise.then(
+      () => true,
+      () => true,
+    ),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 0)),
+  ])
+}
+
+describe("RequestScheduler context cap", () => {
+  test("a small request passes a large one that cannot fit", async () => {
+    const scheduler = new RequestScheduler({ maxSlots: 3, contextCapacity: 1000 })
+
+    const big = await scheduler.acquire("a", { newTokens: 0, contextTokens: 900 })
+    const bigTwo = scheduler.acquire("b", { newTokens: 0, contextTokens: 900 })
+    expect(await settled(bigTwo)).toBe(false)
+
+    // The small request fits beside the first big one, even though the older
+    // big request is still waiting.
+    const small = await scheduler.acquire("c", { newTokens: 0, contextTokens: 50 })
+    expect(scheduler.queuedCount).toBe(1)
+    expect(scheduler.status().contextInFlight).toBe(950)
+
+    small.release()
+    big.release()
+    const bigTwoSlot = await bigTwo
+    expect(scheduler.queuedCount).toBe(0)
+    bigTwoSlot.release()
+    scheduler.cancelAll()
+  })
+
+  test("a single request larger than the cap still runs alone", async () => {
+    const scheduler = new RequestScheduler({ maxSlots: 1, contextCapacity: 500 })
+    const slot = await scheduler.acquire("a", { newTokens: 0, contextTokens: 900 })
+    expect(scheduler.status().contextInFlight).toBe(900)
+    slot.release()
+    expect(scheduler.status().contextInFlight).toBe(0)
+    scheduler.cancelAll()
+  })
+
+  test("the cap halves on a transport timeout and grows back on success", () => {
+    const scheduler = new RequestScheduler({
+      maxSlots: 1,
+      contextCapacity: 800_000,
+      contextCeiling: 800_000,
+    })
+
+    scheduler.recordTimeout()
+    expect(scheduler.status().contextCapacity).toBe(400_000)
+    scheduler.recordTimeout()
+    expect(scheduler.status().contextCapacity).toBe(200_000)
+
+    scheduler.recordSuccess()
+    expect(scheduler.status().contextCapacity).toBe(280_000)
+    scheduler.cancelAll()
+  })
+
+  test("the cap never drops below one", () => {
+    const scheduler = new RequestScheduler({ maxSlots: 1, contextCapacity: 4, contextCeiling: 4 })
+    scheduler.recordTimeout()
+    scheduler.recordTimeout()
+    scheduler.recordTimeout()
+    expect(scheduler.status().contextCapacity).toBe(1)
+    scheduler.cancelAll()
+  })
+})
+
+describe("RequestScheduler budget lanes", () => {
+  test("the reserve blocks a small request before a large one can fit", async () => {
+    const now = { value: 0 }
+    const budget = new TokenBudget({ capacity: 1000, refillPerMinute: 60_000, now: () => now.value })
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      budget,
+      smallShare: 0.1,
+      reserveShare: 0.25,
+      agingMs: 1_000,
+      now: () => now.value,
+    })
+    budget.spend(800) // 200 available
+
+    const small = scheduler.acquire("small", { newTokens: 50, contextTokens: 0 })
+    expect(await settled(small)).toBe(false)
+
+    // A large request is above the small threshold, so the reserve does not
+    // apply and it can use what is available.
+    const large = await scheduler.acquire("large", { newTokens: 150, contextTokens: 0 })
+    expect(await settled(Promise.resolve(large))).toBe(true)
+
+    // Once the large request ages past the threshold it ignores the reserve.
+    now.value += 1_000
+    large.release()
+    const smallSlot = await small
+    expect(scheduler.queuedCount).toBe(0)
+    smallSlot.release()
+    scheduler.cancelAll()
+  })
+
+  test("the oldest fitting waiter is served first", async () => {
+    const scheduler = new RequestScheduler({ maxSlots: 1 })
+    const held = await scheduler.acquire("held", { newTokens: 0, contextTokens: 0 })
+
+    const order: string[] = []
+    const first = scheduler.acquire("first", { newTokens: 0, contextTokens: 0 }).then((slot) => {
+      order.push("first")
+      return slot
+    })
+    const second = scheduler.acquire("second", { newTokens: 0, contextTokens: 0 }).then((slot) => {
+      order.push("second")
+      return slot
+    })
+    await Promise.resolve()
+    expect(order).toEqual([])
+
+    held.release()
+    const firstSlot = await first
+    expect(order).toEqual(["first"])
+    firstSlot.release()
+    const secondSlot = await second
+    expect(order).toEqual(["first", "second"])
+    secondSlot.release()
+    scheduler.cancelAll()
+  })
+
+  test("a cancelled session leaves the queue and never dispatches", async () => {
+    const scheduler = new RequestScheduler({ maxSlots: 1 })
+    const held = await scheduler.acquire("a", { newTokens: 0, contextTokens: 0 })
+
+    let rejected = false
+    const waiting = scheduler.acquire("b", { newTokens: 0, contextTokens: 0 }).catch(() => {
+      rejected = true
+    })
+    await Promise.resolve()
+    expect(scheduler.cancelSession("b")).toBe(1)
+    await waiting
+    expect(rejected).toBe(true)
+    expect(scheduler.queuedCount).toBe(0)
+
+    held.release()
+    scheduler.cancelAll()
+  })
+})
+
+describe("RequestScheduler queue deadline", () => {
+  test("rejects a waiter that never gets a slot", async () => {
+    const scheduler = new RequestScheduler({ maxSlots: 1, queueDeadlineMs: 20 })
+    const held = await scheduler.acquire("a", { newTokens: 0, contextTokens: 0 })
+
+    let error: Error | undefined
+    await scheduler.acquire("b", { newTokens: 0, contextTokens: 0 }).catch((err) => {
+      error = err
+    })
+
+    expect(error?.name).toBe("QueueTimeoutError")
+    expect(error?.message).toContain("no slot within")
+    expect(scheduler.queuedCount).toBe(0)
+    held.release()
+    scheduler.cancelAll()
+  })
+
+  test("an admitted waiter is not rejected later", async () => {
+    const scheduler = new RequestScheduler({ maxSlots: 1, queueDeadlineMs: 20 })
+    const held = await scheduler.acquire("a", { newTokens: 0, contextTokens: 0 })
+    const waiting = scheduler.acquire("b", { newTokens: 0, contextTokens: 0 })
+
+    held.release()
+    const slot = await waiting
+    await new Promise((resolve) => setTimeout(resolve, 40))
+
+    expect(scheduler.queuedCount).toBe(0)
+    expect(scheduler.activeCount).toBe(1)
+    slot.release()
+    scheduler.cancelAll()
+  })
+})
+
+describe("RequestScheduler circuit breaker", () => {
+  test("opens after the configured number of stalls and rejects new requests", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 2, cooldownMs: 60_000, mode: "fail" },
+      now: () => now.value,
+    })
+
+    scheduler.recordStall()
+    expect(scheduler.status().breaker).toBe("closed")
+    scheduler.recordStall()
+    expect(scheduler.status().breaker).toBe("open")
+    expect(scheduler.status().breakerRetryAfterMs).toBe(60_000)
+
+    await expect(scheduler.acquire("a", { newTokens: 0, contextTokens: 0 })).rejects.toThrow(
+      "provider circuit open",
+    )
+    scheduler.cancelAll()
+  })
+
+  test("opening rejects the requests already queued", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 1,
+      breaker: { threshold: 1, cooldownMs: 60_000, mode: "fail" },
+      now: () => now.value,
+    })
+    const held = await scheduler.acquire("a", { newTokens: 0, contextTokens: 0 })
+
+    let rejected = false
+    const queued = scheduler.acquire("b", { newTokens: 0, contextTokens: 0 }).catch(() => {
+      rejected = true
+    })
+    await Promise.resolve()
+    expect(scheduler.queuedCount).toBe(1)
+
+    scheduler.recordStall()
+    await queued
+    expect(rejected).toBe(true)
+    expect(scheduler.queuedCount).toBe(0)
+
+    held.release()
+    scheduler.cancelAll()
+  })
+
+  test("half-open admits one probe, and a success closes the circuit", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 1, cooldownMs: 1_000, mode: "fail" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+    expect(scheduler.status().breaker).toBe("open")
+
+    now.value = 1_000
+    expect(scheduler.status().breaker).toBe("half-open")
+
+    const probe = await scheduler.acquire("probe", { newTokens: 0, contextTokens: 0 })
+    // A second request is held while the probe is in flight.
+    await expect(scheduler.acquire("other", { newTokens: 0, contextTokens: 0 })).rejects.toThrow(
+      "test request is already checking",
+    )
+
+    scheduler.recordSuccess()
+    expect(scheduler.status().breaker).toBe("closed")
+    probe.release()
+
+    const after = await scheduler.acquire("after", { newTokens: 0, contextTokens: 0 })
+    after.release()
+    scheduler.cancelAll()
+  })
+
+  test("a stalled probe reopens the circuit", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 2, cooldownMs: 1_000, mode: "fail" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+    scheduler.recordStall()
+    now.value = 1_000
+
+    const probe = await scheduler.acquire("probe", { newTokens: 0, contextTokens: 0 })
+    scheduler.recordStall()
+
+    expect(scheduler.status().breaker).toBe("open")
+    expect(scheduler.status().breakerRetryAfterMs).toBe(1_000)
+    probe.release()
+    scheduler.cancelAll()
+  })
+
+  test("wait mode holds the request until the cooldown ends", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 1, cooldownMs: 1_000, mode: "wait" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+
+    let admitted = false
+    const waiting = scheduler.acquire("a", { newTokens: 0, contextTokens: 0 }).then((slot) => {
+      admitted = true
+      return slot
+    })
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    expect(admitted).toBe(false)
+
+    now.value = 1_000
+    scheduler.cancelAll()
+    await waiting.catch(() => {})
+  })
+
+  test("a success resets the stall count", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 1,
+      breaker: { threshold: 2, cooldownMs: 60_000, mode: "fail" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+    scheduler.recordSuccess()
+    scheduler.recordStall()
+
+    expect(scheduler.status().breaker).toBe("closed")
+    expect(scheduler.status().stalls).toBe(1)
+    scheduler.cancelAll()
+  })
+})
+
+describe("half-open probe recovery", () => {
+  test("a probe that ends without a verdict does not wedge the circuit", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 1, cooldownMs: 1_000, mode: "fail" },
+      now: () => now.value,
+    })
+
+    scheduler.recordStall()
+    now.value = 1_000
+
+    // The probe is admitted, then the session goes idle before any response is
+    // recorded: no recordSuccess and no recordStall.
+    const probe = await scheduler.acquire("probe", { newTokens: 0, contextTokens: 0 })
+    probe.release()
+
+    now.value = 60_000
+    const next = await scheduler.acquire("next", { newTokens: 0, contextTokens: 0 })
+    expect(next).toBeDefined()
+    next.release()
+    scheduler.cancelAll()
+  })
+
+  test("a second request is told a probe is already running, not that the circuit is open", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 4,
+      breaker: { threshold: 1, cooldownMs: 1_000, mode: "fail" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+    now.value = 1_000
+
+    const probe = await scheduler.acquire("probe", { newTokens: 0, contextTokens: 0 })
+    await expect(scheduler.acquire("other", { newTokens: 0, contextTokens: 0 })).rejects.toThrow(
+      "test request is already checking",
+    )
+    probe.release()
+    scheduler.cancelAll()
+  })
+
+  test("a probe that never reports back stops blocking after its lease", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 4,
+      breaker: { threshold: 1, cooldownMs: 1_000, mode: "fail" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+    now.value = 1_000
+
+    const probe = await scheduler.acquire("probe", { newTokens: 0, contextTokens: 0 })
+    // The probe hangs and is never released.
+    now.value = 1_000 + 400_000
+
+    const next = await scheduler.acquire("next", { newTokens: 0, contextTokens: 0 })
+    expect(next).toBeDefined()
+    next.release()
+    probe.release()
+    scheduler.cancelAll()
+  })
+})
+
+describe("oversized token cost", () => {
+  test("a request larger than the bucket is admitted instead of waiting forever", async () => {
+    const now = { value: 0 }
+    const budget = new TokenBudget({ capacity: 1000, refillPerMinute: 60_000, now: () => now.value })
+    const scheduler = new RequestScheduler({ maxSlots: 2, budget, now: () => now.value })
+
+    const slot = await scheduler.acquire("big", { newTokens: 5000, contextTokens: 0 })
+    expect(scheduler.queuedCount).toBe(0)
+    expect(scheduler.activeCount).toBe(1)
+    slot.release()
+    scheduler.cancelAll()
+  })
+})

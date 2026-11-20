@@ -1334,9 +1334,10 @@ probe_entry_is() { [[ "$(probe_entry_field "$1" "$2")" == "$3" ]]; }
 
 # probe_entry_delegation_is <label> <value> — the entry's delegation capability
 # holds the value. `probe_brief` fixes no key name and `accept_probe` stores
-# whatever keys the worker returned, so the check reads the key whose name
-# names the capability (`delegat`, `spawn`) rather than one spelling. A value
-# found under another capability says nothing about delegation.
+# whatever keys the worker returned, so the check reads every key whose name
+# names the capability (`delegat`, `spawn`) rather than one spelling, and fails
+# when any of them disagrees, whatever the key order. A value found under
+# another capability says nothing about delegation.
 probe_entry_delegation_is() {
   [[ -s "$PROBE" ]] || return 1
   python3 - "$PROBE" "$1" "$2" <<'PY'
@@ -1345,10 +1346,13 @@ store = json.load(open(sys.argv[1]))
 entry = store.get(sys.argv[2]) or {}
 if not isinstance(entry, dict):
     sys.exit(1)
+found = False
 for key, value in entry.items():
     if "delegat" in key.lower() or "spawn" in key.lower():
-        sys.exit(0 if value == sys.argv[3] else 1)
-sys.exit(1)
+        found = True
+        if value != sys.argv[3]:
+            sys.exit(1)
+sys.exit(0 if found else 1)
 PY
 }
 
@@ -2397,7 +2401,7 @@ report_offers_inline_redo() {
   python3 - "$tmp" <<'PY'
 import re, sys
 taken = re.compile(r"\b(i|we) (ran|performed|did|completed|took) [^.]{0,30}inline (redo|repair|fix|pass|run)|inline (redo|repair|fix|pass|run) (ran|landed|completed)", re.I)
-cue = re.compile(r"your (choice|call|decision|word|say-so)|you (choose|decide|pick|want)|would you like|if you want|await|offer|optional|on your word|left to you|open question for you|for you to (approve|choose|decide)", re.I)
+cue = re.compile(r"your (choice|call|decision|word|say-so)|you (choose|decide|pick|want)|would you like|if you want|optional|on your word|left to you|open question for you|for you to (approve|choose|decide)|yours to (approve|choose|decide|take|start|run|accept|refuse|pick|call)", re.I)
 flat = re.sub(r"\s+", " ", open(sys.argv[1], encoding="utf-8", errors="replace").read())
 for sentence in re.split(r"(?<=[.!?])\s+", flat):
     if not re.search(r"inline (redo|repair|fix|pass|run)|redo (it |this )?inline|repair it inline", sentence, re.I):

@@ -78,7 +78,7 @@ function transition(index: number, overrides: Partial<TransitionRecord> = {}): T
 
 function snapshot(transitions: TransitionRecord[] = []): StatusSnapshot {
   return {
-    providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, utilization: 0.5, demand: 0.5 }],
+    providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
     transitions,
   }
 }
@@ -94,8 +94,15 @@ function providerSnapshot(provider: Partial<ProviderStatus> & Pick<ProviderStatu
         active,
         queued,
         max,
+        ceiling: provider.ceiling ?? max,
         utilization: max === 0 ? 0 : active / max,
         demand: max === 0 ? 0 : (active + queued) / max,
+        tokensAvailable: provider.tokensAvailable ?? 0,
+        tokensCapacity: provider.tokensCapacity ?? 0,
+        tokensPausedUntil: provider.tokensPausedUntil ?? 0,
+        breaker: provider.breaker ?? "closed",
+        breakerRetryAfterMs: provider.breakerRetryAfterMs ?? 0,
+        stalls: provider.stalls ?? 0,
       },
     ],
     transitions: [],
@@ -149,7 +156,7 @@ describe("concurrency status panel body", () => {
 
     expect(state.unavailable).toBe(false)
     expect(state.rows).toEqual([
-      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, utilization: 0.5, demand: 0.5 }),
+      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }),
     ])
     expect(state.transitions).toEqual([])
   })
@@ -157,7 +164,7 @@ describe("concurrency status panel body", () => {
   test("renders labelled, separated columns with a colour for each load value", () => {
     const html = renderPanel(snapshot())
 
-    for (const label of ["Provider", "Active", "Queued", "Util", "Demand"]) {
+    for (const label of ["Provider", "Active", "Queued", "Tokens", "Util", "Demand"]) {
       expect(html).toContain(`>${label}<`)
     }
     expect(html).toContain(">acme<")

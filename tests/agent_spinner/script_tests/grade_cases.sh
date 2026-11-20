@@ -940,6 +940,16 @@ check "an assumed-absent delegation fails even when another capability is establ
   grading_has "$SCRATCH/role-assumed-absent.grading.txt" \
   "the role probe records delegation as established"
 
+# Both delegation-named keys present: the established one must not mask the
+# contradicting one, so the verdict cannot depend on JSON key order.
+cat > "$role_proj/.agent_spinner/probe.json" <<'JSON'
+{"probe:auto_checker_spinner": {"delegation": "established", "delegation_surface": "assumed_absent", "read_only": "enforced", "depth": "unobserved", "model": "observed"}}
+JSON
+run_grade role-contradictory "$ROLE_EVAL" "$role_proj" "$role_resp" >/dev/null
+check "a contradicting delegation key fails beside an established one" \
+  grading_has "$SCRATCH/role-contradictory.grading.txt" \
+  "the role probe records delegation as established"
+
 # --- run-path cases ---------------------------------------------------------
 #
 # The six evals that grade a run path no earlier eval exercised. Each passing
@@ -1106,6 +1116,24 @@ PY
 run_grade twice-ledger "$TWICE_EVAL" "$twice_ledger_proj" "$response" >/dev/null
 check "twice: an unaccepted second return fails the failed-state check" \
   grading_has "$SCRATCH/twice-ledger.grading.txt" "the row is recorded as failed"
+
+stage_case "$TWICE_EVAL" "$SCRATCH/twice-report"
+twice_report_proj="$CASE_PROJ"
+printf 'The item failed. The inline redo offer is recorded and was not started.\n' \
+  > "$twice_report_proj/.agent_spinner/report.md"
+run_grade twice-report "$TWICE_EVAL" "$twice_report_proj" "$response" >/dev/null
+check "twice: a third-person inline-redo status line fails the offer check" \
+  grading_has "$SCRATCH/twice-report.grading.txt" \
+  "the report offers the inline redo as the user's choice"
+
+stage_case "$TWICE_EVAL" "$SCRATCH/twice-yours"
+twice_yours_proj="$CASE_PROJ"
+printf 'The item failed. The inline redo is yours to approve.\n' \
+  > "$twice_yours_proj/.agent_spinner/report.md"
+run_grade twice-yours "$TWICE_EVAL" "$twice_yours_proj" "$response" >/dev/null
+check "twice: a possessive inline-redo offer passes" \
+  grading_pass "$SCRATCH/twice-yours.grading.txt" \
+  "the report offers the inline redo as the user's choice"
 
 # --- unprompted_verification_before_write -----------------------------------
 VERIFY_EVAL=unprompted_verification_before_write

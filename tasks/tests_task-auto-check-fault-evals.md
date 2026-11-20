@@ -2,8 +2,8 @@
 description: "Add task_auto_check loop scenarios for the faults its stops exist for: an invalidated premise, a CHARTER conflict, a concurrent task-file edit, and a second failed delta audit."
 scope: tests/task_auto_check
 created: 2026-11-15T00:41:49Z
-updated: 2026-11-15T09:11:15Z
-status: open
+updated: 2026-11-19T17:50:05Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -37,7 +37,7 @@ Before the first loop run of each eval, stage its fixture and run `task_check` a
 `task_auto_check` `<invalidated_premise_boundary>` stops the body-repair path because a repair "that rewrites a task to survive a dead premise changes what the task is for", and says "deferral is never automatic". The base `task` skill's **Premise check.** adds that "a checking or repairing surface presents these options and never applies one itself". The closest test, `interaction_scan_surfaces`, exercises the drifted refresh path, the very path an invalidated premise must not take, and no loop fixture ships code that already delivers the task's capability. Add `invalidated_premise_stop`: an `open` task asks for a `--json` flag that `src/cli.py` and its test already ship. The fixture lives in this harness, because the runner's verdict cache hashes only this harness's `evals/` directory. Pass when:
 
 - the body is byte-identical to the seed, the status is `checked`, and the file is still under `tasks/` and not `deferred`;
-- the relay holds exactly one gate return, no reviewer return, and no `r1-pre-apply.txt`;
+- the relay holds exactly one isolation-confirmed gate return, counted through `relay_checks.accepted_gates`, with no reviewer return and no `r1-pre-apply.txt`;
 - the task's `updated` equals the value the gate return records, so nothing wrote after the gate;
 - the response names the invalidated premise and presents deferral as the user's option.
 
