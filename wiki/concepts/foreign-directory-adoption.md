@@ -1,7 +1,7 @@
 ---
 title: Foreign directory adoption
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-11-21
 type: concept
 tags: [discovery, portability, claude, opencode, copilot, cursor, antigravity, verification-gap]
 sources: []
@@ -107,9 +107,10 @@ third key, `github.copilot.chat.claudeAgent.enabled`, is a different mechanism
 worth not confusing with these: it governs running Claude as a harness inside VS
 Code rather than reading Claude's files.
 
-Cursor documents no equivalent switch, and Antigravity documents neither a switch
-nor the adoption it would scope. Where none exists, plan for the foreign file
-arriving and keep the native variant authoritative.
+Cursor documents no equivalent switch, though a settings toggle
+drops foreign config along with `CLAUDE.md`, and Antigravity documents neither a
+switch nor the adoption it would scope. Where none exists, plan for the foreign
+file arriving and keep the native variant authoritative.
 
 ### The worked case: output styles
 

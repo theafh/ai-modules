@@ -1492,3 +1492,52 @@ pre-existing, and the size infos stay advisory; the one on
   print mode kept one `agent -p` call working after its run had stopped, as an
   agent_spinner eval run of 14 November 2026 showed, and the open question
   narrows to whether a goal carries work into a separate later invocation)
+
+## [2026-11-21 09:25] update | Source-fidelity sweep over every wiki page, with index compaction
+
+- Baseline revision `72f2128`. Scope: all 39 content pages read in full, every
+  cited raw sidecar (13 notes) and the repo files the unsourced pages rest on
+  (plugins/, harness-plugins/, deployment/, tasks/, AGENTS.md, SCHEMA.md, CHARTER.md),
+  by four read-only finder agents and four refute-by-default verifier agents,
+  with one writer applying every edit.
+- 23 pages and `index.md` changed. Defect classes fixed, with examples:
+  - false superlative and stale measurement: "largest single executable file in
+    the repository" and "outweighs every bundled skill script" removed from
+    `concepts/deployment-model.md`; `deployment/deployment.sh` is 3,662 lines
+    while `tests/wiki/layer1/run.sh` is 6,545 and bundled skill scripts total
+    16,613.
+  - stale mechanism: `concepts/request-concurrency-queue.md` described a FIFO
+    semaphore; the shipped scheduler admits the first waiter that fits the
+    concurrency, token-budget, and context gates, and also carries a circuit
+    breaker, adaptive width, a subagent gate, `queueDeadlineMs`, and a reload
+    grace period. `max` is the effective maximum, not the configured one.
+  - wrong counts: Copilot hook locations "four" to five; the task status rule
+    now includes removed steps and dropped work; the repository summary now
+    names `harness-plugins/` as the second artefact source outside `plugins/`.
+  - dropped conditions: the width-160 condition on the writer/verifier queue, the
+    scratch-config condition on deployed roles, and the five-helper retraction in
+    the Cursor compaction passage restored.
+  - superseded vendor facts: Antigravity global rules are a cumulative modular
+    `~/.gemini/config/rules/` directory with a 24,000-byte per-file cap, not a
+    single 12,000-character `GEMINI.md`; the retired consumer Gemini CLI surface
+    is distinguished from paid and enterprise access.
+  - cross-page contradictions: Copilot hook sources, the Cursor isolation
+    toggle, and the OpenCode hook bridge now agree across the pages that state
+    them.
+- Index: 39 entries before and after; entries over 220 characters 16 to 0;
+  total summary characters 9,231 to 6,272; longest entry 828 to 219. Every
+  rewritten entry starts lowercase to match the section register.
+- Rejected after re-check: the claim that the 4 October 2026 note left
+  standard-output capture unsettled (the note records the stream-json event
+  shapes); the claim that the family table's "later" column sums to 23 (a
+  recount of all 23 rows gives user 43, later 22, in-run 30, never 137, total
+  232); and the claim that the case register's 967 helpers contradicts its rows
+  (the cited note states 967, so the page reports its source faithfully; the
+  row sum of 979 is an unresolved source discrepancy).
+- Deliberately not done: no page was split. The 10 size advisories are accepted
+  because each page carries one subject and one evidence base; `checked:` was
+  left unchanged on pages whose whole claim set was not re-read by the writer,
+  except `concepts/request-concurrency-queue.md`, whose claims were re-read
+  against the shipped README and source on this date.
+- Lint: `make lint` clean (574 markdown, 46 JSON, 407 shell, 433 frontmatter
+  files). Wiki lint: 0 blocking, 0 warn, 10 size info.

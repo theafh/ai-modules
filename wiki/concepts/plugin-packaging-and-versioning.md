@@ -1,7 +1,7 @@
 ---
 title: Plugin packaging and versioning
 created: 2026-08-08
-updated: 2026-08-10
+updated: 2026-11-21
 type: concept
 tags: [plugin, versioning, repo-structure, claude, codex]
 sources: []
@@ -41,7 +41,7 @@ manifest edit will substitute for it.
 
 ### The versioning contract
 
-Five rules govern versions, and they exist to make the git history readable
+Six rules govern versions, and they exist to make the git history readable
 rather than to satisfy a package manager.
 
 A new skill, agent, or plugin ships at 1.0.0, with no bump in the commit that
@@ -59,7 +59,11 @@ Plugin metadata moves in lockstep. When any skill or agent version rises, or a
 new one is added, both `plugin.json` files and both marketplace registrations
 rise to the same new plugin version in the same commit. Four files, one number.
 
-The rule is machine-checkable, and `skill_doctor` reads it as a version check
+A published `ai_dev` or `knowledge_management` version updates the local
+marketplace registrations in that same commit as the plugin manifests, so the
+marketplace registration and the repository source name one version.
+
+The lockstep rule is machine-checkable, and `skill_doctor` reads it as a version check
 across those four files. Encoding it settled an ambiguity the prose had left open.
 The four have to agree with each other, while a skill's own `version:` is free to
 differ from the plugin version that carries it, because the two numbers count

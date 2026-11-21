@@ -1,11 +1,11 @@
 ---
 title: Request concurrency queue
 created: 2026-11-05
-updated: 2026-11-12
+updated: 2026-11-21
 type: concept
 tags: [opencode, plugin, deployment]
 confidence: high
-checked: 2026-11-06
+checked: 2026-11-21
 ---
 
 # Request concurrency queue
@@ -17,9 +17,9 @@ and a rejected request can end a session before its retries succeed.
 
 ## Definition and explanation
 
-The plugin keeps one FIFO semaphore per configured provider for the whole
+The plugin keeps one admission scheduler per configured provider for the whole
 OpenCode server process. Every open location (project) gates its requests
-through those same semaphores, so a provider's configured maximum caps
+through those same schedulers, so a provider's configured maximum caps
 concurrent requests across the process instead of once per location.
 
 Primary model requests (the agent loop) acquire a slot before they are sent and
@@ -29,9 +29,12 @@ or when the session becomes idle, fails, or is deleted. Auxiliary model requests
 cap: the runtime gives no per-request failure signal for them, so a slot held by
 an auxiliary request that failed before its response headers would have no
 release path and could stall the session's primary request. A request that finds
-every slot taken waits in the queue; the oldest waiter is served first. The
-plugin has no timeout: a request waits until a slot is released or the request
-is aborted.
+every slot taken waits in the queue. The scheduler admits the first waiting
+request that fits the concurrency, token-budget, and context-in-flight gates, so
+a smaller request can start ahead of an older one that does not yet fit. The
+queue has no timeout by default: a request waits until it is admitted or the
+request is aborted, and `scheduler.queueDeadlineMs` optionally rejects a waiter
+with a `QueueTimeoutError` that names the queue.
 
 The queue counts in-flight requests, not sessions. A session that is running a
 tool or waiting for a subagent is not consuming a provider slot. This matters
@@ -50,10 +53,22 @@ session idle, deletion, failure, and interruption.
 
 The plugin is configured with a provider map, so each provider has its own
 queue and maximum: `{ "myprovider": 2, "openrouter": 4 }`. The provider-list
-form with a shared `maxConcurrency` remains available. The plugin is inactive
-when no provider is configured. The provider ID is the stable match key; the
+form with a shared `maxConcurrency` remains available. The request queue is
+inactive when no provider is configured; a configured `subagents` gate still
+runs. The provider ID is the stable match key; the
 endpoint string is not required, because the ID identifies the configured
 provider entry even when its base URL changes.
+
+The scheduler admits on more than the concurrency count. A provider with a token
+budget configured also gates each request on its new-context allowance, and a
+`429` carrying `Retry-After` pauses that provider for the stated time. A circuit
+breaker opens after two consecutive attempts that produce no response, rejecting
+queued requests at once in `fail` mode or holding them until the cooldown ends in
+`wait` mode, then allows one probe. With `adaptive` enabled, the effective
+maximum halves on a capacity signal and recovers one step per four clean
+completions, up to the configured ceiling. With `subagents` configured, the
+plugin also wraps the built-in `subagent` tool and caps how many child sessions
+run at once, optionally lowering that ceiling from the host's load average.
 
 The shared queue lives in a versioned `globalThis` registry rather than in one
 `setup` closure. The first plugin instance in the server process creates each
@@ -64,8 +79,10 @@ unchanged and logs the mismatch: the first instance's configuration stays
 authoritative for the process. Each instance subscribes its `changed` emitter
 to the registry, so a transition under one location publishes through every
 instance's event stream. Disposing an instance releases only its own session
-entries and decrements the registry's refcount; the last instance clears it. A
-separate server process still keeps its own queue.
+entries and decrements the registry's refcount; the last instance leaves the
+store adoptable for `reloadGraceMs` (default 5000) before clearing it, so a
+redeploy hands the queue, its waiters, and the live child sessions to the new
+instance. A separate server process still keeps its own queue.
 
 Verified on 2026-11-06 against OpenCode 2.2.5: the server instantiates the
 plugin once per open location inside one server process. The sidecar log
@@ -88,7 +105,7 @@ environment variables remain a fallback, not the primary local configuration.
 
 The `log` flag is debug logging only. It prints initialization, acquire, and
 release events with the provider ID and that provider's active and queued
-counts. Structured state comes from the separate read-only status RPC below.
+counts. Structured state comes from the separate status RPC below.
 
 The desktop sidecar sends the plugin's stdout to `/dev/null`, so `log` output
 never reaches `opencode.log` or the status bar. The bar and its dialog feed are
@@ -96,8 +113,9 @@ the desktop observability surface: the dialog lists recent transitions, while
 `log` remains for terminal runs. The feed records identifiers and counts only,
 never prompts, message content, API keys, or tool arguments.
 
-The plugin serves a read-only status snapshot over the shared
-`request-concurrency-queue` RPC definition. Every location's handler reads the
+The plugin serves a status snapshot over the shared
+`request-concurrency-queue` RPC definition, beside `config` and `save` methods
+that back the Concurrency dialog. Every location's handler reads the
 process-wide registry, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `active`,
 `queued`, `max`, utilization (`active / max`), and demand
@@ -117,10 +135,12 @@ including Home, and opens a larger Concurrency dialog on click. It reads the
 built-in server because the queue is process-wide, and hides until the first
 fetch settles or when no provider is configured. Each provider appears on the
 bar as one `X/Y` count, where `X` is active plus queued and `Y` is the
-configured maximum, coloured by `(active + queued) / max`. The bar's
+effective maximum that adaptive control may lower, and the count is coloured by
+`(active + queued) / max`; the configured ceiling is a separate field in the
+config tab. The bar's
 subscription refetches on every `changed` event and on a slow interval, so a
 missed event recovers, and the dialog renders that same snapshot: each provider
-row shows its in-flight count, configured maximum, and queue depth as absolute
+row shows its in-flight count, effective maximum, and queue depth as absolute
 numbers, and its utilization and demand as percentages. The numbers are coloured
 on an eight-anchor load scale: dark green at 0%, light green at 100%, light
 yellow at 150%, orange at 200%, light red at 250%, dark red at 300%, dark pink
@@ -133,9 +153,10 @@ their timestamp, kind, provider, session, and counts; it renders the newest 20
 and scrolls. When a status fetch fails, the bar shows `Status unavailable` and
 the dialog shows no provider rows, until a later fetch succeeds.
 
-The queue does not address token-budget limits such as a provider's
-`burst_protection`, nor request-size rejections such as
-`cold_request_too_large`. Those are separate failure modes.
+A provider's `burst_protection` is handled when that provider has a `tokens`
+entry, because the budget numbers are provider-specific. A request-size
+rejection such as `cold_request_too_large` is not handled: the provider answers
+it, and the plugin neither predicts nor retries it.
 
 ## Open questions and debates
 

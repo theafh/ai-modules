@@ -1,7 +1,7 @@
 ---
 title: Hook surface portability
 created: 2026-08-08
-updated: 2026-11-05
+updated: 2026-11-21
 type: concept
 tags: [hook, portability, claude, codex, opencode, antigravity, copilot, plugin]
 sources: []
@@ -15,9 +15,9 @@ confidence: high
 A hook is a policy that runs at a point in the agent's lifecycle, usually before
 or after a tool call. Among the five harnesses whose hook contracts the research
 here has worked out, Claude, Codex, Antigravity, OpenCode, and Copilot in VS
-Code, no two agree on the configuration format, the event payload, or the way a
-handler says no. Cursor is the one target left whose surface is unworked here,
-which is unfinished coverage rather than a support decision.
+Code, no two agree on all three of the configuration format, the event payload,
+and the way a handler says no. Cursor is the one target left whose surface is
+unworked here, which is unfinished coverage rather than a support decision.
 
 The portable design that follows from that is one shared executable policy script
 called from per-harness configuration, with the script itself written to detect
@@ -51,8 +51,9 @@ replaced V1's plugin contract outright, so a V1 plugin does not run there and a
 bridge has to target V2's setup-context hook domains.
 
 A four-harness plugin therefore ships four hook configurations over one shared
-script, and reaches OpenCode through a thin bridge plugin that builds the
-script's stdin envelope, runs it, and throws on a non-zero exit.
+script, and would reach OpenCode through a thin bridge plugin, still an open
+backlog task, that maps the event onto the script's stdin envelope and sets
+`effect` to `deny` on a non-zero exit.
 
 How this repository lays those files out, and where its deploy routes each one,
 is on [hook delivery design](hook-delivery-design.md).
@@ -130,10 +131,12 @@ shared script claiming a uniform guarantee across every tree it lands in; its
 deploy branch matches on a Cursor-named configuration file that nobody has been
 able to write.
 
-One question the Copilot research raised is settled rather than open. Both Copilot
-products read `~/.claude/settings.json` for hooks, so a Claude hook merged there
-would fire in VS Code too, and shipping both that merge and a Copilot-native file
-would run the same guard twice in one session. The decision that settles it is
+One question the Copilot research raised is settled rather than open. Copilot in
+VS Code reads `~/.claude/settings.json` at user scope, so a Claude hook merged
+there would fire in VS Code too, and shipping both that merge and a Copilot-native
+file would run the same guard twice in one session. The CLI's own list names
+`~/.copilot/hooks/*.json`, `~/.copilot/settings.json`, and its policy
+directories. The decision that settles it is
 recorded on [hook delivery design](hook-delivery-design.md).
 
 ## Related concepts
@@ -149,5 +152,6 @@ recorded on [hook delivery design](hook-delivery-design.md).
 
 - Provider documentation for Claude, Codex, OpenCode, Antigravity, and Copilot,
   verified July and August 2026 and cited on the per-harness entity pages.
+- OpenCode V2 2.2.5 plugin and permission contracts, verified 5 November 2026.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

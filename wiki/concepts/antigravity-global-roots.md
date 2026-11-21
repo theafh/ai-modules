@@ -1,7 +1,7 @@
 ---
 title: Antigravity global configuration roots
 created: 2026-08-09
-updated: 2026-08-09
+updated: 2026-11-21
 type: concept
 tags: [antigravity, discovery, deployment]
 sources: []
@@ -21,7 +21,8 @@ is the reason a deploy step here fans one artefact class out to three directorie
 while writing every other class once.
 
 Facts here were verified in July 2026 against `antigravity.google/docs`
-(`/skills`, `/ide/skills`, `/cli/plugins`, `/cli/settings`, `/hooks`). Re-verify
+(`/skills`, `/ide/skills`, `/cli/plugins`, `/cli/settings`, `/hooks`), and on
+2026-11-21 against `/rules`. Re-verify
 before relying on them.
 
 ## Current state of knowledge
@@ -38,8 +39,9 @@ against `~/.gemini/antigravity-cli/plugins/<plugin_name>/` for the CLI.
 ### Everything else converges
 
 Agents, `hooks.json`, `mcp_config.json`, and `sidecars/` are single-rooted under
-`~/.gemini/config/`. Global rules are the single file `~/.gemini/GEMINI.md`, one
-level above `config/` rather than inside it, and the CLI keeps its own preferences
+`~/.gemini/config/`. Global rules live in a modular `~/.gemini/config/rules/`
+directory, with the standalone `~/.gemini/GEMINI.md` one level above
+`config/`, and the CLI keeps its own preferences
 at `~/.gemini/antigravity-cli/settings.json`.
 
 So the claim that one global deploy reaches the IDE, the CLI, and 2.0 is neither

@@ -1,7 +1,7 @@
 ---
 title: Deciding where knowledge belongs
 created: 2026-08-08
-updated: 2026-10-03
+updated: 2026-11-21
 type: procedure
 tags: [authoring, skill, repo-structure]
 sources: []
@@ -10,8 +10,8 @@ confidence: high
 
 # Deciding where knowledge belongs
 
-When you are about to write down something durable, send it to the skill body if
-it changes what an agent does, to the skill's `references/` directory if an agent
+When you are about to write down something durable, send it to the skill body or
+a guardrail document if it changes what an agent does, to the skill's `references/` directory if an agent
 needs it in another repository, and to this wiki if it is evidence, derivation, or
 a decision record. The deciding question is whether the knowledge has to travel,
 because the wiki is checked into this repository and reaches nowhere else.
@@ -33,7 +33,8 @@ different decay rates.
 
 A rule changes what an agent does at the moment it acts. It is stable, it is
 short, and it must fire without anyone going to look for it. Rules belong in the
-skill body, where a trigger loads them.
+skill body, where a trigger loads them, or in a guardrail document when they must
+constrain an agent executing a task.
 
 A fact is perishable: a path, a key name, a version threshold, a vocabulary, a
 flag. Facts belong wherever they are needed. If an agent needs one while working

@@ -1,7 +1,7 @@
 ---
 title: Hook delivery design
 created: 2026-10-01
-updated: 2026-10-29
+updated: 2026-11-21
 checked: 2026-08-09
 type: concept
 tags: [hook, deployment, portability, plugin, claude, codex, antigravity, copilot, cursor, opencode]
@@ -87,7 +87,7 @@ groups, and an absolute command path.
 
 ### Copilot gets native delivery
 
-Both Copilot products read `~/.claude/settings.json` for hooks, as
+Copilot in VS Code reads `~/.claude/settings.json` for hooks, as
 [hook surface portability](hook-surface-portability.md) records, so a merged
 Claude hook and a Copilot-native file would run the same guard twice in one
 session. The decision, taken on 9 August 2026, is to deliver natively and close

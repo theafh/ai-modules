@@ -1,7 +1,7 @@
 ---
 title: What remains unverified about Google Antigravity?
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-11-21
 type: query
 tags: [antigravity, verification-gap, frontmatter, agent, discovery]
 sources: []
@@ -85,7 +85,8 @@ frontmatter-tolerance question above is answered.
 
 High on the report, and nil on the answers. Each gap is an accurate account of
 what the documentation says and does not say as of 7 August 2026, checked across
-every page listed on the entity page rather than inferred from one, which is why
+the documentation pages that cover settings, the CLI reference, skills,
+subagents, plugins, rules, and workflows rather than inferred from one, which is why
 this page carries high confidence: what it asserts is the state of the
 documentation, and that was verified. What none of the four has is an answer, and
 none has been tested on an installed build. The tolerance question is the one

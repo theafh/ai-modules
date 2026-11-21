@@ -1,7 +1,7 @@
 ---
 title: Isolating VS Code from foreign harness config
 created: 2026-08-09
-updated: 2026-10-01
+updated: 2026-11-21
 type: procedure
 tags: [copilot, claude, codex, discovery, portability, hook]
 sources: []
@@ -23,7 +23,8 @@ Claude, or the chat sidebar lists past sessions from other harnesses, including
 ones archived elsewhere. VS Code reads user-level instructions from
 `~/.claude/rules`, finds `CLAUDE.md` at a workspace root, in a `.claude` folder,
 or at `~/.claude/CLAUDE.md`, loads agents from a workspace `.claude/agents`, and
-reads hooks from `.claude/settings.json` and `~/.claude/settings.json`. See
+reads hooks from `.claude/settings.json`, `.claude/settings.local.json`, and
+`~/.claude/settings.json`. See
 [GitHub Copilot in VS Code](../entities/github-copilot-vs-code.md).
 
 ## The rule
@@ -37,6 +38,7 @@ default, so the Claude sources come off individually while your own stay on.
 ```jsonc
 "chat.hookFilesLocations": {
   ".claude/settings.json": false,
+  ".claude/settings.local.json": false,
   "~/.claude/settings.json": false
 },
 "chat.instructionsFilesLocations": {

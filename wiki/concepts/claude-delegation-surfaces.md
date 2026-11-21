@@ -1,7 +1,7 @@
 ---
 title: Claude Code delegation surfaces
 created: 2026-10-04
-updated: 2026-10-04
+updated: 2026-11-21
 checked: 2026-09-05
 type: concept
 tags: [claude, agent, verification-gap]
@@ -47,8 +47,8 @@ records). In two sessions of 5 September 2026, the Workflow pool ran at most 12
 helpers at once, which fits first-in-first-out queuing. One of those sessions
 was checker-verified
 ([run evidence](../raw/notes/agent-spinner-run-evidence-2026-09.md)). In one
-run the writers far outnumbered the pool, and no verifier started until every
-writer had left the queue. A stop partway through that run therefore found no
+run at about width 160, the writers far outnumbered the pool, and no verifier
+started until every writer had left the queue. A stop partway through that run therefore found no
 checker started. In a narrower run, the first checker started while writers
 still ran, and the two stages overlapped at the tail. The tool description
 carries a default size guideline, "keep workflows under 10 agents", which the
@@ -113,7 +113,8 @@ stream's `tool_use` records. The Workflow tool also spawns agents, so a session
 meant to run without spawning needs both the spawn tool and the Workflow tool
 withheld. A role file staged in the project's `.claude/agents/` directory
 appears in the init event's `agents` list and spawns by name through
-`subagent_type: <name>`. The user's deployed roles reach such a session too, as
+`subagent_type: <name>`. The user's deployed roles reach such a session when it
+reads the user tree; a scratch configuration directory removes them, as
 [Anthropic Claude Code](../entities/anthropic-claude-code.md) records. Tools
 denied to the parent session are denied inside its spawned helpers as well, with
 a refusal that reads "disabled for this session, in subagents as well as here".

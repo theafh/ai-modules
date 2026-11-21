@@ -1,7 +1,7 @@
 ---
 title: System prompt substitution across harnesses
 created: 2026-08-08
-updated: 2026-10-06
+updated: 2026-11-21
 type: comparison
 tags: [system-prompt, portability, output-style, claude, codex, opencode, antigravity, cursor, copilot]
 sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
@@ -48,7 +48,7 @@ slot whose current contents can be re-derived, edited, and written back.
 | OpenAI Codex | instructions file under `~/.codex/` | `model_instructions_file` in `config.toml` |
 | SST OpenCode | agent file, or a path in the `instructions` array | none for `instructions`; agent selection for the replacing route |
 | Cursor | project `.cursor/rules/<name>.mdc` with `alwaysApply: true`; no print-mode-injecting global file path | none for the project write; account User Rules are settings text a deploy cannot write |
-| Google Antigravity | `~/.gemini/GEMINI.md` (the workspace `.agents/rules/` tree is project scope) | none; the global file needs no activation mode |
+| Google Antigravity | `~/.gemini/config/rules/*.md` or the standalone `~/.gemini/GEMINI.md` (the workspace `.agents/rules/` tree is project scope) | modular rule files need `trigger` frontmatter; the standalone file needs no activation mode |
 | Copilot in VS Code | `~/.copilot/instructions` | none |
 
 Copilot is the cheapest target to reach, with one file and no settings key.
@@ -79,12 +79,13 @@ turn.
 
 ### Reach
 
-A Claude style reaches the main conversation only, since a subagent runs its own
-system prompt. OpenCode's `instructions` tail is appended to every request
-whatever agent is running, so it governs subagents too, which is wider reach than
-the native tier offers. Antigravity caps a rules file by character count and
-states that limit for rules files generally, so its global deposit has to fit
-inside one file rather than splitting the way a project tree of rule files can.
+A Claude style reaches the main conversation and a fork, since another subagent
+runs its own system prompt. OpenCode's `instructions` tail
+is appended to every request whatever agent is running, so it governs subagents
+too, which is wider reach than the native tier offers. Antigravity caps each rule
+file at 24,000 bytes, and its global deposit can be a modular
+`~/.gemini/config/rules/` directory beside the always-active
+`~/.gemini/GEMINI.md`, not one file only.
 The cap itself is on [Google Antigravity](../entities/google-antigravity.md).
 
 ## Verdict
@@ -104,10 +105,11 @@ build, or extracts the string from the application bundle.
 
 OpenCode splits the prompt more cleanly. Its replacement swaps the vendor base
 prose while the environment block, project rules, MCP instructions, and skills
-catalogue survive untouched, which is a finer seam than Claude's all-or-nothing
-`keep-coding-instructions` flag. The trade is that the slot is per agent rather
-than global, so making the swap the default means overriding the built-in primary
-agent.
+catalogue survive untouched, which is a finer seam than Claude's
+`keep-coding-instructions` flag, which decides only how much of the engineering
+layer returns beside the replacing style. The trade is that the slot is per
+agent rather than global, so making the swap the default means overriding the
+built-in primary agent.
 
 ### The price of synthesis
 

@@ -1,7 +1,7 @@
 ---
 title: Cursor
 created: 2026-08-08
-updated: 2026-11-15
+updated: 2026-11-21
 type: entity
 tags: [cursor, agent, skill, frontmatter, discovery, verification-gap]
 sources:
@@ -81,7 +81,8 @@ that a scratch `HOME` logs in and that a skill copied into that scratch home's
 `.cursor/skills/` was then the copy read when the prompt named it
 ([micro-home probes](../raw/notes/micro-deployed-worker-home-probes-2026-10-08.md)).
 The 2026-10-26 probes narrow the login mechanism to Library/Keychains alone and
-supersede that whole-`Library` claim.
+narrow the whole-`Library` claim to a sufficiency claim: linking the whole
+`Library` is not required.
 A skill the
 harness had not staged at all, such as a base skill the staged one reaches by
 name, resolved to its deployed copy as well
@@ -158,7 +159,8 @@ A context compaction leaves a visible trace in the parent transcript: the
 original user turn appears again with its original timestamp and any manually
 attached skill re-inlined. One run on 26 October 2026 carried four such
 re-deliveries of a turn typed once, and right after the second the parent wrote
-helper returns itself instead of spawning the helpers
+the returns of five reviewer helpers itself instead of spawning them, then
+noticed and retracted them
 ([run observations](../raw/notes/auto-check-open-weight-run-observations-2026-10-27.md)).
 
 Nested spawning, where a subagent spawns helpers of its own, worked on

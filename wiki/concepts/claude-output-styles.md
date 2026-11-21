@@ -1,7 +1,7 @@
 ---
 title: Claude output styles
 created: 2026-08-08
-updated: 2026-10-02
+updated: 2026-11-21
 type: concept
 tags: [claude, output-style, system-prompt, frontmatter, deployment]
 sources: []
@@ -77,7 +77,8 @@ style.
 
 ### Two delivery modes
 
-A global style governs every session on the machine and is two placements rather
+A global style is the default for every session on the machine that no
+project-local key overrides, and it is two placements rather
 than one: the file at `~/.claude/output-styles/<name>.md`, and
 `"outputStyle": "<name>"` in `~/.claude/settings.json`. Nothing in the plugin
 system writes either of them. A marketplace install, a `/plugin` enablement, and

@@ -1,7 +1,7 @@
 ---
 title: Google Antigravity
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-11-21
 type: entity
 tags: [antigravity, skill, agent, hook, plugin, discovery, verification-gap]
 sources: []
@@ -13,9 +13,11 @@ confidence: medium
 ## Overview
 
 Antigravity is Google's agent harness and the replacement target for the retired
-Gemini CLI, which Google shut down on 18 June 2026. This repository deploys
-skills, agents, and hooks to it, and the open style work targets the global rules
-file. Workflows, plugin bundles, and sidecars are surfaces nothing here writes.
+consumer Gemini CLI surface, which Google retired on 18 June 2026 while paid and
+enterprise API-key access continued. This repository deploys
+skills, agents, and hooks to it, and the open style work targets the rules
+surface at both global and project scope. Workflows, plugin bundles, and sidecars
+are surfaces nothing here writes.
 
 It diverges from the others in four ways: a native `.agents/` workspace tree that
 two other harnesses also read, global roots that differ by artefact class rather
@@ -25,8 +27,8 @@ separate Python SDK whose lifecycle hooks are a second hook surface entirely.
 Facts below were verified in July 2026 against `antigravity.google/docs`
 (`/skills`, `/subagents`, `/hooks`, `/plugins`, `/mcp`, `/sidecars`,
 `/rules-workflows`, `/ide/skills`, `/ide/plugins`, `/ide/hooks`, `/cli/plugins`,
-`/cli/settings`, `/cli/gcli-migration`) and on 7 August 2026 against
-`/docs/rules-workflows`. Re-verify before relying on them.
+`/cli/settings`, `/cli/gcli-migration`) and on 9 August 2026 against
+`/docs/rules-workflows`, and on 2026-11-21 against `/rules`. Re-verify before relying on them.
 
 ## Key facts and dates
 
@@ -50,10 +52,11 @@ Antigravity ships as three products, and its global configuration diverges by
 artefact class rather than by product: skills and plugins split across the
 products while everything else converges under `~/.gemini/config/`. So one global
 deploy reaches all three products for agents, hooks, MCP, and sidecars, and fails
-to for skills and plugins. Global rules are the single file `~/.gemini/GEMINI.md`,
-one level above `config/`. The per-class paths, what they mean for a deploy, and
-the output tree that is not a configuration root are on
-[Antigravity global configuration roots](../concepts/antigravity-global-roots.md).
+to for skills and plugins. Global rules live in a modular
+`~/.gemini/config/rules/` directory, with the standalone `~/.gemini/GEMINI.md` as
+the single-file alternative one level above `config/`. The per-class paths, what
+they mean for a deploy, and the output tree that is not a configuration root are
+on [Antigravity global configuration roots](../concepts/antigravity-global-roots.md).
 
 ### Skills
 
@@ -152,17 +155,17 @@ Google's `/docs/sidecars`.
 
 ### Rules and workflows
 
-Workspace rules are Markdown under `.agents/rules/`, global rules are the single
-`~/.gemini/GEMINI.md` applied across all workspaces, and workflows are Markdown
-in either scope invoked as `/workflow-name` slash commands. The 12,000-character
-cap is stated for rules files and workflow files generally, without exempting the
-global one, so read it as binding on `~/.gemini/GEMINI.md` too. The four
+Workspace rules are Markdown under `.agents/rules/`, global rules live in
+`~/.gemini/config/rules/` or the standalone `~/.gemini/GEMINI.md` applied across all
+workspaces, and workflows are Markdown
+in either scope invoked as `/workflow-name` slash commands. Each rule file is
+capped at 24,000 bytes. The four
 activation modes, Manual, Always On, Model Decision, and Glob, are documented for
-workspace rules only, and the global file names no mode because it is always
-applied. The rules documentation describes no tone, persona, output-format, or
+rule files under a `rules/` directory at either scope; a standalone `GEMINI.md`
+names no mode because it is always applied. The rules documentation describes no tone, persona, output-format, or
 system-prompt-replacement feature at all, presenting rules purely as constraints
 the agent follows. This section was re-checked against `/docs/rules-workflows` on
-9 August 2026.
+9 August 2026 and against `/rules` on 2026-11-21.
 
 ## Verification gaps
 

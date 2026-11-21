@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-11-05
+updated: 2026-11-21
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -168,9 +168,8 @@ key rather than as a file alone. See
 
 ### What the script has become, and the line that keeps it a helper
 
-The script is the largest single executable file in the repository, and it
-outweighs every bundled skill script put together. It carries its own
-configuration format, its own log format, backup retention, an update path, an
+The script carries its own configuration format, its own log format, backup
+retention, an update path, an
 uninstall path, a dry run, two-dimensional filtering, and a code generator for
 each target format it bridges. It is also the
 only substantial program here that ships to nobody, while every machine depends

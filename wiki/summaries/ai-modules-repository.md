@@ -1,7 +1,7 @@
 ---
 title: The ai-modules repository
 created: 2026-08-08
-updated: 2026-10-06
+updated: 2026-11-21
 type: summary
 tags: [repo-structure, plugin, skill, agent, deployment]
 sources: []
@@ -37,7 +37,7 @@ installation in [the deployment model](../concepts/deployment-model.md).
 
 ### What the repository contains
 
-The plugin tree holds everything. `ai_dev` carries the day-to-day development
+The plugin tree holds almost everything. `ai_dev` carries the day-to-day development
 surface: the git skills, the changelog skill, the `task_*` family with its spawned
 `auto_*_task` agents, the guardrail skills, the AI-instruction authoring skills,
 the per-language formatting skills, the portability skill, and `skill_doctor`,
@@ -51,11 +51,13 @@ thin front end delegates to read-only assessors and one serialized writer, is
 
 Around the plugins sit the marketplace registrations, one for Claude under
 `.claude-plugin/` and one for Codex under `.agents/plugins/`, the `deployment/`
-directory, the `tasks/` backlog, the `styles/` directory holding the tracked
+directory, the `harness-plugins/` tree of self-contained harness packages, the
+`tasks/` backlog, the `styles/` directory holding the tracked
 output styles, the committed test tree described in
 [verification surfaces for a shipped skill](../concepts/verification-surfaces.md),
-and the repo-root instruction and guardrail files. `styles/` is the one artefact source that sits outside
-`plugins/`, deliberately, so that
+and the repo-root instruction and guardrail files. `styles/` is one of the two
+artefact sources that sit outside `plugins/`, the other being `harness-plugins/`;
+it sits there deliberately, so that
 [the deployment model](../concepts/deployment-model.md) reaches it without
 Claude's plugin discovery also picking it up.
 
@@ -79,7 +81,7 @@ well: the harness research had grown past what a shipped skill should carry.
 The toolchain is deliberately small. The charter names Make plus standard Unix
 shell plus Markdown, with Python 3 as an accepted standing dependency for helper
 scripts in the wiki, task, and formatting skills, and leaves the remaining
-standing tools to the declared toolchain floor that `make install` prepares. The
+standing tools to the declared toolchain floor that the charter sets. The
 instruction files still name `jq`, `git`, and Python 3 beside the languages,
 because a file that lists only the languages reads as a complete inventory and
 sends an agent looking for permission it already has. The deploy script's

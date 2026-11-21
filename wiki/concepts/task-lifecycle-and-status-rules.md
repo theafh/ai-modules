@@ -1,7 +1,7 @@
 ---
 title: Task lifecycle and status rules
 created: 2026-10-10
-updated: 2026-10-14
+updated: 2026-11-21
 type: concept
 tags: [skill, frontmatter, repo-structure]
 sources: [raw/notes/task-status-rules-owner-statements-2026-10-10.md, raw/notes/task-status-rules-owner-statements-2026-10-13.md]
@@ -16,7 +16,7 @@ This page states how the `task_*` family is meant to move a task through its lif
 
 The task system keeps each unit of upcoming work as one markdown file in `tasks/`, and the file's `status` frontmatter field records how far the work has come. The hub skill `task` owns the file format and the rules, and each sibling skill owns one step of the lifecycle, as [skill family architecture](skill-family-architecture.md) describes.
 
-The task text is a contract. Before implementation the contract may still be shaped, and `task_check`'s readiness verdict covers exactly the text it read. Once the work is built, the text records what was delivered. From then on the text stays as it is and the status moves forward, with one exception: when a re-audit finds gaps in an `audited` task, the task goes back to `implemented` and the gaps are fixed on that same task. The owner's line for completed work is that it is either left alone or was never implemented ([owner statements, 2026-10-10](../raw/notes/task-status-rules-owner-statements-2026-10-10.md)), and gaps a re-audit finds keep the work open rather than spawning new tasks ([owner statements, 2026-10-13](../raw/notes/task-status-rules-owner-statements-2026-10-13.md)).
+The task text is a contract. Before implementation the contract may still be shaped, and `task_check`'s readiness verdict covers exactly the text it read. Once the work is built, the text records what was delivered. From then on the text stays as it is and the status moves forward, with one exception: when a re-audit finds gaps in an `audited` task, the task goes back to `implemented` and the gaps are fixed on that same task. The owner's line for implemented work is that it is either left alone or was never implemented ([owner statements, 2026-10-10](../raw/notes/task-status-rules-owner-statements-2026-10-10.md)), and gaps a re-audit finds keep the work open rather than spawning new tasks ([owner statements, 2026-10-13](../raw/notes/task-status-rules-owner-statements-2026-10-13.md)).
 
 Each status has one owner, and each stage allows a different kind of edit to the text:
 
@@ -38,7 +38,7 @@ A task at `open`, `checked`, or `ready` may be rewritten, and `open` and `checke
 
 - A Goal change always returns the task to `checked`.
 - A mechanical change to links never does, whether it re-points a link or turns a link into plain text, and neither does any other mechanical lint fix.
-- An added or changed Approach step or Acceptance item returns the task to `checked` when it asks for work or a check that the task did not already require. It keeps `ready` when it only makes an existing requirement explicit, because the owner judges such a change by its size rather than by its kind.
+- An Approach step or Acceptance item that the rewrite adds, changes, or removes returns the task to `checked` when it asks for work or a check that the task did not already require, or drops work or a check the task required. It keeps `ready` when it only makes an existing requirement explicit, because the owner judges such a change by its size rather than by its kind.
 - Rewording that keeps the meaning, a regroup under the repeated-link react protocol, and a clarifying note all keep `ready`.
 
 This trigger replaced one that sent every rewrite outside the linter's mechanical fix set back to `checked`, regroups and additive notes included. The re-check exists to catch a contract that moved after the gate read it. A change that moved nothing would cost a gate run and buy no information, so the trigger looks at what changed rather than at whether any byte did.
@@ -59,7 +59,7 @@ A new follow-up task is the exception, because filing one for every gap inflates
 
 ### Archived status is final, and archiving rewrites only links
 
-`task_finish` runs the hub's archive workflow. That workflow sets `finished` or `deferred`, moves the file into `tasks/archive/`, and repairs links: it re-points the moved file's own links and every inbound link in other tasks, or it turns an inbound link into plain text plus `(archived)`. Those rewrites are mechanical, so they change no task's status, and the close-out's own move is the only status the workflow writes. A `finished` or `deferred` task keeps its status for good, also when a later mechanical rewrite touches its file in the archive.
+`task_finish` runs the hub's archive workflow. That workflow sets `finished` or `deferred`, moves the file into `tasks/archive/`, and repairs links: it re-points the moved file's own links and every inbound link in the repository, including non-task markdown files, or it turns an inbound link into plain text plus `(archived)`. Those rewrites are mechanical, so they change no task's status, and the close-out's own move is the only status the workflow writes. A `finished` or `deferred` task keeps its status for good, also when a later mechanical rewrite touches its file in the archive.
 
 ### The repeated-link warning asks for a reorganization before implementation
 

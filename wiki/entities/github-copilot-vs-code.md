@@ -1,7 +1,7 @@
 ---
 title: GitHub Copilot in VS Code
 created: 2026-08-08
-updated: 2026-10-27
+updated: 2026-11-21
 type: entity
 tags: [copilot, agent, skill, plugin, hook, discovery]
 sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]
@@ -59,7 +59,7 @@ Agent hooks are documented as **Preview**, with the configuration format and
 behaviour stated as subject to change, so anything built on them is pinned to a
 version rather than to a contract.
 
-VS Code looks in four places. At workspace scope it reads `.github/hooks/*.json`,
+VS Code looks in five places. At workspace scope it reads `.github/hooks/*.json`,
 `.claude/settings.json`, and `.claude/settings.local.json`. At user scope it reads
 `~/.copilot/hooks` and `~/.claude/settings.json`. The scope table names the user
 directory without stating the filename pattern inside it, which the CLI reference
@@ -149,7 +149,7 @@ standing system instruction arrives inside the user turn instead.
 
 Reasoning effort has no per-agent field. The Copilot extension built into
 Visual Studio Code 0.70.0 contributes two effort settings, both global:
-`github.copilot.chat.claudeDefaultReasoningEffort` (`low`, `medium`, `high`, or
+`github.copilot.chat.claudeDefaultReasoningEffort` (empty, `low`, `medium`, `high`, or
 `max`) and the debugging setting `github.copilot.chat.reasoningEffortOverride`
 (read 27 October 2026 from the extension's contributed configuration,
 [run observations](../raw/notes/auto-check-open-weight-run-observations-2026-10-27.md)).

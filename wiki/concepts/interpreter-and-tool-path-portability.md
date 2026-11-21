@@ -1,7 +1,7 @@
 ---
 title: Interpreter and tool-path portability
 created: 2026-10-03
-updated: 2026-10-18
+updated: 2026-11-21
 checked: 2026-10-03
 type: concept
 tags: [portability, skill, authoring]
@@ -27,8 +27,9 @@ tool.
 The shipped `harness_portability` skill carries the bash floor, the rule for
 `PATH` in non-login shells, and the list that pairs each failing construct with
 a substitute. It has no rule yet on the stock python3's version or on the zsh
-constructs and special parameters. The backlog carries the work to record those observations in the
-skill's references. This page holds the dated evidence for both the rules and
+constructs and special parameters. The skill's `references/delegation-surfaces.md`
+now records the python3 and zsh-construct observations; the special parameters
+remain recorded only here, and no rule carries them yet. This page holds the dated evidence for both the rules and
 the observations.
 [Deciding where knowledge belongs](../procedures/deciding-where-knowledge-belongs.md)
 is the routing rule that puts the evidence here and the rules in the skill.
@@ -85,7 +86,7 @@ caught by `bash -n` without executing: `&>>`, `;;&`, `coproc`, and
 | `EPOCHSECONDS` | unbound variable |
 | `printf '%(fmt)T'` | invalid format character |
 
-Associative arrays fail in two ways. A bare `declare -A m` reports
+Associative arrays fail in two further ways. A bare `declare -A m` reports
 `declare: -A: invalid option`. A populated `declare -A m=([k]=v)` is read as an
 arithmetic subscript, so under `set -u` it aborts with an unbound-variable error
 naming the key, and without `set -u` it silently degrades to an indexed array.

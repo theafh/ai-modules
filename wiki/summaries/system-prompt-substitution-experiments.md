@@ -1,7 +1,7 @@
 ---
 title: System prompt substitution experiments
 created: 2026-08-08
-updated: 2026-08-09
+updated: 2026-11-21
 type: summary
 tags: [experiment, system-prompt, authoring, codex, opencode, claude]
 sources: []
@@ -29,8 +29,9 @@ resulting behaviour observed.
 The synthesizable tier described in
 [system prompt substitution across harnesses](../comparisons/system-prompt-substitution-across-harnesses.md)
 is what makes the test possible. Codex and OpenCode each expose a slot that takes
-a whole prompt, and each exposes the text that slot would otherwise hold, so the
-vendor prompt can be read out, rewritten in full, and put back.
+a whole prompt. Codex also exposes the text that slot would otherwise hold,
+through `codex debug models`, so the vendor prompt can be read out, rewritten in
+full, and put back.
 
 ## Key findings by sub-topic
 

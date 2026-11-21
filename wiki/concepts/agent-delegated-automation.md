@@ -1,7 +1,7 @@
 ---
 title: Agent-delegated automation
 created: 2026-08-29
-updated: 2026-11-09
+updated: 2026-11-21
 type: concept
 tags: [skill, agent, authoring, repo-structure]
 sources: [raw/notes/agent-spinner-run-evidence-2026-09.md]
@@ -32,8 +32,8 @@ a base skill that the agents cite rather than copy.
 
 A front-end skill is the part a user invokes, and it stays thin. `wiki_fix` does
 no work of its own. It invokes the `auto_shaper_wiki` agent and passes the
-agent's report straight back. `task_auto_check` drives one task from open to
-ready by running a bounded loop over five task agents — drift, a
+agent's report straight back. `task_auto_check` drives one task from open or
+checked to ready by running a bounded loop over five task agents — drift, a
 pre-gate implementer dry run, gate, review, and verification — and
 applying the edits they bless. `task_fix` repairs the whole backlog inline for mechanical fixes, and
 hands the harder judgement calls to a writer agent when the user opts in or the

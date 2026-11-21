@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-11-14
+updated: 2026-11-21
 type: concept
 tags: [skill, repo-structure, authoring, claude, cursor, verification-gap]
 sources: [raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
@@ -157,7 +157,8 @@ with the worker started under `--setting-sources project,local`, keeps those out
 while a style staged in the sandbox still loads
 ([Claude output style selection](claude-output-style-selection.md)). The user's
 deployed roles and skills also reach a sandboxed worker. A worker given a
-scratch configuration directory listed only the built-in ones
+scratch configuration directory listed the project and organisation-managed
+skills plus only the built-in agents
 ([Anthropic Claude Code](../entities/anthropic-claude-code.md)). A malformed
 sandbox settings file fails silently, so a run that depends on a staged style
 proves the style loaded before it measures anything. Every behavioural runner

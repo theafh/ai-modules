@@ -1,7 +1,7 @@
 ---
 title: Skill family architecture
 created: 2026-08-08
-updated: 2026-10-10
+updated: 2026-11-21
 type: concept
 tags: [skill, agent, authoring, repo-structure, portability, discovery]
 sources: []
@@ -40,7 +40,7 @@ takes the `<family>_auto_<rest>` form, so `task_auto_check` sits beside
 `task_check` without either name implying the other does not exist.
 
 An agent that only ever gets spawned leads with `auto_` and ends with the family
-token, giving `auto_shaper_wiki` and `auto_implementer_task`. The name is a
+token, giving `auto_shaper_wiki` and `auto_shaper_task`. The name is a
 signal to the router and to a human reader that no user invokes this directly.
 
 The runtime architecture these spawned agents implement, where read-only
