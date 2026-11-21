@@ -2750,6 +2750,12 @@ PY
         ok "dispose --open-fork refuses an id the ledger already holds"
     fi
     ledger "$dir" dispose --id F --disposition surfaced --packet pkt-f --recommend "Widen to all sixty" --why "the request asks for an assurance over every occurrence" >/dev/null 2>&1
+    ledger "$dir" status > "$dir/status.txt" 2>&1
+    if grep -q 'surfaced forks with no answer record:' "$dir/status.txt" && grep -Fq '  F Widen to the remaining sixty pages?' "$dir/status.txt"; then
+        ok "status lists a surfaced fork that carries no answer record"
+    else
+        bad "status lists a surfaced fork that carries no answer record"
+    fi
     ledger "$dir" show --packet pkt-f > "$dir/packet.txt" 2>&1
     if grep -q 'Decision packet: pkt-f' "$dir/packet.txt" && grep -q 'Issue: Widen to the remaining sixty pages?' "$dir/packet.txt" && grep -q 'Widen to all sixty' "$dir/packet.txt" && grep -q '"Widen to the remaining sixty pages?"' "$dir/packet.txt" && grep -q 'anchor: the request' "$dir/packet.txt"; then
         ok "show --packet renders a fork opened through --open-fork once surfaced"
@@ -2789,6 +2795,37 @@ PY
         ok "dispose --open-fork records each --passage with the request as its anchor"
     else
         bad "dispose --open-fork records each --passage with the request as its anchor"
+    fi
+
+    dir="$dir/path"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" dispose --open-fork P --issue "Route a.txt or hold it?" --question "Route a.txt?" --path a.txt >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json, sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+forks = [r for r in records if r.get("type") == "fork" and r.get("id") == "P"]
+ok = len(forks) == 1 and forks[0].get("path") == "a.txt"
+sys.exit(0 if ok else 1)
+PY
+    then
+        ok "dispose --open-fork --path records the fork's path"
+    else
+        bad "dispose --open-fork --path records the fork's path"
+    fi
+    ledger "$dir" close > "$dir/close.out" 2>&1
+    if grep -q 'condition 10' "$dir/close.out"; then
+        bad "a fork opened with --path clears condition 10 without --routed"
+    else
+        ok "a fork opened with --path clears condition 10 without --routed"
     fi
 }
 

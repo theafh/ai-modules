@@ -419,7 +419,10 @@ Record what became of each record.
   packet closes with.
 - `--path PATH`, `--routed GATE`: record `routed` as a changed-path disposition
   for a path `init` recorded as stamped or marked. The gate must be the owner
-  `init` recorded for that path.
+  `init` recorded for that path. With `--open-fork`, `--path PATH` needs no
+  `--routed`: it is recorded on the fork record as the changed path the fork is
+  about, so a fork raised over a stamped or marked changed path clears `close`
+  condition 10.
 - `--narrowing TEXT`, `--drops TEXT`, `--rows LABEL[,LABEL...]`: a named
   narrowing, the checks it drops, and the pending rows it retires as `dropped`.
   Every label `--rows` names must be a pending roster row; the verb refuses the
@@ -432,8 +435,11 @@ Record what became of each record.
   `--passage TEXT` fill the packet body, with the request recorded as each
   passage's anchor; when no `--passage` is given, the issue stands as the
   request passage. Repeatable `--cost ID=COST` gives one `--option` its cost,
-  which the packet renders beside that option. The verb refuses an `ID` the
-  ledger already holds, and a `--cost` that names no `--option` id.
+  which the packet renders beside that option. `--path PATH` records the
+  changed path the fork is about on the fork record, which is what clears
+  `close` condition 10 for a fork raised over a stamped or marked path. The
+  verb refuses an `ID` the ledger already holds, and a `--cost` that names no
+  `--option` id.
 - `--open-gate ID`, `--question TEXT`: open a user gate.
 - `--gate ID`, `--answered TEXT`: answer a user gate. Naming a surfaced
   fork's packet id answers that fork, and it also answers the user gate

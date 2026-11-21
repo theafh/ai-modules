@@ -619,6 +619,37 @@ class Ledger(object):
                 packets.append(rec.get("packet"))
         return packets
 
+    def surfaced_unanswered_forks(self):
+        """Return the fork records that are surfaced and carry no answer record.
+
+        Close condition 6 refuses a surfaced fork with no answer, so the
+        ``status`` block lists the same forks where the orchestrator looks.
+        """
+        dispositions = self.dispositions()
+        answered = set(
+            rec.get("gate_id")
+            for rec in self.records()
+            if rec.get("type") == "gate_answered"
+        )
+        forks = []
+        for rec in self.records():
+            if rec.get("type") != "fork":
+                continue
+            surfaced = [
+                disp
+                for disp in dispositions.get(rec.get("id"), [])
+                if disp.get("disposition") == "surfaced"
+            ]
+            if not surfaced:
+                continue
+            packets = set(
+                disp.get("packet") for disp in surfaced if disp.get("packet")
+            )
+            if rec.get("id") in answered or packets & answered:
+                continue
+            forks.append(rec)
+        return forks
+
     def audit_for(self, label):
         return [
             rec
@@ -2309,7 +2340,7 @@ def cmd_dispose(args):
             }
             led.append(record)
             changed = True
-    if args.path or args.routed:
+    if args.routed or (args.path and not args.open_fork):
         if not args.path:
             die("--routed needs --path PATH")
         if not args.routed:
@@ -2397,6 +2428,7 @@ def cmd_dispose(args):
                 "type": "fork",
                 "id": args.open_fork,
                 "issue": args.issue,
+                "path": args.path or "",
                 "options": open_fork_options,
                 "passages": passages,
                 "preferred": "",
@@ -2804,6 +2836,12 @@ def cmd_status(args):
         print("  %s" % packet)
     if not packets:
         print("  none")
+    print("surfaced forks with no answer record:")
+    unanswered_forks = led.surfaced_unanswered_forks()
+    for fork in unanswered_forks:
+        print("  %s %s" % (fork.get("id"), fork.get("issue", "")))
+    if not unanswered_forks:
+        print("  none")
     print("blind rows:")
     blind = [
         (row.get("label"), led.blind_label(row.get("label")))
@@ -3118,11 +3156,7 @@ def close_open_items(led):
     own_authority_forks = set(
         rec.get("fork") for rec in led.records() if rec.get("type") == "own_authority"
     )
-    answered = set(
-        rec.get("gate_id")
-        for rec in led.records()
-        if rec.get("type") == "gate_answered"
-    )
+    unanswered_forks = set(rec.get("id") for rec in led.surfaced_unanswered_forks())
     for rec in led.records():
         if rec.get("type") != "fork":
             continue
@@ -3132,12 +3166,7 @@ def close_open_items(led):
             disp.get("disposition") == "surfaced" for disp in fork_dispositions
         )
         if surfaced:
-            packets = set(
-                disp.get("packet")
-                for disp in fork_dispositions
-                if disp.get("disposition") == "surfaced" and disp.get("packet")
-            )
-            if fork_id not in answered and not packets & answered:
+            if fork_id in unanswered_forks:
                 open_items.append(
                     "condition 6: fork %s is surfaced and has no answer record"
                     % fork_id
@@ -3371,7 +3400,11 @@ def build_parser():
     p.add_argument("--span")
     p.add_argument("--packet")
     p.add_argument("--pointer")
-    p.add_argument("--path", help="the changed path a routed disposition names")
+    p.add_argument(
+        "--path",
+        help="the changed path a routed disposition names, or the changed path "
+        "an --open-fork fork is about",
+    )
     p.add_argument("--routed", help="the owning gate the changed path is routed to")
     p.add_argument("--recommend", help="the recommendation a surfaced packet carries")
     p.add_argument("--why", help="the reason behind a surfaced packet's recommendation")
@@ -3439,7 +3472,8 @@ def build_parser():
         description=(
             "Show where the run stands: the tally, open rows, open gates, "
             "the repair list, stamped paths awaiting routing with their "
-            "owning gates, the open packet ids, the blind rows with their "
+            "owning gates, the open packet ids, the surfaced forks carrying "
+            "no answer record, the blind rows with their "
             "derived labels, the stray paths block of untracked paths, and "
             "the resume hashes."
         ),
