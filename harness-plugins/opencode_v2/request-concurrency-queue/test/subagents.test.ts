@@ -155,6 +155,15 @@ describe("extractSessionID", () => {
     expect(extractSessionID({ content: [{ type: "text", text: "started ses_c" }] })).toBeUndefined()
   })
 
+  test("prefers an explicit sessionID key over a parent ID found by the walk", () => {
+    // A result may carry the parent session alongside the child's own ID, and
+    // the walk follows insertion order, so the explicit key must decide.
+    expect(extractSessionID({ parentID: "ses_parent", sessionID: "ses_child" })).toBe("ses_child")
+    expect(extractSessionID({ parentID: "ses_parent", metadata: { sessionID: "ses_child" } })).toBe(
+      "ses_child",
+    )
+  })
+
   test("returns undefined when no session ID is present", () => {
     expect(extractSessionID({ ok: true })).toBeUndefined()
     expect(extractSessionID("plain")).toBeUndefined()

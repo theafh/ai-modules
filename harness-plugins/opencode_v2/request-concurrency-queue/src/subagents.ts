@@ -281,7 +281,6 @@ export class SubagentGate {
   }
 }
 
-/** Finds the child session ID in a subagent tool result, whatever its shape. */
 /** A whole string that is a session ID, never a fragment of prose. */
 const SESSION_ID = /^ses_[A-Za-z0-9]+$/
 
@@ -291,8 +290,26 @@ const SESSION_ID = /^ses_[A-Za-z0-9]+$/
  * Only a string that is entirely a session ID counts. Matching the first
  * `ses_…` anywhere in the result would pick up an ID the tool merely mentions,
  * bind the permit to the wrong child, and hold that slot until the session ends.
+ *
+ * An explicit `sessionID` key wins over the whole-string walk, at the top level
+ * and under `metadata`. A result may name the parent session alongside the
+ * child's own ID, and the walk follows insertion order, so leaving the choice
+ * to it can bind the permit to the parent and hold that slot until it ends.
  */
 export function extractSessionID(result: unknown): string | undefined {
+  const record = result !== null && typeof result === "object"
+    ? (result as Record<string, unknown>)
+    : undefined
+  if (record) {
+    if (typeof record.sessionID === "string" && SESSION_ID.test(record.sessionID)) {
+      return record.sessionID
+    }
+    const metadata = record.metadata
+    if (metadata !== null && typeof metadata === "object") {
+      const nested = (metadata as Record<string, unknown>).sessionID
+      if (typeof nested === "string" && SESSION_ID.test(nested)) return nested
+    }
+  }
   return findSessionID(result, 0)
 }
 
