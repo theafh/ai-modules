@@ -120,7 +120,7 @@ process-wide registry, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `active`,
 `queued`, `max`, utilization (`active / max`), and demand
 (`(active + queued) / max`). Providers with no configured limit do not appear.
-It also carries the most recent 50 transitions, oldest first, each with a
+It also carries a bounded buffer of recent transitions, oldest first, each with a
 timestamp, provider ID, kind (`acquired`, `queued`, `released`, `dequeued`),
 session ID, active count, and queued count. A release handoff records
 `released` for the releasing session then `acquired` for the waiter. The server
@@ -142,15 +142,16 @@ subscription refetches on every `changed` event and on a slow interval, so a
 missed event recovers, and the dialog renders that same snapshot: each provider
 row shows its in-flight count, effective maximum, and queue depth as absolute
 numbers, and its utilization and demand as percentages. The numbers are coloured
-on an eight-anchor load scale: dark green at 0%, light green at 100%, light
+on a load scale: dark green at 0%, light green at 100%, light
 yellow at 150%, orange at 200%, light red at 250%, dark red at 300%, dark pink
 at 350%, and magenta from 400% on, interpolated between those anchors and held
 at magenta above 400%. The active
 count and utilization follow the `active / max` load, while the combined count,
 queued count, and demand follow `(active + queued) / max`. Below the provider
 rows, a compact monospace feed lists the recent transitions newest first with
-their timestamp, kind, provider, session, and counts; it renders the newest 20
-and scrolls. When a status fetch fails, the bar shows `Status unavailable` and
+their timestamp, kind, provider, session, and counts; it renders a bounded
+newest-first list and scrolls. When a status fetch fails, the bar shows
+`Status unavailable` and
 the dialog shows no provider rows, until a later fetch succeeds.
 
 A provider's `burst_protection` is handled when that provider has a `tokens`

@@ -57,9 +57,10 @@ discussing a choice states what options exist rather than which one is in use.
 And any state the repository already holds authoritatively, because git, the
 backlog, and the manifests answer those questions on demand while a copy written
 here is wrong by the next commit. That covers measurements that move, such as line
-counts, file sizes, and token estimates; the number, names, or lifecycle status of
-task files; the version of an artefact this repository ships; and the date on which
-a change landed here. Write the property, the decision, or the reasoning instead.
+counts, file sizes, token estimates, and inventory counts of pages, skills,
+harnesses, or roots; the number, names, or lifecycle status of task files; the
+version of an artefact this repository ships; and the date on which a change
+landed here. Write the property, the decision, or the reasoning instead.
 Where the backlog owns follow-up work, point at it as work the backlog carries,
 without counting the files or reporting their status.
 

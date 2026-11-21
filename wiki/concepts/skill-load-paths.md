@@ -1,7 +1,7 @@
 ---
 title: Skill load paths
 created: 2026-10-01
-updated: 2026-10-04
+updated: 2026-11-21
 checked: 2026-08-13
 type: concept
 tags: [skill, discovery, frontmatter, portability, claude, codex]
@@ -31,8 +31,8 @@ lines.
 
 ### Claude Code
 
-Five mechanics govern whether a skill file is found, loaded, and routable. All
-five were read on 13 August 2026 out of the installed Claude Code build 2.1.226
+These mechanics govern whether a skill file is found, loaded, and routable. All
+were read on 13 August 2026 out of the installed Claude Code build 2.1.226
 and its desktop counterpart 2.1.227, which agree, and they are the load path's
 own code rather than documentation about it.
 

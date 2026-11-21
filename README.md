@@ -1,6 +1,6 @@
 # AI-Modules
 
-A set of professional AI skills and agents for AI-assisted development, packaged as plugins. The deployment toolchain installs them into six agent harnesses, along with hooks, output styles, and commands.
+A set of professional AI skills and agents for AI-assisted development, packaged as plugins. The deployment toolchain installs them into the supported agent harnesses, along with hooks, output styles, and commands.
 
 ## Why You Should Install This
 
@@ -16,7 +16,7 @@ Task does this for the work. Running a task through the skill-to-skill lifecycle
 
 The mechanical parts of both (discovery, scaffolding, linting, source hashing) ship as bundled scripts the agent runs, so it does not improvise the bookkeeping each session. This saves back-and-forth turns with your agent, saves tokens, and makes the output more consistent across runs. The same files deploy into Claude Code, Codex, Cursor, Copilot, Antigravity, and OpenCode, so the backlog and the knowledge base follow you whichever agent you drive. That also makes it easy to share one codebase across different setups and agents.
 
-Alongside task and wiki, the same two plugins ship smaller day-to-day skills: clean git commits, repository refreshes, and changelogs, repo-root guardrail documents that hold an agent inside the boundary you set, writing and formatting the instructions an AI reads, portability review for anything bundled inside a skill, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
+Alongside task and wiki, their plugins also ship smaller day-to-day skills: clean git commits, repository refreshes, and changelogs, repo-root guardrail documents that hold an agent inside the boundary you set, writing and formatting the instructions an AI reads, portability review for anything bundled inside a skill, linter-aligned code style, and document distillation. See [Plugins](#plugins) below for the rest.
 
 ## Layout
 
@@ -112,7 +112,7 @@ ai-modules/
 ```
 
 The repo runs on the components it ships. Its backlog, knowledge base, charter, and
-changelog are all produced by the skills in `plugins/`, so those four directories double
+changelog are all produced by the skills in `plugins/`, so they double
 as worked examples of what the plugins do.
 
 ## Plugins
@@ -183,7 +183,7 @@ activation outside plugin installs.
 
 Skills for editorial craft on prose written for people to read: reports, proposals, status updates, documentation, and the everyday workplace writing that has to land with its audience. What sets this plugin apart is its subject matter, not its audience: every skill in this repository is invoked by a person and consumed by a model, and here it is the kind of text being worked on that changes. Instructions an AI reads at inference time remain the province of `ai_instruction_writing` and `ai_instruction_formatting`.
 
-The plugin ships `language_humanizer` today; its two siblings are in development:
+The plugin ships `language_humanizer` today; its other skills are in development:
 
 - **language_humanizer**: reviews, rewrites, or writes a document so its intended reader understands it on the first read. Three ordered passes carry the work: an inventory of every load-bearing element of the input, the moves that produce first-read comprehension, and a verification of the delivered text against that inventory. Together they let a rewrite come in no longer than the draft it replaces (a padded draft markedly shorter) while each condition, requirement strength, number, actor, and causal joint carries through intact. The reduction comes out of filler, restatement, and nominalized phrasing rather than out of content, which is what separates it from a summarizer.
 - **slop_catch** *(in development)*: flags the tells that mark a draft as AI-generated (the lexical giveaways alongside the structural patterns) and returns concrete feedback on what to change.
@@ -196,7 +196,7 @@ the bundled Claude Code marketplace; copy it into vendor config dirs globally
 with `make deploy` (VS Code Copilot, Cursor, Claude Code, OpenAI Codex, Google
 Antigravity, OpenCode); copy it into a single repo's local config with
 `--project-dir`; or use it in place from a checkout. The deployment script finds
-artefacts under three roots: the plugin layout (`plugins/<plugin>/<asset-folder>/`),
+artefacts under the deployment roots: the plugin layout (`plugins/<plugin>/<asset-folder>/`),
 `harness-plugins/<harness>/` for the `plugin` type (one self-contained package
 per directory), and repo-root `styles/` for the `style` type. A per-tool
 `style:<name>` line in

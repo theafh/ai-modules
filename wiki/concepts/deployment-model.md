@@ -29,7 +29,7 @@ is the path that does.
 
 ## Current state of knowledge
 
-### Discovery has three roots
+### Discovery roots
 
 Most artefacts live under `plugins/<plugin>/<asset-folder>/`, and the folder name
 selects the type: `agents/` and `commands/` take each top-level Markdown file,

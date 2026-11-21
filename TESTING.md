@@ -6,7 +6,7 @@ evidence that a shipped component works.
 
 ## Test Design Principles
 
-These four rules are the canonical grader-authoring requirements. A grader
+These rules are the canonical grader-authoring requirements. A grader
 written against them fails only when the behaviour under test is genuinely
 wrong, and a failing eval names which behaviour broke.
 
@@ -26,7 +26,7 @@ wrong, and a failing eval names which behaviour broke.
   reports per-behaviour results, so one slip localises instead of failing the
   whole eval and hiding what still holds.
 
-Sibling principles that are not part of that four-rule set:
+Sibling principles that are not part of that set:
 
 - **Drop negations when scoring a named move.** A run that names a move in
   order to say it did not take that move must not score as having taken it.
@@ -65,7 +65,7 @@ Sibling principles that are not part of that four-rule set:
 ## Test Organization
 
 One subdirectory per skill under test, at `tests/<skill_name>/`. The layout,
-the two patterns in use, and the per-harness inventory live in
+the patterns in use, and the per-harness inventory live in
 [tests/README.md](tests/README.md); the operator guidance for running them
 lives in [tests/CLAUDE.md](tests/CLAUDE.md). Keep both current when a harness
 is added or changed.

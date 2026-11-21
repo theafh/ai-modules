@@ -11,7 +11,7 @@
 - [Anthropic Claude Code](entities/anthropic-claude-code.md): configuration roots and settings precedence for Claude Code, the standing-instruction pair and its ancestor walk, agent frontmatter tolerance, the file-read guard, hooks, safe mode, and retired surfaces.
 - [Cursor](entities/cursor.md): rules and agent surfaces for Cursor, deployed skills shadowing staged copies, Task helper delegation and its return and transcript channels, the goal tools, and the print-mode CLI's shell and stream events.
 - [GitHub Copilot in VS Code](entities/github-copilot-vs-code.md): one user root shared with the CLI, instruction roots, the preview hook contract, deep adoption of the Claude tree, custom agents with effort only as a global setting, and preview plugins.
-- [Google Antigravity](entities/google-antigravity.md): the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and four open verification gaps.
+- [Google Antigravity](entities/google-antigravity.md): the `.agents/` workspace tree, skills and subagents, the hook contract and its SDK second surface, rules and workflows, and the open verification gaps.
 - [OpenAI Codex](entities/openai-codex.md): config layers and project trust, the off-PATH CLI binary, TOML agent roles, sub-agent and goal tools, codex exec, the single instructions slot, and hook trust.
 - [SST OpenCode](entities/sst-opencode.md): config tree, foreign-directory discovery, the V1-to-V2 frontmatter boundary, a `permissions` list whose `shell` replaced `bash`, helper model inheritance, prompt assembly, and code-only hooks.
 
@@ -27,7 +27,7 @@
 - [Foreign directory adoption](concepts/foreign-directory-adoption.md): which harnesses read another's config tree, why that is contamination rather than delivery, and the isolation switches.
 - [Guardrail documents as normative rules](concepts/guardrail-documents-as-rules.md): presence-gated lookup, optional adoption, the description misreading, the three paths to true, and the guarding, describing, and directing registers.
 - [Hook delivery design](concepts/hook-delivery-design.md): the shared-script layout, the uneven per-target deploy routing with its entry-grain hook merge, the foreign hook files Copilot parses, and the decision to deliver Copilot natively.
-- [Hook surface portability](concepts/hook-surface-portability.md): four configuration schemas plus one that is code, four signalling contracts, additive layers, and guarantees that vary with the interception point.
+- [Hook surface portability](concepts/hook-surface-portability.md): the configuration schemas and signalling contracts that differ by harness, additive layers, and guarantees that vary with the interception point.
 - [Instruction-defect classes](concepts/instruction-defect-classes.md): three instruction defects that pass review and fail at runtime (reach, disposition, intra-file contradiction) and the measured limit where repair must give way to a mechanism.
 - [Interpreter and tool-path portability](concepts/interpreter-and-tool-path-portability.md): the interpreter floor for bundled scripts and agent-run snippets: stock macOS bash 3.2.57, python3 3.9.6, the login-shell PATH trap, the constructs that fail, and zsh pitfalls.
 - [Orchestration failure families](concepts/orchestration-failure-families.md): the run evidence behind agent_spinner's recipes: 23 failure families with counts and base rates, 16 cases, per-recipe family sets, and the families each protocol step answers.
@@ -38,7 +38,7 @@
 - [Skill family architecture](concepts/skill-family-architecture.md): how a skill family names members by invocation mode, keeps family rules once in the base skill, bundles scripts, and is audited by a checker whose severity lines come from the harness.
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.
 - [Task lifecycle and status rules](concepts/task-lifecycle-and-status-rules.md): the task_* family's lifecycle: who writes each status, when ready returns to checked, task_implement's admission and done-gate, re-audit re-open, follow-up limits, and archive rules.
-- [The deployment model](concepts/deployment-model.md): three discovery roots, per-tool configuration, generated variants, scope precedence, the log-driven update replay, scope-limited uninstall, the prior-value restore on uninstall, and the entry-grain hook merge beside it.
+- [The deployment model](concepts/deployment-model.md): the discovery roots, per-tool configuration, generated variants, scope precedence, the log-driven update replay, scope-limited uninstall, the prior-value restore on uninstall, and the entry-grain hook merge beside it.
 - [Verification surfaces for a shipped skill](concepts/verification-surfaces.md): how a shipped skill is verified: script tests as the default, opt-in behavioral evals, committed but undeployed harnesses, pinned model and effort, isolated workers, trigger coverage, and grader design.
 
 ## Comparisons
@@ -58,7 +58,7 @@
 
 - [Deciding where knowledge belongs](procedures/deciding-where-knowledge-belongs.md): the three genres, their homes, and the travels-or-not test that routes between them.
 - [Isolating Cursor from foreign harness config](procedures/isolating-cursor-from-foreign-config.md): the one settings toggle, how to confirm it in the state database, and what it takes away with the skills.
-- [Isolating OpenCode from foreign harness config](procedures/isolating-opencode-from-foreign-config.md): picking the narrowest variable, and the three placements that reach a GUI application when a shell profile cannot.
+- [Isolating OpenCode from foreign harness config](procedures/isolating-opencode-from-foreign-config.md): picking the narrowest variable, and the escalating placements that reach a GUI application when a shell profile cannot.
 - [Install a local OpenCode plugin](procedures/install-a-local-opencode-plugin.md): deploying a plugin package into the OpenCode plugin discovery root, the config-file channel a deployed directory needs, the restart requirement, and the manual `.ts` entry fallback.
 - [Isolating VS Code from foreign harness config](procedures/isolating-vs-code-from-foreign-config.md): per-path location maps, the agent switch, and the separate lever for the aggregated session list.
 - [Splitting a shipped skill](procedures/splitting-a-shipped-skill.md): move the reference material out, audit the split in three directions, and repair the inbound references.

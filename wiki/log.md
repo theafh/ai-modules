@@ -1541,3 +1541,34 @@ pre-existing, and the size infos stay advisory; the one on
   against the shipped README and source on this date.
 - Lint: `make lint` clean (574 markdown, 46 JSON, 407 shell, 433 frontmatter
   files). Wiki lint: 0 blocking, 0 warn, 10 size info.
+
+## [2026-11-21 11:03] update | Remove drift-prone inventory counts and add a counting rule
+
+- Scope: README.md, TESTING.md, AGENTS.md, CLAUDE.md, deployment/README.md,
+  the discovery comment in deployment/deployment.sh, wiki/SCHEMA.md, the
+  affected wiki pages, and wiki/index.md.
+- Counts that had already drifted: deployment discovery "two roots" (now three,
+  and the prose now names them without a number); Copilot hook locations "four"
+  (now five, and the sentence now reads "these places"); version rules "five"
+  (now six, and the page now says "These rules").
+- Inventory counts removed where the enumeration already carries them: "six
+  agent harnesses" (README), "the same two plugins", "those four directories",
+  "its two siblings", "the two patterns in use" (TESTING), "four rules"
+  (TESTING), "four configuration schemas plus one that is code, four signalling
+  contracts" (hook surface), "five harnesses",
+  "four-harness plugin ... four hook configurations", "five places" and "Eight
+  events" (Copilot), "Four questions are open" and "four open verification
+  gaps", "most recent 50 transitions", "eight-anchor", "newest 20" (request
+  queue), "Five mechanics" (skill load), "six harnesses" (output styles),
+  "Three environment variables" (OpenCode), "three escalating placements"
+  (OpenCode isolation).
+- Kept deliberately: the `Total pages: N` header in `index.md`, because
+  `lint.py` already recomputes it against the page walk and reports a mismatch,
+  which is the counting rule the header needs. The deployment root count, by
+  contrast, had no such check and had already drifted.
+- Counting rule added: AGENTS.md and CLAUDE.md carry "State enumerations, not
+  inventory counts", with the command to run when a count is load-bearing;
+  SCHEMA.md adds inventory counts of pages, skills, harnesses, and roots to the
+  moving-measurement exclusion.
+- Lint: `make lint` clean (574 markdown, 46 JSON, 407 shell, 433 frontmatter
+  files).

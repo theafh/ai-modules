@@ -1,7 +1,7 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-10-29
+updated: 2026-11-21
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
 sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
@@ -14,7 +14,7 @@ checked: 2026-10-06
 ## Definition
 
 This page records the design decisions behind delivering one authored style to
-six harnesses from this repository, and the reasoning that produced each. It is
+the supported harnesses from this repository, and the reasoning that produced each. It is
 the decision record sitting under the per-harness delivery work, so a later reader
 can tell which parts were argued and which were assumed.
 

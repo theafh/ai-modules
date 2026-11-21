@@ -41,7 +41,7 @@ manifest edit will substitute for it.
 
 ### The versioning contract
 
-Six rules govern versions, and they exist to make the git history readable
+These rules govern versions, and they exist to make the git history readable
 rather than to satisfy a package manager.
 
 A new skill, agent, or plugin ships at 1.0.0, with no bump in the commit that

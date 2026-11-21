@@ -59,7 +59,7 @@ Agent hooks are documented as **Preview**, with the configuration format and
 behaviour stated as subject to change, so anything built on them is pinned to a
 version rather than to a contract.
 
-VS Code looks in five places. At workspace scope it reads `.github/hooks/*.json`,
+VS Code reads hooks from these places. At workspace scope it reads `.github/hooks/*.json`,
 `.claude/settings.json`, and `.claude/settings.local.json`. At user scope it reads
 `~/.copilot/hooks` and `~/.claude/settings.json`. The scope table names the user
 directory without stating the filename pattern inside it, which the CLI reference
@@ -79,7 +79,7 @@ array, while VS Code puts the hook objects there directly and documents no
 valid JSON and then fails item-level validation, because the matcher group carries
 no `command`.
 
-Eight events: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`,
+The documented events include `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`,
 `PreCompact`, `SubagentStart`, `SubagentStop`, and `Stop`.
 
 A hook receives JSON on stdin carrying `timestamp`, `cwd`, `session_id`,

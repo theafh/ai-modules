@@ -1,7 +1,7 @@
 ---
 title: Isolating OpenCode from foreign harness config
 created: 2026-08-09
-updated: 2026-08-09
+updated: 2026-11-21
 type: procedure
 tags: [opencode, claude, antigravity, discovery, portability, skill]
 sources: []
@@ -39,7 +39,7 @@ variable only when a narrow one leaves something behind, and copy the global
 rules to `~/.config/opencode/AGENTS.md` before you do, because it removes the
 `~/.claude/CLAUDE.md` fallback along with everything else.
 
-Then apply the variable in three escalating placements, stopping at the one that
+Then apply the variable in escalating placements, stopping at the one that
 matches how long the change should last.
 
 1. **Prove it works while persisting nothing.** Launch a single instance with the

@@ -169,7 +169,7 @@ the agent follows. This section was re-checked against `/docs/rules-workflows` o
 
 ## Verification gaps
 
-Four questions are open, each recorded as a gap rather than guessed, and they are
+These questions are open, each recorded as a gap rather than guessed, and they are
 collected with their evidence in
 [what remains unverified about Google Antigravity](../queries/antigravity-open-verification-gaps.md):
 frontmatter tolerance, whether plugin-bundled agents register, which of

@@ -39,7 +39,7 @@ Deploy operations require an explicit scope: pass `--global` or `--project-dir D
 
 ## Artifact Discovery
 
-Discovery uses two roots.
+Discovery uses these roots.
 
 ### Plugin asset folders
 

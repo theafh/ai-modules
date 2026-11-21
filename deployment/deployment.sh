@@ -6,9 +6,10 @@ set -euo pipefail
 #                 for VS Code GitHub Copilot, Cursor, Claude Code,
 #                 OpenAI Codex, Google Antigravity, and OpenCode
 #
-# Discovery uses two roots: plugins/<plugin>/<asset-folder>/ where the
+# Discovery uses these roots: plugins/<plugin>/<asset-folder>/ where the
 # asset-folder name determines the artifact type (agents/, commands/,
-# skills/, hooks/), and repo-root styles/ for the style type (each
+# skills/, hooks/), harness-plugins/<harness>/ for whole plugin packages,
+# and repo-root styles/ for the style type (each
 # top-level *.md file). Hidden files and README files are always
 # excluded from discovery.
 #
@@ -751,7 +752,7 @@ target_is_active() {
 }
 
 # ---------------------------------------------------------------------------
-# Autodiscovery from three roots
+# Autodiscovery from these roots
 #
 # 1. plugins/<plugin>/<asset-folder>/ where the asset-folder name
 #    (agents/, commands/, skills/, hooks/) determines the artifact type.

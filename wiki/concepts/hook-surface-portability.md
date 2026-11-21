@@ -13,7 +13,7 @@ confidence: high
 ## Definition
 
 A hook is a policy that runs at a point in the agent's lifecycle, usually before
-or after a tool call. Among the five harnesses whose hook contracts the research
+or after a tool call. Among the harnesses whose hook contracts the research
 here has worked out, Claude, Codex, Antigravity, OpenCode, and Copilot in VS
 Code, no two agree on all three of the configuration format, the event payload,
 and the way a handler says no. Cursor is the one target left whose surface is
@@ -50,8 +50,9 @@ different review and trust proposition from a Markdown or JSON component. V2
 replaced V1's plugin contract outright, so a V1 plugin does not run there and a
 bridge has to target V2's setup-context hook domains.
 
-A four-harness plugin therefore ships four hook configurations over one shared
-script, and would reach OpenCode through a thin bridge plugin, still an open
+A plugin targeting those harnesses therefore ships one configuration per
+declarative schema over one shared script, and would reach OpenCode through a
+thin bridge plugin, still an open
 backlog task, that maps the event onto the script's stdin envelope and sets
 `effect` to `deny` on a non-zero exit.
 

@@ -1,7 +1,7 @@
 ---
 title: SST OpenCode
 created: 2026-08-08
-updated: 2026-11-05
+updated: 2026-11-21
 type: entity
 tags: [opencode, skill, agent, hook, system-prompt, frontmatter, discovery]
 sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]
@@ -76,7 +76,7 @@ file loading at all.
 Agents and commands load only from OpenCode's own directories, never from
 `.claude/agents` or `.claude/commands`.
 
-Three environment variables scope the adoption off. `OPENCODE_DISABLE_CLAUDE_CODE=1`
+Environment variables scope the adoption off. `OPENCODE_DISABLE_CLAUDE_CODE=1`
 disables Claude Code compatibility broadly and, since v1.1.50, also stops
 `.agents/skills` discovery. `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` stops only
 the `~/.claude/CLAUDE.md` fallback. `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` stops
