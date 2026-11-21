@@ -1,7 +1,7 @@
 # request-concurrency-queue
 
-An OpenCode 2 plugin that limits concurrent model requests per provider through
-one process-wide FIFO queue shared by every open location.
+An OpenCode 2 plugin that admits concurrent model requests per provider through
+one process-wide scheduler shared by every open location.
 
 It is built for providers that reject excess concurrent requests instead of
 queueing them. The plugin keeps OpenCode from exceeding a provider's
@@ -10,7 +10,7 @@ request.
 
 ## Behavior
 
-- One FIFO queue per configured provider is shared by the whole OpenCode server
+- One scheduler per configured provider is shared by the whole OpenCode server
   process. The configured maximum caps concurrent requests across every open
   location (project), not once per location.
 - Primary model requests (the agent loop) to a configured provider acquire a
@@ -23,8 +23,10 @@ request.
   interrupted.
 - A retry releases only the slot of the attempt that failed, so a concurrent
   request's slot stays held.
-- When no slot is free, the request waits in a FIFO queue. The oldest waiting
-  request is served first.
+- When no slot is free, the request waits in a queue. The scheduler admits the
+  first waiting request that fits the concurrency, token-budget, and
+  context-in-flight gates, so a smaller request can start ahead of an older one
+  that does not yet fit.
 - The queue itself has no timeout. A request waits until it is admitted or the
   request is aborted. `scheduler.queueDeadlineMs` is an optional aid, off by
   default: when the client's own header timeout counts time spent waiting in
@@ -85,8 +87,8 @@ breaker, the subagent ceiling, and `adaptive`. Each field is checked on the
 server before anything is written; a rejected value returns an error list and
 leaves the file untouched. **Save** writes the config file atomically and
 applies the change to the running store, so in-flight requests and queued
-waiters survive it. Adding or removing a provider changes the set of limiters
-those requests are already using, so that one edit reports
+waiters survive it. Adding or removing a provider changes the set of
+schedulers those requests are already using, so that one edit reports
 `restartRequired: true` instead of half-applying.
 
 ## Configuration
