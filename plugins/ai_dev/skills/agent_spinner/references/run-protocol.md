@@ -101,10 +101,17 @@ fans out on its own.
 8. Split the user's hypothesis into its readings.
 9. Read the request for each pre-dispatch gate's answer, proceed on a stated
    answer, and quote it in the announcement. A pre-dispatch gate is a question
-   for the user that the run settles before it sends helpers. On a host with no
-   later turn, an unanswered gate stops the run before dispatch: run `stop` so
-   `STOP` is written, record its decision packet, and run `close --stopped`. A
-   run on such a host uses the inline floor or batch delivery only.
+   for the user that the run settles before it sends helpers. Record a fork the
+   orchestrator raises itself, such as a widening, an estimate above the stated
+   guideline, or a scope question, through
+   `dispose --open-fork ID --issue TEXT --question TEXT`, with the question
+   stating the decision in full and naming the count and scope it turns on,
+   before any write it would govern; the open user gate holds dispatch, and the
+   fork record is the one `render_packet` renders once the run disposes that ID
+   `surfaced` with `--packet`. On a host with no later turn, an unanswered fork
+   or gate stops the run before dispatch: run `stop` so `STOP` is written,
+   record its decision packet, and run `close --stopped`. A run on such a host
+   uses the inline floor or batch delivery only.
 10. Pilot two or three items to price the per-item cost.
 11. Put every unanswered gate to the user: forks, widening, and the
     verification scope with its estimate beside any size guideline the host or
@@ -249,9 +256,10 @@ interim report. A reply claiming nothing is left while rows or gates are open is
 a reporting error.
 
 Where the session offers a goal tool, the continuation step arms one goal per
-run, with the run directory in its objective and `close` exiting 0 as its
-completion condition. Where the session offers none, re-entry through `status`
-and `attach` carries the run.
+run, with the run directory in its objective and the run's end as its
+completion condition, met when `close` exits 0 or `close --stopped` ends a
+stopped run; a goal never answers a gate. Where the session offers none,
+re-entry through `status` and `attach` carries the run.
 
 **Checks.** `status` lists each open row with its deadline and each open gate.
 `STOP` exists before the first post-stop dispatch, and `dispatch` refuses while
@@ -293,9 +301,11 @@ so first, in its opening sentence, which carries the answer, the tier, helpers
 dispatched against returned, and whether `close` exited 0.
 
 **Checks.** Every finding, incident, alternative, and objection record has a
-disposition record. Every fork is surfaced or decided. `report.md` carries the
-current tally block verbatim. The opening sentence carries the answer, the
-tier, helpers dispatched against returned, and whether `close` exited 0.
+disposition record. Every fork's close state follows condition 6 in the `close`
+reference below, the one place the completion rule is stated. `report.md`
+carries the current tally block verbatim. The opening sentence carries the
+answer, the tier, helpers dispatched against returned, and whether `close`
+exited 0.
 
 ## Command reference
 
@@ -414,8 +424,17 @@ Record what became of each record.
   narrowing, the checks it drops, and the pending rows it retires as `dropped`.
   Every label `--rows` names must be a pending roster row; the verb refuses the
   whole call otherwise and changes nothing.
+- `--open-fork ID`, `--issue TEXT`, `--question TEXT`: record a fork the
+  orchestrator raises itself as a `fork` record and an open `user_gate` under
+  the same `ID`, before any write it would govern. `--issue` is the fork's
+  issue sentence, and `--question` is the gate's full question, naming the
+  count and scope the decision turns on. Repeatable `--option ID=TEXT` and
+  `--passage TEXT` fill the packet body, with the request recorded as each
+  passage's anchor; when no `--passage` is given, the issue stands as the
+  request passage. The verb refuses an `ID` the ledger already holds.
 - `--open-gate ID`, `--question TEXT`: open a user gate.
-- `--gate ID`, `--answered TEXT`: answer a user gate.
+- `--gate ID`, `--answered TEXT`: answer a user gate, naming a surfaced fork's
+  packet id to answer that fork.
 - `--fork ID`, `--own-decision TEXT`: record an own-authority decision.
 - `--flag LABEL`, `--reason TEXT`: flag a row.
 
@@ -485,7 +504,12 @@ any close condition holds:
 3. A changed path has no accepted check, gate, or taken-on-word disposition.
 4. A change is unattributed.
 5. The tree guard sees an undisposed path, HEAD moved, or the stash changed.
-6. A fork is neither surfaced nor decided, or a user gate is unanswered.
+6. A fork carries a `surfaced` disposition and no answer record, a fork is not
+   surfaced and carries no own-authority decision, or a user gate is
+   unanswered. An answer record is a `gate_answered` record whose `gate_id`
+   names the fork's gate id or the packet id its surfaced disposition carries,
+   and it clears a surfaced fork; an own-authority decision clears only a fork
+   the run never surfaced.
 7. `report.md` does not carry the current tally block.
 8. An accepted, inability, or failed row has no recorded source.
 9. A checker sits below its producer with no flag naming it.

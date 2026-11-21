@@ -2623,16 +2623,155 @@ scenario_objection_close() {
     printf '\n# Report\n\nAll clear.\n' >> "$dir/.agent_spinner/report.md"
     ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
     rc=$?
-    if [ "$rc" -eq 3 ] && grep -q 'produce:a:objections:0' "$dir/.agent_spinner/close.out"; then
-        ok "an objection with no disposition keeps close at exit 3"
+    if [ "$rc" -eq 3 ] && grep -q 'condition 6' "$dir/.agent_spinner/close.out" && grep -q 'produce:a:forks:0' "$dir/.agent_spinner/close.out" && grep -q 'produce:a:objections:0' "$dir/.agent_spinner/close.out"; then
+        ok "an unanswered surfaced fork and an undisposed objection keep close at exit 3"
     else
-        bad "an objection with no disposition keeps close at exit 3 (rc=$rc)"
+        bad "an unanswered surfaced fork and an undisposed objection keep close at exit 3 (rc=$rc)"
     fi
     ledger "$dir" dispose --id 'produce:a:objections:0' --disposition applied >/dev/null 2>&1
-    if ledger "$dir" close >/dev/null 2>&1; then
-        ok "close reaches exit 0 once the objection is disposed"
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 6' "$dir/.agent_spinner/close.out" && grep -q 'produce:a:forks:0' "$dir/.agent_spinner/close.out"; then
+        ok "disposing the objection leaves the unanswered surfaced fork holding close at exit 3"
     else
-        bad "close reaches exit 0 once the objection is disposed"
+        bad "disposing the objection leaves the unanswered surfaced fork holding close at exit 3 (rc=$rc)"
+    fi
+    ledger "$dir" dispose --gate pkt-c --answered "keep" >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "close reaches exit 0 once the fork is answered and the objection is disposed"
+    else
+        bad "close reaches exit 0 once the fork is answered and the objection is disposed"
+    fi
+}
+
+stage_surfaced_fork_run() {
+    dir="$1"
+    packet="$2"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Keep the page or retire it?","options":[{"id":"keep","text":"Keep it","cost":"one edit"},{"id":"retire","text":"Retire it","cost":"a dead link"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"keep"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" dispose --id 'produce:a:forks:0' --disposition surfaced --packet "$packet" >/dev/null 2>&1
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
+    printf '\n# Report\n' >> "$dir/.agent_spinner/report.md"
+}
+
+scenario_surfaced_fork_close() {
+    base="$1"
+
+    dir="$base/unanswered"
+    stage_surfaced_fork_run "$dir" pkt-s
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 6' "$dir/.agent_spinner/close.out" && grep -q 'produce:a:forks:0' "$dir/.agent_spinner/close.out"; then
+        ok "condition 6 refuses an unanswered surfaced fork with exit 3"
+    else
+        bad "condition 6 refuses an unanswered surfaced fork with exit 3 (rc=$rc)"
+    fi
+    ledger "$dir" stop >/dev/null 2>&1
+    ledger "$dir" close --stopped > "$dir/.agent_spinner/stopped.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 6' "$dir/.agent_spinner/stopped.out" && grep -q 'produce:a:forks:0' "$dir/.agent_spinner/stopped.out"; then
+        ok "close --stopped still refuses the unanswered surfaced fork and lists it"
+    else
+        bad "close --stopped still refuses the unanswered surfaced fork and lists it (rc=$rc)"
+    fi
+    ledger "$dir" dispose --gate 'produce:a:forks:0' --answered "keep" >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "an answer record naming the fork's gate id lets plain close pass"
+    else
+        bad "an answer record naming the fork's gate id lets plain close pass"
+    fi
+
+    dir="$base/packet-answer"
+    stage_surfaced_fork_run "$dir" pkt-p
+    ledger "$dir" dispose --gate pkt-p --answered "keep" >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "an answer record naming the packet id lets plain close pass"
+    else
+        bad "an answer record naming the packet id lets plain close pass"
+    fi
+
+    dir="$base/surfaced-applied"
+    stage_surfaced_fork_run "$dir" pkt-a
+    ledger "$dir" dispose --id 'produce:a:forks:0' --disposition applied >/dev/null 2>&1
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 6' "$dir/.agent_spinner/close.out" && grep -q 'produce:a:forks:0' "$dir/.agent_spinner/close.out"; then
+        ok "a later applied disposition leaves the surfaced fork unanswered and close at exit 3"
+    else
+        bad "a later applied disposition leaves the surfaced fork unanswered and close at exit 3 (rc=$rc)"
+    fi
+
+    dir="$base/own-authority"
+    stage_surfaced_fork_run "$dir" pkt-o
+    ledger "$dir" dispose --fork 'produce:a:forks:0' --own-decision "chose keep" >/dev/null 2>&1
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 6' "$dir/.agent_spinner/close.out" && grep -q 'produce:a:forks:0' "$dir/.agent_spinner/close.out"; then
+        ok "an own-authority call cannot settle a fork the run surfaced"
+    else
+        bad "an own-authority call cannot settle a fork the run surfaced (rc=$rc)"
+    fi
+}
+
+scenario_open_fork() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" dispose --open-fork F --issue "Widen to the remaining sixty pages?" --question "Widen past the scouted list to the remaining sixty pages?" --option widen="Widen to all sixty" --option hold="Hold at the scouted list" >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json, sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+forks = [r for r in records if r.get("type") == "fork" and r.get("id") == "F"]
+gates = [r for r in records if r.get("type") == "user_gate" and r.get("id") == "F"]
+ok = (
+    len(forks) == 1
+    and forks[0].get("issue") == "Widen to the remaining sixty pages?"
+    and [o.get("id") for o in forks[0].get("options") or []] == ["widen", "hold"]
+    and forks[0].get("passages") == [{"text": "Widen to the remaining sixty pages?", "anchor": "the request"}]
+    and len(gates) == 1
+    and gates[0].get("state") == "open"
+)
+sys.exit(0 if ok else 1)
+PY
+    then
+        ok "dispose --open-fork writes the fork record and an open gate under the same id"
+    else
+        bad "dispose --open-fork writes the fork record and an open gate under the same id"
+    fi
+    if ledger "$dir" dispose --open-fork F --issue "Again?" --question "Again?" >/dev/null 2>&1; then
+        bad "dispose --open-fork refuses an id the ledger already holds"
+    else
+        ok "dispose --open-fork refuses an id the ledger already holds"
+    fi
+    ledger "$dir" dispose --id F --disposition surfaced --packet pkt-f --recommend "Widen to all sixty" --why "the request asks for an assurance over every occurrence" >/dev/null 2>&1
+    ledger "$dir" show --packet pkt-f > "$dir/packet.txt" 2>&1
+    if grep -q 'Decision packet: pkt-f' "$dir/packet.txt" && grep -q 'Issue: Widen to the remaining sixty pages?' "$dir/packet.txt" && grep -q 'Widen to all sixty' "$dir/packet.txt" && grep -q '"Widen to the remaining sixty pages?"' "$dir/packet.txt" && grep -q 'anchor: the request' "$dir/packet.txt"; then
+        ok "show --packet renders a fork opened through --open-fork once surfaced"
+    else
+        bad "show --packet renders a fork opened through --open-fork once surfaced"
+    fi
+    ledger "$dir" dispose --open-fork G --issue "Which scope should the sweep take?" --question "Which scope?" --passage "alpha" >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json, sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+forks = [r for r in records if r.get("type") == "fork" and r.get("id") == "G"]
+ok = (
+    len(forks) == 1
+    and forks[0].get("passages") == [{"text": "alpha", "anchor": "the request"}]
+)
+sys.exit(0 if ok else 1)
+PY
+    then
+        ok "dispose --open-fork records each --passage with the request as its anchor"
+    else
+        bad "dispose --open-fork records each --passage with the request as its anchor"
     fi
 }
 
@@ -2956,6 +3095,8 @@ run_all_scenarios() {
     scenario_packets "$root/packets"
     scenario_fork_passages "$root/fork-passages"
     scenario_objection_close "$root/objection-close"
+    scenario_surfaced_fork_close "$root/surfaced-fork-close"
+    scenario_open_fork "$root/open-fork"
     scenario_failed_source "$root/failed-source"
     scenario_dispose_rows "$root/dispose-rows"
     scenario_unreturned_redispatch "$root/unreturned-redispatch"

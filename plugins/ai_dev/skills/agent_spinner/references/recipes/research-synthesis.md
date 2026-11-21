@@ -61,7 +61,7 @@ At a turn end with rows out, send the interim report. Any later turn runs `statu
 <stop_and_ask>
 Requirement sources out of reach, and scope, go to the user. The user approves before any outbound send. A limit that a critic proposes and that trades against the user's stated aim is adopted only as a surfaced decision, after re-reading the case it cites.
 
-Ask about scope and the estimate before dispatch, with the estimate beside any size guideline the host or user states, and ask before any widening past the enumerated list. An answer the request states is the user's answer. On a host with no later turn, an unanswered gate ends the run with its decision packet (P1). Create the stop file with `stop` the moment a pause request arrives, before any question (P4).
+Ask about scope and the estimate before dispatch, with the estimate beside any size guideline the host or user states, and ask before any widening past the enumerated list. A request answers a fork only where it decides that fork in so many words; a request asking for the decision to come back leaves the fork for the user. On a host with no later turn, an unanswered gate ends the run with its decision packet (P1). Create the stop file with `stop` the moment a pause request arrives, before any question (P4).
 </stop_and_ask>
 
 <report>

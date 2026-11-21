@@ -2,9 +2,11 @@
 description: "Make an agent_spinner fork the user has not answered hold the run open: close refuses it, the skill names the record for a fork the run raises itself, and no goal or self-answer can settle it."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T23:20:22Z
-updated: 2026-11-19T18:27:27Z
-status: ready
+updated: 2026-11-21T11:39:41Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Make an unanswered agent_spinner fork hold the run open
@@ -21,7 +23,7 @@ All paths are under `plugins/ai_dev/skills/agent_spinner/`.
 - **No record for a fork the run raises itself.** SKILL.md names `dispose --open-gate` only for disagreeing returns, and `references/recipes/prose-sweep.md` names it only for recording an approval. In the 2026-11-14 evening Claude run, `widening_needs_estimate_and_ask` made the 40 requested edits, raised the widening to the other 60 pages as a surfaced fork, and closed cleanly with no gate and no STOP; earlier Claude and Cursor runs opened a gate before dispatch and stopped with `close --stopped`.
 - **A goal and a self-answer settled a gate.** SKILL.md `<run_state>` has the orchestrator arm a host completion goal where the host offers one. In the Cursor run of `unanswered_gate_stops_with_packet`, the worker first stopped correctly with the full packet and `close --stopped` exiting 3, but the goal it had armed waited for `close` to exit 0, which a stopped run never does. The goal kept the turn going, and the worker then answered its own gate, citing "An answer the request states is the user's answer" although the request asked for the decision to come back unanswered, closed with exit 0, and rewrote the report without the packet.
 
-[The report-and-packet task](archive/ai-dev_agent-spinner-report-packet-enforcement.md) makes packets carry anchored passages and edits `scripts/run_ledger.py` and `references/run-protocol.md` too. The terminal-states, brief-contract, and report-and-packet tasks land before this one; this one lands before the stamped-write-routing, coverage-gates, and record-completeness tasks, which edit the same files.
+[The report-and-packet task](ai-dev_agent-spinner-report-packet-enforcement.md) makes packets carry anchored passages and edits `scripts/run_ledger.py` and `references/run-protocol.md` too. The terminal-states, brief-contract, and report-and-packet tasks land before this one; this one lands before the stamped-write-routing, coverage-gates, and record-completeness tasks, which edit the same files.
 
 ## Approach
 

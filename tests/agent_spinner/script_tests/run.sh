@@ -1103,7 +1103,7 @@ RECIPE_SHARED_LINES=(
   'roles_and_returns|`accept --stdin`, never through a shell'
   'orchestrator_gates|These orchestrator steps run in this order'
   'failure_handling|accepts every pending return before it continues'
-  'stop_and_ask|An answer the request states is the user'"'"'s answer'
+  'stop_and_ask|A request answers a fork only where it decides that fork in so many words; a request asking for the decision to come back leaves the fork for the user'
   'cost_profile|coverage by construction, a review of every landed write, and baseline-differential gates'
 )
 RECIPE_REPAIR_LINES=(
@@ -1393,7 +1393,7 @@ python3 - "$SCRATCH/p6-no-facts.md" <<'PY'
 import sys
 path = sys.argv[1]
 text = open(path).read()
-old = "The opening sentence carries the answer, the\ntier, helpers dispatched against returned, and whether `close` exited 0."
+old = "The opening sentence carries the\nanswer, the tier, helpers dispatched against returned, and whether `close`\nexited 0."
 new = "The opening sentence states whether `close`\nexited 0."
 if old not in text:
     raise SystemExit("P6 check sentence not found")

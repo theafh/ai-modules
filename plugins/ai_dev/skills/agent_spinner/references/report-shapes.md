@@ -17,7 +17,8 @@ Written before the first helper, after P1 returns and the plan is written.
 Capability tier: spawned roles, batch delivery. Established: a delegation
 surface, a depth control, and a host-enforced read-only lever. Assumed absent:
 concurrent execution beyond one batch. Continuation: one goal armed for this
-run, whose completion condition is `close` exiting 0.
+run, whose completion condition is the run's end, met when `close` exits 0 or
+`close --stopped` ends a stopped run.
 
 Shape matched: per-artifact fan-out. No recipe matched.
 

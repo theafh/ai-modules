@@ -2229,6 +2229,26 @@ def cmd_dispose(args):
     led = Ledger()
     changed = False
     dropped_rows = []
+    open_fork_options = []
+    if args.open_fork:
+        if not args.issue:
+            die("--open-fork needs --issue TEXT")
+        if not args.question:
+            die("--open-fork needs --question TEXT")
+        for rec in led.records():
+            if rec.get("id") == args.open_fork:
+                die("the ledger already holds %s" % args.open_fork)
+        for entry in args.option or []:
+            if "=" not in entry:
+                die("--option %r is not ID=TEXT" % entry)
+            option_id, option_text = entry.split("=", 1)
+            option_id = option_id.strip()
+            option_text = option_text.strip()
+            if not option_id or not option_text:
+                die("--option %r is not ID=TEXT" % entry)
+            open_fork_options.append(
+                {"id": option_id, "text": option_text, "cost": ""}
+            )
     if args.rows:
         if not args.narrowing:
             die("--rows needs --narrowing")
@@ -2333,6 +2353,33 @@ def cmd_dispose(args):
             }
         )
         changed = True
+    if args.open_fork:
+        passages = [
+            {"text": text.strip(), "anchor": "the request"}
+            for text in (args.passage or [])
+            if text.strip()
+        ]
+        if not passages:
+            passages = [{"text": args.issue, "anchor": "the request"}]
+        led.append(
+            {
+                "type": "fork",
+                "id": args.open_fork,
+                "issue": args.issue,
+                "options": open_fork_options,
+                "passages": passages,
+                "preferred": "",
+            }
+        )
+        led.append(
+            {
+                "type": "user_gate",
+                "id": args.open_fork,
+                "question": args.question,
+                "state": "open",
+            }
+        )
+        changed = True
     if args.fork:
         if not args.own_decision:
             die("--fork needs --own-decision")
@@ -2352,7 +2399,7 @@ def cmd_dispose(args):
         led.append({"type": "flag", "label": args.flag, "reason": args.reason})
         changed = True
     if not changed:
-        die("dispose needs a disposition, routing, narrowing, gate, fork, or flag")
+        die("dispose needs a disposition, routing, narrowing, gate, open fork, fork, or flag")
     print("recorded")
     return 0
 
@@ -3035,14 +3082,35 @@ def close_open_items(led):
     own_authority_forks = set(
         rec.get("fork") for rec in led.records() if rec.get("type") == "own_authority"
     )
+    answered = set(
+        rec.get("gate_id")
+        for rec in led.records()
+        if rec.get("type") == "gate_answered"
+    )
     for rec in led.records():
-        if rec.get("type") == "fork":
-            surfaced = any(
-                disp.get("disposition") == "surfaced"
-                for disp in dispositions.get(rec.get("id"), [])
+        if rec.get("type") != "fork":
+            continue
+        fork_id = rec.get("id")
+        fork_dispositions = dispositions.get(fork_id, [])
+        surfaced = any(
+            disp.get("disposition") == "surfaced" for disp in fork_dispositions
+        )
+        if surfaced:
+            packets = set(
+                disp.get("packet")
+                for disp in fork_dispositions
+                if disp.get("disposition") == "surfaced" and disp.get("packet")
             )
-            if not surfaced and rec.get("id") not in own_authority_forks:
-                open_items.append("condition 6: fork %s is neither surfaced nor decided" % rec.get("id"))
+            if fork_id not in answered and not packets & answered:
+                open_items.append(
+                    "condition 6: fork %s is surfaced and has no answer record"
+                    % fork_id
+                )
+        elif fork_id not in own_authority_forks:
+            open_items.append(
+                "condition 6: fork %s is not surfaced and carries no "
+                "own-authority decision" % fork_id
+            )
     for gate in led.open_gates():
         open_items.append("condition 6: user gate %s has no answered record" % gate.get("id"))
 
@@ -3279,6 +3347,23 @@ def build_parser():
     )
     p.add_argument("--open-gate")
     p.add_argument("--question")
+    p.add_argument(
+        "--open-fork",
+        help="record a fork the orchestrator raises itself, with an open user gate",
+    )
+    p.add_argument("--issue", help="the fork's issue, for --open-fork")
+    p.add_argument(
+        "--option",
+        action="append",
+        default=[],
+        help="an ID=TEXT option for --open-fork (repeatable)",
+    )
+    p.add_argument(
+        "--passage",
+        action="append",
+        default=[],
+        help="a passage the fork touches, for --open-fork (repeatable)",
+    )
     p.add_argument("--gate")
     p.add_argument("--answered")
     p.add_argument("--fork")

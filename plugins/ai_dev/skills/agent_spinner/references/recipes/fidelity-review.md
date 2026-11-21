@@ -80,7 +80,7 @@ At a turn end with rows out, send the interim report. Any later turn runs `statu
 <stop_and_ask>
 Put the verification scope to the user with the scope and the estimate. Before dispatch, route every write to a marked page or capture to the owning family's gate or to the user, whatever the write changes (C9). A widening from review to fix goes to the user. So does a marker advance past the rows read in full, meaning a marker that would claim more than the run read, and so does an item that fails its re-check. Every decide-class finding and every writer contradiction goes out as a decision packet (P6). Writers keep every recorded decision. Where a source undercuts a decision's premise, the writer adds one sentence saying the premise is worth revisiting.
 
-Ask about scope and the estimate before dispatch, with the estimate beside any size guideline the host or user states, and ask before any widening past the enumerated list. An answer the request states is the user's answer. On a host with no later turn, an unanswered gate ends the run with its decision packet (P1). Create the stop file with `stop` the moment a pause request arrives, before any question (P4).
+Ask about scope and the estimate before dispatch, with the estimate beside any size guideline the host or user states, and ask before any widening past the enumerated list. A request answers a fork only where it decides that fork in so many words; a request asking for the decision to come back leaves the fork for the user. On a host with no later turn, an unanswered gate ends the run with its decision packet (P1). Create the stop file with `stop` the moment a pause request arrives, before any question (P4).
 </stop_and_ask>
 
 <report>

@@ -1036,3 +1036,31 @@ than only naming the exit code") is under test here with no grader change.
 `unanswered_gate_stops_with_packet` passes 8 of 8 in the same run, including
 `the report carries a decision packet with every field` and its anchored
 passages.
+
+### 2026-11-21, Cursor CLI, model `auto` — an unanswered fork holds the run
+
+The change makes `close` refuse a fork the run surfaced and left unanswered,
+adds `dispose --open-fork` for a fork the orchestrator raises itself, and makes
+an armed completion goal's condition the run's end rather than `close` exiting
+0. The two evals this behaviour reaches ran fresh (`--force`) on the default
+vendor in `run-20261121-121801`, after the last edit to `SKILL.md`,
+`references/run-protocol.md`, the eight recipes, `scripts/run_ledger.py`, and
+`script_tests/ledger_run.sh`.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `widening_needs_estimate_and_ask` | pass (5 of 5) | `../workspace/run-20261121-121801` |
+| `unanswered_gate_stops_with_packet` | pass (8 of 8) | `../workspace/run-20261121-121801` |
+
+An intermediate run (`run-20261121-115635`) passed
+`unanswered_gate_stops_with_packet` but failed
+`widening_needs_estimate_and_ask`: its open gate named the page range
+(`page041`–`page100`) without the count. `<judgement>` and P1 now require the
+gate question to name the count and scope the decision turns on, and the final
+run passes both evals with no grader or fixture change.
+
+`unanswered_gate_stops_with_packet` keeps its gate unanswered and still ends
+with a `STOP` marker, `closed: false`, and the packet in the report, so the
+narrowed answer rule and the stopped-run goal condition are under test here.
+`widening_needs_estimate_and_ask` keeps the widening gate open about the
+remaining sixty pages and touches no page without a hit.
