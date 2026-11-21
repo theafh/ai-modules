@@ -2722,7 +2722,7 @@ scenario_open_fork() {
     dir="$1"
     setup_repo "$dir"
     ledger "$dir" init --unit produce:a >/dev/null 2>&1
-    ledger "$dir" dispose --open-fork F --issue "Widen to the remaining sixty pages?" --question "Widen past the scouted list to the remaining sixty pages?" --option widen="Widen to all sixty" --option hold="Hold at the scouted list" >/dev/null 2>&1
+    ledger "$dir" dispose --open-fork F --issue "Widen to the remaining sixty pages?" --question "Widen past the scouted list to the remaining sixty pages?" --option widen="Widen to all sixty" --cost widen="forty more passes against the stated guideline" --option hold="Hold at the scouted list" --cost hold="a page the read missed stays unchecked" >/dev/null 2>&1
     if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
 import json, sys
 
@@ -2755,6 +2755,23 @@ PY
         ok "show --packet renders a fork opened through --open-fork once surfaced"
     else
         bad "show --packet renders a fork opened through --open-fork once surfaced"
+    fi
+    if grep -q 'Cost: forty more passes against the stated guideline' "$dir/packet.txt" && grep -q 'Cost: a page the read missed stays unchecked' "$dir/packet.txt"; then
+        ok "show --packet carries each option's cost from the --open-fork call"
+    else
+        bad "show --packet carries each option's cost from the --open-fork call"
+    fi
+    if grep -q "Helper's preferred end state" "$dir/packet.txt"; then
+        bad "an orchestrator-raised packet renders no helper's preferred end state line"
+    else
+        ok "an orchestrator-raised packet renders no helper's preferred end state line"
+    fi
+    ledger "$dir" dispose --gate pkt-f --answered widen >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close.out" 2>&1
+    if grep -q 'condition 6: user gate F' "$dir/close.out"; then
+        bad "a packet-id answer clears the user gate --open-fork opened"
+    else
+        ok "a packet-id answer clears the user gate --open-fork opened"
     fi
     ledger "$dir" dispose --open-fork G --issue "Which scope should the sweep take?" --question "Which scope?" --passage "alpha" >/dev/null 2>&1
     if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'

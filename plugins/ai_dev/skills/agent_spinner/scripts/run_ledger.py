@@ -2249,6 +2249,22 @@ def cmd_dispose(args):
             open_fork_options.append(
                 {"id": option_id, "text": option_text, "cost": ""}
             )
+        option_costs = {}
+        for entry in args.cost or []:
+            if "=" not in entry:
+                die("--cost %r is not ID=COST" % entry)
+            option_id, cost_text = entry.split("=", 1)
+            option_id = option_id.strip()
+            cost_text = cost_text.strip()
+            if not option_id or not cost_text:
+                die("--cost %r is not ID=COST" % entry)
+            option_costs[option_id] = cost_text
+        for option in open_fork_options:
+            if option["id"] in option_costs:
+                option["cost"] = option_costs[option["id"]]
+        for option_id in option_costs:
+            if option_id not in [option["id"] for option in open_fork_options]:
+                die("--cost names %s, which is not an --option id" % option_id)
     if args.rows:
         if not args.narrowing:
             die("--rows needs --narrowing")
@@ -2344,14 +2360,29 @@ def cmd_dispose(args):
     if args.gate:
         if not args.answered:
             die("--gate needs --answered")
-        led.append(
-            {
-                "type": "gate_answered",
-                "gate_id": args.gate,
-                "answer": args.answered,
-                "answered_at": now_utc(),
-            }
-        )
+        # A packet id answers the fork it was surfaced from, and the fork's
+        # answer also answers the user gate `dispose --open-fork` opened under
+        # that fork's id, so the documented packet route closes the run.
+        gate_ids = [args.gate]
+        open_gate_ids = set(gate.get("id") for gate in led.open_gates())
+        for rec in led.records():
+            if (
+                rec.get("type") == "disposition"
+                and rec.get("disposition") == "surfaced"
+                and rec.get("packet") == args.gate
+                and rec.get("target") in open_gate_ids
+                and rec.get("target") not in gate_ids
+            ):
+                gate_ids.append(rec.get("target"))
+        for gate_id in gate_ids:
+            led.append(
+                {
+                    "type": "gate_answered",
+                    "gate_id": gate_id,
+                    "answer": args.answered,
+                    "answered_at": now_utc(),
+                }
+            )
         changed = True
     if args.open_fork:
         passages = [
@@ -2871,15 +2902,15 @@ def render_packet(led, packet_id):
     for index, option in enumerate(options, 1):
         if not isinstance(option, dict):
             continue
-        lines.append(
-            "%d. %s (id: %s). Cost: %s"
-            % (
-                index,
-                collapse_ws(option.get("text", "")),
-                option.get("id", ""),
-                collapse_ws(option.get("cost", "")),
-            )
+        cost = collapse_ws(option.get("cost", ""))
+        line = "%d. %s (id: %s)." % (
+            index,
+            collapse_ws(option.get("text", "")),
+            option.get("id", ""),
         )
+        if cost:
+            line += " Cost: %s" % cost
+        lines.append(line)
     lines.append("")
     lines.append("Objections recorded:")
     any_objection = False
@@ -2899,9 +2930,14 @@ def render_packet(led, packet_id):
     lines.append("Recommendation: %s" % collapse_ws(disposition.get("recommend", "")))
     if disposition.get("reason"):
         lines.append("Reason: %s" % collapse_ws(disposition.get("reason", "")))
-    lines.append("")
-    lines.append("Helper's preferred end state (%s):" % fork_id)
-    lines.append('"%s"' % collapse_ws(fork.get("preferred", "")))
+    # Only a fork a helper labelled carries a preferred end state, so an
+    # orchestrator-raised fork renders no such line, as `report-shapes.md`
+    # shapes its worked widening packet.
+    preferred = collapse_ws(fork.get("preferred", ""))
+    if preferred:
+        lines.append("")
+        lines.append("Helper's preferred end state (%s):" % fork_id)
+        lines.append('"%s"' % preferred)
     return "\n".join(lines)
 
 
@@ -3357,6 +3393,12 @@ def build_parser():
         action="append",
         default=[],
         help="an ID=TEXT option for --open-fork (repeatable)",
+    )
+    p.add_argument(
+        "--cost",
+        action="append",
+        default=[],
+        help="an ID=COST cost for one --option of --open-fork (repeatable)",
     )
     p.add_argument(
         "--passage",

@@ -431,10 +431,14 @@ Record what became of each record.
   count and scope the decision turns on. Repeatable `--option ID=TEXT` and
   `--passage TEXT` fill the packet body, with the request recorded as each
   passage's anchor; when no `--passage` is given, the issue stands as the
-  request passage. The verb refuses an `ID` the ledger already holds.
+  request passage. Repeatable `--cost ID=COST` gives one `--option` its cost,
+  which the packet renders beside that option. The verb refuses an `ID` the
+  ledger already holds, and a `--cost` that names no `--option` id.
 - `--open-gate ID`, `--question TEXT`: open a user gate.
-- `--gate ID`, `--answered TEXT`: answer a user gate, naming a surfaced fork's
-  packet id to answer that fork.
+- `--gate ID`, `--answered TEXT`: answer a user gate. Naming a surfaced
+  fork's packet id answers that fork, and it also answers the user gate
+  `dispose --open-fork` opened under the fork's id, so the packet route alone
+  clears the gate and lets the run close.
 - `--fork ID`, `--own-decision TEXT`: record an own-authority decision.
 - `--flag LABEL`, `--reason TEXT`: flag a row.
 

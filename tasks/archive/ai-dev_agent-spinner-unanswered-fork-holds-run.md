@@ -2,7 +2,7 @@
 description: "Make an agent_spinner fork the user has not answered hold the run open: close refuses it, the skill names the record for a fork the run raises itself, and no goal or self-answer can settle it."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T23:20:22Z
-updated: 2026-11-21T11:39:41Z
+updated: 2026-11-21T16:44:39Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

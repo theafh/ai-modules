@@ -1064,3 +1064,22 @@ with a `STOP` marker, `closed: false`, and the packet in the report, so the
 narrowed answer rule and the stopped-run goal condition are under test here.
 `widening_needs_estimate_and_ask` keeps the widening gate open about the
 remaining sixty pages and touches no page without a hit.
+
+### 2026-11-21, Cursor CLI, model `auto` — the packet route answers the fork's gate
+
+The follow-up lets a packet-id answer also answer the user gate
+`dispose --open-fork` opened under the fork's id, gives each `--option` its
+`--cost`, and omits the helper's preferred end state for a fork the
+orchestrator raised. Both evals ran fresh (`--force`) on the default vendor in
+`run-20261121-170542`, after the last edit to `scripts/run_ledger.py`,
+`references/run-protocol.md`, and `script_tests/ledger_run.sh`.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `widening_needs_estimate_and_ask` | pass (5 of 5) | `../workspace/run-20261121-170542` |
+| `unanswered_gate_stops_with_packet` | pass (8 of 8) | `../workspace/run-20261121-170542` |
+
+`unanswered_gate_stops_with_packet` still ends at the unanswered gate with a
+`STOP` marker, `closed: false`, and every packet field in the report.
+`widening_needs_estimate_and_ask` still states its estimate before dispatch and
+touches no page without a hit.
