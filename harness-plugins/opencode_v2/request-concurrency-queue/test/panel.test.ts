@@ -19,6 +19,10 @@ import {
   type StatusClient,
 } from "../src/status.js"
 
+function emptyBlocked() {
+  return { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }
+}
+
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 
 /**
@@ -78,7 +82,7 @@ function transition(index: number, overrides: Partial<TransitionRecord> = {}): T
 
 function snapshot(transitions: TransitionRecord[] = []): StatusSnapshot {
   return {
-    providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
+    providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
     transitions,
   }
 }
@@ -100,6 +104,7 @@ function providerSnapshot(provider: Partial<ProviderStatus> & Pick<ProviderStatu
         tokensAvailable: provider.tokensAvailable ?? 0,
         tokensCapacity: provider.tokensCapacity ?? 0,
         tokensPausedUntil: provider.tokensPausedUntil ?? 0,
+        blocked: provider.blocked ?? emptyBlocked(),
         breaker: provider.breaker ?? "closed",
         breakerRetryAfterMs: provider.breakerRetryAfterMs ?? 0,
         stalls: provider.stalls ?? 0,
@@ -156,7 +161,7 @@ describe("concurrency status panel body", () => {
 
     expect(state.unavailable).toBe(false)
     expect(state.rows).toEqual([
-      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }),
+      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }),
     ])
     expect(state.transitions).toEqual([])
   })

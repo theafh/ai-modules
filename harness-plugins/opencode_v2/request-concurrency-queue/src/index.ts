@@ -1,10 +1,10 @@
 import { Plugin } from "@opencode/plugin"
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { estimateTokens, parseRetryAfter, type TokenBudgetOptions } from "./budget.js"
 import { statusRpc, type ConfigSnapshot, type SaveResult } from "./rpc.js"
-import type { SchedulerSlot } from "./scheduler.js"
+import type { RequestCost, SchedulerSlot } from "./scheduler.js"
 import {
   adoptStore,
   applyConfig,
@@ -19,6 +19,33 @@ import { extractSessionID, type SubagentGateOptions } from "./subagents.js"
 
 /** How many clean completions restore one adaptive concurrency step. */
 const RECOVERY_STREAK = 4
+
+/**
+ * A request body above this size is scanned for image payloads before it is
+ * charged. Below it, the declared byte length is a close enough estimate and
+ * the scan cost would be wasted.
+ */
+const IMAGE_SCAN_BYTES = 256_000
+
+/**
+ * What one image costs on the token dimensions. The provider bills an image by
+ * its rendered size, not by the base64 bytes on the wire, so a fixed charge
+ * replaces a byte count that would overstate it by orders of magnitude.
+ */
+const IMAGE_TOKENS = 1_200
+
+/** The bytes and images one request body carries. */
+interface BodyMeasure {
+  readonly textBytes: number
+  readonly images: number
+}
+
+/** A measured request and the cursor update that belongs with its admission. */
+interface CostEstimate {
+  readonly cost: RequestCost
+  /** Records this body as the session's new baseline. Call once admitted. */
+  commit(): void
+}
 
 export interface TokenBudgetConfig {
   capacity: number
@@ -67,6 +94,18 @@ interface Entry {
   released: boolean
 }
 
+/**
+ * The attempt a retry is about to replace. The retry event carries no request
+ * kind, so the plugin records the last attempt per session and provider and
+ * consumes it here. Without this, a background compaction retry would release
+ * the slot of the primary request that is still streaming.
+ */
+interface Attempt {
+  readonly kind: RequestKind
+  /** The primary entry, when this attempt held a slot. */
+  readonly entry?: Entry
+}
+
 const DEFAULT_MAX_CONCURRENCY = 1
 
 export default Plugin.define({
@@ -95,9 +134,21 @@ export default Plugin.define({
     )
     const limits = store.providers
 
+    // The settings form must see the file as it is now, not as it was when the
+    // plugin loaded: a save rewrites it, and a stale snapshot would show the
+    // old values and write them back on the next save.
+    const currentFileConfig = (): RequestConcurrencyQueueFileConfig | undefined => {
+      try {
+        return loadConfigFile()
+      } catch (error) {
+        log("config re-read failed; using the load-time snapshot", error)
+        return fileConfig
+      }
+    }
+
     const registration = await ctx.rpc.register(statusRpc, {
       status: async () => snapshotOf(store),
-      config: async () => configSnapshot(store, fileConfig),
+      config: async () => configSnapshot(store, currentFileConfig()),
       save: async (input) => saveConfig(store, input as ConfigSnapshot),
     })
     // A transition anywhere in the process must reach every location's event
@@ -108,11 +159,13 @@ export default Plugin.define({
 
     const bySession = new Map<string, Set<Entry>>()
     const byRequest = new WeakMap<Request, Entry>()
-    // Total request-body bytes seen for each session's last request. The delta
-    // between two requests is that turn's new context, which is what a
-    // provider's token budget meters. Counting bytes while streaming the body
-    // avoids buffering a multi-megabyte request just to size it.
-    const bodyBytes = new Map<string, number>()
+    // The body each session's last admitted request carried. The delta between
+    // two requests is that turn's new context, which is what a provider's token
+    // budget meters. Counting bytes while streaming the body avoids buffering a
+    // multi-megabyte request just to size it.
+    const bodyMeasure = new Map<string, BodyMeasure>()
+    // The last attempt per session and provider, consumed by the retry hook.
+    const lastAttempt = new Map<string, Map<string, Attempt>>()
 
     log("initialized", {
       providers: Object.fromEntries([...limits].map(([providerID, limit]) => [providerID, limit.maxConcurrency])),
@@ -147,29 +200,24 @@ export default Plugin.define({
       return entry
     }
 
-    // A response error releases the failed attempt's own slot, and the runtime
-    // reports the retry afterwards. Record that release per session and
-    // provider so the retry spends it instead of freeing a newer entry that
-    // belongs to a request still in flight.
-    const retryCredits = new Map<string, Map<string, number>>()
-
-    const recordRetryCredit = (sessionID: string, providerID: string): void => {
-      let byProvider = retryCredits.get(sessionID)
+    /** Records the attempt a retry may later replace. */
+    const recordAttempt = (sessionID: string, providerID: string, attempt: Attempt): void => {
+      let byProvider = lastAttempt.get(sessionID)
       if (!byProvider) {
         byProvider = new Map()
-        retryCredits.set(sessionID, byProvider)
+        lastAttempt.set(sessionID, byProvider)
       }
-      byProvider.set(providerID, (byProvider.get(providerID) ?? 0) + 1)
+      byProvider.set(providerID, attempt)
     }
 
-    const consumeRetryCredit = (sessionID: string, providerID: string): boolean => {
-      const byProvider = retryCredits.get(sessionID)
-      const count = byProvider?.get(providerID) ?? 0
-      if (!byProvider || count === 0) return false
-      if (count === 1) byProvider.delete(providerID)
-      else byProvider.set(providerID, count - 1)
-      if (byProvider.size === 0) retryCredits.delete(sessionID)
-      return true
+    /** Takes the recorded attempt, so one retry consumes one attempt. */
+    const takeAttempt = (sessionID: string, providerID: string): Attempt | undefined => {
+      const byProvider = lastAttempt.get(sessionID)
+      const attempt = byProvider?.get(providerID)
+      if (!byProvider || !attempt) return undefined
+      byProvider.delete(providerID)
+      if (byProvider.size === 0) lastAttempt.delete(sessionID)
+      return attempt
     }
 
     const releaseEntry = (entry: Entry, reason: string): void => {
@@ -183,10 +231,6 @@ export default Plugin.define({
         if (entries.size === 0) bySession.delete(entry.sessionID)
       }
 
-      if (entry.kind === "primary" && reason === "response-error") {
-        recordRetryCredit(entry.sessionID, entry.providerID)
-      }
-
       const limit = limits.get(entry.providerID)
       log("released", {
         sessionID: entry.sessionID,
@@ -197,16 +241,22 @@ export default Plugin.define({
       })
     }
 
-    const releaseSession = (sessionID: string, reason: string): void => {
-      // A child session going idle frees the fan-out permit it held.
-      store.subagents?.releaseSession(sessionID)
-      // Credits belong to a live session's in-flight retry, so they never
-      // outlive the session that earned them.
-      retryCredits.delete(sessionID)
+    const releaseSession = (
+      sessionID: string,
+      reason: string,
+      options: { permits?: boolean } = {},
+    ): void => {
+      // A child session going idle frees the fan-out permit it held. A disposing
+      // instance skips this: the children keep running, and the instance that
+      // adopts the store releases each permit when its own idle event arrives.
+      if (options.permits !== false) store.subagents?.releaseSession(sessionID)
+      // An attempt belongs to a live session's in-flight retry, so it never
+      // outlives the session that recorded it.
+      lastAttempt.delete(sessionID)
       // The body cursor must survive a turn boundary. Deleting it on idle made
       // the next request charge its whole body as new tokens instead of the
       // delta, draining the budget every turn.
-      if (reason === "session.deleted" || reason === "dispose") bodyBytes.delete(sessionID)
+      if (reason === "session.deleted" || reason === "dispose") bodyMeasure.delete(sessionID)
       // A waiting request is not in `bySession` until it holds a slot, so it
       // must be cancelled here or it is dispatched later for a session that
       // has already ended.
@@ -214,29 +264,6 @@ export default Plugin.define({
       const entries = bySession.get(sessionID)
       if (!entries) return
       for (const entry of [...entries]) releaseEntry(entry, reason)
-    }
-
-    // A retry names only the session and provider, so it releases that
-    // session's oldest unreleased primary entry: the attempt that failed. When
-    // that attempt already released its slot on a response error, the retry
-    // spends the recorded release and touches nothing. A newer request's slot,
-    // including one queued behind it, stays held either way.
-    /**
-     * Releases the attempt a retry is replacing and reports whether that
-     * attempt had actually been dispatched. A request that died while still
-     * queued never reached the provider, so its failure must not be counted as
-     * provider pressure.
-     */
-    const releaseRetried = (sessionID: string, providerID: string, reason: string): boolean => {
-      if (consumeRetryCredit(sessionID, providerID)) return true
-      const entries = bySession.get(sessionID)
-      if (!entries) return false
-      for (const entry of entries) {
-        if (entry.released || entry.kind !== "primary" || entry.providerID !== providerID) continue
-        releaseEntry(entry, reason)
-        return true
-      }
-      return false
     }
 
     // Adaptive concurrency follows the provider's real capacity from outcomes:
@@ -259,58 +286,50 @@ export default Plugin.define({
     }
 
     /**
-     * Sizes one request on both admission dimensions without buffering its
-     * body. The body is streamed through a clone while its bytes are counted;
-     * the difference from the same session's previous request is this turn's
-     * new context, and the total is what the request occupies in flight.
+     * Sizes one request on both admission dimensions without buffering a small
+     * body. The difference from the same session's previous admitted request is
+     * this turn's new context, and the total is what the request occupies in
+     * flight.
+     *
+     * A large body is scanned for embedded image payloads first. Base64 image
+     * bytes are not text tokens: charging them at the text rate made one
+     * screenshot look like hundreds of thousands of new tokens and could
+     * exhaust the whole budget or context cap on its own. Images are charged a
+     * fixed amount instead, and only the text bytes feed the text estimate.
+     *
+     * An auxiliary request is charged its whole prompt (`fresh`): compaction
+     * rewrites the transcript into a new prompt that no longer shares the
+     * primary request's cached prefix, so its size is genuinely new context.
+     * The cursor is not moved for it, so the next primary request's delta still
+     * measures against the conversation it continues.
+     *
+     * The cursor moves only when the request is admitted, so a request that
+     * dies in the queue cannot make the next turn look smaller than it is.
      */
     const estimateRequestCost = async (
       request: Request,
       sessionID: string,
       safetyFactor: number,
-    ): Promise<{ newTokens: number; contextTokens: number }> => {
-      let total = 0
-      const declared = Number(request.headers.get("content-length"))
-      if (Number.isFinite(declared) && declared > 0) total = declared
-      try {
-        if (total > 0) {
-          const previous = bodyBytes.get(sessionID) ?? 0
-          bodyBytes.set(sessionID, total)
-          return {
-            newTokens: estimateTokens(Math.max(0, total - previous), safetyFactor),
-            contextTokens: estimateTokens(total, safetyFactor),
-          }
-        }
-        const body = request.clone().body
-        if (!body) return { newTokens: 0, contextTokens: 0 }
-        const reader = body.getReader()
-        try {
-          for (;;) {
-            const { done, value } = await reader.read()
-            if (done) break
-            total += value?.byteLength ?? 0
-          }
-        } finally {
-          reader.releaseLock()
-        }
-      } catch (error) {
-        log("token estimate skipped", error)
-        return { newTokens: 0, contextTokens: 0 }
-      }
-      const previous = bodyBytes.get(sessionID) ?? 0
-      bodyBytes.set(sessionID, total)
+      fresh = false,
+    ): Promise<CostEstimate> => {
+      const measured = await measureBody(request, log)
+      const previous = fresh ? { textBytes: 0, images: 0 } : (bodyMeasure.get(sessionID) ?? { textBytes: 0, images: 0 })
+      const newText = Math.max(0, measured.textBytes - previous.textBytes)
+      const newImages = Math.max(0, measured.images - previous.images)
       return {
-        newTokens: estimateTokens(Math.max(0, total - previous), safetyFactor),
-        contextTokens: estimateTokens(total, safetyFactor),
+        cost: {
+          newTokens:
+            estimateTokens(newText, safetyFactor) + newImages * IMAGE_TOKENS,
+          contextTokens:
+            estimateTokens(measured.textBytes, safetyFactor) + measured.images * IMAGE_TOKENS,
+        },
+        commit: () => {
+          if (!fresh) bodyMeasure.set(sessionID, measured)
+        },
       }
     }
 
     await ctx.session.hook("http.request", async (event) => {
-      // Auxiliary requests (title, compaction, generate) acquire no provider
-      // slot. The runtime reports no failure signal for one that dies before
-      // its response headers, so a held slot would have no release path and
-      // could stall the session's primary request.
-      if (event.kind !== "primary") return
       const limit = limits.get(event.model.providerID)
       if (!limit) return
 
@@ -322,15 +341,33 @@ export default Plugin.define({
         typeof limit.scheduler.costEstimateRequired === "function"
           ? limit.scheduler.costEstimateRequired()
           : true
-      const cost = needsEstimate
+      const estimate: CostEstimate | undefined = needsEstimate
         ? await estimateRequestCost(
             event.request,
             event.sessionID,
             limit.scheduler.budgetSafetyFactor,
+            event.kind !== "primary",
           )
-        : { newTokens: 0, contextTokens: 0 }
+        : undefined
+      const cost = estimate?.cost ?? { newTokens: 0, contextTokens: 0 }
+
+      if (event.kind !== "primary") {
+        // Auxiliary requests (title, compaction, generate) take no slot: the
+        // runtime gives no per-request failure signal for one that dies before
+        // its response headers, so a held slot would have no release path. They
+        // are still charged to the provider's new-token budget, because a
+        // compaction resends the whole transcript and is the largest burst the
+        // provider meters.
+        await limit.scheduler.acquireBudget(event.sessionID, cost, event.request.signal)
+        estimate?.commit()
+        recordAttempt(event.sessionID, event.model.providerID, { kind: event.kind })
+        return
+      }
+
       const slot = await limit.scheduler.acquire(event.sessionID, cost, event.request.signal)
-      addEntry(event.sessionID, event.model.providerID, event.kind, slot, event.request)
+      estimate?.commit()
+      const entry = addEntry(event.sessionID, event.model.providerID, event.kind, slot, event.request)
+      recordAttempt(event.sessionID, event.model.providerID, { kind: "primary", entry })
     })
 
     /**
@@ -365,23 +402,41 @@ export default Plugin.define({
     }
 
     await ctx.session.hook("http.response", async (event) => {
+      const limit = limits.get(event.model.providerID)
+      const response = event.response
+
+      // A 429 is answered for every kind of request: an auxiliary compaction
+      // can exhaust the provider's burst allowance just as a primary request
+      // can, and ignoring it left the whole provider unpaused.
+      if (response.status === 429) {
+        if (await isCapacityPressure(response)) {
+          // The provider has no free concurrent slot. A narrower width is the
+          // right answer; the token bucket is not what ran out.
+          recordFailure(limit)
+        } else {
+          // `burst_protection`: the new-token allowance is spent. Wait as long
+          // as the provider asks, and only that long. A missing header is a
+          // one-second wait, never a minute: the provider itself asks for about
+          // a second, and a minute-long pause would freeze every request while
+          // a full bucket sits unused.
+          const seconds = parseRetryAfter(response.headers.get("retry-after"))
+          limit?.scheduler.pauseBudget(seconds > 0 ? seconds : 1)
+        }
+      }
+
+      // A 5xx is a provider stall whether or not its body is drained by the
+      // caller, so it is counted here instead of on the retry path, which only
+      // sees it when the body was left unread.
+      if (response.status >= 500) {
+        recordFailure(limit)
+        limit?.scheduler.recordStall()
+      }
+
       // An auxiliary response must not fall through to the session's primary
       // entry while that primary body is still streaming.
       if (event.kind !== "primary") return
       const entry = byRequest.get(event.request) ?? soleEntry(bySession.get(event.sessionID))
       if (!entry) return
-
-      const limit = limits.get(event.model.providerID)
-      const response = event.response
-
-      // Every 429 asks for a pause. Only a slot shortage asks for a narrower
-      // width: a token-budget rejection is answered by the bucket, and halving
-      // concurrency for it would throttle throughput the bucket already gates.
-      if (response.status === 429) {
-        const seconds = parseRetryAfter(response.headers.get("retry-after")) || 60
-        limit?.scheduler.pauseBudget(seconds)
-        if (await isCapacityPressure(response)) recordFailure(limit)
-      }
 
       const body = response.body
       if (!body) {
@@ -432,7 +487,16 @@ export default Plugin.define({
     })
 
     await ctx.session.hook("retry", async (event) => {
-      const dispatched = releaseRetried(event.sessionID, event.model.providerID, "retry")
+      // The retry event names only the session and provider. The recorded
+      // attempt says whether it was a primary request (whose slot must be
+      // released) or an auxiliary one (which holds no slot), so a background
+      // compaction retry can never free a primary request that is still
+      // streaming.
+      const attempt = takeAttempt(event.sessionID, event.model.providerID)
+      const entry = attempt?.kind === "primary" ? attempt.entry : undefined
+      if (entry && !entry.released) releaseEntry(entry, "retry")
+      const dispatched = attempt !== undefined
+
       // Only a capacity signal narrows the width. A 429 is classified by the
       // response hook, which also carries Retry-After; an invalid request, a
       // context-size rejection, or a plan/quota error is not concurrency
@@ -448,12 +512,13 @@ export default Plugin.define({
       // A request that never got a slot was killed by the client's own timeout
       // while queued. That is this plugin's queue, not a provider stall.
       if (!dispatched) return
-      const capacity = error.type === "provider.transport" || (error.status ?? 0) >= 500
-      if (!capacity) return
+      // A 5xx already produced a response and was counted by the response hook,
+      // so only a transport failure that produced no response counts here.
+      if (error.type !== "provider.transport") return
       const limit = limits.get(event.model.providerID)
       recordFailure(limit)
       // An attempt that produced no response is a provider stall: it counts
-      // toward the circuit breaker and shrinks the in-flight context cap.
+      // toward the circuit breaker and may shrink the in-flight context cap.
       limit?.scheduler.recordStall()
     })
 
@@ -514,16 +579,22 @@ export default Plugin.define({
       controller.abort()
       // Running entries release their slots, but admission stops first so a
       // freed slot cannot be handed to a waiter this instance can no longer
-      // gate. Queued waiters are left for `releaseStore`'s grace period: a
-      // reload adopts this store a moment later and serves them, so a deploy
-      // no longer cancels a live sweep.
+      // gate. A queued waiter is cancelled with its session: its promise lives
+      // in this instance's hook frame, so handing it to the next instance would
+      // dispatch a request whose response nobody here can observe.
       // Only the last instance drains: while another location still holds the
       // store, its freed slots must keep being handed out.
       if (store.refcount <= 1) {
         for (const limit of limits.values()) limit.scheduler.beginDrain()
         store.subagents?.beginDrain()
       }
-      for (const sessionID of [...bySession.keys()]) releaseSession(sessionID, "dispose")
+      // Live child sessions keep their permits: they are still running, and the
+      // instance that adopts the store releases each one when its own idle
+      // event arrives. Releasing them here would let a reload admit a full new
+      // fan-out on top of the children it just forgot.
+      for (const sessionID of [...bySession.keys()]) {
+        releaseSession(sessionID, "dispose", { permits: false })
+      }
       await eventLoop.catch(() => {})
       unsubscribeStore()
       await registration.dispose()
@@ -561,7 +632,7 @@ export function configSnapshot(
       agingMs: scheduler?.agingMs ?? 30_000,
       queueDeadlineMs: scheduler?.queueDeadlineMs ?? 0,
       breaker: {
-        threshold: scheduler?.breaker?.threshold ?? 2,
+        threshold: scheduler?.breaker?.threshold ?? 3,
         cooldownMs: scheduler?.breaker?.cooldownMs ?? 60_000,
         mode: scheduler?.breaker?.mode ?? "fail",
       },
@@ -570,7 +641,9 @@ export function configSnapshot(
       max: store.subagents?.status().max ?? 0,
       hostAware: fileConfig?.subagents?.hostAware ?? false,
     },
-    adaptive: fileConfig?.adaptive ?? false,
+    // The running store is the source of truth for adaptive control: a save
+    // applies it there, and the file is only the persistence of that value.
+    adaptive: store.adaptive,
   }
 }
 
@@ -667,8 +740,19 @@ export function saveConfig(
   if (input.subagents.max > 0) next.subagents = input.subagents
   else delete next.subagents
 
-  // Apply first: a failure must not leave the file describing a state the
-  // running server never reached.
+  // Write the new file first, then apply it. If applying fails, the file is
+  // removed so neither side is left describing a state the other never reached.
+  const temporary = `${filePath}.tmp`
+  try {
+    writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`)
+  } catch (error) {
+    return {
+      ok: false,
+      errors: [`Could not write the settings file: ${error instanceof Error ? error.message : String(error)}`],
+      restartRequired: false,
+    }
+  }
+
   let applied: { restartRequired: boolean }
   try {
     applied = applyConfig(store, {
@@ -690,6 +774,11 @@ export function saveConfig(
       adaptive: input.adaptive,
     })
   } catch (error) {
+    try {
+      unlinkSync(temporary)
+    } catch {
+      // Nothing was renamed, so a leftover temp file is harmless.
+    }
     return {
       ok: false,
       errors: [`Could not apply the settings: ${error instanceof Error ? error.message : String(error)}`],
@@ -697,8 +786,6 @@ export function saveConfig(
     }
   }
 
-  const temporary = `${filePath}.tmp`
-  writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`)
   renameSync(temporary, filePath)
 
   return { ok: true, errors: [], restartRequired: applied.restartRequired }
@@ -754,6 +841,22 @@ export function resolveScheduler(
     throw new Error(
       `scheduler.queueDeadlineMs must be a non-negative integer, got ${String(deadline)}`,
     )
+  }
+  const ceiling = configured.contextCeiling
+  if (ceiling !== undefined && (!Number.isInteger(ceiling) || ceiling < 0)) {
+    throw new Error(
+      `scheduler.contextCeiling must be a non-negative integer, got ${String(ceiling)}`,
+    )
+  }
+  for (const key of ["reserveShare", "smallShare"] as const) {
+    const value = configured[key]
+    if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1)) {
+      throw new Error(`scheduler.${key} must be between 0 and 1, got ${String(value)}`)
+    }
+  }
+  const aging = configured.agingMs
+  if (aging !== undefined && (!Number.isInteger(aging) || aging < 0)) {
+    throw new Error(`scheduler.agingMs must be a non-negative integer, got ${String(aging)}`)
   }
   const breaker = configured.breaker
   if (breaker) {
@@ -888,6 +991,79 @@ function soleEntry(entries: Set<Entry> | undefined): Entry | undefined {
     found = entry
   }
   return found
+}
+
+/**
+ * Measures one request body as text bytes plus an image count.
+ *
+ * A body under the scan threshold is charged by its declared length, which is
+ * accurate for text and cheap. A larger one is read once and scanned, because a
+ * base64 image in it is billed by the provider as an image, not as the hundreds
+ * of thousands of text tokens its bytes would otherwise imply.
+ */
+async function measureBody(
+  request: Request,
+  log: (...args: unknown[]) => void,
+): Promise<BodyMeasure> {
+  const declared = Number(request.headers.get("content-length"))
+  if (Number.isFinite(declared) && declared > 0 && declared <= IMAGE_SCAN_BYTES) {
+    return { textBytes: declared, images: 0 }
+  }
+  try {
+    const body = request.clone().body
+    if (!body) return { textBytes: 0, images: 0 }
+    const reader = body.getReader()
+    const decoder = new TextDecoder()
+    let text = ""
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        text += decoder.decode(value, { stream: true })
+      }
+      text += decoder.decode()
+    } finally {
+      reader.releaseLock()
+    }
+    return measureText(text)
+  } catch (error) {
+    log("token estimate skipped", error)
+    return { textBytes: 0, images: 0 }
+  }
+}
+
+/** Counts the text of a parsed body, charging each embedded blob as an image. */
+function measureText(text: string): BodyMeasure {
+  const measured = { textBytes: 0, images: 0 }
+  try {
+    walkBody(JSON.parse(text), measured)
+    return measured
+  } catch {
+    // Not JSON, or too malformed to walk: fall back to the raw length.
+    return { textBytes: text.length, images: 0 }
+  }
+}
+
+function walkBody(value: unknown, measured: { textBytes: number; images: number }): void {
+  if (typeof value === "string") {
+    if (isImagePayload(value)) measured.images += 1
+    else measured.textBytes += value.length
+    return
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) walkBody(item, measured)
+    return
+  }
+  if (value !== null && typeof value === "object") {
+    for (const item of Object.values(value as Record<string, unknown>)) walkBody(item, measured)
+  }
+}
+
+/** A data URI or a bare base64 blob, as an image or document part carries it. */
+function isImagePayload(value: string): boolean {
+  if (value.length < 2_048) return false
+  if (/^data:[a-z]+\/[a-z0-9.+-]+;base64,/i.test(value)) return true
+  return /^[A-Za-z0-9+/\r\n]{2048,}={0,2}$/.test(value) && /[+/=]/.test(value)
 }
 
 function envMaxConcurrency(): number | undefined {

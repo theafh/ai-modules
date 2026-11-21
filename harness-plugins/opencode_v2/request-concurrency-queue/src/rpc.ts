@@ -1,6 +1,15 @@
 import type { Rpc } from "@opencode/schema/rpc"
 import type { SubagentStatus } from "./subagents.js"
 
+/** How many waiting requests each admission gate is holding back. */
+export interface BlockedCounts {
+  readonly slots: number
+  readonly context: number
+  readonly budget: number
+  readonly breaker: number
+  readonly draining: number
+}
+
 /** One configured provider's current concurrency state. */
 export interface ProviderStatus {
   readonly providerID: string
@@ -20,6 +29,8 @@ export interface ProviderStatus {
   readonly tokensCapacity: number
   /** Epoch milliseconds until which a provider `Retry-After` pauses requests; 0 when not paused. */
   readonly tokensPausedUntil: number
+  /** Which gate each waiting request is blocked on. */
+  readonly blocked: BlockedCounts
   /** Total context tokens in flight, when a context cap is configured. */
   readonly contextInFlight?: number
   /** The context cap, when configured. */
@@ -99,6 +110,19 @@ export interface StatusSnapshot {
   readonly subagents?: SubagentStatus
 }
 
+const blockedSchema = {
+  type: "object",
+  properties: {
+    slots: { type: "integer", minimum: 0 },
+    context: { type: "integer", minimum: 0 },
+    budget: { type: "integer", minimum: 0 },
+    breaker: { type: "integer", minimum: 0 },
+    draining: { type: "integer", minimum: 0 },
+  },
+  required: ["slots", "context", "budget", "breaker", "draining"],
+  additionalProperties: false,
+} as const
+
 const providerStatusSchema = {
   type: "object",
   properties: {
@@ -112,6 +136,7 @@ const providerStatusSchema = {
     tokensAvailable: { type: "integer", minimum: 0 },
     tokensCapacity: { type: "integer", minimum: 0 },
     tokensPausedUntil: { type: "integer", minimum: 0 },
+    blocked: blockedSchema,
     contextInFlight: { type: "integer", minimum: 0 },
     contextCapacity: { type: "integer", minimum: 0 },
     breaker: { type: "string", enum: ["closed", "open", "half-open"] },
@@ -129,6 +154,7 @@ const providerStatusSchema = {
     "tokensAvailable",
     "tokensCapacity",
     "tokensPausedUntil",
+    "blocked",
     "breaker",
     "breakerRetryAfterMs",
     "stalls",
@@ -154,11 +180,12 @@ const subagentStatusSchema = {
   type: "object",
   properties: {
     live: { type: "integer", minimum: 0 },
+    calling: { type: "integer", minimum: 0 },
     queued: { type: "integer", minimum: 0 },
     max: { type: "integer", minimum: 0 },
     capacity: { type: "integer", minimum: 0 },
   },
-  required: ["live", "queued", "max", "capacity"],
+  required: ["live", "calling", "queued", "max", "capacity"],
   additionalProperties: false,
 } as const
 

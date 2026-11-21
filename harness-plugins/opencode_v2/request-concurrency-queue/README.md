@@ -17,12 +17,15 @@ request.
   slot before they are sent. Auxiliary model requests (title, compaction, and
   generate) acquire no slot and are outside the provider cap: the runtime gives
   no per-request failure signal for them, so a slot held by an auxiliary request
-  that failed before its response headers would have no release path.
+  that failed before its response headers would have no release path. They are
+  still charged to the provider's new-token budget, because a compaction sends
+  the transcript as a fresh prompt and is the largest burst a provider meters.
 - The slot is released when the response body finishes, when the attempt fails
   and is retried, when the session goes idle, or when the session is deleted or
   interrupted.
-- A retry releases only the slot of the attempt that failed, so a concurrent
-  request's slot stays held.
+- A retry releases only the attempt it replaces, identified by the kind recorded
+  for that session's last request, so a background compaction retry cannot free
+  a primary request that is still streaming.
 - When no slot is free, the request waits in a queue. The scheduler admits the
   first waiting request that fits the concurrency, token-budget, and
   context-in-flight gates, so a smaller request can start ahead of an older one
@@ -34,23 +37,35 @@ request.
   deadline only replaces that opaque error with a `QueueTimeoutError` that
   names the queue. It never prevents a failure the client would not have
   caused, and it can reject a request that a deep-but-healthy queue would have
-  served. Leave it at `0` unless you want that clearer error.
-- A provider that stops serving is detected by a circuit breaker. Two
-  consecutive attempts that produce no response — a transport stall, a header
-  timeout, or a `5xx` — open the circuit for `scheduler.breaker.cooldownMs`
-  (default 60000). In `fail` mode (the default) every queued request is
-  rejected at once and new requests fail fast with a `CircuitOpenError`, so a
-  dead provider cannot keep growing the queue. In `wait` mode requests stay
-  queued and are admitted when the cooldown ends. After the cooldown one probe
-  is allowed: a success closes the circuit, another stall reopens it. A `429`
+  served. Set it below the client's header timeout (240000 against a 300000 ms
+  default) to turn a queue death into a named error.
+- A provider that stops serving is detected by a circuit breaker. Three
+  consecutive stalled attempts open the circuit for `scheduler.breaker.cooldownMs`
+  (default 60000): a transport stall or a header timeout that produced no
+  response, and any `5xx` response, whether or not its body is read. In `fail`
+  mode (the default) every queued request is rejected at once and new requests
+  fail fast with a `CircuitOpenError`, so a dead provider cannot keep growing
+  the queue. In `wait` mode requests stay queued and are admitted when the
+  cooldown ends. After the cooldown one probe is allowed and the rest queue
+  behind it: a success closes the circuit, another stall reopens it. A `429`
   never counts as a stall, because the provider answered.
+- The in-flight context cap shrinks only when the breaker opens, then grows back
+  in quarters of the remaining gap on clean completions. A single transient
+  failure therefore costs no width. `contextCeiling: 0` keeps the cap fixed.
 - A waiting request whose session ends — idle, deleted, failed, or interrupted —
   is removed from the queue and rejected, so it is never dispatched for a
   session nobody is listening to. A request already holding a slot is released
   as before.
 - When a provider has a token budget configured, a request must also fit that
-  provider's new-context allowance. It waits for the bucket to refill, and a
-  `Retry-After` on a `429` pauses the whole provider for the stated time.
+  provider's new-context allowance. It waits for the bucket to refill. A `429`
+  whose body carries `burst_protection` pauses the bucket for the `Retry-After`
+  it states, or one second when the header is absent. Any other `429` is a slot
+  shortage and narrows the width instead; it never pauses the bucket, and it
+  never waits a minute.
+- The reserve keeps part of the token budget for a large request only while a
+  request above `smallShare` of capacity is actually waiting. With no such
+  demand a small request uses the whole bucket, so a lone session never pays a
+  reserve wait that protects nobody.
 - With `adaptive` enabled, the effective maximum halves only on a capacity
   signal: a concurrency `429`, a transport failure such as a header timeout, or
   a `5xx`. A `429` carrying `burst_protection` pauses the token bucket instead,
@@ -58,18 +73,25 @@ request.
   width. Four clean completions restore one step, up to the configured maximum,
   which remains the hard ceiling.
 - With `subagents` configured, the plugin wraps the built-in `subagent` tool and
-  limits how many child sessions run at once. Because that tool returns at
+  guards how many child sessions exist at once. Because that tool returns at
   launch, each permit is bound to the child's session ID and released when the
-  child goes idle; launches beyond the limit wait in FIFO order. With
+  child goes idle; launches beyond the guard wait in FIFO order. This is a host
+  and cost guard, not a model-request limit: a child running a tool holds a
+  permit but no provider slot, so a ceiling near the provider's concurrency
+  throttles the fan-out below what the provider allows and adds a second queue.
+  Set `max` well above the provider maximum, or leave the section out. With
   `hostAware`, the effective ceiling also drops from the machine's one-minute
   load average and a critical-memory floor, so a loaded host queues fan-out
   instead of accepting it.
-- A plugin reload keeps queued work. When the last instance is disposed the
-  store stays adoptable for a grace period (`reloadGraceMs`, default 5000), so
-  a redeploy hands the queue, its waiters, and the live child sessions to the
-  new instance instead of cancelling them. Admission pauses during that window
-  so a freed slot cannot be dispatched ungated. If no reload arrives, the grace
-  expires and the waiters are cancelled with a message that names the unload.
+- A plugin reload keeps the shared store: the disposing instance stops admission
+  and releases the in-flight entries it holds, cancelling each such session's
+  queued waiter with it because that promise lives in the unloading instance's
+  hook frame. Waiters of sessions that hold no entry stay in the store through
+  the grace period (`reloadGraceMs`, default 5000), so an adopting instance
+  serves them once admission resumes; the last release after the grace cancels
+  whatever still waits. Live child sessions keep their permits across the
+  reload, so a new instance never admits a full fan-out on top of children it
+  has forgotten.
 - The queue counts in-flight requests, not sessions. A session that is running
   a tool or waiting for a subagent does not hold a slot.
 - The queue spans one server process. A separate OpenCode server process, or
@@ -161,25 +183,25 @@ the same dedicated config file.
    ```json
    {
      "providers": {
-       "openrouter": 4
+       "openrouter": 8
      },
      "tokens": {
        "openrouter": {
-         "capacity": 400000,
-         "refillPerMinute": 400000,
+         "capacity": 500000,
+         "refillPerMinute": 500000,
          "safetyFactor": 1.1
        }
      },
-     "adaptive": true,
+     "adaptive": false,
      "scheduler": {
-       "contextCapacity": 1200000,
-       "contextCeiling": 1200000,
-       "queueDeadlineMs": 0,
-       "breaker": { "threshold": 3, "cooldownMs": 60000, "mode": "fail" }
+       "contextCapacity": 0,
+       "contextCeiling": 0,
+       "queueDeadlineMs": 240000,
+       "breaker": { "threshold": 3, "cooldownMs": 60000, "mode": "wait" }
      },
      "subagents": {
-       "max": 8,
-       "hostAware": true
+       "max": 64,
+       "hostAware": false
      }
    }
    ```
@@ -191,21 +213,23 @@ the same dedicated config file.
    `scheduler` is optional. `contextCapacity` caps the total context tokens in
    flight, which is what a wide fan-out exhausts even when the request count is
    within the provider's concurrency allowance; `0` disables the cap.
-   `contextCeiling` bounds its adaptive recovery after transport stalls.
+   `contextCeiling` is the largest value the context cap may grow back to after
+   the breaker opens; `0` keeps the cap fixed.
    `queueDeadlineMs` bounds how long a request may wait for admission, and
    `breaker` decides how a provider that stops answering is handled.
    `reserveShare` keeps part of the token budget available for requests above
-   `smallShare` of capacity, and `agingMs` lets an old waiter ignore that
-   reserve. A request that cannot be admitted waits before it takes a slot, so a
-   large burst cannot starve small requests behind it. A waiting request is
-   checked again as soon as the bucket refills, the reserve lifts, or the
-   cooldown ends, and at least every two seconds, so it never depends on another
-   request finishing before it can start.
-   `subagents` is optional. `max` is the hard ceiling on live child sessions and
-   is required when the section is present, because the right number follows
-   each account's own concurrency allowance. `hostAware` defaults to `false`;
-   set it to `true` to let the machine's load average lower the ceiling (never
-   below one) and queue the rest.
+   `smallShare` of capacity, and only while such a request is actually waiting;
+   `agingMs` lets an old waiter ignore that reserve and the context cap. A
+   request that cannot be admitted waits before it takes a slot, so a large
+   burst cannot starve small requests behind it. A waiting request is
+   checked again as soon as the bucket refills, the reserve lifts, the aging
+   window opens, or the cooldown ends, and at least every two seconds, so it
+   never depends on another request finishing before it can start.
+   `subagents` is optional. `max` is a guard on live child sessions, for host
+   load and cost, not a model-request limit; a child waiting for a tool still
+   counts, so set it well above the provider's concurrency or leave the section
+   out. `hostAware` defaults to `false`; set it to `true` to let the machine's
+   load average lower the ceiling (never below one) and queue the rest.
 
    Add one entry per provider. Set the path with
    `OPENCODE_REQUEST_CONCURRENCY_CONFIG` if the file lives elsewhere. The
@@ -288,15 +312,24 @@ same process-wide queue, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `providerID`,
 `active`, `queued`, `max`, utilization (`active / max`), and demand
 (`(active + queued) / max`). Providers with no configured limit do not appear.
+Each provider also carries `blocked`, the number of waiting requests held by each
+gate (`slots`, `context`, `budget`, `breaker`, `draining`), so a queue that does
+not drain says which dimension is short. `queued` includes auxiliary requests
+waiting for the token budget, while `active` counts only slot-holding requests.
 The snapshot also carries the most recent 50 transitions, oldest first, each
 with a timestamp, provider ID, kind (`acquired`, `queued`, `released`,
-`dequeued`), session ID, active count, and queued count. A release handoff
-records `released` for the releasing session and then `acquired` for the waiter.
+`dequeued`), session ID, and the active and queued counts immediately after that
+transition. A release handoff records `released` for the releasing session with
+the count it produced, then `acquired` for the waiter.
 The server emits a `changed` event on every count-changing transition: a free
 slot acquired, a request joining the wait queue, a queued request aborted, a
 release that frees a slot, and a release that hands the slot to the next
 waiter. Every instance forwards the shared queue's transitions, so the bar's
-dialog sees them whichever location emitted them.
+dialog sees them whichever location emitted them. When the fan-out gate is
+configured, the snapshot also carries its `live`, `calling`, `queued`, `max`,
+and `capacity`. `live` counts child sessions holding a permit, which includes a
+child running a tool; `calling` counts the live children that are calling the
+model right now, so it is the number that agrees with the provider's `active`.
 
 The desktop GUI part ships as the prebuilt `./gui-experimental` bundle and adds
 a full-width status bar in the window's bottom slot. The bar is the only
@@ -304,16 +337,23 @@ persistent desktop surface. It is visible in every window, including Home, and
 shows each provider as one `X/Y` count, where `X` is active plus queued and `Y`
 is the configured maximum, so a fully loaded provider reads `8/8` and an
 overloaded one reads `12/8`. The count is coloured by its own load,
-`(active + queued) / max`; hovering it reports how many slots are in demand.
-Clicking the bar opens a larger **Concurrency** dialog with the provider table
-and the activity feed. The bar hides itself when no provider is configured and
-until the first status fetch settles. It reads the built-in server, because the
-queue is process-wide and every location returns the same snapshot.
+`(active + queued) / max`; hovering it reports how many slots are in demand and
+which gate the waiters are blocked on. A configured fan-out gate adds one
+`subagents` item with its live and calling counts, plus a waiting count when a
+launch is actually held, so its queue is never invisible and the gap between
+live children and model requests is explained in place. Clicking the bar opens a larger **Concurrency** dialog with the
+provider table, the fan-out line, and the activity feed. The bar hides itself
+when no provider is configured and until the first status fetch settles. It
+reads the built-in server, because the queue is process-wide and every location
+returns the same snapshot.
 
 The bar's subscription refetches on every `changed` event and on a slow
 interval, so a missed event recovers, and the dialog renders that same snapshot.
 Each provider gets one row with its in-flight count, configured maximum, and
 queue depth as absolute numbers, and its utilization and demand as percentages.
+A row whose queue is held back carries the gates in the queued cell's tooltip,
+so `active 6, queued 2` reads as the context cap, the token budget, or the slot
+ceiling rather than as one undifferentiated number.
 A header labels the columns, and the counts are right-aligned in tabular figures
 so a row reads as one line. The numbers are coloured on an eight-anchor load scale:
 dark green at 0%, light green at 100%, light yellow at 150%, orange at 200%,
@@ -342,6 +382,14 @@ bun run build:gui
   `tokens` entry, because the budget numbers are provider-specific. A
   request-size rejection such as `cold_request_too_large` is not handled: the
   provider answers it, and the plugin neither predicts nor retries it.
+- A request's size is an estimate, not the provider's count. Text is charged at
+  3.5 bytes per token times the configured safety factor; an embedded image is
+  charged a flat 1200 tokens because its base64 bytes would otherwise overstate
+  it by orders of magnitude. A body under 256000 bytes is charged by its
+  declared length; a larger one is read once and scanned for image payloads.
+- An auxiliary request is charged its whole prompt to the token budget, which
+  over-estimates the cached prefix a compaction shares with the conversation.
+  That is the safe side: the provider rejects a burst, not a pause.
 - The queue is in memory. A server restart clears it.
 - A primary request that never completes holds its slot until the user aborts
   the session or the session fails. This is intentional: the plugin has no

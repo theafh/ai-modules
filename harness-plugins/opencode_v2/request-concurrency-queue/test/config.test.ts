@@ -50,7 +50,7 @@ describe("configSnapshot", () => {
 
     expect(snapshot.providers).toEqual({ acme: 6 })
     expect(snapshot.tokens).toEqual({})
-    expect(snapshot.scheduler.breaker).toEqual({ threshold: 2, cooldownMs: 60_000, mode: "fail" })
+    expect(snapshot.scheduler.breaker).toEqual({ threshold: 3, cooldownMs: 60_000, mode: "fail" })
     expect(snapshot.scheduler.queueDeadlineMs).toBe(0)
     expect(snapshot.subagents).toEqual({ max: 8, hostAware: false })
     expect(snapshot.adaptive).toBe(false)

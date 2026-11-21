@@ -16,9 +16,27 @@ export interface SchedulerSlot {
 export interface SchedulerTransition {
   readonly kind: TransitionKind
   readonly sessionID: string
+  /** The active count immediately after this transition. */
+  readonly active: number
+  /** The queued count immediately after this transition. */
+  readonly queued: number
 }
 
 export type SchedulerListener = (transitions: readonly SchedulerTransition[]) => void
+
+/** How many waiting requests each admission gate is holding back. */
+export interface BlockedCounts {
+  /** Waiting for a free concurrency slot. */
+  readonly slots: number
+  /** Waiting for room under the in-flight context cap. */
+  readonly context: number
+  /** Waiting for the provider's new-token budget or its reserve. */
+  readonly budget: number
+  /** Waiting for the circuit breaker to allow a probe. */
+  readonly breaker: number
+  /** Waiting because a disposing instance paused admission. */
+  readonly draining: number
+}
 
 /** How a request behaves while the provider's circuit is open. */
 export type BreakerMode = "fail" | "wait"
@@ -39,13 +57,16 @@ export interface RequestSchedulerOptions {
   budget?: TokenBudget
   /** Total context tokens allowed in flight; 0 or omitted disables the cap. */
   contextCapacity?: number
-  /** Upper bound the adaptive context cap may grow back to. */
+  /**
+   * Upper bound the adaptive context cap may grow back to. `0` keeps the cap
+   * fixed: it never shrinks and never grows.
+   */
   contextCeiling?: number
   /** Fraction of the budget kept available for requests above the small threshold. */
   reserveShare?: number
   /** Fraction of budget capacity at or below which a request counts as small. */
   smallShare?: number
-  /** A waiter older than this ignores the reserve check. */
+  /** A waiter older than this ignores the reserve and the context cap. */
   agingMs?: number
   /**
    * Longest a request may wait for admission before it is rejected. Kept below
@@ -73,6 +94,12 @@ interface Waiter {
   readonly sessionID: string
   readonly cost: RequestCost
   readonly enqueuedAt: number
+  /**
+   * True for an auxiliary request: it waits for the provider's token budget but
+   * takes no concurrency slot and no context room, because the runtime offers no
+   * release path for one that dies before its response headers.
+   */
+  readonly budgetOnly?: boolean
   /** True when this admission is the single half-open test request. */
   isProbe?: boolean
   /** Identifies which probe this is, so a stale release cannot clear a newer one. */
@@ -116,6 +143,8 @@ export class RequestScheduler {
   private readonly waiters: Waiter[] = []
   private active = 0
   private contextInFlight = 0
+  /** Active requests per session, so the panel can say who is calling the model. */
+  private readonly activeSessions = new Map<string, number>()
   private timer?: ReturnType<typeof setTimeout>
   private scheduling = false
   private stalls = 0
@@ -150,6 +179,11 @@ export class RequestScheduler {
 
   get queuedCount(): number {
     return this.waiters.length
+  }
+
+  /** Sessions holding at least one model-request slot right now. */
+  activeSessionIDs(): ReadonlySet<string> {
+    return new Set(this.activeSessions.keys())
   }
 
   get maxConcurrency(): number {
@@ -258,21 +292,71 @@ export class RequestScheduler {
     }
   }
 
+  /** How many waiting requests each gate is currently holding back. */
+  blocked(): BlockedCounts {
+    const now = this.now()
+    const counts = { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }
+    for (const waiter of this.waiters) {
+      if (this.draining) {
+        counts.draining += 1
+        continue
+      }
+      if (!this.breakerAllows(now)) {
+        counts.breaker += 1
+        continue
+      }
+      if (!waiter.budgetOnly && this.active >= this.maxSlots) {
+        counts.slots += 1
+        continue
+      }
+      if (!waiter.budgetOnly && !this.fitsContext(waiter, now)) {
+        counts.context += 1
+        continue
+      }
+      if (this.budget && (this.budget.waitFor(waiter.cost.newTokens) > 0 || this.holdsReserve(waiter, now))) {
+        counts.budget += 1
+      }
+    }
+    return counts
+  }
+
   acquire(
     sessionID: string,
     cost: RequestCost = { newTokens: 0, contextTokens: 0 },
     signal?: AbortSignal,
   ): Promise<SchedulerSlot> {
+    return this.enqueue(sessionID, cost, signal, false)
+  }
+
+  /**
+   * Waits for the provider's new-token budget without taking a concurrency slot
+   * or context room, for an auxiliary request such as compaction. The spend is
+   * not refunded: a request that never reaches the provider only under-uses the
+   * budget, which is the safe side.
+   */
+  acquireBudget(
+    sessionID: string,
+    cost: RequestCost = { newTokens: 0, contextTokens: 0 },
+    signal?: AbortSignal,
+  ): Promise<SchedulerSlot> {
+    return this.enqueue(sessionID, cost, signal, true)
+  }
+
+  private enqueue(
+    sessionID: string,
+    cost: RequestCost,
+    signal: AbortSignal | undefined,
+    budgetOnly: boolean,
+  ): Promise<SchedulerSlot> {
     if (signal?.aborted) return Promise.reject(cancelledError())
 
     const now = this.now()
     const state = this.breakerState(now)
-    // While half-open, the single probe owns the circuit: another request is
-    // rejected rather than queued, because nothing would wake it when the probe
-    // settles.
-    if (this.breakerMode === "fail") {
-      if (state === "open") return Promise.reject(circuitOpenError(this.openUntil - now))
-      if (state === "half-open" && this.probeBlocks(now)) return Promise.reject(probeInFlightError())
+    // While open, `fail` rejects at once so a dead provider cannot grow the
+    // queue. Half-open does not reject: the request queues behind the single
+    // probe and is admitted when the probe settles or its lease runs out.
+    if (this.breakerMode === "fail" && state === "open") {
+      return Promise.reject(circuitOpenError(this.openUntil - now))
     }
 
     return new Promise<SchedulerSlot>((resolve, reject) => {
@@ -283,6 +367,7 @@ export class RequestScheduler {
           contextTokens: Math.max(0, Math.floor(cost.contextTokens)),
         },
         enqueuedAt: now,
+        budgetOnly,
         resolve,
         reject,
         signal,
@@ -300,7 +385,7 @@ export class RequestScheduler {
           const index = this.waiters.indexOf(waiter)
           if (index !== -1) {
             this.waiters.splice(index, 1)
-            this.onChange([{ kind: "dequeued", sessionID }])
+            this.onChange([this.transition("dequeued", sessionID)])
           }
           this.clearDeadline(waiter)
           reject(cancelledError())
@@ -316,28 +401,31 @@ export class RequestScheduler {
           if (waiter.signal && waiter.onAbort) {
             waiter.signal.removeEventListener("abort", waiter.onAbort)
           }
-          this.onChange([{ kind: "dequeued", sessionID }])
+          this.onChange([this.transition("dequeued", sessionID)])
           reject(queueTimeoutError(this.queueDeadlineMs))
         }, this.queueDeadlineMs)
       }
 
       this.waiters.push(waiter)
-      this.onChange([{ kind: "queued", sessionID }])
+      this.onChange([this.transition("queued", sessionID)])
       this.schedule()
     })
   }
 
   /**
-   * Records one attempt that produced no response: a transport stall, a header
-   * timeout, or a 5xx. Consecutive stalls open the circuit; the context cap
-   * also shrinks, because the same stall means the provider ran out of room.
+   * Records one attempt that produced no response: a transport stall or a
+   * header timeout. The cap shrinks only when the breaker opens, because a
+   * single transient failure must not cut the whole fan-out's width; it then
+   * grows back in quarters on clean completions.
    */
   recordStall(): void {
     const now = this.now()
     this.stalls += 1
     const halfOpen = this.openUntil > 0 && now >= this.openUntil
-    if (halfOpen || this.stalls >= this.breakerThreshold) this.open(now)
-    this.shrinkContext()
+    if (halfOpen || this.stalls >= this.breakerThreshold) {
+      this.open(now)
+      this.shrinkContext()
+    }
   }
 
   /** Records one served request: the circuit closes and the context cap grows. */
@@ -346,10 +434,11 @@ export class RequestScheduler {
     this.openUntil = 0
     this.probeInFlight = false
     this.probeStartedAt = 0
-    if (this.contextCapacity === 0) return
-    const step = Math.max(1, Math.floor(this.contextCeiling * 0.1))
-    const next = Math.min(this.contextCeiling, this.contextCapacity + step)
-    if (next > this.contextCapacity) this.contextCapacity = next
+    if (this.contextCapacity === 0 || this.contextCeiling === 0) return
+    const gap = this.contextCeiling - this.contextCapacity
+    if (gap <= 0) return
+    const step = Math.max(1, Math.ceil(gap * 0.25))
+    this.contextCapacity = Math.min(this.contextCeiling, this.contextCapacity + step)
     // Closing the circuit frees anything that waited in `wait` mode.
     this.schedule()
   }
@@ -371,7 +460,7 @@ export class RequestScheduler {
       this.clearDeadline(waiter)
       waiter.reject(cancelledError("the session ended while the request was waiting"))
     }
-    this.onChange(removed.map(() => ({ kind: "dequeued" as const, sessionID })))
+    this.onChange(removed.map(() => this.transition("dequeued", sessionID)))
     return removed.length
   }
 
@@ -383,12 +472,17 @@ export class RequestScheduler {
       waiter.reject(cancelledError(reason))
     }
     if (removed.length > 0) {
-      this.onChange(removed.map((waiter) => ({ kind: "dequeued" as const, sessionID: waiter.sessionID })))
+      this.onChange(removed.map((waiter) => this.transition("dequeued", waiter.sessionID)))
     }
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = undefined
     }
+  }
+
+  /** One count-changing transition, captured with the counts it produced. */
+  private transition(kind: TransitionKind, sessionID: string): SchedulerTransition {
+    return { kind, sessionID, active: this.active, queued: this.waiters.length }
   }
 
   /** Applies one admission and returns its transition; the caller emits it. */
@@ -402,11 +496,14 @@ export class RequestScheduler {
       waiter.isProbe = true
       waiter.probeSeq = this.probeSeq
     }
-    this.active += 1
-    this.contextInFlight += waiter.cost.contextTokens
     this.budget?.spend(waiter.cost.newTokens)
-    waiter.resolve(this.createSlot(waiter))
-    return { kind: "acquired", sessionID: waiter.sessionID }
+    if (!waiter.budgetOnly) {
+      this.active += 1
+      this.contextInFlight += waiter.cost.contextTokens
+      this.activeSessions.set(waiter.sessionID, (this.activeSessions.get(waiter.sessionID) ?? 0) + 1)
+    }
+    waiter.resolve(waiter.budgetOnly ? { release() {} } : this.createSlot(waiter))
+    return this.transition("acquired", waiter.sessionID)
   }
 
   private createSlot(waiter: Waiter): SchedulerSlot {
@@ -417,6 +514,9 @@ export class RequestScheduler {
         released = true
         this.active -= 1
         this.contextInFlight = Math.max(0, this.contextInFlight - waiter.cost.contextTokens)
+        const held = this.activeSessions.get(waiter.sessionID) ?? 0
+        if (held <= 1) this.activeSessions.delete(waiter.sessionID)
+        else this.activeSessions.set(waiter.sessionID, held - 1)
         // A probe that ends without a verdict — the session went idle, the
         // request was aborted, no response was recorded — must not keep the
         // circuit closed to everyone. Clear it so another probe can run.
@@ -424,7 +524,7 @@ export class RequestScheduler {
           this.probeInFlight = false
           this.probeStartedAt = 0
         }
-        this.schedule([{ kind: "released", sessionID: waiter.sessionID }])
+        this.schedule([this.transition("released", waiter.sessionID)])
       },
     }
   }
@@ -443,7 +543,8 @@ export class RequestScheduler {
     try {
       for (;;) {
         const now = this.now()
-        if (this.active >= this.maxSlots) break
+        // A budget-only waiter fits beside a full slot set, so the loop cannot
+        // stop at the concurrency ceiling; `canAdmit` applies each gate.
         const index = this.waiters.findIndex((waiter) => this.canAdmit(waiter, now))
         if (index === -1) break
         const [waiter] = this.waiters.splice(index, 1)
@@ -458,7 +559,8 @@ export class RequestScheduler {
 
   /**
    * Re-runs admission when the next time-driven gate lifts: the bucket refills,
-   * the reserve stops holding a small request, or the cooldown ends.
+   * the reserve stops holding a small request, the context aging window opens,
+   * or the cooldown ends.
    *
    * A queued request must never depend on another request's release to be
    * checked again. In a fan-out every session can be waiting on its own queued
@@ -476,12 +578,14 @@ export class RequestScheduler {
     const now = this.now()
     let soonest = RECHECK_MS
     if (this.openUntil > now) soonest = Math.min(soonest, this.openUntil - now)
-    if (this.budget) {
-      for (const waiter of this.waiters) {
-        if (!this.fitsContext(waiter) && this.contextInFlight > 0) continue
-        const wait = this.budgetDelay(waiter, now)
-        if (wait > 0) soonest = Math.min(soonest, wait)
+    for (const waiter of this.waiters) {
+      if (!waiter.budgetOnly && !this.fitsContext(waiter, now) && this.contextInFlight > 0) {
+        const aging = waiter.enqueuedAt + this.agingMs - now
+        if (aging > 0) soonest = Math.min(soonest, aging)
+        continue
       }
+      const wait = this.budgetDelay(waiter, now)
+      if (wait > 0) soonest = Math.min(soonest, wait)
     }
     this.timer = setTimeout(() => {
       this.timer = undefined
@@ -502,32 +606,49 @@ export class RequestScheduler {
 
   private canAdmit(waiter: Waiter, now: number): boolean {
     if (this.draining) return false
-    if (this.active >= this.maxSlots) return false
     if (!this.breakerAllows(now)) return false
-    if (!this.fitsContext(waiter)) return false
+    if (!waiter.budgetOnly) {
+      if (this.active >= this.maxSlots) return false
+      if (!this.fitsContext(waiter, now)) return false
+    }
     if (!this.budget) return true
     if (this.budget.waitFor(waiter.cost.newTokens) > 0) return false
-    return !this.holdsReserve(waiter)
+    return !this.holdsReserve(waiter, now)
   }
 
   /**
    * The cap protects the provider from too much context at once. A single
    * request larger than the cap is still admitted when nothing is in flight,
-   * so a shrink can never deadlock the queue.
+   * and a waiter that has aged past `agingMs` is admitted anyway, so the cap
+   * can neither deadlock the queue nor starve one large request behind a
+   * stream of smaller ones.
    */
-  private fitsContext(waiter: Waiter): boolean {
+  private fitsContext(waiter: Waiter, now: number): boolean {
     if (this.contextCapacity === 0) return true
     if (this.contextInFlight === 0) return true
-    return this.contextInFlight + waiter.cost.contextTokens <= this.contextCapacity
+    if (this.contextInFlight + waiter.cost.contextTokens <= this.contextCapacity) return true
+    return this.agingMs > 0 && now - waiter.enqueuedAt >= this.agingMs
   }
 
   /**
    * A small request stops once it would eat into the reserve, so a large one
-   * behind it can still fit when the bucket refills. An aged waiter ignores
-   * the reserve and competes for what is available.
+   * behind it can still fit when the bucket refills. The reserve only applies
+   * while a large request is actually waiting: with no such demand, holding a
+   * lone request back would add latency and protect nobody. An aged waiter
+   * ignores the reserve and competes for what is available.
    */
-  private holdsReserve(waiter: Waiter): boolean {
-    return this.reserveDelay(waiter, this.now()) > 0
+  private holdsReserve(waiter: Waiter, now: number): boolean {
+    if (!this.budget) return false
+    if (waiter.cost.newTokens > this.smallShare * this.budget.capacity) return false
+    if (!this.hasLargeWaiter(waiter)) return false
+    return this.reserveDelay(waiter, now) > 0
+  }
+
+  /** Whether a request above the small threshold is waiting behind this one. */
+  private hasLargeWaiter(exclude: Waiter): boolean {
+    if (!this.budget) return false
+    const threshold = this.smallShare * this.budget.capacity
+    return this.waiters.some((waiter) => waiter !== exclude && waiter.cost.newTokens > threshold)
   }
 
   /**
@@ -593,7 +714,7 @@ export class RequestScheduler {
       waiter.reject(circuitOpenError(this.openUntil - now))
     }
     if (removed.length > 0) {
-      this.onChange(removed.map((waiter) => ({ kind: "dequeued" as const, sessionID: waiter.sessionID })))
+      this.onChange(removed.map((waiter) => this.transition("dequeued", waiter.sessionID)))
     }
     // In `wait` mode the queue stays; schedule so the cooldown timer is armed.
     this.schedule()
@@ -601,6 +722,8 @@ export class RequestScheduler {
 
   private shrinkContext(): void {
     if (this.contextCapacity === 0) return
+    // `contextCeiling: 0` means the operator fixed the cap: never shrink it.
+    if (this.contextCeiling === 0) return
     const next = Math.max(1, Math.floor(this.contextCapacity / 2))
     if (next < this.contextCapacity) {
       this.contextCapacity = next
@@ -645,14 +768,6 @@ const PROBE_LEASE_MS = 330_000
  * probe lease running out.
  */
 const RECHECK_MS = 2_000
-
-function probeInFlightError(): Error {
-  const error = new Error(
-    "request-concurrency-queue: a test request is already checking whether the provider recovered; retry shortly",
-  )
-  error.name = "CircuitOpenError"
-  return error
-}
 
 function circuitOpenError(retryAfterMs: number): Error {
   const seconds = Math.max(1, Math.ceil(retryAfterMs / 1000))

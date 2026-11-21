@@ -1,5 +1,30 @@
 {
   "providers": {
-    "openrouter": 4
+    "openrouter": 8
+  },
+  "tokens": {
+    "openrouter": {
+      "capacity": 500000,
+      "refillPerMinute": 500000,
+      "safetyFactor": 1.1
+    }
+  },
+  "scheduler": {
+    "contextCapacity": 0,
+    "contextCeiling": 0,
+    "reserveShare": 0.25,
+    "smallShare": 0.1,
+    "agingMs": 30000,
+    "queueDeadlineMs": 240000,
+    "breaker": {
+      "threshold": 3,
+      "cooldownMs": 60000,
+      "mode": "wait"
+    }
+  },
+  "adaptive": false,
+  "subagents": {
+    "max": 64,
+    "hostAware": false
   }
 }

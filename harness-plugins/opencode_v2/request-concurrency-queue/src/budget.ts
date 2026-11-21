@@ -1,14 +1,14 @@
 /**
  * A token bucket for a provider's new-context allowance.
  *
- * Providers such as SeibertGPT meter *new, uncached* context: a budget that can
+ * Providers meter *new, uncached* context: a budget that can
  * be spent all at once and refills at a fixed rate. The bucket refills lazily on
  * read, so a waiting request costs no timer and no background work.
  */
 export interface TokenBudgetOptions {
-  /** Tokens that may be spent at once, e.g. 400000. */
+  /** Tokens that may be spent at once, e.g. 500000. */
   readonly capacity: number
-  /** Tokens added back per minute, e.g. 400000. */
+  /** Tokens added back per minute, e.g. 500000. */
   readonly refillPerMinute: number
   /** Multiplier applied by `estimateTokens`; 1 means no extra margin. */
   readonly safetyFactor?: number

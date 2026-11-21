@@ -31,6 +31,8 @@ export interface SubagentPermit {
 export interface SubagentStatus {
   /** Child sessions currently holding a permit. */
   readonly live: number
+  /** Live child sessions that are calling the model right now. */
+  readonly calling?: number
   /** Launches waiting for a permit. */
   readonly queued: number
   /** The configured ceiling. */
@@ -151,6 +153,11 @@ export class SubagentGate {
 
   get queuedCount(): number {
     return this.waiters.length
+  }
+
+  /** The child sessions holding a permit, excluding launches not yet bound. */
+  liveSessionIDs(): ReadonlySet<string> {
+    return new Set(this.live)
   }
 
   /** Changes the hard ceiling; raising it serves waiting launches at once. */

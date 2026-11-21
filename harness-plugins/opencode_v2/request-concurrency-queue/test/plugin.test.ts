@@ -279,7 +279,7 @@ describe("request-concurrency-queue plugin", () => {
     const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
 
     expect(await statusSnapshot(rpc)).toEqual({
-      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
+      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
       transitions: [],
     })
 
@@ -595,14 +595,15 @@ describe("request-concurrency-queue plugin", () => {
     await cleanup()
   })
 
-  test("a retry releases the older of two primary entries for the session", async () => {
+  test("a retry releases the attempt it replaces, not an older one", async () => {
     const { hooks, cleanup } = await setup({ maxConcurrency: 2, providers: ["acme"] })
     const first = request("https://example.test/first")
     const second = request("https://example.test/second")
     const other = request("https://example.test/other")
     const further = request("https://example.test/further")
 
-    // One session's two primary entries hold both slots.
+    // One session's two primary entries hold both slots. The second is the
+    // attempt a retry would replace.
     await requestHook(hooks, "a", first)
     await requestHook(hooks, "a", second)
 
@@ -616,7 +617,8 @@ describe("request-concurrency-queue plugin", () => {
       decision: { retry: true, delay: 1 },
     })
 
-    // The retry frees the older entry, so another session's request acquires.
+    // The retry frees the attempt it replaces, so another session's request
+    // acquires that slot.
     let otherAcquired = false
     const otherPromise = requestHook(hooks, "b", other).then(() => {
       otherAcquired = true
@@ -624,7 +626,8 @@ describe("request-concurrency-queue plugin", () => {
     await otherPromise
     expect(otherAcquired).toBe(true)
 
-    // The session's newer entry stays held, so a further request waits.
+    // The older entry stays held, so a further request waits until its response
+    // ends.
     let furtherAcquired = false
     const furtherPromise = requestHook(hooks, "c", further).then(() => {
       furtherAcquired = true
@@ -632,11 +635,47 @@ describe("request-concurrency-queue plugin", () => {
     await tick()
     expect(furtherAcquired).toBe(false)
 
-    const secondResponse = await responseHook(hooks, "a", second, "second-body")
-    await secondResponse.text()
+    const firstResponse = await responseHook(hooks, "a", first, "first-body")
+    await firstResponse.text()
     await furtherPromise
     expect(furtherAcquired).toBe(true)
 
+    await cleanup()
+  })
+
+  test("an auxiliary retry does not release a primary request's slot", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    // The primary request holds the only slot while a background compaction
+    // attempt runs and is retried.
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    await requestHook(hooks, "a", request("https://example.test/compact"), "acme", "compaction")
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "boom" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    // The primary request is still streaming, so its slot stays held and no
+    // second request can be admitted past the cap.
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(1)
+    let extraAcquired = false
+    const extra = requestHook(hooks, "b", request("https://example.test/extra")).then(() => {
+      extraAcquired = true
+    })
+    await tick()
+    expect(extraAcquired).toBe(false)
+
+    const response = await responseHook(hooks, "a", primary, "body")
+    await response.text()
+    await extra
+    expect(extraAcquired).toBe(true)
     await cleanup()
   })
 
@@ -1000,7 +1039,7 @@ describe("process-wide store", () => {
       try {
         // The first instance's provider set and maximum stay authoritative.
         expect((await statusSnapshot(second.rpc)).providers).toEqual([
-          { providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 },
+          { providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 },
         ])
         expect(messages.some((message) => message.includes("config mismatch"))).toBe(true)
       } finally {
@@ -1219,7 +1258,7 @@ describe("token budget gate", () => {
     await cleanup()
   })
 
-  test("a rate limit pauses the bucket and halves the width", async () => {
+  test("a burst-protection 429 pauses the bucket for the stated wait", async () => {
     const { hooks, rpc, cleanup } = await setup({
       maxConcurrency: 4,
       providers: ["acme"],
@@ -1229,16 +1268,78 @@ describe("token budget gate", () => {
 
     const a = request("https://example.test/a")
     await requestHook(hooks, "a", a)
-    const response = await responseHookWith(hooks, "a", a, {
-      status: 429,
-      headers: { "retry-after": "30" },
+    const response = await responseHookWith(
+      hooks,
+      "a",
+      a,
+      { status: 429, headers: { "retry-after": "30" } },
+      "acme",
+      JSON.stringify({ error: { code: "burst_protection" } }),
+    )
+    await response.text()
+
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    // The bucket is what ran out, so the width stays put and the pause is the
+    // provider's own Retry-After.
+    expect(provider.max).toBe(4)
+    const pauseMs = provider.tokensPausedUntil - Date.now()
+    expect(pauseMs).toBeGreaterThan(25_000)
+    expect(pauseMs).toBeLessThanOrEqual(30_000)
+
+    await cleanup()
+  })
+
+  test("a capacity 429 halves the width without pausing the bucket", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 4,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 1000, refillPerMinute: 60_000 } },
+      adaptive: true,
     })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    const response = await responseHookWith(
+      hooks,
+      "a",
+      a,
+      { status: 429, headers: { "retry-after": "30" } },
+      "acme",
+      JSON.stringify({ error: { code: "rate_limit_exceeded" } }),
+    )
     await response.text()
 
     const provider = (await statusSnapshot(rpc)).providers[0]
     expect(provider.max).toBe(2)
     expect(provider.ceiling).toBe(4)
-    expect(provider.tokensPausedUntil).toBeGreaterThan(Date.now())
+    expect(provider.tokensPausedUntil).toBe(0)
+
+    await cleanup()
+  })
+
+  test("a 429 with no Retry-After waits one second, not a minute", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 4,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 1000, refillPerMinute: 60_000 } },
+    })
+
+    const a = request("https://example.test/a")
+    await requestHook(hooks, "a", a)
+    const response = await responseHookWith(
+      hooks,
+      "a",
+      a,
+      { status: 429 },
+      "acme",
+      JSON.stringify({ error: { code: "burst_protection" } }),
+    )
+    await response.text()
+
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    const pauseMs = provider.tokensPausedUntil - Date.now()
+    expect(pauseMs).toBeGreaterThan(0)
+    expect(pauseMs).toBeLessThanOrEqual(1_000)
 
     await cleanup()
   })
@@ -1368,6 +1469,7 @@ describe("subagent fan-out gate", () => {
 
     expect((await statusSnapshot(rpc)).subagents).toEqual({
       live: 1,
+      calling: 0,
       queued: 1,
       max: 1,
       capacity: 1,

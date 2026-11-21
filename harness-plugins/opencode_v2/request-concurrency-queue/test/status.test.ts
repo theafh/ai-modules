@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import type { ProviderStatus, StatusSnapshot } from "../src/rpc.js"
-import { loadColor, providerRows, subscribeStatus, type StatusClient } from "../src/status.js"
+import {
+  blockedLabel,
+  loadColor,
+  providerRows,
+  subagentRow,
+  subscribeStatus,
+  type StatusClient,
+} from "../src/status.js"
 
 function tick(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -29,6 +36,7 @@ function provider(overrides: Partial<ProviderStatus> & Pick<ProviderStatus, "pro
     tokensAvailable: overrides.tokensAvailable ?? 0,
     tokensCapacity: overrides.tokensCapacity ?? 0,
     tokensPausedUntil: overrides.tokensPausedUntil ?? 0,
+    blocked: overrides.blocked ?? { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 },
     breaker: overrides.breaker ?? "closed",
     breakerRetryAfterMs: overrides.breakerRetryAfterMs ?? 0,
     stalls: overrides.stalls ?? 0,
@@ -91,6 +99,8 @@ describe("providerRows", () => {
         tokensAvailable: 0,
         tokensCapacity: 0,
         tokensPausedUntil: 0,
+        blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 },
+        blockedLabel: "",
         tokensLabel: "",
         tokensColor: "",
       },
@@ -423,5 +433,43 @@ describe("subscribeStatus", () => {
 
     expect(seen).toEqual([2])
     unsubscribe()
+  })
+})
+
+describe("blockedLabel", () => {
+  test("names only the gates holding a request back", () => {
+    expect(blockedLabel({ slots: 2, context: 0, budget: 1, breaker: 0, draining: 0 })).toBe(
+      "slots 2 · budget 1",
+    )
+    expect(blockedLabel({ slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 })).toBe("")
+  })
+})
+
+describe("subagentRow", () => {
+  test("renders the live and waiting counts", () => {
+    expect(subagentRow({ live: 6, calling: 4, queued: 2, max: 8, capacity: 8 })).toEqual({
+      live: 6,
+      calling: 4,
+      queued: 2,
+      max: 8,
+      capacity: 8,
+      label: "6/8 live · 4 calling · 2 waiting",
+    })
+  })
+
+  test("shows the host-limited capacity when it is below the ceiling", () => {
+    expect(subagentRow({ live: 2, calling: 1, queued: 1, max: 8, capacity: 3 })?.label).toBe(
+      "2/3 of 8 live · 1 calling · 1 waiting",
+    )
+  })
+
+  test("omits the waiting part when nothing waits", () => {
+    expect(subagentRow({ live: 8, calling: 7, queued: 0, max: 64, capacity: 64 })?.label).toBe(
+      "8/64 live · 7 calling",
+    )
+  })
+
+  test("is absent when fan-out gating is off", () => {
+    expect(subagentRow(undefined)).toBeUndefined()
   })
 })

@@ -9,10 +9,12 @@ import {
 } from "./rpc.js"
 import {
   providerRows,
+  subagentRow,
   subscribeStatus,
   transitionRows,
   type ProviderRow,
   type StatusClient,
+  type SubagentRow,
   type TransitionRow,
 } from "./status.js"
 
@@ -27,6 +29,8 @@ export interface StatusBodyState {
   readonly unavailable: boolean
   readonly rows: ProviderRow[]
   readonly transitions: TransitionRow[]
+  /** The fan-out gate's line, when the gate is configured. */
+  readonly subagents?: SubagentRow
 }
 
 /**
@@ -36,10 +40,12 @@ export interface StatusBodyState {
  */
 export function statusBodyState(snapshot: StatusSnapshot | null): StatusBodyState {
   if (snapshot === null) return { unavailable: true, rows: [], transitions: [] }
+  const subagents = subagentRow(snapshot.subagents)
   return {
     unavailable: false,
     rows: providerRows(snapshot),
     transitions: transitionRows(snapshot),
+    ...(subagents ? { subagents } : {}),
   }
 }
 
@@ -64,55 +70,74 @@ export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
         </Show>
         <For each={state().rows}>
           {(row) => (
-            <div
-              class="request-concurrency-status-row"
-              style={{ "border-left-color": row.demandColor }}
-            >
-              <span class="request-concurrency-status-provider" title={row.providerID}>
-                {row.providerID}
-              </span>
-              <span
-                class="request-concurrency-status-active"
-                title={`${row.active} of ${row.max} slots in use`}
+            <>
+              <div
+                class="request-concurrency-status-row"
+                style={{ "border-left-color": row.demandColor }}
               >
-                <span style={{ color: row.utilizationColor }}>{row.active}</span>
-                <span class="request-concurrency-status-max">{` / ${row.max}`}</span>
-              </span>
+                <span class="request-concurrency-status-provider" title={row.providerID}>
+                  {row.providerID}
+                </span>
+                <span
+                  class="request-concurrency-status-active"
+                  title={`${row.active} of ${row.max} slots in use`}
+                >
+                  <span style={{ color: row.utilizationColor }}>{row.active}</span>
+                  <span class="request-concurrency-status-max">{` / ${row.max}`}</span>
+                </span>
+                <span
+                  class="request-concurrency-status-queued"
+                  style={{ color: row.demandColor }}
+                  title={
+                    row.blockedLabel === ""
+                      ? `${row.queued} waiting`
+                      : `${row.queued} waiting (${row.blockedLabel})`
+                  }
+                >
+                  {row.queued}
+                </span>
+                <span
+                  class="request-concurrency-status-tokens"
+                  style={{ color: row.tokensColor }}
+                  title={
+                    row.tokensCapacity > 0
+                      ? `${row.tokensAvailable} of ${row.tokensCapacity} new-context tokens available`
+                      : "No token budget configured"
+                  }
+                >
+                  {row.tokensCapacity > 0 ? row.tokensLabel : "—"}
+                </span>
+                <span
+                  class="request-concurrency-status-utilization"
+                  style={{ color: row.utilizationColor }}
+                  title="Utilization: active / max"
+                >
+                  {row.utilization}
+                </span>
+                <span
+                  class="request-concurrency-status-demand"
+                  style={{ color: row.demandColor }}
+                  title="Demand: (active + queued) / max"
+                >
+                  {row.demand}
+                </span>
+              </div>
+            </>
+          )}
+        </For>
+        <Show when={state().subagents}>
+          {(subagents) => (
+            <div class="request-concurrency-subagents">
+              <span class="request-concurrency-subagents-label">Subagents</span>
               <span
-                class="request-concurrency-status-queued"
-                style={{ color: row.demandColor }}
-                title={`${row.queued} waiting`}
+                class="request-concurrency-subagents-count"
+                title={`${subagents().live} child sessions hold a permit (${subagents().calling} are calling the model, the rest are running a tool); ${subagents().queued} launches wait for a permit, which is a separate limit from the model-request queue`}
               >
-                {row.queued}
-              </span>
-              <span
-                class="request-concurrency-status-tokens"
-                style={{ color: row.tokensColor }}
-                title={
-                  row.tokensCapacity > 0
-                    ? `${row.tokensAvailable} of ${row.tokensCapacity} new-context tokens available`
-                    : "No token budget configured"
-                }
-              >
-                {row.tokensCapacity > 0 ? row.tokensLabel : "—"}
-              </span>
-              <span
-                class="request-concurrency-status-utilization"
-                style={{ color: row.utilizationColor }}
-                title="Utilization: active / max"
-              >
-                {row.utilization}
-              </span>
-              <span
-                class="request-concurrency-status-demand"
-                style={{ color: row.demandColor }}
-                title="Demand: (active + queued) / max"
-              >
-                {row.demand}
+                {subagents().label}
               </span>
             </div>
           )}
-        </For>
+        </Show>
         <Show when={state().transitions.length > 0}>
           <div class="request-concurrency-feed">
             <div class="request-concurrency-feed-title">Recent activity</div>
@@ -342,13 +367,13 @@ export function ConfigForm(props: { client: ConfigClient }) {
                   <div class="request-concurrency-config-subtitle">{providerID}</div>
                   <NumberField
                     label="Capacity"
-                    help="Brand-new tokens that may be sent in one burst before requests have to wait. Seibert allows 400000."
+                    help="Brand-new tokens that may be sent in one burst before requests have to wait. Use the provider's documented burst allowance, for example 500000."
                     value={current().tokens[providerID].capacity}
                     onChange={(value) => set(["tokens", providerID, "capacity"], value)}
                   />
                   <NumberField
                     label="Refill per minute"
-                    help="How many brand-new tokens become available again each minute. Seibert refills 400000 per minute."
+                    help="How many brand-new tokens become available again each minute. Use the provider's documented refill rate, for example 500000 per minute."
                     value={current().tokens[providerID].refillPerMinute}
                     onChange={(value) => set(["tokens", providerID, "refillPerMinute"], value)}
                   />
@@ -378,7 +403,7 @@ export function ConfigForm(props: { client: ConfigClient }) {
             />
             <NumberField
               label="Context ceiling (tokens)"
-              help="After a provider stall the cap above is halved. This is the largest value it may grow back to. 0 keeps the cap fixed at the value above."
+              help="The largest value the context cap above may grow back to after a stall. The cap shrinks only when the breaker opens, then grows back in quarters on clean completions. 0 keeps the cap fixed at the value above."
               value={current().scheduler.contextCeiling}
               onChange={(value) => set(["scheduler", "contextCeiling"], value)}
             />
@@ -418,7 +443,7 @@ export function ConfigForm(props: { client: ConfigClient }) {
             </p>
             <NumberField
               label="Stalls before opening"
-              help="How many failed attempts in a row, with no response at all, open the breaker. 2 gives the provider two chances."
+              help="How many failed attempts in a row, with no response at all, open the breaker. 3 gives the provider three chances."
               value={current().scheduler.breaker.threshold}
               onChange={(value) => set(["scheduler", "breaker", "threshold"], value)}
             />
@@ -441,13 +466,16 @@ export function ConfigForm(props: { client: ConfigClient }) {
 
             <div class="request-concurrency-config-title">Subagents</div>
             <p class="request-concurrency-config-help">
-              Separate from model requests: this limits how many child sessions (subagents) may
-              be running at the same time. A child that is waiting for a tool still counts, so
-              this is the number of subagents alive at once, not the number calling the model.
+              A guard on how many child sessions exist at once, for host load and cost — not a
+              model-request limit. A child waiting for a tool holds a permit but no provider slot,
+              so a ceiling near the provider's concurrency throttles the fan-out below what the
+              provider allows and adds a second queue. Set it well above the provider maximum, or
+              leave it at 0 to turn the guard off. The live and calling counts are reported either
+              way when the guard is on.
             </p>
             <NumberField
               label="Live child sessions"
-              help="Maximum subagents running at once. 0 turns this limit off."
+              help="A runaway guard, not a concurrency limit. A child running a tool counts here but not against the provider. 0 turns the guard off."
               value={current().subagents.max}
               onChange={(value) => set(["subagents", "max"], value)}
             />
@@ -455,7 +483,7 @@ export function ConfigForm(props: { client: ConfigClient }) {
             <div class="request-concurrency-config-title">Behaviour</div>
             <CheckField
               label="Adaptive request width"
-              help="When on, the number of concurrent requests is halved after a failure and raised by one after four successful requests in a row. When off, the provider maximum above is always used."
+              help="When on, the number of concurrent requests is halved after a capacity failure (a concurrency 429, a transport failure, or a 5xx) and raised by one after four successful requests in a row. A burst-protection 429 pauses the token bucket instead. When off, the provider maximum above is always used."
               value={current().adaptive}
               onChange={(value) => set(["adaptive"], value)}
             />
@@ -504,13 +532,24 @@ export function StatusBarBody(props: { snapshot: StatusSnapshot | null; onOpen: 
                     style={{ color: row.demandColor }}
                     title={`${row.total} of ${row.max} slots in demand${
                       row.tokensCapacity > 0 ? ` · ${row.tokensAvailable} new-context tokens` : ""
-                    }`}
+                    }${row.blockedLabel === "" ? "" : ` · waiting on ${row.blockedLabel}`}`}
                   >
                     {`${row.total}/${row.max}`}
                   </span>
                 </span>
               )}
             </For>
+            <Show when={state().subagents}>
+              {(subagents) => (
+                <span
+                  class="request-concurrency-bar-item"
+                  title={`${subagents().live} child sessions hold a permit (${subagents().calling} calling the model); ${subagents().queued} launches wait for a permit`}
+                >
+                  <span class="request-concurrency-bar-provider">subagents</span>
+                  <span>{subagents().label}</span>
+                </span>
+              )}
+            </Show>
           </span>
         </Show>
       </button>

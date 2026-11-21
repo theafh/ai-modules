@@ -71,6 +71,30 @@ export const PANEL_STYLE = `
   opacity: 0.5;
 }
 
+.request-concurrency-subagents {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.06);
+}
+
+.request-concurrency-subagents-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.request-concurrency-subagents-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
 .request-concurrency-feed {
   display: flex;
   flex-direction: column;

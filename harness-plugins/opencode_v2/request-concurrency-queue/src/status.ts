@@ -1,4 +1,11 @@
-import type { ProviderStatus, StatusSnapshot, TransitionKind, TransitionRecord } from "./rpc.js"
+import type {
+  BlockedCounts,
+  ProviderStatus,
+  StatusSnapshot,
+  TransitionKind,
+  TransitionRecord,
+} from "./rpc.js"
+import type { SubagentStatus } from "./subagents.js"
 
 /** One provider row as the dialog renders it. */
 export interface ProviderRow {
@@ -28,6 +35,10 @@ export interface ProviderRow {
   readonly tokensCapacity: number
   /** Epoch milliseconds until which a `Retry-After` pauses requests; 0 when not paused. */
   readonly tokensPausedUntil: number
+  /** Which gate each waiting request is blocked on. */
+  readonly blocked: BlockedCounts
+  /** Compact `ctx 2 · budget 1` label, or an empty string when nothing waits. */
+  readonly blockedLabel: string
   /** Compact `available / capacity` label, or an empty string when there is no budget. */
   readonly tokensLabel: string
   /** CSS color for the token count, green when full and red when nearly empty. */
@@ -131,11 +142,52 @@ export function providerRow(provider: ProviderStatus): ProviderRow {
     tokensAvailable: provider.tokensAvailable,
     tokensCapacity: provider.tokensCapacity,
     tokensPausedUntil: provider.tokensPausedUntil,
+    blocked: provider.blocked,
+    blockedLabel: blockedLabel(provider.blocked),
     tokensLabel:
       tokens === 0
         ? ""
         : `${formatTokens(provider.tokensAvailable)} / ${formatTokens(tokens)}`,
     tokensColor: tokens === 0 ? "" : loadColor((provider.tokensAvailable / tokens) * 100),
+  }
+}
+
+/** A compact label naming the gates that hold waiting requests back. */
+export function blockedLabel(blocked: BlockedCounts): string {
+  const parts: string[] = []
+  if (blocked.slots > 0) parts.push(`slots ${blocked.slots}`)
+  if (blocked.context > 0) parts.push(`context ${blocked.context}`)
+  if (blocked.budget > 0) parts.push(`budget ${blocked.budget}`)
+  if (blocked.breaker > 0) parts.push(`breaker ${blocked.breaker}`)
+  if (blocked.draining > 0) parts.push(`draining ${blocked.draining}`)
+  return parts.join(" · ")
+}
+
+/** The fan-out gate's state as one compact line, or undefined when it is off. */
+export interface SubagentRow {
+  readonly live: number
+  /** Live children currently calling the model; the rest are running a tool. */
+  readonly calling: number
+  readonly queued: number
+  readonly max: number
+  readonly capacity: number
+  readonly label: string
+}
+
+/** Turns the snapshot's subagent block into its rendered line. */
+export function subagentRow(status: SubagentStatus | undefined): SubagentRow | undefined {
+  if (!status) return undefined
+  const ceiling = status.capacity < status.max ? `${status.capacity} of ${status.max}` : String(status.max)
+  const calling = status.calling ?? 0
+  return {
+    live: status.live,
+    calling,
+    queued: status.queued,
+    max: status.max,
+    capacity: status.capacity,
+    label: `${status.live}/${ceiling} live · ${calling} calling${
+      status.queued > 0 ? ` · ${status.queued} waiting` : ""
+    }`,
   }
 }
 

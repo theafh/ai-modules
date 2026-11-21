@@ -106,7 +106,7 @@ describe("createStore", () => {
     expect(snapshotOf(store).transitions).toEqual([
       { timestamp: expect.any(Number), providerID: "acme", kind: "acquired", sessionID: "session-a", active: 1, queued: 0 },
       { timestamp: expect.any(Number), providerID: "acme", kind: "queued", sessionID: "session-b", active: 1, queued: 1 },
-      { timestamp: expect.any(Number), providerID: "acme", kind: "released", sessionID: "session-a", active: 1, queued: 0 },
+      { timestamp: expect.any(Number), providerID: "acme", kind: "released", sessionID: "session-a", active: 0, queued: 1 },
       { timestamp: expect.any(Number), providerID: "acme", kind: "acquired", sessionID: "session-b", active: 1, queued: 0 },
     ])
   })

@@ -91,7 +91,7 @@ export interface Store {
  * suffix lets a later plugin release adopt a new shape without reading state a
  * different build wrote.
  */
-export const STORE_KEY = Symbol.for("opencode.request-concurrency-queue.store.v11")
+export const STORE_KEY = Symbol.for("opencode.request-concurrency-queue.store.v12")
 
 /**
  * Builds an isolated store with one limiter per provider. Tests call this
@@ -134,8 +134,8 @@ export function createStore(
             providerID,
             kind: change.kind,
             sessionID: change.sessionID,
-            active: scheduler.activeCount,
-            queued: scheduler.queuedCount,
+            active: change.active,
+            queued: change.queued,
           })
         }
         publish(store)
@@ -362,12 +362,14 @@ export function clearGlobalStore(): void {
 
 /** Reads the shared state every location's status handler serves. */
 export function snapshotOf(store: Store): StatusSnapshot {
+  const calling = new Set<string>()
   const providers = [...store.providers].map(([providerID, limit]): ProviderStatus => {
     const active = limit.scheduler.activeCount
     const queued = limit.scheduler.queuedCount
     const max = limit.scheduler.maxConcurrency
     const tokens = limit.scheduler.budgetSnapshot
     const context = limit.scheduler.status()
+    for (const sessionID of limit.scheduler.activeSessionIDs()) calling.add(sessionID)
     return {
       providerID,
       active,
@@ -379,6 +381,7 @@ export function snapshotOf(store: Store): StatusSnapshot {
       tokensAvailable: tokens?.available ?? 0,
       tokensCapacity: tokens?.capacity ?? 0,
       tokensPausedUntil: tokens?.pausedUntil ?? 0,
+      blocked: limit.scheduler.blocked(),
       breaker: context.breaker,
       breakerRetryAfterMs: context.breakerRetryAfterMs,
       stalls: context.stalls,
@@ -387,10 +390,25 @@ export function snapshotOf(store: Store): StatusSnapshot {
         : {}),
     }
   })
+
+  // A live child that is running a tool holds a permit but no model slot, so
+  // the panel reports how many of the live children are calling the model. That
+  // is the number that should agree with the provider's active count.
+  const subagents = store.subagents
+  const live = subagents?.liveSessionIDs()
+  const subagentStatus = subagents?.status()
+  const subagentSnapshot =
+    subagentStatus === undefined
+      ? undefined
+      : {
+          ...subagentStatus,
+          calling: live === undefined ? 0 : [...live].filter((sessionID) => calling.has(sessionID)).length,
+        }
+
   return {
     providers,
     transitions: store.transitions.recent(),
-    ...(store.subagents ? { subagents: store.subagents.status() } : {}),
+    ...(subagentSnapshot ? { subagents: subagentSnapshot } : {}),
   }
 }
 

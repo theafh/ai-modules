@@ -13,7 +13,7 @@ OpenCode loads it as a plugin directory.
 
 | Plugin | Purpose |
 | --- | --- |
-| [`request-concurrency-queue`](request-concurrency-queue/README.md) | A process-wide FIFO limiter for model requests, so OpenCode stays inside a provider's concurrency allowance. |
+| [`request-concurrency-queue`](request-concurrency-queue/README.md) | A process-wide admission scheduler for model requests, so OpenCode stays inside a provider's concurrency and new-token allowance. |
 | [`slash-skill-autocomplete`](slash-skill-autocomplete/README.md) | Registers every skill as a `/name` command on the server, restoring slash autocomplete for skills. |
 
 ## Install
