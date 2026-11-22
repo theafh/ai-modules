@@ -1568,12 +1568,14 @@ def narrowing_drops(led):
     return drops
 
 
-def writer_unchecked(led, row, classified):
+def writer_unchecked(led, row, classified, narrowed):
     """A writer row the wave cap counts as unchecked.
 
     In-flight writers always count. A written (accepted) writer counts until an
     accepted check from another row covers its path; a writer with no unit path
-    carries no path any check can cover, so it stops counting once accepted.
+    carries no path any check can cover, so it stops counting once accepted. A
+    classified check row covers its path only when a narrowing names it, as
+    ``change_covered`` reads it.
     """
     state = row.get("state")
     if state == "dispatched":
@@ -1586,7 +1588,7 @@ def writer_unchecked(led, row, classified):
             continue
         if other.get("state") != "accepted" or not row_is_checker(other):
             continue
-        if other.get("label") in classified:
+        if other.get("label") in classified and other.get("label") not in narrowed:
             continue
         if other.get("path") and norm_path(led.root, other.get("path")) == rel:
             return False
@@ -1627,8 +1629,11 @@ def cmd_dispatch(args):
         refuse_writer_on_owned_target(led, row, row.get("path"))
         wave = int(led.run.get("wave_size", 2))
         classified = classified_labels(led)
+        narrowed = narrowing_drops(led)
         unchecked = [
-            r for r in led.rows if row_is_writer(r) and writer_unchecked(led, r, classified)
+            r
+            for r in led.rows
+            if row_is_writer(r) and writer_unchecked(led, r, classified, narrowed)
         ]
         if len(unchecked) >= wave:
             die("wave size %d reached: %d written rows are unchecked" % (wave, len(unchecked)))

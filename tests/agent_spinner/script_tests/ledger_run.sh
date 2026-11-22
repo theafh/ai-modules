@@ -625,6 +625,44 @@ scenario_dispatch() {
     else
         bad "a writer with no unit path stops counting once accepted"
     fi
+
+    # A classified check row covers its path only when a narrowing's --drops
+    # list names it, the rule change_covered applies. An unnarrowed classified
+    # check leaves the writer it would cover unchecked, so the next writer is
+    # still refused; a narrowing that names both checks admits it.
+    dir8="$dir/eight"
+    setup_repo "$dir8"
+    printf 'delta\n' > "$dir8/c.txt"
+    git -C "$dir8" add -A
+    git -C "$dir8" commit -qm "third writer target"
+    ledger "$dir8" init --unit produce:a --unit produce:b --unit produce:c --unit check:a.txt --unit check:b.txt --unit-path produce:a=a.txt --unit-path produce:b=b.txt --unit-path produce:c=c.txt --unit-path check:a.txt=a.txt --unit-path check:b.txt=b.txt --wave 2 --bound 60 >/dev/null 2>&1
+    for label in produce:a produce:b produce:c check:a.txt check:b.txt; do ledger "$dir8" brief "$label" --body "$label" >/dev/null 2>&1; done
+    ledger "$dir8" dispatch produce:a >/dev/null 2>&1
+    ledger "$dir8" dispatch produce:b >/dev/null 2>&1
+    for pair in "produce:a a.txt alpha" "produce:b b.txt gamma"; do
+        # shellcheck disable=SC2086  # the tuple is split into label, path, and receipt on purpose
+        set -- $pair
+        token=$(token_of "$dir8" "$1")
+        emit_return "$dir8" "$1" "$token" "{\"examined\":[{\"path\":\"$2\",\"how\":\"full\",\"receipt\":\"$3\"}]}"
+        ledger "$dir8" accept "$1" >/dev/null 2>&1
+    done
+    for pair in "check:a.txt a.txt" "check:b.txt b.txt"; do
+        # shellcheck disable=SC2086  # the tuple is split into label and path on purpose
+        set -- $pair
+        ledger "$dir8" dispatch "$1" >/dev/null 2>&1
+        ledger "$dir8" accept "$1" --stdin --classify 'sampled out; per-file gates cover it' < /dev/null >/dev/null 2>&1
+    done
+    if ledger "$dir8" dispatch produce:c >/dev/null 2>&1; then
+        bad "an unnarrowed classified check leaves its writer unchecked and refuses the next writer"
+    else
+        ok "an unnarrowed classified check leaves its writer unchecked and refuses the next writer"
+    fi
+    ledger "$dir8" dispose --narrowing 'sampled out; per-file gates cover it' --drops check:a.txt,check:b.txt >/dev/null 2>&1
+    if ledger "$dir8" dispatch produce:c >/dev/null 2>&1; then
+        ok "a narrowing that drops both classified checks admits the next writer"
+    else
+        bad "a narrowing that drops both classified checks admits the next writer"
+    fi
 }
 
 scenario_spawn_recording() {
