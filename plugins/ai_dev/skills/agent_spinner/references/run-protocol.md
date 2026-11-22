@@ -340,7 +340,13 @@ tree guard, and each pending return, and appends an `attach` record.
 
 ### `brief`
 
-Write one helper's instructions and record its brief hash and token.
+Write one helper's instructions and record its brief hash and token. A writer
+row whose target is an owned target is refused until an answered fork names
+that path: a `fork` record whose `path` field names the target, together with
+the `gate_answered` record whose `gate_id` names that fork's id or the packet
+id its `surfaced` disposition carries. An `own_authority` record never counts
+as that answer, and an answer the request supplies is recorded as that
+`gate_answered`.
 
 - `label` (positional): the roster row.
 - `--phase NAME`: the phase this brief belongs to.
@@ -370,7 +376,8 @@ silently overwrote.
 
 ### `dispatch`
 
-Record that a helper was sent.
+Record that a helper was sent. A writer row on an owned target is refused on
+the same terms as `brief`, so no dispatch follows a brief the refusal held.
 
 - `label` (positional): the roster row.
 - `--helper-id ID`: the host's identifier for the helper.
@@ -422,7 +429,7 @@ Record what became of each record.
   `init` recorded for that path. With `--open-fork`, `--path PATH` needs no
   `--routed`: it is recorded on the fork record as the changed path the fork is
   about, so a fork raised over a stamped or marked changed path clears `close`
-  condition 10.
+  condition 10 once that fork is answered.
 - `--narrowing TEXT`, `--drops TEXT`, `--rows LABEL[,LABEL...]`: a named
   narrowing, the checks it drops, and the pending rows it retires as `dropped`.
   Every label `--rows` names must be a pending roster row; the verb refuses the
@@ -437,9 +444,9 @@ Record what became of each record.
   request passage. Repeatable `--cost ID=COST` gives one `--option` its cost,
   which the packet renders beside that option. `--path PATH` records the
   changed path the fork is about on the fork record, which is what clears
-  `close` condition 10 for a fork raised over a stamped or marked path. The
-  verb refuses an `ID` the ledger already holds, and a `--cost` that names no
-  `--option` id.
+  `close` condition 10 for a fork raised over a stamped or marked path once
+  that fork is answered. The verb refuses an `ID` the ledger already holds,
+  and a `--cost` that names no `--option` id.
 - `--open-gate ID`, `--question TEXT`: open a user gate.
 - `--gate ID`, `--answered TEXT`: answer a user gate. Naming a surfaced
   fork's packet id answers that fork, and it also answers the user gate
@@ -523,9 +530,13 @@ any close condition holds:
 7. `report.md` does not carry the current tally block.
 8. An accepted, inability, or failed row has no recorded source.
 9. A checker sits below its producer with no flag naming it.
-10. A changed path `init` recorded as stamped or marked has neither a routed
-    disposition naming its owning gate nor a fork record whose `path` field
-    names the path.
+10. A changed path `init` recorded as stamped or marked has no route ahead of
+    its first writer dispatch: a routed disposition naming its owning gate must
+    precede that dispatch, and a path routed only through an answered fork,
+    carrying no routed disposition, clears on the guard's prior ordering check.
+    A routed disposition that postdates the dispatch fails this condition
+    naming the path, and a `path` field on a fork record clears the path only as
+    that answered fork.
 
 `close --stopped` also prints the modified, untouched, unknown, not dispatched,
 and violation rows.
@@ -565,9 +576,10 @@ A return is optional prose, exactly one fenced JSON block, and the line
   fork that touches only the request names the request sentence as its passage.
   `accept` refuses a fork that carries no anchored passage, and `show --packet`
   refuses to render one. A fork whose change touches a stamped or marked path
-  carries `path`, the path the fork names; that field clears condition 10 for
-  the path it names, so the owning gate is handed the choice rather than the
-  orchestrator silently editing a stamp another family owns.
+  carries `path`, the path the fork names; that `path` field clears condition 10
+  for the path it names only once the fork is answered, which also lets the
+  path's writer `brief` and `dispatch` through, so the owning gate is handed
+  the choice rather than the orchestrator silently editing a stamp another family owns.
 - `objections` is a list of objects with `text`, a `fork` field naming the fork
   the objection answers, and an `option` field carrying an option id of that
   fork. `accept` refuses an entry whose `option` names no option id of the fork

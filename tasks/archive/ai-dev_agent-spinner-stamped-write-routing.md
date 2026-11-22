@@ -2,8 +2,10 @@
 description: "Make routing a write to a stamped artifact hand the write to its owning family: no agent_spinner writer runs on an owned target, and the ledger refuses a writer before the routing record."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T23:20:22Z
-updated: 2026-11-19T18:24:39Z
-status: ready
+updated: 2026-11-22T01:01:06Z
+status: finished
+implemented-by: Andreas Hoffmann
+design-extended: true
 reported-by: Andreas Hoffmann
 ---
 

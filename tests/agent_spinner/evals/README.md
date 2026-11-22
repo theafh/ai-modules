@@ -1083,3 +1083,22 @@ orchestrator raised. Both evals ran fresh (`--force`) on the default vendor in
 `STOP` marker, `closed: false`, and every packet field in the report.
 `widening_needs_estimate_and_ask` still states its estimate before dispatch and
 touches no page without a hit.
+
+### 2026-11-22, Cursor CLI, model `auto` — a stamped write is routed before any writer
+
+The change makes routing a write to a stamped artifact hand the write to its
+owning family: `brief` and `dispatch` refuse a writer on an owned target until
+an answered fork names the path, and `close` condition 10 refuses a routed
+disposition that postdates the path's first writer dispatch. Both stamped evals
+ran on the default vendor in `run-20261122-011955`, after the last edit to
+`SKILL.md`, `references/checks.md`, `references/run-protocol.md`,
+`scripts/run_ledger.py`, and `script_tests/ledger_run.sh`.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `stamped_target_routed_to_owner` | pass (6 of 6) | `../workspace/run-20261122-011955` |
+| `stamp_routed_on_any_rewrite` | pass (4 of 4) | `../workspace/run-20261122-011955` |
+
+Both runs leave the stamped file byte-identical, record the routing before the
+first writer brief, and dispatch no writer on the path, so the hand-off holds
+under the new refusal.

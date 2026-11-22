@@ -1741,10 +1741,98 @@ PY
     fi
 }
 
-scenario_markers() {
+# Records an answered fork naming an owned target, the route the writer guard
+# requires before a brief or dispatch on that path.
+stage_marker_fork() {
     dir="$1"
+    path="$2"
+    ledger "$dir" dispose --open-fork route:a --issue "Route $path to its owning gate?" --question "May the run write $path under the task gate?" --path "$path" >/dev/null 2>&1
+    ledger "$dir" dispose --id route:a --disposition surfaced >/dev/null 2>&1
+    ledger "$dir" dispose --gate route:a --answered "Route it" >/dev/null 2>&1
+}
+
+# Covers the changed a.txt with an accepted check row and writes the tally
+# block, so a close that reaches this point can exit 0.
+markers_cover_path() {
+    dir="$1"
+    ledger "$dir" diff --add-checks >/dev/null 2>&1
+    ledger "$dir" brief check:a.txt --body "C" --target a.txt --depth 2 --obligation a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch check:a.txt >/dev/null 2>&1
+    token=$(token_of "$dir" check:a.txt)
+    emit_return "$dir" check:a.txt "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"gamma"}]}'
+    ledger "$dir" accept check:a.txt >/dev/null 2>&1
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
+    printf '\n# Report\n\nAll clear.\n' >> "$dir/.agent_spinner/report.md"
+}
+
+scenario_markers() {
+    base="$1"
+
+    dir="$base/refused"
     setup_repo "$dir"
-    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt > "$dir/.agent_spinner/brief.out" 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ] && grep -q 'owned path a.txt' "$dir/.agent_spinner/brief.out"; then
+        ok "a writer brief on an owned target with no answered fork is refused"
+    else
+        bad "a writer brief on an owned target with no answered fork is refused (rc=$rc)"
+    fi
+    if [ -z "$(token_of "$dir" produce:a)" ]; then
+        ok "a refused writer brief records no token"
+    else
+        bad "a refused writer brief records no token"
+    fi
+    ledger "$dir" dispatch produce:a > "$dir/.agent_spinner/dispatch.out" 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ] && grep -q 'owned path a.txt' "$dir/.agent_spinner/dispatch.out"; then
+        ok "a writer dispatch on an owned target with no answered fork is refused"
+    else
+        bad "a writer dispatch on an owned target with no answered fork is refused (rc=$rc)"
+    fi
+    if grep -q '"type": "fork"' "$dir/.agent_spinner/ledger.jsonl" 2>/dev/null; then
+        bad "no fork record lands before an answered fork is recorded"
+    else
+        ok "no fork record lands before an answered fork is recorded"
+    fi
+
+    dir="$base/route"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    stage_marker_fork "$dir" a.txt
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    if [ -n "$(token_of "$dir" produce:a)" ]; then
+        ok "an answered fork naming the path lets the writer brief through"
+    else
+        bad "an answered fork naming the path lets the writer brief through"
+    fi
+    if ledger "$dir" dispatch produce:a >/dev/null 2>&1; then
+        ok "an answered fork naming the path lets the writer dispatch through"
+    else
+        bad "an answered fork naming the path lets the writer dispatch through"
+    fi
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" status > "$dir/.agent_spinner/status.out" 2>&1
+    if grep -q 'stamped paths needing routing:' "$dir/.agent_spinner/status.out" && ! grep -q 'a.txt family=' "$dir/.agent_spinner/status.out"; then
+        ok "status lists no stamped path awaiting routing once an answered fork names it"
+    else
+        bad "status lists no stamped path awaiting routing once an answered fork names it"
+    fi
+    markers_cover_path "$dir"
+    if ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1; then
+        ok "an answered fork naming the path clears condition 10 for a changed owned path"
+    else
+        bad "an answered fork naming the path clears condition 10 for a changed owned path"
+    fi
+
+    dir="$base/routed-after"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    stage_marker_fork "$dir" a.txt
     ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
     ledger "$dir" dispatch produce:a >/dev/null 2>&1
     token=$(token_of "$dir" produce:a)
@@ -1752,84 +1840,149 @@ scenario_markers() {
     ledger "$dir" accept produce:a >/dev/null 2>&1
     printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
     ledger "$dir" diff >/dev/null 2>&1
-    ledger "$dir" close > "$dir/close.txt" 2>&1
+    ledger "$dir" dispose --path a.txt --routed task_finish >/dev/null 2>&1
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
     rc=$?
-    if [ "$rc" -eq 3 ] && grep -q 'condition 10' "$dir/close.txt" && grep -q 'a.txt' "$dir/close.txt"; then
-        ok "a changed stamped path with no routing keeps close at exit 3 with the path named"
+    if [ "$rc" -eq 3 ] && grep -q 'condition 10' "$dir/.agent_spinner/close.out" && grep -q 'a.txt' "$dir/.agent_spinner/close.out" && grep -q 'after its writer dispatch' "$dir/.agent_spinner/close.out"; then
+        ok "a routed disposition written after the writer dispatch fails condition 10 naming the path"
     else
-        bad "a changed stamped path with no routing keeps close at exit 3 with the path named (rc=$rc)"
+        bad "a routed disposition written after the writer dispatch fails condition 10 naming the path (rc=$rc)"
     fi
-    ledger "$dir" status > "$dir/status.txt" 2>&1
-    if grep -q 'a.txt family=task gate=task_finish' "$dir/status.txt"; then
-        ok "status lists the stamped path awaiting routing"
-    else
-        bad "status lists the stamped path awaiting routing"
-    fi
+
+    dir="$base/routed-before"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish >/dev/null 2>&1
     if ledger "$dir" dispose --path a.txt --routed other_gate >/dev/null 2>&1; then
         bad "a routed disposition naming another gate is refused"
     else
         ok "a routed disposition naming another gate is refused"
     fi
     ledger "$dir" dispose --path a.txt --routed task_finish >/dev/null 2>&1
-    ledger "$dir" close > "$dir/close2.txt" 2>&1
-    if grep -q 'condition 10' "$dir/close2.txt"; then
-        bad "a routed disposition naming the recorded owner clears condition 10"
-    else
-        ok "a routed disposition naming the recorded owner clears condition 10"
-    fi
-
-    dir="$dir/fork"
-    setup_repo "$dir"
-    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    stage_marker_fork "$dir" a.txt
     ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
     ledger "$dir" dispatch produce:a >/dev/null 2>&1
     token=$(token_of "$dir" produce:a)
-    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Route a.txt or hold it?","options":[{"id":"route","text":"Route it","cost":"a hand-off"},{"id":"hold","text":"Hold it","cost":"a stale stamp"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"route","path":"a.txt"}]}'
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
     ledger "$dir" accept produce:a >/dev/null 2>&1
     printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
     ledger "$dir" diff >/dev/null 2>&1
-    ledger "$dir" close > "$dir/close.txt" 2>&1
-    if grep -q 'condition 10' "$dir/close.txt"; then
-        bad "a fork record naming the path clears condition 10"
+    markers_cover_path "$dir"
+    if ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1; then
+        ok "a routed disposition written before the writer dispatch clears condition 10"
     else
-        ok "a fork record naming the path clears condition 10"
+        bad "a routed disposition written before the writer dispatch clears condition 10"
     fi
 
-    dir="$dir/fork-dot"
+    dir="$base/own-authority-only"
     setup_repo "$dir"
-    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    ledger "$dir" dispose --open-fork own:a --issue "Route a.txt to its owning gate?" --question "May the run write a.txt under the task gate?" --path a.txt >/dev/null 2>&1
+    ledger "$dir" dispose --fork own:a --own-decision "the run decides it may write a.txt" >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt > "$dir/.agent_spinner/brief.out" 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ] && grep -q 'owned path a.txt' "$dir/.agent_spinner/brief.out"; then
+        ok "an own-authority record never answers a fork for the writer brief"
+    else
+        bad "an own-authority record never answers a fork for the writer brief (rc=$rc)"
+    fi
+    ledger "$dir" dispatch produce:a > "$dir/.agent_spinner/dispatch.out" 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ] && grep -q 'owned path a.txt' "$dir/.agent_spinner/dispatch.out"; then
+        ok "an own-authority record never answers a fork for the writer dispatch"
+    else
+        bad "an own-authority record never answers a fork for the writer dispatch (rc=$rc)"
+    fi
+
+    dir="$base/packet-answer"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish --unit orient:r >/dev/null 2>&1
+    ledger "$dir" brief orient:r --body "R" >/dev/null 2>&1
+    ledger "$dir" dispatch orient:r >/dev/null 2>&1
+    token=$(token_of "$dir" orient:r)
+    emit_return "$dir" orient:r "$token" '{"forks":[{"issue":"Route a.txt to its owning gate?","options":[{"id":"route","text":"Route it","cost":"a hand-off"},{"id":"hold","text":"Hold it","cost":"a stale stamp"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"route","path":"a.txt"}]}'
+    ledger "$dir" accept orient:r >/dev/null 2>&1
+    ledger "$dir" dispose --id 'orient:r:forks:0' --disposition surfaced --packet PKT >/dev/null 2>&1
+    ledger "$dir" dispose --gate PKT --answered "Route it" >/dev/null 2>&1
+    if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
+import json, sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+answered = [rec.get("gate_id") for rec in records if rec.get("type") == "gate_answered"]
+sys.exit(0 if answered == ["PKT"] else 1)
+PY
+    then
+        ok "a returned fork's packet-id answer is the only answer recorded"
+    else
+        bad "a returned fork's packet-id answer is the only answer recorded"
+    fi
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    if [ -n "$(token_of "$dir" produce:a)" ]; then
+        ok "a packet-id answer to a returned fork lets the writer brief through"
+    else
+        bad "a packet-id answer to a returned fork lets the writer brief through"
+    fi
+    if ledger "$dir" dispatch produce:a >/dev/null 2>&1; then
+        ok "a packet-id answer to a returned fork lets the writer dispatch through"
+    else
+        bad "a packet-id answer to a returned fork lets the writer dispatch through"
+    fi
+
+    dir="$base/fork"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    stage_marker_fork "$dir" a.txt
     ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
     ledger "$dir" dispatch produce:a >/dev/null 2>&1
     token=$(token_of "$dir" produce:a)
-    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Route a.txt or hold it?","options":[{"id":"route","text":"Route it","cost":"a hand-off"},{"id":"hold","text":"Hold it","cost":"a stale stamp"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"route","path":"./a.txt"}]}'
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"forks":[{"issue":"Route a.txt or hold it?","options":[{"id":"route","text":"Route it","cost":"a hand-off"},{"id":"hold","text":"Hold it","cost":"a stale stamp"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"route","path":"a.txt"}]}'
     ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" dispose --fork 'produce:a:forks:0' --own-decision "the returned fork is settled under the route already answered" >/dev/null 2>&1
     printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
     ledger "$dir" diff >/dev/null 2>&1
-    ledger "$dir" close > "$dir/close.txt" 2>&1
-    if grep -q 'condition 10' "$dir/close.txt"; then
-        bad "a fork path of ./a.txt clears condition 10 for a.txt"
+    markers_cover_path "$dir"
+    if ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1; then
+        ok "an own-authority decision on a returned fork leaves close clean under the answered route"
     else
-        ok "a fork path of ./a.txt clears condition 10 for a.txt"
+        bad "an own-authority decision on a returned fork leaves close clean under the answered route"
     fi
 
-    dir="$dir/unchanged"
+    dir="$base/fork-dot"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish >/dev/null 2>&1
+    stage_marker_fork "$dir" ./a.txt
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}],"forks":[{"issue":"Route a.txt or hold it?","options":[{"id":"route","text":"Route it","cost":"a hand-off"},{"id":"hold","text":"Hold it","cost":"a stale stamp"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"route","path":"./a.txt"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" dispose --fork 'produce:a:forks:0' --own-decision "the returned fork is settled under the route already answered" >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    markers_cover_path "$dir"
+    if ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1; then
+        ok "an answered fork path of ./a.txt satisfies the writer guard for a.txt"
+    else
+        bad "an answered fork path of ./a.txt satisfies the writer guard for a.txt"
+    fi
+
+    dir="$base/unchanged"
     setup_repo "$dir"
     ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
     ledger "$dir" diff >/dev/null 2>&1
-    ledger "$dir" close > "$dir/close.txt" 2>&1
-    if grep -q 'condition 10' "$dir/close.txt"; then
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    if grep -q 'condition 10' "$dir/.agent_spinner/close.out"; then
         bad "an unchanged stamped path needs no routing"
     else
         ok "an unchanged stamped path needs no routing"
     fi
 
-    dir="$dir/unstamped"
+    dir="$base/unstamped"
     setup_repo "$dir"
     ledger "$dir" init --unit produce:a >/dev/null 2>&1
     printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
     ledger "$dir" diff >/dev/null 2>&1
-    ledger "$dir" close > "$dir/close.txt" 2>&1
-    if grep -q 'condition 10' "$dir/close.txt"; then
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    if grep -q 'condition 10' "$dir/.agent_spinner/close.out"; then
         bad "an unstamped changed path needs no routing"
     else
         ok "an unstamped changed path needs no routing"
@@ -2799,14 +2952,7 @@ PY
 
     dir="$dir/path"
     setup_repo "$dir"
-    ledger "$dir" init --unit produce:a --owned-target a.txt:task:task_finish >/dev/null 2>&1
-    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
-    ledger "$dir" dispatch produce:a >/dev/null 2>&1
-    token=$(token_of "$dir" produce:a)
-    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
-    ledger "$dir" accept produce:a >/dev/null 2>&1
-    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
-    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt --owned-target a.txt:task:task_finish >/dev/null 2>&1
     ledger "$dir" dispose --open-fork P --issue "Route a.txt or hold it?" --question "Route a.txt?" --path a.txt >/dev/null 2>&1
     if "$PY" - "$dir/.agent_spinner/ledger.jsonl" <<'PY'
 import json, sys
@@ -2821,11 +2967,20 @@ PY
     else
         bad "dispose --open-fork --path records the fork's path"
     fi
-    ledger "$dir" close > "$dir/close.out" 2>&1
-    if grep -q 'condition 10' "$dir/close.out"; then
-        bad "a fork opened with --path clears condition 10 without --routed"
+    ledger "$dir" dispose --id P --disposition surfaced >/dev/null 2>&1
+    ledger "$dir" dispose --gate P --answered "route it" >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff >/dev/null 2>&1
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    if grep -q 'condition 10' "$dir/.agent_spinner/close.out"; then
+        bad "an answered fork opened with --path clears condition 10 without --routed"
     else
-        ok "a fork opened with --path clears condition 10 without --routed"
+        ok "an answered fork opened with --path clears condition 10 without --routed"
     fi
 }
 

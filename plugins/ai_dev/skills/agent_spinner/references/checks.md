@@ -325,7 +325,10 @@ stamp or marker.
    audit, its close-out, or a follow-up item.
 3. Route every write to such a target to the owning gate by name, or to the
    user as a fork, a decision the user makes. Do so before dispatch, whatever
-   the write changes.
+   the write changes. Routing to the gate hands the write to that family and
+   dispatches no writer on the path; routing to the user is a fork answered
+   only by an explicit gate answer or by a request that names the artifact and
+   authorizes the run's own write.
 4. Start an artifact the run creates at its initial state, and have no pass
    write a post-gate status on it.
 5. Advance a persistent marker only over what the run examined.
@@ -335,10 +338,14 @@ stamp or marker.
    beside them each path claimed only by receipt, marked unverified.
 8. Check only its own rows, and leave family file formats with the family.
 
-**Checks.** `close` refuses while a changed path recorded as stamped has
-neither a routed disposition naming its owning gate nor a fork record naming
-the path, whatever the write changed, and every marker hand-off counts as read
-only paths with tool evidence of a full read.
+**Checks.** `close` refuses while a changed path recorded as stamped has no
+route ahead of its first writer dispatch: a routed disposition naming its
+owning gate must precede that dispatch, or an answered fork must name the path,
+whatever the write changed. A writer `brief` or `dispatch` on an owned target
+is refused until an answered fork names the path, and a routed disposition that
+postdates the path's first writer dispatch fails condition 10 naming the path.
+Every marker hand-off counts as read only paths with tool evidence of a full
+read.
 
 ## C10. Tier the evidence and keep weak claims conditional.
 

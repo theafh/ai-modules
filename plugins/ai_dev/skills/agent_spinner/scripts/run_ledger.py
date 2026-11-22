@@ -558,38 +558,95 @@ class Ledger(object):
             if rec.get("type") == "flag" and rec.get("label") == label
         ]
 
-    def routed_gates(self):
-        routed = {}
-        for rec in self.records():
-            if rec.get("type") == "disposition" and rec.get("disposition") == "routed":
-                path = rec.get("path") or rec.get("target") or ""
-                routed.setdefault(path, set()).add(rec.get("gate"))
-        return routed
+    def owned_target_for(self, rel):
+        """Return the owned target a normalised path names, or None."""
+        for target in self.run.get("owned_targets", []):
+            if norm_path(self.root, target.get("path", "")) == rel:
+                return target
+        return None
 
-    def stamped_changed_paths(self):
-        """Return (path, owned target) pairs a changed stamp still lacks routing for."""
-        routed = self.routed_gates()
-        fork_paths = set(
-            norm_path(self.root, rec.get("path"))
+    def answered_fork_paths(self, rel):
+        """Return the answered fork records whose path field names ``rel``.
+
+        A fork is answered by a ``gate_answered`` record whose ``gate_id``
+        names the fork's own id or the packet id the fork's ``surfaced``
+        disposition carries. An ``own_authority`` record never answers a fork.
+        """
+        answered = set(
+            rec.get("gate_id")
             for rec in self.records()
-            if rec.get("type") == "fork" and rec.get("path")
+            if rec.get("type") == "gate_answered"
         )
+        dispositions = self.dispositions()
+        out = []
+        for rec in self.records():
+            if rec.get("type") != "fork" or not rec.get("path"):
+                continue
+            if norm_path(self.root, rec.get("path")) != rel:
+                continue
+            packets = set(
+                disp.get("packet")
+                for disp in dispositions.get(rec.get("id"), [])
+                if disp.get("disposition") == "surfaced" and disp.get("packet")
+            )
+            if rec.get("id") in answered or packets & answered:
+                out.append(rec)
+        return out
+
+    def routed_disposition_index(self, rel):
+        """Return the record index of a path's routed disposition, or None."""
+        for index, rec in enumerate(self.records()):
+            if rec.get("type") != "disposition" or rec.get("disposition") != "routed":
+                continue
+            path = rec.get("path") or rec.get("target") or ""
+            if norm_path(self.root, path) == rel:
+                return index
+        return None
+
+    def writer_dispatch_index(self, rel):
+        """Return the record index of the path's first writer dispatch, or None."""
+        writers = set(row.get("label") for row in self.rows if row_is_writer(row))
+        for index, rec in enumerate(self.records()):
+            if rec.get("type") != "dispatch" or rec.get("label") not in writers:
+                continue
+            if norm_path(self.root, rec.get("path") or "") == rel:
+                return index
+        return None
+
+    def stamped_path_findings(self):
+        """Return (path, owned target, reason) for each condition-10 failure.
+
+        A changed owned-target path needs a route ahead of its first writer
+        dispatch: a routed disposition that precedes that dispatch, or an
+        answered fork naming the path. A path routed only through an answered
+        fork carries no routed disposition and clears on the guard's prior
+        ordering check rather than being re-tested here.
+        """
         changed = set(
             change.get("path")
             for change in self.run.get("changes", [])
             if not change.get("path", "").startswith("<")
         )
-        pending = []
+        findings = []
         for target in self.run.get("owned_targets", []):
             rel = norm_path(self.root, target.get("path", ""))
             if rel not in changed:
                 continue
-            if rel in fork_paths:
+            routed_at = self.routed_disposition_index(rel)
+            if routed_at is not None:
+                dispatched_at = self.writer_dispatch_index(rel)
+                if dispatched_at is not None and routed_at > dispatched_at:
+                    findings.append(
+                        (rel, target, "routed disposition postdates the writer dispatch")
+                    )
                 continue
-            if target.get("gate") in routed.get(rel, set()):
-                continue
-            pending.append((rel, target))
-        return pending
+            if not self.answered_fork_paths(rel):
+                findings.append((rel, target, "no routed disposition and no answered fork"))
+        return findings
+
+    def stamped_changed_paths(self):
+        """Return (path, owned target) pairs a changed stamp still lacks routing for."""
+        return [(rel, target) for rel, target, _ in self.stamped_path_findings()]
 
     def blind_label(self, label):
         """Return a row's derived blind label, or "" for a row that is not blind."""
@@ -1249,6 +1306,7 @@ def cmd_brief(args):
     input_versions["withheld"] = withheld_hashes
 
     target = row.get("path") or args.target or ""
+    refuse_writer_on_owned_target(led, row, target)
     if target:
         row["path"] = target
         recorded_dir = "snapshots" if row.get("kind") == "reader" else "baseline"
@@ -1392,6 +1450,21 @@ def row_is_checker(row):
     )
 
 
+def refuse_writer_on_owned_target(led, row, target):
+    """Refuse a writer on an owned target until an answered fork names the path."""
+    if not row_is_writer(row) or not target:
+        return
+    rel = norm_path(led.root, target)
+    if led.owned_target_for(rel) is None:
+        return
+    if led.answered_fork_paths(rel):
+        return
+    die(
+        "writer %s targets owned path %s; an answered fork naming the path must precede it"
+        % (row.get("label"), rel)
+    )
+
+
 def cmd_dispatch(args):
     led = Ledger()
     if os.path.exists(led.path("STOP")):
@@ -1408,6 +1481,7 @@ def cmd_dispatch(args):
         die("row %s already had two attempts; a third is refused" % args.label)
 
     if row_is_writer(row):
+        refuse_writer_on_owned_target(led, row, row.get("path"))
         wave = int(led.run.get("wave_size", 2))
         unchecked = [
             r
@@ -3131,11 +3205,17 @@ def close_open_items(led):
         if not change.get("attribution"):
             open_items.append("condition 4: change %s is unattributed" % change.get("path"))
 
-    for rel, target in led.stamped_changed_paths():
-        open_items.append(
-            "condition 10: changed stamped path %s has no routing to gate %s"
-            % (rel, target.get("gate"))
-        )
+    for rel, target, reason in led.stamped_path_findings():
+        if reason == "routed disposition postdates the writer dispatch":
+            open_items.append(
+                "condition 10: changed stamped path %s was routed to gate %s "
+                "after its writer dispatch" % (rel, target.get("gate"))
+            )
+        else:
+            open_items.append(
+                "condition 10: changed stamped path %s has no routing to gate %s"
+                % (rel, target.get("gate"))
+            )
 
     known = set(c.get("path") for c in led.run.get("changes", []))
     for code, path in sorted(stray_entries(led, known), key=lambda entry: entry[1]):
@@ -3498,7 +3578,8 @@ def build_parser():
         description=(
             "End the run. It prints the tally block and refuses while any "
             "close condition holds, including a changed path recorded as "
-            "stamped or marked with no routing to its owning gate."
+            "stamped or marked whose route does not precede its first "
+            "writer dispatch."
         ),
     )
     p.add_argument("--stopped", action="store_true")

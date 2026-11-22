@@ -2,7 +2,7 @@
 description: "Make agent_spinner's ledger hold every return field and report claim the skill relies on: import beyond-brief finds, dispose own-authority calls, fill the repair list, and ship the report lint."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-19T18:27:42Z
+updated: 2026-11-22T01:01:06Z
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -23,7 +23,7 @@ All paths are under `plugins/ai_dev/skills/agent_spinner/`. The coverage audit o
 - **Shared rules across phases.** SKILL.md `<prompt_assembly>` requires a producer and its checker to share the rules file byte for byte. `cmd_brief` compares shared blocks only within one phase, while a producer and its checker usually sit in different phases.
 - **The report lint.** `references/run-protocol.md` says "The report lint flags an assertion word, such as verified or complete" that carries no ledger citation, and `references/checks.md` and `references/report-shapes.md` rely on the same lint. The ledger has no report lint; `close` condition 7 only checks that `report.md` carries the current tally block. The skill states the citation rule in four places, so the ledger implements the lint rather than the references dropping it.
 
-**Prerequisite order.** Four live tasks edit the same ledger file and `tests/agent_spinner/script_tests/ledger_run.sh` and land before this one: [report-packet enforcement](archive/ai-dev_agent-spinner-report-packet-enforcement.md), [unanswered-fork holds run](archive/ai-dev_agent-spinner-unanswered-fork-holds-run.md), [stamped-write routing](ai-dev_agent-spinner-stamped-write-routing.md), and [ledger coverage gates](ai-dev_agent-spinner-ledger-coverage-gates.md). Land this one last, because each of those also edits `cmd_brief` or `cmd_accept`, or the `close_open_items` condition numbering this task extends. The terminal-states and brief-contract ledger tasks are archived `finished` ([terminal states](archive/ai-dev_agent-spinner-ledger-terminal-states.md), [brief contract](archive/ai-dev_agent-spinner-ledger-brief-contract.md)), so their work is already in the tree and imposes no order.
+**Prerequisite order.** [ledger coverage gates](ai-dev_agent-spinner-ledger-coverage-gates.md) is the one live task that edits the same ledger file and `tests/agent_spinner/script_tests/ledger_run.sh`, and it lands before this one; land this one last, because that task also edits `cmd_brief` or `cmd_accept`, or the `close_open_items` condition numbering this task extends. The stamped-write routing, report-packet enforcement, unanswered-fork holds run, terminal-states, and brief-contract ledger tasks are archived `finished` ([stamped-write routing](archive/ai-dev_agent-spinner-stamped-write-routing.md), [report-packet enforcement](archive/ai-dev_agent-spinner-report-packet-enforcement.md), [unanswered-fork holds run](archive/ai-dev_agent-spinner-unanswered-fork-holds-run.md), [terminal states](archive/ai-dev_agent-spinner-ledger-terminal-states.md), [brief contract](archive/ai-dev_agent-spinner-ledger-brief-contract.md)), so their work is already in the tree and imposes no order.
 
 ## Approach
 
