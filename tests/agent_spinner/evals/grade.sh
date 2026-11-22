@@ -1826,6 +1826,18 @@ tool_call_names_recipe() {
     "$TOOL_CALLS" >/dev/null 2>&1
 }
 
+# tool_call_spawns_role <role> — a recorded spawn call names the role. A run
+# that only types the role into a dispatch command has spawned nothing.
+tool_call_spawns_role() {
+  local role="$1"
+  [[ -s "$TOOL_CALLS" ]] || return 1
+  jq -se --arg role "$role" 'any(.[];
+      .type == "tool_call"
+      and .class == "spawn"
+      and ((.helper // "") == $role or ((.input | tostring) | contains($role))))' \
+    "$TOOL_CALLS" >/dev/null 2>&1
+}
+
 # One report sentence names the page and the word, which keeps a page named
 # without its defect from counting.
 report_sentence_has() {
@@ -3577,7 +3589,24 @@ case "$eval_id" in
     check "the ledger holds a narrowing record" \
       ledger_has '"type": "narrowing"'
     check "the narrowing names the dropped checks" \
-      ledger_has '"drops": "[^"]+"'
+      python3 - "$LEDGER" <<'PY'
+import json
+import sys
+
+try:
+    records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+except OSError:
+    sys.exit(1)
+for rec in records:
+    if rec.get("type") != "narrowing":
+        continue
+    drops = rec.get("drops")
+    if not isinstance(drops, list):
+        continue
+    if any(isinstance(label, str) and label.strip() for label in drops):
+        sys.exit(0)
+sys.exit(1)
+PY
     check "the report names the narrowing" \
       report_has 'narrow|dropped check|shape switch'
     ;;
@@ -3860,7 +3889,12 @@ names = " ".join(counters).lower()
 if "dash" not in names or not any(w in names for w in ("percent", "pct")):
     sys.exit(1)
 control = "CONTROL_MARKER\n"
-for pattern in counters.values():
+for entry in counters.values():
+    # A counter is stored as {"pattern": ..., "control": ...}; a pre-change
+    # run may still hold the bare pattern string.
+    pattern = entry.get("pattern") if isinstance(entry, dict) else entry
+    if not isinstance(pattern, str):
+        sys.exit(1)
     try:
         if not re.search(pattern, control):
             sys.exit(1)
@@ -4300,6 +4334,8 @@ PY
       probe_entry_delegation_is "probe:auto_checker_spinner" established
     check "the checker row names auto_checker_spinner in spawn_route" \
       checker_row_route_is auto_checker_spinner
+    check "the recorded tool calls hold a spawn call naming the checker role" \
+      tool_call_spawns_role auto_checker_spinner
     check "the role probe records read_only as enforced" \
       probe_entry_is "probe:auto_checker_spinner" read_only enforced
     check "the checker return is accepted with source relayed" \

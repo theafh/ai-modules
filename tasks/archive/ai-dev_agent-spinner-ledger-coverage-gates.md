@@ -2,9 +2,11 @@
 description: "Close four agent_spinner ledger paths that let a run overstate its coverage: --classify accepting a rejected check, the writer-only wave cap, the blind count gate, and the probe's read-only verdict."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-19T18:47:26Z
-status: ready
+updated: 2026-11-22T08:20:00Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Close the agent_spinner ledger paths that let a run overstate its coverage

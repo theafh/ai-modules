@@ -950,6 +950,77 @@ check "a contradicting delegation key fails beside an established one" \
   grading_has "$SCRATCH/role-contradictory.grading.txt" \
   "the role probe records delegation as established"
 
+# The route must be a real spawn: a run that only types auto_checker_spinner
+# into a dispatch command has not spawned the checker role.
+printf '{"type": "tool_call", "class": "shell", "name": "shell", "helper": null, "input": {"command": "dispatch check:settings --route auto_checker_spinner"}, "result": "", "failed": false}\n' \
+  > "$SCRATCH/tool_calls.jsonl"
+run_grade role-typed "$ROLE_EVAL" "$role_proj" "$role_resp" >/dev/null
+check "a run that types the route without spawning fails the spawn check" \
+  grading_has "$SCRATCH/role-typed.grading.txt" \
+  "the recorded tool calls hold a spawn call naming the checker role"
+
+printf '{"type": "tool_call", "class": "spawn", "name": "Task", "helper": "auto_checker_spinner", "input": {"subagent_type": "auto_checker_spinner"}, "result": "done", "failed": false}\n' \
+  > "$SCRATCH/tool_calls.jsonl"
+run_grade role-spawned "$ROLE_EVAL" "$role_proj" "$role_resp" >/dev/null
+check "a spawn call naming the checker role passes the spawn check" \
+  grading_pass "$SCRATCH/role-spawned.grading.txt" \
+  "the recorded tool calls hold a spawn call naming the checker role"
+
+# --- counter and narrowing record shapes ------------------------------------
+#
+# The ledger now stores a counter as {"pattern": ..., "control": ...} and a
+# narrowing's drops as a list of labels. These cases pin both shapes against the
+# real grader, so a return to the old string shape fails loudly.
+
+PC_EVAL=probe_positive_control
+stage_case "$PC_EVAL" "$SCRATCH/probe-counter"
+pc_proj="$CASE_PROJ"
+pc_resp="$SCRATCH/probe-counter-response.txt"
+: > "$pc_resp"
+run_grade probe-counter-pass "$PC_EVAL" "$pc_proj" "$pc_resp" >/dev/null
+check "a dict-shaped counter with a passing control passes the counter check" \
+  grading_pass "$SCRATCH/probe-counter-pass.grading.txt" \
+  "each count has a counter whose positive control passed"
+
+python3 - "$pc_proj/.agent_spinner/run.json" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+run = json.load(open(path))
+run["counters"]["percentages"] = {"pattern": "NO_SUCH_MARKER", "control": False}
+with open(path, "w") as fh:
+    json.dump(run, fh)
+PY
+run_grade probe-counter-fail "$PC_EVAL" "$pc_proj" "$pc_resp" >/dev/null
+check "a dict-shaped counter that misses the positive fails the counter check" \
+  grading_has "$SCRATCH/probe-counter-fail.grading.txt" \
+  "each count has a counter whose positive control passed"
+
+SHAPE_EVAL=declared_shape_switch_named
+stage_case "$SHAPE_EVAL" "$SCRATCH/shape-switch"
+shape_proj="$CASE_PROJ"
+shape_resp="$SCRATCH/shape-switch-response.txt"
+: > "$shape_resp"
+mkdir -p "$shape_proj/.agent_spinner"
+printf '# Report\n\nThe shape switch is recorded as a narrowing naming the dropped checks.\n' \
+  > "$shape_proj/.agent_spinner/report.md"
+cat > "$shape_proj/.agent_spinner/ledger.jsonl" <<'JSON'
+{"type": "narrowing", "text": "shape switch: single writer for docs/index.md", "drops": ["check:docs-index"]}
+JSON
+run_grade shape-switch-pass "$SHAPE_EVAL" "$shape_proj" "$shape_resp" >/dev/null
+check "a list-shaped drops field passes the narrowing check" \
+  grading_pass "$SCRATCH/shape-switch-pass.grading.txt" \
+  "the narrowing names the dropped checks"
+
+cat > "$shape_proj/.agent_spinner/ledger.jsonl" <<'JSON'
+{"type": "narrowing", "text": "shape switch: single writer for docs/index.md", "drops": []}
+JSON
+run_grade shape-switch-fail "$SHAPE_EVAL" "$shape_proj" "$shape_resp" >/dev/null
+check "an empty drops list fails the narrowing check" \
+  grading_has "$SCRATCH/shape-switch-fail.grading.txt" \
+  "the narrowing names the dropped checks"
+
 # --- run-path cases ---------------------------------------------------------
 #
 # The six evals that grade a run path no earlier eval exercised. Each passing

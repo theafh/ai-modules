@@ -31,6 +31,9 @@ import time
 
 MIN_VERSION = (3, 9)
 RUN_NAME = ".agent_spinner"
+# The known positive every counter is measured against before its count means
+# anything. `init --counter` and `diff --count` both read it.
+CONTROL_MARKER = "CONTROL_MARKER\n"
 
 COLUMNS = [
     "label",
@@ -816,6 +819,15 @@ def parse_key_value(items, what):
     return out
 
 
+def counter_entry(pattern):
+    """A counter stored with its pattern and whether its control passed."""
+    try:
+        control = bool(re.search(pattern, CONTROL_MARKER))
+    except re.error:
+        control = False
+    return {"pattern": pattern, "control": control}
+
+
 def parse_unit(spec):
     if ":" not in spec:
         die("unit must be role:item, got %r" % spec)
@@ -1083,7 +1095,7 @@ def cmd_init(args):
             {"path": parts[0], "family": parts[1], "gate": ":".join(parts[2:])}
         )
     for name, value in parse_key_value(args.counter, "counter").items():
-        led.run["counters"][name] = value
+        led.run["counters"][name] = counter_entry(value)
     if not led.is_repo:
         store_hashed_walk(led)
         led.run["hashed_walk"] = True
@@ -1121,12 +1133,78 @@ def probe_brief(route, token, bound):
     return (
         "# Probe brief\n\n"
         "Route: %s\n\n"
-        "Attempt one write inside the run directory, then report what you observed.\n"
+        "Try to write the file returns/probe:%s.start inside the run directory, then report what you observed.\n"
         "State each capability as established, assumed_absent, or unverified.\n"
         "Return a fenced json block ending with END probe:%s\n"
         "Bound: %d seconds\n%s\n"
-        % (route, slugify(route), bound, token)
+        % (route, slugify(route), slugify(route), bound, token)
     )
+
+
+# Run-directory files every run writes for itself, so a probe's stray-file
+# check never counts one as the helper's work.
+PROBE_RUN_FILES = (
+    "run.json",
+    "ledger.jsonl",
+    "request.txt",
+    "intent.md",
+    "preamble.md",
+    "facts.tsv",
+    "exclusions.tsv",
+    "probe.json",
+    "roster.tsv",
+    "report.md",
+    "STOP",
+    ".gitignore",
+    ".lock",
+    "probe-baseline.json",
+)
+PROBE_RUN_DIRS = (
+    "briefs",
+    "attempts",
+    "history",
+    "access",
+    "kinds",
+    "items",
+    "baseline",
+    "snapshots",
+    "diffs",
+    "gates",
+    "outbound",
+    "controls",
+    "scratch",
+)
+
+
+def run_dir_listing(led):
+    """Every file under the run directory, as run-relative slash paths."""
+    listing = set()
+    for dirpath, _dirnames, filenames in os.walk(led.run_dir):
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            listing.add(os.path.relpath(full, led.run_dir).replace(os.sep, "/"))
+    return listing
+
+
+def probe_ignored_path(led, rel, current_label):
+    """Whether the run itself writes ``rel``, so a probe's write check skips it."""
+    top = rel.split("/", 1)[0]
+    if top in PROBE_RUN_DIRS:
+        return True
+    if "/" not in rel and rel in PROBE_RUN_FILES:
+        return True
+    if top == "returns" and "/" in rel:
+        name = rel[len("returns/"):]
+        if name.endswith(".start"):
+            label = name[: -len(".start")]
+            if label == current_label:
+                return False
+        elif name.endswith(".md"):
+            label = name[: -len(".md")]
+        else:
+            return False
+        return led.row_or_none(label) is not None
+    return False
 
 
 def init_probe(led, args):
@@ -1166,6 +1244,18 @@ def init_probe(led, args):
             }
         )
     write_rows(led.roster_path, led.rows)
+    baseline_path = led.path("probe-baseline.json")
+    baseline = {}
+    if os.path.exists(baseline_path):
+        try:
+            baseline = json.loads(read_text(baseline_path))
+        except ValueError:
+            baseline = {}
+    snapshot = sorted(run_dir_listing(led))
+    for row in led.rows:
+        if row.get("phase") == "probe" or row.get("kind") == "probe":
+            baseline[row.get("label")] = snapshot
+    atomic_write(baseline_path, json.dumps(baseline, indent=2, sort_keys=True) + "\n")
     print("probe rows: %d" % len(routes))
     print("run: none (init opens it)")
     return 0
@@ -1450,6 +1540,59 @@ def row_is_checker(row):
     )
 
 
+def classified_labels(led):
+    """Rows closed by ``accept --classify`` that no later accept re-closed."""
+    classified = set()
+    accepted = set()
+    for rec in led.records():
+        if rec.get("type") == "classification":
+            classified.add(rec.get("label"))
+        elif rec.get("type") == "accept":
+            accepted.add(rec.get("label"))
+    return classified - accepted
+
+
+def narrowing_drops(led):
+    """Every label a narrowing's ``drops`` list names, old string shape included."""
+    drops = set()
+    for rec in led.records():
+        if rec.get("type") != "narrowing":
+            continue
+        value = rec.get("drops") or []
+        if isinstance(value, str):
+            value = value.split(",")
+        for label in value:
+            label = str(label).strip()
+            if label:
+                drops.add(label)
+    return drops
+
+
+def writer_unchecked(led, row, classified):
+    """A writer row the wave cap counts as unchecked.
+
+    In-flight writers always count. A written (accepted) writer counts until an
+    accepted check from another row covers its path; a writer with no unit path
+    carries no path any check can cover, so it stops counting once accepted.
+    """
+    state = row.get("state")
+    if state == "dispatched":
+        return True
+    if state != "accepted" or not row.get("path"):
+        return False
+    rel = norm_path(led.root, row.get("path"))
+    for other in led.rows:
+        if other.get("label") == row.get("label"):
+            continue
+        if other.get("state") != "accepted" or not row_is_checker(other):
+            continue
+        if other.get("label") in classified:
+            continue
+        if other.get("path") and norm_path(led.root, other.get("path")) == rel:
+            return False
+    return True
+
+
 def refuse_writer_on_owned_target(led, row, target):
     """Refuse a writer on an owned target until an answered fork names the path."""
     if not row_is_writer(row) or not target:
@@ -1483,10 +1626,9 @@ def cmd_dispatch(args):
     if row_is_writer(row):
         refuse_writer_on_owned_target(led, row, row.get("path"))
         wave = int(led.run.get("wave_size", 2))
+        classified = classified_labels(led)
         unchecked = [
-            r
-            for r in led.rows
-            if row_is_writer(r) and r.get("state") == "dispatched"
+            r for r in led.rows if row_is_writer(r) and writer_unchecked(led, r, classified)
         ]
         if len(unchecked) >= wave:
             die("wave size %d reached: %d written rows are unchecked" % (wave, len(unchecked)))
@@ -1781,7 +1923,19 @@ def accept_probe(led, args):
             die("probe return %s is not readable json" % label)
     caps = dict(data.get("capabilities") or {})
     marker = led.path("returns", "%s.start" % label)
-    caps["read_only"] = "not-enforced" if os.path.exists(marker) else "enforced"
+    enforced = False
+    if not os.path.exists(marker):
+        try:
+            stored = json.loads(read_text(led.path("probe-baseline.json")))
+            baseline = set(stored.get(label) or [])
+        except (TypeError, ValueError, AttributeError):
+            baseline = set()
+        added = run_dir_listing(led) - baseline
+        stray = [
+            path for path in added if not probe_ignored_path(led, path, label)
+        ]
+        enforced = not stray
+    caps["read_only"] = "enforced" if enforced else "not-enforced"
     if args.observed_model:
         caps["model"] = "observed"
     else:
@@ -2168,7 +2322,7 @@ def cmd_accept(args):
         led.save_rows()
 
     text, source = read_accept_text(led, args)
-    if not text.strip():
+    if not text.strip() and not args.classify:
         die("return for %s is empty" % args.label)
 
     errors, data = validate_return(led, row, text, source)
@@ -2444,7 +2598,15 @@ def cmd_dispose(args):
         )
         changed = True
     if args.narrowing:
-        led.append({"type": "narrowing", "text": args.narrowing, "drops": args.drops or ""})
+        drops = []
+        for label in (args.drops or "").split(","):
+            label = label.strip()
+            if not label or label in drops:
+                continue
+            if led.row_or_none(label) is None:
+                die("--drops names %s, which is no roster row" % label)
+            drops.append(label)
+        led.append({"type": "narrowing", "text": args.narrowing, "drops": drops})
         for label in dropped_rows:
             row = led.find_row(label)
             row["state"] = "dropped"
@@ -2721,12 +2883,13 @@ def cmd_diff(args):
             if "=" not in item:
                 die("counter needs NAME=PATTERN, got %r" % item)
             name, pattern = item.split("=", 1)
-            counters[name] = pattern
-        control = "CONTROL_MARKER\n"
-        for name, pattern in counters.items():
-            if not re.search(pattern, control):
+            counters[name] = {"pattern": pattern, "control": False}
+        for name, entry in counters.items():
+            pattern = entry.get("pattern", "") if isinstance(entry, dict) else entry
+            if not re.search(pattern, CONTROL_MARKER):
                 die("counter %s misses its own known positive; failing closed" % name)
-            print("counter %s: %d" % (name, len(re.findall(pattern, control))))
+            counters[name] = {"pattern": pattern, "control": True}
+            print("counter %s: %d" % (name, len(re.findall(pattern, CONTROL_MARKER))))
         led.run["counters"] = counters
 
     led.append({"type": "diff", "changes": [c["path"] for c in changes]})
@@ -2787,7 +2950,12 @@ def cmd_gate(args):
         counters = led.run.get("counters", {})
         if not counters:
             die("gate %s needs a counter whose positive control passed" % args.name)
-        ok = ok and not silent
+        passing = [
+            name
+            for name, entry in counters.items()
+            if isinstance(entry, dict) and entry.get("control") is True
+        ]
+        ok = ok and not silent and bool(passing)
     elif expect == "exit0":
         ok = ok
     record = {
@@ -2857,10 +3025,13 @@ def cmd_snapshot(args):
 
 def print_tally(led):
     counts = led.state_counts()
-    print("tally: rows=%d accepted=%d inability=%d failed=%d unreturned=%d dropped=%d"
+    labels = classified_labels(led)
+    classified = len([row for row in led.rows if row.get("label") in labels])
+    print("tally: rows=%d accepted=%d classified=%d inability=%d failed=%d unreturned=%d dropped=%d"
           % (
               len(led.rows),
-              counts.get("accepted", 0),
+              counts.get("accepted", 0) - classified,
+              classified,
               counts.get("inability", 0),
               counts.get("failed", 0),
               counts.get("unreturned", 0),
@@ -3121,10 +3292,14 @@ def tally_block(led):
     checks = [rec for rec in records if rec.get("type") == "check"]
     gates = [rec for rec in records if rec.get("type") == "gate_result"]
     coverage = led.coverage_counts()
+    classified = len(
+        [row for row in led.rows if row.get("label") in classified_labels(led)]
+    )
     lines = [
         "TALLY-BEGIN",
         "rows %d" % len(led.rows),
-        "accepted %d" % counts.get("accepted", 0),
+        "accepted %d" % (counts.get("accepted", 0) - classified),
+        "classified %d" % classified,
         "inability %d" % counts.get("inability", 0),
         "failed %d" % counts.get("failed", 0),
         "unreturned %d" % counts.get("unreturned", 0),
@@ -3144,9 +3319,15 @@ def tally_block(led):
 
 
 def change_covered(led, change, dispositions):
+    classified = classified_labels(led)
+    narrowed = narrowing_drops(led)
     for label in change.get("checks", []):
         row = led.row_or_none(label)
         if row and row.get("state") == "accepted":
+            # A row closed by --classify records a sampled-out check, not a
+            # check made: it covers its path only when a narrowing names it.
+            if label in classified and label not in narrowed:
+                continue
             return True
     if change.get("gate"):
         return True

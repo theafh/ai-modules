@@ -25,7 +25,7 @@ Hand the implemented stamp to the implementation skill's own step after `close` 
 </phases>
 
 <width>
-Write gets one writer per semantic row. Checkers cover every written semantic file plus a fixed sample of the mechanical set, the files the mechanical pass changed, and the gates cover the mechanical set in full. Every mechanical-set file outside that sample closes its `check:<slug>` row with `accept check:<slug> --stdin --classify 'sampled out; per-file gates cover it'`, so the sample stays a recorded narrowing and `close` finds no open row. The declared shape binds, so the run keeps the shape it announced. A switch of shape is a ledger event naming the checks it drops, and a switch that drops a check waits for the user.
+Write gets one writer per semantic row. Checkers cover every written semantic file plus a fixed sample of the mechanical set, the files the mechanical pass changed, and the gates cover the mechanical set in full. Every mechanical-set file outside that sample closes its `check:<slug>` row with `accept check:<slug> --stdin --classify 'sampled out; per-file gates cover it'` and names that label in `dispose --narrowing 'sampled out; per-file gates cover it' --drops check:<slug>,…`, so the sample is a recorded narrowing whose dropped labels the ledger checks and `close` finds no open row. The declared shape binds, so the run keeps the shape it announced. A switch of shape is a ledger event naming the checks it drops, and a switch that drops a check waits for the user.
 
 A run whose context estimate crosses half the host's window spans sessions at wave ends (P1).
 </width>

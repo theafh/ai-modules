@@ -583,6 +583,48 @@ scenario_dispatch() {
     ledger "$dir5" brief recheck:b --body "B" --kind recheck >/dev/null 2>&1
     ledger "$dir5" dispatch recheck:a >/dev/null 2>&1
     if ledger "$dir5" dispatch recheck:b >/dev/null 2>&1; then bad "second re-check of one item refused"; else ok "second re-check of one item refused"; fi
+
+    # The cap counts a written writer until a check covers its path, not just
+    # the writers in flight.
+    dir6="$dir/six"
+    setup_repo "$dir6"
+    ledger "$dir6" init --unit produce:one --unit produce:two --unit check:three --unit-path produce:one=a.txt --unit-path produce:two=b.txt --unit-path check:three=a.txt --wave 1 --bound 60 >/dev/null 2>&1
+    for label in produce:one produce:two check:three; do ledger "$dir6" brief "$label" --body "$label" >/dev/null 2>&1; done
+    ledger "$dir6" dispatch produce:one >/dev/null 2>&1
+    token=$(token_of "$dir6" produce:one)
+    emit_return "$dir6" produce:one "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir6" accept produce:one >/dev/null 2>&1
+    if ledger "$dir6" dispatch produce:two >/dev/null 2>&1; then
+        bad "wave cap refuses a writer while the previous write is unchecked"
+    else
+        ok "wave cap refuses a writer while the previous write is unchecked"
+    fi
+    ledger "$dir6" dispatch check:three >/dev/null 2>&1
+    token=$(token_of "$dir6" check:three)
+    emit_return "$dir6" check:three "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir6" accept check:three >/dev/null 2>&1
+    if ledger "$dir6" dispatch produce:two >/dev/null 2>&1; then
+        ok "wave cap admits a writer once a check covers the path"
+    else
+        bad "wave cap admits a writer once a check covers the path"
+    fi
+
+    # A writer with no unit path has no path a check can cover, so it stops
+    # counting once accepted.
+    dir7="$dir/seven"
+    setup_repo "$dir7"
+    ledger "$dir7" init --unit produce:c --unit produce:d --wave 1 --bound 60 >/dev/null 2>&1
+    ledger "$dir7" brief produce:c --body "C" >/dev/null 2>&1
+    ledger "$dir7" brief produce:d --body "D" >/dev/null 2>&1
+    ledger "$dir7" dispatch produce:c >/dev/null 2>&1
+    token=$(token_of "$dir7" produce:c)
+    emit_return "$dir7" produce:c "$token" '{"examined":[]}'
+    ledger "$dir7" accept produce:c >/dev/null 2>&1
+    if ledger "$dir7" dispatch produce:d >/dev/null 2>&1; then
+        ok "a writer with no unit path stops counting once accepted"
+    else
+        bad "a writer with no unit path stops counting once accepted"
+    fi
 }
 
 scenario_spawn_recording() {
@@ -879,6 +921,87 @@ scenario_counters() {
     ledger "$dir" init --unit produce:a >/dev/null 2>&1
     if ledger "$dir" diff --count --counter 'good=CONTROL_MARKER' >/dev/null 2>&1; then ok "counter finds its known positive"; else bad "counter finds its known positive"; fi
     if ledger "$dir" diff --count --counter 'bad=NO_SUCH_MARKER' >/dev/null 2>&1; then bad "counter missing its known positive fails closed"; else ok "counter missing its known positive fails closed"; fi
+
+    dir2="$dir/two"
+    setup_repo "$dir2"
+    cat > "$dir2/zero.sh" <<'SH'
+#!/bin/sh
+printf '0\n'
+exit 0
+SH
+    chmod +x "$dir2/zero.sh"
+    ledger "$dir2" init --unit produce:a --counter 'zero=^0$' >/dev/null 2>&1
+    if "$PY" - "$dir2/.agent_spinner/run.json" <<'PY'
+import json
+import sys
+
+run = json.load(open(sys.argv[1]))
+entry = run["counters"]["zero"]
+sys.exit(0 if entry.get("pattern") == "^0$" and entry.get("control") is False else 1)
+PY
+    then
+        ok "init stores a counter whose control misses the known positive"
+    else
+        bad "init stores a counter whose control misses the known positive"
+    fi
+    ledger "$dir2" gate zero --expect count -- "$dir2/zero.sh" >/dev/null 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ] && "$PY" - "$dir2/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+sys.exit(0 if any(
+    rec.get("type") == "gate_result" and rec.get("name") == "zero" and rec.get("ok") is False
+    for rec in records
+) else 1)
+PY
+    then
+        ok "a count gate with no passed control appends ok: false and exits non-zero"
+    else
+        bad "a count gate with no passed control appends ok: false and exits non-zero"
+    fi
+
+    dir3="$dir/three"
+    setup_repo "$dir3"
+    cat > "$dir3/control.sh" <<'SH'
+#!/bin/sh
+printf 'CONTROL_MARKER\n'
+exit 0
+SH
+    chmod +x "$dir3/control.sh"
+    ledger "$dir3" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir3" diff --count --counter 'good=CONTROL_MARKER' >/dev/null 2>&1
+    if "$PY" - "$dir3/.agent_spinner/run.json" <<'PY'
+import json
+import sys
+
+run = json.load(open(sys.argv[1]))
+entry = run["counters"]["good"]
+sys.exit(0 if entry.get("control") is True else 1)
+PY
+    then
+        ok "diff --count stores an accepted counter with control true"
+    else
+        bad "diff --count stores an accepted counter with control true"
+    fi
+    ledger "$dir3" gate good --expect count -- "$dir3/control.sh" >/dev/null 2>&1
+    rc=$?
+    if [ "$rc" -eq 0 ] && "$PY" - "$dir3/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+sys.exit(0 if any(
+    rec.get("type") == "gate_result" and rec.get("name") == "good" and rec.get("ok") is True
+    for rec in records
+) else 1)
+PY
+    then
+        ok "a count gate over a passed control records ok: true and exits 0"
+    else
+        bad "a count gate over a passed control records ok: true and exits 0"
+    fi
 }
 
 scenario_gate_expect() {
@@ -3178,6 +3301,177 @@ LOG
     fi
 }
 
+scenario_classify_narrowing() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit check:a.txt --unit-path produce:a=a.txt --unit-path check:a.txt=a.txt --wave 2 --bound 60 >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "Write a.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ngamma\n' > "$dir/a.txt"
+    ledger "$dir" diff --add-checks >/dev/null 2>&1
+    ledger "$dir" brief check:a.txt --body "Check a.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch check:a.txt >/dev/null 2>&1
+    if ledger "$dir" accept check:a.txt --stdin --classify 'sampled out; per-file gates cover it' < /dev/null >/dev/null 2>&1; then
+        ok "the recipes' sampled-out command exits 0 on empty stdin"
+    else
+        bad "the recipes' sampled-out command exits 0 on empty stdin"
+    fi
+    if grep -q '"type": "classification"' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "the sampled-out command records the classification"
+    else
+        bad "the sampled-out command records the classification"
+    fi
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
+
+    ledger "$dir" close > "$dir/.agent_spinner/close-classified.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 3' "$dir/.agent_spinner/close-classified.out" && grep -q 'a.txt' "$dir/.agent_spinner/close-classified.out"; then
+        ok "a classified row with no narrowing leaves close refusing on its path"
+    else
+        bad "a classified row with no narrowing leaves close refusing on its path (rc=$rc)"
+    fi
+
+    ledger "$dir" dispose --narrowing 'check:a.txt is sampled out; per-file gates cover it' >/dev/null 2>&1
+    ledger "$dir" close > "$dir/.agent_spinner/close-text-only.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 3' "$dir/.agent_spinner/close-text-only.out"; then
+        ok "a narrowing whose text names the row but whose drops omit it still refuses"
+    else
+        bad "a narrowing whose text names the row but whose drops omit it still refuses (rc=$rc)"
+    fi
+
+    if ledger "$dir" dispose --narrowing 'sampled out' --drops no:such-row >/dev/null 2>&1; then
+        bad "a --drops entry naming no roster row is refused"
+    else
+        ok "a --drops entry naming no roster row is refused"
+    fi
+
+    ledger "$dir" dispose --narrowing 'sampled out; per-file gates cover it' --drops check:a.txt >/dev/null 2>&1
+    if ledger "$dir" close > "$dir/.agent_spinner/close-narrowed.out" 2>&1; then
+        ok "a narrowing that drops the row lets close pass"
+    else
+        bad "a narrowing that drops the row lets close pass"
+    fi
+
+    dir2="$dir/tally"
+    setup_repo "$dir2"
+    ledger "$dir2" init --unit check:a --unit check:b --unit-path check:a=a.txt --unit-path check:b=b.txt --bound 60 >/dev/null 2>&1
+    ledger "$dir2" brief check:a --body "Check a.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir2" brief check:b --body "Check b.txt." --target b.txt >/dev/null 2>&1
+    ledger "$dir2" dispatch check:a >/dev/null 2>&1
+    token=$(token_of "$dir2" check:a)
+    emit_return "$dir2" check:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir2" accept check:a >/dev/null 2>&1
+    ledger "$dir2" dispatch check:b >/dev/null 2>&1
+    ledger "$dir2" accept check:b --stdin --classify 'sampled out; per-file gates cover it' < /dev/null >/dev/null 2>&1
+    if ledger "$dir2" status 2>&1 | grep -q 'accepted=1 classified=1'; then
+        ok "print_tally keeps a classified row out of accepted and prints its count"
+    else
+        bad "print_tally keeps a classified row out of accepted and prints its count"
+    fi
+    ledger "$dir2" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir2/tally.txt"
+    if grep -q '^accepted 1$' "$dir2/tally.txt" && grep -q '^classified 1$' "$dir2/tally.txt"; then
+        ok "the report tally block prints accepted 1 beside classified 1"
+    else
+        bad "the report tally block prints accepted 1 beside classified 1"
+    fi
+}
+
+scenario_probe_baseline() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --probe --cheapest cheap --role r1 --role r2 >/dev/null 2>&1
+    if grep -q 'returns/probe:cheap.start' "$dir/.agent_spinner/briefs/probe:cheap.txt"; then
+        ok "the probe brief names the marker file the helper must try to write"
+    else
+        bad "the probe brief names the marker file the helper must try to write"
+    fi
+
+    token=$(token_of "$dir" probe:cheap)
+    emit_return "$dir" probe:cheap "$token" '{"capabilities":{"delegation_surface":"established"}}'
+    ledger "$dir" accept --probe probe:cheap >/dev/null 2>&1
+    if grep -q '"read_only": "enforced"' "$dir/.agent_spinner/probe.json"; then
+        ok "a probe whose return is its only file is enforced"
+    else
+        bad "a probe whose return is its only file is enforced"
+    fi
+
+    token=$(token_of "$dir" probe:r1)
+    emit_return "$dir" probe:r1 "$token" '{"capabilities":{"delegation_surface":"established"}}'
+    ledger "$dir" accept --probe probe:r1 >/dev/null 2>&1
+    if grep -q '"read_only": "enforced"' "$dir/.agent_spinner/probe.json"; then
+        ok "a second probe accepted after the first is enforced"
+    else
+        bad "a second probe accepted after the first is enforced"
+    fi
+
+    touch "$dir/.agent_spinner/returns/probe:cheap.start"
+    token=$(token_of "$dir" probe:cheap)
+    emit_return "$dir" probe:cheap "$token" '{"capabilities":{"delegation_surface":"established"}}'
+    ledger "$dir" accept --probe probe:cheap >/dev/null 2>&1
+    if grep -q '"read_only": "not-enforced"' "$dir/.agent_spinner/probe.json"; then
+        ok "a probe helper that leaves its own marker is not enforced"
+    else
+        bad "a probe helper that leaves its own marker is not enforced"
+    fi
+    token=$(token_of "$dir" probe:r1)
+    emit_return "$dir" probe:r1 "$token" '{"capabilities":{"delegation_surface":"established"}}'
+    ledger "$dir" accept --probe probe:r1 >/dev/null 2>&1
+    if grep -q '"read_only": "enforced"' "$dir/.agent_spinner/probe.json"; then
+        ok "another probe row's marker never counts as this helper's write"
+    else
+        bad "another probe row's marker never counts as this helper's write"
+    fi
+
+    printf 'stray\n' > "$dir/.agent_spinner/extra.txt"
+    token=$(token_of "$dir" probe:r2)
+    emit_return "$dir" probe:r2 "$token" '{"capabilities":{"delegation_surface":"established"}}'
+    ledger "$dir" accept --probe probe:r2 >/dev/null 2>&1
+    if grep -q '"read_only": "not-enforced"' "$dir/.agent_spinner/probe.json"; then
+        ok "a probe helper that writes a file other than the marker is not enforced"
+    else
+        bad "a probe helper that writes a file other than the marker is not enforced"
+    fi
+
+    dir2="$dir/unlisted-return"
+    setup_repo "$dir2"
+    ledger "$dir2" init --probe --cheapest cheap >/dev/null 2>&1
+    printf 'stray return\n' > "$dir2/.agent_spinner/returns/stray.md"
+    token=$(token_of "$dir2" probe:cheap)
+    emit_return "$dir2" probe:cheap "$token" '{"capabilities":{"delegation_surface":"established"}}'
+    ledger "$dir2" accept --probe probe:cheap >/dev/null 2>&1
+    if grep -q '"read_only": "not-enforced"' "$dir2/.agent_spinner/probe.json"; then
+        ok "a returns file whose label no roster row names is this helper's write"
+    else
+        bad "a returns file whose label no roster row names is this helper's write"
+    fi
+
+    dir3="$dir/after-init"
+    setup_repo "$dir3"
+    ledger "$dir3" init --probe --cheapest cheap >/dev/null 2>&1
+    ledger "$dir3" init --unit check:r --unit produce:w --unit-path check:r=a.txt --unit-path produce:w=b.txt >/dev/null 2>&1
+    ledger "$dir3" brief check:r --body "Check a.txt." --target a.txt >/dev/null 2>&1
+    ledger "$dir3" dispatch check:r >/dev/null 2>&1
+    token=$(token_of "$dir3" check:r)
+    emit_return "$dir3" check:r "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    ledger "$dir3" accept check:r >/dev/null 2>&1
+    touch "$dir3/.agent_spinner/returns/produce:w.start"
+    ledger "$dir3" stop >/dev/null 2>&1
+    printf '# Report\n\nAll clear.\n' > "$dir3/.agent_spinner/report.md"
+    token=$(token_of "$dir3" probe:cheap)
+    emit_return "$dir3" probe:cheap "$token" '{"capabilities":{"delegation_surface":"established"}}'
+    ledger "$dir3" accept --probe probe:cheap >/dev/null 2>&1
+    if grep -q '"read_only": "enforced"' "$dir3/.agent_spinner/probe.json"; then
+        ok "a probe accepted after init opened the run ignores the run's own later writes"
+    else
+        bad "a probe accepted after init opened the run ignores the run's own later writes"
+    fi
+}
+
+
 scenario_log_format_docs() {
     dir="$1"
     mkdir -p "$dir"
@@ -3314,6 +3608,8 @@ run_all_scenarios() {
     scenario_repeat_audit_incidents "$root/audit-repeat"
     scenario_own_session_windows "$root/own-session-windows"
     scenario_tally_coverage "$root/tally-coverage"
+    scenario_classify_narrowing "$root/classify-narrowing"
+    scenario_probe_baseline "$root/probe-baseline"
     scenario_log_format_docs "$root/log-format-docs"
     scenario_version_floor "$root/version-floor"
     scenario_phase_count "$root/phase-count"

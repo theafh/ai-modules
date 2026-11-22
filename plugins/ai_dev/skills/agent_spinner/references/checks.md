@@ -52,7 +52,10 @@ outbound draft under `outbound/`.
    inline work.
 
 **Checks.** `close` refuses while a changed path lacks an accepted check from
-another row, a covering gate, or an unverified disposition.
+another row, a covering gate, or an unverified disposition. A row closed by
+`accept --classify` is a classified row: it covers its path only when a
+narrowing's `--drops` list names that row, so a classified row without that
+narrowing leaves the path uncovered.
 
 ## C2. Build a clean checker.
 
@@ -150,7 +153,7 @@ one such file per file type the gates read.
    run as its baseline.
 4. Run each command as `gate NAME -- ARGV` with an expectation: `exit0` records
    a silent pass as silent, `nonempty` fails on empty output, and `count` needs
-   a counter whose positive control passed.
+   a counter whose stored `control` passed.
 5. Name a gate whose executable does not resolve as unavailable, which the
    report names as a narrowing. Where a gate the recipe relies on is
    unavailable, widen checker coverage to every changed file or ask the user.

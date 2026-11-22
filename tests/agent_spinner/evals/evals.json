@@ -1748,6 +1748,7 @@
         "The report names settings.md."
       ],
       "harness": {
+        "tool_record": true,
         "agents": [
           "plugins/ai_dev/agents/auto_checker_spinner.md"
         ],

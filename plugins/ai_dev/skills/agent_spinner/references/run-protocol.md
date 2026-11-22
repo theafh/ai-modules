@@ -77,8 +77,9 @@ fans out on its own.
    host's own sub-agent surface, once through the cheapest route it offers and
    once through each registered role the host lists.
 2. Count the read-only lever, a host setting that blocks a helper's writes, as
-   enforced only when the probe's write attempt inside the run directory left
-   no file. Count model and depth as observed only where the host exposes the
+   enforced only when the probe's `returns/probe:<slug>.start` marker is absent
+   and the helper added no file outside the run's own writes since the probe
+   baseline. Count model and depth as observed only where the host exposes the
    helper's settings, and otherwise state rigour as behaviour.
 3. Establish concurrency from the first real wave, through the filesystem times
    of each file-writing helper's `returns/<label>.start` marker and its return
@@ -211,9 +212,10 @@ a completed result with no retry.
   no fork of the return, or an `option` field naming no option id of that fork.
 - A blind row returning the withheld text it must not see.
 
-Also use `accept --classify` for a free-text return, manifests for large
-outputs, joins by identifier only, recall tagging from recorded relays, and
-`accept --observed-model M --observed-effort E`.
+Also use `accept --classify` for a free-text return, which records a classified
+row that covers no path until a narrowing's `--drops` list names it; manifests
+for large outputs, joins by identifier only, recall tagging from recorded
+relays, and `accept --observed-model M --observed-effort E`.
 
 `accept --log PATH` reads a host log in place of standard input. Add
 `--log-format FILE` and the call becomes audit-only: the ledger reads the
@@ -324,9 +326,14 @@ opens no run; it needs `--cheapest ROUTE` or one or more `--role ROUTE`.
 - `--auto-fix-gate NAME`: refused; the ledger registers no auto-fix gate while
   run state exists.
 - `--owned-target PATH:FAMILY:GATE`: a path whose field a named gate owns.
-- `--counter NAME=PATTERN`: a counter whose positive control must match.
+- `--counter NAME=PATTERN`: a counter, stored with its pattern and the
+  `control` verdict the pattern earns against the ledger's known positive; a
+  pattern that misses the positive is stored with `control: false` rather than
+  refused.
 - `--bound SECONDS`: the per-helper bound, default 900.
-- `--wave N`: the wave size, default 2.
+- `--wave N`: the writer cap, default 2; the cap bounds unchecked writes,
+  counting writers in flight plus written writers whose path no accepted check
+  from another row covers.
 - `--phase NAME`: the first phase, default `work`.
 - `--request PATH`, `--intent PATH`: the verbatim request and the intent.
 - `--severity NAME` (repeatable): the severity ladder.
@@ -401,7 +408,10 @@ Take in a helper's return.
   incident and no outside read.
 - `--observed-model M`, `--observed-effort E`: record the observed values.
 - `--wait`: poll up to 90 seconds for dispatched rows to return.
-- `--classify TEXT`: accept a free-text return with a classification.
+- `--classify TEXT`: accept a free-text return as a classified row. The
+  classification text closes the row, and the row covers no path until a
+  narrowing's `--drops` list carries its label; `close` refuses a changed path
+  whose only check is a classified row no narrowing names.
 - `--probe`: accept a probe return and record its capabilities.
 
 ### `rows`
@@ -430,10 +440,14 @@ Record what became of each record.
   `--routed`: it is recorded on the fork record as the changed path the fork is
   about, so a fork raised over a stamped or marked changed path clears `close`
   condition 10 once that fork is answered.
-- `--narrowing TEXT`, `--drops TEXT`, `--rows LABEL[,LABEL...]`: a named
-  narrowing, the checks it drops, and the pending rows it retires as `dropped`.
-  Every label `--rows` names must be a pending roster row; the verb refuses the
-  whole call otherwise and changes nothing.
+- `--narrowing TEXT`, `--drops LABEL[,LABEL...]`, `--rows LABEL[,LABEL...]`: a
+  named narrowing, the roster labels its `--drops` list carries, and the
+  pending rows it retires as `dropped`. `--drops` splits on commas, refuses a
+  label no roster row carries, and stores the resolved labels. The list records
+  coverage only and changes no row's state: a check row closed by
+  `--classify` covers its path only when this list names that row. Every label
+  `--rows` names must be a pending roster row; the verb refuses the whole call
+  otherwise and changes nothing.
 - `--open-fork ID`, `--issue TEXT`, `--question TEXT`: record a fork the
   orchestrator raises itself as a `fork` record and an open `user_gate` under
   the same `ID`, before any write it would govern. `--issue` is the fork's
@@ -461,7 +475,9 @@ Measure what changed against the baseline.
 
 - `--add-checks`: add a `check:<slug>` row per changed path.
 - `--approved-edits PATH`: map changed blocks to approved edits.
-- `--count`: print each counter's known-positive count.
+- `--count`: print each counter's known-positive count, failing closed on a
+  pattern that misses the positive and storing each counter it accepts with
+  `control: true`.
 - `--counter NAME=PATTERN` (repeatable): register a counter.
 
 ### `gate`
@@ -469,7 +485,9 @@ Measure what changed against the baseline.
 Run a check command.
 
 - `name` (positional): the gate's name.
-- `--expect exit0|nonempty|count`: what makes the gate pass.
+- `--expect exit0|nonempty|count`: what makes the gate pass. `count` passes only
+  when at least one registered counter carries `control: true`; a run with
+  counters but none passed records `ok: false` and exits non-zero.
 - `--on-baseline`: record the result as the baseline.
 
 ### `snapshot`
