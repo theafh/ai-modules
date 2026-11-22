@@ -389,7 +389,7 @@ s15_convergence_and_robust_returns() {
   assert_contains "gate template carries the absence form" "$gate" \
     "clean — absent: <task path> :: <section headings read in full> :: <what was looked for and did not find>" || ok=false
   assert_contains "gate walk rule routes absence to the absence form" "$gate" \
-    "an absence claim takes the absence form and covers every section of the covered set" || ok=false
+    "an absence claim takes the absence form and covers every section the lens judges" || ok=false
   assert_contains "gate output contract defines the covered set" "$gate" \
     'The covered set an absence citation names is the body sections from `## Goal` through `## Acceptance`' || ok=false
   assert_contains "gate output contract carries the scoped-round absence form" "$gate" \
