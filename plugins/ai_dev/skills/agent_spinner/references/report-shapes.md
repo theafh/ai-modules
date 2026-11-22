@@ -237,8 +237,8 @@ three excluded pages.
 
 Coverage: read in full by tool evidence — check:build, check:deploy
 [measured: check:build]; claimed by receipt only — survey:status
-[re-derived: survey:status]; only searched — survey:verify
-[re-derived: survey:verify]; unexamined — the three excluded pages.
+[taken on a helper's word: survey:status]; only searched — survey:verify
+[taken on a helper's word: survey:verify]; unexamined — the three excluded pages.
 
 Confirmations: the changelog line [taken on a helper's word: survey:verify];
 the deploy page's --env example [re-derived: survey:deploy].

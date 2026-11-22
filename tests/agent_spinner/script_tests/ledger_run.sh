@@ -3662,6 +3662,32 @@ scenario_record_completeness() {
         bad "close accepts once every beyond-brief record is disposed by id"
     fi
 
+    dir="$base/return-own-authority"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"own_authority":[{"text":"decided alone","own_decision":"decided alone"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Run closed."
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] \
+        && grep -q 'condition 2' "$dir/.agent_spinner/close.out" \
+        && grep -q 'produce:a:own_authority:0' "$dir/.agent_spinner/close.out"; then
+        ok "a return-supplied own-authority entry carrying own_decision still needs dispose --id"
+    else
+        bad "a return-supplied own-authority entry carrying own_decision still needs dispose --id (rc=$rc)"
+    fi
+    ledger "$dir" dispose --id 'produce:a:own_authority:0' --disposition applied >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "disposing a return-supplied own-authority record by id clears condition 2"
+    else
+        bad "disposing a return-supplied own-authority record by id clears condition 2"
+    fi
+
     dir="$base/flag"
     setup_repo "$dir"
     ledger "$dir" init --unit produce:a --unit check:b >/dev/null 2>&1

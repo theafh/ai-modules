@@ -3526,9 +3526,14 @@ def close_open_items(led):
             "dropped_suspicion",
         ):
             # An own-authority record written by `dispose --fork
-            # --own-decision` carries its decision, so it is its own
-            # disposition; one imported from a return takes `dispose --id`.
-            if rec.get("type") == "own_authority" and rec.get("own_decision"):
+            # --own-decision` carries its decision and no `list` key, so it
+            # is its own disposition; one imported from a return carries a
+            # `list` key and takes `dispose --id`.
+            if (
+                rec.get("type") == "own_authority"
+                and rec.get("own_decision")
+                and "list" not in rec
+            ):
                 continue
             if not dispositions.get(rec.get("id")):
                 open_items.append("condition 2: record %s has no disposition" % rec.get("id"))
