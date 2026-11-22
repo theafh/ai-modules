@@ -2,9 +2,11 @@
 description: "Give auto_gate_task a citation form for a content-lens item cleared because something is absent, which the citation verifier can keep, so a clean task can pass the immediate-ready refutation."
 scope: plugins/ai_dev/agents
 created: 2026-11-15T10:49:59Z
-updated: 2026-11-19T18:18:04Z
-status: ready
+updated: 2026-11-22T13:06:14Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Give the gate a citation form for absence claims the verifier can keep
@@ -24,9 +26,9 @@ All agent paths are under `plugins/ai_dev/agents/`.
   - A Cursor run refuted 8 citations.
   - After the fixture fix, a later Cursor run still refuted the three absence lenses above. Their spans were a `CLAUDE.md` line, the `## Approach` heading, and the Goal sentence, and each refutation reason says the span shows only that something exists.
   - A Claude run, on the fixed fixture, refuted the same three lenses. Its spans were the `CLAUDE.md` line "run the bundled task linter after edits", an Approach sentence about editing `build_throttle_response()`, and the `reported-by` frontmatter field, and its reasons say the first two show only that something exists and the third lies outside the body the item judges.
-- **Where citations came from.** [The gate-evidence task](archive/task-family_gate-evidence-and-refutation.md) introduced the citation on every cleared line and the existence rule. This task adds the absence form that task left out.
+- **Where citations came from.** [The gate-evidence task](task-family_gate-evidence-and-refutation.md) introduced the citation on every cleared line and the existence rule. This task adds the absence form that task left out.
 
-[The return-layout task](archive/task-family_gate-verifier-return-layout.md) edits the same two agents' output contracts, so land this task after it.
+[The return-layout task](task-family_gate-verifier-return-layout.md) edits the same two agents' output contracts, so land this task after it.
 
 ## Approach
 

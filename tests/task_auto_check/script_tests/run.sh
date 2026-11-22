@@ -359,6 +359,7 @@ s15_convergence_and_robust_returns() {
   local check="$REPO_ROOT/plugins/ai_dev/skills/task_check/SKILL.md"
   local gate="$AGENTS_DIR/auto_gate_task.md"
   local dryrun="$AGENTS_DIR/auto_dryrun_task.md"
+  local verifier="$AGENTS_DIR/auto_verifier_task.md"
   # Blocking bar: one definition in the base checklist, applied by task_check, the gate, and the dry run.
   assert_contains "base defines the blocking bar" "$base" "**Blocking bar.** Class every finding this checklist surfaces as blocking or as a note; only a blocking finding keeps a task from \`ready\`." || ok=false
   assert_contains "blocking bar names the new-bug condition" "$base" "face an open choice whose reasonable options lead to materially different results, or introduce a new bug" || ok=false
@@ -383,6 +384,63 @@ s15_convergence_and_robust_returns() {
   assert_contains "gate verdict carries its scope" "$gate" "scope: <full|scoped>" || ok=false
   assert_contains "dry run returns its implementable verdict" "$dryrun" "implementable: <yes | no>" || ok=false
   assert_contains "dry run classes findings by the base bar" "$dryrun" "Class each finding \`blocking\` or \`note\` with the base \`<readiness_checklist>\` **Blocking bar**" || ok=false
+  # An absence citation names what the lens looked for and did not find, beside
+  # the span form a presence claim keeps, and both agents state one covered set.
+  assert_contains "gate template carries the absence form" "$gate" \
+    "clean — absent: <task path> :: <section headings read in full> :: <what was looked for and did not find>" || ok=false
+  assert_contains "gate walk rule routes absence to the absence form" "$gate" \
+    "an absence claim takes the absence form and covers every section of the covered set" || ok=false
+  assert_contains "gate output contract defines the covered set" "$gate" \
+    'The covered set an absence citation names is the body sections from `## Goal` through `## Acceptance`' || ok=false
+  assert_contains "gate output contract carries the scoped-round absence form" "$gate" \
+    "clean — absent: tasks/<file>.md :: changed text in ## Approach (scoped round) :: no **Out of scope:** entry" || ok=false
+  assert_contains "verifier judges absence citations in the live task" "$verifier" \
+    "Judge an absence citation by reading the sections it names in place in the live task file" || ok=false
+  assert_contains "verifier states the same covered set" "$verifier" \
+    'The covered set is the body sections from `## Goal` through `## Acceptance`' || ok=false
+  assert_contains "verifier keeps a scoped-round absence citation" "$verifier" \
+    "Judge a citation carrying the scoped-round label against the sections it names, without the fewer-sections refutation" || ok=false
+  assert_contains "verifier citation field carries the absence form" "$verifier" \
+    "artifact read :: section headings read :: what was looked for and not found, as the gate verdict recorded it" || ok=false
+  assert_contains "verifier citation inputs carry the live task path" "$verifier" \
+    'Judge an absence claim against the live task file read at call time, with `frozen-task.txt` staying the record of the frozen text.' || ok=false
+  assert_contains "citation-mode prompt names the task path and standing-rule sources" "$SKILL" \
+    "A citation-mode verifier prompt names the task path, the gate return" || ok=false
+  assert_not_contains_re "gate output contract drops the span-only sentence" "$gate" \
+    "The content-lens line's \`clean\` value carries its citation in the template's two parts \\(the artifact read and the verbatim span that settled the item\\)" || ok=false
+  assert_not_contains_re "gate walk rule drops the span-only citation phrase" "$gate" \
+    "keeping the citation to that pointer plus the span it turns on" || ok=false
+  assert_not_contains_re "verifier citation field drops the span-only value" "$verifier" \
+    "<artifact read :: verbatim span, as the gate verdict recorded it>" || ok=false
+  assert_not_contains_re "citation-mode prompt drops the three-input list" "$SKILL" \
+    "A citation-mode verifier prompt names the gate return, \`frozen-intent.txt\`, and \`frozen-task.txt\` only\\." || ok=false
+  assert_not_contains_re "verifier citation inputs drop the three-input list" "$verifier" \
+    "For a citation-mode call, receive the gate return path, \`frozen-intent.txt\`, and \`frozen-task.txt\` only;" || ok=false
+  # The recorded absence fixture pins both grounds: the first claim's named
+  # sections hold the Approach waiver, and the second omits Context and
+  # Acceptance from a two-heading list.
+  local absence="$REPO_ROOT/tests/task_auto_check/evals/fixtures/absence_citation_refuted"
+  assert_file "absence fixture task body" "$absence/tasks/api_absence-citation.md" || ok=false
+  assert_file "absence fixture gate return" "$absence/gate-return.txt" || ok=false
+  assert_file "absence fixture verifier return" "$absence/verifier-return.txt" || ok=false
+  assert_contains "absence fixture clears Rule-waiving exclusions over the covered set" "$absence/gate-return.txt" \
+    "Rule-waiving exclusions: clean — absent: tasks/api_absence-citation.md :: ## Goal … ## Acceptance :: no **Out of scope:** entry" || ok=false
+  assert_contains "absence fixture clears Restated standing rules over two headings" "$absence/gate-return.txt" \
+    "Restated standing rules: clean — absent: tasks/api_absence-citation.md :: ## Goal and ## Approach :: no restated repo standing rule" || ok=false
+  assert_contains "recorded verifier return refutes both claims" "$absence/verifier-return.txt" \
+    "refuted_count: 2" || ok=false
+  assert_contains "recorded verifier return survives none" "$absence/verifier-return.txt" \
+    "survived_count: 0" || ok=false
+  if [[ "$(grep -c 'verdict: refuted' "$absence/verifier-return.txt")" != "2" ]]; then
+    log "    expected exactly two refuted verdicts in the recorded verifier return"
+    ok=false
+  fi
+  assert_not_contains_re "recorded verifier return keeps no surviving verdict" "$absence/verifier-return.txt" \
+    "verdict: survived" || ok=false
+  assert_contains "recorded verifier return refutes the whole-set claim on its instance" "$absence/verifier-return.txt" \
+    "**Out of scope:**" || ok=false
+  assert_contains "recorded verifier return refutes the two-heading claim on its omission" "$absence/verifier-return.txt" \
+    "## Context and ## Acceptance" || ok=false
   # Diff-scoped rounds, stall stop, and the compaction stop live in the loop.
   assert_contains "loop defines convergence" "$SKILL" "<convergence>" || ok=false
   assert_contains "later rounds are diff-scoped" "$SKILL" "From round 2 on, every dry-run and gate prompt also names the scoped re-check inputs" || ok=false

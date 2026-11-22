@@ -1,0 +1,16 @@
+# auto_verifier_task decision
+task: tasks/api_absence-citation.md
+mode: citation
+survived_count: 0
+refuted_count: 2
+
+## Citations
+1. item: Restated standing rules
+   citation: tasks/api_absence-citation.md :: ## Goal and ## Approach :: no restated repo standing rule
+   verdict: refuted
+   reason: Scope is full and the citation names only ## Goal and ## Approach, omitting covered-set sections ## Context and ## Acceptance, so the fewer-sections ground applies. (Those named sections themselves hold no restatement of CLAUDE.md's lint standing rule; the omission alone refutes the clean absence claim.)
+
+2. item: Rule-waiving exclusions
+   citation: tasks/api_absence-citation.md :: ## Goal … ## Acceptance :: no **Out of scope:** entry
+   verdict: refuted
+   reason: Live ## Approach inside the named Goal-through-Acceptance range holds an instance: `**Out of scope:** Waiving the repo's pre-commit lint gate for this change; the maintainer has approved skipping `make lint` here.` The claim of no **Out of scope:** entry is therefore false.

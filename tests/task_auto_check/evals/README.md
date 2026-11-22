@@ -34,6 +34,23 @@ ordinary suite automatically.
 
 ## Recorded results
 
+### 2026-11-22: Cursor `auto`, absence citations survive the immediate-ready refutation
+
+`immediate_ready_citations_survive` ran on the default vendor with
+`python3 tests/task_auto_check/evals/run.py immediate_ready_citations_survive --force`
+after the gate gained the absence citation form. The run passes 9 of 9 grader
+checks (`../workspace/run-20261122-132805-27122`).
+
+| Eval | Run | Verdict | Citation evidence |
+| :--- | :--- | :--- | :--- |
+| `immediate_ready_citations_survive` | `../workspace/run-20261122-132805-27122` | passes, 9/9 | The first gate call moves `open` → `ready` with zero issues. Twelve content lenses clear on absence and two on spans. The citation-mode verifier returns `survived_count: 14`, `refuted_count: 0`, and the `ready` stamp stands. |
+
+The first run that day (`../workspace/run-20261122-131012-17316`) failed for a
+reason outside this change: the gate found a docs-entry applicability issue on
+the same fixture, repaired it, and reached `ready` on a scoped second round, so
+neither citation-refutation trigger fired and no citation was refuted. The
+re-run above took the first-call route the eval targets.
+
 ### 2026-11-18: Cursor `auto`, the disposition line on the ordinary repair path
 
 Both evals ran twice on the default vendor with
@@ -92,7 +109,7 @@ On each eval's latest run, re-graded with the current graders, Cursor passes 29 
 
 | Eval | Cursor | Claude | Cause | Task |
 | --- | --- | --- | --- | --- |
-| `immediate_ready_citations_survive` | fails | fails | The verifier refutes every citation that clears a lens judged by absence. On Claude the re-gate also read the base skill back from Claude Code's `tool-results` store and stopped as a helper failure | [absence citations](../../../tasks/task-family_gate-absence-citation-form.md), [paged reads](../../../tasks/task-family_gate-paged-reads-of-large-files.md) |
+| `immediate_ready_citations_survive` | fails | fails | The verifier refutes every citation that clears a lens judged by absence. On Claude the re-gate also read the base skill back from Claude Code's `tool-results` store and stopped as a helper failure | [absence citations](../../../tasks/archive/task-family_gate-absence-citation-form.md), [paged reads](../../../tasks/task-family_gate-paged-reads-of-large-files.md) |
 | `scope_split_stuck` | passes | passes | Both vendors block the independent-items bundle by definition under the **Blocking bar** and route the split to the user | [independent items](../../../tasks/archive/task-family_independent-items-split-blocks.md) |
 | `regroup_immediate_ready` | passes | fails | When an ordinary repair round lands the regroup, Claude's report drops the `repeated-link:` disposition line | [disposition line](../../../tasks/archive/task-family_auto-check-disposition-line-every-path.md) (archived) |
 | `relay_by_path` | fails | fails | Cursor stopped human-routed on a frozen Acceptance item no check can prove. Claude's verifier return breaks the source-contract layout check | [frozen Acceptance](../../../tasks/task-family_auto-check-uncheckable-frozen-acceptance.md), [return layout](../../../tasks/archive/task-family_gate-verifier-return-layout.md) |
