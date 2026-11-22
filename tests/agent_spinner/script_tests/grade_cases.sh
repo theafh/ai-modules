@@ -1229,6 +1229,15 @@ drive_family() {
     run_case_ledger "$p" rows --phase repair --role writer \
       --from-records "find:$name:findings:*" >/dev/null
   done
+  # The fixture maps notes/beta.md to the family's notes_lint gate as an owned
+  # target, so its writer row is refused until an answered fork names the path.
+  # This is the record sequence stage_marker_fork drives in ledger_run.sh.
+  run_case_ledger "$p" dispose --open-fork route:notes-beta \
+    --issue "Route notes/beta.md to its owning gate?" \
+    --question "May the run write notes/beta.md under the notes_lint gate?" \
+    --path notes/beta.md >/dev/null
+  run_case_ledger "$p" dispose --id route:notes-beta --disposition surfaced >/dev/null
+  run_case_ledger "$p" dispose --gate route:notes-beta --answered "Route it" >/dev/null
   for name in alpha beta gamma delta epsilon; do
     run_case_ledger "$p" brief "writer:find-$name-findings-0" \
       --body "Repair notes/$name.md under the family checks." --target "notes/$name.md" >/dev/null
