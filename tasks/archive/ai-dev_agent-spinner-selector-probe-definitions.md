@@ -2,9 +2,11 @@
 description: "Define three terms agent_spinner workers guess at: the read-only diagnostic route against the audit row, a task in the multi-file recipe row, and a registered role the spawn surface lists."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-19T18:45:05Z
-status: ready
+updated: 2026-11-22T23:30:00Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Define agent_spinner's read-only diagnostic, task, and registered role
@@ -19,7 +21,7 @@ The three terms sit near the top of `plugins/ai_dev/skills/agent_spinner/SKILL.m
 
 - **Read-only diagnostic.** `<selector>` says "A read-only diagnostic, or a single judgement question about a mechanism not yet built, is answered inline from your own reads before any helper is spent, takes no recipe". The recipe table in the same block routes "Audit many artifacts, changing nothing" to `check-only-audit.md`. The skill never defines "read-only diagnostic", so an ask like "find the drift across these eight pages, change no file" fits both. On the identical `inline_floor` and `phase_plan_announcement` prompts, `sonnet` (2026-11-13) answered inline as a read-only diagnostic with no phase plan, no item count, and no bound, while `opus` (2026-11-14) ran the check-only-audit recipe. Neither eval asserts a recipe today: `inline_floor`'s branch checks the floor tier, the two-to-four-phase plan, the item count, the bound, the exclusions and the checking pass, and `phase_plan_announcement`'s checks the phase sequence, the five-in/three-out arithmetic, the bound and the exclusion reasons; only `attached_body_reads_recipe` checks `announcement_has 'check-only-audit\.md'` (`tests/agent_spinner/evals/grade.sh`).
 - **Task.** The recipe row "Implement one task spanning many files" never says what a task is; only `references/recipes/multi-file-task.md`'s trigger ties it to "the task's written acceptance list". On 2026-11-14 the Cursor worker matched that recipe in seven announcements of the suite, once by writing its own `acceptance.md` to fit (`shape_matched_no_recipe`), while Claude matched no recipe on the same prompts. In the same evening's Claude run, `wide_run_plans_session_boundary` routed a hundred-page audit inline as a read-only diagnostic and planned no session boundary.
-- **Registered role.** `<capability_probe>` says "A role definition on disk is evidence that the file deployed, not evidence that it can be called". That keeps disk files from proving callability, but it still names them as deployment evidence, which invites a search for them, and no sentence says where a registered role comes from. `<degradation>` says "Where the probe finds `auto_checker_spinner` or `auto_writer_spinner` callable, spawn through it". `references/run-protocol.md` P1 probes "once through each registered role the host lists". In the 2026-11-14 Claude run, the `depth_one_level` worker listed the operator's own agent directory under the home directory, read both role definitions there, and recorded role-route probe rows for roles its host could not spawn. A skill meant to work in any repository and on any host should not lead a worker to read another installation's files. The eval harness is tightening its isolation separately, in [the Claude worker scratch-home task](tests_claude-worker-scratch-home.md); this task fixes the wording that sent the worker looking.
+- **Registered role.** `<capability_probe>` says "A role definition on disk is evidence that the file deployed, not evidence that it can be called". That keeps disk files from proving callability, but it still names them as deployment evidence, which invites a search for them, and no sentence says where a registered role comes from. `<degradation>` says "Where the probe finds `auto_checker_spinner` or `auto_writer_spinner` callable, spawn through it". `references/run-protocol.md` P1 probes "once through each registered role the host lists". In the 2026-11-14 Claude run, the `depth_one_level` worker listed the operator's own agent directory under the home directory, read both role definitions there, and recorded role-route probe rows for roles its host could not spawn. A skill meant to work in any repository and on any host should not lead a worker to read another installation's files. The eval harness is tightening its isolation separately, in [the Claude worker scratch-home task](../tests_claude-worker-scratch-home.md); this task fixes the wording that sent the worker looking.
 
 ## Approach
 

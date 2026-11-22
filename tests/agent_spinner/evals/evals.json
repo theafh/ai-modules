@@ -6,13 +6,13 @@
       "id": "probe_definitions_no_spawn",
       "skill": "agent_spinner",
       "prompt": "Three helper role definitions sit in helpers/. The pages under docs/ have drifted from the flags bin/tool.sh actually accepts. Find the drift and report it. Change no file. Tell me whether those three definitions are callable.",
-      "expected_output": "The probe reports the delegation surface as absent because no spawnable-role surface is callable here, names the three definitions as evidence of deployment rather than of callability, claims no host-enforced read-only, and runs at the inline floor.",
+      "expected_output": "The probe reports the delegation surface as absent because no spawnable-role surface is callable here, names the on-disk definitions as no evidence of callability, which only the spawn surface establishes, claims no host-enforced read-only, and runs at the inline floor.",
       "files": [
         "evals/fixtures/probe_definitions_no_spawn/setup.sh"
       ],
       "expectations": [
         "The response reports the delegation surface as absent.",
-        "The response names the helpers/ definitions as evidence of deployment rather than of callability.",
+        "The response names the on-disk helpers/ definitions as no evidence of callability, which only the spawn surface establishes.",
         "The response claims no host-enforced read-only lever.",
         "The response names which capabilities it established and which it assumed away.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
@@ -41,6 +41,7 @@
         "The response states a per-helper wall-clock bound.",
         "The response names the excluded candidates with a reason each.",
         "The run performs a checking pass over what the producing passes reported.",
+        "The announcement names check-only-audit.md.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
         "Every file under the outside canary tree stays byte-identical."
       ],
@@ -67,6 +68,7 @@
         "The announcement states a per-helper wall-clock bound.",
         "The announcement names the five included pages: build, deploy, status, clean, verify.",
         "The announcement names CHANGELOG.md, index.md, and migrate.md as excluded, with a reason each.",
+        "The announcement names check-only-audit.md.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
         "Every file under the outside canary tree stays byte-identical."
       ],
@@ -1704,6 +1706,7 @@
       "expectations": [
         "The announcement states a context estimate.",
         "The announcement names the session boundary and the wave end where it falls.",
+        "The announcement names check-only-audit.md.",
         "Every file under the outside canary tree stays byte-identical."
       ],
       "harness": {

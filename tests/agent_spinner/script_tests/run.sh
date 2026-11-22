@@ -703,8 +703,9 @@ check "capability_probe names a depth or effort control" \
   section_has "$SKILL" capability_probe 'depth or effort control'
 check "capability_probe names concurrency" \
   section_has "$SKILL" capability_probe 'two helpers run at once'
-check "capability_probe separates deployment from callability" \
-  section_has "$SKILL" capability_probe 'evidence that the file deployed, not evidence that it can be called'
+check "capability_probe defines a registered role through the host's spawn surface" \
+  section_has_collapsed "$SKILL" capability_probe 'one the host.s spawn surface lists or accepts by name'
+check "capability_probe forbids searching home or configuration directories for definition files" section_has_collapsed "$SKILL" capability_probe 'never (searches|reads|looks)[^.]{0,60}(home|configuration)'
 check "capability_probe resolves an unestablished capability to absent" \
   section_has "$SKILL" capability_probe 'resists establishment to absent'
 
@@ -717,6 +718,7 @@ check "degradation claims no wall-clock benefit" \
   section_has "$SKILL" degradation 'no wall-clock benefit'
 check "selector carries the residual smallest-covering rule" \
   section_has "$SKILL" selector 'smallest shape that covers it'
+check "selector defines a read-only diagnostic by what it reads" section_has_collapsed "$SKILL" selector 'one artifact or one mechanism, answered from the orchestrator'
 check "width derives breadth from the written-out list" \
   section_has "$SKILL" width 'never a round number'
 check "delegation_depth holds the run to one level" \
@@ -1085,6 +1087,7 @@ check "variants.md carries the blind-by-prompt phrase" \
   file_has "$REFS/variants.md" 'blind by prompt'
 check "selector recipe rows match references/recipes/ one to one" \
   selector_recipe_rows_match "$SKILL" "$REFS/recipes"
+check "multi-file trigger defines a task by its own acceptance list" section_has_collapsed "$REFS/recipes/multi-file-task.md" trigger 'tracked item that carries its own acceptance list'
 
 # Every recipe file under references/recipes/ carries one outer tag named after
 # its file stem, the thirteen field tags in order, two to four numbered phases,

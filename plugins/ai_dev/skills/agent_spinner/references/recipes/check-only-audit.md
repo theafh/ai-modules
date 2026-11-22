@@ -5,7 +5,7 @@
 <trigger>
 It runs under per-artifact fan-out and applies only after the selector matched that shape.
 
-The ask sweeps a set of artifacts with an audit and reports what to fix, read-only. Any fix runs later and only on the user's word.
+The ask sweeps a set of artifacts with an audit and reports what to fix, read-only, each artifact judged on its own. The set is enumerated by the ask or by the resolver, so a read-only sweep whose artifact set the resolver enumerates reaches this recipe even where the ask names no items. Any fix runs later and only on the user's word.
 </trigger>
 
 <ledger_steps>

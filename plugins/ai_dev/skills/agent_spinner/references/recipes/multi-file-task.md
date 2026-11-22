@@ -5,7 +5,7 @@
 <trigger>
 It runs under per-artifact fan-out and applies only after the selector matched that shape.
 
-The ask implements one task whose change spans many files, verified against the task's written acceptance list. The change is often a mechanical rename plus a semantic rewrite per surface, where a surface is one file or block the change reaches. The implementation skill keeps the task's lifecycle (stamp, audit, close-out), and this recipe governs the helpers inside that run.
+The ask implements one task, a tracked item that carries its own acceptance list, whose change spans many files, verified against that list. A per-artifact job without such an acceptance list is no task, so it takes the shape that fits it and no recipe. The change is often a mechanical rename plus a semantic rewrite per surface, where a surface is one file or block the change reaches. The implementation skill keeps the task's lifecycle (stamp, audit, close-out), and this recipe governs the helpers inside that run.
 </trigger>
 
 <ledger_steps>

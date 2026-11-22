@@ -1102,3 +1102,61 @@ ran on the default vendor in `run-20261122-011955`, after the last edit to
 Both runs leave the stamped file byte-identical, record the routing before the
 first writer brief, and dispatch no writer on the path, so the hand-off holds
 under the new refusal.
+
+### 2026-11-22–23, Cursor CLI, model `auto` — the selector, probe, and recipe definitions
+
+The change defines a read-only diagnostic by what it reads, widens the
+per-artifact fan-out trigger to a read-only ask in any mood, defines a task by
+its own acceptance list in the recipe row and the multi-file recipe's trigger,
+and states in `<capability_probe>` that an on-disk role definition is no
+evidence of callability, which only the host's spawn surface establishes. All
+six evals the task names ran fresh (`--force --timeout 1800`) on the default
+vendor after the last edit to `SKILL.md` and the recipe and protocol
+references. `--timeout 1800` replaced the 900-second default, which had left
+`phase_plan_announcement`, `wide_run_plans_session_boundary`, and
+`shape_matched_no_recipe` inconclusive by timeout in
+`run-20261122-222858`.
+
+| Eval | Result | Run |
+| --- | --- | --- |
+| `inline_floor` | pass (16 of 16) | `../workspace/run-20261122-225923` |
+| `phase_plan_announcement` | pass (16 of 16) | `../workspace/run-20261122-225923` |
+| `wide_run_plans_session_boundary` | pass (4 of 4) | `../workspace/run-20261122-234103` |
+| `residual_selector` | pass (5 of 5) | `../workspace/run-20261122-225923` |
+| `shape_matched_no_recipe` | fail (14 of 17) | `../workspace/run-20261122-234103` |
+| `probe_definitions_no_spawn` | pass (6 of 6) | `../workspace/run-20261122-225923` |
+
+`inline_floor`, `phase_plan_announcement`, and
+`wide_run_plans_session_boundary` each pass
+`the announcement names check-only-audit.md`, so the recipe route is proven in
+all three. `probe_definitions_no_spawn` passes its reworded
+`names on-disk definitions as no evidence of callability, which only the spawn
+surface establishes` check after `<capability_probe>` gained the sentence the
+check grades.
+
+Two failures were re-run and cleared, and neither is caused by this change:
+
+- `inline_floor` failed `states a two-to-four-phase plan` in
+  `run-20261122-222858` and passed 16 of 16 in the clearing re-run
+  `run-20261122-225923`. Its announcement stated both phases as a numbered
+  list whose items wrapped, and `phase_plan.py` closes the phase section at a
+  continuation line, so it counted one phase. `<phase_plan>` is untouched by
+  this change and the re-run states the same two phases unwrapped, which
+  counts two. The helper's wrap sensitivity predates this task.
+- `wide_run_plans_session_boundary` failed `the announcement names the session
+  boundary at a wave end` in `run-20261122-225923`, because it said "session
+  boundaries at wave ends past half window" in the plural and named no
+  specific wave end. The re-run in `run-20261122-234103` names the boundary at
+  a wave end and passes 4 of 4. `<phase_plan>` is untouched by this change.
+
+`shape_matched_no_recipe` keeps a fail on three checks that this change does
+not reach: `the roster holds five writer rows`, `five writer briefs exist`, and
+`each writer brief names one distinct page`. Both runs repaired two notes whose
+checkers refuted them, and the shared `writer_row_count_is` and
+`writer_brief_files` helpers count every producing row and brief, repair and
+recheck rows included, so a legitimate repair round reads as more than five
+writers. Its own no-recipe checks pass in both runs: the announcement names
+per-artifact fan-out and states that no recipe matched, all five note files
+exist, every page stays byte-identical, and no brief names a recipe file. The
+width, roster, and repair behaviour is outside this task's selector, probe, and
+recipe-definition subject, so the grader was left unchanged.

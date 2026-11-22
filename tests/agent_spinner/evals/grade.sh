@@ -3027,14 +3027,14 @@ case "$eval_id" in
     if have_response; then
       check "reports the delegation surface as absent" \
         announcement_has 'delegation surface.{0,60}(absent|unavailable|not (callable|available))|no (callable )?(delegation|spawn) surface|(delegation|spawn).{0,20}surface:? *(absent|none)'
-      check "names definitions as deployment rather than callability" \
-        response_has 'deploy(ed|ment).{0,80}(not|rather than).{0,40}call|call(able|ability).{0,80}(not|rather than).{0,40}(present|on disk|deployed)|(present|on disk|exist|definitions).{0,160}((un)?callable|cannot be called|no (callable|delegation|spawn)|(spawn|delegation) surface is absent)'
+      check "names on-disk definitions as no evidence of callability, which only the spawn surface establishes" \
+        response_has '(on[- ]disk|definitions?|files?).{0,100}(no|not|never) (evidence|proof).{0,80}call|call(able|ability).{0,120}(only|established|decided) (by|through|on) (the )?(spawn|host|delegation)|(present|on disk|exist|definitions).{0,160}((un)?callable|cannot be called|no (callable|delegation|spawn)|(spawn|delegation) surface is absent)'
       check "claims no host-enforced read-only" \
         lacks_unnegated '(host|harness)[- ]enforced read-only (is|was) (available|established|in place)'
       check "names established versus assumed-away capabilities" \
         announcement_has 'established|assumed away|assumed absent'
     else
-      note_agent_attest "delegation surface absent; definitions are deployment not callability"
+      note_agent_attest "delegation surface absent; on-disk definitions are no evidence of callability"
     fi
     ;;
 
@@ -3048,6 +3048,7 @@ case "$eval_id" in
       check "names at least two excluded candidates with a reason each" \
         excluded_named_with_reason 2
       check "runs a checking pass" ran_a_checking_pass
+      check "the announcement names check-only-audit.md" announcement_has 'check-only-audit\.md'
     else
       note_agent_attest "inline floor tier stated first; same phase plan and checking pass"
     fi
@@ -3071,6 +3072,7 @@ case "$eval_id" in
         named_in_announcement CHANGELOG index migrate
       check "gives a reason for the exclusions" \
         announcement_has 'generated|documents no command|removed|retired|history|not maintained'
+      check "the announcement names check-only-audit.md" announcement_has 'check-only-audit\.md'
     else
       note_agent_attest "sequence, count, bound, five in and three out with reasons"
     fi
@@ -4310,6 +4312,7 @@ PY
       announcement_has 'context (estimate|load)|tokens'
     check "the announcement names the session boundary at a wave end" \
       announcement_has 'session boundary.{0,160}wave|wave.{0,160}session boundary'
+    check "the announcement names check-only-audit.md" announcement_has 'check-only-audit\.md'
     ;;
 
   cross_model_checker_recorded)

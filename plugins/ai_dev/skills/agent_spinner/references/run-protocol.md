@@ -75,7 +75,9 @@ fans out on its own.
 1. Probe the four capabilities by observation through `init --probe`, which
    renders the fixed probe brief and opens no run. Spawn that brief through the
    host's own sub-agent surface, once through the cheapest route it offers and
-   once through each registered role the host lists.
+   once through each registered role the host's spawn surface lists or accepts
+   by name, and never search home or configuration directories for definition
+   files.
 2. Count the read-only lever, a host setting that blocks a helper's writes, as
    enforced only when the probe's `returns/probe:<slug>.start` marker is absent
    and the helper added no file outside the run's own writes since the probe
