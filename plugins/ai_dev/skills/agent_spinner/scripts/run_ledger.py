@@ -57,6 +57,7 @@ COLUMNS = [
     "returned_at",
     "source",
     "stamp_owner",
+    "verdict",
 ]
 
 TERMINAL = ("accepted", "inability", "failed", "unreturned", "dropped")
@@ -106,6 +107,7 @@ RECORD_LISTS = [
     "own_authority",
     "alternatives",
     "brief_corrections",
+    "beyond_brief",
     "dropped_suspicions",
     "confirmations",
     "gaps",
@@ -118,6 +120,29 @@ DISPOSITION_TYPES = (
     "confirmation",
     "alternative",
     "objection",
+    "beyond_brief",
+    "dropped_suspicion",
+)
+# The assertion words the report lint (close condition 11) flags when a
+# sentence carries no provenance tag. `references/report-shapes.md`
+# `## Provenance tags` holds the one table of these words and the tag forms the
+# lint accepts; `none` stays out because the report uses it as the empty-part
+# marker.
+ASSERTION_WORDS = ("verified", "complete", "confirmed", "all")
+PROVENANCE_TAG_RE = re.compile(
+    r"\[(?:measured|re-derived|taken on a helper's word|blind by log|"
+    r"blind by prompt):\s*[^\]]+\]"
+)
+ASSERTION_RE = re.compile(
+    r"(?<![\w-])(%s)(?![\w-])" % "|".join(ASSERTION_WORDS), re.IGNORECASE
+)
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+# A line that opens a new markdown block, so a list item, table row, heading,
+# fence, or blockquote never joins the paragraph before it. A continuation line
+# that opens no block still joins, so a wrapped sentence or tag stays one
+# sentence. `#` counts only as an ATX heading, so prose such as `#42` joins.
+BLOCK_OPEN_RE = re.compile(
+    r"^(?:[-*+]\s|\d+\.\s|\||#{1,6}(?:\s|$)|```|~~~)"
 )
 PLACEHOLDER_MARKERS = ("todo", "tbd", "fixme", "xxx")
 STATE_VALUES = (
@@ -1074,6 +1099,8 @@ def cmd_init(args):
         "obligations": {},
         "permissions": {},
         "producers": {},
+        "pasted_from": {},
+        "shared_hashes": {},
         "depths": {},
         "counters": {},
         "changes": [],
@@ -1384,6 +1411,13 @@ def cmd_brief(args):
         input_versions["relayed"][relay] = digest
         led.run.setdefault("producers", {})[args.label] = relay
 
+    pasted = list(args.pasted_from or [])
+    for pasted_label in pasted:
+        upstream = led.row_or_none(pasted_label)
+        if not upstream or upstream.get("state") not in ("accepted", "inability"):
+            die("pasted-from %s names an upstream row that is not accepted" % pasted_label)
+        led.run.setdefault("pasted_from", {})[args.label] = pasted_label
+
     withheld_hashes = []
     if args.withheld:
         withheld_text = sys.stdin.read()
@@ -1394,6 +1428,24 @@ def cmd_brief(args):
             {"hash": withheld_hashes[-1]}
         )
     input_versions["withheld"] = withheld_hashes
+
+    # A checker shares its rules file byte for byte with its producer, wherever
+    # the two rows sit: a relayed checker names its producer in `producers`, a
+    # pasted one names it in `pasted_from`. Condition 9 and the close advisory
+    # keep reading `producers` alone, so this fallback serves only this check.
+    producer_for_rules = (relays[-1] if relays else "") or (
+        pasted[-1] if pasted else ""
+    )
+    if producer_for_rules:
+        producer_shared = led.run.setdefault("shared_hashes", {}).get(
+            producer_for_rules
+        )
+        if producer_shared and producer_shared != shared_hash:
+            die(
+                "shared blocks differ from producer %s; refusing the brief"
+                % producer_for_rules
+            )
+    led.run.setdefault("shared_hashes", {})[args.label] = shared_hash
 
     target = row.get("path") or args.target or ""
     refuse_writer_on_owned_target(led, row, target)
@@ -2012,7 +2064,9 @@ def read_accept_text(led, args):
 
 def import_records(led, row, data):
     label = row.get("label", "")
-    producer = led.run.get("producers", {}).get(label, "")
+    producer = led.run.get("producers", {}).get(label, "") or led.run.get(
+        "pasted_from", {}
+    ).get(label, "")
     for listname in RECORD_LISTS:
         values = data.get(listname) or []
         if not isinstance(values, list):
@@ -2387,6 +2441,15 @@ def cmd_accept(args):
         row["returned_at"] = now_utc()
     row["model_obs"] = args.observed_model or "unobserved"
     row["effort_obs"] = args.observed_effort or "unobserved"
+    # The verdict `accept` validated rides on the row, and every row whose
+    # persisted verdict is `fail` fills the repair list `rows
+    # --from-repair-list` and `status` read.
+    row["verdict"] = data.get("verdict", "")
+    led.run["repair_list"] = [
+        {"id": other.get("label"), "path": other.get("path", "")}
+        for other in led.rows
+        if other.get("verdict") == "fail"
+    ]
     marker = led.path("returns", "%s.start" % args.label)
     if os.path.exists(marker):
         row["start_marker_time"] = datetime.datetime.fromtimestamp(
@@ -3071,7 +3134,7 @@ def cmd_status(args):
         print("  none")
     print("repair list:")
     for entry in led.run.get("repair_list", []):
-        print("  %s" % entry.get("path", entry))
+        print("  %s" % (entry.get("path") or entry.get("id", "")))
     if not led.run.get("repair_list"):
         print("  none")
     print("stamped paths needing routing:")
@@ -3368,6 +3431,82 @@ def stray_entries(led, known=None):
     ]
 
 
+def report_lint_findings(text):
+    """Return (word, sentence) pairs that assert with no provenance tag.
+
+    The tally block `close` prints carries `recall-confirmed` verbatim, so every
+    line from `TALLY-BEGIN` through `TALLY-END` is exempt. Outside it, an
+    assertion word from `ASSERTION_WORDS` must share its sentence with a tag
+    from `## Provenance tags` in `references/report-shapes.md`. A wrapped line
+    is one sentence: a newline becomes whitespace unless the previous line ends
+    a sentence, and a trailing hyphen joins the next line without a space so a
+    wrapped hyphenated compound stays one word. A line that opens a markdown
+    block (list item, table row, heading, fence) starts a new paragraph, so a
+    tag in one item never clears an assertion in its sibling. Consecutive
+    blockquote lines form one paragraph with the `>` marker stripped.
+    """
+    findings = []
+    in_tally = False
+    in_blockquote = False
+    paragraph = []
+
+    def flush_paragraph():
+        if not paragraph:
+            return
+        joined = paragraph[0]
+        for part in paragraph[1:]:
+            if joined.endswith("-"):
+                joined += part
+            else:
+                joined += " " + part
+        paragraph.clear()
+        for sentence in SENTENCE_SPLIT_RE.split(joined):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            words = [match.group(0) for match in ASSERTION_RE.finditer(sentence)]
+            if words and not PROVENANCE_TAG_RE.search(sentence):
+                findings.append((words[0], sentence))
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "TALLY-BEGIN":
+            flush_paragraph()
+            in_blockquote = False
+            in_tally = True
+            continue
+        if stripped == "TALLY-END":
+            flush_paragraph()
+            in_blockquote = False
+            in_tally = False
+            continue
+        if in_tally:
+            continue
+        if stripped.startswith(">"):
+            # Consecutive blockquote lines form one paragraph, with the marker
+            # stripped. Flush only at the first line of the quote.
+            if not in_blockquote:
+                flush_paragraph()
+            content = stripped[1:].lstrip()
+            if content:
+                paragraph.append(content)
+            else:
+                flush_paragraph()
+            in_blockquote = True
+            continue
+        if in_blockquote:
+            flush_paragraph()
+            in_blockquote = False
+        if not stripped:
+            flush_paragraph()
+            continue
+        if BLOCK_OPEN_RE.match(stripped):
+            flush_paragraph()
+        paragraph.append(stripped)
+    flush_paragraph()
+    return findings
+
+
 def close_open_items(led):
     open_items = []
     counts = led.state_counts()
@@ -3377,7 +3516,20 @@ def close_open_items(led):
 
     dispositions = led.dispositions()
     for rec in led.records():
-        if rec.get("type") in ("finding", "incident", "alternative", "objection"):
+        if rec.get("type") in (
+            "finding",
+            "incident",
+            "alternative",
+            "objection",
+            "beyond_brief",
+            "own_authority",
+            "dropped_suspicion",
+        ):
+            # An own-authority record written by `dispose --fork
+            # --own-decision` carries its decision, so it is its own
+            # disposition; one imported from a return takes `dispose --id`.
+            if rec.get("type") == "own_authority" and rec.get("own_decision"):
+                continue
             if not dispositions.get(rec.get("id")):
                 open_items.append("condition 2: record %s has no disposition" % rec.get("id"))
 
@@ -3448,6 +3600,11 @@ def close_open_items(led):
     report = read_text(led.path("report.md"))
     if tally_block(led) not in report:
         open_items.append("condition 7: report.md does not carry the current tally block")
+    for word, sentence in report_lint_findings(report):
+        open_items.append(
+            "condition 11: report sentence asserts %r with no provenance tag: %s"
+            % (word, sentence)
+        )
 
     for row in led.rows:
         if row.get("state") in ("accepted", "inability", "failed"):
@@ -3595,6 +3752,12 @@ def build_parser():
     p.add_argument("--body-file")
     p.add_argument("--shared-file")
     p.add_argument("--relay", action="append", default=[])
+    p.add_argument(
+        "--pasted-from",
+        action="append",
+        default=[],
+        help="an accepted producer whose finding this brief pastes",
+    )
     p.add_argument(
         "--withheld",
         action="store_true",

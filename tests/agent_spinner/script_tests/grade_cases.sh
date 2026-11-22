@@ -1390,27 +1390,47 @@ check "family: a baseline-only gate result fails the post-write check" \
 BRIEF_EVAL=beyond_brief_find_reported
 BRIEF_REPORT='The writer reported a defect outside its brief: docs/other.md carries a stale heading, "# Old heading".'
 
+# drop_beyond_brief_records <proj> — remove the beyond_brief record the
+# fixture's accepted return imported, so a case stages the retired flag-only
+# shape or a ledger with neither shape.
+drop_beyond_brief_records() {
+  python3 - "$1/.agent_spinner/ledger.jsonl" <<'PY'
+import json, sys
+path = sys.argv[1]
+kept = []
+for line in open(path, encoding="utf-8"):
+    try:
+        rec = json.loads(line)
+    except ValueError:
+        kept.append(line)
+        continue
+    if rec.get("type") == "beyond_brief":
+        continue
+    kept.append(line)
+open(path, "w", encoding="utf-8").writelines(kept)
+PY
+}
+
 stage_case "$BRIEF_EVAL" "$SCRATCH/brief-flag"
 brief_flag_proj="$CASE_PROJ"
 run_case_ledger "$brief_flag_proj" accept produce:alpha >/dev/null
 run_case_ledger "$brief_flag_proj" dispose --flag beyond-brief-docs-other \
   --reason "docs/other.md carries a stale heading: # Old heading" >/dev/null
+drop_beyond_brief_records "$brief_flag_proj"
 printf '%s\n' "$BRIEF_REPORT" > "$brief_flag_proj/.agent_spinner/report.md"
 run_grade brief-flag "$BRIEF_EVAL" "$brief_flag_proj" "$response" >/dev/null
-check "beyond-brief: the flag shape passes" \
-  grading_pass "$SCRATCH/brief-flag.grading.txt" \
-  "the ledger holds the beyond-brief find in one of its two shapes"
+check "beyond-brief: a flag alone no longer records the find" \
+  grading_has "$SCRATCH/brief-flag.grading.txt" \
+  "the ledger holds a beyond_brief record naming the find's path"
 
 stage_case "$BRIEF_EVAL" "$SCRATCH/brief-record"
 brief_record_proj="$CASE_PROJ"
 run_case_ledger "$brief_record_proj" accept produce:alpha >/dev/null
-printf '{"type": "beyond_brief", "path": "docs/other.md", "claim": "stale heading"}\n' \
-  >> "$brief_record_proj/.agent_spinner/ledger.jsonl"
 printf '%s\n' "$BRIEF_REPORT" > "$brief_record_proj/.agent_spinner/report.md"
 run_grade brief-record "$BRIEF_EVAL" "$brief_record_proj" "$response" >/dev/null
 check "beyond-brief: the beyond_brief record shape passes" \
   grading_pass "$SCRATCH/brief-record.grading.txt" \
-  "the ledger holds the beyond-brief find in one of its two shapes"
+  "the ledger holds a beyond_brief record naming the find's path"
 
 stage_case "$BRIEF_EVAL" "$SCRATCH/brief-disk"
 brief_disk_proj="$CASE_PROJ"
@@ -1426,11 +1446,12 @@ check "beyond-brief: a written page fails the tree check" \
 stage_case "$BRIEF_EVAL" "$SCRATCH/brief-ledger"
 brief_ledger_proj="$CASE_PROJ"
 run_case_ledger "$brief_ledger_proj" accept produce:alpha >/dev/null
+drop_beyond_brief_records "$brief_ledger_proj"
 printf '%s\n' "$BRIEF_REPORT" > "$brief_ledger_proj/.agent_spinner/report.md"
 run_grade brief-ledger "$BRIEF_EVAL" "$brief_ledger_proj" "$response" >/dev/null
-check "beyond-brief: a ledger with neither shape fails the record check" \
+check "beyond-brief: a ledger with no beyond_brief record fails the record check" \
   grading_has "$SCRATCH/brief-ledger.grading.txt" \
-  "the ledger holds the beyond-brief find in one of its two shapes"
+  "the ledger holds a beyond_brief record naming the find's path"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 if (( fail > 0 )); then

@@ -220,26 +220,28 @@ The verdict rests on one claim: every page's documented flags match the
 command's parser. Re-derived from the files rather than from the helper
 reports.
 
-**Established.** The build page documents --target and --jobs (measured by the
-gate, record check:build). The deploy page documents --env (re-derived from
-the file).
+**Established.** The build page documents --target and --jobs
+[measured: check:build]. The deploy page documents --env
+[re-derived: survey:deploy].
 
 **Found beyond the brief.** The verify survey noted a stale line in the
-changelog. Recall-confirmed by the checking pass, not independently surfaced,
-so it carries less weight.
+changelog [taken on a helper's word: survey:verify]. Recall-confirmed by the
+checking pass, not independently surfaced, so it carries less weight.
 
 **Decided on a helper's own authority, for your review.** The status survey
 treated a missing index link as out of scope rather than as a finding.
 
-Verification: re-derived — the flag parser and the five pages. Taken on a
-helper's word — the changelog line. Not run — the three excluded pages.
+Verification: the flag parser and the five pages [re-derived: survey:build];
+the changelog line [taken on a helper's word: survey:verify]; not run: the
+three excluded pages.
 
-Coverage: read in full by tool evidence — check:build, check:deploy. Claimed
-by receipt only — survey:status. Only searched — survey:verify. Unexamined —
-the three excluded pages.
+Coverage: read in full by tool evidence — check:build, check:deploy
+[measured: check:build]; claimed by receipt only — survey:status
+[re-derived: survey:status]; only searched — survey:verify
+[re-derived: survey:verify]; unexamined — the three excluded pages.
 
-Confirmations: recall-confirmed — the changelog line. Independently surfaced —
-the deploy page's --env example.
+Confirmations: the changelog line [taken on a helper's word: survey:verify];
+the deploy page's --env example [re-derived: survey:deploy].
 
 Requested and observed model and effort: survey, default model and low effort
 requested, default model and low effort observed; check, default model and
@@ -272,6 +274,25 @@ established.
 [blind by prompt: <row id>]               every other blind pass: kept blind by
                                           withholding the text from its brief
 ```
+
+The report lint (`close` condition 11) flags each of these assertion words when
+its sentence carries no tag from the list above:
+
+| Assertion word | What the sentence asserts |
+| --- | --- |
+| `verified` | that a check established the claim |
+| `complete` | that a body or set is finished |
+| `confirmed` | that a claim holds |
+| `all` | that every unit is covered |
+
+The lint matches each word as a whole word, case-insensitively, and ignores an
+occurrence inside a hyphenated compound, so `recall-confirmed` and
+`independently-surfaced` are not assertion words while a sentence-initial
+`Verified` still counts. It exempts every line from `TALLY-BEGIN` through
+`TALLY-END`, because the tally block carries `recall-confirmed` verbatim. `none`
+stays out of the list, so the stop report's `Unknown: none.`,
+`Modified: none.`, and `**Found beyond the brief.** None.` empty parts need no
+tag.
 
 A pass kept blind whose `accept --log` audit with `--log-format` finds no read
 outside its admitted inputs and no ledger or spawn call carries the

@@ -62,7 +62,7 @@ Ask about scope and the estimate before dispatch, with the estimate beside any s
 </stop_and_ask>
 
 <report>
-Count units as clean with citation, clean after the probe, or unreviewed, and findings as refuted, narrowed, or downgraded. Label each survivor from its ledger tag: "survived its verifier, recall-confirmed" where the verifier's brief relayed it. Reserve "confirmed" for a finding surfaced independently or re-derived against the source. Split the confirmations into recall-confirmed and independently surfaced, and close with the fork.
+Count units as clean with citation, clean after the probe, or unreviewed, and findings as refuted, narrowed, or downgraded. Label each survivor from its ledger tag: "survived its verifier, recall-confirmed" when the verifier's brief relayed the record or pasted the producer's accepted finding under `--pasted-from`. Reserve "confirmed" for a finding surfaced independently or re-derived against the source. Split the confirmations into recall-confirmed and independently surfaced, and close with the fork.
 </report>
 
 <cost_profile>

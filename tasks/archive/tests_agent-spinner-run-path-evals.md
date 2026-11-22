@@ -26,7 +26,7 @@ The 2026-11-14 coverage audit found these paths untested:
 - **Family variant past approval.** SKILL.md `<invocation_boundary>` requires a post-write check on every file the family writer changed. `explicit_spinner_on_family_job` stops at the approval gate.
 - **Beyond-brief finds.** SKILL.md `<aggregation>` imports every return in full. `beyond_brief_defect_reported` tells the agent to use `dispose --flag`.
 
-The runner's second-turn mode (`harness.second_turn` in `evals.json`, documented in `tests/agent_spinner/evals/README.md`) carries the pause and family-variant evals. New evals follow the Pattern A conventions in `tests/CLAUDE.md`. The beyond-brief eval's ledger side reads [the record-completeness task](../ai-dev_agent-spinner-ledger-record-completeness.md), which makes `close` refuse undisposed beyond-brief records; the grade accepts either ledger shape, so the flag arm needs no prerequisite and that task orders only the record arm.
+The runner's second-turn mode (`harness.second_turn` in `evals.json`, documented in `tests/agent_spinner/evals/README.md`) carries the pause and family-variant evals. New evals follow the Pattern A conventions in `tests/CLAUDE.md`. The beyond-brief eval's ledger side reads [the record-completeness task](ai-dev_agent-spinner-ledger-record-completeness.md), which makes `close` refuse undisposed beyond-brief records; the grade accepts either ledger shape, so the flag arm needs no prerequisite and that task orders only the record arm.
 
 ## Approach
 

@@ -60,7 +60,7 @@ Ask about scope and the estimate before dispatch, with the estimate beside any s
 </stop_and_ask>
 
 <report>
-The report puts each checker on its own line with its derivation and its ledger tag: recall-confirmed where its brief relayed the claim, and independently surfaced otherwise. Reserve "confirmed" for a resolution surfaced independently or re-derived against the source, and split the confirmations into recall-confirmed and independently surfaced. Label the derivation `blind by log` where `accept --log` with `--log-format` finds no read outside its admitted inputs and no ledger or spawn call, and `blind by prompt` otherwise, and give the provenance class of every number.
+The report puts each checker on its own line with its derivation and its ledger tag: recall-confirmed when its brief relayed the record or pasted the producer's accepted finding under `--pasted-from`, and independently surfaced otherwise. Reserve "confirmed" for a resolution surfaced independently or re-derived against the source, and split the confirmations into recall-confirmed and independently surfaced. Label the derivation `blind by log` where `accept --log` with `--log-format` finds no read outside its admitted inputs and no ledger or spawn call, and `blind by prompt` otherwise, and give the provenance class of every number.
 </report>
 
 <cost_profile>

@@ -1086,7 +1086,7 @@ build_clean() {
     emit_return "$dir" check:a.txt "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"gamma"}]}'
     ledger "$dir" accept check:a.txt >/dev/null 2>&1
     ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
-    printf '\n# Report\n\nAll clear.\n' >> "$dir/.agent_spinner/report.md"
+    printf '\n# Report\n\nRun closed.\n' >> "$dir/.agent_spinner/report.md"
 }
 
 close_assert() {
@@ -1238,7 +1238,7 @@ scenario_run_directory() {
     files=$(find "$dir/.agent_spinner/snapshots" -type f 2>/dev/null | wc -l | tr -d ' ')
     check "close empties snapshots" test "$files" = 0
     fields=$(awk -F'\t' 'NR==1{print NF}' "$dir/.agent_spinner/roster.tsv")
-    check "roster carries all columns" test "$fields" = 21
+    check "roster carries all columns" test "$fields" = 22
     first=$(awk -F'\t' 'NR==1{print $1, $2, $3, $4, $5, $6, $7}' "$dir/.agent_spinner/roster.tsv")
     check "roster columns keep their order" test "$first" = "produce:a work produce a a.txt writer accepted"
     ledger "$dir" init --unit produce:b >/dev/null 2>&1
@@ -1768,8 +1768,8 @@ scenario_recall_tags() {
     emit_return "$dir" check:b "$token" '{"confirmations":[{"text":"the finding held"}]}'
     ledger "$dir" accept check:b >/dev/null 2>&1
     if grep -q '"provenance": "recall-confirmed"' "$dir/.agent_spinner/ledger.jsonl"; then ok "a relayed confirmation is tagged recall-confirmed"; else bad "a relayed confirmation is tagged recall-confirmed"; fi
-    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/tally.txt"
-    if grep -q 'recall-confirmed 1' "$dir/tally.txt" && grep -q 'independently-surfaced 0' "$dir/tally.txt"; then ok "the tally splits the two confirmation kinds"; else bad "the tally splits the two confirmation kinds"; fi
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    if grep -q 'recall-confirmed 1' "$dir/.agent_spinner/tally.txt" && grep -q 'independently-surfaced 0' "$dir/.agent_spinner/tally.txt"; then ok "the tally splits the two confirmation kinds"; else bad "the tally splits the two confirmation kinds"; fi
     if ledger_has "$dir" -i 'advisory.*independent' close; then ok "close flags an independent claim on a recall-confirmed row"; else bad "close flags an independent claim on a recall-confirmed row"; fi
 
     dir2="$dir/two"
@@ -1923,7 +1923,7 @@ markers_cover_path() {
     emit_return "$dir" check:a.txt "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"gamma"}]}'
     ledger "$dir" accept check:a.txt >/dev/null 2>&1
     ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
-    printf '\n# Report\n\nAll clear.\n' >> "$dir/.agent_spinner/report.md"
+    printf '\n# Report\n\nRun closed.\n' >> "$dir/.agent_spinner/report.md"
 }
 
 scenario_markers() {
@@ -2934,7 +2934,7 @@ scenario_objection_close() {
     ledger "$dir" accept check:a.txt >/dev/null 2>&1
     ledger "$dir" dispose --id 'produce:a:forks:0' --disposition surfaced --packet pkt-c >/dev/null 2>&1
     ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/report.md"
-    printf '\n# Report\n\nAll clear.\n' >> "$dir/.agent_spinner/report.md"
+    printf '\n# Report\n\nRun closed.\n' >> "$dir/.agent_spinner/report.md"
     ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
     rc=$?
     if [ "$rc" -eq 3 ] && grep -q 'condition 6' "$dir/.agent_spinner/close.out" && grep -q 'produce:a:forks:0' "$dir/.agent_spinner/close.out" && grep -q 'produce:a:objections:0' "$dir/.agent_spinner/close.out"; then
@@ -3326,13 +3326,13 @@ scenario_tally_coverage() {
 {"kind": "call", "at": "2026-01-01T00:00:00+00:00", "call": {"tool": "reader", "args": {"target": "a.txt"}}}
 LOG
     ledger "$dir" accept produce:a --log "$dir/log.jsonl" --log-format "$dir/fmt-a.json" >/dev/null 2>&1
-    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/tally.txt"
-    if grep -q 'coverage-full-by-tool 1' "$dir/tally.txt" && grep -q 'coverage-receipt-only 0' "$dir/tally.txt"; then
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    if grep -q 'coverage-full-by-tool 1' "$dir/.agent_spinner/tally.txt" && grep -q 'coverage-receipt-only 0' "$dir/.agent_spinner/tally.txt"; then
         ok "the tally splits tool evidence from receipt-only coverage"
     else
         bad "the tally splits tool evidence from receipt-only coverage"
     fi
-    if grep -q 'coverage-searched 1' "$dir/tally.txt" && grep -q 'coverage-unexamined 1' "$dir/tally.txt"; then
+    if grep -q 'coverage-searched 1' "$dir/.agent_spinner/tally.txt" && grep -q 'coverage-unexamined 1' "$dir/.agent_spinner/tally.txt"; then
         ok "the tally counts searched and unexamined entries"
     else
         bad "the tally counts searched and unexamined entries"
@@ -3498,7 +3498,7 @@ scenario_probe_baseline() {
     ledger "$dir3" accept check:r >/dev/null 2>&1
     touch "$dir3/.agent_spinner/returns/produce:w.start"
     ledger "$dir3" stop >/dev/null 2>&1
-    printf '# Report\n\nAll clear.\n' > "$dir3/.agent_spinner/report.md"
+    printf '# Report\n\nRun closed.\n' > "$dir3/.agent_spinner/report.md"
     token=$(token_of "$dir3" probe:cheap)
     emit_return "$dir3" probe:cheap "$token" '{"capabilities":{"delegation_surface":"established"}}'
     ledger "$dir3" accept --probe probe:cheap >/dev/null 2>&1
@@ -3589,6 +3589,463 @@ PY
     fi
 }
 
+# --- record completeness ----------------------------------------------------
+
+# The closing-report template `references/report-shapes.md` ships, so the
+# scenario proves the shipped text, not a hand-copied copy.
+closing_report_template() {
+    awk '
+        /^## Closing report$/ { section = 1; next }
+        section && /^## / { exit }
+        section && /^```text$/ { block = 1; next }
+        block && /^```$/ { exit }
+        block { print }
+    ' "$REPO_ROOT/plugins/ai_dev/skills/agent_spinner/references/report-shapes.md"
+}
+
+# Replace report.md with a captured tally block and one prose line.
+write_report_from_tally() {
+    dir="$1"
+    tally="$2"
+    text="$3"
+    cp "$tally" "$dir/.agent_spinner/report.md"
+    printf '\n%s\n' "$text" >> "$dir/.agent_spinner/report.md"
+}
+
+scenario_record_completeness() {
+    base="$1"
+
+    dir="$base/records"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"beyond_brief":[{"text":"extra one"},{"text":"extra two"}],"own_authority":[{"text":"decided alone"}],"dropped_suspicions":[{"text":"maybe a defect"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    for rec_type in beyond_brief own_authority dropped_suspicion; do
+        if grep -q "\"type\": \"$rec_type\"" "$dir/.agent_spinner/ledger.jsonl"; then
+            ok "a return's $rec_type entry becomes a record"
+        else
+            bad "a return's $rec_type entry becomes a record"
+        fi
+    done
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Run closed."
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] \
+        && grep -q 'condition 2' "$dir/.agent_spinner/close.out" \
+        && grep -q 'produce:a:beyond_brief:0' "$dir/.agent_spinner/close.out" \
+        && grep -q 'produce:a:own_authority:0' "$dir/.agent_spinner/close.out" \
+        && grep -q 'produce:a:dropped_suspicions:0' "$dir/.agent_spinner/close.out"; then
+        ok "close refuses until beyond-brief, own-authority, and dropped-suspicion records are disposed"
+    else
+        bad "close refuses until beyond-brief, own-authority, and dropped-suspicion records are disposed (rc=$rc)"
+    fi
+    ledger "$dir" dispose --id 'produce:a:own_authority:0' --disposition applied >/dev/null 2>&1
+    ledger "$dir" dispose --id 'produce:a:dropped_suspicions:0' --disposition applied >/dev/null 2>&1
+    ledger "$dir" dispose --id 'produce:a:beyond_brief:0' --disposition applied >/dev/null 2>&1
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] \
+        && grep -q 'produce:a:beyond_brief:1' "$dir/.agent_spinner/close.out" \
+        && ! grep -q 'produce:a:beyond_brief:0' "$dir/.agent_spinner/close.out"; then
+        ok "disposing one beyond-brief record leaves its sibling on the same label open"
+    else
+        bad "disposing one beyond-brief record leaves its sibling on the same label open (rc=$rc)"
+    fi
+    ledger "$dir" dispose --id 'produce:a:beyond_brief:1' --disposition applied >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "close accepts once every beyond-brief record is disposed by id"
+    else
+        bad "close accepts once every beyond-brief record is disposed by id"
+    fi
+
+    dir="$base/flag"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit check:b >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --depth 2 >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" brief check:b --body "B" --relay produce:a --depth 1 >/dev/null 2>&1
+    ledger "$dir" dispatch check:b >/dev/null 2>&1
+    token=$(token_of "$dir" check:b)
+    emit_return "$dir" check:b "$token" '{"beyond_brief":[{"text":"found beyond"}]}'
+    ledger "$dir" accept check:b >/dev/null 2>&1
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Run closed."
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 9' "$dir/.agent_spinner/close.out"; then
+        ok "a checker below its producer refuses on condition 9 before any flag"
+    else
+        bad "a checker below its producer refuses on condition 9 before any flag (rc=$rc)"
+    fi
+    ledger "$dir" dispose --flag check:b --reason "depth accepted for this run" >/dev/null 2>&1
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] \
+        && grep -q 'condition 2' "$dir/.agent_spinner/close.out" \
+        && grep -q 'check:b:beyond_brief:0' "$dir/.agent_spinner/close.out" \
+        && ! grep -q 'condition 9' "$dir/.agent_spinner/close.out"; then
+        ok "a flag clears condition 9 and leaves the checker's beyond-brief record open"
+    else
+        bad "a flag clears condition 9 and leaves the checker's beyond-brief record open (rc=$rc)"
+    fi
+    ledger "$dir" dispose --id 'check:b:beyond_brief:0' --disposition applied >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "close accepts once the flagged checker's beyond-brief record is disposed by id"
+    else
+        bad "close accepts once the flagged checker's beyond-brief record is disposed by id"
+    fi
+
+    dir="$base/pasted"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit check:b >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --depth 2 >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" brief check:b --body "B" --pasted-from produce:a --depth 1 >/dev/null 2>&1
+    ledger "$dir" dispatch check:b >/dev/null 2>&1
+    token=$(token_of "$dir" check:b)
+    emit_return "$dir" check:b "$token" '{"confirmations":[{"text":"the finding held"}]}'
+    ledger "$dir" accept check:b >/dev/null 2>&1
+    if grep -q '"provenance": "recall-confirmed"' "$dir/.agent_spinner/ledger.jsonl"; then
+        ok "a checker briefed --pasted-from its producer tags the confirmation recall-confirmed"
+    else
+        bad "a checker briefed --pasted-from its producer tags the confirmation recall-confirmed"
+    fi
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Run closed."
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a pasted checker below its producer closes with no condition-9 refusal"
+    else
+        bad "a pasted checker below its producer closes with no condition-9 refusal"
+    fi
+
+    dir="$base/repair"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --target a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"verdict":"fail"}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    verdict=$(awk -F'\t' '$1 == "produce:a" { print $22 }' "$dir/.agent_spinner/roster.tsv")
+    if [ "$verdict" = "fail" ]; then
+        ok "accept persists a fail verdict on its row"
+    else
+        bad "accept persists a fail verdict on its row (verdict=$verdict)"
+    fi
+    if "$PY" - "$dir/.agent_spinner/run.json" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1]))
+raise SystemExit(0 if any(entry.get("id") == "produce:a" for entry in data.get("repair_list", [])) else 1)
+PY
+    then
+        ok "a fail verdict fills the repair list"
+    else
+        bad "a fail verdict fills the repair list"
+    fi
+    before=$(wc -l < "$dir/.agent_spinner/roster.tsv" | tr -d ' ')
+    ledger "$dir" rows --phase repair --from-repair-list >/dev/null 2>&1
+    after=$(wc -l < "$dir/.agent_spinner/roster.tsv" | tr -d ' ')
+    if [ "$after" -gt "$before" ] && grep -q '^check:produce-a' "$dir/.agent_spinner/roster.tsv"; then
+        ok "rows --from-repair-list creates a row from the persisted fail"
+    else
+        bad "rows --from-repair-list creates a row from the persisted fail"
+    fi
+
+    dir="$base/rules-relay"
+    setup_repo "$dir"
+    printf 'RULES ONE\n' > "$dir/shared-one.txt"
+    printf 'RULES TWO\n' > "$dir/shared-two.txt"
+    ledger "$dir" init --unit produce:a --unit check:b >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --shared-file "$dir/shared-one.txt" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    if ledger "$dir" brief check:b --phase check --body "B" --shared-file "$dir/shared-two.txt" --relay produce:a > "$dir/brief.out" 2>&1; then
+        bad "a relayed checker in another phase is refused when its shared rules differ"
+    else
+        if grep -q 'shared blocks differ from producer produce:a' "$dir/brief.out"; then
+            ok "a relayed checker in another phase is refused when its shared rules differ"
+        else
+            bad "a relayed checker in another phase is refused when its shared rules differ"
+        fi
+    fi
+
+    dir="$base/rules-pasted"
+    setup_repo "$dir"
+    printf 'RULES ONE\n' > "$dir/shared-one.txt"
+    printf 'RULES TWO\n' > "$dir/shared-two.txt"
+    ledger "$dir" init --unit produce:a --unit check:c >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" --shared-file "$dir/shared-one.txt" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    if ledger "$dir" brief check:c --phase check --body "C" --shared-file "$dir/shared-two.txt" --pasted-from produce:a > "$dir/brief.out" 2>&1; then
+        bad "a pasted checker in another phase is refused when its shared rules differ"
+    else
+        if grep -q 'shared blocks differ from producer produce:a' "$dir/brief.out"; then
+            ok "a pasted checker in another phase is refused when its shared rules differ"
+        else
+            bad "a pasted checker in another phase is refused when its shared rules differ"
+        fi
+    fi
+
+    dir="$base/own-fork"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"forks":[{"issue":"Keep or retire the page?","options":[{"id":"keep","text":"Keep","cost":"one edit"},{"id":"retire","text":"Retire","cost":"a link"}],"passages":[{"text":"alpha","anchor":"a.txt:1"}],"preferred":"keep"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Run closed."
+    ledger "$dir" dispose --fork 'produce:a:forks:0' --own-decision "chose keep" >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "an own-authority call clears the fork with condition 2 covering own_authority"
+    else
+        bad "an own-authority call clears the fork with condition 2 covering own_authority"
+    fi
+
+    dir="$base/own-import"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"own_authority":[{"text":"decided alone"}]}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Run closed."
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'produce:a:own_authority:0' "$dir/.agent_spinner/close.out"; then
+        ok "an imported own-authority record keeps close refusing until disposed by id"
+    else
+        bad "an imported own-authority record keeps close refusing until disposed by id (rc=$rc)"
+    fi
+    ledger "$dir" dispose --id 'produce:a:own_authority:0' --disposition applied >/dev/null 2>&1
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "close accepts once the imported own-authority record is disposed by id"
+    else
+        bad "close accepts once the imported own-authority record is disposed by id"
+    fi
+
+    dir="$base/repair-nopath"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"verdict":"fail"}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" status > "$dir/status.txt" 2>&1
+    if awk '/^repair list:/{getline; print; exit}' "$dir/status.txt" | grep -q 'produce:a'; then
+        ok "status names the failing item when its row has no path"
+    else
+        bad "status names the failing item when its row has no path"
+    fi
+}
+
+scenario_report_lint() {
+    base="$1"
+
+    dir="$base/words"
+    build_clean "$dir"
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    for word in verified complete confirmed all; do
+        write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "The item is $word."
+        close_assert "$dir" "condition 11 refuses an uncited $word" 'condition 11'
+        write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "The item is $word [re-derived: check:a.txt]."
+        if ledger "$dir" close >/dev/null 2>&1; then
+            ok "condition 11 accepts a cited $word"
+        else
+            bad "condition 11 accepts a cited $word"
+        fi
+    done
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Verified against the source."
+    close_assert "$dir" "condition 11 refuses a sentence-initial Verified with no citation" 'condition 11'
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Verified against the source [re-derived: check:a.txt]."
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "condition 11 accepts a cited sentence-initial Verified"
+    else
+        bad "condition 11 accepts a cited sentence-initial Verified"
+    fi
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Recall-confirmed by the checking pass."
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a hyphenated recall-confirmed outside the tally is not an assertion word"
+    else
+        bad "a hyphenated recall-confirmed outside the tally is not an assertion word"
+    fi
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Recall confirmed by the checking pass."
+    close_assert "$dir" "a spaced Recall confirmed is refused on condition 11" 'condition 11'
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "Recall confirmed by the checking pass [taken on a helper's word: check:b]."
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a spaced Recall confirmed closes once a provenance tag is present"
+    else
+        bad "a spaced Recall confirmed closes once a provenance tag is present"
+    fi
+    wrapped="$(printf '%s\n%s' 'The docs are verified' '[measured: check:build].')"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "$wrapped"
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a citation wrapped onto the next line clears the assertion word"
+    else
+        bad "a citation wrapped onto the next line clears the assertion word"
+    fi
+    wrapped="$(printf '%s\n%s' 'The parser is verified [taken' "on a helper's word: check:b].")"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "$wrapped"
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a provenance tag wrapped mid-tag still clears the assertion word"
+    else
+        bad "a provenance tag wrapped mid-tag still clears the assertion word"
+    fi
+    wrapped="$(printf '%s\n%s' 'The line is recall-' 'confirmed by the pass.')"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "$wrapped"
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a hyphenated compound wrapped across lines is not an assertion word"
+    else
+        bad "a hyphenated compound wrapped across lines is not an assertion word"
+    fi
+    bullets="$(printf '%s\n%s' '- The parser is verified' '- The gate is complete [measured: gate:lint]')"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "$bullets"
+    close_assert "$dir" "condition 11 refuses an uncited assertion in a bullet beside a cited one" 'condition 11'
+    table="$(printf '%s\n%s' '| parser | verified |' '| gate | complete [measured: gate:lint] |')"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "$table"
+    close_assert "$dir" "condition 11 refuses an uncited assertion in a table row beside a cited one" 'condition 11'
+    quote="$(printf '%s\n%s' '> The parser is verified' '> [measured: check:build].')"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "$quote"
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a citation wrapped onto the blockquote's second line closes clean"
+    else
+        bad "a citation wrapped onto the blockquote's second line closes clean"
+    fi
+    quote="$(printf '%s\n%s' '> The parser is verified' '> against the source.')"
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "$quote"
+    close_assert "$dir" "condition 11 refuses an uncited blockquote sentence" 'condition 11'
+    cp "$dir/.agent_spinner/tally.txt" "$dir/.agent_spinner/report.md"
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a report carrying only the verbatim tally block closes clean"
+    else
+        bad "a report carrying only the verbatim tally block closes clean"
+    fi
+    write_report_from_tally "$dir" "$dir/.agent_spinner/tally.txt" "$(printf 'Modified: none.\nUnknown: none.\n\n**Found beyond the brief.** None.')"
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "a tally block beside the stop report's None. and none. lines closes clean"
+    else
+        bad "a tally block beside the stop report's None. and none. lines closes clean"
+    fi
+
+    dir="$base/template"
+    build_clean "$dir"
+    ledger "$dir" close 2>/dev/null | sed -n '/TALLY-BEGIN/,/TALLY-END/p' > "$dir/.agent_spinner/tally.txt"
+    cp "$dir/.agent_spinner/tally.txt" "$dir/.agent_spinner/report.md"
+    printf '\n' >> "$dir/.agent_spinner/report.md"
+    closing_report_template >> "$dir/.agent_spinner/report.md"
+    if ledger "$dir" close >/dev/null 2>&1; then
+        ok "the report-shapes closing-report template closes clean"
+    else
+        bad "the report-shapes closing-report template closes clean"
+    fi
+    cp "$dir/.agent_spinner/tally.txt" "$dir/.agent_spinner/report.md"
+    printf '\n' >> "$dir/.agent_spinner/report.md"
+    closing_report_template | sed 's/^\(\*\*Established\.\*\*.*\)$/\1 The flag parser is verified against the file./' >> "$dir/.agent_spinner/report.md"
+    close_assert "$dir" "the closing-report template with an uncited verified is refused on condition 11" 'condition 11'
+}
+
+scenario_record_completeness_docs() {
+    dir="$1"
+    mkdir -p "$dir"
+    skill="$REPO_ROOT/plugins/ai_dev/skills/agent_spinner"
+    if grep -q 'travels as a flag, not a record type' "$skill/SKILL.md"; then
+        bad "SKILL.md retires the beyond-brief flag sentence"
+    else
+        ok "SKILL.md retires the beyond-brief flag sentence"
+    fi
+    if grep -q 'such as verified or complete' "$skill/references/run-protocol.md"; then
+        bad "run-protocol retires its own assertion-word list"
+    else
+        ok "run-protocol retires its own assertion-word list"
+    fi
+    if grep -q 'an absolute claim whose backing fact sits below the read tier' "$skill/references/checks.md"; then
+        bad "checks.md C10 points the report lint at the provenance table"
+    else
+        ok "checks.md C10 points the report lint at the provenance table"
+    fi
+    if grep -q 'Give each record one disposition' "$skill/SKILL.md"; then
+        bad "SKILL.md states the disposition rule only inside the record-model passage"
+    else
+        ok "SKILL.md states the disposition rule only inside the record-model passage"
+    fi
+    if grep -q 'one disposition per record' "$skill/references/run-protocol.md"; then
+        bad "run-protocol P6 points at <aggregation> for the disposition rule"
+    else
+        ok "run-protocol P6 points at <aggregation> for the disposition rule"
+    fi
+    if grep -rq 'relayed that record, and independently surfaced otherwise' "$skill"; then
+        bad "the relay-only confirmation sentence is retired"
+    else
+        ok "the relay-only confirmation sentence is retired"
+    fi
+    if grep -rEq 'relayed the claim|relayed it|leaves the item out of the repair list' "$skill"; then
+        bad "the recipes retire the relay-only and nit-only repair sentences"
+    else
+        ok "the recipes retire the relay-only and nit-only repair sentences"
+    fi
+    for file in SKILL.md references/run-protocol.md references/checks.md; do
+        if grep -q 'Provenance tags' "$skill/$file"; then
+            ok "$file points at the Provenance tags section"
+        else
+            bad "$file points at the Provenance tags section"
+        fi
+    done
+    hits=$(grep -rlE '\[re-derived:|\[measured:' "$skill" | sed "s#^$skill/##" | sort | tr '\n' ' ')
+    if [ "$hits" = "references/report-shapes.md " ]; then
+        ok "the citation form is defined only in report-shapes.md"
+    else
+        bad "the citation form is defined only in report-shapes.md (found: $hits)"
+    fi
+    if awk '/<confirmation_provenance>/{f=1} f{print} /<\/confirmation_provenance>/{f=0}' "$skill/SKILL.md" | grep -q -- '--pasted-from'; then
+        ok "<confirmation_provenance> states the relay and paste routes"
+    else
+        bad "<confirmation_provenance> states the relay and paste routes"
+    fi
+    if "$PY" - "$skill/references/run-protocol.md" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1]).read()
+match = re.search(r"### `close`(.*?)### Roster columns", text, re.S)
+block = match.group(1) if match else ""
+nums = [int(n) for n in re.findall(r"^(\d+)\. ", block, re.M)]
+item11 = re.search(r"^11\. (.+?)(?=\n\n)", block, re.M | re.S)
+ok = (
+    nums == list(range(1, 12))
+    and item11 is not None
+    and "report" in item11.group(1)
+    and "Provenance tags" in item11.group(1)
+)
+sys.exit(0 if ok else 1)
+PY
+    then
+        ok "run-protocol close numbers 1 through 11 and item 11 states the report lint"
+    else
+        bad "run-protocol close numbers 1 through 11 and item 11 states the report lint"
+    fi
+}
+
 # --- runner -----------------------------------------------------------------
 
 run_all_scenarios() {
@@ -3653,6 +4110,9 @@ run_all_scenarios() {
     scenario_phase_count "$root/phase-count"
     scenario_exclude_prune "$root/exclude-prune"
     scenario_docs "$root/docs"
+    scenario_record_completeness "$root/record-completeness"
+    scenario_report_lint "$root/report-lint"
+    scenario_record_completeness_docs "$root/record-docs"
 }
 
 main() {

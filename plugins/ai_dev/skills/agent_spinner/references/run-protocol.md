@@ -159,17 +159,20 @@ instruction and an END-line-only final message.
 
 Relay upstream material, meaning earlier returns, by path with a read-in-full
 instruction, or paste it below a stated cap listing the trimmed identifiers. A
-relay refuses until its upstream row is accepted. The spawn prompt is one line
-pointing at the brief file. Lint every brief for byte-identical shared blocks
-within a phase, and for no path or command both forbidden and permitted. Keep
-text a blind pass must not see out of the workspace until that pass returns,
-with only its hash on the roster.
+brief that pastes a producer's accepted finding names it with
+`--pasted-from LABEL`, so the ledger tags its confirmations recall-confirmed
+the way a relay's are. A relay refuses until its upstream row is accepted. The
+spawn prompt is one line pointing at the brief file. Lint every brief for
+byte-identical shared blocks within a phase and against its producer, relayed
+or pasted, wherever the two rows sit, and for no path or command both forbidden
+and permitted. Keep text a blind pass must not see out of the workspace until
+that pass returns, with only its hash on the roster.
 
 **Checks.** Every item row has a brief file before its dispatch. Shared blocks
-hash identically within a phase. No brief lists a path or command under both
-permits and forbids. Each brief carries the return template with its labelled
-brief token, the return channel, the END line, and the bound. A blind row's
-`input_versions` carries only the withheld hash.
+hash identically within a phase and against the row's producer. No brief lists
+a path or command under both permits and forbids. Each brief carries the return
+template with its labelled brief token, the return channel, the END line, and
+the bound. A blind row's `input_versions` carries only the withheld hash.
 
 ## P3, return files and the acceptance gate
 
@@ -292,20 +295,24 @@ each reading row's inputs.
 
 ## P6, the findings ledger, decision packets, and the report
 
-P6 holds the reading rule `<aggregation>` states, one disposition per record, a
+P6 holds the reading and disposition rules `<aggregation>` states, a
 decision packet per fork, and the report built from the tally block. Render
 each decision packet with `show --packet ID` from the records `dispose`
 surfaced, rather than by hand. Coverage comes from tool evidence (checks.md
 C8), and verification and confirmations are split by provenance (checks.md
-C10). The report lint flags an assertion word, such as verified or complete,
-that carries no ledger citation. A report on a run with no clean `close` says
+C10). The report lint flags an assertion word from the table at
+`report-shapes.md` `## Provenance tags` that carries no provenance tag in its
+sentence. A report on a run with no clean `close` says
 so first, in its opening sentence, which carries the answer, the tier, helpers
 dispatched against returned, and whether `close` exited 0.
 
-**Checks.** Every finding, incident, alternative, and objection record has a
-disposition record. Every fork's close state follows condition 6 in the `close`
+**Checks.** Every finding, incident, alternative, objection, beyond-brief,
+own-authority, and dropped-suspicion record carries its disposition, and an
+own-authority record written by `dispose --fork` carries its decision. Every
+fork's close state follows condition 6 in the `close`
 reference below, the one place the completion rule is stated. `report.md`
-carries the current tally block verbatim. The opening sentence carries the
+carries the current tally block verbatim, and every assertion word outside it
+shares its sentence with a `## Provenance tags` tag. The opening sentence carries the
 answer, the tier, helpers dispatched against returned, and whether `close`
 exited 0.
 
@@ -360,6 +367,8 @@ as that answer, and an answer the request supplies is recorded as that
 - `--body TEXT`, `--body-file PATH`: the per-item brief.
 - `--shared-file PATH`: the shared block, default the run preamble.
 - `--relay LABEL` (repeatable): an accepted upstream return to relay.
+- `--pasted-from LABEL` (repeatable): an accepted producer whose finding the
+  brief pastes below its stated cap, so its confirmations are recall-confirmed.
 - `--withheld`: read withheld text from standard input and record only its hash.
 - `--obligation PATH` (repeatable): a path the return's examined list must cover.
 - `--permit-path PATH`, `--forbid-path PATH`, `--permit-command CMD`,
@@ -535,7 +544,10 @@ End the run. It prints the tally block and refuses with a non-zero exit while
 any close condition holds:
 
 1. A row is not terminal.
-2. A finding, incident, alternative, or objection record has no disposition.
+2. A finding, incident, alternative, objection, beyond-brief, own-authority,
+   or dropped-suspicion record has no disposition. An own-authority record
+   written by `dispose --fork --own-decision` carries its decision and is its
+   own disposition; one imported from a return takes `dispose --id`.
 3. A changed path has no accepted check, gate, or taken-on-word disposition.
 4. A change is unattributed.
 5. The tree guard sees an undisposed path, HEAD moved, or the stash changed.
@@ -555,6 +567,11 @@ any close condition holds:
     A routed disposition that postdates the dispatch fails this condition
     naming the path, and a `path` field on a fork record clears the path only as
     that answered fork.
+11. The report carries an assertion word from the table at
+    `references/report-shapes.md` `## Provenance tags` in a sentence with no
+    provenance tag, outside the tally block. The lint matches each word as a
+    whole word, case-insensitively, ignores hyphenated compounds, and exempts
+    every line from `TALLY-BEGIN` through `TALLY-END`.
 
 `close --stopped` also prints the modified, untouched, unknown, not dispatched,
 and violation rows.
@@ -564,7 +581,7 @@ and violation rows.
 `label`, `phase`, `role`, `item`, `path`, `kind`, `state`, `attempts`,
 `brief_hash`, `input_versions`, `helper_id`, `spawn_route`, `model_req`,
 `effort_req`, `model_obs`, `effort_obs`, `dispatched_at`, `start_marker_time`,
-`returned_at`, `source`, `stamp_owner`.
+`returned_at`, `source`, `stamp_owner`, `verdict`.
 
 The states are `pending`, `dispatched`, `violation`, `accepted`, `inability`,
 `failed`, `unreturned`, `unknown`, and `dropped`.

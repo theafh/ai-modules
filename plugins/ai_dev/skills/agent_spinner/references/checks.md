@@ -381,8 +381,9 @@ Every fact carries a label for where it came from.
    verifies, with a brief-corrections slot.
 9. Search every open draft for a premise the orchestrator conceded as false
    before the next hand-over.
-10. Let the report lint flag an absolute claim whose backing fact sits below
-    the read tier.
+10. Let the report lint flag an assertion word from the table at
+    `report-shapes.md` `## Provenance tags` in a sentence with no provenance
+    tag.
 
 **Checks.** Every settled fact in the preamble is measured or read, no negative
 claim below the read tier stands without a condition, and every unprobed claim

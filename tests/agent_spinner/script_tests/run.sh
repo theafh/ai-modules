@@ -532,9 +532,10 @@ aggregation_block() {
 
 # aggregation_show_list_correct <skill.md> — the block's `show` read set names
 # `alternatives` among the record types the ledger imports, names the
-# `dispose --flag` channel for a beyond-brief find, and carries none of the
-# retired show targets (`contradictions`, `beyond-brief finds`) that the ledger
-# imports no record type for.
+# `dispose --flag` channel that marks a roster row for condition 9, and carries
+# none of the retired show targets (`contradictions`) that the ledger imports no
+# record type for. `beyond-brief finds` is a real record type now, so it stays
+# out of the retired list.
 aggregation_show_list_correct() {
   local block clause
   block="$(aggregation_block "$1")"
@@ -545,7 +546,7 @@ aggregation_show_list_correct() {
   clause="$(printf '%s\n' "$block" | tr '\n' ' ' | grep -Eo '`show`[^.]*' | sed -n '1p' || true)"
   printf '%s\n' "$clause" | grep -Eq 'alternatives' \
     && printf '%s\n' "$block" | grep -Eq '`dispose --flag' \
-    && ! printf '%s\n' "$block" | grep -Eqi 'contradictions|beyond-brief finds'
+    && ! printf '%s\n' "$block" | grep -Eqi 'contradictions'
 }
 
 # checking_omission_route <skill.md> — a missing claim is recorded as a dropped

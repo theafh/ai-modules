@@ -2590,30 +2590,21 @@ sys.exit(0)
 PY
 }
 
-# beyond_brief_recorded <page> — one of the two ledger shapes carries the
-# beyond-brief find and the other is absent: a flag whose text names the page,
-# or a beyond_brief record whose path is that page.
+# beyond_brief_recorded <page> — the ledger imports a beyond_brief record whose
+# path is that page. A flag alone no longer records a find: `dispose --flag`
+# marks a roster row for condition 9 and disposes no record.
 beyond_brief_recorded() {
   [[ -s "$LEDGER" ]] || return 1
   python3 - "$LEDGER" "$1" <<'PY'
 import json, sys
 path, page = sys.argv[1], sys.argv[2]
-flags, records = [], []
 for line in open(path, encoding="utf-8", errors="replace"):
     try:
         rec = json.loads(line)
     except ValueError:
         continue
-    if rec.get("type") == "flag":
-        flags.append(rec)
-    if rec.get("type") == "beyond_brief":
-        records.append(rec)
-flag_hit = any(page in json.dumps(rec) for rec in flags)
-record_hit = any(rec.get("path") == page for rec in records)
-if flag_hit and not records:
-    sys.exit(0)
-if record_hit and not flags:
-    sys.exit(0)
+    if rec.get("type") == "beyond_brief" and rec.get("path") == page:
+        sys.exit(0)
 sys.exit(1)
 PY
 }
@@ -4554,7 +4545,7 @@ PY
 
   beyond_brief_find_reported)
     check "sandbox tree byte-identical" tree_unchanged
-    check "the ledger holds the beyond-brief find in one of its two shapes" \
+    check "the ledger holds a beyond_brief record naming the find's path" \
       beyond_brief_recorded docs/other.md
     check "the report quotes the defect with its path" \
       report_has 'docs/other\.md'

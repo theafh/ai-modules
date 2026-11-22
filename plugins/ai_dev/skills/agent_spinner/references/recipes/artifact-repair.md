@@ -31,7 +31,7 @@ Every finding carries `claim`, `severity`, `quote`, and `anchor`, and each exami
 
 The writer returns its label and path, what it applied and skipped, brief corrections, judgement calls, the contract clauses its changes touched, a statement that it left the stamp alone, and incidents. A brief correction is a place where the writer found its brief wrong.
 
-The checker returns a verdict (`pass` or `fail`, the ledger's only verdict values) and issues with a severity (blocking, should-fix, or nit). The finding list decides the item's fate, so a `fail` verdict carrying only nits leaves the item out of the repair list. It also reports the anchors checked and those that miss, whether intent was preserved, the stamp consequence, and the fate of each input finding: resolved, refuted with its re-derivation, or silently dropped.
+The checker returns a verdict (`pass` or `fail`, the ledger's only verdict values) and issues with a severity (blocking, should-fix, or nit). The finding list decides the item's fate: every row whose persisted verdict is `fail` fills the repair list. It also reports the anchors checked and those that miss, whether intent was preserved, the stamp consequence, and the fate of each input finding: resolved, refuted with its re-derivation, or silently dropped.
 
 The critic returns its lens, findings with evidence, and items confirmed clean with citations.
 
