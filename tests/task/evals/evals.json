@@ -618,7 +618,7 @@
       "id": "check_count_stable",
       "skill": "task_check",
       "prompt": "Is the task tasks/build_manifest-smoke.md ready to hand to an implementer? Check it.",
-      "expected_output": "One body carries both quantity classes the base <markdown_policy> count-stable rule separates. The Approach freezes a mutable set as a count — 'all 3 plugin manifests under `plugins/*/plugin.json`' — which is accurate in the sandbox today and rots when a fourth plugin lands, so the readiness checklist's Ambiguity / under-specification lens flags it against the count-stable rule and proposes the selector rewrite ('every plugin manifest under `plugins/*/plugin.json`') as the minimum fix. The measurement Acceptance item — 5 runs over the fixed denominator of 6 seeded fixture manifests against a same-run `make lint` baseline, recording both wall-clock medians into the task body with a fail branch that records rather than tunes — is subject matter the rule keeps legal and draws no finding. ready is withheld (status checked) and the body stays byte-identical.",
+      "expected_output": "One body carries both quantity classes the base <markdown_policy> count-stable rule separates. The Approach freezes a mutable set as a count — 'all 3 plugin manifests under `plugins/*/plugin.json`' — which is accurate in the sandbox today and rots when a fourth plugin lands, so the readiness checklist's **Count-stable references** content-lens item flags it against the count-stable rule and proposes the selector rewrite ('every plugin manifest under `plugins/*/plugin.json`') as the minimum fix. The measurement Acceptance item — 5 runs over the fixed denominator of 6 seeded fixture manifests against a same-run `make lint` baseline, recording both wall-clock medians into the task body with a fail branch that records rather than tunes — is subject matter the rule keeps legal and draws no finding. ready is withheld (status checked) and the body stays byte-identical.",
       "files": [
         "evals/fixtures/check_count_stable/setup.sh"
       ],
@@ -628,6 +628,24 @@
         "The finding cites the base count-stable rule rather than restating it, and the report does not treat the accurate-today count as clearing the issue.",
         "The measurement Acceptance item (5 runs over the fixed denominator of 6 seeded fixture manifests, against the `make lint` baseline) draws no count-stable finding — its run count, fixed denominator, and baseline are the subject-matter case the rule keeps legal.",
         "Both verdicts are recorded in one report: the frozen mutable-set count flagged, the measurement-protocol quantity left unflagged.",
+        "The count-stable finding is the only blocking issue in the report — every other promise the body makes is paired with its own Acceptance item — so the withheld ready stamp is attributable to this rule alone.",
+        "The task is stamped status: checked (ready withheld) and the body is preserved byte-for-byte."
+      ]
+    },
+    {
+      "id": "check_count_stable_enumeration",
+      "skill": "task_check",
+      "prompt": "Is the task tasks/build_manifest-enumeration.md ready to hand to an implementer? Check it.",
+      "expected_output": "One body carries both quantity classes the base <markdown_policy> count-stable rule separates, with the mutable set written as an enumeration snapshot. The Approach names the set's current members and freezes their number — 'the three plugin manifests under `plugins/*/plugin.json` — `plugins/alpha/plugin.json`, `plugins/beta/plugin.json`, and `plugins/gamma/plugin.json`' — which is accurate in the sandbox today and goes stale the moment a fourth plugin joins the open `plugins/*/plugin.json` glob, so the readiness checklist's **Count-stable references** content-lens item flags it against the count-stable rule and proposes the selector rewrite ('every plugin manifest under `plugins/*/plugin.json`') as the minimum fix. The measurement Acceptance item — 5 runs over the fixed denominator of 6 seeded fixture manifests against a same-run `make lint` baseline, recording both wall-clock medians into the task body with a fail branch that records rather than tunes — is subject matter the rule keeps legal and draws no finding. ready is withheld (status checked) and the body stays byte-identical.",
+      "files": [
+        "evals/fixtures/check_count_stable_enumeration/setup.sh"
+      ],
+      "expectations": [
+        "A numbered issue flags 'the three plugin manifests under `plugins/*/plugin.json`' and its enumerated members as a mutable set referenced by an enumeration snapshot, against the base <markdown_policy> count-stable rule.",
+        "The issue's minimum fix is the selector rewrite (every plugin manifest under `plugins/*/plugin.json`), not a refreshed number or a refreshed member list.",
+        "The finding cites the base count-stable rule rather than restating it, and the report does not treat the accurate-today count or the accurate-today member list as clearing the issue.",
+        "The measurement Acceptance item (5 runs over the fixed denominator of 6 seeded fixture manifests, against the `make lint` baseline) draws no count-stable finding — its run count, fixed denominator, and baseline are the subject-matter case the rule keeps legal.",
+        "Both verdicts are recorded in one report: the frozen enumeration snapshot flagged, the measurement-protocol quantity left unflagged.",
         "The count-stable finding is the only blocking issue in the report — every other promise the body makes is paired with its own Acceptance item — so the withheld ready stamp is attributable to this rule alone.",
         "The task is stamped status: checked (ready withheld) and the body is preserved byte-for-byte."
       ]

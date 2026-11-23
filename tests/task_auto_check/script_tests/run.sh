@@ -368,6 +368,30 @@ s15_convergence_and_robust_returns() {
   assert_contains "a size finding stays under the ordinary bar at any length" "$base" "a too-small finding, and a size finding at any length, the **300-line** ceiling included, stay under the ordinary bar" || ok=false
   assert_contains "count-stable rule sets the find-all-then-check shape" "$base" "the Acceptance item runs the selector again and checks that no member is left unhandled" || ok=false
   assert_contains "Acceptance contract points at the selector shape" "$base" "**Sets by selector.** An item over a set whose membership can change re-finds the members by their selector" || ok=false
+  # The count-stable rule has its own named content-lens item, and the
+  # Ambiguity bullet no longer restates it. Both checks are scoped so they fail
+  # on the double-statement state: the rule name appears elsewhere in the file,
+  # so only a bullet-scoped check can fail when the old sub-clause survives.
+  local count_item='**Count-stable references**'
+  assert_contains "base checklist names the count-stable content-lens item" "$base" "$count_item" || ok=false
+  assert_contains "count-stable item carries the selector test phrase" "$base" "referred to by its selector" || ok=false
+  local pin_tmp
+  pin_tmp="$(mktemp -d)"
+  sed -n '/^ *- \*\*Ambiguity \/ under-specification\*\*/p' "$base" > "$pin_tmp/ambiguity.txt"
+  assert_contains_re "Ambiguity bullet line was extracted" "$pin_tmp/ambiguity.txt" 'Ambiguity / under-specification' || ok=false
+  assert_not_contains_re "Ambiguity bullet drops the count-stable sub-clause" "$pin_tmp/ambiguity.txt" 'count-stable' || ok=false
+  # Item 6's own span, not the whole checklist: from the Content lens line
+  # through the next top-level numbered lens line or the closing tag. This is
+  # what fails when the item lands under another lens or as a seventh lens.
+  awk '
+    /^6\. \*\*Content lens\.\*\*/ { inside = 1; print; next }
+    inside && /^[0-9]+\. \*\*/ { exit }
+    inside && /^<\/readiness_checklist>/ { exit }
+    inside { print }
+  ' "$base" > "$pin_tmp/content_lens.txt"
+  assert_contains_re "count-stable item is an indented sub-bullet inside item 6's span" "$pin_tmp/content_lens.txt" '^   - \*\*Count-stable references\*\*' || ok=false
+  rm -rf "$pin_tmp"
+  assert_contains "gate template names each content-lens item as the base checklist names it" "$gate" "<one line per content-lens item, named as the base checklist names it>" || ok=false
   assert_contains "dry run looks for frozen counts" "$dryrun" "a set named by a frozen count or a snapshot list of its current members" || ok=false
   assert_contains "a refuted citation blocks by definition" "$gate" "A supplied refuted-citation entry blocks by definition under the refuted-citation rule below" || ok=false
   # A scoped ready keeps a checkable claim for every prior blocking issue it clears.

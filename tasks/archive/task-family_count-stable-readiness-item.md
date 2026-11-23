@@ -2,9 +2,11 @@
 description: "Give the count-stable rule its own readiness-checklist item so every readiness surface tests it explicitly, and prove the adjacent-enumeration form the current eval misses."
 scope: plugins/ai_dev/skills/task
 created: 2026-11-17T15:56:41Z
-updated: 2026-11-18T16:37:10Z
-status: ready
+updated: 2026-11-23T10:26:07Z
+status: finished
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Give the count-stable rule its own readiness-checklist item

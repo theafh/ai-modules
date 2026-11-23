@@ -5,10 +5,10 @@
 #   1. A frozen mutable-set count — "all 3 plugin manifests under
 #      `plugins/*/plugin.json`". The sandbox really does hold three manifests,
 #      so the number matches today and the Premise check clears it; it rots the
-#      moment a fourth plugin lands. The <readiness_checklist> Ambiguity /
-#      under-specification lens must flag it against the count-stable rule, with
-#      the selector rewrite ("every plugin manifest under `plugins/*/plugin.json`")
-#      as the minimum fix.
+#      moment a fourth plugin lands. The <readiness_checklist> **Count-stable
+#      references** content-lens item must flag it against the count-stable
+#      rule, with the selector rewrite ("every plugin manifest under
+#      `plugins/*/plugin.json`") as the minimum fix.
 #   2. A legal measurement-protocol count — the "5 runs over the fixed
 #      denominator of 6 seeded fixture manifests" Acceptance item, whose run
 #      count, fixed denominator, and baseline the count-stable rule keeps legal

@@ -1368,11 +1368,53 @@ case "$eval_id" in
     check "read-only stamp: the measurement-protocol item is preserved"     measurement_item_preserved
     check "read-only stamp: the body is byte-identical to the seed"         body_unchanged "$rel"
     check "the task still lints clean"                                     lint_no_blocking
-    note_agent_attest "a numbered Ambiguity / under-specification issue flags 'all 3 plugin manifests under plugins/*/plugin.json' against the base <markdown_policy> count-stable rule, naming the mutable set the count freezes"
+    note_agent_attest "a numbered **Count-stable references** issue flags 'all 3 plugin manifests under plugins/*/plugin.json' against the base <markdown_policy> count-stable rule, naming the mutable set the count freezes"
     note_agent_attest "the minimum fix is the selector rewrite — every plugin manifest under plugins/*/plugin.json — rather than refreshing the number"
     note_agent_attest "the finding cites the base count-stable rule rather than restating it in a sibling copy"
     note_agent_attest "the measurement Acceptance item (5 runs over the fixed denominator of 6 seeded fixture manifests) draws NO count-stable finding — its run count and fixed denominator are subject matter the rule keeps legal"
     note_agent_attest "both verdicts appear in one report: the frozen mutable-set count flagged, the measurement-protocol quantity left unflagged"
+    note_agent_attest "the count-stable finding is the ONLY blocking issue, so the checked stamp above is attributable to this rule alone (the fixture pairs every other promise with its own Acceptance item)"
+    ;;
+
+  check_count_stable_enumeration)
+    rel="tasks/build_manifest-enumeration.md"
+    f="$proj/$rel"
+    status_checked() { [[ "$(fm_field "$f" status)" == "checked" ]]; }
+    # The seed wraps both phrases across lines, so match against a
+    # whitespace-normalised copy rather than a single physical line.
+    unwrapped() { tr '\n' ' ' < "$f" | tr -s ' '; }
+    frozen_enumeration_preserved() { unwrapped | grep -Fq 'the three plugin manifests under'; }
+    enumeration_members_preserved() {
+      unwrapped | grep -Fq 'plugins/alpha/plugin.json' \
+        && unwrapped | grep -Fq 'plugins/beta/plugin.json' \
+        && unwrapped | grep -Fq 'plugins/gamma/plugin.json'
+    }
+    measurement_item_preserved() { unwrapped | grep -Fq 'fixed denominator of 6 seeded fixture manifests'; }
+    three_manifests_seeded() {
+      local m=( "$proj"/plugins/*/plugin.json )
+      [[ ${#m[@]} -eq 3 && -f "${m[0]}" ]]
+    }
+    no_charter() { [[ ! -e "$proj/CHARTER.md" ]]; }
+    check "status stamped checked for the count-stable finding"            status_checked
+    check "fixture sanity: exactly 3 plugin manifests, so the enumeration is true today" three_manifests_seeded
+    check "fixture sanity: no CHARTER.md (ordinary standing-rule path)"     no_charter
+    check "read-only stamp: the frozen-enumeration phrase is preserved"     frozen_enumeration_preserved
+    check "read-only stamp: the enumerated member list is preserved"        enumeration_members_preserved
+    check "read-only stamp: the measurement-protocol item is preserved"     measurement_item_preserved
+    check "read-only stamp: the body is byte-identical to the seed"         body_unchanged "$rel"
+    check "the task still lints clean"                                     lint_no_blocking
+    # The two graded claims that must fail when the model raises no count-stable
+    # issue or proposes no selector rewrite. The number marker pins the finding
+    # to a numbered issue rather than a passing mention; the rewrite check
+    # requires the selector phrasing, not a refreshed member list.
+    check "the response raises a numbered count-stable issue" \
+      resp_has '([0-9]+[.)]|issue[[:space:]]*[0-9]+).{0,120}(frozen|freez|count-stable|count stable|enumeration|mutable set)'
+    check "the response names the selector rewrite as the minimum fix" \
+      resp_has '(every|each|all) plugin manifests? (under|matching)|(plugins/\*/plugin\.json).{0,200}(selector|glob|instead|replace|rewrite)'
+    note_agent_attest "the numbered issue names the enumeration snapshot 'the three plugin manifests ... plugins/alpha/plugin.json, plugins/beta/plugin.json, plugins/gamma/plugin.json' against the base <markdown_policy> count-stable rule"
+    note_agent_attest "the finding cites the base count-stable rule rather than restating it in a sibling copy"
+    note_agent_attest "the measurement Acceptance item (5 runs over the fixed denominator of 6 seeded fixture manifests) draws NO count-stable finding — its run count and fixed denominator are subject matter the rule keeps legal"
+    note_agent_attest "both verdicts appear in one report: the frozen enumeration snapshot flagged, the measurement-protocol quantity left unflagged"
     note_agent_attest "the count-stable finding is the ONLY blocking issue, so the checked stamp above is attributable to this rule alone (the fixture pairs every other promise with its own Acceptance item)"
     ;;
 
