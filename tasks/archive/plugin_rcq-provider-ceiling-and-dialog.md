@@ -2,8 +2,8 @@
 description: "Make a saved provider maximum the new ceiling in the request-concurrency-queue store, and expose provider add/remove in the config dialog the README already documents."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T17:57:34Z
-status: implemented
+updated: 2026-11-23T18:07:48Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: "Andreas Hoffmann"
 design-extended: true
@@ -34,9 +34,9 @@ README's "Configuring from the window" section states that adding or removing a 
 
 Verified by reading the code above and by a store reproduction: after `applyConfig` from `8` to `4`, `limit.maxConcurrency` is 8, `scheduler.maxConcurrency` is 4, `snapshotOf(...).ceiling` is 8, and `store.fingerprint` is `acme=8`. Baseline: `bun test` and `bunx tsc --noEmit` pass in the package.
 
-The archived task [config validation and save](archive/plugin_rcq-config-validation-and-save.md) changes `applyConfig` so in-place edits apply before a provider-set change reports `restartRequired`. That change supersedes the early return; this task builds on the post-change behaviour and must not restore it.
+The archived task [config validation and save](plugin_rcq-config-validation-and-save.md) changes `applyConfig` so in-place edits apply before a provider-set change reports `restartRequired`. That change supersedes the early return; this task builds on the post-change behaviour and must not restore it.
 
-The archived task [live config reporting](archive/plugin_rcq-live-config-reporting.md) also edits `src/gui.tsx`, `test/panel.test.ts`, and `configSnapshot`, and its Subagents-section extraction shares `ConfigForm`'s composition site with this task's loaded-form split. It has landed: `configSnapshot` now reports the store's settings, `saveConfig` merges the file's token entries the store does not cover into a file-only map, and `SubagentsSection` is an exported component.
+The archived task [live config reporting](plugin_rcq-live-config-reporting.md) also edits `src/gui.tsx`, `test/panel.test.ts`, and `configSnapshot`, and its Subagents-section extraction shares `ConfigForm`'s composition site with this task's loaded-form split. It has landed: `configSnapshot` now reports the store's settings, `saveConfig` merges the file's token entries the store does not cover into a file-only map, and `SubagentsSection` is an exported component.
 
 That landed merge runs on every save, so it now defeats this task's provider removal at the persistence layer: with `beta` removed from `input.providers` and `input.tokens`, `saveConfig` returns `restartRequired: true`, writes `providers {acme: 2}`, and restores `tokens.beta` from the file. Scope the merge so a removed provider's budget is not written back — for example, merge only entries whose provider is still in the saved provider set — and prove the removal drops both the maximum and the token entry, while the ungated-provider preservation the sibling task added still holds.
 

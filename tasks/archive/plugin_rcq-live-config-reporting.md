@@ -51,7 +51,7 @@ Verified by reading the code above; the review that produced this task recorded 
 - Keep `configSnapshot`'s `fileConfig` parameter and the `currentFileConfig()` re-read: the provider-ceiling-and-dialog task uses that input for the file-sourced provider set. Only the `tokens`, `scheduler`, and `subagents.hostAware` reads move to the store.
 - Rewrite the superseded `test/config.test.ts` case against a store-sourced budget.
 
-**Out of scope:** Adding provider add/remove controls to the dialog (owned by the sibling task [provider ceiling and dialog](../plugin_rcq-provider-ceiling-and-dialog.md), which owns the wider loaded-form split for the provider rows), and changing the config-file schema.
+**Out of scope:** Adding provider add/remove controls to the dialog (owned by the sibling task [provider ceiling and dialog](plugin_rcq-provider-ceiling-and-dialog.md), which owns the wider loaded-form split for the provider rows), and changing the config-file schema.
 
 ## Acceptance
 
