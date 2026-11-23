@@ -2,9 +2,11 @@
 description: "Reset the request-concurrency-queue token cursor when a compaction rewrites the transcript, so the first post-compaction primary request is charged its real new context."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T11:04:36Z
-status: ready
+updated: 2026-11-23T19:23:40Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Charge the real context after a compaction

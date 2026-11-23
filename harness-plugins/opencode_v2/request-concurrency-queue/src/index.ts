@@ -199,6 +199,11 @@ export default Plugin.define({
     // budget meters. Counting bytes while streaming the body avoids buffering a
     // multi-megabyte request just to size it.
     const bodyMeasure = new Map<string, BodyMeasure>()
+    // How many times a compaction has rewritten each session's transcript. A
+    // primary captures this number when it estimates and compares it when it is
+    // admitted: a mismatch means a compaction reset the cursor while the primary
+    // waited, so its pre-compaction body must not be written back over the reset.
+    const resetGeneration = new Map<string, number>()
     // Every attempt recorded per session and provider, oldest first, consumed
     // newest-first by the retry hook.
     const attempts = new Map<string, Map<string, Attempt[]>>()
@@ -342,7 +347,10 @@ export default Plugin.define({
       // The body cursor must survive a turn boundary. Deleting it on idle made
       // the next request charge its whole body as new tokens instead of the
       // delta, draining the budget every turn.
-      if (reason === "session.deleted" || reason === "dispose") bodyMeasure.delete(sessionID)
+      if (reason === "session.deleted" || reason === "dispose") {
+        bodyMeasure.delete(sessionID)
+        resetGeneration.delete(sessionID)
+      }
       // A waiting request is not in `bySession` until it holds a slot, so it
       // must be cancelled here or it is dispatched later for a session that
       // has already ended.
@@ -373,9 +381,9 @@ export default Plugin.define({
 
     /**
      * Sizes one request on both admission dimensions without buffering a small
-     * body. The difference from the same session's previous admitted request is
-     * this turn's new context, and the total is what the request occupies in
-     * flight.
+     * body. For a primary request the difference from the same session's
+     * previous admitted request is this turn's new context, and the total is
+     * what the request occupies in flight.
      *
      * Base64 image bytes are not text tokens: charging them at the text rate
      * made one screenshot look like hundreds of thousands of new tokens and
@@ -393,23 +401,31 @@ export default Plugin.define({
      * decoded and parsed once. A declared length at or below the threshold is
      * used as-is, without a scan.
      *
-     * An auxiliary request is charged its whole prompt (`fresh`): compaction
-     * rewrites the transcript into a new prompt that no longer shares the
-     * primary request's cached prefix, so its size is genuinely new context.
-     * The cursor is not moved for it, so the next primary request's delta still
-     * measures against the conversation it continues.
+     * A compaction rewrites the transcript into a new prompt that no longer
+     * shares the primary request's cached prefix, so it is charged its whole
+     * prompt and, once admitted, clears the session's body cursor and bumps its
+     * reset generation: the next primary request has no previous body to measure
+     * against and is charged its whole prompt too. A title or generate request
+     * carries its own small prompt and does not represent the conversation, so
+     * it is charged its whole prompt and leaves the cursor where it is.
      *
      * The cursor moves only when the request is admitted, so a request that
-     * dies in the queue cannot make the next turn look smaller than it is.
+     * dies in the queue cannot make the next turn look smaller than it is. A
+     * primary captures the reset generation when it estimates and skips the
+     * commit when that generation has moved by admission time: a primary that
+     * queued across a compaction must not write its pre-compaction body over the
+     * reset the compaction performed.
      */
     const estimateRequestCost = async (
       request: Request,
       sessionID: string,
       safetyFactor: number,
-      fresh = false,
+      kind: RequestKind,
     ): Promise<CostEstimate> => {
       const measured = await measureBody(request, log)
-      const previous = fresh ? { textBytes: 0, images: 0 } : (bodyMeasure.get(sessionID) ?? { textBytes: 0, images: 0 })
+      const baseline = kind === "primary" ? bodyMeasure.get(sessionID) : undefined
+      const previous = baseline ?? { textBytes: 0, images: 0 }
+      const generation = resetGeneration.get(sessionID) ?? 0
       const newText = Math.max(0, measured.textBytes - previous.textBytes)
       const newImages = Math.max(0, measured.images - previous.images)
       return {
@@ -420,7 +436,14 @@ export default Plugin.define({
             estimateTokens(measured.textBytes, safetyFactor) + measured.images * IMAGE_TOKENS,
         },
         commit: () => {
-          if (!fresh) bodyMeasure.set(sessionID, measured)
+          if (kind === "compaction") {
+            bodyMeasure.delete(sessionID)
+            resetGeneration.set(sessionID, (resetGeneration.get(sessionID) ?? 0) + 1)
+            return
+          }
+          if (kind !== "primary") return
+          if ((resetGeneration.get(sessionID) ?? 0) !== generation) return
+          bodyMeasure.set(sessionID, measured)
         },
       }
     }
@@ -442,7 +465,7 @@ export default Plugin.define({
             event.request,
             event.sessionID,
             limit.scheduler.budgetSafetyFactor,
-            event.kind !== "primary",
+            event.kind,
           )
         : undefined
       const cost = estimate?.cost ?? { newTokens: 0, contextTokens: 0 }

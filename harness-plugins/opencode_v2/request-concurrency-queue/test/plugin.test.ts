@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import plugin, { configSnapshot, loadConfigFile, resolveProviderLimits, saveConfig } from "../src/index.js"
@@ -2167,6 +2167,157 @@ describe("token cursor lifetime", () => {
     expect(afterFirst - afterSecond).toBe(100)
 
     await cleanup()
+  })
+})
+
+describe("token accounting across a compaction", () => {
+  /** The provider's whole-token allowance, as the status snapshot reports it. */
+  async function available(rpc: TestRpc): Promise<number> {
+    return (await statusSnapshot(rpc)).providers[0].tokensAvailable
+  }
+
+  test("the first primary after a compaction is charged its whole body", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 2,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 100_000, refillPerMinute: 1 } },
+    })
+
+    // 700 bytes is 200 tokens; 350 bytes is 100.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a", 700))
+    const afterPrimary = await available(rpc)
+    expect(afterPrimary).toBe(99_800)
+
+    await requestHook(hooks, "a", bodyRequest("https://example.test/compact", 350), "acme", "compaction")
+    const afterCompaction = await available(rpc)
+    expect(afterPrimary - afterCompaction).toBe(100)
+
+    // The post-compaction body is smaller than the pre-compaction one. Measured
+    // against the old cursor the delta would be zero; the reset charges all 100.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a2", 350))
+    const afterSecond = await available(rpc)
+    expect(afterCompaction - afterSecond).toBe(100)
+
+    await cleanup()
+  })
+
+  test("a compaction is charged its whole prompt, not a delta", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 2,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 100_000, refillPerMinute: 1 } },
+    })
+
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a", 700))
+    const afterPrimary = await available(rpc)
+
+    // 1050 bytes is 300 tokens. Charged against the 700-byte cursor the delta
+    // would be 100; the zero baseline the compaction keeps charges all 300.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/compact", 1050), "acme", "compaction")
+    const afterCompaction = await available(rpc)
+    expect(afterPrimary - afterCompaction).toBe(300)
+
+    await cleanup()
+  })
+
+  test("a title request leaves the cursor so the next primary is charged its delta", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 2,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 100_000, refillPerMinute: 1 } },
+    })
+
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a", 700))
+    const afterPrimary = await available(rpc)
+
+    // The title's own 350-byte prompt is new context in full.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/title", 350), "acme", "title")
+    const afterTitle = await available(rpc)
+    expect(afterPrimary - afterTitle).toBe(100)
+
+    // 1050 bytes against the 700-byte primary cursor is a 350-byte delta: 100
+    // tokens. A cleared cursor would charge all 300.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a2", 1050))
+    const afterSecond = await available(rpc)
+    expect(afterTitle - afterSecond).toBe(100)
+
+    await cleanup()
+  })
+
+  test("a generate request leaves the cursor so the next primary is charged its delta", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 2,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 100_000, refillPerMinute: 1 } },
+    })
+
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a", 700))
+    const afterPrimary = await available(rpc)
+
+    await requestHook(hooks, "a", bodyRequest("https://example.test/generate", 350), "acme", "generate")
+    const afterGenerate = await available(rpc)
+    expect(afterPrimary - afterGenerate).toBe(100)
+
+    // 1050 bytes against the 700-byte primary cursor is a 350-byte delta: 100
+    // tokens. A cleared cursor would charge all 300.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/a2", 1050))
+    const afterSecond = await available(rpc)
+    expect(afterGenerate - afterSecond).toBe(100)
+
+    await cleanup()
+  })
+
+  test("a primary queued across a compaction does not re-write the cursor", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 1,
+      providers: ["acme"],
+      tokens: { acme: { capacity: 100_000, refillPerMinute: 1 } },
+    })
+
+    // The first primary holds the only slot, so the second one queues.
+    const first = bodyRequest("https://example.test/first", 700)
+    await requestHook(hooks, "a", first)
+
+    let secondAdmitted = false
+    const secondRequest = bodyRequest("https://example.test/second", 350)
+    const second = requestHook(hooks, "a", secondRequest).then(() => {
+      secondAdmitted = true
+    })
+    await tick()
+    expect(secondAdmitted).toBe(false)
+
+    // The compaction is admitted budget-only while that primary waits, and it
+    // resets the cursor the waiting primary measured against.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/compact", 350), "acme", "compaction")
+    const afterCompaction = await available(rpc)
+
+    const firstResponse = await responseHook(hooks, "a", first, "first-body")
+    await firstResponse.text()
+    await second
+    expect(secondAdmitted).toBe(true)
+    // Its pre-compaction estimate found no new bytes, so admission charges none.
+    expect(await available(rpc)).toBe(afterCompaction)
+
+    const secondResponse = await responseHook(hooks, "a", secondRequest, "second-body")
+    await secondResponse.text()
+
+    // The admitted primary must not have written its pre-compaction 350 bytes
+    // back over the reset: the primary after it is charged its whole body
+    // instead of a zero delta against that stale cursor.
+    await requestHook(hooks, "a", bodyRequest("https://example.test/third", 350))
+    const afterThird = await available(rpc)
+    expect(afterCompaction - afterThird).toBe(100)
+
+    await cleanup()
+  })
+
+  test("the session-deleted branch drops the reset generation with the cursor", () => {
+    const source = readFileSync(join(import.meta.dir, "..", "src", "index.ts"), "utf8")
+    const start = source.indexOf('if (reason === "session.deleted" || reason === "dispose")')
+    expect(start).toBeGreaterThan(-1)
+    const branch = source.slice(start, source.indexOf("}", start) + 1)
+    expect(branch).toContain("bodyMeasure.delete(sessionID)")
+    expect(branch).toContain("resetGeneration.delete(sessionID)")
   })
 })
 
