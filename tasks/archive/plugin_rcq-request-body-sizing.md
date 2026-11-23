@@ -2,8 +2,8 @@
 description: "Rebuild request-concurrency-queue's cheap request-body measurement by counting streamed UTF-8 bytes, keeping image detection, and parsing only when a body may carry an image."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T18:48:55Z
-status: implemented
+updated: 2026-11-23T19:02:28Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
