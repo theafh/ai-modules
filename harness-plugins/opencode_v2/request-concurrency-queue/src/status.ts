@@ -16,8 +16,16 @@ export interface ProviderRow {
   readonly max: number
   /** The configured maximum that adaptive control never exceeds. */
   readonly ceiling: number
-  /** Active plus queued, the bar's combined load count. */
+  /** Distinct sessions holding a slot right now. */
+  readonly sessions: number
+  /** Active plus queued, the dialog's combined load count. */
   readonly total: number
+  /** `active/max`, the bar's in-flight slot count. */
+  readonly slotLabel: string
+  /** `+queued` when anything waits, otherwise an empty string. */
+  readonly queueLabel: string
+  /** The bar item's tooltip: slot use, session count, waiters, and tokens. */
+  readonly title: string
   /** Utilization as a whole-percent string, e.g. `50%`. */
   readonly utilization: string
   /** Demand as a whole-percent string, e.g. `75%`. */
@@ -128,13 +136,19 @@ export const DEFAULT_REFETCH_INTERVAL_MS = 5000
 /** Turns one provider's snapshot record into its rendered row. */
 export function providerRow(provider: ProviderStatus): ProviderRow {
   const tokens = provider.tokensCapacity
+  const gates = blockedLabel(provider.blocked)
+  const sessions = provider.sessions ?? 0
   return {
     providerID: provider.providerID,
     active: provider.active,
     queued: provider.queued,
     max: provider.max,
     ceiling: provider.ceiling,
+    sessions,
     total: provider.active + provider.queued,
+    slotLabel: `${provider.active}/${provider.max}`,
+    queueLabel: provider.queued > 0 ? `+${provider.queued}` : "",
+    title: barTitle(provider, sessions, gates),
     utilization: percent(provider.utilization),
     demand: percent(provider.demand),
     utilizationColor: loadColor(provider.utilization * 100),
@@ -150,6 +164,24 @@ export function providerRow(provider: ProviderStatus): ProviderRow {
         : `${formatTokens(provider.tokensAvailable)} / ${formatTokens(tokens)}`,
     tokensColor: tokens === 0 ? "" : loadColor((provider.tokensAvailable / tokens) * 100),
   }
+}
+
+/**
+ * The bar item's tooltip. It names the in-flight requests, how many sessions
+ * they come from, what waits behind them, and the provider's token allowance,
+ * so a count that spans the whole server process explains itself.
+ */
+function barTitle(provider: ProviderStatus, sessions: number, gates: string): string {
+  const sessionLabel = sessions === 1 ? "1 session" : `${sessions} sessions`
+  const waiting =
+    provider.queued > 0
+      ? ` · ${provider.queued} waiting${gates === "" ? "" : ` on ${gates}`}`
+      : ""
+  const tokens =
+    provider.tokensCapacity > 0
+      ? ` · ${formatTokens(provider.tokensAvailable)} new-context tokens`
+      : ""
+  return `${provider.active} of ${provider.max} slots in use by ${sessionLabel}${waiting}${tokens}`
 }
 
 /** A compact label naming the gates that hold waiting requests back. */

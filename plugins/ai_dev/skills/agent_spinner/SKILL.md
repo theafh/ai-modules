@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.40
+version: 1.0.41
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -57,7 +57,7 @@ Set a checker's depth at or above its producer's, state rigour as behaviour wher
 <selector>
 Match weight first.
 
-- Many artifacts each judged on its own, enumerated by the ask or by the resolver and in any mood, read-only included: per-artifact fan-out.
+- Many artifacts each judged on its own, enumerated by the ask or by the resolver and in any mood, read-only included (the resolver is the repository's own artifact that produces the artifact list): per-artifact fan-out.
 - One text needing several angles, not different kinds of source: a lens panel.
 - A write that lands, whoever wrote it, you included: a paired refute-by-default check.
 - A closed comparison among candidates: a judge panel.
@@ -65,7 +65,7 @@ Match weight first.
 - A tree of writes: a single-writer validator after writers.
 - A disputed figure or claim settled by an edit: a two-refuter settlement check.
 
-A read-only diagnostic is one artifact or one mechanism, answered from the orchestrator's own reads before any helper is spent, and it takes no recipe, naming a fuller shape's checks; a single judgement question about a mechanism not yet built reads the same way. A read-only ask that combines rows is the exception to that rule: it keeps the smallest shape that covers it, named as the smallest covering one, and takes no recipe. An ask no single row covers, or one combining rows, gets the smallest shape that covers it, named as the smallest covering one, answered visibly rather than folded into a nearby row, and takes no recipe. A shape match matches the recipe table, whose matched recipe is the procedure; with no recipe it runs from the body. Name what matched, or nothing, in the opening. Read `references/variants.md` for isolation, unreduced draws, blind derivation, balanced challenge, calibration controls, and hypothesis readings.
+A read-only diagnostic is one artifact or one mechanism, answered from the orchestrator's own reads before any helper is spent, and it takes no recipe, naming a fuller shape's checks; a single judgement question about a mechanism not yet built reads the same way. An ask no single row covers, or one combining rows — a read-only ask that combines rows included — gets the smallest shape that covers it, named as the smallest covering one, answered visibly rather than folded into a nearby row, and takes no recipe. A shape match matches the recipe table, whose matched recipe is the procedure; with no recipe it runs from the body. Name what matched, or nothing, in the opening. Read `references/variants.md` for isolation, unreduced draws, blind derivation, balanced challenge, calibration controls, and hypothesis readings.
 
 A challenged built design routes to its recipe row ahead of the paired-check bullet: the design carries no accepted producer return to paste, and the recipe's Refute phase supplies the adversarial read.
 
@@ -86,7 +86,7 @@ A challenged built design routes to its recipe row ahead of the paired-check bul
 Each shape's skeleton and return are templates in `references/role-prompts.md`.
 
 <per_artifact_fan_out>
-**Trigger** many artifacts each judged on its own, enumerated by the ask or by the resolver and in any mood, read-only included. **Width** one helper per ledger row, one path per row. **Prompt skeleton** the producing template with the item's kind note. **Return** the producing return.
+**Trigger** many artifacts each judged on its own, enumerated by the ask or by the resolver and in any mood, read-only included (the resolver is the repository's own artifact that produces the artifact list). **Width** one helper per ledger row, one path per row. **Prompt skeleton** the producing template with the item's kind note. **Return** the producing return.
 </per_artifact_fan_out>
 
 <lens_panel>

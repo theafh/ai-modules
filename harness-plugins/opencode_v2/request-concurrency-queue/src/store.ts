@@ -369,13 +369,15 @@ export function snapshotOf(store: Store): StatusSnapshot {
     const max = limit.scheduler.maxConcurrency
     const tokens = limit.scheduler.budgetSnapshot
     const context = limit.scheduler.status()
-    for (const sessionID of limit.scheduler.activeSessionIDs()) calling.add(sessionID)
+    const activeSessions = limit.scheduler.activeSessionIDs()
+    for (const sessionID of activeSessions) calling.add(sessionID)
     return {
       providerID,
       active,
       queued,
       max,
       ceiling: limit.maxConcurrency,
+      sessions: activeSessions.size,
       utilization: max === 0 ? 0 : active / max,
       demand: max === 0 ? 0 : (active + queued) / max,
       tokensAvailable: tokens?.available ?? 0,

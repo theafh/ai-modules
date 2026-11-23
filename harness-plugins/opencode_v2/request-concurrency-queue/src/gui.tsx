@@ -80,7 +80,9 @@ export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
                 </span>
                 <span
                   class="request-concurrency-status-active"
-                  title={`${row.active} of ${row.max} slots in use`}
+                  title={`${row.active} of ${row.max} slots in use by ${row.sessions} ${
+                    row.sessions === 1 ? "session" : "sessions"
+                  }`}
                 >
                   <span style={{ color: row.utilizationColor }}>{row.active}</span>
                   <span class="request-concurrency-status-max">{` / ${row.max}`}</span>
@@ -529,13 +531,21 @@ export function StatusBarBody(props: { snapshot: StatusSnapshot | null; onOpen: 
                 <span class="request-concurrency-bar-item">
                   <span class="request-concurrency-bar-provider">{row.providerID}</span>
                   <span
-                    style={{ color: row.demandColor }}
-                    title={`${row.total} of ${row.max} slots in demand${
-                      row.tokensCapacity > 0 ? ` · ${row.tokensAvailable} new-context tokens` : ""
-                    }${row.blockedLabel === "" ? "" : ` · waiting on ${row.blockedLabel}`}`}
+                    class="request-concurrency-bar-slots"
+                    style={{ color: row.utilizationColor }}
+                    title={row.title}
                   >
-                    {`${row.total}/${row.max}`}
+                    {row.slotLabel}
                   </span>
+                  <Show when={row.queued > 0}>
+                    <span
+                      class="request-concurrency-bar-queue"
+                      style={{ color: row.demandColor }}
+                      title={row.title}
+                    >
+                      {row.queueLabel}
+                    </span>
+                  </Show>
                 </span>
               )}
             </For>

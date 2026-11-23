@@ -82,7 +82,7 @@ function transition(index: number, overrides: Partial<TransitionRecord> = {}): T
 
 function snapshot(transitions: TransitionRecord[] = []): StatusSnapshot {
   return {
-    providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
+    providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, sessions: 1, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
     transitions,
   }
 }
@@ -99,6 +99,7 @@ function providerSnapshot(provider: Partial<ProviderStatus> & Pick<ProviderStatu
         queued,
         max,
         ceiling: provider.ceiling ?? max,
+        sessions: provider.sessions ?? 0,
         utilization: max === 0 ? 0 : active / max,
         demand: max === 0 ? 0 : (active + queued) / max,
         tokensAvailable: provider.tokensAvailable ?? 0,
@@ -161,7 +162,7 @@ describe("concurrency status panel body", () => {
 
     expect(state.unavailable).toBe(false)
     expect(state.rows).toEqual([
-      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }),
+      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, sessions: 1, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }),
     ])
     expect(state.transitions).toEqual([])
   })
@@ -216,7 +217,7 @@ describe("concurrency status panel body", () => {
     expect(html.match(/request-concurrency-feed-row/g)).toHaveLength(PANEL_TRANSITION_LIMIT)
   })
 
-  test("renders the window-bottom bar with one combined load count per provider", () => {
+  test("renders the window-bottom bar with one in-flight slot count per provider", () => {
     const html = renderBar(snapshot())
 
     expect(html).toContain("request-concurrency-bar")
@@ -227,25 +228,30 @@ describe("concurrency status panel body", () => {
     expect(html).toMatch(/style="color:hsl\(/)
   })
 
-  test("shows active plus queued over max and colours it by the combined load", () => {
-    const overloaded = renderBar(providerSnapshot({ providerID: "acme", active: 8, queued: 4, max: 8 }))
+  test("shows in-flight slots over max and adds a separate queue badge", () => {
+    const overloaded = renderBar(
+      providerSnapshot({ providerID: "acme", active: 8, queued: 4, max: 8, sessions: 3 }),
+    )
 
-    expect(overloaded).toContain(">12/8<")
-    expect(overloaded.toLowerCase()).not.toContain("queued")
-    expect(overloaded).toContain("12 of 8 slots in demand")
-    expect(colorOfText(overloaded, "12/8")).toBe(loadColor(150))
-    expect(colorOfText(overloaded, "12/8")).toBe("hsl(60 85% 70%)")
+    expect(overloaded).toContain(">8/8<")
+    expect(overloaded).toContain(">+4<")
+    expect(overloaded).toContain("request-concurrency-bar-queue")
+    expect(overloaded).toContain("8 of 8 slots in use by 3 sessions · 4 waiting")
+    expect(colorOfText(overloaded, "8/8")).toBe(loadColor(100))
+    expect(colorOfText(overloaded, "+4")).toBe(loadColor(150))
 
     const full = renderBar(providerSnapshot({ providerID: "acme", active: 6, queued: 2, max: 8 }))
 
-    expect(full).toContain(">8/8<")
-    expect(colorOfText(full, "8/8")).toBe(loadColor(100))
-    expect(colorOfText(full, "8/8")).toBe("hsl(120 60% 60%)")
+    expect(full).toContain(">6/8<")
+    expect(full).toContain(">+2<")
+    expect(colorOfText(full, "6/8")).toBe(loadColor(75))
+    expect(colorOfText(full, "+2")).toBe(loadColor(100))
   })
 
-  test("drops the queued segment and its separator from a provider item", () => {
+  test("drops the queue badge from a provider item when nothing waits", () => {
     const html = renderBar(snapshot())
 
+    expect(html).not.toContain("request-concurrency-bar-queue")
     expect(html).not.toContain("request-concurrency-bar-sep")
     expect(html).not.toContain("·")
   })

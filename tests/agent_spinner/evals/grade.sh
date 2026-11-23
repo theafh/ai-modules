@@ -3048,7 +3048,7 @@ case "$eval_id" in
       check "names at least two excluded candidates with a reason each" \
         excluded_named_with_reason 2
       check "runs a checking pass" ran_a_checking_pass
-      check "the announcement names check-only-audit.md" announcement_has 'check-only-audit\.md'
+      check "the announcement names the check-only audit recipe" announcement_has 'check-only[- ]audit(\.md)?'
     else
       note_agent_attest "inline floor tier stated first; same phase plan and checking pass"
     fi
@@ -3072,7 +3072,7 @@ case "$eval_id" in
         named_in_announcement CHANGELOG index migrate
       check "gives a reason for the exclusions" \
         announcement_has 'generated|documents no command|removed|retired|history|not maintained'
-      check "the announcement names check-only-audit.md" announcement_has 'check-only-audit\.md'
+      check "the announcement names the check-only audit recipe" announcement_has 'check-only[- ]audit(\.md)?'
     else
       note_agent_attest "sequence, count, bound, five in and three out with reasons"
     fi
@@ -4312,7 +4312,7 @@ PY
       announcement_has 'context (estimate|load)|tokens'
     check "the announcement names the session boundary at a wave end" \
       announcement_has 'session boundary.{0,160}wave|wave.{0,160}session boundary'
-    check "the announcement names check-only-audit.md" announcement_has 'check-only-audit\.md'
+    check "the announcement names the check-only audit recipe" announcement_has 'check-only[- ]audit(\.md)?'
     ;;
 
   cross_model_checker_recorded)

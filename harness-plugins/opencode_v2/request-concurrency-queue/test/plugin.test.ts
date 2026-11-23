@@ -279,7 +279,7 @@ describe("request-concurrency-queue plugin", () => {
     const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
 
     expect(await statusSnapshot(rpc)).toEqual({
-      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
+      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, sessions: 0, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
       transitions: [],
     })
 
@@ -1039,7 +1039,7 @@ describe("process-wide store", () => {
       try {
         // The first instance's provider set and maximum stay authoritative.
         expect((await statusSnapshot(second.rpc)).providers).toEqual([
-          { providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 },
+          { providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, sessions: 0, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 },
         ])
         expect(messages.some((message) => message.includes("config mismatch"))).toBe(true)
       } finally {

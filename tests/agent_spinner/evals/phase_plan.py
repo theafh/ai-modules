@@ -8,7 +8,9 @@ than looking for any mention of a phase, so a single phase or five phases fail.
 A bulleted list, and a bare numbered list, counts only when a phase header or
 sentence introduces it, so an unrelated list of two to four items, such as the
 numbered checks a recipe has the announcement list, does not pass as a plan.
-A `Phase N:` line counts wherever it appears.
+A `Phase N:` line counts wherever it appears. An indented line that follows a
+numbered or bulleted item continues that item, so a wrapped item counts once
+and its name reads whole.
 
 Usage:
     python3 phase_plan.py <announcement-file>
@@ -45,6 +47,7 @@ def phase_names(text):
         re.I,
     )
     in_phase_section = False
+    last_was_item = False
     for line in text.splitlines():
         match = numbered.match(line)
         if match and (match.group(1) or in_phase_section):
@@ -52,16 +55,20 @@ def phase_names(text):
             if name:
                 names.append(name)
             in_phase_section = True
+            last_was_item = True
             continue
         match = listed.match(line) or prose.search(line)
         if match:
             names.extend(split_names(match.group(1)))
             in_phase_section = True
+            last_was_item = False
             continue
         if header.match(line) or intro.search(line):
             in_phase_section = True
+            last_was_item = False
             continue
         if numbered.match(line):
+            last_was_item = False
             continue
         match = bullet.match(line)
         if match:
@@ -69,9 +76,14 @@ def phase_names(text):
                 name = match.group(1).strip().strip(".").strip()
                 if name:
                     names.append(name)
+                    last_was_item = True
             continue
         if line.strip():
+            if last_was_item and names and line[:1].isspace():
+                names[-1] = names[-1] + " " + line.strip()
+                continue
             in_phase_section = False
+            last_was_item = False
     distinct = []
     for name in names:
         if name not in distinct:

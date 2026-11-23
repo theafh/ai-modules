@@ -233,6 +233,19 @@ export const PANEL_STYLE = `
   opacity: 0.7;
 }
 
+.request-concurrency-bar-slots,
+.request-concurrency-bar-queue {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.request-concurrency-bar-queue {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: rgba(127, 127, 127, 0.14);
+  font-size: 10px;
+}
+
 .request-concurrency-bar-muted {
   font-style: italic;
   opacity: 0.6;

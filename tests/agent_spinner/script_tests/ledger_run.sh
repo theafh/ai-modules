@@ -1845,6 +1845,7 @@ scenario_phase_count() {
     printf '%s\n' 'I will inspect the repository.' '- run the tests' '- read the docs' '- report back' > "$dir/unrelated-bullets.txt"
     printf '%s\n' 'This is one phase of the work.' '- alpha' '- beta' '- gamma' > "$dir/mention-bullets.txt"
     printf '%s\n' 'Phase plan (three phases):' '1. Review: read each page' '2. Verify: check each finding' '3. Report: one verdict' '' 'Checks the run makes, in order:' '1. Gate-scope check' '2. Class sweep' '3. Report' > "$dir/plan-then-checks.txt"
+    printf '%s\n' 'Phases:' '1. Survey the tree and' '   record each helper row' '2. Verify the returns' > "$dir/wrapped.txt"
     phase="$REPO_ROOT/tests/agent_spinner/evals/phase_plan.py"
     if "$PY" "$phase" "$dir/two.txt" >/dev/null 2>&1; then ok "phase count accepts two phases"; else bad "phase count accepts two phases"; fi
     if "$PY" "$phase" "$dir/four.txt" >/dev/null 2>&1; then ok "phase count accepts four phases"; else bad "phase count accepts four phases"; fi
@@ -1858,6 +1859,8 @@ scenario_phase_count() {
     if "$PY" "$phase" "$dir/mention-bullets.txt" >/dev/null 2>&1; then bad "phase count rejects a bare phase mention over a bullet list"; else ok "phase count rejects a bare phase mention over a bullet list"; fi
     plan_checks=$("$PY" "$phase" "$dir/plan-then-checks.txt" 2>/dev/null)
     if printf '%s\n' "$plan_checks" | grep -q 'phases: 3'; then ok "phase count ignores a numbered checks list after a three-phase plan"; else bad "phase count ignores a numbered checks list after a three-phase plan"; fi
+    wrapped=$("$PY" "$phase" "$dir/wrapped.txt" 2>/dev/null)
+    if printf '%s\n' "$wrapped" | grep -q 'phases: 2' && printf '%s\n' "$wrapped" | grep -q 'Survey the tree and record each helper row'; then ok "phase count reads a wrapped numbered item as one phase"; else bad "phase count reads a wrapped numbered item as one phase"; fi
 }
 
 scenario_exclude_prune() {

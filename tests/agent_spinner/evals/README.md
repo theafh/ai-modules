@@ -1128,8 +1128,8 @@ references. `--timeout 1800` replaced the 900-second default, which had left
 
 `inline_floor`, `phase_plan_announcement`, and
 `wide_run_plans_session_boundary` each pass
-`the announcement names check-only-audit.md`, so the recipe route is proven in
-all three. `probe_definitions_no_spawn` passes its reworded
+`the announcement names the check-only audit recipe`, so the recipe route is
+proven in all three. `probe_definitions_no_spawn` passes its reworded
 `names on-disk definitions as no evidence of callability, which only the spawn
 surface establishes` check after `<capability_probe>` gained the sentence the
 check grades.
@@ -1142,7 +1142,9 @@ Two failures were re-run and cleared, and neither is caused by this change:
   list whose items wrapped, and `phase_plan.py` closes the phase section at a
   continuation line, so it counted one phase. `<phase_plan>` is untouched by
   this change and the re-run states the same two phases unwrapped, which
-  counts two. The helper's wrap sensitivity predates this task.
+  counts two. The helper's wrap sensitivity predated this task and is fixed
+  separately: `phase_plan.py` now reads an indented continuation line as part
+  of the item above it, so a wrapped numbered item counts once.
 - `wide_run_plans_session_boundary` failed `the announcement names the session
   boundary at a wave end` in `run-20261122-225923`, because it said "session
   boundaries at wave ends past half window" in the plural and named no
@@ -1151,7 +1153,8 @@ Two failures were re-run and cleared, and neither is caused by this change:
 
 `shape_matched_no_recipe` keeps a fail on three checks that this change does
 not reach: `the roster holds five writer rows`, `five writer briefs exist`, and
-`each writer brief names one distinct page`. Both runs repaired two notes whose
+`each writer brief names one distinct page`. The two completed runs
+`run-20261122-225923` and `run-20261122-234103` each repaired two notes whose
 checkers refuted them, and the shared `writer_row_count_is` and
 `writer_brief_files` helpers count every producing row and brief, repair and
 recheck rows included, so a legitimate repair round reads as more than five

@@ -19,6 +19,8 @@ export interface ProviderStatus {
   readonly max: number
   /** The configured maximum that adaptive control never exceeds. */
   readonly ceiling: number
+  /** Distinct sessions holding a slot right now. */
+  readonly sessions?: number
   /** `active / max`, as a number from 0 to 1; 0 when `max` is 0. */
   readonly utilization: number
   /** `(active + queued) / max`, an unbounded load factor; 0 when `max` is 0. */
@@ -131,6 +133,7 @@ const providerStatusSchema = {
     queued: { type: "integer", minimum: 0 },
     max: { type: "integer", minimum: 0 },
     ceiling: { type: "integer", minimum: 0 },
+    sessions: { type: "integer", minimum: 0 },
     utilization: { type: "number", minimum: 0, maximum: 1 },
     demand: { type: "number", minimum: 0 },
     tokensAvailable: { type: "integer", minimum: 0 },

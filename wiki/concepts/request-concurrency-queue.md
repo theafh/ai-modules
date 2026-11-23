@@ -1,11 +1,11 @@
 ---
 title: Request concurrency queue
 created: 2026-11-05
-updated: 2026-11-21
+updated: 2026-11-23
 type: concept
 tags: [opencode, plugin, deployment]
 confidence: high
-checked: 2026-11-21
+checked: 2026-11-23
 ---
 
 # Request concurrency queue
@@ -118,8 +118,9 @@ The plugin serves a status snapshot over the shared
 that back the Concurrency dialog. Every location's handler reads the
 process-wide registry, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `active`,
-`queued`, `max`, utilization (`active / max`), and demand
-(`(active + queued) / max`). Providers with no configured limit do not appear.
+`queued`, `max`, `sessions` (distinct sessions holding a slot right now),
+utilization (`active / max`), and demand (`(active + queued) / max`). Providers
+with no configured limit do not appear.
 It also carries a bounded buffer of recent transitions, oldest first, each with a
 timestamp, provider ID, kind (`acquired`, `queued`, `released`, `dequeued`),
 session ID, active count, and queued count. A release handoff records
@@ -134,10 +135,14 @@ window's bottom slot that shows the same per-provider state in every window,
 including Home, and opens a larger Concurrency dialog on click. It reads the
 built-in server because the queue is process-wide, and hides until the first
 fetch settles or when no provider is configured. Each provider appears on the
-bar as one `X/Y` count, where `X` is active plus queued and `Y` is the
-effective maximum that adaptive control may lower, and the count is coloured by
-`(active + queued) / max`; the configured ceiling is a separate field in the
-config tab. The bar's
+bar as its in-flight slot count `active/max`, plus a separate `+queued` badge
+only when something waits, where `max` is the effective maximum that adaptive
+control may lower; the slot count is coloured by `active / max` and the badge by
+`(active + queued) / max`. The bar's tooltip names how many distinct sessions
+hold those slots, what waits and on which gate, and the remaining new-context
+tokens. Because the queue is process-wide, the count includes every open
+location and any headless `opencode run` session attached to the same server.
+The configured ceiling is a separate field in the config tab. The bar's
 subscription refetches on every `changed` event and on a slow interval, so a
 missed event recovers, and the dialog renders that same snapshot: each provider
 row shows its in-flight count, effective maximum, and queue depth as absolute
@@ -146,8 +151,9 @@ on a load scale: dark green at 0%, light green at 100%, light
 yellow at 150%, orange at 200%, light red at 250%, dark red at 300%, dark pink
 at 350%, and magenta from 400% on, interpolated between those anchors and held
 at magenta above 400%. The active
-count and utilization follow the `active / max` load, while the combined count,
-queued count, and demand follow `(active + queued) / max`. Below the provider
+count and utilization follow the `active / max` load, while the queued count and
+demand follow `(active + queued) / max`. The active cell's tooltip names how
+many distinct sessions hold the slots. Below the provider
 rows, a compact monospace feed lists the recent transitions newest first with
 their timestamp, kind, provider, session, and counts; it renders a bounded
 newest-first list and scrolls. When a status fetch fails, the bar shows

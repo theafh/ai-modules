@@ -310,8 +310,9 @@ The plugin serves a read-only status snapshot over the shared
 `request-concurrency-queue` RPC definition. Every location's handler reads the
 same process-wide queue, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `providerID`,
-`active`, `queued`, `max`, utilization (`active / max`), and demand
-(`(active + queued) / max`). Providers with no configured limit do not appear.
+`active`, `queued`, `max`, `sessions` (distinct sessions holding a slot right
+now), utilization (`active / max`), and demand (`(active + queued) / max`).
+Providers with no configured limit do not appear.
 Each provider also carries `blocked`, the number of waiting requests held by each
 gate (`slots`, `context`, `budget`, `breaker`, `draining`), so a queue that does
 not drain says which dimension is short. `queued` includes auxiliary requests
@@ -334,14 +335,19 @@ model right now, so it is the number that agrees with the provider's `active`.
 The desktop GUI part ships as the prebuilt `./gui-experimental` bundle and adds
 a full-width status bar in the window's bottom slot. The bar is the only
 persistent desktop surface. It is visible in every window, including Home, and
-shows each provider as one `X/Y` count, where `X` is active plus queued and `Y`
-is the configured maximum, so a fully loaded provider reads `8/8` and an
-overloaded one reads `12/8`. The count is coloured by its own load,
-`(active + queued) / max`; hovering it reports how many slots are in demand and
-which gate the waiters are blocked on. A configured fan-out gate adds one
-`subagents` item with its live and calling counts, plus a waiting count when a
-launch is actually held, so its queue is never invisible and the gap between
-live children and model requests is explained in place. Clicking the bar opens a larger **Concurrency** dialog with the
+shows each provider as its in-flight slot count `active/max`, plus a separate
+`+queued` badge only when something waits, so a fully loaded provider reads `8/8`
+and one with two waiters reads `8/8 +2`. The slot count is coloured by
+utilization (`active / max`) and the badge by demand (`(active + queued) / max`);
+hovering either reports how many distinct sessions hold those slots, how many
+requests wait and on which gate, and the remaining new-context tokens. The
+queue spans the whole server process, so the count includes requests from every
+open location and from headless `opencode run` sessions attached to the same
+server, which the window you are looking at may not show. A configured fan-out
+gate adds one `subagents` item with its live and calling counts, plus a waiting
+count when a launch is actually held, so its queue is never invisible and the
+gap between live children and model requests is explained in place. Clicking the
+bar opens a larger **Concurrency** dialog with the
 provider table, the fan-out line, and the activity feed. The bar hides itself
 when no provider is configured and until the first status fetch settles. It
 reads the built-in server, because the queue is process-wide and every location
@@ -360,8 +366,10 @@ dark green at 0%, light green at 100%, light yellow at 150%, orange at 200%,
 light red at 250%, dark red at 300%, dark pink at 350%, and magenta from 400% on,
 interpolated between those anchors and held at magenta above 400%. The active
 count and utilization use the
-`active / max` load, while the combined count, queued count, and demand use
-`(active + queued) / max`. Below the provider rows, a compact monospace feed
+`active / max` load, while the queued count and demand use
+`(active + queued) / max`. The active cell's tooltip names how many distinct
+sessions hold the slots, so a count that spans several locations explains
+itself. Below the provider rows, a compact monospace feed
 lists the recent transitions newest first with their timestamp, kind, provider,
 session, and counts; it renders the newest 20 and scrolls. When a status fetch
 fails, the bar shows `Status unavailable` and the dialog shows no provider rows,

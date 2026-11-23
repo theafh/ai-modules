@@ -31,6 +31,7 @@ function provider(overrides: Partial<ProviderStatus> & Pick<ProviderStatus, "pro
     queued,
     max,
     ceiling: overrides.ceiling ?? max,
+    sessions: overrides.sessions ?? 0,
     utilization: overrides.utilization ?? (max === 0 ? 0 : active / max),
     demand: overrides.demand ?? (max === 0 ? 0 : (active + queued) / max),
     tokensAvailable: overrides.tokensAvailable ?? 0,
@@ -82,7 +83,7 @@ function fakeClient(next: () => StatusSnapshot): FakeClient {
 
 describe("providerRows", () => {
   test("renders absolute counts and percentage utilization and demand", () => {
-    const rows = providerRows(snapshot(provider({ providerID: "acme", active: 2, queued: 1, max: 4 })))
+    const rows = providerRows(snapshot(provider({ providerID: "acme", active: 2, queued: 1, max: 4, sessions: 2 })))
 
     expect(rows).toEqual([
       {
@@ -91,7 +92,11 @@ describe("providerRows", () => {
         queued: 1,
         max: 4,
         ceiling: 4,
+        sessions: 2,
         total: 3,
+        slotLabel: "2/4",
+        queueLabel: "+1",
+        title: "2 of 4 slots in use by 2 sessions · 1 waiting",
         utilization: "50%",
         demand: "75%",
         utilizationColor: loadColor(50),
@@ -128,6 +133,47 @@ describe("providerRows", () => {
     expect(row.total).toBe(3)
     expect(row.utilizationColor).toBe(loadColor(50))
     expect(row.demandColor).toBe(loadColor(75))
+  })
+
+  test("names the session count, the waiting gate, and the token allowance in the bar tooltip", () => {
+    const [row] = providerRows(
+      snapshot(
+        provider({
+          providerID: "acme",
+          active: 1,
+          queued: 2,
+          max: 8,
+          sessions: 1,
+          blocked: { slots: 2, context: 0, budget: 0, breaker: 0, draining: 0 },
+          tokensAvailable: 500_000,
+          tokensCapacity: 500_000,
+        }),
+      ),
+    )
+
+    expect(row.title).toBe(
+      "1 of 8 slots in use by 1 session · 2 waiting on slots 2 · 500k new-context tokens",
+    )
+    expect(row.slotLabel).toBe("1/8")
+    expect(row.queueLabel).toBe("+2")
+  })
+
+  test("drops the queue badge when nothing waits", () => {
+    const [row] = providerRows(
+      snapshot(provider({ providerID: "acme", active: 2, max: 4, sessions: 2 })),
+    )
+
+    expect(row.queueLabel).toBe("")
+    expect(row.title).toBe("2 of 4 slots in use by 2 sessions")
+  })
+
+  test("treats a snapshot from an older server as zero sessions", () => {
+    const { sessions: _omitted, ...legacy } = provider({ providerID: "acme", active: 1, max: 2 })
+
+    const [row] = providerRows(snapshot(legacy))
+
+    expect(row.sessions).toBe(0)
+    expect(row.title).toBe("1 of 2 slots in use by 0 sessions")
   })
 })
 

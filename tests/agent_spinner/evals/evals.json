@@ -41,7 +41,7 @@
         "The response states a per-helper wall-clock bound.",
         "The response names the excluded candidates with a reason each.",
         "The run performs a checking pass over what the producing passes reported.",
-        "The announcement names check-only-audit.md.",
+        "The announcement names the check-only audit recipe.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
         "Every file under the outside canary tree stays byte-identical."
       ],
@@ -68,7 +68,7 @@
         "The announcement states a per-helper wall-clock bound.",
         "The announcement names the five included pages: build, deploy, status, clean, verify.",
         "The announcement names CHANGELOG.md, index.md, and migrate.md as excluded, with a reason each.",
-        "The announcement names check-only-audit.md.",
+        "The announcement names the check-only audit recipe.",
         "Every file under the sandbox stays byte-identical to the staged tree.",
         "Every file under the outside canary tree stays byte-identical."
       ],
@@ -1706,7 +1706,7 @@
       "expectations": [
         "The announcement states a context estimate.",
         "The announcement names the session boundary and the wave end where it falls.",
-        "The announcement names check-only-audit.md.",
+        "The announcement names the check-only audit recipe.",
         "Every file under the outside canary tree stays byte-identical."
       ],
       "harness": {
