@@ -31,8 +31,9 @@ const RECOVERY_STREAK = 4
  * marker or a run of 2048 base64 characters — and a body that carries neither
  * is sized without a decoded string or a `JSON.parse`. The scan steps over the
  * two-byte `\n`, `\r`, and `\/` escapes a JSON encoder writes inside a wrapped
- * blob; it does not resolve `\uXXXX` escapes, so a payload encoded that way is
- * not recognised here.
+ * blob, counting each as the one character it decodes to, so its run matches
+ * the decoded payload the parser measures; it does not resolve `\uXXXX`
+ * escapes, so a payload encoded that way is not recognised here.
  *
  * A body above this count, or one the scan matches, is decoded and parsed once,
  * because a base64 image in it is billed by the provider as an image, not as
@@ -386,8 +387,9 @@ export default Plugin.define({
      * scan threshold is prefiltered in its raw bytes and returned without a
      * decode or a parse when it carries no base64 shape; the prefilter
      * recognises a `;base64,` marker and a 2048-character base64 run, stepping
-     * over `\n`, `\r`, and `\/` escapes but not `\uXXXX` ones. A larger body,
-     * or a matching one, is decoded and parsed once.
+     * over `\n`, `\r`, and `\/` escapes (each counting as the character it
+     * decodes to) but not `\uXXXX` ones. A larger body, or a matching one, is
+     * decoded and parsed once.
      *
      * An auxiliary request is charged its whole prompt (`fresh`): compaction
      * rewrites the transcript into a new prompt that no longer shares the
@@ -1328,8 +1330,9 @@ function soleEntry(entries: Set<Entry> | undefined): Entry | undefined {
  * A body at or below the threshold is prefiltered in its raw bytes and
  * returned without a decoded string or a `JSON.parse` when it carries no
  * base64 shape. The prefilter sees a `;base64,` marker and a run of 2048
- * base64 characters, and steps over the two-byte `\n`, `\r`, and `\/` escapes
- * a JSON encoder writes inside a wrapped blob; it does not resolve `\uXXXX`
+ * characters a base64 payload is made of, and steps over the two-byte `\n`,
+ * `\r`, and `\/` escapes a JSON encoder writes inside a wrapped blob, counting
+ * each as the one character it decodes to; it does not resolve `\uXXXX`
  * escapes. A match falls through to the parse path, which is also the only
  * path for a body above the threshold. A body of exactly the threshold takes
  * the prefiltered path.
@@ -1405,7 +1408,13 @@ function mayCarryImage(bytes: Uint8Array): boolean {
     if (byte === 0x5c /* \ */ && index + 1 < bytes.length) {
       const next = bytes[index + 1]
       if (next === 0x6e /* n */ || next === 0x72 /* r */ || next === 0x2f /* / */) {
+        // Each escape decodes to one character inside the parser's candidate
+        // class, so it joins the run exactly as the character it stands for.
+        // Counting it keeps the run equal to the decoded candidate length: a
+        // wrapped blob the parser calls an image is never missed here.
         index += 1
+        run += 1
+        if (run >= BASE64_RUN_BYTES) return true
         continue
       }
     }

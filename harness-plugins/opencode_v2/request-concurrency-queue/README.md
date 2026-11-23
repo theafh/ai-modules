@@ -428,9 +428,9 @@ bun run build:gui
   count minus the bytes of each image payload it carries. A body at or below
   256000 bytes is scanned in its raw bytes and needs no decode when it carries
   no base64 shape; the scan recognises a `;base64,` marker and a run of 2048
-  base64 characters and steps over `\n`, `\r`, and `\/` escapes, but not
-  `\uXXXX` escapes. A body above 256000 bytes, or one that matches, is decoded
-  and parsed once.
+  characters a base64 payload is made of, counting each `\n`, `\r`, and `\/`
+  escape as the character it decodes to, but not resolving `\uXXXX` escapes. A
+  body above 256000 bytes, or one that matches, is decoded and parsed once.
 - An auxiliary request is charged its whole prompt to the token budget, which
   over-estimates the cached prefix a compaction shares with the conversation.
   That is the safe side: the provider rejects a burst, not a pause.
