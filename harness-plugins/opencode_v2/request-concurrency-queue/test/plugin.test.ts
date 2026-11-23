@@ -706,6 +706,198 @@ describe("request-concurrency-queue plugin", () => {
     await cleanup()
   })
 
+  test("an auxiliary retry leaves the primary record for a later retry to release", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    await requestHook(hooks, "a", request("https://example.test/compact"), "acme", "compaction")
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    const event = {
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: {},
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    }
+
+    // The first retry consumes the auxiliary record and releases nothing.
+    await retry(event)
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(1)
+
+    // The primary record survived the auxiliary attempt, so the next retry
+    // finds it newest and releases it.
+    await retry(event)
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(0)
+
+    await cleanup()
+  })
+
+  test("a shadowed primary is released by idle and leaves no attempt record", async () => {
+    const { hooks, rpc, emit, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    await requestHook(hooks, "a", request("https://example.test/compact"), "acme", "compaction")
+
+    // The primary entry outlives the auxiliary attempt, and the idle path frees
+    // it instead of leaving it held forever.
+    await emit("session.idle", "a")
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(0)
+
+    // No attempt record survives the session, so the retry after idle consumes
+    // nothing and cannot count a stall.
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "stalled" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    expect(provider.active).toBe(0)
+    expect(provider.stalls).toBe(0)
+
+    // The freed slot admits the next request normally.
+    await requestHook(hooks, "b", request("https://example.test/b"))
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(1)
+
+    await cleanup()
+  })
+
+  test("a failed auxiliary response keeps its record so its retry cannot free the primary", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    const compact = request("https://example.test/compact")
+    await requestHook(hooks, "a", compact, "acme", "compaction")
+
+    // A 429 is an error status, so the auxiliary's record must survive it.
+    const failed = await responseHookWith(
+      hooks,
+      "a",
+      compact,
+      { status: 429, headers: { "retry-after": "30" } },
+      "acme",
+      JSON.stringify({ error: { code: "rate_limit_exceeded" } }),
+      "compaction",
+    )
+    await failed.text()
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { status: 429 },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+
+    // The auxiliary retry consumed its own record and left the streaming
+    // primary's slot held.
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(1)
+
+    // A later retry then finds the primary record newest and releases it.
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: {},
+      attempt: 3,
+      decision: { retry: true, delay: 1 },
+    })
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(0)
+
+    await cleanup()
+  })
+
+  test("a completed 2xx auxiliary response prunes its record", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    const title = request("https://example.test/title")
+    await requestHook(hooks, "a", title, "acme", "title")
+    const completed = await responseHook(hooks, "a", title, "title-body", "acme", "title")
+    expect(await completed.text()).toBe("title-body")
+
+    // The completed title cannot be retried, so its record is gone and the
+    // retry consumes the primary record instead.
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: {},
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(0)
+
+    await cleanup()
+  })
+
+  test("a released primary leaves no attempt record for a later retry", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    const response = await responseHook(hooks, "a", primary, "body")
+    await response.text()
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(0)
+
+    // The completed request's record is spent, so a retry releases nothing and
+    // counts no stall.
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "stalled" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+    const provider = (await statusSnapshot(rpc)).providers[0]
+    expect(provider.active).toBe(0)
+    expect(provider.stalls).toBe(0)
+
+    // The next request is admitted normally.
+    await requestHook(hooks, "b", request("https://example.test/b"))
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(1)
+
+    await cleanup()
+  })
+
+  test("a recorded attempt still counts a transport stall and an unrecorded retry does not", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 4, providers: ["acme"], adaptive: true })
+
+    await requestHook(hooks, "a", request("https://example.test/a"))
+
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    const stalled = {
+      error: { type: "provider.transport", message: "Timed out waiting for response headers" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    }
+
+    // A recorded attempt was dispatched, so its transport failure is a stall.
+    await retry({ sessionID: "a", model: { providerID: "acme", id: "test" }, ...stalled })
+    expect((await statusSnapshot(rpc)).providers[0].stalls).toBe(1)
+
+    // A retry with no recorded attempt was never dispatched, so it is not.
+    await retry({ sessionID: "b", model: { providerID: "acme", id: "test" }, ...stalled })
+    expect((await statusSnapshot(rpc)).providers[0].stalls).toBe(1)
+
+    await cleanup()
+  })
+
+
   test("a title request acquires no slot", async () => {
     const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
 
@@ -1196,13 +1388,14 @@ async function responseHookWith(
   init: ResponseInit,
   providerID = "acme",
   body = "ok",
+  kind = "primary",
 ): Promise<Response> {
   const hook = hooks.get("http.response")
   if (!hook) throw new Error("missing http.response hook")
   const event = {
     sessionID,
     model: { providerID, id: "test" },
-    kind: "primary",
+    kind,
     request: req,
     response: new Response(body, init),
   }

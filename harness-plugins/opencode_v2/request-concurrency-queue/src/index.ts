@@ -96,15 +96,21 @@ interface Entry {
 }
 
 /**
- * The attempt a retry is about to replace. The retry event carries no request
- * kind, so the plugin records the last attempt per session and provider and
- * consumes it here. Without this, a background compaction retry would release
- * the slot of the primary request that is still streaming.
+ * One recorded attempt a retry may replace. The retry event carries no request
+ * kind, so the plugin records every attempt per session and provider in the
+ * order it was admitted and consumes the newest one here.
+ *
+ * An auxiliary attempt is recorded beside the primary rather than over it. The
+ * primary's record therefore survives until a retry finds it newest or the
+ * session ends, and a background compaction retry cannot release the slot of
+ * the primary request that is still streaming.
  */
 interface Attempt {
   readonly kind: RequestKind
   /** The primary entry, when this attempt held a slot. */
   readonly entry?: Entry
+  /** Monotonic record order, so a retry consumes the newest attempt. */
+  readonly seq: number
 }
 
 const DEFAULT_MAX_CONCURRENCY = 1
@@ -173,8 +179,13 @@ export default Plugin.define({
     // budget meters. Counting bytes while streaming the body avoids buffering a
     // multi-megabyte request just to size it.
     const bodyMeasure = new Map<string, BodyMeasure>()
-    // The last attempt per session and provider, consumed by the retry hook.
-    const lastAttempt = new Map<string, Map<string, Attempt>>()
+    // Every attempt recorded per session and provider, oldest first, consumed
+    // newest-first by the retry hook.
+    const attempts = new Map<string, Map<string, Attempt[]>>()
+    // The auxiliary attempt each request recorded, so a completed 2xx response
+    // prunes its own record instead of another in-flight auxiliary's.
+    const auxAttemptByRequest = new WeakMap<Request, Attempt>()
+    let attemptSeq = 0
 
     log("initialized", {
       providers: Object.fromEntries([...limits].map(([providerID, limit]) => [providerID, limit.maxConcurrency])),
@@ -209,24 +220,68 @@ export default Plugin.define({
       return entry
     }
 
-    /** Records the attempt a retry may later replace. */
-    const recordAttempt = (sessionID: string, providerID: string, attempt: Attempt): void => {
-      let byProvider = lastAttempt.get(sessionID)
+    /**
+     * Records an attempt a retry may later replace. A primary attempt is
+     * appended beside any auxiliary record already waiting, never over it.
+     */
+    const recordAttempt = (
+      sessionID: string,
+      providerID: string,
+      attempt: Omit<Attempt, "seq">,
+      request?: Request,
+    ): Attempt => {
+      let byProvider = attempts.get(sessionID)
       if (!byProvider) {
         byProvider = new Map()
-        lastAttempt.set(sessionID, byProvider)
+        attempts.set(sessionID, byProvider)
       }
-      byProvider.set(providerID, attempt)
+      let records = byProvider.get(providerID)
+      if (!records) {
+        records = []
+        byProvider.set(providerID, records)
+      }
+      const recorded: Attempt = { ...attempt, seq: ++attemptSeq }
+      records.push(recorded)
+      if (request) auxAttemptByRequest.set(request, recorded)
+      return recorded
     }
 
-    /** Takes the recorded attempt, so one retry consumes one attempt. */
+    /** Removes one recorded attempt, keeping the per-provider structure clean. */
+    const dropAttempt = (sessionID: string, providerID: string, attempt: Attempt): void => {
+      const byProvider = attempts.get(sessionID)
+      const records = byProvider?.get(providerID)
+      if (!byProvider || !records) return
+      const index = records.indexOf(attempt)
+      if (index < 0) return
+      records.splice(index, 1)
+      if (records.length === 0) byProvider.delete(providerID)
+      if (byProvider.size === 0) attempts.delete(sessionID)
+    }
+
+    /**
+     * Consumes the newest recorded attempt, so one retry consumes one attempt
+     * and a shadowed primary record is left for the retry that finds it newest.
+     */
     const takeAttempt = (sessionID: string, providerID: string): Attempt | undefined => {
-      const byProvider = lastAttempt.get(sessionID)
-      const attempt = byProvider?.get(providerID)
-      if (!byProvider || !attempt) return undefined
-      byProvider.delete(providerID)
-      if (byProvider.size === 0) lastAttempt.delete(sessionID)
+      const byProvider = attempts.get(sessionID)
+      const records = byProvider?.get(providerID)
+      if (!byProvider || !records || records.length === 0) return undefined
+      let newest = 0
+      for (let index = 1; index < records.length; index += 1) {
+        if (records[index].seq > records[newest].seq) newest = index
+      }
+      const [attempt] = records.splice(newest, 1)
+      if (records.length === 0) byProvider.delete(providerID)
+      if (byProvider.size === 0) attempts.delete(sessionID)
       return attempt
+    }
+
+    /** Drops the record that carries a released primary entry. */
+    const dropEntryAttempt = (entry: Entry): void => {
+      const records = attempts.get(entry.sessionID)?.get(entry.providerID)
+      if (!records) return
+      const attempt = records.find((record) => record.entry === entry)
+      if (attempt) dropAttempt(entry.sessionID, entry.providerID, attempt)
     }
 
     const releaseEntry = (entry: Entry, reason: string): void => {
@@ -239,6 +294,8 @@ export default Plugin.define({
         entries.delete(entry)
         if (entries.size === 0) bySession.delete(entry.sessionID)
       }
+      // A completed primary request cannot be retried, so its record is spent.
+      dropEntryAttempt(entry)
 
       const limit = limits.get(entry.providerID)
       log("released", {
@@ -261,7 +318,7 @@ export default Plugin.define({
       if (options.permits !== false) store.subagents?.releaseSession(sessionID)
       // An attempt belongs to a live session's in-flight retry, so it never
       // outlives the session that recorded it.
-      lastAttempt.delete(sessionID)
+      attempts.delete(sessionID)
       // The body cursor must survive a turn boundary. Deleting it on idle made
       // the next request charge its whole body as new tokens instead of the
       // delta, draining the budget every turn.
@@ -369,7 +426,7 @@ export default Plugin.define({
         // provider meters.
         await limit.scheduler.acquireBudget(event.sessionID, cost, event.request.signal)
         estimate?.commit()
-        recordAttempt(event.sessionID, event.model.providerID, { kind: event.kind })
+        recordAttempt(event.sessionID, event.model.providerID, { kind: event.kind }, event.request)
         return
       }
 
@@ -442,8 +499,17 @@ export default Plugin.define({
       }
 
       // An auxiliary response must not fall through to the session's primary
-      // entry while that primary body is still streaming.
-      if (event.kind !== "primary") return
+      // entry while that primary body is still streaming. A 2xx completion
+      // spends the auxiliary's own record, because no retry follows it. An
+      // error status keeps the record: the retry that follows the failed
+      // auxiliary request must consume its own record, not the primary's.
+      if (event.kind !== "primary") {
+        if (response.status >= 200 && response.status < 300) {
+          const recorded = auxAttemptByRequest.get(event.request)
+          if (recorded) dropAttempt(event.sessionID, event.model.providerID, recorded)
+        }
+        return
+      }
       const entry = byRequest.get(event.request) ?? soleEntry(bySession.get(event.sessionID))
       if (!entry) return
 
@@ -496,11 +562,12 @@ export default Plugin.define({
     })
 
     await ctx.session.hook("retry", async (event) => {
-      // The retry event names only the session and provider. The recorded
-      // attempt says whether it was a primary request (whose slot must be
-      // released) or an auxiliary one (which holds no slot), so a background
-      // compaction retry can never free a primary request that is still
-      // streaming.
+      // The retry event names only the session and provider. The newest
+      // recorded attempt says whether it was a primary request (whose slot
+      // must be released) or an auxiliary one (which holds no slot), so a
+      // background compaction retry can never free a primary request that is
+      // still streaming. A primary shadowed by a newer auxiliary record stays
+      // recorded for the retry that later finds it newest, or for idle.
       const attempt = takeAttempt(event.sessionID, event.model.providerID)
       const entry = attempt?.kind === "primary" ? attempt.entry : undefined
       if (entry && !entry.released) releaseEntry(entry, "retry")

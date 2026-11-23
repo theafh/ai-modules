@@ -2,9 +2,11 @@
 description: "Stop an auxiliary request from destroying the primary attempt record in request-concurrency-queue, preserving the shipped newest-first retry release and its streaming-primary guard."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T10:52:30Z
-status: ready
+updated: 2026-11-23T13:17:12Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: "Andreas Hoffmann"
+design-extended: false
 ---
 
 # Retry keeps newest-first and an auxiliary attempt stops destroying the primary record

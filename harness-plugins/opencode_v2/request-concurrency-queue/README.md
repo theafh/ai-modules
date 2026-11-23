@@ -23,9 +23,10 @@ request.
 - The slot is released when the response body finishes, when the attempt fails
   and is retried, when the session goes idle, or when the session is deleted or
   interrupted.
-- A retry releases only the attempt it replaces, identified by the kind recorded
-  for that session's last request, so a background compaction retry cannot free
-  a primary request that is still streaming.
+- A retry releases the newest attempt recorded for that session and provider. A
+  primary entry survives an auxiliary attempt's record, so an auxiliary retry
+  releases nothing and a shadowed primary is released by the session going idle,
+  not by that auxiliary retry.
 - When no slot is free, the request waits in a queue. The scheduler admits the
   first waiting request that fits the concurrency, token-budget, and
   context-in-flight gates, so a smaller request can start ahead of an older one

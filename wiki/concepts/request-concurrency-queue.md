@@ -45,11 +45,15 @@ waste the configured capacity.
 
 The V2 implementation uses the `http.request` and `http.response` hooks. The
 response hook replaces the response body with a wrapped stream so the slot is
-released only when the stream ends. A retry releases the session's oldest
-unreleased primary entry for the retrying provider, so it frees the attempt that
-failed and never a newer request's slot. The `retry` hook and the
-`experimental.idle` hook provide release fallbacks, and the event stream covers
-session idle, deletion, failure, and interruption.
+released only when the stream ends. A retry releases the newest recorded attempt
+for the retrying session and provider: the primary entry it recorded, or nothing
+when that attempt was an auxiliary request that held no slot. An auxiliary
+attempt is recorded beside the primary rather than over it, so the primary's
+record survives until a later retry finds it newest or the session goes idle; a
+primary shadowed by an auxiliary attempt is released by the idle path, never by
+that auxiliary retry. The `retry` hook and the `experimental.idle` hook provide
+release fallbacks, and the event stream covers session idle, deletion, failure,
+and interruption.
 
 The plugin is configured with a provider map, so each provider has its own
 queue and maximum: `{ "myprovider": 2, "openrouter": 4 }`. The provider-list
