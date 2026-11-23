@@ -2,9 +2,11 @@
 description: "Close request-concurrency-queue config validation gaps and make Save total: no throws out of the RPC, no half-applied store, no silently dropped edits."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T10:47:17Z
-status: ready
+updated: 2026-11-23T12:05:13Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: "Andreas Hoffmann"
+design-extended: false
 ---
 
 # Config validation and Save must be total

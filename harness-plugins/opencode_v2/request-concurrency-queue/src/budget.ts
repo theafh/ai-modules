@@ -45,7 +45,7 @@ export class TokenBudget {
     }
     this.capacity = options.capacity
     this.refillPerMs = options.refillPerMinute / 60_000
-    this.safetyFactor = options.safetyFactor ?? 1
+    this.safetyFactor = resolveSafetyFactor(options.safetyFactor)
     this.now = options.now ?? Date.now
     this.available = this.capacity
     this.lastRefill = this.now()
@@ -66,7 +66,7 @@ export class TokenBudget {
     }
     this.capacity = options.capacity
     this.refillPerMs = options.refillPerMinute / 60_000
-    this.safetyFactor = options.safetyFactor ?? 1
+    this.safetyFactor = resolveSafetyFactor(options.safetyFactor)
     this.available = Math.min(this.available, this.capacity)
   }
 
@@ -108,6 +108,21 @@ export class TokenBudget {
     this.available = Math.min(this.capacity, this.available + (now - this.lastRefill) * this.refillPerMs)
     this.lastRefill = now
   }
+}
+
+/**
+ * The estimate margin a bucket runs with. An absent factor keeps the `1`
+ * default; a present one must be a finite number greater than zero, because a
+ * zero factor would charge nothing and `NaN` would poison every estimate.
+ */
+function resolveSafetyFactor(value: number | undefined): number {
+  if (value === undefined) return 1
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(
+      `token budget safetyFactor must be a finite number greater than zero, got ${String(value)}`,
+    )
+  }
+  return value
 }
 
 /**

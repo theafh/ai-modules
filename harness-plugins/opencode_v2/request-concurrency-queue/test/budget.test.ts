@@ -73,6 +73,30 @@ describe("TokenBudget", () => {
     budget.spend(1500)
     expect(budget.snapshot().available).toBe(0)
   })
+
+  test("rejects a safetyFactor that is not a finite positive number", () => {
+    for (const safetyFactor of [0, -1, Number.NaN]) {
+      expect(
+        () => new TokenBudget({ capacity: 1000, refillPerMinute: 500, safetyFactor }),
+      ).toThrow(/safetyFactor/)
+    }
+  })
+
+  test("reconfigure rejects a safetyFactor that is not a finite positive number", () => {
+    const now = { value: 0 }
+    const budget = budgetAt(now)
+    for (const safetyFactor of [0, -1, Number.NaN]) {
+      expect(() => budget.reconfigure({ capacity: 1000, refillPerMinute: 500, safetyFactor })).toThrow(
+        /safetyFactor/,
+      )
+    }
+  })
+
+  test("a valid safety factor reaches estimateTokens", () => {
+    const budget = new TokenBudget({ capacity: 1000, refillPerMinute: 500, safetyFactor: 1.5 })
+    expect(budget.safetyFactor).toBe(1.5)
+    expect(estimateTokens(350, budget.safetyFactor)).toBe(Math.ceil((350 / BYTES_PER_TOKEN) * 1.5))
+  })
 })
 
 describe("estimateTokens", () => {

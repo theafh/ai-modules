@@ -656,14 +656,34 @@ export function configSnapshot(
   }
 }
 
+/** The file operations a save uses, injected so a test can force each failure. */
+export interface SaveIo {
+  /** Reads the current config file as text; throws when it is absent or unreadable. */
+  readFile: (path: string) => string
+  /** Moves the temporary file over the config file. */
+  rename: (from: string, to: string) => void
+}
+
+const defaultSaveIo: SaveIo = {
+  readFile: (path) => readFileSync(path, "utf8"),
+  rename: renameSync,
+}
+
 /**
  * Validates an edited configuration, writes it to the config file, and applies
  * it to the running store. Nothing is written unless every check passes.
+ *
+ * A failed read or rename leaves the file and the store untouched. An apply
+ * that throws after the rename is undone by restoring the bytes read here — or
+ * by removing the file when there was none — so the two sides never describe
+ * different edits, apart from a provider-set change, which the store defers to
+ * a restart.
  */
 export function saveConfig(
   store: Store,
   input: ConfigSnapshot,
   filePath = configFilePath(),
+  io: SaveIo = defaultSaveIo,
 ): SaveResult {
   const errors: string[] = []
 
@@ -731,8 +751,13 @@ export function saveConfig(
     }
   }
 
+  // Read the current file before touching it: a malformed file is reported as a
+  // save error, and its exact bytes are what a failed apply is restored to.
+  const existing = readExistingConfig(io, filePath)
+  if ("error" in existing) return { ok: false, errors: [existing.error], restartRequired: false }
+
   const next: Record<string, unknown> = {
-    ...(loadConfigFile(filePath) as Record<string, unknown> | undefined),
+    ...existing.value,
     providers: input.providers,
     tokens,
     scheduler: {
@@ -749,15 +774,32 @@ export function saveConfig(
   if (input.subagents.max > 0) next.subagents = input.subagents
   else delete next.subagents
 
-  // Write the new file first, then apply it. If applying fails, the file is
-  // removed so neither side is left describing a state the other never reached.
+  // Write the new file first and rename it into place, then apply it. A failed
+  // write or rename leaves both sides on the old configuration. An apply that
+  // throws is restored to the bytes read above, or removed when there was no
+  // previous file, so the store and the file never describe different edits.
   const temporary = `${filePath}.tmp`
   try {
     writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`)
   } catch (error) {
     return {
       ok: false,
-      errors: [`Could not write the settings file: ${error instanceof Error ? error.message : String(error)}`],
+      errors: [`Could not write the settings file: ${errorMessage(error)}`],
+      restartRequired: false,
+    }
+  }
+
+  try {
+    io.rename(temporary, filePath)
+  } catch (error) {
+    try {
+      unlinkSync(temporary)
+    } catch {
+      // The rename failed, so a leftover temporary file is harmless.
+    }
+    return {
+      ok: false,
+      errors: [`Could not rename the settings file into place: ${errorMessage(error)}`],
       restartRequired: false,
     }
   }
@@ -783,21 +825,60 @@ export function saveConfig(
       adaptive: input.adaptive,
     })
   } catch (error) {
+    // The up-front validation makes this unreachable in practice; restoring the
+    // file keeps it bounded if a store method ever throws.
     try {
-      unlinkSync(temporary)
+      if (existing.bytes === undefined) unlinkSync(filePath)
+      else writeFileSync(filePath, existing.bytes)
     } catch {
-      // Nothing was renamed, so a leftover temp file is harmless.
+      // Nothing more can be done here; the save still reports the failure.
     }
     return {
       ok: false,
-      errors: [`Could not apply the settings: ${error instanceof Error ? error.message : String(error)}`],
+      errors: [`Could not apply the settings: ${errorMessage(error)}`],
       restartRequired: false,
     }
   }
 
-  renameSync(temporary, filePath)
-
   return { ok: true, errors: [], restartRequired: applied.restartRequired }
+}
+
+/**
+ * Reads the current config file through the save seam. A missing file is not an
+ * error: it means a fresh install with nothing to preserve or restore.
+ */
+function readExistingConfig(
+  io: SaveIo,
+  filePath: string,
+): { value?: Record<string, unknown>; bytes?: string } | { error: string } {
+  let bytes: string
+  try {
+    bytes = io.readFile(filePath)
+  } catch (error) {
+    if (isMissingFile(error)) return { value: undefined }
+    return { error: `Failed to read ${filePath}: ${errorMessage(error)}` }
+  }
+  try {
+    const parsed = JSON.parse(bytes) as unknown
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("config must be a JSON object")
+    }
+    return { value: parsed as Record<string, unknown>, bytes }
+  } catch (error) {
+    return { error: `Failed to read ${filePath}: ${errorMessage(error)}` }
+  }
+}
+
+function isMissingFile(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "ENOENT"
+  )
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 export function configFilePath(): string {
@@ -840,7 +921,8 @@ export function resolveScheduler(
 ): SchedulerConfig | undefined {
   const configured = options.scheduler ?? fileConfig?.scheduler
   if (!configured) return undefined
-  if (!Number.isInteger(configured.contextCapacity) || configured.contextCapacity < 0) {
+  const capacity = configured.contextCapacity ?? 0
+  if (!Number.isInteger(capacity) || capacity < 0) {
     throw new Error(
       `scheduler.contextCapacity must be a non-negative integer, got ${String(configured.contextCapacity)}`,
     )
@@ -880,7 +962,7 @@ export function resolveScheduler(
     }
   }
   return {
-    contextCapacity: configured.contextCapacity,
+    contextCapacity: capacity,
     contextCeiling: configured.contextCeiling,
     reserveShare: configured.reserveShare,
     smallShare: configured.smallShare,
@@ -903,10 +985,16 @@ export function resolveTokenBudgets(
     if (!budget || typeof budget !== "object") {
       throw new Error(`tokens for provider "${providerID}" must be an object`)
     }
+    const safetyFactor = budget.safetyFactor
+    if (safetyFactor !== undefined && (!Number.isFinite(safetyFactor) || safetyFactor <= 0)) {
+      throw new Error(
+        `tokens for provider "${providerID}" safetyFactor must be a finite number greater than zero, got ${String(safetyFactor)}`,
+      )
+    }
     budgets.set(providerID, {
       capacity: budget.capacity,
       refillPerMinute: budget.refillPerMinute,
-      safetyFactor: budget.safetyFactor,
+      safetyFactor,
     })
   }
   return budgets

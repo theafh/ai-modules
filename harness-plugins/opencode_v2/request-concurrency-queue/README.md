@@ -109,9 +109,10 @@ breaker, the subagent ceiling, and `adaptive`. Each field is checked on the
 server before anything is written; a rejected value returns an error list and
 leaves the file untouched. **Save** writes the config file atomically and
 applies the change to the running store, so in-flight requests and queued
-waiters survive it. Adding or removing a provider changes the set of
-schedulers those requests are already using, so that one edit reports
-`restartRequired: true` instead of half-applying.
+waiters survive it. Every in-place edit is applied and the new file is written;
+adding or removing a provider changes the set of schedulers those requests are
+already using, so that one edit is deferred in the store and reported with
+`restartRequired: true`.
 
 ## Configuration
 

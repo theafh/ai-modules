@@ -1,8 +1,15 @@
 import { describe, expect, test } from "bun:test"
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { configSnapshot, saveConfig } from "../src/index.js"
+import {
+  configSnapshot,
+  loadConfigFile,
+  resolveScheduler,
+  resolveTokenBudgets,
+  saveConfig,
+} from "../src/index.js"
+import { TokenBudget } from "../src/budget.js"
 import type { ConfigSnapshot } from "../src/rpc.js"
 import { createStore } from "../src/store.js"
 
@@ -152,7 +159,7 @@ describe("saveConfig", () => {
 })
 
 describe("saveConfig failure handling", () => {
-  test("a failed apply does not write the file", () => {
+  test("a failed apply removes the file it just wrote", () => {
     const file = tempFile()
     const store = storeWith()
     try {
@@ -164,9 +171,155 @@ describe("saveConfig failure handling", () => {
 
       expect(result.ok).toBe(false)
       expect(result.errors.join(" ")).toContain("Could not apply the settings")
-      expect(() => readFileSync(file.path, "utf8")).toThrow()
+      // The file was renamed into place, then removed when the apply threw.
+      expect(existsSync(file.path)).toBe(false)
+      expect(existsSync(`${file.path}.tmp`)).toBe(false)
     } finally {
       file.cleanup()
     }
+  })
+
+  test("a malformed existing config file is reported and left unchanged", () => {
+    const file = tempFile()
+    const store = storeWith()
+    const malformed = "{ not json"
+    try {
+      writeFileSync(file.path, malformed)
+
+      const result = saveConfig(store, validSnapshot(), file.path)
+
+      expect(result.ok).toBe(false)
+      expect(result.errors[0]).toContain(`Failed to read ${file.path}`)
+      expect(readFileSync(file.path, "utf8")).toBe(malformed)
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("a failed rename leaves both sides unchanged and removes the temporary file", () => {
+    const file = tempFile()
+    const store = storeWith(8)
+    const previous = `${JSON.stringify({ providers: { acme: 8 } })}\n`
+    try {
+      writeFileSync(file.path, previous)
+
+      const result = saveConfig(store, validSnapshot(), file.path, {
+        readFile: (path) => readFileSync(path, "utf8"),
+        rename: () => {
+          throw new Error("rename exploded")
+        },
+      })
+
+      expect(result.ok).toBe(false)
+      expect(result.errors.join(" ")).toContain("rename")
+      expect(existsSync(`${file.path}.tmp`)).toBe(false)
+      expect(readFileSync(file.path, "utf8")).toBe(previous)
+
+      const limit = store.providers.get("acme")!
+      expect(limit.scheduler.maxConcurrency).toBe(8)
+      expect(limit.scheduler.status().contextCapacity).toBe(1000)
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("an apply throw restores the previous file bytes", () => {
+    const file = tempFile()
+    const store = storeWith()
+    const previous = `${JSON.stringify({ providers: { acme: 8 }, log: true })}\n`
+    try {
+      writeFileSync(file.path, previous)
+      const scheduler = store.providers.get("acme")!.scheduler as unknown as Record<string, unknown>
+      scheduler.reconfigure = () => {
+        throw new Error("reconfigure exploded")
+      }
+
+      const result = saveConfig(store, validSnapshot(), file.path)
+
+      expect(result.ok).toBe(false)
+      expect(result.errors.join(" ")).toContain("Could not apply the settings")
+      expect(readFileSync(file.path, "utf8")).toBe(previous)
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("an apply throw on a fresh install removes the file it wrote", () => {
+    const file = tempFile()
+    const store = storeWith()
+    try {
+      const scheduler = store.providers.get("acme")!.scheduler as unknown as Record<string, unknown>
+      scheduler.reconfigure = () => {
+        throw new Error("reconfigure exploded")
+      }
+
+      const result = saveConfig(store, validSnapshot(), file.path)
+
+      expect(result.ok).toBe(false)
+      expect(existsSync(file.path)).toBe(false)
+      expect(existsSync(`${file.path}.tmp`)).toBe(false)
+    } finally {
+      file.cleanup()
+    }
+  })
+})
+
+describe("resolveScheduler", () => {
+  test("defaults a missing contextCapacity to zero", () => {
+    expect(resolveScheduler({}, { scheduler: { queueDeadlineMs: 240_000 } })).toEqual({
+      contextCapacity: 0,
+      queueDeadlineMs: 240_000,
+    })
+  })
+
+  test("loads a config file whose scheduler holds only the deadline", () => {
+    const file = tempFile()
+    try {
+      writeFileSync(file.path, JSON.stringify({ scheduler: { queueDeadlineMs: 240_000 } }))
+
+      const loaded = loadConfigFile(file.path)
+
+      expect(resolveScheduler({}, loaded)).toEqual({ contextCapacity: 0, queueDeadlineMs: 240_000 })
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("still rejects a present contextCapacity that is negative or fractional", () => {
+    expect(() => resolveScheduler({}, { scheduler: { contextCapacity: -1 } })).toThrow(
+      /contextCapacity must be a non-negative integer/,
+    )
+    expect(() => resolveScheduler({}, { scheduler: { contextCapacity: 1.5 } })).toThrow(
+      /contextCapacity must be a non-negative integer/,
+    )
+  })
+})
+
+describe("resolveTokenBudgets safetyFactor", () => {
+  for (const factor of [0, -1, Number.NaN]) {
+    test(`rejects a safetyFactor of ${String(factor)} and names the provider`, () => {
+      expect(() =>
+        resolveTokenBudgets(
+          {},
+          { tokens: { acme: { capacity: 1_000, refillPerMinute: 500, safetyFactor: factor } } },
+        ),
+      ).toThrow(/acme/)
+    })
+  }
+
+  test("applies a valid safety factor", () => {
+    const budgets = resolveTokenBudgets(
+      {},
+      { tokens: { acme: { capacity: 1_000, refillPerMinute: 500, safetyFactor: 1.5 } } },
+    )
+    expect(budgets.get("acme")?.safetyFactor).toBe(1.5)
+  })
+
+  test("a budget holding only capacity and refillPerMinute keeps the default factor", () => {
+    const budgets = resolveTokenBudgets(
+      {},
+      { tokens: { acme: { capacity: 1_000, refillPerMinute: 500 } } },
+    )
+    expect(new TokenBudget(budgets.get("acme")!).safetyFactor).toBe(1)
   })
 })

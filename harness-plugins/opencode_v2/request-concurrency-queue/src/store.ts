@@ -42,7 +42,7 @@ export interface ProviderLimit {
 /** The admission scheduler's tuning: context cap and budget lanes. */
 export interface SchedulerConfig {
   /** Total context tokens allowed in flight; 0 disables the cap. */
-  contextCapacity: number
+  contextCapacity?: number
   /** Upper bound the adaptive context cap grows back to. */
   contextCeiling?: number
   /** Fraction of the token budget kept for requests above the small threshold. */
@@ -158,16 +158,18 @@ export interface LiveConfig {
 /**
  * Applies an edited configuration to the running store.
  *
- * Everything except the provider set is applied in place, so in-flight requests
- * and queued waiters survive a save. Adding or removing a provider would
- * require rebuilding the limiters those requests are already using, so it is
- * reported instead of half-applied. An existing token bucket keeps its current
- * fill; only its limits change.
+ * Every in-place edit is applied for the providers both sides share: maximums,
+ * token budgets, scheduler settings, the subagent gate, and `adaptive`. Adding
+ * or removing a provider would require rebuilding the limiters those requests
+ * are already using, so that one change is deferred and reported through
+ * `restartRequired`; the file already holds it and the store adopts it on the
+ * next launch. An existing token bucket keeps its current fill; only its limits
+ * change.
  */
 export function applyConfig(store: Store, config: LiveConfig): { restartRequired: boolean } {
   const existing = [...store.providers.keys()].sort().join(",")
   const configured = [...config.providers.keys()].sort().join(",")
-  if (existing !== configured) return { restartRequired: true }
+  const restartRequired = existing !== configured
 
   for (const [providerID, maxConcurrency] of config.providers) {
     const limit = store.providers.get(providerID)
@@ -210,7 +212,7 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
 
   store.adaptive = config.adaptive
   publish(store)
-  return { restartRequired: false }
+  return { restartRequired }
 }
 
 /** Renders a provider set and its maximums in a stable, order-independent form. */

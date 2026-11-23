@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { saveConfig } from "../src/index.js"
 import {
   adoptStore,
   applyConfig,
@@ -281,5 +285,61 @@ describe("budget fill across a config edit", () => {
     })
 
     expect(store.providers.get("acme")!.scheduler.budgetSnapshot?.available).toBe(1_000)
+  })
+})
+
+describe("a provider-set change with in-place edits", () => {
+  test("applies every in-place edit, writes the new set, and reports the restart", () => {
+    const dir = mkdtempSync(join(tmpdir(), "rcq-store-"))
+    const filePath = join(dir, "request-concurrency-queue.json")
+    try {
+      const store = createStore(
+        new Map([
+          ["acme", 8],
+          ["other", 2],
+        ]),
+        new Map(),
+        { contextCapacity: 1_000, contextCeiling: 2_000 },
+        { max: 2 },
+        false,
+      )
+
+      const result = saveConfig(
+        store,
+        {
+          providers: { acme: 4, other: 3, third: 1 },
+          tokens: { acme: { capacity: 400_000, refillPerMinute: 200_000, safetyFactor: 1.2 } },
+          scheduler: {
+            contextCapacity: 5_000,
+            contextCeiling: 5_000,
+            reserveShare: 0.25,
+            smallShare: 0.1,
+            agingMs: 30_000,
+            queueDeadlineMs: 0,
+            breaker: { threshold: 2, cooldownMs: 60_000, mode: "fail" },
+          },
+          subagents: { max: 5, hostAware: true },
+          adaptive: true,
+        },
+        filePath,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.restartRequired).toBe(true)
+
+      const acme = store.providers.get("acme")!.scheduler
+      expect(acme.maxConcurrency).toBe(4)
+      expect(acme.status().contextCapacity).toBe(5_000)
+      expect(acme.budgetSnapshot?.capacity).toBe(400_000)
+      expect(store.subagents?.status().max).toBe(5)
+      expect(store.adaptive).toBe(true)
+      // The added provider is deferred to the restart, not half-applied.
+      expect(store.providers.has("third")).toBe(false)
+
+      const written = JSON.parse(readFileSync(filePath, "utf8"))
+      expect(written.providers).toEqual({ acme: 4, other: 3, third: 1 })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
