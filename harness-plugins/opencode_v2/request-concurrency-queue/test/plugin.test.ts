@@ -1887,7 +1887,9 @@ describe("provider circuit breaker", () => {
     const { hooks, rpc, cleanup } = await setup({
       maxConcurrency: 4,
       providers: ["acme"],
-      scheduler: { contextCapacity: 0, breaker: { threshold: 1, cooldownMs: 1, mode: "fail" } },
+      // The cooldown must outlast the round trip that reads the status, or the
+      // snapshot races it and reports `half-open` where the test expects `open`.
+      scheduler: { contextCapacity: 0, breaker: { threshold: 1, cooldownMs: 50, mode: "fail" } },
     })
     await requestHook(hooks, "a", request("https://example.test/a"))
 
@@ -1902,7 +1904,8 @@ describe("provider circuit breaker", () => {
     })
     expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("open")
 
-    await new Promise((resolve) => setTimeout(resolve, 5))
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("half-open")
     const a = request("https://example.test/a")
     await requestHook(hooks, "a", a)
     const response = await responseHook(hooks, "a", a, "ok")
