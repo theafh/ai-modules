@@ -55,8 +55,9 @@ Implemented 2026-11-23 on the reporting machine. `freeMemoryGBFromVmStat(vmStatO
 
 Measurement (one capture, `vm_stat` header `Mach Virtual Memory Statistics: (page size of 16384 bytes)`, `sysctl -n hw.pagesize` = 16384):
 
-- `Pages free: 74469` plus `Pages inactive: 788724` → 863524 pages in this capture.
-- `pages * pageSize / 1024**3` = 863524 × 16384 / 1024³ = **13.1763 GiB**.
-- `readFreeMemoryGB({ platform: "darwin", run: () => capture })` on that same capture = **13.1763 GiB** (exact match).
-- A live `readFreeMemoryGB()` run moments later = **13.1729 GiB**, differing only by memory churn between captures.
-- Before/after contrast only: the pre-change 4096 constant reports the same capture as **3.2941 GiB**, a fourfold undercount. No failure branch keys on that figure, and a 4096-byte host cannot distinguish the two paths.
+- `Pages free: 183917` plus `Pages inactive: 593289` → 777206 pages in this capture.
+- `pages * pageSize / 1024**3` = 777206 × 16384 / 1024³ = **11.8592 GiB**.
+- `freeMemoryGBFromVmStat(capture, 4096)` on that same capture = **11.859222412109375 GiB**, which matches the computed figure exactly because the capture's own header supplies the 16384-byte page size.
+- `readFreeMemoryGB({ platform: "darwin", run: () => capture })` on that same capture = **11.859222412109375 GiB** (the same exact match, proving the header page size reaches the helper).
+- A live `readFreeMemoryGB()` run moments later = **11.85272216796875 GiB**, differing only by memory churn between captures.
+- Before/after contrast only: the pre-change 4096 constant reports the same capture as 777206 × 4096 / 1024³ = **2.9648 GiB**, a fourfold undercount. No failure branch keys on that figure, and a 4096-byte host cannot distinguish the two paths.
