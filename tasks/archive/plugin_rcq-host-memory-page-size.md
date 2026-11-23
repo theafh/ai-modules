@@ -2,8 +2,8 @@
 description: "Read the real VM page size in request-concurrency-queue's macOS free-memory probe so hostAware fan-out is not throttled by a fourfold undercount on Apple Silicon."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T14:15:27Z
-status: implemented
+updated: 2026-11-23T14:26:53Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: "Andreas Hoffmann"
 design-extended: false
