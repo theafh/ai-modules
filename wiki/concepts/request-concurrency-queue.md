@@ -131,9 +131,10 @@ the new ceiling, and turning `adaptive` off restores the ceiling. A
 provider-set change is deferred in the store and reported with
 `restartRequired: true`, and the dialog then disables Save until it is reopened.
 When the plugin options carry a provider set, those options win at every load,
-so the dialog edits each maximum only and hides its add and remove controls.
-Verified on 2026-11-23 against the package's `configSnapshot`, `saveConfig`, and
-`applyConfig` tests.
+so the dialog edits each maximum only and hides its add and remove controls; a
+maximum edited there applies to the running server and is discarded at the next
+start, so a lasting maximum belongs in the options. Verified on 2026-11-23
+against the package's `configSnapshot`, `saveConfig`, and `applyConfig` tests.
 
 The `log` flag is debug logging only. It prints initialization, acquire, and
 release events with the provider ID and that provider's active and queued

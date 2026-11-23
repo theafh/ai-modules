@@ -433,7 +433,9 @@ export function ProvidersSection(props: {
       <Show when={!setEditable()}>
         <p class="request-concurrency-config-help">
           The provider set comes from the plugin's options, so this dialog edits each
-          maximum only. Add or remove a provider in the plugin options instead.
+          maximum only. A maximum edited here applies to the running server and is
+          discarded at the next start, so set a lasting maximum, and any add or remove,
+          in the plugin options.
         </p>
       </Show>
       <For each={Object.keys(props.providers)}>

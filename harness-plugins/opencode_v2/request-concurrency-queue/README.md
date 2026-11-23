@@ -124,7 +124,9 @@ requests are already using, so that one edit is deferred in the store and
 reported with `restartRequired: true`. Save then stays disabled until the dialog
 is reopened, which reads the file's saved set back. When the plugin options
 carry a provider set, the options win at every load, so the dialog edits each
-maximum only and hides the **Remove** control and the add row.
+maximum only and hides the **Remove** control and the add row; a maximum edited
+there applies to the running server and is discarded at the next start, so a
+lasting maximum belongs in the plugin options.
 
 ## Configuration
 

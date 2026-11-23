@@ -1592,3 +1592,6 @@ pre-existing, and the size infos stay advisory; the one on
   reset generation. Both carry the 2026-11-23 test source.
 - index.md: the page summary names the counted-byte sizing, the post-compaction
   accounting, and the live dialog; the header date moves to 2026-11-23.
+- Later the same day the review loop added that an options-owned set also
+  discards a maximum edited in the dialog at the next start, so the page now
+  says where a lasting maximum belongs.
