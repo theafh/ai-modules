@@ -500,13 +500,55 @@ export default Plugin.define({
 
       // An auxiliary response must not fall through to the session's primary
       // entry while that primary body is still streaming. A 2xx completion
-      // spends the auxiliary's own record, because no retry follows it. An
-      // error status keeps the record: the retry that follows the failed
+      // spends the auxiliary's own record once its body has actually finished,
+      // mirroring the primary `finish` path, because a retry follows a 2xx
+      // whose body fails mid-stream. An error status, a failed body, or a
+      // cancelled body keeps the record: the retry that follows the failed
       // auxiliary request must consume its own record, not the primary's.
       if (event.kind !== "primary") {
         if (response.status >= 200 && response.status < 300) {
           const recorded = auxAttemptByRequest.get(event.request)
-          if (recorded) dropAttempt(event.sessionID, event.model.providerID, recorded)
+          if (recorded) {
+            const auxBody = response.body
+            if (!auxBody) {
+              dropAttempt(event.sessionID, event.model.providerID, recorded)
+            } else {
+              const auxReader = auxBody.getReader()
+              let auxFinished = false
+              const finishAux = (reason: string) => {
+                if (auxFinished) return
+                auxFinished = true
+                if (reason === "response-end") {
+                  dropAttempt(event.sessionID, event.model.providerID, recorded)
+                }
+              }
+              const auxStream = new ReadableStream<Uint8Array>({
+                async pull(controller) {
+                  try {
+                    const result = await auxReader.read()
+                    if (result.done) {
+                      finishAux("response-end")
+                      controller.close()
+                      return
+                    }
+                    controller.enqueue(result.value)
+                  } catch (error) {
+                    finishAux("response-error")
+                    controller.error(error)
+                  }
+                },
+                async cancel(reason) {
+                  finishAux("response-cancel")
+                  await auxReader.cancel(reason)
+                },
+              })
+              event.response = new Response(auxStream, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+              })
+            }
+          }
         }
         return
       }

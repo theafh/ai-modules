@@ -842,6 +842,59 @@ describe("request-concurrency-queue plugin", () => {
     await cleanup()
   })
 
+  test("a 2xx auxiliary response whose body fails keeps its record for its retry", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
+
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    const compact = request("https://example.test/compact")
+    await requestHook(hooks, "a", compact, "acme", "compaction")
+
+    // The headers arrive with a 2xx status, then the body fails mid-stream, the
+    // ordinary shape of a network failure after the headers.
+    const responseHook = hooks.get("http.response")
+    if (!responseHook) throw new Error("missing http.response hook")
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.error(new Error("reset after headers"))
+      },
+    })
+    const event = {
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      kind: "compaction",
+      request: compact,
+      response: new Response(body, { status: 200 }),
+    }
+    await responseHook(event)
+    await expect(event.response.text()).rejects.toThrow("reset after headers")
+
+    // The failed body keeps the auxiliary's record, so the retry that follows
+    // it consumes that record and leaves the streaming primary's slot held.
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "reset after headers" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(1)
+
+    // A later retry then finds the primary record newest and releases it.
+    await retry({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      error: {},
+      attempt: 3,
+      decision: { retry: true, delay: 1 },
+    })
+    expect((await statusSnapshot(rpc)).providers[0].active).toBe(0)
+
+    await cleanup()
+  })
+
   test("a released primary leaves no attempt record for a later retry", async () => {
     const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
 
@@ -896,7 +949,6 @@ describe("request-concurrency-queue plugin", () => {
 
     await cleanup()
   })
-
 
   test("a title request acquires no slot", async () => {
     const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
