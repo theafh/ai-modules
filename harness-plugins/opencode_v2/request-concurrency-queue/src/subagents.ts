@@ -77,22 +77,69 @@ export function readHostMetrics(now = Date.now()): HostMetrics {
   return value
 }
 
+/** The page size `vm_stat` prints in its header, e.g. `page size of 16384 bytes`. */
+const PAGE_SIZE_IN_HEADER = /page size of (\d+) bytes/
+
+/** A whole line counting free or inactive pages, e.g. `Pages free:  74469.`. */
+const FREE_OR_INACTIVE_PAGE_LINE = /^Pages (free|inactive):/
+
+/**
+ * Free plus inactive memory from a `vm_stat` capture.
+ *
+ * The page size comes from the capture's own header, because Apple Silicon
+ * reports 16384-byte pages and assuming 4096 would undercount fourfold. A
+ * capture without a parseable header falls back to the injected page size.
+ */
+export function freeMemoryGBFromVmStat(vmStatOutput: string, fallbackPageSize: number): number {
+  const header = vmStatOutput.match(PAGE_SIZE_IN_HEADER)
+  const pageSize = header ? Number(header[1]) : fallbackPageSize
+  let pages = 0
+  for (const line of vmStatOutput.split("\n")) {
+    if (!FREE_OR_INACTIVE_PAGE_LINE.test(line)) continue
+    const match = line.match(/(\d+)\.?\s*$/)
+    if (match) pages += Number(match[1])
+  }
+  return (pages * pageSize) / 1024 ** 3
+}
+
+/** Runs one host command and returns its standard output. */
+export type CommandRunner = (file: string, args: string[]) => string
+
+/** Test seams for `readFreeMemoryGB`; production uses the process defaults. */
+export interface FreeMemoryProbeOptions {
+  /** Replaces `execFileSync` for both the `vm_stat` and `sysctl` reads. */
+  readonly run?: CommandRunner
+  /** Replaces `process.platform`. */
+  readonly platform?: NodeJS.Platform
+}
+
+const defaultCommandRunner: CommandRunner = (file, args) =>
+  execFileSync(file, args, { encoding: "utf8" })
+
 /**
  * Free plus inactive memory. Node's `os.freemem()` reports only truly free
  * pages on macOS and reads near zero on a healthy machine, so Darwin reads
  * `vm_stat` instead.
  */
-export function readFreeMemoryGB(): number {
-  if (process.platform === "darwin") {
+export function readFreeMemoryGB(options: FreeMemoryProbeOptions = {}): number {
+  const platform = options.platform ?? process.platform
+  if (platform === "darwin") {
+    const run = options.run ?? defaultCommandRunner
     try {
-      const output = execFileSync("vm_stat", [], { encoding: "utf8" })
-      let pages = 0
-      for (const line of output.split("\n")) {
-        if (!/^Pages (free|inactive):/.test(line)) continue
-        const match = line.match(/(\d+)\.?\s*$/)
-        if (match) pages += Number(match[1])
+      const vmStat = run("vm_stat", [])
+      const header = vmStat.match(PAGE_SIZE_IN_HEADER)
+      // The header is the canonical page-size statement. Ask sysctl only when
+      // it is absent or unparseable, and fall back to 4 KiB when both fail.
+      let pageSize = header ? Number(header[1]) : undefined
+      if (pageSize === undefined) {
+        try {
+          const fromSysctl = Number.parseInt(run("sysctl", ["-n", "hw.pagesize"]).trim(), 10)
+          if (Number.isFinite(fromSysctl) && fromSysctl > 0) pageSize = fromSysctl
+        } catch {
+          // Neither source answered; the last resort below applies.
+        }
       }
-      if (pages > 0) return (pages * 4096) / 1024 ** 3
+      return freeMemoryGBFromVmStat(vmStat, pageSize ?? 4096)
     } catch {
       // Fall through to the portable value.
     }

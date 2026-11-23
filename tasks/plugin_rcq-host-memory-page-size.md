@@ -2,9 +2,11 @@
 description: "Read the real VM page size in request-concurrency-queue's macOS free-memory probe so hostAware fan-out is not throttled by a fourfold undercount on Apple Silicon."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T10:31:22Z
-status: ready
+updated: 2026-11-23T14:15:27Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: "Andreas Hoffmann"
+design-extended: false
 ---
 
 # Free-memory probe must use the real page size
@@ -48,3 +50,13 @@ Baseline: `bun test` and `bunx tsc --noEmit` pass in the package.
 ## Implementation notes
 
 Filled in at implementation time with the measurement protocol above.
+
+Implemented 2026-11-23 on the reporting machine. `freeMemoryGBFromVmStat(vmStatOutput, fallbackPageSize)` is the new pure helper; `readFreeMemoryGB(options?)` takes an injected `run` command runner (default `execFileSync`) and an optional `platform` override, reads the page size from the `vm_stat` header, and asks the same runner for `sysctl -n hw.pagesize` only when the header is missing or unparseable, with `4096` as the last resort. The `os.freemem()` fallback and the two-second cache in `readHostMetrics` are unchanged.
+
+Measurement (one capture, `vm_stat` header `Mach Virtual Memory Statistics: (page size of 16384 bytes)`, `sysctl -n hw.pagesize` = 16384):
+
+- `Pages free: 74469` plus `Pages inactive: 788724` → 863524 pages in this capture.
+- `pages * pageSize / 1024**3` = 863524 × 16384 / 1024³ = **13.1763 GiB**.
+- `readFreeMemoryGB({ platform: "darwin", run: () => capture })` on that same capture = **13.1763 GiB** (exact match).
+- A live `readFreeMemoryGB()` run moments later = **13.1729 GiB**, differing only by memory churn between captures.
+- Before/after contrast only: the pre-change 4096 constant reports the same capture as **3.2941 GiB**, a fourfold undercount. No failure branch keys on that figure, and a 4096-byte host cannot distinguish the two paths.

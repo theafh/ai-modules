@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test"
+import os from "node:os"
 import {
   SubagentGate,
   extractSessionID,
+  freeMemoryGBFromVmStat,
   hostCapacity,
+  readFreeMemoryGB,
   type HostMetrics,
 } from "../src/subagents.js"
 
@@ -32,6 +35,85 @@ describe("hostCapacity", () => {
 
   test("never exceeds the configured ceiling", () => {
     expect(hostCapacity(4, { cores: 64, load1: 0, freeMemoryGB: 100 })).toBe(4)
+  })
+})
+
+const APPLE_SILICON_VM_STAT = [
+  "Mach Virtual Memory Statistics: (page size of 16384 bytes)",
+  "Pages free:                                    100.",
+  "Pages active:                                  500.",
+  "Pages inactive:                                200.",
+  "Pages wired down:                              300.",
+  "",
+].join("\n")
+
+const FOUR_KIB_VM_STAT = [
+  "Mach Virtual Memory Statistics: (page size of 4096 bytes)",
+  "Pages free:                                    100.",
+  "Pages inactive:                                200.",
+  "",
+].join("\n")
+
+const HEADERLESS_VM_STAT = [
+  "Pages free:                                    100.",
+  "Pages inactive:                                200.",
+  "",
+].join("\n")
+
+describe("freeMemoryGBFromVmStat", () => {
+  test("uses the 16384-byte page size the capture header reports", () => {
+    expect(freeMemoryGBFromVmStat(APPLE_SILICON_VM_STAT, 4096)).toBe((300 * 16384) / 1024 ** 3)
+  })
+
+  test("uses the 4096-byte page size the capture header reports", () => {
+    expect(freeMemoryGBFromVmStat(FOUR_KIB_VM_STAT, 16384)).toBe((300 * 4096) / 1024 ** 3)
+  })
+
+  test("uses the injected fallback rather than assuming 4096 when the header is absent", () => {
+    expect(freeMemoryGBFromVmStat(HEADERLESS_VM_STAT, 65536)).toBe((300 * 65536) / 1024 ** 3)
+  })
+})
+
+describe("readFreeMemoryGB", () => {
+  test("reads the page size from the vm_stat header", () => {
+    const calls: string[] = []
+    const value = readFreeMemoryGB({
+      platform: "darwin",
+      run: (file) => {
+        calls.push(file)
+        return APPLE_SILICON_VM_STAT
+      },
+    })
+
+    expect(value).toBe((300 * 16384) / 1024 ** 3)
+    // The header answered, so sysctl was never needed.
+    expect(calls).toEqual(["vm_stat"])
+  })
+
+  test("asks sysctl for the page size when the capture has no header", () => {
+    const value = readFreeMemoryGB({
+      platform: "darwin",
+      run: (file, args) => {
+        if (file === "vm_stat") return HEADERLESS_VM_STAT
+        expect(file).toBe("sysctl")
+        expect(args).toEqual(["-n", "hw.pagesize"])
+        return "16384\n"
+      },
+    })
+
+    expect(value).toBe((300 * 16384) / 1024 ** 3)
+  })
+
+  test("falls back to os.freemem() when vm_stat throws", () => {
+    const expected = os.freemem() / 1024 ** 3
+    const value = readFreeMemoryGB({
+      platform: "darwin",
+      run: () => {
+        throw new Error("vm_stat is unavailable")
+      },
+    })
+
+    expect(value).toBeCloseTo(expected, 1)
   })
 })
 
