@@ -33,7 +33,8 @@ const RECOVERY_STREAK = 4
  * two-byte `\n`, `\r`, and `\/` escapes a JSON encoder writes inside a wrapped
  * blob, counting each as the one character it decodes to, so its run matches
  * the decoded payload the parser measures; it does not resolve `\uXXXX`
- * escapes, so a payload encoded that way is not recognised here.
+ * escapes, so a payload encoded that way is not recognised here. A declared
+ * length at or below this count is used as-is, without a scan.
  *
  * A body above this count, or one the scan matches, is decoded and parsed once,
  * because a base64 image in it is billed by the provider as an image, not as
@@ -389,7 +390,8 @@ export default Plugin.define({
      * recognises a `;base64,` marker and a 2048-character base64 run, stepping
      * over `\n`, `\r`, and `\/` escapes (each counting as the character it
      * decodes to) but not `\uXXXX` ones. A larger body, or a matching one, is
-     * decoded and parsed once.
+     * decoded and parsed once. A declared length at or below the threshold is
+     * used as-is, without a scan.
      *
      * An auxiliary request is charged its whole prompt (`fresh`): compaction
      * rewrites the transcript into a new prompt that no longer shares the
