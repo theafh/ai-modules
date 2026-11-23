@@ -115,6 +115,36 @@ describe("readFreeMemoryGB", () => {
 
     expect(value).toBeCloseTo(expected, 1)
   })
+
+  test("falls back to os.freemem() when the capture carries no page lines", () => {
+    const headerOnly = "Mach Virtual Memory Statistics: (page size of 16384 bytes)\n"
+    // The helper alone measures nothing here, and a 0 GiB reading would pin
+    // `hostCapacity` to a single child session on a healthy host.
+    expect(freeMemoryGBFromVmStat(headerOnly, 16384)).toBe(0)
+
+    const expected = os.freemem() / 1024 ** 3
+    const value = readFreeMemoryGB({ platform: "darwin", run: () => headerOnly })
+
+    expect(value).toBeGreaterThan(0)
+    expect(Math.abs(value - expected)).toBeLessThan(1)
+  })
+
+  test("falls back to os.freemem() when a page line carries no parseable count", () => {
+    // The page line is present but its count is missing, so the guard's value
+    // is 0 and a line-presence test alone would return it.
+    const unparseable = [
+      "Mach Virtual Memory Statistics: (page size of 16384 bytes)",
+      "Pages free: .",
+      "",
+    ].join("\n")
+    expect(freeMemoryGBFromVmStat(unparseable, 16384)).toBe(0)
+
+    const expected = os.freemem() / 1024 ** 3
+    const value = readFreeMemoryGB({ platform: "darwin", run: () => unparseable })
+
+    expect(value).toBeGreaterThan(0)
+    expect(Math.abs(value - expected)).toBeLessThan(1)
+  })
 })
 
 describe("SubagentGate", () => {

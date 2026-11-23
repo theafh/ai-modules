@@ -139,7 +139,12 @@ export function readFreeMemoryGB(options: FreeMemoryProbeOptions = {}): number {
           // Neither source answered; the last resort below applies.
         }
       }
-      return freeMemoryGBFromVmStat(vmStat, pageSize ?? 4096)
+      // A capture that measures no free or inactive pages measures nothing, so
+      // fall through to the portable value rather than report 0 GiB and pin the
+      // capacity ceiling to one. Testing the measured value rather than the
+      // presence of a page line covers a line whose count does not parse.
+      const measuredGB = freeMemoryGBFromVmStat(vmStat, pageSize ?? 4096)
+      if (measuredGB > 0) return measuredGB
     } catch {
       // Fall through to the portable value.
     }
