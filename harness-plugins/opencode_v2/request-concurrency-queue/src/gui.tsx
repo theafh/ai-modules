@@ -273,6 +273,68 @@ function SelectField(props: {
   )
 }
 
+/** The subagent gate's editable fields. */
+export interface SubagentsValue {
+  max: number
+  hostAware: boolean
+}
+
+/**
+ * The edited `subagents` object a field change produces. It stays pure so the
+ * panel test can prove the edit payload without simulating a DOM event.
+ */
+export function editedSubagents(
+  current: SubagentsValue,
+  edit: Partial<SubagentsValue>,
+): SubagentsValue {
+  return { ...current, ...edit }
+}
+
+/**
+ * The Subagents section of the settings form, exported as a pure component so
+ * the panel test can render it through `renderToString`: `ConfigForm` fills its
+ * snapshot in an async effect, which server rendering never runs.
+ */
+export function SubagentsSection(props: {
+  max: number
+  hostAware: boolean
+  onChange: (next: SubagentsValue) => void
+}) {
+  return (
+    <>
+      <div class="request-concurrency-config-title">Subagents</div>
+      <p class="request-concurrency-config-help">
+        A guard on how many child sessions exist at once, for host load and cost — not a
+        model-request limit. A child waiting for a tool holds a permit but no provider slot,
+        so a ceiling near the provider's concurrency throttles the fan-out below what the
+        provider allows and adds a second queue. Set it well above the provider maximum, or
+        leave it at 0 to turn the guard off. The live and calling counts are reported either
+        way when the guard is on.
+      </p>
+      <NumberField
+        label="Live child sessions"
+        help="A runaway guard, not a concurrency limit. A child running a tool counts here but not against the provider. 0 turns the guard off."
+        value={props.max}
+        onChange={(value) =>
+          props.onChange(
+            editedSubagents({ max: props.max, hostAware: props.hostAware }, { max: value }),
+          )
+        }
+      />
+      <CheckField
+        label="Host-aware ceiling"
+        help="When on, the machine's one-minute load average lowers the ceiling above, so a busy machine runs fewer child sessions than the maximum. When off, the maximum always applies."
+        value={props.hostAware}
+        onChange={(value) =>
+          props.onChange(
+            editedSubagents({ max: props.max, hostAware: props.hostAware }, { hostAware: value }),
+          )
+        }
+      />
+    </>
+  )
+}
+
 /** The editable settings, with server-side validation and a save action. */
 export function ConfigForm(props: { client: ConfigClient }) {
   const [form, setForm] = createSignal<ConfigSnapshot | null>(null)
@@ -478,20 +540,13 @@ export function ConfigForm(props: { client: ConfigClient }) {
               onChange={(value) => set(["scheduler", "breaker", "mode"], value)}
             />
 
-            <div class="request-concurrency-config-title">Subagents</div>
-            <p class="request-concurrency-config-help">
-              A guard on how many child sessions exist at once, for host load and cost — not a
-              model-request limit. A child waiting for a tool holds a permit but no provider slot,
-              so a ceiling near the provider's concurrency throttles the fan-out below what the
-              provider allows and adds a second queue. Set it well above the provider maximum, or
-              leave it at 0 to turn the guard off. The live and calling counts are reported either
-              way when the guard is on.
-            </p>
-            <NumberField
-              label="Live child sessions"
-              help="A runaway guard, not a concurrency limit. A child running a tool counts here but not against the provider. 0 turns the guard off."
-              value={current().subagents.max}
-              onChange={(value) => set(["subagents", "max"], value)}
+            <SubagentsSection
+              max={current().subagents.max}
+              hostAware={current().subagents.hostAware}
+              onChange={(next) => {
+                set(["subagents", "hostAware"], next.hostAware)
+                set(["subagents", "max"], next.max)
+              }}
             />
 
             <div class="request-concurrency-config-title">Behaviour</div>

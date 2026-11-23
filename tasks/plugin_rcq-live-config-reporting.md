@@ -2,9 +2,11 @@
 description: "Make the request-concurrency-queue config dialog report and apply the live store settings, so an options-configured install keeps its token budget, context cap, and hostAware on Save."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T11:15:39Z
-status: ready
+updated: 2026-11-23T17:17:14Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Config dialog must show and apply the live settings

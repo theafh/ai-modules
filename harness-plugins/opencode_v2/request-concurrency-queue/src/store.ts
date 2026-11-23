@@ -203,8 +203,12 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
   }
 
   if (config.subagents) {
-    if (store.subagents) store.subagents.setMax(config.subagents.max)
-    else store.subagents = new SubagentGate(config.subagents)
+    if (store.subagents) {
+      store.subagents.setMax(config.subagents.max)
+      store.subagents.setHostAware(config.subagents.hostAware ?? false)
+    } else {
+      store.subagents = new SubagentGate(config.subagents)
+    }
   } else if (store.subagents) {
     // A cleared setting turns fan-out gating off for the next launch.
     store.subagents = undefined
@@ -260,6 +264,11 @@ export function adoptStore(
 ): Store {
   const existing = globalStore()
   if (existing) {
+    // A pending dispose timer means the last instance had already released the
+    // store and this instance is the reload arriving inside the grace period.
+    // Only then may the process-wide settings the first instance owns follow the
+    // new configuration; a second live location keeps the first one's values.
+    const genuineReload = existing.disposeTimer !== undefined
     // A reload lands here within the grace period: keep the store, its queued
     // requests, and its live child sessions instead of cancelling them.
     if (existing.disposeTimer) {
@@ -291,10 +300,19 @@ export function adoptStore(
       // so replace an incompatible instance instead of calling into it.
       if (existing.subagents && typeof existing.subagents.setMax === "function") {
         existing.subagents.setMax(subagents.max)
+        // `hostAware` changes the effective ceiling the first instance owns, so
+        // only a genuine reload adopts it; a second live location leaves it.
+        if (genuineReload && typeof existing.subagents.setHostAware === "function") {
+          existing.subagents.setHostAware(subagents.hostAware ?? false)
+        }
       } else {
         existing.subagents = new SubagentGate(subagents)
       }
+    } else if (genuineReload) {
+      // A genuine reload whose configuration dropped the section turns gating off.
+      existing.subagents = undefined
     }
+    if (genuineReload) existing.adaptive = adaptive
     existing.refcount += 1
     return existing
   }

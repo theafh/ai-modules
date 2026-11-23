@@ -322,7 +322,7 @@ describe("the fan-out line distinguishes live children from model calls", () => 
   })
 })
 
-describe("the settings form reads the file as it is now", () => {
+describe("the settings form reports the live settings after a save", () => {
   test("a saved change is visible on the next config read", async () => {
     configFile = join(mkdtempSync(join(tmpdir(), "rcq-config-")), "config.json")
     process.env.OPENCODE_REQUEST_CONCURRENCY_CONFIG = configFile
@@ -351,8 +351,8 @@ describe("the settings form reads the file as it is now", () => {
     })
     expect(saved.ok).toBe(true)
 
-    // The file now holds the new cap, and the form must report it rather than
-    // the snapshot captured at load time.
+    // The store now runs the new cap, and the form must report that live value
+    // rather than the snapshot captured at load time.
     const after = await config()
     expect(after.scheduler.contextCapacity).toBe(400_000)
     expect(JSON.parse(readFileSync(configFile, "utf8")).scheduler.contextCapacity).toBe(400_000)

@@ -63,12 +63,94 @@ describe("configSnapshot", () => {
     expect(snapshot.adaptive).toBe(false)
   })
 
-  test("reads the token budget from the file config", () => {
-    const store = storeWith()
-    const snapshot = configSnapshot(store, {
-      tokens: { acme: { capacity: 1000, refillPerMinute: 500 } },
+  test("reports the token budget and scheduler the store runs, whichever source configured them", () => {
+    const store = createStore(
+      new Map([
+        ["acme", 4],
+        ["other", 2],
+      ]),
+      new Map([["acme", { capacity: 500_000, refillPerMinute: 500_000, safetyFactor: 1.2 }]]),
+      {
+        contextCapacity: 900_000,
+        contextCeiling: 1_800_000,
+        reserveShare: 0.3,
+        smallShare: 0.15,
+        agingMs: 45_000,
+        queueDeadlineMs: 240_000,
+        breaker: { threshold: 4, cooldownMs: 90_000, mode: "wait" },
+      },
+      undefined,
+      false,
+    )
+
+    const snapshot = configSnapshot(store, undefined)
+
+    expect(snapshot.tokens).toEqual({
+      acme: { capacity: 500_000, refillPerMinute: 500_000, safetyFactor: 1.2 },
     })
-    expect(snapshot.tokens.acme).toEqual({ capacity: 1000, refillPerMinute: 500, safetyFactor: 1 })
+    expect(snapshot.tokens.other).toBeUndefined()
+    expect(snapshot.scheduler).toEqual({
+      contextCapacity: 900_000,
+      contextCeiling: 1_800_000,
+      reserveShare: 0.3,
+      smallShare: 0.15,
+      agingMs: 45_000,
+      queueDeadlineMs: 240_000,
+      breaker: { threshold: 4, cooldownMs: 90_000, mode: "wait" },
+    })
+  })
+
+  test("reports hostAware from the gate rather than the file", () => {
+    const store = createStore(new Map([["acme", 2]]), new Map(), undefined, {
+      max: 6,
+      hostAware: true,
+    })
+
+    expect(configSnapshot(store, undefined).subagents).toEqual({ max: 6, hostAware: true })
+  })
+
+  test("a file-sourced budget reaches the store, so both sources report one value", () => {
+    const fileConfig = { tokens: { acme: { capacity: 1_000, refillPerMinute: 500 } } }
+    const fromFile = createStore(new Map([["acme", 2]]), resolveTokenBudgets({}, fileConfig))
+    const fromOptions = createStore(
+      new Map([["acme", 2]]),
+      resolveTokenBudgets({ tokens: fileConfig.tokens }),
+    )
+
+    // The store speaks for the value; a conflicting file argument does not win.
+    expect(configSnapshot(fromFile, { tokens: { acme: { capacity: 999_999, refillPerMinute: 1 } } }).tokens).toEqual(
+      { acme: { capacity: 1_000, refillPerMinute: 500, safetyFactor: 1 } },
+    )
+    expect(configSnapshot(fromFile, fileConfig).tokens).toEqual(configSnapshot(fromOptions).tokens)
+  })
+
+  test("a store with no providers reports the zeroed scheduler defaults", () => {
+    const snapshot = configSnapshot(createStore(new Map()))
+
+    expect(snapshot.providers).toEqual({})
+    expect(snapshot.tokens).toEqual({})
+    expect(snapshot.scheduler).toEqual({
+      contextCapacity: 0,
+      contextCeiling: 0,
+      reserveShare: 0.25,
+      smallShare: 0.1,
+      agingMs: 30_000,
+      queueDeadlineMs: 0,
+      breaker: { threshold: 3, cooldownMs: 60_000, mode: "fail" },
+    })
+  })
+
+  test("still accepts the file config input and the plugin still supplies the re-read one", () => {
+    const store = storeWith()
+
+    // The second argument stays in the signature; every live value comes from
+    // the store even when a file config is passed.
+    expect(
+      configSnapshot(store, { tokens: { acme: { capacity: 5, refillPerMinute: 5 } } }).tokens,
+    ).toEqual({})
+
+    const source = readFileSync(join(import.meta.dir, "..", "src", "index.ts"), "utf8")
+    expect(source).toContain("configSnapshot(store, currentFileConfig())")
   })
 })
 
@@ -152,6 +234,152 @@ describe("saveConfig", () => {
       const second = JSON.parse(readFileSync(file.path, "utf8"))
       expect(second.log).toBe(true)
       expect(second.adaptive).toBe(true)
+    } finally {
+      file.cleanup()
+    }
+  })
+})
+
+describe("saving the reported live settings", () => {
+  function optionsStore() {
+    return createStore(
+      new Map([["acme", 4]]),
+      new Map([["acme", { capacity: 500_000, refillPerMinute: 500_000, safetyFactor: 1.2 }]]),
+      {
+        contextCapacity: 900_000,
+        contextCeiling: 1_800_000,
+        reserveShare: 0.3,
+        smallShare: 0.15,
+        agingMs: 45_000,
+        queueDeadlineMs: 240_000,
+        breaker: { threshold: 4, cooldownMs: 90_000, mode: "wait" },
+      },
+      undefined,
+      false,
+    )
+  }
+
+  test("an unchanged save writes the same values and leaves the live limits as they were", () => {
+    const file = tempFile()
+    const store = optionsStore()
+    try {
+      const before = configSnapshot(store, undefined)
+      const result = saveConfig(store, before, file.path)
+
+      expect(result).toEqual({ ok: true, errors: [], restartRequired: false })
+
+      const written = JSON.parse(readFileSync(file.path, "utf8"))
+      expect(written.tokens).toEqual({
+        acme: { capacity: 500_000, refillPerMinute: 500_000, safetyFactor: 1.2 },
+      })
+      expect(written.scheduler).toEqual({
+        contextCapacity: 900_000,
+        contextCeiling: 1_800_000,
+        reserveShare: 0.3,
+        smallShare: 0.15,
+        agingMs: 45_000,
+        queueDeadlineMs: 240_000,
+        breaker: { threshold: 4, cooldownMs: 90_000, mode: "wait" },
+      })
+
+      const scheduler = store.providers.get("acme")!.scheduler
+      expect(scheduler.budgetSnapshot?.capacity).toBe(500_000)
+      expect(scheduler.budgetConfig?.refillPerMinute).toBe(500_000)
+      expect(scheduler.status().contextCapacity).toBe(900_000)
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("reports a refill change applied in place and an unchanged save keeps it", () => {
+    const file = tempFile()
+    const store = createStore(
+      new Map([["acme", 2]]),
+      new Map([["acme", { capacity: 500_000, refillPerMinute: 500_000 }]]),
+    )
+    try {
+      const scheduler = store.providers.get("acme")!.scheduler
+      scheduler.reconfigureBudget({ capacity: 500_000, refillPerMinute: 250_000 })
+
+      const snapshot = configSnapshot(store, undefined)
+      expect(snapshot.tokens.acme.refillPerMinute).toBe(250_000)
+
+      expect(saveConfig(store, snapshot, file.path).ok).toBe(true)
+      expect(JSON.parse(readFileSync(file.path, "utf8")).tokens.acme.refillPerMinute).toBe(250_000)
+      expect(scheduler.budgetConfig?.refillPerMinute).toBe(250_000)
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("keeps a file budget for a provider the store does not gate", () => {
+    const file = tempFile()
+    const store = createStore(
+      new Map([["acme", 2]]),
+      new Map([["acme", { capacity: 500_000, refillPerMinute: 500_000 }]]),
+    )
+    try {
+      writeFileSync(
+        file.path,
+        JSON.stringify({
+          providers: { acme: 2 },
+          tokens: { other: { capacity: 1_234, refillPerMinute: 4_321 } },
+        }),
+      )
+
+      const snapshot = configSnapshot(store, undefined)
+      expect(snapshot.tokens.other).toBeUndefined()
+
+      expect(saveConfig(store, snapshot, file.path).ok).toBe(true)
+
+      const written = JSON.parse(readFileSync(file.path, "utf8"))
+      expect(written.tokens.other).toEqual({ capacity: 1_234, refillPerMinute: 4_321 })
+      expect(written.tokens.acme).toEqual({
+        capacity: 500_000,
+        refillPerMinute: 500_000,
+        safetyFactor: 1,
+      })
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("saving hostAware off admits a launch the host probe held, and on holds it again", async () => {
+    const file = tempFile()
+    const store = createStore(new Map([["acme", 1]]), new Map(), undefined, {
+      max: 4,
+      hostAware: true,
+      probe: () => ({ cores: 2, load1: 0, freeMemoryGB: 8 }),
+    })
+    const gate = store.subagents!
+    try {
+      expect(gate.capacity()).toBe(2)
+      const first = await gate.acquire("child-1")
+      const second = await gate.acquire("child-2")
+      let admitted = false
+      const queued = gate.acquire("child-3").then((permit) => {
+        admitted = true
+        return permit
+      })
+      await Promise.resolve()
+      expect(admitted).toBe(false)
+
+      const off = configSnapshot(store, undefined)
+      off.subagents.hostAware = false
+      expect(saveConfig(store, off, file.path).ok).toBe(true)
+
+      const third = await queued
+      expect(admitted).toBe(true)
+      expect(gate.capacity()).toBe(4)
+
+      const on = configSnapshot(store, undefined)
+      on.subagents.hostAware = true
+      expect(saveConfig(store, on, file.path).ok).toBe(true)
+      expect(gate.capacity()).toBe(2)
+
+      third.release()
+      second.release()
+      first.release()
     } finally {
       file.cleanup()
     }

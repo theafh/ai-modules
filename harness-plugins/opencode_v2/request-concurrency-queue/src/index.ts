@@ -721,43 +721,69 @@ export default Plugin.define({
   },
 })
 
-/** The effective settings, with defaults filled in for anything unset. */
+/**
+ * The effective settings, with defaults filled in for anything unset.
+ *
+ * Every live limit is read from the store, whichever source configured it:
+ * plugin options, the environment, or the config file. `fileConfig` stays in the
+ * signature for the provider-set work that reads it; the token, scheduler, and
+ * `hostAware` reads come from the store.
+ */
 export function configSnapshot(
   store: Store,
   fileConfig?: RequestConcurrencyQueueFileConfig,
 ): ConfigSnapshot {
-  const scheduler = fileConfig?.scheduler
   const providers: Record<string, number> = {}
   for (const [providerID, limit] of store.providers) providers[providerID] = limit.maxConcurrency
 
+  // A provider the store gates without a budget reports no entry, so the form
+  // shows no fabricated default and an unchanged save leaves the file alone.
   const tokens: Record<string, { capacity: number; refillPerMinute: number; safetyFactor: number }> = {}
-  for (const [providerID, budget] of Object.entries(fileConfig?.tokens ?? {})) {
+  for (const [providerID, limit] of store.providers) {
+    const budget = limit.scheduler.budgetConfig
+    if (!budget) continue
     tokens[providerID] = {
       capacity: budget.capacity,
       refillPerMinute: budget.refillPerMinute,
-      safetyFactor: budget.safetyFactor ?? 1,
+      safetyFactor: budget.safetyFactor,
     }
   }
+
+  // Every provider starts from the one configured scheduler, and `applyConfig`
+  // writes one scheduler configuration back to all of them, so the first
+  // provider's live values speak for the process. A cap that adaptive control
+  // lowered is reported as it stands.
+  const [firstProvider] = store.providers.values()
+  const liveScheduler = firstProvider?.scheduler
+  const scheduler = liveScheduler
+    ? {
+        contextCapacity: liveScheduler.status().contextCapacity,
+        contextCeiling: liveScheduler.contextCeiling,
+        reserveShare: liveScheduler.reserveShare,
+        smallShare: liveScheduler.smallShare,
+        agingMs: liveScheduler.agingMs,
+        queueDeadlineMs: liveScheduler.queueDeadlineMs,
+        breaker: liveScheduler.breakerConfig,
+      }
+    : {
+        contextCapacity: 0,
+        contextCeiling: 0,
+        reserveShare: 0.25,
+        smallShare: 0.1,
+        agingMs: 30_000,
+        queueDeadlineMs: 0,
+        breaker: { threshold: 3, cooldownMs: 60_000, mode: "fail" as const },
+      }
 
   return {
     providers,
     tokens,
-    scheduler: {
-      contextCapacity: scheduler?.contextCapacity ?? 0,
-      contextCeiling: scheduler?.contextCeiling ?? scheduler?.contextCapacity ?? 0,
-      reserveShare: scheduler?.reserveShare ?? 0.25,
-      smallShare: scheduler?.smallShare ?? 0.1,
-      agingMs: scheduler?.agingMs ?? 30_000,
-      queueDeadlineMs: scheduler?.queueDeadlineMs ?? 0,
-      breaker: {
-        threshold: scheduler?.breaker?.threshold ?? 3,
-        cooldownMs: scheduler?.breaker?.cooldownMs ?? 60_000,
-        mode: scheduler?.breaker?.mode ?? "fail",
-      },
-    },
+    scheduler,
     subagents: {
       max: store.subagents?.status().max ?? 0,
-      hostAware: fileConfig?.subagents?.hostAware ?? false,
+      // The gate's live value, not the file's: an options-configured gate has no
+      // file entry, and a saved change must read back as what the gate uses.
+      hostAware: store.subagents?.hostAware ?? false,
     },
     // The running store is the source of truth for adaptive control: a save
     // applies it there, and the file is only the persistence of that value.
@@ -864,6 +890,17 @@ export function saveConfig(
   // save error, and its exact bytes are what a failed apply is restored to.
   const existing = readExistingConfig(io, filePath)
   if ("error" in existing) return { ok: false, errors: [existing.error], restartRequired: false }
+
+  // The snapshot covers only providers the store gates with a live budget, so a
+  // provider outside that set has no entry. Keep the file's own budget for it
+  // instead of deleting it on an unchanged save.
+  const existingTokens = existing.value?.tokens
+  if (existingTokens && typeof existingTokens === "object" && !Array.isArray(existingTokens)) {
+    for (const [providerID, entry] of Object.entries(existingTokens as Record<string, unknown>)) {
+      if (providerID in tokens) continue
+      tokens[providerID] = entry as TokenBudgetConfig
+    }
+  }
 
   const next: Record<string, unknown> = {
     ...existing.value,

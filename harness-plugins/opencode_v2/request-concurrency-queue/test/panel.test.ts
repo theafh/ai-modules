@@ -36,6 +36,15 @@ let viteCacheDir: string
 let panelModule: {
   StatusBody: (props: { snapshot: StatusSnapshot | null }) => unknown
   StatusBarBody: (props: { snapshot: StatusSnapshot | null; onOpen: () => void }) => unknown
+  SubagentsSection: (props: {
+    max: number
+    hostAware: boolean
+    onChange: (next: { max: number; hostAware: boolean }) => void
+  }) => unknown
+  editedSubagents: (
+    current: { max: number; hostAware: boolean },
+    edit: Partial<{ max: number; hostAware: boolean }>,
+  ) => { max: number; hostAware: boolean }
 }
 
 beforeAll(async () => {
@@ -419,3 +428,45 @@ describe("concurrency desktop surfaces", () => {
     60_000,
   )
 })
+
+describe("the settings form's Subagents section", () => {
+  function renderSection(hostAware: boolean): string {
+    return renderToString(
+      () => panelModule.SubagentsSection({ max: 8, hostAware, onChange: () => {} }) as never,
+    )
+  }
+
+  test("renders a host-aware checkbox beside the max field", () => {
+    const html = renderSection(false)
+
+    expect(html).toContain(">Subagents<")
+    expect(html).toContain(">Live child sessions<")
+    expect(html).toContain(">Host-aware ceiling<")
+    expect(html).toContain('type="checkbox"')
+    expect(html.indexOf(">Live child sessions<")).toBeLessThan(html.indexOf(">Host-aware ceiling<"))
+  })
+
+  test("the checkbox's checked state follows the hostAware prop", () => {
+    expect(renderSection(false)).not.toContain("checked")
+    expect(renderSection(true)).toContain("checked")
+  })
+
+  test("the pure handler returns the edited subagents object for a toggled value", () => {
+    expect(panelModule.editedSubagents({ max: 8, hostAware: false }, { hostAware: true })).toEqual({
+      max: 8,
+      hostAware: true,
+    })
+    expect(panelModule.editedSubagents({ max: 8, hostAware: true }, { max: 16 })).toEqual({
+      max: 16,
+      hostAware: true,
+    })
+  })
+
+  test("ConfigForm composes the section with the hostAware edit path", () => {
+    const source = readFileSync(resolve(packageDir, "src", "gui.tsx"), "utf8")
+
+    expect(source).toContain("<SubagentsSection")
+    expect(source).toContain('set(["subagents", "hostAware"]')
+  })
+})
+

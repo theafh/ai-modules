@@ -130,12 +130,12 @@ interface Waiter {
 export class RequestScheduler {
   private maxSlots: number
   private budget?: TokenBudget
-  private contextCeiling: number
+  private ceiling: number
   private contextCapacity: number
-  private reserveShare: number
-  private smallShare: number
-  private agingMs: number
-  private queueDeadlineMs: number
+  private reserve: number
+  private small: number
+  private aging: number
+  private deadline: number
   private breakerThreshold: number
   private breakerCooldownMs: number
   private breakerMode: BreakerMode
@@ -162,11 +162,11 @@ export class RequestScheduler {
     this.maxSlots = options.maxSlots
     this.budget = options.budget
     this.contextCapacity = options.contextCapacity ?? 0
-    this.contextCeiling = options.contextCeiling ?? this.contextCapacity
-    this.reserveShare = options.reserveShare ?? 0.25
-    this.smallShare = options.smallShare ?? 0.1
-    this.agingMs = options.agingMs ?? 30_000
-    this.queueDeadlineMs = Math.max(0, options.queueDeadlineMs ?? 0)
+    this.ceiling = options.contextCeiling ?? this.contextCapacity
+    this.reserve = options.reserveShare ?? 0.25
+    this.small = options.smallShare ?? 0.1
+    this.aging = options.agingMs ?? 30_000
+    this.deadline = Math.max(0, options.queueDeadlineMs ?? 0)
     this.breakerThreshold = Math.max(1, options.breaker?.threshold ?? 3)
     this.breakerCooldownMs = Math.max(0, options.breaker?.cooldownMs ?? 60_000)
     this.breakerMode = options.breaker?.mode ?? "fail"
@@ -238,6 +238,50 @@ export class RequestScheduler {
     return this.budget?.safetyFactor ?? 1
   }
 
+  /** The attached bucket's configured limits, or undefined when it has none. */
+  get budgetConfig(): { capacity: number; refillPerMinute: number; safetyFactor: number } | undefined {
+    if (!this.budget) return undefined
+    return {
+      capacity: this.budget.capacity,
+      refillPerMinute: this.budget.refillPerMinute,
+      safetyFactor: this.budget.safetyFactor,
+    }
+  }
+
+  /** The cap the adaptive context limit may grow back to; 0 means it is fixed. */
+  get contextCeiling(): number {
+    return this.ceiling
+  }
+
+  /** Fraction of the token budget kept for requests above the small threshold. */
+  get reserveShare(): number {
+    return this.reserve
+  }
+
+  /** Fraction of budget capacity at or below which a request counts as small. */
+  get smallShare(): number {
+    return this.small
+  }
+
+  /** A waiter older than this ignores the reserve and the context cap. */
+  get agingMs(): number {
+    return this.aging
+  }
+
+  /** Longest a request may wait for admission before it is rejected; 0 disables it. */
+  get queueDeadlineMs(): number {
+    return this.deadline
+  }
+
+  /** The stalled-attempt circuit breaker's configured settings. */
+  get breakerConfig(): { threshold: number; cooldownMs: number; mode: BreakerMode } {
+    return {
+      threshold: this.breakerThreshold,
+      cooldownMs: this.breakerCooldownMs,
+      mode: this.breakerMode,
+    }
+  }
+
   /**
    * Applies edited settings without rebuilding the scheduler, so in-flight
    * requests and queued waiters survive a save. Values left undefined keep
@@ -261,13 +305,13 @@ export class RequestScheduler {
     if (options.budget !== undefined) this.budget = options.budget
     if (options.contextCapacity !== undefined) this.contextCapacity = Math.max(0, options.contextCapacity)
     if (options.contextCeiling !== undefined) {
-      this.contextCeiling = Math.max(0, options.contextCeiling)
-      if (this.contextCeiling > 0) this.contextCapacity = Math.min(this.contextCapacity, this.contextCeiling)
+      this.ceiling = Math.max(0, options.contextCeiling)
+      if (this.ceiling > 0) this.contextCapacity = Math.min(this.contextCapacity, this.ceiling)
     }
-    if (options.reserveShare !== undefined) this.reserveShare = options.reserveShare
-    if (options.smallShare !== undefined) this.smallShare = options.smallShare
-    if (options.agingMs !== undefined) this.agingMs = Math.max(0, options.agingMs)
-    if (options.queueDeadlineMs !== undefined) this.queueDeadlineMs = Math.max(0, options.queueDeadlineMs)
+    if (options.reserveShare !== undefined) this.reserve = options.reserveShare
+    if (options.smallShare !== undefined) this.small = options.smallShare
+    if (options.agingMs !== undefined) this.aging = Math.max(0, options.agingMs)
+    if (options.queueDeadlineMs !== undefined) this.deadline = Math.max(0, options.queueDeadlineMs)
     if (options.breaker) {
       if (options.breaker.threshold !== undefined) this.breakerThreshold = Math.max(1, options.breaker.threshold)
       if (options.breaker.cooldownMs !== undefined) this.breakerCooldownMs = Math.max(0, options.breaker.cooldownMs)
@@ -395,7 +439,7 @@ export class RequestScheduler {
         signal.addEventListener("abort", waiter.onAbort, { once: true })
       }
 
-      if (this.queueDeadlineMs > 0) {
+      if (this.deadline > 0) {
         waiter.deadlineTimer = setTimeout(() => {
           const index = this.waiters.indexOf(waiter)
           if (index === -1) return
@@ -404,8 +448,8 @@ export class RequestScheduler {
             waiter.signal.removeEventListener("abort", waiter.onAbort)
           }
           this.onChange([this.transition("dequeued", sessionID)])
-          reject(queueTimeoutError(this.queueDeadlineMs))
-        }, this.queueDeadlineMs)
+          reject(queueTimeoutError(this.deadline))
+        }, this.deadline)
       }
 
       this.waiters.push(waiter)
@@ -456,11 +500,11 @@ export class RequestScheduler {
       this.probeInFlight = false
       this.probeStartedAt = 0
     }
-    if (this.contextCapacity !== 0 && this.contextCeiling !== 0) {
-      const gap = this.contextCeiling - this.contextCapacity
+    if (this.contextCapacity !== 0 && this.ceiling !== 0) {
+      const gap = this.ceiling - this.contextCapacity
       if (gap > 0) {
         const step = Math.max(1, Math.ceil(gap * 0.25))
-        this.contextCapacity = Math.min(this.contextCeiling, this.contextCapacity + step)
+        this.contextCapacity = Math.min(this.ceiling, this.contextCapacity + step)
       }
     }
     // A closed circuit frees anything that waited in `wait` mode, and a grown
@@ -608,7 +652,7 @@ export class RequestScheduler {
     if (this.openUntil > now) soonest = Math.min(soonest, this.openUntil - now)
     for (const waiter of this.waiters) {
       if (!waiter.budgetOnly && !this.fitsContext(waiter, now) && this.contextInFlight > 0) {
-        const aging = waiter.enqueuedAt + this.agingMs - now
+        const aging = waiter.enqueuedAt + this.aging - now
         if (aging > 0) soonest = Math.min(soonest, aging)
         continue
       }
@@ -655,7 +699,7 @@ export class RequestScheduler {
     if (this.contextCapacity === 0) return true
     if (this.contextInFlight === 0) return true
     if (this.contextInFlight + waiter.cost.contextTokens <= this.contextCapacity) return true
-    return this.agingMs > 0 && now - waiter.enqueuedAt >= this.agingMs
+    return this.aging > 0 && now - waiter.enqueuedAt >= this.aging
   }
 
   /**
@@ -667,7 +711,7 @@ export class RequestScheduler {
    */
   private holdsReserve(waiter: Waiter, now: number): boolean {
     if (!this.budget) return false
-    if (waiter.cost.newTokens > this.smallShare * this.budget.capacity) return false
+    if (waiter.cost.newTokens > this.small * this.budget.capacity) return false
     if (!this.hasLargeWaiter(waiter)) return false
     return this.reserveDelay(waiter, now) > 0
   }
@@ -675,7 +719,7 @@ export class RequestScheduler {
   /** Whether a request above the small threshold is waiting behind this one. */
   private hasLargeWaiter(exclude: Waiter): boolean {
     if (!this.budget) return false
-    const threshold = this.smallShare * this.budget.capacity
+    const threshold = this.small * this.budget.capacity
     return this.waiters.some((waiter) => waiter !== exclude && waiter.cost.newTokens > threshold)
   }
 
@@ -688,10 +732,10 @@ export class RequestScheduler {
    */
   private reserveDelay(waiter: Waiter, now: number): number {
     if (!this.budget) return 0
-    if (waiter.cost.newTokens > this.smallShare * this.budget.capacity) return 0
-    const aging = waiter.enqueuedAt + this.agingMs - now
+    if (waiter.cost.newTokens > this.small * this.budget.capacity) return 0
+    const aging = waiter.enqueuedAt + this.aging - now
     if (aging <= 0) return 0
-    const needed = waiter.cost.newTokens + this.reserveShare * this.budget.capacity
+    const needed = waiter.cost.newTokens + this.reserve * this.budget.capacity
     const refill = needed > this.budget.capacity ? Number.POSITIVE_INFINITY : this.budget.waitFor(needed)
     if (refill <= 0) return 0
     return Math.min(aging, refill)
@@ -754,7 +798,7 @@ export class RequestScheduler {
   private shrinkContext(): void {
     if (this.contextCapacity === 0) return
     // `contextCeiling: 0` means the operator fixed the cap: never shrink it.
-    if (this.contextCeiling === 0) return
+    if (this.ceiling === 0) return
     const next = Math.max(1, Math.floor(this.contextCapacity / 2))
     if (next < this.contextCapacity) {
       this.contextCapacity = next

@@ -161,7 +161,7 @@ export function readFreeMemoryGB(options: FreeMemoryProbeOptions = {}): number {
  */
 export class SubagentGate {
   private max: number
-  private readonly hostAware: boolean
+  private hostAwareOn: boolean
   private readonly probe: () => HostMetrics
   private readonly live = new Set<string>()
   private readonly waiters: Waiter[] = []
@@ -184,7 +184,7 @@ export class SubagentGate {
       throw new Error(`subagents.max must be a positive integer, got ${String(options.max)}`)
     }
     this.max = options.max
-    this.hostAware = options.hostAware ?? false
+    this.hostAwareOn = options.hostAware ?? false
     this.probe = options.probe ?? (() => readHostMetrics())
   }
 
@@ -232,9 +232,24 @@ export class SubagentGate {
     this.serve()
   }
 
+  /** Whether host load may lower the ceiling below `max`. */
+  get hostAware(): boolean {
+    return this.hostAwareOn
+  }
+
+  /**
+   * Changes whether host load lowers the ceiling. Turning it off raises the
+   * effective ceiling at once, so a launch held by the host probe is served.
+   */
+  setHostAware(hostAware: boolean): void {
+    if (hostAware === this.hostAwareOn) return
+    this.hostAwareOn = hostAware
+    this.serve()
+  }
+
   /** The ceiling the host currently allows. */
   capacity(): number {
-    return this.hostAware ? hostCapacity(this.max, this.probe()) : this.max
+    return this.hostAwareOn ? hostCapacity(this.max, this.probe()) : this.max
   }
 
   status(): SubagentStatus {

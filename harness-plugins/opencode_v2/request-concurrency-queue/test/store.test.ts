@@ -269,6 +269,49 @@ describe("live subagent config", () => {
   })
 })
 
+describe("adopting process-wide settings on a genuine reload", () => {
+  test("a reload applies a flipped adaptive flag and a changed hostAware", () => {
+    const limits = new Map([["acme", 1]])
+    const store = adoptStore(limits, new Map(), undefined, { max: 2, hostAware: false }, false)
+    expect(store.adaptive).toBe(false)
+    expect(store.subagents?.hostAware).toBe(false)
+
+    releaseStore(store, 100)
+    const reloaded = adoptStore(limits, new Map(), undefined, { max: 2, hostAware: true }, true)
+
+    expect(reloaded).toBe(store)
+    expect(reloaded.adaptive).toBe(true)
+    expect(reloaded.subagents?.hostAware).toBe(true)
+    expect(reloaded.subagents?.status().max).toBe(2)
+    releaseStore(reloaded, 0)
+  })
+
+  test("a reload whose configuration carries no subagents section clears the gate", () => {
+    const limits = new Map([["acme", 1]])
+    const store = adoptStore(limits, new Map(), undefined, { max: 2, hostAware: true })
+    expect(store.subagents).toBeDefined()
+
+    releaseStore(store, 100)
+    const reloaded = adoptStore(limits)
+
+    expect(reloaded.subagents).toBeUndefined()
+    releaseStore(reloaded, 0)
+  })
+
+  test("a second live location leaves the gate, its hostAware, and adaptive in place", () => {
+    const limits = new Map([["acme", 1]])
+    const store = adoptStore(limits, new Map(), undefined, { max: 2, hostAware: true }, true)
+
+    const second = adoptStore(limits, new Map(), undefined, undefined, false)
+
+    expect(second).toBe(store)
+    expect(second.subagents).toBe(store.subagents)
+    expect(second.subagents?.hostAware).toBe(true)
+    expect(second.adaptive).toBe(true)
+    clearGlobalStore()
+  })
+})
+
 describe("budget fill across a config edit", () => {
   test("changing the budget keeps what is left in it", async () => {
     const store = createStore(

@@ -27,6 +27,12 @@ export interface TokenBudgetSnapshot {
 
 export class TokenBudget {
   capacity: number
+  /**
+   * The exact refill rate the bucket was configured with. `refillPerMs` is the
+   * derived value admission reads; this one keeps the integer the settings form
+   * wrote, so an unchanged save can round-trip it without a fractional drift.
+   */
+  refillPerMinute: number
   refillPerMs: number
   safetyFactor: number
   private readonly now: () => number
@@ -44,6 +50,7 @@ export class TokenBudget {
       )
     }
     this.capacity = options.capacity
+    this.refillPerMinute = options.refillPerMinute
     this.refillPerMs = options.refillPerMinute / 60_000
     this.safetyFactor = resolveSafetyFactor(options.safetyFactor)
     this.now = options.now ?? Date.now
@@ -65,6 +72,7 @@ export class TokenBudget {
       )
     }
     this.capacity = options.capacity
+    this.refillPerMinute = options.refillPerMinute
     this.refillPerMs = options.refillPerMinute / 60_000
     this.safetyFactor = resolveSafetyFactor(options.safetyFactor)
     this.available = Math.min(this.available, this.capacity)
