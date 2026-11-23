@@ -77,6 +77,12 @@ export interface SchedulerConfigSnapshot {
 /** Everything the settings form reads and writes. */
 export interface ConfigSnapshot {
   providers: Record<string, number>
+  /**
+   * Whether the dialog may add or remove a provider. Plugin options own the
+   * provider set when they carry one, and an edit would be discarded on the
+   * next load, so the dialog then edits maximums only.
+   */
+  providerSetEditable: boolean
   tokens: Record<string, TokenConfig>
   scheduler: SchedulerConfigSnapshot
   /** `max: 0` means fan-out gating is off. */
@@ -266,6 +272,7 @@ const configSnapshotSchema = {
   type: "object",
   properties: {
     providers: { type: "object", additionalProperties: { type: "integer", minimum: 1 } },
+    providerSetEditable: { type: "boolean" },
     tokens: { type: "object", additionalProperties: tokenConfigSchema },
     scheduler: schedulerConfigSchema,
     subagents: {
@@ -279,7 +286,7 @@ const configSnapshotSchema = {
     },
     adaptive: { type: "boolean" },
   },
-  required: ["providers", "tokens", "scheduler", "subagents", "adaptive"],
+  required: ["providers", "providerSetEditable", "tokens", "scheduler", "subagents", "adaptive"],
   additionalProperties: false,
 } as const
 

@@ -367,6 +367,7 @@ describe("a provider-set change with in-place edits", () => {
         store,
         {
           providers: { acme: 4, other: 3, third: 1 },
+          providerSetEditable: true,
           tokens: { acme: { capacity: 400_000, refillPerMinute: 200_000, safetyFactor: 1.2 } },
           scheduler: {
             contextCapacity: 5_000,

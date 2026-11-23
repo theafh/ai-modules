@@ -34,6 +34,7 @@ function storeWith(max = 8) {
 function validSnapshot(overrides: Partial<ConfigSnapshot> = {}): ConfigSnapshot {
   return {
     providers: { acme: 4 },
+    providerSetEditable: true,
     tokens: { acme: { capacity: 400_000, refillPerMinute: 400_000, safetyFactor: 1.1 } },
     scheduler: {
       contextCapacity: 1_200_000,
@@ -219,6 +220,21 @@ describe("configSnapshot's provider set", () => {
     } finally {
       file.cleanup()
     }
+  })
+
+  test("marks the set editable only when no plugin options own it", () => {
+    const store = storeWith(4)
+
+    expect(configSnapshot(store, undefined, {}).providerSetEditable).toBe(true)
+    expect(
+      configSnapshot(store, { providers: { acme: 4 } }, {}).providerSetEditable,
+    ).toBe(true)
+    expect(
+      configSnapshot(store, undefined, { providers: { acme: 4 } }).providerSetEditable,
+    ).toBe(false)
+    expect(
+      configSnapshot(store, undefined, { providers: ["acme"] }).providerSetEditable,
+    ).toBe(false)
   })
 })
 

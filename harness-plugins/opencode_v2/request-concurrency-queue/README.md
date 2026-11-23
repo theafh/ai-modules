@@ -122,7 +122,9 @@ and queued waiters survive it. Every in-place edit is applied and the new file i
 written; adding or removing a provider changes the set of schedulers those
 requests are already using, so that one edit is deferred in the store and
 reported with `restartRequired: true`. Save then stays disabled until the dialog
-is reopened, which reads the file's saved set back.
+is reopened, which reads the file's saved set back. When the plugin options
+carry a provider set, the options win at every load, so the dialog edits each
+maximum only and hides the **Remove** control and the add row.
 
 ## Configuration
 

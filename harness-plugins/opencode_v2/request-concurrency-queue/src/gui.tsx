@@ -407,9 +407,16 @@ export function ProvidersSection(props: {
   onAdd: (providerID: string, max: number) => boolean
   /** A refused add or remove, shown under the add row. */
   error?: string
+  /**
+   * Whether the provider set may be edited here. Plugin options own the set
+   * when they carry one, so an edit would be discarded on the next load; the
+   * section then edits maximums only.
+   */
+  setEditable?: boolean
 }) {
   const [newProviderID, setNewProviderID] = createSignal("")
   const [newProviderMax, setNewProviderMax] = createSignal("1")
+  const setEditable = () => props.setEditable ?? true
   const add = () => {
     if (!props.onAdd(newProviderID(), Number(newProviderMax()))) return
     setNewProviderID("")
@@ -423,6 +430,12 @@ export function ProvidersSection(props: {
         that waits in a queue rather than failing. Set this to the number of parallel
         requests your plan allows; a higher number is not served by the provider.
       </p>
+      <Show when={!setEditable()}>
+        <p class="request-concurrency-config-help">
+          The provider set comes from the plugin's options, so this dialog edits each
+          maximum only. Add or remove a provider in the plugin options instead.
+        </p>
+      </Show>
       <For each={Object.keys(props.providers)}>
         {(providerID) => (
           <div class="request-concurrency-provider-row">
@@ -431,40 +444,44 @@ export function ProvidersSection(props: {
               value={props.providers[providerID]}
               onChange={(value) => props.onMaxChange(providerID, value)}
             />
-            <button
-              type="button"
-              class="request-concurrency-provider-remove"
-              aria-label={`Remove ${providerID}`}
-              title={`Remove ${providerID}`}
-              on:click={() => props.onRemove(providerID)}
-            >
-              Remove
-            </button>
+            <Show when={setEditable()}>
+              <button
+                type="button"
+                class="request-concurrency-provider-remove"
+                aria-label={`Remove ${providerID}`}
+                title={`Remove ${providerID}`}
+                on:click={() => props.onRemove(providerID)}
+              >
+                Remove
+              </button>
+            </Show>
           </div>
         )}
       </For>
-      <div class="request-concurrency-provider-add">
-        <input
-          class="request-concurrency-input request-concurrency-provider-add-id"
-          type="text"
-          placeholder="provider ID"
-          aria-label="New provider ID"
-          value={newProviderID()}
-          on:input={(event) => setNewProviderID((event.currentTarget as HTMLInputElement).value)}
-        />
-        <input
-          class="request-concurrency-input request-concurrency-provider-add-max"
-          type="number"
-          min="1"
-          step="1"
-          aria-label="New provider maximum"
-          value={newProviderMax()}
-          on:input={(event) => setNewProviderMax((event.currentTarget as HTMLInputElement).value)}
-        />
-        <button type="button" class="request-concurrency-provider-add-button" on:click={add}>
-          Add provider
-        </button>
-      </div>
+      <Show when={setEditable()}>
+        <div class="request-concurrency-provider-add">
+          <input
+            class="request-concurrency-input request-concurrency-provider-add-id"
+            type="text"
+            placeholder="provider ID"
+            aria-label="New provider ID"
+            value={newProviderID()}
+            on:input={(event) => setNewProviderID((event.currentTarget as HTMLInputElement).value)}
+          />
+          <input
+            class="request-concurrency-input request-concurrency-provider-add-max"
+            type="number"
+            min="1"
+            step="1"
+            aria-label="New provider maximum"
+            value={newProviderMax()}
+            on:input={(event) => setNewProviderMax((event.currentTarget as HTMLInputElement).value)}
+          />
+          <button type="button" class="request-concurrency-provider-add-button" on:click={add}>
+            Add provider
+          </button>
+        </div>
+      </Show>
       <Show when={props.error}>
         <div class="request-concurrency-config-error">{props.error}</div>
       </Show>
@@ -584,6 +601,7 @@ export function ConfigForm(props: { client: ConfigClient }) {
               onRemove={(providerID) => editProviders({ kind: "remove", providerID })}
               onAdd={(providerID, max) => editProviders({ kind: "add", providerID, max })}
               error={providerError()}
+              setEditable={current().providerSetEditable}
             />
 
             <div class="request-concurrency-config-title">Token budget</div>

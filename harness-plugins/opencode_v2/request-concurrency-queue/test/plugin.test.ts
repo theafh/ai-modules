@@ -2451,4 +2451,22 @@ describe("the config RPC reports the file's pending provider set", () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  test("the dialog learns when the plugin options own the provider set", async () => {
+    const fromFile = await setup({ maxConcurrency: 2 })
+    try {
+      expect((await fromFile.rpc.handlers().config({})).providerSetEditable).toBe(true)
+    } finally {
+      await fromFile.cleanup()
+    }
+
+    const fromOptions = await setup({ maxConcurrency: 2, providers: { acme: 2 } })
+    try {
+      const snapshot = await fromOptions.rpc.handlers().config({})
+      expect(snapshot.providers).toEqual({ acme: 2 })
+      expect(snapshot.providerSetEditable).toBe(false)
+    } finally {
+      await fromOptions.cleanup()
+    }
+  })
 })

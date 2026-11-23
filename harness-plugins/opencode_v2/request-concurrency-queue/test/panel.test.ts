@@ -54,6 +54,7 @@ let panelModule: {
     onRemove: (providerID: string) => void
     onAdd: (providerID: string, max: number) => boolean
     error?: string
+    setEditable?: boolean
   }) => unknown
   editedProviders: (
     current: { providers: Record<string, number>; tokens: Record<string, TokenConfigShape> },
@@ -501,6 +502,7 @@ describe("the settings form's Providers section", () => {
   function pendingSnapshot(): ConfigSnapshot {
     return {
       providers: { acme: 2, beta: 4 },
+      providerSetEditable: true,
       tokens: {},
       scheduler: {
         contextCapacity: 0,
@@ -516,7 +518,10 @@ describe("the settings form's Providers section", () => {
     }
   }
 
-  function renderProviders(snapshot: ConfigSnapshot = pendingSnapshot()): string {
+  function renderProviders(
+    snapshot: ConfigSnapshot = pendingSnapshot(),
+    setEditable = snapshot.providerSetEditable,
+  ): string {
     return renderToString(
       () =>
         panelModule.ProvidersSection({
@@ -524,6 +529,7 @@ describe("the settings form's Providers section", () => {
           onMaxChange: () => {},
           onRemove: () => {},
           onAdd: () => true,
+          setEditable,
         }) as never,
     )
   }
@@ -585,12 +591,29 @@ describe("the settings form's Providers section", () => {
     expect(current).toEqual({ providers: { acme: 2 }, tokens: {} })
   })
 
+  test("hides add and remove when the plugin options own the provider set", () => {
+    const html = renderProviders(
+      { ...pendingSnapshot(), providerSetEditable: false },
+      false,
+    )
+
+    expect(html.match(/request-concurrency-provider-row/g)).toHaveLength(2)
+    expect(html).toContain(">acme · max concurrent<")
+    expect(html).toContain(">beta · max concurrent<")
+    expect(html).not.toContain("request-concurrency-provider-remove")
+    expect(html).not.toContain("Remove acme")
+    expect(html).not.toContain("request-concurrency-provider-add")
+    expect(html).not.toContain(">Add provider<")
+    expect(html).toContain("The provider set comes from the plugin's options")
+  })
+
   test("ConfigForm composes the section with the add and remove edit paths", () => {
     const source = readFileSync(resolve(packageDir, "src", "gui.tsx"), "utf8")
 
     expect(source).toContain("<ProvidersSection")
     expect(source).toContain('editProviders({ kind: "remove", providerID })')
     expect(source).toContain('editProviders({ kind: "add", providerID, max })')
+    expect(source).toContain("setEditable={current().providerSetEditable}")
   })
 })
 

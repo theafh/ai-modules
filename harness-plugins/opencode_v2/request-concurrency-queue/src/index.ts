@@ -859,6 +859,9 @@ export function configSnapshot(
 
   return {
     providers,
+    // Plugin options win at load, so an edit to the set they own would be
+    // discarded on the next reload; the dialog hides add and remove then.
+    providerSetEditable: options.providers === undefined,
     tokens,
     scheduler,
     subagents: {
