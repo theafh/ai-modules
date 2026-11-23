@@ -562,7 +562,8 @@ describe("subscribeStatus", () => {
   })
 })
 
-describe("blockedLabel", () => {  test("names only the gates holding a request back", () => {
+describe("blockedLabel", () => {
+  test("names only the gates holding a request back", () => {
     expect(blockedLabel({ slots: 2, context: 0, budget: 1, breaker: 0, draining: 0 })).toBe(
       "slots 2 · budget 1",
     )
