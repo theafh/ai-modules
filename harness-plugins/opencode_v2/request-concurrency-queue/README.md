@@ -424,8 +424,13 @@ bun run build:gui
 - A request's size is an estimate, not the provider's count. Text is charged at
   3.5 bytes per token times the configured safety factor; an embedded image is
   charged a flat 1200 tokens because its base64 bytes would otherwise overstate
-  it by orders of magnitude. A body under 256000 bytes is charged by its
-  declared length; a larger one is read once and scanned for image payloads.
+  it by orders of magnitude. Size is counted in UTF-8 bytes: a body's raw byte
+  count minus the bytes of each image payload it carries. A body at or below
+  256000 bytes is scanned in its raw bytes and needs no decode when it carries
+  no base64 shape; the scan recognises a `;base64,` marker and a run of 2048
+  base64 characters and steps over `\n`, `\r`, and `\/` escapes, but not
+  `\uXXXX` escapes. A body above 256000 bytes, or one that matches, is decoded
+  and parsed once.
 - An auxiliary request is charged its whole prompt to the token budget, which
   over-estimates the cached prefix a compaction shares with the conversation.
   That is the safe side: the provider rejects a burst, not a pause.

@@ -1,4 +1,5 @@
 import { Plugin } from "@opencode/plugin"
+import { Buffer } from "node:buffer"
 import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
@@ -22,11 +23,28 @@ import { extractSessionID, type SubagentGateOptions } from "./subagents.js"
 const RECOVERY_STREAK = 4
 
 /**
- * A request body above this size is scanned for image payloads before it is
- * charged. Below it, the declared byte length is a close enough estimate and
- * the scan cost would be wasted.
+ * The size at or below which a request body is prefiltered in its raw bytes
+ * instead of parsed.
+ *
+ * A body at or below this count is measured by counting its UTF-8 bytes. Its
+ * raw bytes are scanned for the two shapes a base64 image takes — a `;base64,`
+ * marker or a run of 2048 base64 characters — and a body that carries neither
+ * is sized without a decoded string or a `JSON.parse`. The scan steps over the
+ * two-byte `\n`, `\r`, and `\/` escapes a JSON encoder writes inside a wrapped
+ * blob; it does not resolve `\uXXXX` escapes, so a payload encoded that way is
+ * not recognised here.
+ *
+ * A body above this count, or one the scan matches, is decoded and parsed once,
+ * because a base64 image in it is billed by the provider as an image, not as
+ * the hundreds of thousands of text tokens its bytes would otherwise imply.
  */
 const IMAGE_SCAN_BYTES = 256_000
+
+/** The `;base64,` marker of a data URI, as its ASCII bytes. */
+const BASE64_MARKER = new Uint8Array([0x3b, 0x62, 0x61, 0x73, 0x65, 0x36, 0x34, 0x2c])
+
+/** How many contiguous base64 characters make a bare blob worth parsing. */
+const BASE64_RUN_BYTES = 2_048
 
 /**
  * What one image costs on the token dimensions. The provider bills an image by
@@ -357,11 +375,19 @@ export default Plugin.define({
      * this turn's new context, and the total is what the request occupies in
      * flight.
      *
-     * A large body is scanned for embedded image payloads first. Base64 image
-     * bytes are not text tokens: charging them at the text rate made one
-     * screenshot look like hundreds of thousands of new tokens and could
-     * exhaust the whole budget or context cap on its own. Images are charged a
-     * fixed amount instead, and only the text bytes feed the text estimate.
+     * Base64 image bytes are not text tokens: charging them at the text rate
+     * made one screenshot look like hundreds of thousands of new tokens and
+     * could exhaust the whole budget or context cap on its own. Images are
+     * charged a fixed amount instead, and only the text bytes feed the text
+     * estimate.
+     *
+     * Every measurement is counted in UTF-8 bytes: the body's raw byte count
+     * minus the bytes of each image payload it carries. A body at or below the
+     * scan threshold is prefiltered in its raw bytes and returned without a
+     * decode or a parse when it carries no base64 shape; the prefilter
+     * recognises a `;base64,` marker and a 2048-character base64 run, stepping
+     * over `\n`, `\r`, and `\/` escapes but not `\uXXXX` ones. A larger body,
+     * or a matching one, is decoded and parsed once.
      *
      * An auxiliary request is charged its whole prompt (`fresh`): compaction
      * rewrites the transcript into a new prompt that no longer shares the
@@ -1291,12 +1317,24 @@ function soleEntry(entries: Set<Entry> | undefined): Entry | undefined {
 /**
  * Measures one request body as text bytes plus an image count.
  *
- * A body under the scan threshold is charged by its declared length, which is
- * accurate for text and cheap. A larger one is read once and scanned, because a
- * base64 image in it is billed by the provider as an image, not as the hundreds
- * of thousands of text tokens its bytes would otherwise imply.
+ * A body is sized in UTF-8 bytes: `textBytes` is the body's raw byte count
+ * minus the bytes of every image payload it carries, so a small and a large
+ * measurement are the same quantity and the delta between two requests stays
+ * meaningful. The declared `content-length` is used only when it is at or below
+ * `IMAGE_SCAN_BYTES`, and only as a text-only size (`images: 0`); a larger
+ * declared length says nothing about how much of the body is image, so it
+ * still streams and scans.
+ *
+ * A body at or below the threshold is prefiltered in its raw bytes and
+ * returned without a decoded string or a `JSON.parse` when it carries no
+ * base64 shape. The prefilter sees a `;base64,` marker and a run of 2048
+ * base64 characters, and steps over the two-byte `\n`, `\r`, and `\/` escapes
+ * a JSON encoder writes inside a wrapped blob; it does not resolve `\uXXXX`
+ * escapes. A match falls through to the parse path, which is also the only
+ * path for a body above the threshold. A body of exactly the threshold takes
+ * the prefiltered path.
  */
-async function measureBody(
+export async function measureBody(
   request: Request,
   log: (...args: unknown[]) => void,
 ): Promise<BodyMeasure> {
@@ -1308,50 +1346,140 @@ async function measureBody(
     const body = request.clone().body
     if (!body) return { textBytes: 0, images: 0 }
     const reader = body.getReader()
-    const decoder = new TextDecoder()
-    let text = ""
+    // Every chunk is retained: the parse path needs the whole body, and a body
+    // at or below the threshold needs all of its bytes for the prefilter. The
+    // clone's unread original branch is teed into memory either way, so this
+    // does not raise peak memory over reading the clone as one string.
+    const chunks: Uint8Array[] = []
+    let total = 0
     try {
       for (;;) {
         const { done, value } = await reader.read()
         if (done) break
-        text += decoder.decode(value, { stream: true })
+        if (!value || value.byteLength === 0) continue
+        chunks.push(value)
+        total += value.byteLength
       }
-      text += decoder.decode()
     } finally {
       reader.releaseLock()
     }
-    return measureText(text)
+    const bytes = concatBytes(chunks, total)
+    if (total <= IMAGE_SCAN_BYTES && !mayCarryImage(bytes)) {
+      return { textBytes: total, images: 0 }
+    }
+    return measureText(new TextDecoder().decode(bytes), total)
   } catch (error) {
     log("token estimate skipped", error)
     return { textBytes: 0, images: 0 }
   }
 }
 
-/** Counts the text of a parsed body, charging each embedded blob as an image. */
-function measureText(text: string): BodyMeasure {
-  const measured = { textBytes: 0, images: 0 }
-  try {
-    walkBody(JSON.parse(text), measured)
-    return measured
-  } catch {
-    // Not JSON, or too malformed to walk: fall back to the raw length.
-    return { textBytes: text.length, images: 0 }
+/** Joins the streamed chunks into one buffer; a lone chunk is returned as it came. */
+function concatBytes(chunks: Uint8Array[], total: number): Uint8Array {
+  if (chunks.length === 1) return chunks[0]
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
   }
+  return bytes
 }
 
-function walkBody(value: unknown, measured: { textBytes: number; images: number }): void {
+/**
+ * Whether a raw body carries a shape a base64 image payload takes.
+ *
+ * Matching on the bytes keeps the text-only path free of a decoded string and a
+ * parse. The check is deliberately coarse: a false positive costs one parse and
+ * changes no measurement, while a miss would charge image bytes as text. A
+ * `;base64,` marker or a run of 2048 base64 characters is enough. The scan
+ * steps over the two-byte `\n`, `\r`, and `\/` escapes so a payload wrapped
+ * with them still reads as one run; a `\uXXXX` escape is not resolved, which is
+ * the boundary of this prefilter.
+ */
+function mayCarryImage(bytes: Uint8Array): boolean {
+  let run = 0
+  for (let index = 0; index < bytes.length; index += 1) {
+    const byte = bytes[index]
+    if (byte === 0x3b /* ; */ && matchesBase64Marker(bytes, index)) return true
+    if (byte === 0x5c /* \ */ && index + 1 < bytes.length) {
+      const next = bytes[index + 1]
+      if (next === 0x6e /* n */ || next === 0x72 /* r */ || next === 0x2f /* / */) {
+        index += 1
+        continue
+      }
+    }
+    if (isBase64Byte(byte)) {
+      run += 1
+      if (run >= BASE64_RUN_BYTES) return true
+      continue
+    }
+    run = 0
+  }
+  return false
+}
+
+/** Whether `;base64,` starts at `start`, ignoring ASCII case like the marker's regex. */
+function matchesBase64Marker(bytes: Uint8Array, start: number): boolean {
+  if (start + BASE64_MARKER.length > bytes.length) return false
+  for (let offset = 0; offset < BASE64_MARKER.length; offset += 1) {
+    if (lowerAscii(bytes[start + offset]) !== BASE64_MARKER[offset]) return false
+  }
+  return true
+}
+
+function lowerAscii(byte: number): number {
+  return byte >= 0x41 && byte <= 0x5a ? byte + 0x20 : byte
+}
+
+/** The characters a base64 payload is made of, including its `=` padding. */
+function isBase64Byte(byte: number): boolean {
+  return (
+    (byte >= 0x41 && byte <= 0x5a) ||
+    (byte >= 0x61 && byte <= 0x7a) ||
+    (byte >= 0x30 && byte <= 0x39) ||
+    byte === 0x2b /* + */ ||
+    byte === 0x2f /* / */ ||
+    byte === 0x3d /* = */
+  )
+}
+
+/**
+ * Counts the text of a parsed body, charging each embedded blob as an image.
+ *
+ * `rawBytes` is the body's UTF-8 byte count. Each image payload's UTF-8 byte
+ * length is subtracted from it, so the result stays in the same unit as the
+ * streamed text-only path and the two can be compared. A payload the JSON
+ * encoder escaped costs its escape bytes as text, which over-counts slightly
+ * and never under-counts. Malformed JSON is not walked: its raw byte count is
+ * the only size it has.
+ */
+function measureText(text: string, rawBytes: number): BodyMeasure {
+  let images: string[]
+  try {
+    images = imagePayloads(JSON.parse(text))
+  } catch {
+    return { textBytes: rawBytes, images: 0 }
+  }
+  let imageBytes = 0
+  for (const payload of images) imageBytes += Buffer.byteLength(payload, "utf8")
+  return { textBytes: Math.max(0, rawBytes - imageBytes), images: images.length }
+}
+
+/** Every string value in the body that an image part would carry as a payload. */
+function imagePayloads(value: unknown, found: string[] = []): string[] {
   if (typeof value === "string") {
-    if (isImagePayload(value)) measured.images += 1
-    else measured.textBytes += value.length
-    return
+    if (isImagePayload(value)) found.push(value)
+    return found
   }
   if (Array.isArray(value)) {
-    for (const item of value) walkBody(item, measured)
-    return
+    for (const item of value) imagePayloads(item, found)
+    return found
   }
   if (value !== null && typeof value === "object") {
-    for (const item of Object.values(value as Record<string, unknown>)) walkBody(item, measured)
+    for (const item of Object.values(value as Record<string, unknown>)) imagePayloads(item, found)
   }
+  return found
 }
 
 /** A data URI or a bare base64 blob, as an image or document part carries it. */
