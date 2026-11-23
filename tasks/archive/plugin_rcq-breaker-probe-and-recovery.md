@@ -2,8 +2,8 @@
 description: "Fix the request-concurrency-queue breaker so only a slot-holding request becomes the half-open probe, and recovery and cooldown follow the documented contract."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T14:56:55Z
-status: implemented
+updated: 2026-11-23T15:17:30Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: "Andreas Hoffmann"
 design-extended: false
