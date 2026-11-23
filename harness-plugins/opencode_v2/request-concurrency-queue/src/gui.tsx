@@ -363,7 +363,7 @@ export function editedProviders(current: ProviderMaps, edit: ProviderEdit): Prov
   if (edit.kind === "add") {
     const providerID = edit.providerID.trim()
     if (providerID === "") throw new Error("A provider ID is required.")
-    if (providerID in current.providers) {
+    if (Object.hasOwn(current.providers, providerID)) {
       throw new Error(`Provider "${providerID}" is already configured.`)
     }
     if (!Number.isInteger(edit.max) || edit.max < 1) {

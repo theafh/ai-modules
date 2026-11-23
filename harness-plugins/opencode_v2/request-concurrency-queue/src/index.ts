@@ -762,8 +762,13 @@ export function configSnapshot(
 
   // A provider the store gates without a budget reports no entry, so the form
   // shows no fabricated default and an unchanged save leaves the file alone.
+  // The budget map names the same provider set the provider map does: a
+  // provider the file's pending set no longer names keeps gating requests until
+  // the restart, and reporting its budget here would hand it back to the next
+  // save, which then writes the removed provider's entry into the file again.
   const tokens: Record<string, { capacity: number; refillPerMinute: number; safetyFactor: number }> = {}
   for (const [providerID, limit] of store.providers) {
+    if (!Object.hasOwn(providers, providerID)) continue
     const budget = limit.scheduler.budgetConfig
     if (!budget) continue
     tokens[providerID] = {

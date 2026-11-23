@@ -179,6 +179,11 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
   const configured = [...config.providers.keys()].sort().join(",")
   const restartRequired = existing !== configured
 
+  // Each provider's new ceiling is collected here and written after the loop:
+  // a scheduler that throws part-way through must leave every limit describing
+  // the configuration it still runs, so a failed save moves no ceiling and the
+  // fingerprint below stays accurate.
+  const ceilings: Array<[ProviderLimit, number]> = []
   for (const [providerID, maxConcurrency] of config.providers) {
     const limit = store.providers.get(providerID)
     if (!limit) continue
@@ -213,10 +218,13 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
       queueDeadlineMs: config.scheduler?.queueDeadlineMs,
       breaker: config.scheduler?.breaker,
     })
-    // The ceiling follows only once the reconfigure returned: a throwing
-    // scheduler must leave the limit describing the configuration it still runs.
-    limit.maxConcurrency = maxConcurrency
+    // The ceiling is recorded here and written once every reconfigure returned:
+    // a throwing scheduler must leave the limit describing the configuration it
+    // still runs.
+    ceilings.push([limit, maxConcurrency])
   }
+
+  for (const [limit, ceiling] of ceilings) limit.maxConcurrency = ceiling
 
   if (config.subagents) {
     if (store.subagents) {
