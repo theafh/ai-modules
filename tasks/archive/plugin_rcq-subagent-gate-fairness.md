@@ -2,8 +2,8 @@
 description: "Make the request-concurrency-queue subagent gate serve waiters FIFO, honour a reload drain, and re-evaluate host capacity on a timer instead of only on release."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T12:51:18Z
-status: implemented
+updated: 2026-11-23T12:54:20Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: "Andreas Hoffmann"
 design-extended: false
