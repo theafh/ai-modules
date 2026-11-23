@@ -2,8 +2,8 @@
 description: "Keep request-concurrency-queue status within its declared schema and render an exhausted token bucket red, so a saturated provider does not fail validation or show green."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T15:47:30Z
-status: implemented
+updated: 2026-11-23T15:59:04Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: "Andreas Hoffmann"
 design-extended: false
