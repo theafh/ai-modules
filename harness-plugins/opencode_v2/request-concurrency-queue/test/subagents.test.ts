@@ -198,6 +198,151 @@ describe("SubagentGate.setMax", () => {
   })
 })
 
+describe("SubagentGate fairness and recheck", () => {
+  const RECHECK_WAIT_MS = 2_500
+
+  function wait(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  test("a launch behind a waiter joins the queue while the older waiter is served", async () => {
+    let metrics: HostMetrics = { cores: 4, load1: 3, freeMemoryGB: 10 }
+    const gate = new SubagentGate({ max: 2, hostAware: true, probe: () => metrics })
+
+    const held = await gate.acquire("parent")
+    held.bind("ses_a")
+    expect(gate.capacity()).toBe(1)
+
+    let olderAdmitted = false
+    const older = gate.acquire("parent").then((permit) => {
+      olderAdmitted = true
+      return permit
+    })
+    await tick()
+    expect(olderAdmitted).toBe(false)
+    expect(gate.status()).toEqual({ live: 1, queued: 1, max: 2, capacity: 1 })
+
+    // One slot frees on the host while a new launch arrives. The new launch
+    // must queue behind the older waiter rather than overtake it.
+    metrics = { cores: 4, load1: 2, freeMemoryGB: 10 }
+    let newerAdmitted = false
+    const newer = gate.acquire("parent").then((permit) => {
+      newerAdmitted = true
+      return permit
+    })
+    await tick()
+
+    expect(olderAdmitted).toBe(true)
+    expect(newerAdmitted).toBe(false)
+    expect(gate.liveCount).toBe(2)
+
+    const olderPermit = await older
+    expect(olderPermit).toBeDefined()
+    gate.cancelAll()
+    await newer.catch(() => undefined)
+    olderPermit.release()
+    held.release()
+  })
+
+  test("the recheck admits a queued launch when host capacity rises", async () => {
+    let metrics: HostMetrics = { cores: 4, load1: 3, freeMemoryGB: 10 }
+    const gate = new SubagentGate({ max: 4, hostAware: true, probe: () => metrics })
+
+    const held = await gate.acquire("parent")
+    held.bind("ses_a")
+
+    const queued = gate.acquire("parent")
+    await tick()
+    expect(gate.queuedCount).toBe(1)
+    expect(gate.recheckArmed).toBe(true)
+
+    // No permit is released; only the host frees capacity.
+    metrics = { cores: 4, load1: 0, freeMemoryGB: 10 }
+    const permit = await Promise.race([
+      queued,
+      wait(RECHECK_WAIT_MS).then(() => {
+        throw new Error("the recheck did not admit the queued launch")
+      }),
+    ])
+
+    expect(gate.liveCount).toBe(2)
+    expect(gate.queuedCount).toBe(0)
+    expect(gate.recheckArmed).toBe(false)
+
+    permit.release()
+    held.release()
+    expect(gate.liveCount).toBe(0)
+  })
+
+  test("a drain queues a launch that capacity would otherwise admit", async () => {
+    const gate = new SubagentGate({ max: 2 })
+    gate.beginDrain()
+
+    let admitted = false
+    const queued = gate.acquire("parent").then((permit) => {
+      admitted = true
+      return permit
+    })
+    await tick()
+    expect(admitted).toBe(false)
+    expect(gate.queuedCount).toBe(1)
+    expect(gate.liveCount).toBe(0)
+
+    gate.endDrain()
+    const permit = await queued
+    expect(admitted).toBe(true)
+    expect(gate.liveCount).toBe(1)
+    permit.release()
+  })
+
+  test("a post-cancel launch settles instead of queueing on the torn-down drain", async () => {
+    const gate = new SubagentGate({ max: 2, hostAware: true, probe: () => idleHost })
+    gate.beginDrain()
+
+    const queued = gate.acquire("parent")
+    await tick()
+    expect(gate.queuedCount).toBe(1)
+
+    gate.cancelAll()
+    await queued.catch(() => undefined)
+    expect(gate.recheckArmed).toBe(false)
+
+    const permit = await Promise.race([
+      gate.acquire("parent"),
+      wait(RECHECK_WAIT_MS).then(() => {
+        throw new Error("the post-cancel launch hung")
+      }),
+    ])
+    expect(gate.liveCount).toBe(1)
+    expect(gate.recheckArmed).toBe(false)
+    permit.release()
+  })
+
+  test("the last waiter's abort clears the recheck timer", async () => {
+    const gate = new SubagentGate({
+      max: 1,
+      hostAware: true,
+      probe: () => ({ cores: 4, load1: 3, freeMemoryGB: 10 }),
+    })
+    const held = await gate.acquire("parent")
+    held.bind("ses_a")
+
+    const controller = new AbortController()
+    const queued = gate.acquire("parent", controller.signal).catch((error: unknown) => error)
+    await tick()
+    expect(gate.queuedCount).toBe(1)
+    expect(gate.recheckArmed).toBe(true)
+
+    controller.abort()
+    const error = await queued
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).name).toBe("AbortError")
+    expect(gate.queuedCount).toBe(0)
+    expect(gate.recheckArmed).toBe(false)
+    held.release()
+  })
+})
+
 describe("permit lifecycle", () => {
   test("a child that ends before its permit binds does not leak the slot", async () => {
     const gate = new SubagentGate({ max: 1 })

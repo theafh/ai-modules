@@ -124,6 +124,8 @@ export class SubagentGate {
   private readonly endedEarly = new Set<string>()
   /** Permits acquired by a launch that has not bound a child yet. */
   private pending = 0
+  /** Re-runs admission while waiters exist, so a host that frees capacity admits them. */
+  private recheckTimer?: ReturnType<typeof setTimeout>
 
   constructor(options: SubagentGateOptions) {
     if (!Number.isInteger(options.max) || options.max < 1) {
@@ -153,6 +155,14 @@ export class SubagentGate {
 
   get queuedCount(): number {
     return this.waiters.length
+  }
+
+  /**
+   * Whether a capacity recheck is armed. Not part of `SubagentStatus`, so the
+   * published RPC schema stays unchanged.
+   */
+  get recheckArmed(): boolean {
+    return this.recheckTimer !== undefined
   }
 
   /** The child sessions holding a permit, excluding launches not yet bound. */
@@ -187,7 +197,9 @@ export class SubagentGate {
   acquire(sessionID: string, signal?: AbortSignal): Promise<SubagentPermit> {
     if (signal?.aborted) return Promise.reject(cancelledError())
 
-    if (this.liveCount < this.capacity()) {
+    // A launch behind a waiter joins the queue instead of overtaking it, and a
+    // launch during a drain is held even when capacity looks free.
+    if (this.waiters.length === 0 && !this.draining && this.liveCount < this.capacity()) {
       this.pending += 1
       return Promise.resolve(this.createPermit())
     }
@@ -198,11 +210,16 @@ export class SubagentGate {
         waiter.onAbort = () => {
           const index = this.waiters.indexOf(waiter)
           if (index !== -1) this.waiters.splice(index, 1)
+          // The last waiter's abort leaves nothing to recheck.
+          if (this.waiters.length === 0) this.clearRecheck()
           reject(cancelledError())
         }
         signal.addEventListener("abort", waiter.onAbort, { once: true })
       }
       this.waiters.push(waiter)
+      // Admission still happens on the queue path, so a launch that fits is
+      // served at once rather than waiting for a release.
+      this.serve()
     })
   }
 
@@ -227,6 +244,7 @@ export class SubagentGate {
   cancelAll(reason = "the fan-out gate was unloaded"): void {
     this.generation += 1
     this.endedEarly.clear()
+    this.clearRecheck()
     for (const waiter of this.waiters.splice(0)) {
       if (waiter.signal && waiter.onAbort) {
         waiter.signal.removeEventListener("abort", waiter.onAbort)
@@ -235,6 +253,9 @@ export class SubagentGate {
     }
     this.live.clear()
     this.pending = 0
+    // A teardown is `beginDrain()` then `cancelAll()` with no `endDrain`, so
+    // the drain must end here or a post-cancel launch would queue forever.
+    this.draining = false
   }
 
   private createPermit(): SubagentPermit {
@@ -285,11 +306,42 @@ export class SubagentGate {
       this.pending += 1
       next.resolve(this.createPermit())
     }
+    this.armRecheck()
+  }
+
+  /**
+   * Re-checks capacity on a timer while waiters exist, so a host that frees a
+   * slot admits them without another permit being released. The scheduler's
+   * `armTimer` bounds the same idle time for its gates.
+   */
+  private armRecheck(): void {
+    if (!this.hostAware || this.waiters.length === 0) {
+      this.clearRecheck()
+      return
+    }
+    // Already armed; the callback re-arms itself after each probe.
+    if (this.recheckTimer) return
+    const timer = setTimeout(() => {
+      this.recheckTimer = undefined
+      if (this.waiters.length === 0) return
+      this.serve()
+    }, RECHECK_MS)
+    timer.unref?.()
+    this.recheckTimer = timer
+  }
+
+  private clearRecheck(): void {
+    if (!this.recheckTimer) return
+    clearTimeout(this.recheckTimer)
+    this.recheckTimer = undefined
   }
 }
 
 /** A whole string that is a session ID, never a fragment of prose. */
 const SESSION_ID = /^ses_[A-Za-z0-9]+$/
+
+/** How often a queued launch re-checks the host while `hostAware` is set. */
+const RECHECK_MS = 2_000
 
 /**
  * Finds the child session ID in a subagent tool result.
