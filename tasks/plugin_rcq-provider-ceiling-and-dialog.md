@@ -34,7 +34,7 @@ Verified by reading the code above and by a store reproduction: after `applyConf
 
 The archived task [config validation and save](archive/plugin_rcq-config-validation-and-save.md) changes `applyConfig` so in-place edits apply before a provider-set change reports `restartRequired`. That change supersedes the early return; this task builds on the post-change behaviour and must not restore it.
 
-The live task [live config reporting](plugin_rcq-live-config-reporting.md) also edits `src/gui.tsx`, `test/panel.test.ts`, and `configSnapshot`, and its Subagents-section extraction shares `ConfigForm`'s composition site with this task's loaded-form split. The two compose in either order.
+The live task [live config reporting](archive/plugin_rcq-live-config-reporting.md) also edits `src/gui.tsx`, `test/panel.test.ts`, and `configSnapshot`, and its Subagents-section extraction shares `ConfigForm`'s composition site with this task's loaded-form split. The two compose in either order.
 
 ## Approach
 

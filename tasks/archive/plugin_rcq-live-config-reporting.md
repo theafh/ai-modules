@@ -2,8 +2,8 @@
 description: "Make the request-concurrency-queue config dialog report and apply the live store settings, so an options-configured install keeps its token budget, context cap, and hostAware on Save."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T17:17:14Z
-status: implemented
+updated: 2026-11-23T17:27:45Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
@@ -31,7 +31,7 @@ design-extended: true
 
 `src/budget.ts` stores `refillPerMs`, not `refillPerMinute`, and `saveConfig` requires `refillPerMinute` to be an integer, so reconstructing `500000/60000*60000` yields `500000.00000000006` and an unchanged save of a 500k budget is rejected.
 
-The archived task [config validation and save](archive/plugin_rcq-config-validation-and-save.md) rewrites `saveConfig`'s write/apply ordering: it reads the current file bytes, renames the temporary file into place, then applies to the store, with an injected `io` seam and a restore on an apply throw. This task's preserve-uncovered-entries merge sits inside that post-change flow, in the step that builds the merged object before the temporary file is written, and restores no part of the old ordering.
+The archived task [config validation and save](plugin_rcq-config-validation-and-save.md) rewrites `saveConfig`'s write/apply ordering: it reads the current file bytes, renames the temporary file into place, then applies to the store, with an injected `io` seam and a restore on an apply throw. This task's preserve-uncovered-entries merge sits inside that post-change flow, in the step that builds the merged object before the temporary file is written, and restores no part of the old ordering.
 
 The provider-ceiling-and-dialog task also edits `src/gui.tsx` and `test/panel.test.ts`, and its loaded-form split shares `ConfigForm`'s composition site with this task's Subagents-section extraction. The two compose in either order: whichever lands second places its structure around the other's.
 
@@ -51,7 +51,7 @@ Verified by reading the code above; the review that produced this task recorded 
 - Keep `configSnapshot`'s `fileConfig` parameter and the `currentFileConfig()` re-read: the provider-ceiling-and-dialog task uses that input for the file-sourced provider set. Only the `tokens`, `scheduler`, and `subagents.hostAware` reads move to the store.
 - Rewrite the superseded `test/config.test.ts` case against a store-sourced budget.
 
-**Out of scope:** Adding provider add/remove controls to the dialog (owned by the sibling task [provider ceiling and dialog](plugin_rcq-provider-ceiling-and-dialog.md), which owns the wider loaded-form split for the provider rows), and changing the config-file schema.
+**Out of scope:** Adding provider add/remove controls to the dialog (owned by the sibling task [provider ceiling and dialog](../plugin_rcq-provider-ceiling-and-dialog.md), which owns the wider loaded-form split for the provider rows), and changing the config-file schema.
 
 ## Acceptance
 
