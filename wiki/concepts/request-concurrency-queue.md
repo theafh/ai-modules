@@ -74,6 +74,19 @@ completions, up to the configured ceiling. With `subagents` configured, the
 plugin also wraps the built-in `subagent` tool and caps how many child sessions
 run at once, optionally lowering that ceiling from the host's load average.
 
+Request size is counted in UTF-8 bytes, and an image payload is charged a flat
+1200 tokens instead of its base64 byte length. A body at or below 256000 bytes
+is scanned in its raw bytes for a `;base64,` marker or a 2048-character base64
+run, counting the `\n`, `\r`, and `\/` escapes a wrapped blob carries and not
+resolving `\uXXXX` escapes, so a text-only body is sized without a decode or a
+`JSON.parse`; a larger body, a matching one, or one whose declared
+`content-length` is above the threshold is decoded and parsed once. The
+per-session cursor is reset when a compaction is admitted, so the first primary
+request after a compaction is charged its whole prompt, and a primary that
+queued across a compaction skips its cursor write through a per-session reset
+generation; title and generate requests leave the cursor alone. Verified on
+2026-11-23 against the package's `measureBody` and token-accounting tests.
+
 The shared queue lives in a versioned `globalThis` registry rather than in one
 `setup` closure. The first plugin instance in the server process creates each
 provider's limiter; later instances reuse the same limiter objects and the same
@@ -106,6 +119,21 @@ For the deployed directory install, the plugin reads
 with `OPENCODE_REQUEST_CONCURRENCY_CONFIG`. Plugin options win over the config
 file, which wins over environment variables, which win over defaults. The
 environment variables remain a fallback, not the primary local configuration.
+
+The Concurrency dialog reports the running store rather than the file, so an
+install configured through plugin options shows the token budget, context cap,
+and host-aware switch it is actually using, and an unchanged save writes those
+values back instead of clearing them. A saved maximum becomes the provider's
+configured ceiling, which the status snapshot, the config snapshot, the reload
+fingerprint, and adaptive recovery all read; a save that raises the ceiling
+keeps an adaptive-lowered width where it is, a lowering clamps the width under
+the new ceiling, and turning `adaptive` off restores the ceiling. A
+provider-set change is deferred in the store and reported with
+`restartRequired: true`, and the dialog then disables Save until it is reopened.
+When the plugin options carry a provider set, those options win at every load,
+so the dialog edits each maximum only and hides its add and remove controls.
+Verified on 2026-11-23 against the package's `configSnapshot`, `saveConfig`, and
+`applyConfig` tests.
 
 The `log` flag is debug logging only. It prints initialization, acquire, and
 release events with the provider ID and that provider's active and queued

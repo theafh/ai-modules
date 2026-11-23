@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-11-21 | Total pages: 39
+> Last updated: 2026-11-23 | Total pages: 39
 
 ## Entities
 
@@ -33,7 +33,7 @@
 - [Orchestration failure families](concepts/orchestration-failure-families.md): the run evidence behind agent_spinner's recipes: 23 failure families with counts and base rates, 16 cases, per-recipe family sets, and the families each protocol step answers.
 - [Output style delivery design](concepts/output-style-delivery-design.md): the decision record behind the `styles/` source, the per-target delivery matrix including Cursor's project-only `.mdc` write, the marked-block write, and the scope rejections.
 - [OpenCode plugin loading](concepts/opencode-plugin-loading.md): how OpenCode 2 loads a plugin from a directory or the plugins array, why options arrive only through the array, and why a deployed package needs no node_modules.
-- [Request concurrency queue](concepts/request-concurrency-queue.md): the OpenCode 2 admission scheduler: one process-wide per-provider gate over concurrency, token budget, context, and a circuit breaker, its config precedence and reload registry, and the status bar over a shared RPC.
+- [Request concurrency queue](concepts/request-concurrency-queue.md): the OpenCode 2 admission scheduler: one process-wide per-provider gate over concurrency, token budget, context, and a circuit breaker, its counted-byte sizing and post-compaction accounting, its config precedence and reload registry, the live config dialog, and the status bar over a shared RPC.
 - [Plugin packaging and versioning](concepts/plugin-packaging-and-versioning.md): why two manifests, the lockstep version contract, where a missed bump surfaces, and the two distribution options.
 - [Skill family architecture](concepts/skill-family-architecture.md): how a skill family names members by invocation mode, keeps family rules once in the base skill, bundles scripts, and is audited by a checker whose severity lines come from the harness.
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.

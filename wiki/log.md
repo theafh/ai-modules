@@ -1580,3 +1580,15 @@ pre-existing, and the size infos stay advisory; the one on
   count and the Util cell's colour follow the raw `active / max` ratio while the
   Util cell shows the bounded value, and the load-scale sentence gains the
   `(1 - available / capacity) * 300` token-colour mapping.
+
+## [2026-11-23 22:49] update | Record the live dialog, counted-byte sizing, and post-compaction charge
+
+- concepts/request-concurrency-queue.md: the config paragraph now states that the
+  dialog reports the running store, that a saved maximum becomes the ceiling
+  with the adaptive clamp rule, that a provider-set change defers with
+  `restartRequired`, and that plugin options owning the set hide add and remove.
+  The scheduler paragraph gains the counted-UTF-8-byte sizing with its raw-byte
+  prefilter and declared-length branch, and the compaction cursor reset with its
+  reset generation. Both carry the 2026-11-23 test source.
+- index.md: the page summary names the counted-byte sizing, the post-compaction
+  accounting, and the live dialog; the header date moves to 2026-11-23.
