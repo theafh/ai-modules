@@ -1931,6 +1931,144 @@ describe("provider circuit breaker", () => {
   })
 })
 
+describe("half-open probe assignment", () => {
+  test("an auxiliary request never takes the probe, and its 5xx reopens the circuit", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 2,
+      providers: ["acme"],
+      scheduler: { contextCapacity: 0, breaker: { threshold: 1, cooldownMs: 50, mode: "wait" } },
+    })
+
+    // Open the circuit with a transport stall on a primary request.
+    await requestHook(hooks, "seed", request("https://example.test/seed"))
+    const retry = hooks.get("retry")
+    if (!retry) throw new Error("missing retry hook")
+    await retry({
+      sessionID: "seed",
+      model: { providerID: "acme", id: "test" },
+      error: { type: "provider.transport", message: "stalled" },
+      attempt: 2,
+      decision: { retry: true, delay: 1 },
+    })
+    expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("open")
+
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("half-open")
+
+    // The auxiliary request is admitted as budget-only work; the primary that
+    // follows becomes the probe. Both are in flight at once, and only the
+    // primary holds a slot.
+    const compaction = request("https://example.test/compact")
+    await requestHook(hooks, "aux", compaction, "acme", "compaction")
+    const probe = request("https://example.test/probe")
+    await requestHook(hooks, "probe", probe)
+    expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ active: 1, queued: 0 })
+
+    // The probe owns the circuit: a second primary queues even though a slot is
+    // free.
+    const behindController = new AbortController()
+    let behindAcquired = false
+    const behind = requestHook(
+      hooks,
+      "behind",
+      request("https://example.test/behind", behindController.signal),
+    ).then(() => {
+      behindAcquired = true
+    }).catch(() => {})
+    await tick()
+    expect(behindAcquired).toBe(false)
+
+    // A compaction 5xx is a provider stall on its own path: it reopens the
+    // circuit with a fresh cooldown.
+    const response = hooks.get("http.response")
+    if (!response) throw new Error("missing http.response hook")
+    await response({
+      sessionID: "aux",
+      model: { providerID: "acme", id: "test" },
+      kind: "compaction",
+      request: compaction,
+      response: new Response("server error", { status: 500 }),
+    })
+    const reopened = (await statusSnapshot(rpc)).providers[0]
+    expect(reopened.breaker).toBe("open")
+    expect(reopened.breakerRetryAfterMs).toBeGreaterThan(0)
+
+    // A further primary is held for the new cooldown instead of taking the free
+    // slot.
+    const furtherController = new AbortController()
+    let furtherAcquired = false
+    const further = requestHook(
+      hooks,
+      "further",
+      request("https://example.test/further", furtherController.signal),
+    ).then(() => {
+      furtherAcquired = true
+    }).catch(() => {})
+    await tick()
+    expect(furtherAcquired).toBe(false)
+    expect((await statusSnapshot(rpc)).providers[0].queued).toBe(2)
+
+    behindController.abort()
+    furtherController.abort()
+    await behind
+    await further
+    await cleanup()
+  })
+
+  test("a compaction first after the cooldown leaves the probe to the primary, which the deadline still admits", async () => {
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 1,
+      providers: ["acme"],
+      scheduler: {
+        contextCapacity: 0,
+        queueDeadlineMs: 1_000,
+        breaker: { threshold: 1, cooldownMs: 50, mode: "wait" },
+      },
+    })
+
+    // A primary holds the only slot while a compaction 5xx opens the circuit.
+    const primary = request("https://example.test/primary")
+    await requestHook(hooks, "a", primary)
+    const first = request("https://example.test/compact-first")
+    await requestHook(hooks, "a", first, "acme", "compaction")
+    const response = hooks.get("http.response")
+    if (!response) throw new Error("missing http.response hook")
+    await response({
+      sessionID: "a",
+      model: { providerID: "acme", id: "test" },
+      kind: "compaction",
+      request: first,
+      response: new Response("server error", { status: 500 }),
+    })
+    expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("open")
+
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("half-open")
+
+    // The compaction arrives first after the cooldown and is admitted as
+    // budget-only work instead of taking the probe.
+    await requestHook(hooks, "a", request("https://example.test/compact"), "acme", "compaction")
+
+    // The primary queues behind the slot the first request still holds, and is
+    // admitted within the deadline once that request succeeds.
+    let admitted = false
+    const queuedPromise = requestHook(hooks, "b", request("https://example.test/queued")).then(() => {
+      admitted = true
+    })
+    await tick()
+    expect(admitted).toBe(false)
+    expect((await statusSnapshot(rpc)).providers[0].queued).toBe(1)
+
+    const primaryResponse = await responseHook(hooks, "a", primary, "ok")
+    await primaryResponse.text()
+    await queuedPromise
+    expect(admitted).toBe(true)
+    expect((await statusSnapshot(rpc)).providers[0].breaker).toBe("closed")
+
+    await cleanup()
+  })
+})
+
 describe("breaker feedback", () => {
   test("a rejection produced by the plugin is not counted as a provider stall", async () => {
     const { hooks, rpc, cleanup } = await setup({

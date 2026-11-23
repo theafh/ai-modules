@@ -47,9 +47,12 @@ request.
   mode (the default) every queued request is rejected at once and new requests
   fail fast with a `CircuitOpenError`, so a dead provider cannot keep growing
   the queue. In `wait` mode requests stay queued and are admitted when the
-  cooldown ends. After the cooldown one probe is allowed and the rest queue
-  behind it: a success closes the circuit, another stall reopens it. A `429`
-  never counts as a stall, because the provider answered.
+  cooldown ends. After the cooldown one slot-holding request becomes the probe
+  and every other request waits behind it: a success at or after the cooldown
+  closes the circuit, and a stall from the probe reopens it. A half-open circuit
+  with no probe in flight admits an auxiliary request; an open circuit rejects
+  or queues one like any other request, and an auxiliary `5xx` reopens the
+  circuit. A `429` never counts as a stall, because the provider answered.
 - The in-flight context cap shrinks only when the breaker opens, then grows back
   in quarters of the remaining gap on clean completions. A single transient
   failure therefore costs no width. `contextCeiling: 0` keeps the cap fixed.

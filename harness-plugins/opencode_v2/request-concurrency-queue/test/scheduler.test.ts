@@ -411,6 +411,167 @@ describe("half-open probe recovery", () => {
   })
 })
 
+describe("half-open probe assignment", () => {
+  test("a budget-only waiter is admitted and the slot waiter takes the probe", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 1, cooldownMs: 1_000, mode: "wait" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+
+    // The auxiliary request waits out the cooldown without taking a slot.
+    const auxiliary = scheduler.acquireBudget("aux", { newTokens: 0, contextTokens: 0 })
+    expect(await settled(auxiliary)).toBe(false)
+    expect(scheduler.queuedCount).toBe(1)
+
+    // The cooldown ends and the budget-only waiter is admitted; it takes no
+    // slot and, with no probe in flight, must not become the probe.
+    now.value = 1_000
+    scheduler.reconfigure({})
+    const auxiliarySlot = await auxiliary
+    expect(scheduler.activeCount).toBe(0)
+    expect(scheduler.queuedCount).toBe(0)
+
+    // The first slot-holding request therefore becomes the probe and is
+    // admitted. A second one queues behind it, which only happens when the
+    // slot waiter, not the auxiliary request, holds the probe.
+    const probe = await scheduler.acquire("probe", { newTokens: 0, contextTokens: 0 })
+    expect(scheduler.activeCount).toBe(1)
+    const other = scheduler.acquire("other", { newTokens: 0, contextTokens: 0 })
+    expect(await settled(other)).toBe(false)
+    expect(scheduler.queuedCount).toBe(1)
+
+    probe.release()
+    const otherSlot = await other
+    otherSlot.release()
+    auxiliarySlot.release()
+    scheduler.cancelAll()
+  })
+
+  test("a budget-only waiter queues behind a slot probe in flight", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 1, cooldownMs: 1_000, mode: "wait" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+    now.value = 1_000
+
+    const probe = await scheduler.acquire("probe", { newTokens: 0, contextTokens: 0 })
+    const auxiliary = scheduler.acquireBudget("aux", { newTokens: 0, contextTokens: 0 })
+    expect(await settled(auxiliary)).toBe(false)
+    expect(scheduler.queuedCount).toBe(1)
+
+    probe.release()
+    const auxiliarySlot = await auxiliary
+    expect(auxiliarySlot).toBeDefined()
+    auxiliarySlot.release()
+    scheduler.cancelAll()
+  })
+})
+
+describe("cooldown authority", () => {
+  test("a straggler success during the cooldown leaves the circuit open and the queue waiting", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 1, cooldownMs: 10_000, mode: "wait" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+
+    const waiting = scheduler.acquire("waiting", { newTokens: 0, contextTokens: 0 })
+    expect(await settled(waiting)).toBe(false)
+
+    // A request admitted before the circuit opened finishes mid-cooldown: its
+    // success is not the probe's, so the circuit stays open and the queue stays
+    // held.
+    now.value = 5_000
+    scheduler.recordSuccess()
+    expect(scheduler.status().breaker).toBe("open")
+    expect(await settled(waiting)).toBe(false)
+    expect(scheduler.queuedCount).toBe(1)
+
+    scheduler.cancelAll()
+    await waiting.catch(() => {})
+  })
+
+  test("a straggler stall during the cooldown neither extends it nor shrinks the cap", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      contextCapacity: 800_000,
+      contextCeiling: 800_000,
+      breaker: { threshold: 1, cooldownMs: 10_000, mode: "wait" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+    expect(scheduler.status().contextCapacity).toBe(400_000)
+
+    now.value = 5_000
+    scheduler.recordStall()
+
+    const status = scheduler.status()
+    expect(status.breaker).toBe("open")
+    // No larger than the remaining cooldown: the stall did not restart it.
+    expect(status.breakerRetryAfterMs).toBe(5_000)
+    // The cap is unchanged, so the suppression is real and not masked by the
+    // zero-cap early return.
+    expect(status.contextCapacity).toBe(400_000)
+    scheduler.cancelAll()
+  })
+
+  test("a stalled probe at the cooldown reopens the circuit and shrinks the cap", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      contextCapacity: 800_000,
+      contextCeiling: 800_000,
+      breaker: { threshold: 2, cooldownMs: 1_000, mode: "wait" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+    scheduler.recordStall()
+    expect(scheduler.status().contextCapacity).toBe(400_000)
+    now.value = 1_000
+
+    const probe = await scheduler.acquire("probe", { newTokens: 0, contextTokens: 0 })
+    expect(scheduler.status().breaker).toBe("half-open")
+    scheduler.recordStall()
+
+    const status = scheduler.status()
+    expect(status.breaker).toBe("open")
+    expect(status.breakerRetryAfterMs).toBe(1_000)
+    expect(status.contextCapacity).toBe(200_000)
+    probe.release()
+    scheduler.cancelAll()
+  })
+
+  test("a success serves a queued wait-mode waiter with no context cap configured", async () => {
+    const now = { value: 0 }
+    const scheduler = new RequestScheduler({
+      maxSlots: 2,
+      breaker: { threshold: 1, cooldownMs: 1_000, mode: "wait" },
+      now: () => now.value,
+    })
+    scheduler.recordStall()
+
+    const waiting = scheduler.acquire("waiting", { newTokens: 0, contextTokens: 0 })
+    expect(await settled(waiting)).toBe(false)
+
+    now.value = 1_000
+    scheduler.recordSuccess()
+    // Served by the success itself, not by the two-second recheck timer.
+    expect(await settled(waiting)).toBe(true)
+    const slot = await waiting
+    slot.release()
+    scheduler.cancelAll()
+  })
+})
+
 /** Resolves true when `promise` settles within `ms` of real time. */
 function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
   return Promise.race([

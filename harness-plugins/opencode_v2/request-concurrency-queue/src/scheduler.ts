@@ -353,8 +353,10 @@ export class RequestScheduler {
     const now = this.now()
     const state = this.breakerState(now)
     // While open, `fail` rejects at once so a dead provider cannot grow the
-    // queue. Half-open does not reject: the request queues behind the single
-    // probe and is admitted when the probe settles or its lease runs out.
+    // queue. Half-open does not reject: a slot-holding request queues behind
+    // the single probe and is admitted when the probe settles or its lease runs
+    // out, while a budget-only request is admitted at once when no probe is in
+    // flight and queues behind one when a probe is running.
     if (this.breakerMode === "fail" && state === "open") {
       return Promise.reject(circuitOpenError(this.openUntil - now))
     }
@@ -417,10 +419,19 @@ export class RequestScheduler {
    * header timeout. The cap shrinks only when the breaker opens, because a
    * single transient failure must not cut the whole fan-out's width; it then
    * grows back in quarters on clean completions.
+   *
+   * A stall recorded while the cooldown is still running is a straggler that
+   * was admitted before the circuit opened: it neither extends the cooldown nor
+   * shrinks the cap again. Only a stall at or after the cooldown — the probe's
+   * own failure, or an auxiliary `5xx` that reaches this method on its own path
+   * — reopens the circuit with a fresh cooldown.
    */
   recordStall(): void {
     const now = this.now()
     this.stalls += 1
+    // The cooldown's own time key is the rule: nothing is admitted during it,
+    // so a stall that lands then came from a request admitted before it opened.
+    if (this.openUntil > now) return
     const halfOpen = this.openUntil > 0 && now >= this.openUntil
     if (halfOpen || this.stalls >= this.breakerThreshold) {
       this.open(now)
@@ -428,18 +439,32 @@ export class RequestScheduler {
     }
   }
 
-  /** Records one served request: the circuit closes and the context cap grows. */
+  /**
+   * Records one served request: the context cap grows on every success, and
+   * only a success at or after the cooldown closes the circuit and serves the
+   * queue. A success recorded before the cooldown ends is a straggler admitted
+   * before the circuit opened, so it leaves the circuit as it is.
+   */
   recordSuccess(): void {
+    const now = this.now()
     this.stalls = 0
-    this.openUntil = 0
-    this.probeInFlight = false
-    this.probeStartedAt = 0
-    if (this.contextCapacity === 0 || this.contextCeiling === 0) return
-    const gap = this.contextCeiling - this.contextCapacity
-    if (gap <= 0) return
-    const step = Math.max(1, Math.ceil(gap * 0.25))
-    this.contextCapacity = Math.min(this.contextCeiling, this.contextCapacity + step)
-    // Closing the circuit frees anything that waited in `wait` mode.
+    // A straggler's success is real evidence that the provider serves again, so
+    // it grows the cap; only a success at or after the cooldown — the probe's —
+    // may close the circuit.
+    if (!(this.openUntil > 0 && now < this.openUntil)) {
+      this.openUntil = 0
+      this.probeInFlight = false
+      this.probeStartedAt = 0
+    }
+    if (this.contextCapacity !== 0 && this.contextCeiling !== 0) {
+      const gap = this.contextCeiling - this.contextCapacity
+      if (gap > 0) {
+        const step = Math.max(1, Math.ceil(gap * 0.25))
+        this.contextCapacity = Math.min(this.contextCeiling, this.contextCapacity + step)
+      }
+    }
+    // A closed circuit frees anything that waited in `wait` mode, and a grown
+    // cap frees a context-bound waiter, so this runs on every success.
     this.schedule()
   }
 
@@ -489,7 +514,10 @@ export class RequestScheduler {
   private applyAdmission(waiter: Waiter, now = this.now()): SchedulerTransition {
     if (waiter.signal && waiter.onAbort) waiter.signal.removeEventListener("abort", waiter.onAbort)
     this.clearDeadline(waiter)
-    if (this.openUntil > 0 && now >= this.openUntil) {
+    // Only a slot-holding request can be the probe: it has a release path, so a
+    // probe that never reports back still frees the circuit. A budget-only
+    // request admitted at half-open leaves the probe to the first slot waiter.
+    if (!waiter.budgetOnly && this.openUntil > 0 && now >= this.openUntil) {
       this.probeSeq += 1
       this.probeInFlight = true
       this.probeStartedAt = now
@@ -669,7 +697,10 @@ export class RequestScheduler {
     return Math.min(aging, refill)
   }
 
-  /** Open blocks everything; half-open admits exactly one probe. */
+  /**
+   * Open blocks everything. Half-open admits one slot-holding probe, and
+   * budget-only work while no probe is in flight.
+   */
   private breakerAllows(now: number): boolean {
     if (this.openUntil === 0) return true
     if (now < this.openUntil) return false
