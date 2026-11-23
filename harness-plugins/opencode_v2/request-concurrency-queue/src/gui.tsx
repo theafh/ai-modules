@@ -124,19 +124,6 @@ export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
                   {row.demand}
                 </span>
               </div>
-              <For each={row.sessionRows}>
-                {(session) => (
-                  <div class="request-concurrency-status-session" title={session.sessionID}>
-                    <span class="request-concurrency-status-session-title">
-                      {`↳ ${session.title}`}
-                    </span>
-                    <Show when={session.meta !== ""}>
-                      <span class="request-concurrency-status-session-meta">{session.meta}</span>
-                    </Show>
-                    <span class="request-concurrency-status-session-id">{session.shortID}</span>
-                  </div>
-                )}
-              </For>
             </>
           )}
         </For>
@@ -166,8 +153,20 @@ export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
                   <span class="request-concurrency-feed-provider" title={transition.providerID}>
                     {transition.providerID}
                   </span>
-                  <span class="request-concurrency-feed-session" title={transition.sessionID}>
-                    {transition.sessionID}
+                  <span
+                    class="request-concurrency-feed-session"
+                    title={
+                      transition.sessionMeta === ""
+                        ? transition.sessionID
+                        : `${transition.sessionID} · ${transition.sessionMeta}`
+                    }
+                  >
+                    <span class="request-concurrency-feed-session-name">
+                      {transition.sessionLabel}
+                    </span>
+                    <Show when={transition.sessionMeta !== ""}>
+                      <span class="request-concurrency-feed-session-meta">{` · ${transition.sessionMeta}`}</span>
+                    </Show>
                   </span>
                   <span class="request-concurrency-feed-counts">
                     {`${transition.active} active · ${transition.queued} queued`}

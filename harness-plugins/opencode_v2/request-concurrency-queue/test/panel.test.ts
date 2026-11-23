@@ -218,16 +218,11 @@ describe("concurrency status panel body", () => {
     expect(html.match(/request-concurrency-feed-row/g)).toHaveLength(PANEL_TRANSITION_LIMIT)
   })
 
-  test("lists the in-flight sessions under their provider row in the dialog", () => {
-    const base = providerSnapshot({
-      providerID: "acme",
-      active: 2,
-      max: 8,
-      sessions: 2,
-      activeSessionIDs: ["ses_aaaa1111", "ses_bbbb2222"],
-    })
+  test("names the session in each activity row and keeps the footer bar clean", () => {
+    const base = providerSnapshot({ providerID: "acme", active: 2, max: 8, sessions: 2 })
     const snapshotWithDetails: StatusSnapshot = {
       ...base,
+      transitions: [transition(0, { sessionID: "ses_aaaa1111", kind: "acquired", active: 2 })],
       sessionDetails: [
         {
           sessionID: "ses_aaaa1111",
@@ -235,28 +230,19 @@ describe("concurrency status panel body", () => {
           agent: "general",
           directory: "/Users/x/Code/web_stack/no-cms",
         },
-        {
-          sessionID: "ses_bbbb2222",
-          title: "Build the queue",
-          agent: "build",
-          directory: "/Users/x/Code/private_repos/ai-modules",
-        },
       ],
     }
 
     const html = renderPanel(snapshotWithDetails)
 
-    expect(html).toContain("request-concurrency-status-session")
-    expect(html).toContain("↳ Implement http response contract")
+    expect(html).toContain("request-concurrency-feed-session-name")
+    expect(html).toContain("Implement http response contract")
     expect(html).toContain("general · no-cms")
-    expect(html).toContain("↳ Build the queue")
-    expect(html).toContain("build · ai-modules")
-    expect(html).toContain("ses_aaaa1111")
+    // The provider table keeps one row per provider; the name lives in the feed.
+    expect(html).not.toContain("request-concurrency-status-session")
 
-    // The footer bar stays one count per provider; the session list is dialog-only.
     const bar = renderBar(snapshotWithDetails)
     expect(bar).not.toContain("Implement http response contract")
-    expect(bar).not.toContain("request-concurrency-status-session")
     expect(bar).toContain(">2/8<")
   })
 

@@ -99,6 +99,29 @@ describe("createSessionDescriber", () => {
     expect(described.sessionDetails).toEqual([{ sessionID: "ses_a" }])
   })
 
+  test("describes a session that only appears in the activity feed", async () => {
+    const describe = createSessionDescriber(async () => info())
+    const withFeed: StatusSnapshot = {
+      ...snapshot([]),
+      transitions: [
+        {
+          timestamp: 1,
+          providerID: "acme",
+          kind: "released",
+          sessionID: "ses_old",
+          active: 0,
+          queued: 0,
+        },
+      ],
+    }
+
+    const described = await describe(withFeed)
+
+    expect(described.sessionDetails).toEqual([
+      { sessionID: "ses_old", title: "Implement http response contract", agent: "general", directory: "/work/no-cms" },
+    ])
+  })
+
   test("leaves a snapshot with nothing in flight untouched", async () => {
     let calls = 0
     const describe = createSessionDescriber(async () => {

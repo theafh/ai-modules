@@ -8,17 +8,6 @@ import type {
 } from "./rpc.js"
 import type { SubagentStatus } from "./subagents.js"
 
-/** One in-flight session as the dialog's detail line renders it. */
-export interface SessionRow {
-  readonly sessionID: string
-  /** The leading characters of the ID after `ses_`, enough to match the feed. */
-  readonly shortID: string
-  /** The session title, or a placeholder when the runtime could not be read. */
-  readonly title: string
-  /** `agent · project` when known, otherwise an empty string. */
-  readonly meta: string
-}
-
 /** One provider row as the dialog renders it. */
 export interface ProviderRow {
   readonly providerID: string
@@ -38,8 +27,6 @@ export interface ProviderRow {
   readonly queueLabel: string
   /** The bar item's tooltip: slot use, session count, waiters, and tokens. */
   readonly title: string
-  /** The sessions holding a slot, for the dialog's detail lines. */
-  readonly sessionRows: readonly SessionRow[]
   /** Utilization as a whole-percent string, e.g. `50%`. */
   readonly utilization: string
   /** Demand as a whole-percent string, e.g. `75%`. */
@@ -148,16 +135,10 @@ export interface SubscribeStatusOptions {
 export const DEFAULT_REFETCH_INTERVAL_MS = 5000
 
 /** Turns one provider's snapshot record into its rendered row. */
-export function providerRow(
-  provider: ProviderStatus,
-  details?: ReadonlyMap<string, SessionDetail>,
-): ProviderRow {
+export function providerRow(provider: ProviderStatus): ProviderRow {
   const tokens = provider.tokensCapacity
   const gates = blockedLabel(provider.blocked)
   const sessions = provider.sessions ?? 0
-  const sessionRows = (provider.activeSessionIDs ?? []).map((sessionID) =>
-    sessionRow(sessionID, details?.get(sessionID)),
-  )
   return {
     providerID: provider.providerID,
     active: provider.active,
@@ -169,7 +150,6 @@ export function providerRow(
     slotLabel: `${provider.active}/${provider.max}`,
     queueLabel: provider.queued > 0 ? `+${provider.queued}` : "",
     title: barTitle(provider, sessions, gates),
-    sessionRows,
     utilization: percent(provider.utilization),
     demand: percent(provider.demand),
     utilizationColor: loadColor(provider.utilization * 100),
@@ -187,23 +167,16 @@ export function providerRow(
   }
 }
 
-/** Turns one in-flight session into the dialog's detail line. */
-function sessionRow(sessionID: string, detail: SessionDetail | undefined): SessionRow {
-  const project = directoryName(detail?.directory)
-  const meta = [detail?.agent, project].filter((part): part is string => Boolean(part)).join(" · ")
-  return {
-    sessionID,
-    shortID: sessionID.replace(/^ses_/, "").slice(0, 8),
-    title: detail?.title?.trim() || "Untitled session",
-    meta,
-  }
-}
-
 /** The last path segment of a project directory, without pulling in `node:path`. */
 function directoryName(directory: string | undefined): string {
   if (!directory) return ""
   const parts = directory.split(/[\\/]/).filter(Boolean)
   return parts[parts.length - 1] ?? ""
+}
+
+/** A session ID's leading characters, for a row whose title is unknown. */
+function shortSessionID(sessionID: string): string {
+  return sessionID.replace(/^ses_/, "").slice(0, 8)
 }
 
 /**
@@ -273,8 +246,7 @@ export function formatTokens(tokens: number): string {
 
 /** Turns every provider in a snapshot into its rendered row, in snapshot order. */
 export function providerRows(snapshot: StatusSnapshot): ProviderRow[] {
-  const details = new Map((snapshot.sessionDetails ?? []).map((detail) => [detail.sessionID, detail]))
-  return snapshot.providers.map((provider) => providerRow(provider, details))
+  return snapshot.providers.map((provider) => providerRow(provider))
 }
 
 /** The newest transitions the dialog renders; the store keeps more history. */
@@ -287,6 +259,10 @@ export interface TransitionRow {
   readonly providerID: string
   readonly kind: TransitionKind
   readonly sessionID: string
+  /** The session's title, or its short ID when the runtime could not be read. */
+  readonly sessionLabel: string
+  /** `agent · project` when known, otherwise an empty string. */
+  readonly sessionMeta: string
   readonly active: number
   readonly queued: number
 }
@@ -300,19 +276,31 @@ export function transitionRows(
   snapshot: StatusSnapshot,
   limit = PANEL_TRANSITION_LIMIT,
 ): TransitionRow[] {
+  const details = new Map((snapshot.sessionDetails ?? []).map((detail) => [detail.sessionID, detail]))
   return snapshot.transitions
     .slice(-limit)
     .reverse()
-    .map(transitionRow)
+    .map((transition) => transitionRow(transition, details.get(transition.sessionID)))
 }
 
-/** Turns one transition record into its rendered row. */
-export function transitionRow(transition: TransitionRecord): TransitionRow {
+/**
+ * Turns one transition record into its rendered row. The session column carries
+ * the session's name, because a row is where the dialog explains which session
+ * a transition belongs to; the ID stays in the row for matching.
+ */
+export function transitionRow(
+  transition: TransitionRecord,
+  detail?: SessionDetail,
+): TransitionRow {
+  const project = directoryName(detail?.directory)
+  const meta = [detail?.agent, project].filter((part): part is string => Boolean(part)).join(" · ")
   return {
     time: formatClock(transition.timestamp),
     providerID: transition.providerID,
     kind: transition.kind,
     sessionID: transition.sessionID,
+    sessionLabel: detail?.title?.trim() || shortSessionID(transition.sessionID),
+    sessionMeta: meta,
     active: transition.active,
     queued: transition.queued,
   }

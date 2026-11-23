@@ -27,13 +27,14 @@ export interface SessionDescriberOptions {
 export const DEFAULT_SESSION_DETAIL_TTL_MS = 30_000
 
 /**
- * Attaches display metadata to the sessions holding a slot right now.
+ * Attaches display metadata to the sessions the dialog names: the ones holding
+ * a slot right now, plus the ones in the recent-transition feed, which is where
+ * the dialog shows a session's name.
  *
  * The snapshot comes from the process-wide store, which knows only session IDs;
- * the runtime is the only place a title or a project directory can be read. The
- * result is what lets the dialog name an in-flight session instead of showing a
- * count that spans several projects. A session that cannot be read is still
- * listed by its ID, so a failing lookup never hides a request.
+ * the runtime is the only place a title or a project directory can be read. A
+ * session that cannot be read is still listed by its ID, so a failing lookup
+ * never hides a request.
  */
 export function createSessionDescriber(
   get: (sessionID: string) => Promise<SessionInfoLike>,
@@ -45,7 +46,10 @@ export function createSessionDescriber(
 
   return async (snapshot) => {
     const ids = [
-      ...new Set(snapshot.providers.flatMap((provider) => provider.activeSessionIDs ?? [])),
+      ...new Set([
+        ...snapshot.providers.flatMap((provider) => provider.activeSessionIDs ?? []),
+        ...snapshot.transitions.map((transition) => transition.sessionID),
+      ]),
     ]
     if (ids.length === 0) {
       cache.clear()

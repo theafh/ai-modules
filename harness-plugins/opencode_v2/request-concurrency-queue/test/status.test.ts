@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import type { ProviderStatus, SessionDetail, StatusSnapshot } from "../src/rpc.js"
+import type { ProviderStatus, SessionDetail, StatusSnapshot, TransitionRecord } from "../src/rpc.js"
 import {
   blockedLabel,
   loadColor,
   providerRows,
   subagentRow,
   subscribeStatus,
+  transitionRows,
   type StatusClient,
 } from "../src/status.js"
 
@@ -103,7 +104,6 @@ describe("providerRows", () => {
         slotLabel: "2/4",
         queueLabel: "+1",
         title: "2 of 4 slots in use by 2 sessions · 1 waiting",
-        sessionRows: [],
         utilization: "50%",
         demand: "75%",
         utilizationColor: loadColor(50),
@@ -182,19 +182,21 @@ describe("providerRows", () => {
     expect(row.sessions).toBe(0)
     expect(row.title).toBe("1 of 2 slots in use by 0 sessions")
   })
+})
 
-  test("names each in-flight session with its title, agent, and project", () => {
-    const base = snapshot(
-      provider({
-        providerID: "acme",
-        active: 2,
-        max: 8,
-        sessions: 2,
-        activeSessionIDs: ["ses_aaaaaaaa1", "ses_bbbbbbbb2"],
-      }),
-    )
+describe("transitionRows", () => {
+  const record: TransitionRecord = {
+    timestamp: Date.UTC(2026, 0, 1, 12, 0, 0),
+    providerID: "acme",
+    kind: "acquired",
+    sessionID: "ses_aaaaaaaa1",
+    active: 1,
+    queued: 0,
+  }
 
-    const [row] = providerRows(
+  test("names the session in each activity row", () => {
+    const base: StatusSnapshot = { providers: [], transitions: [record] }
+    const rows = transitionRows(
       withDetails(base, [
         {
           sessionID: "ses_aaaaaaaa1",
@@ -202,47 +204,27 @@ describe("providerRows", () => {
           agent: "general",
           directory: "/Users/x/Code/web_stack/no-cms",
         },
-        {
-          sessionID: "ses_bbbbbbbb2",
-          title: "Build the queue",
-          agent: "build",
-          directory: "/Users/x/Code/private_repos/ai-modules",
-        },
       ]),
     )
 
-    expect(row.sessionRows).toEqual([
-      {
-        sessionID: "ses_aaaaaaaa1",
-        shortID: "aaaaaaaa",
-        title: "Implement http response contract",
-        meta: "general · no-cms",
-      },
-      {
-        sessionID: "ses_bbbbbbbb2",
-        shortID: "bbbbbbbb",
-        title: "Build the queue",
-        meta: "build · ai-modules",
-      },
-    ])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      providerID: "acme",
+      kind: "acquired",
+      sessionID: "ses_aaaaaaaa1",
+      sessionLabel: "Implement http response contract",
+      sessionMeta: "general · no-cms",
+      active: 1,
+      queued: 0,
+    })
+    expect(typeof rows[0].time).toBe("string")
   })
 
-  test("falls back to an untitled row when a session's detail is missing", () => {
-    const base = snapshot(
-      provider({
-        providerID: "acme",
-        active: 1,
-        max: 8,
-        sessions: 1,
-        activeSessionIDs: ["ses_cccccccc3"],
-      }),
-    )
+  test("falls back to the short session ID when no detail was resolved", () => {
+    const rows = transitionRows({ providers: [], transitions: [record] })
 
-    const [row] = providerRows(base)
-
-    expect(row.sessionRows).toEqual([
-      { sessionID: "ses_cccccccc3", shortID: "cccccccc", title: "Untitled session", meta: "" },
-    ])
+    expect(rows[0].sessionLabel).toBe("aaaaaaaa")
+    expect(rows[0].sessionMeta).toBe("")
   })
 })
 

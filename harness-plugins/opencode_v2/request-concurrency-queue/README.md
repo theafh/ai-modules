@@ -304,7 +304,7 @@ never reaches `opencode.log` or the status bar. The bar and its dialog feed are
 the desktop observability surface: the dialog lists recent concurrency
 transitions, and `log` remains for terminal runs. The feed records identifiers
 and counts only; it never carries prompts, message content, API keys, or tool
-arguments. The dialog also lists the sessions holding a slot, by the session
+arguments. The activity feed also names each transition's session, by the session
 record's own display metadata (title, agent, project directory) and nothing from
 the conversation.
 
@@ -325,11 +325,12 @@ with a timestamp, provider ID, kind (`acquired`, `queued`, `released`,
 `dequeued`), session ID, and the active and queued counts immediately after that
 transition. A release handoff records `released` for the releasing session with
 the count it produced, then `acquired` for the waiter.
-The snapshot also carries `sessionDetails`, one record per in-flight session with
-its ID and the display metadata resolved from the runtime (`title`, `agent`,
-`directory`, `parentID`), cached briefly so a title generated after the first
-turn still appears. A session the runtime cannot read is still listed by its ID,
-so a failed lookup never hides a request.
+The snapshot also carries `sessionDetails`, one record per session the dialog
+names — every session holding a slot, plus every session in the recent-transition
+feed — with its ID and the display metadata resolved from the runtime (`title`,
+`agent`, `directory`, `parentID`), cached briefly so a title generated after the
+first turn still appears. A session the runtime cannot read is still listed by
+its ID, so a failed lookup never hides a request.
 The server emits a `changed` event on every count-changing transition: a free
 slot acquired, a request joining the wait queue, a queued request aborted, a
 release that frees a slot, and a release that hands the slot to the next
@@ -365,10 +366,11 @@ The bar's subscription refetches on every `changed` event and on a slow
 interval, so a missed event recovers, and the dialog renders that same snapshot.
 Each provider gets one row with its in-flight count, configured maximum, and
 queue depth as absolute numbers, and its utilization and demand as percentages.
-Under a row, each session holding a slot gets one indented line with its title,
-its `agent · project`, and a short ID that matches the activity feed, so a count
-spanning several projects names what it is counting. The footer bar keeps one
-count per provider; the session lines are dialog-only.
+The provider table keeps one row per provider, so its height never changes with
+the number of sessions in flight; the session name lives in the activity feed
+instead, where each row's session cell shows the session's title and
+`agent · project`, falling back to a short ID when the runtime cannot be read.
+The footer bar keeps one count per provider; the names are dialog-only.
 A row whose queue is held back carries the gates in the queued cell's tooltip,
 so `active 6, queued 2` reads as the context cap, the token budget, or the slot
 ceiling rather than as one undifferentiated number.

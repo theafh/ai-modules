@@ -121,10 +121,12 @@ it. The snapshot reports one record per configured provider with `active`,
 `queued`, `max`, `sessions` (distinct sessions holding a slot right now),
 `activeSessionIDs` (those sessions), utilization (`active / max`), and demand
 (`(active + queued) / max`). Providers with no configured limit do not appear.
-It also carries `sessionDetails`, one record per in-flight session with its ID
-and the display metadata resolved from the runtime (title, agent, project
-directory, parent ID), cached briefly so a title generated after the first turn
-still appears; a session the runtime cannot read is listed by its ID alone.
+It also carries `sessionDetails`, one record per session the dialog names —
+every session holding a slot and every session in the recent-transition feed —
+with its ID and the display metadata resolved from the runtime (title, agent,
+project directory, parent ID), cached briefly so a title generated after the
+first turn still appears; a session the runtime cannot read is listed by its ID
+alone.
 It also carries a bounded buffer of recent transitions, oldest first, each with a
 timestamp, provider ID, kind (`acquired`, `queued`, `released`, `dequeued`),
 session ID, active count, and queued count. A release handoff records
@@ -150,11 +152,12 @@ The configured ceiling is a separate field in the config tab. The bar's
 subscription refetches on every `changed` event and on a slow interval, so a
 missed event recovers, and the dialog renders that same snapshot: each provider
 row shows its in-flight count, effective maximum, and queue depth as absolute
-numbers, and its utilization and demand as percentages. Under a row, each
-session holding a slot gets one indented line with its title, its
-`agent · project`, and a short ID that matches the activity feed, so a count
-spanning several projects names what it is counting; the footer bar keeps one
-count per provider and carries no session lines. The numbers are coloured
+numbers, and its utilization and demand as percentages. The provider table keeps
+one row per provider, so its height never changes with the number of sessions in
+flight; the session name lives in the activity feed, where each row's session
+cell shows the session's title and `agent · project`, falling back to a short ID
+when the runtime cannot be read. The footer bar keeps one count per provider and
+carries no session names. The numbers are coloured
 on a load scale: dark green at 0%, light green at 100%, light
 yellow at 150%, orange at 200%, light red at 250%, dark red at 300%, dark pink
 at 350%, and magenta from 400% on, interpolated between those anchors and held

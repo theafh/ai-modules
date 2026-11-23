@@ -71,36 +71,6 @@ export const PANEL_STYLE = `
   opacity: 0.5;
 }
 
-.request-concurrency-status-session {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  padding: 1px 8px 1px 26px;
-  font-size: 11px;
-  opacity: 0.72;
-}
-
-.request-concurrency-status-session-title {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.request-concurrency-status-session-meta {
-  flex: none;
-  white-space: nowrap;
-  opacity: 0.85;
-}
-
-.request-concurrency-status-session-id {
-  flex: none;
-  margin-left: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  opacity: 0.55;
-}
-
 .request-concurrency-subagents {
   display: flex;
   gap: 8px;
@@ -149,7 +119,7 @@ export const PANEL_STYLE = `
 
 .request-concurrency-feed-row {
   display: grid;
-  grid-template-columns: auto 5em minmax(0, 0.8fr) minmax(0, 1fr) auto;
+  grid-template-columns: auto 5em minmax(0, 0.6fr) minmax(0, 1.6fr) auto;
   column-gap: 8px;
   align-items: baseline;
   padding: 2px 4px;
@@ -194,7 +164,21 @@ export const PANEL_STYLE = `
 }
 
 .request-concurrency-feed-session {
-  opacity: 0.6;
+  display: flex;
+  opacity: 0.75;
+}
+
+.request-concurrency-feed-session-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-concurrency-feed-session-meta {
+  flex: none;
+  white-space: nowrap;
+  opacity: 0.7;
 }
 
 .request-concurrency-feed-counts {
