@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { ProviderStatus, SessionDetail, StatusSnapshot, TransitionRecord } from "../src/rpc.js"
+import { statusRpc } from "../src/rpc.js"
+import { createStore, snapshotOf } from "../src/store.js"
 import {
   blockedLabel,
   loadColor,
@@ -126,6 +128,33 @@ describe("providerRows", () => {
 
     expect(row.tokensLabel).toBe("300k / 400k")
     expect(row.tokensColor).toBe(loadColor(75))
+  })
+
+  test("colours a full bucket dark green, a half-full one yellow, and an empty one dark red", () => {
+    const tokensColor = (available: number): string => {
+      const [row] = providerRows(
+        snapshot(provider({ providerID: "acme", tokensAvailable: available, tokensCapacity: 400_000 })),
+      )
+      return row.tokensColor
+    }
+
+    const full = tokensColor(400_000)
+    const half = tokensColor(200_000)
+    const empty = tokensColor(0)
+
+    expect(full).toBe(loadColor(0))
+    expect(half).toBe(loadColor(150))
+    expect(empty).toBe(loadColor(300))
+    expect(new Set([full, half, empty]).size).toBe(3)
+  })
+
+  test("colours an over-subscribed provider by the raw ratio, not the clamped field", () => {
+    const [row] = providerRows(
+      snapshot(provider({ providerID: "acme", active: 4, queued: 0, max: 2, utilization: 1 })),
+    )
+
+    expect(row.utilization).toBe("100%")
+    expect(row.utilizationColor).toBe(loadColor(200))
   })
 
   test("renders no token label when the provider has no budget", () => {
@@ -533,12 +562,34 @@ describe("subscribeStatus", () => {
   })
 })
 
-describe("blockedLabel", () => {
-  test("names only the gates holding a request back", () => {
+describe("blockedLabel", () => {  test("names only the gates holding a request back", () => {
     expect(blockedLabel({ slots: 2, context: 0, budget: 1, breaker: 0, draining: 0 })).toBe(
       "slots 2 · budget 1",
     )
     expect(blockedLabel({ slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 })).toBe("")
+  })
+})
+
+describe("statusRpc", () => {
+  test("declares a bounded utilization and serves a clamped snapshot value", async () => {
+    const output = statusRpc.methods.status.output as {
+      properties: {
+        providers: { items: { properties: { utilization: { minimum?: number; maximum?: number } } } }
+      }
+    }
+    const utilizationSchema = output.properties.providers.items.properties.utilization
+    expect(utilizationSchema.maximum).toBe(1)
+
+    const store = createStore(new Map([["acme", 2]]))
+    const scheduler = store.providers.get("acme")!.scheduler
+    const first = await scheduler.acquire("session-a")
+    const second = await scheduler.acquire("session-b")
+    scheduler.setMax(1)
+
+    expect(snapshotOf(store).providers[0].utilization).toBeLessThanOrEqual(utilizationSchema.maximum!)
+
+    first.release()
+    second.release()
   })
 })
 

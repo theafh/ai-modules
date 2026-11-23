@@ -50,7 +50,11 @@ export interface ProviderRow {
   readonly blockedLabel: string
   /** Compact `available / capacity` label, or an empty string when there is no budget. */
   readonly tokensLabel: string
-  /** CSS color for the token count, green when full and red when nearly empty. */
+  /**
+   * CSS color for the token count, by the remaining share mapped onto the load
+   * scale: `loadColor((1 - available / capacity) * 300)`, dark green when the
+   * bucket is full and dark red when it is empty.
+   */
   readonly tokensColor: string
 }
 
@@ -152,7 +156,7 @@ export function providerRow(provider: ProviderStatus): ProviderRow {
     title: barTitle(provider, sessions, gates),
     utilization: percent(provider.utilization),
     demand: percent(provider.demand),
-    utilizationColor: loadColor(provider.utilization * 100),
+    utilizationColor: loadColor((provider.active / provider.max) * 100),
     demandColor: loadColor(provider.demand * 100),
     tokensAvailable: provider.tokensAvailable,
     tokensCapacity: provider.tokensCapacity,
@@ -163,7 +167,7 @@ export function providerRow(provider: ProviderStatus): ProviderRow {
       tokens === 0
         ? ""
         : `${formatTokens(provider.tokensAvailable)} / ${formatTokens(tokens)}`,
-    tokensColor: tokens === 0 ? "" : loadColor((provider.tokensAvailable / tokens) * 100),
+    tokensColor: tokens === 0 ? "" : loadColor((1 - provider.tokensAvailable / tokens) * 300),
   }
 }
 

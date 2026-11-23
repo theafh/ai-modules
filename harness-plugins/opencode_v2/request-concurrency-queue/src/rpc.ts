@@ -32,7 +32,7 @@ export interface ProviderStatus {
   readonly sessions?: number
   /** The session IDs holding a slot right now, in acquisition order. */
   readonly activeSessionIDs?: readonly string[]
-  /** `active / max`, as a number from 0 to 1; 0 when `max` is 0. */
+  /** `min(1, active / max)`, or 0 when max is 0. */
   readonly utilization: number
   /** `(active + queued) / max`, an unbounded load factor; 0 when `max` is 0. */
   readonly demand: number

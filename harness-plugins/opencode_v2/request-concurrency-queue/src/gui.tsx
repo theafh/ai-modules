@@ -112,7 +112,7 @@ export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
                 <span
                   class="request-concurrency-status-utilization"
                   style={{ color: row.utilizationColor }}
-                  title="Utilization: active / max"
+                  title="Utilization: active / max, capped at 100%"
                 >
                   {row.utilization}
                 </span>

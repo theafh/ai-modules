@@ -123,7 +123,8 @@ that back the Concurrency dialog. Every location's handler reads the
 process-wide registry, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `active`,
 `queued`, `max`, `sessions` (distinct sessions holding a slot right now),
-`activeSessionIDs` (those sessions), utilization (`active / max`), and demand
+`activeSessionIDs` (those sessions), utilization (`min(1, active / max)`, so an
+over-subscribed provider reads at most 1), and demand
 (`(active + queued) / max`). Providers with no configured limit do not appear.
 It also carries `sessionDetails`, one record per session the dialog names —
 every session holding a slot and every session in the recent-transition feed —
@@ -147,8 +148,11 @@ built-in server because the queue is process-wide, and hides until the first
 fetch settles or when no provider is configured. Each provider appears on the
 bar as its in-flight slot count `active/max`, plus a separate `+queued` badge
 only when something waits, where `max` is the effective maximum that adaptive
-control may lower; the slot count is coloured by `active / max` and the badge by
-`(active + queued) / max`. The bar's tooltip names how many distinct sessions
+control may lower; the slot count and the Util cell's colour follow the raw
+`active / max` ratio and the badge's colour follows
+`(active + queued) / max`, so an over-subscribed provider renders hot while its
+Util cell shows the bounded utilization, capped at 100%. The bar's tooltip names
+how many distinct sessions
 hold those slots, what waits and on which gate, and the remaining new-context
 tokens. Because the queue is process-wide, the count includes every open
 location and any headless `opencode run` session attached to the same server.
@@ -165,9 +169,12 @@ carries no session names. The numbers are coloured
 on a load scale: dark green at 0%, light green at 100%, light
 yellow at 150%, orange at 200%, light red at 250%, dark red at 300%, dark pink
 at 350%, and magenta from 400% on, interpolated between those anchors and held
-at magenta above 400%. The active
-count and utilization follow the `active / max` load, while the queued count and
-demand follow `(active + queued) / max`. The active cell's tooltip names how
+at magenta above 400%. The token count maps its remaining share onto that scale
+as `(1 - available / capacity) * 300`, so a full bucket is dark green and an
+empty one dark red. The active count and the Util cell's colour follow the raw
+`active / max` load, while the queued count and demand follow
+`(active + queued) / max`; the Util cell's text shows the bounded utilization,
+capped at 100%. The active cell's tooltip names how
 many distinct sessions hold the slots. Below the provider
 rows, a compact monospace feed lists the recent transitions newest first with
 their timestamp, kind, provider, session, and counts; it renders a bounded

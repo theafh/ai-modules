@@ -48,6 +48,22 @@ describe("createStore", () => {
     expect(snapshotOf(store).providers[0]).toMatchObject({ active: 0 })
   })
 
+  test("the status snapshot clamps utilization at 1 when the maximum drops below the active count", async () => {
+    const store = createStore(new Map([["acme", 4]]))
+    const scheduler = store.providers.get("acme")!.scheduler
+
+    const first = await scheduler.acquire("session-a")
+    const second = await scheduler.acquire("session-b")
+    scheduler.setMax(1)
+
+    const status = snapshotOf(store).providers[0]
+    expect(status.utilization).toBe(1)
+    expect(status.demand).toBeGreaterThan(1)
+
+    first.release()
+    second.release()
+  })
+
   test("each factory call builds an isolated store", async () => {
     const first = createStore(new Map([["acme", 1]]))
     const second = createStore(new Map([["acme", 1]]))

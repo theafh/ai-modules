@@ -1572,3 +1572,11 @@ pre-existing, and the size infos stay advisory; the one on
   moving-measurement exclusion.
 - Lint: `make lint` clean (574 markdown, 46 JSON, 407 shell, 433 frontmatter
   files).
+
+## [2026-11-23 16:45] update | Bound the status utilization field and map token colour onto the load scale
+
+- concepts/request-concurrency-queue.md: the snapshot field list now describes
+  utilization as `min(1, active / max)`; the colour passages state that the slot
+  count and the Util cell's colour follow the raw `active / max` ratio while the
+  Util cell shows the bounded value, and the load-scale sentence gains the
+  `(1 - available / capacity) * 300` token-colour mapping.

@@ -320,7 +320,8 @@ The plugin serves a read-only status snapshot over the shared
 same process-wide queue, so the snapshot is the same whichever location serves
 it. The snapshot reports one record per configured provider with `providerID`,
 `active`, `queued`, `max`, `sessions` (distinct sessions holding a slot right
-now), `activeSessionIDs` (those sessions), utilization (`active / max`), and
+now), `activeSessionIDs` (those sessions), utilization (`min(1, active / max)`,
+so an over-subscribed provider reads at most 1), and
 demand (`(active + queued) / max`). Providers with no configured limit do not
 appear.
 Each provider also carries `blocked`, the number of waiting requests held by each
@@ -353,8 +354,10 @@ a full-width status bar in the window's bottom slot. The bar is the only
 persistent desktop surface. It is visible in every window, including Home, and
 shows each provider as its in-flight slot count `active/max`, plus a separate
 `+queued` badge only when something waits, so a fully loaded provider reads `8/8`
-and one with two waiters reads `8/8 +2`. The slot count is coloured by
-utilization (`active / max`) and the badge by demand (`(active + queued) / max`);
+and one with two waiters reads `8/8 +2`. The slot count and the Util cell's
+colour follow the raw `active / max` ratio, and the badge's colour follows
+demand (`(active + queued) / max`), so an over-subscribed provider renders hot
+while its Util cell shows the bounded utilization, capped at 100%;
 hovering either reports how many distinct sessions hold those slots, how many
 requests wait and on which gate, and the remaining new-context tokens. The
 queue spans the whole server process, so the count includes requests from every
@@ -385,10 +388,13 @@ A header labels the columns, and the counts are right-aligned in tabular figures
 so a row reads as one line. The numbers are coloured on an eight-anchor load scale:
 dark green at 0%, light green at 100%, light yellow at 150%, orange at 200%,
 light red at 250%, dark red at 300%, dark pink at 350%, and magenta from 400% on,
-interpolated between those anchors and held at magenta above 400%. The active
-count and utilization use the
+interpolated between those anchors and held at magenta above 400%. The token
+count maps its remaining share onto that scale as
+`(1 - available / capacity) * 300`, so a full bucket is dark green and an empty
+one dark red. The active count and the Util cell's colour follow the raw
 `active / max` load, while the queued count and demand use
-`(active + queued) / max`. The active cell's tooltip names how many distinct
+`(active + queued) / max`; the Util cell's text shows the bounded utilization,
+capped at 100%. The active cell's tooltip names how many distinct
 sessions hold the slots, so a count that spans several locations explains
 itself. Below the provider rows, a compact monospace feed
 lists the recent transitions newest first with their timestamp, kind, provider,
