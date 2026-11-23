@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { ProviderStatus, StatusSnapshot } from "../src/rpc.js"
+import type { ProviderStatus, SessionDetail, StatusSnapshot } from "../src/rpc.js"
 import {
   blockedLabel,
   loadColor,
@@ -32,6 +32,7 @@ function provider(overrides: Partial<ProviderStatus> & Pick<ProviderStatus, "pro
     max,
     ceiling: overrides.ceiling ?? max,
     sessions: overrides.sessions ?? 0,
+    activeSessionIDs: overrides.activeSessionIDs ?? [],
     utilization: overrides.utilization ?? (max === 0 ? 0 : active / max),
     demand: overrides.demand ?? (max === 0 ? 0 : (active + queued) / max),
     tokensAvailable: overrides.tokensAvailable ?? 0,
@@ -46,6 +47,11 @@ function provider(overrides: Partial<ProviderStatus> & Pick<ProviderStatus, "pro
 
 function snapshot(...providers: ProviderStatus[]): StatusSnapshot {
   return { providers, transitions: [] }
+}
+
+/** The same snapshot with the session metadata the server resolves for it. */
+function withDetails(snapshot: StatusSnapshot, details: SessionDetail[]): StatusSnapshot {
+  return { ...snapshot, sessionDetails: details }
 }
 
 /** Narrows a delivered value to the successful snapshot these tests expect. */
@@ -97,6 +103,7 @@ describe("providerRows", () => {
         slotLabel: "2/4",
         queueLabel: "+1",
         title: "2 of 4 slots in use by 2 sessions · 1 waiting",
+        sessionRows: [],
         utilization: "50%",
         demand: "75%",
         utilizationColor: loadColor(50),
@@ -174,6 +181,68 @@ describe("providerRows", () => {
 
     expect(row.sessions).toBe(0)
     expect(row.title).toBe("1 of 2 slots in use by 0 sessions")
+  })
+
+  test("names each in-flight session with its title, agent, and project", () => {
+    const base = snapshot(
+      provider({
+        providerID: "acme",
+        active: 2,
+        max: 8,
+        sessions: 2,
+        activeSessionIDs: ["ses_aaaaaaaa1", "ses_bbbbbbbb2"],
+      }),
+    )
+
+    const [row] = providerRows(
+      withDetails(base, [
+        {
+          sessionID: "ses_aaaaaaaa1",
+          title: "Implement http response contract",
+          agent: "general",
+          directory: "/Users/x/Code/web_stack/no-cms",
+        },
+        {
+          sessionID: "ses_bbbbbbbb2",
+          title: "Build the queue",
+          agent: "build",
+          directory: "/Users/x/Code/private_repos/ai-modules",
+        },
+      ]),
+    )
+
+    expect(row.sessionRows).toEqual([
+      {
+        sessionID: "ses_aaaaaaaa1",
+        shortID: "aaaaaaaa",
+        title: "Implement http response contract",
+        meta: "general · no-cms",
+      },
+      {
+        sessionID: "ses_bbbbbbbb2",
+        shortID: "bbbbbbbb",
+        title: "Build the queue",
+        meta: "build · ai-modules",
+      },
+    ])
+  })
+
+  test("falls back to an untitled row when a session's detail is missing", () => {
+    const base = snapshot(
+      provider({
+        providerID: "acme",
+        active: 1,
+        max: 8,
+        sessions: 1,
+        activeSessionIDs: ["ses_cccccccc3"],
+      }),
+    )
+
+    const [row] = providerRows(base)
+
+    expect(row.sessionRows).toEqual([
+      { sessionID: "ses_cccccccc3", shortID: "cccccccc", title: "Untitled session", meta: "" },
+    ])
   })
 })
 

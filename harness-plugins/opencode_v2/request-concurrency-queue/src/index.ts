@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { estimateTokens, parseRetryAfter, type TokenBudgetOptions } from "./budget.js"
 import { statusRpc, type ConfigSnapshot, type SaveResult } from "./rpc.js"
 import type { RequestCost, SchedulerSlot } from "./scheduler.js"
+import { createSessionDescriber } from "./sessions.js"
 import {
   adoptStore,
   applyConfig,
@@ -146,8 +147,16 @@ export default Plugin.define({
       }
     }
 
+    // The dialog names the sessions holding a slot, which the store cannot: a
+    // title and a project directory live in the runtime, not in the limiter.
+    const describeSessions = createSessionDescriber(
+      async (sessionID) =>
+        ctx.session.get({ sessionID: sessionID as Parameters<typeof ctx.session.get>[0]["sessionID"] }),
+      { onError: (sessionID, error) => log("session detail lookup failed", { sessionID }, error) },
+    )
+
     const registration = await ctx.rpc.register(statusRpc, {
-      status: async () => snapshotOf(store),
+      status: async () => describeSessions(snapshotOf(store)),
       config: async () => configSnapshot(store, currentFileConfig()),
       save: async (input) => saveConfig(store, input as ConfigSnapshot),
     })

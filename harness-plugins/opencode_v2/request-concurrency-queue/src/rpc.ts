@@ -10,6 +10,15 @@ export interface BlockedCounts {
   readonly draining: number
 }
 
+/** One active session's display metadata, for the dialog's session detail. */
+export interface SessionDetail {
+  readonly sessionID: string
+  readonly title?: string
+  readonly agent?: string
+  readonly directory?: string
+  readonly parentID?: string
+}
+
 /** One configured provider's current concurrency state. */
 export interface ProviderStatus {
   readonly providerID: string
@@ -21,6 +30,8 @@ export interface ProviderStatus {
   readonly ceiling: number
   /** Distinct sessions holding a slot right now. */
   readonly sessions?: number
+  /** The session IDs holding a slot right now, in acquisition order. */
+  readonly activeSessionIDs?: readonly string[]
   /** `active / max`, as a number from 0 to 1; 0 when `max` is 0. */
   readonly utilization: number
   /** `(active + queued) / max`, an unbounded load factor; 0 when `max` is 0. */
@@ -108,6 +119,8 @@ export interface StatusSnapshot {
   readonly providers: readonly ProviderStatus[]
   /** Recent transitions in append order, oldest first. */
   readonly transitions: readonly TransitionRecord[]
+  /** Display metadata for every session in `activeSessionIDs`, when resolved. */
+  readonly sessionDetails?: readonly SessionDetail[]
   /** The live-child-session gate, when fan-out gating is configured. */
   readonly subagents?: SubagentStatus
 }
@@ -134,6 +147,7 @@ const providerStatusSchema = {
     max: { type: "integer", minimum: 0 },
     ceiling: { type: "integer", minimum: 0 },
     sessions: { type: "integer", minimum: 0 },
+    activeSessionIDs: { type: "array", items: { type: "string" } },
     utilization: { type: "number", minimum: 0, maximum: 1 },
     demand: { type: "number", minimum: 0 },
     tokensAvailable: { type: "integer", minimum: 0 },
@@ -176,6 +190,19 @@ const transitionSchema = {
     queued: { type: "integer", minimum: 0 },
   },
   required: ["timestamp", "providerID", "kind", "sessionID", "active", "queued"],
+  additionalProperties: false,
+} as const
+
+const sessionDetailSchema = {
+  type: "object",
+  properties: {
+    sessionID: { type: "string" },
+    title: { type: "string" },
+    agent: { type: "string" },
+    directory: { type: "string" },
+    parentID: { type: "string" },
+  },
+  required: ["sessionID"],
   additionalProperties: false,
 } as const
 
@@ -289,6 +316,7 @@ export const statusRpc = {
         properties: {
           providers: { type: "array", items: providerStatusSchema },
           transitions: { type: "array", items: transitionSchema },
+          sessionDetails: { type: "array", items: sessionDetailSchema },
           subagents: subagentStatusSchema,
         },
         required: ["providers", "transitions"],

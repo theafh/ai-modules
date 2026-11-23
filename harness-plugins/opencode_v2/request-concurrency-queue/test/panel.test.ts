@@ -82,7 +82,7 @@ function transition(index: number, overrides: Partial<TransitionRecord> = {}): T
 
 function snapshot(transitions: TransitionRecord[] = []): StatusSnapshot {
   return {
-    providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, sessions: 1, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
+    providers: [{ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, sessions: 1, activeSessionIDs: [], utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
     transitions,
   }
 }
@@ -100,6 +100,7 @@ function providerSnapshot(provider: Partial<ProviderStatus> & Pick<ProviderStatu
         max,
         ceiling: provider.ceiling ?? max,
         sessions: provider.sessions ?? 0,
+        activeSessionIDs: provider.activeSessionIDs ?? [],
         utilization: max === 0 ? 0 : active / max,
         demand: max === 0 ? 0 : (active + queued) / max,
         tokensAvailable: provider.tokensAvailable ?? 0,
@@ -162,7 +163,7 @@ describe("concurrency status panel body", () => {
 
     expect(state.unavailable).toBe(false)
     expect(state.rows).toEqual([
-      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, sessions: 1, utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }),
+      providerRow({ providerID: "acme", active: 1, queued: 0, max: 2, ceiling: 2, sessions: 1, activeSessionIDs: [], utilization: 0.5, demand: 0.5, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: emptyBlocked(), breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }),
     ])
     expect(state.transitions).toEqual([])
   })
@@ -215,6 +216,48 @@ describe("concurrency status panel body", () => {
 
     const html = renderPanel(snapshot(many))
     expect(html.match(/request-concurrency-feed-row/g)).toHaveLength(PANEL_TRANSITION_LIMIT)
+  })
+
+  test("lists the in-flight sessions under their provider row in the dialog", () => {
+    const base = providerSnapshot({
+      providerID: "acme",
+      active: 2,
+      max: 8,
+      sessions: 2,
+      activeSessionIDs: ["ses_aaaa1111", "ses_bbbb2222"],
+    })
+    const snapshotWithDetails: StatusSnapshot = {
+      ...base,
+      sessionDetails: [
+        {
+          sessionID: "ses_aaaa1111",
+          title: "Implement http response contract",
+          agent: "general",
+          directory: "/Users/x/Code/web_stack/no-cms",
+        },
+        {
+          sessionID: "ses_bbbb2222",
+          title: "Build the queue",
+          agent: "build",
+          directory: "/Users/x/Code/private_repos/ai-modules",
+        },
+      ],
+    }
+
+    const html = renderPanel(snapshotWithDetails)
+
+    expect(html).toContain("request-concurrency-status-session")
+    expect(html).toContain("↳ Implement http response contract")
+    expect(html).toContain("general · no-cms")
+    expect(html).toContain("↳ Build the queue")
+    expect(html).toContain("build · ai-modules")
+    expect(html).toContain("ses_aaaa1111")
+
+    // The footer bar stays one count per provider; the session list is dialog-only.
+    const bar = renderBar(snapshotWithDetails)
+    expect(bar).not.toContain("Implement http response contract")
+    expect(bar).not.toContain("request-concurrency-status-session")
+    expect(bar).toContain(">2/8<")
   })
 
   test("renders the window-bottom bar with one in-flight slot count per provider", () => {

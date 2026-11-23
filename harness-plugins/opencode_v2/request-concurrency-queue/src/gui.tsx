@@ -124,6 +124,19 @@ export function StatusBody(props: { snapshot: StatusSnapshot | null }) {
                   {row.demand}
                 </span>
               </div>
+              <For each={row.sessionRows}>
+                {(session) => (
+                  <div class="request-concurrency-status-session" title={session.sessionID}>
+                    <span class="request-concurrency-status-session-title">
+                      {`↳ ${session.title}`}
+                    </span>
+                    <Show when={session.meta !== ""}>
+                      <span class="request-concurrency-status-session-meta">{session.meta}</span>
+                    </Show>
+                    <span class="request-concurrency-status-session-id">{session.shortID}</span>
+                  </div>
+                )}
+              </For>
             </>
           )}
         </For>

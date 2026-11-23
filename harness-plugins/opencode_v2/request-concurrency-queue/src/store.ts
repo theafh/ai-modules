@@ -378,6 +378,7 @@ export function snapshotOf(store: Store): StatusSnapshot {
       max,
       ceiling: limit.maxConcurrency,
       sessions: activeSessions.size,
+      activeSessionIDs: [...activeSessions],
       utilization: max === 0 ? 0 : active / max,
       demand: max === 0 ? 0 : (active + queued) / max,
       tokensAvailable: tokens?.available ?? 0,

@@ -127,6 +127,12 @@ function makeContext(options: Record<string, unknown>): any {
         hooks.set(name, callback)
         return { dispose: async () => {} }
       },
+      get: async ({ sessionID }: { sessionID: string }) => ({
+        id: sessionID,
+        title: `Work in ${sessionID}`,
+        agent: "build",
+        location: { directory: `/work/${sessionID}` },
+      }),
     },
     tool: {
       transform: async (callback: (editor: any) => void) => {
@@ -279,7 +285,7 @@ describe("request-concurrency-queue plugin", () => {
     const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
 
     expect(await statusSnapshot(rpc)).toEqual({
-      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, sessions: 0, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
+      providers: [{ providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, sessions: 0, activeSessionIDs: [], utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 }],
       transitions: [],
     })
 
@@ -316,6 +322,20 @@ describe("request-concurrency-queue plugin", () => {
     const bResponse = await responseHook(hooks, "b", b, "b-body")
     await bResponse.text()
     expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ active: 0, queued: 0 })
+
+    await cleanup()
+  })
+
+  test("the status snapshot names the sessions holding a slot", async () => {
+    const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 2, providers: ["acme"] })
+
+    await requestHook(hooks, "a", request("https://example.test/a"))
+
+    const snapshot = await statusSnapshot(rpc)
+    expect(snapshot.providers[0]).toMatchObject({ active: 1, sessions: 1, activeSessionIDs: ["a"] })
+    expect(snapshot.sessionDetails).toEqual([
+      { sessionID: "a", title: "Work in a", agent: "build", directory: "/work/a" },
+    ])
 
     await cleanup()
   })
@@ -473,12 +493,12 @@ describe("request-concurrency-queue plugin", () => {
     await cleanup()
   })
 
-  test("the status snapshot holds only identifiers and counts, never payload fields", async () => {
+  test("the status snapshot holds only identifiers, display metadata, and counts", async () => {
     const { hooks, rpc, cleanup } = await setup({ maxConcurrency: 1, providers: ["acme"] })
     await requestHook(hooks, "a", request("https://example.test/a"))
 
     const snapshot = await statusSnapshot(rpc)
-    expect(Object.keys(snapshot).sort()).toEqual(["providers", "transitions"])
+    expect(Object.keys(snapshot).sort()).toEqual(["providers", "sessionDetails", "transitions"])
     for (const transition of snapshot.transitions) {
       expect(Object.keys(transition).sort()).toEqual([
         "active",
@@ -489,9 +509,16 @@ describe("request-concurrency-queue plugin", () => {
         "timestamp",
       ])
     }
-    const serialized = JSON.stringify(snapshot).toLowerCase()
+    // A session detail may carry the session record's own display metadata, and
+    // nothing from the conversation: no prompt, message, or tool payload field.
+    for (const detail of snapshot.sessionDetails ?? []) {
+      for (const key of Object.keys(detail)) {
+        expect(["sessionID", "title", "agent", "directory", "parentID"]).toContain(key)
+      }
+    }
+    const feed = JSON.stringify(snapshot.transitions).toLowerCase()
     for (const forbidden of ["prompt", "message", "content", "tool", "arguments"]) {
-      expect(serialized).not.toContain(forbidden)
+      expect(feed).not.toContain(forbidden)
     }
 
     await cleanup()
@@ -1039,7 +1066,7 @@ describe("process-wide store", () => {
       try {
         // The first instance's provider set and maximum stay authoritative.
         expect((await statusSnapshot(second.rpc)).providers).toEqual([
-          { providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, sessions: 0, utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 },
+          { providerID: "acme", active: 0, queued: 0, max: 1, ceiling: 1, sessions: 0, activeSessionIDs: [], utilization: 0, demand: 0, tokensAvailable: 0, tokensCapacity: 0, tokensPausedUntil: 0, blocked: { slots: 0, context: 0, budget: 0, breaker: 0, draining: 0 }, breaker: "closed", breakerRetryAfterMs: 0, stalls: 0 },
         ])
         expect(messages.some((message) => message.includes("config mismatch"))).toBe(true)
       } finally {
