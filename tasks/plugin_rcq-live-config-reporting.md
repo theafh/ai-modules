@@ -29,7 +29,7 @@ reported-by: Andreas Hoffmann
 
 `src/budget.ts` stores `refillPerMs`, not `refillPerMinute`, and `saveConfig` requires `refillPerMinute` to be an integer, so reconstructing `500000/60000*60000` yields `500000.00000000006` and an unchanged save of a 500k budget is rejected.
 
-The live task [config validation and save](plugin_rcq-config-validation-and-save.md) rewrites `saveConfig`'s write/apply ordering: it reads the current file bytes, renames the temporary file into place, then applies to the store, with an injected `io` seam and a restore on an apply throw. This task's preserve-uncovered-entries merge sits inside that post-change flow, in the step that builds the merged object before the temporary file is written, and restores no part of the old ordering.
+The live task [config validation and save](archive/plugin_rcq-config-validation-and-save.md) rewrites `saveConfig`'s write/apply ordering: it reads the current file bytes, renames the temporary file into place, then applies to the store, with an injected `io` seam and a restore on an apply throw. This task's preserve-uncovered-entries merge sits inside that post-change flow, in the step that builds the merged object before the temporary file is written, and restores no part of the old ordering.
 
 The provider-ceiling-and-dialog task also edits `src/gui.tsx` and `test/panel.test.ts`, and its loaded-form split shares `ConfigForm`'s composition site with this task's Subagents-section extraction. The two compose in either order: whichever lands second places its structure around the other's.
 

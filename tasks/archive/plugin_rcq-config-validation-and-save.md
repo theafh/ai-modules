@@ -2,8 +2,8 @@
 description: "Close request-concurrency-queue config validation gaps and make Save total: no throws out of the RPC, no half-applied store, no silently dropped edits."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-23T10:01:27Z
-updated: 2026-11-23T12:05:13Z
-status: implemented
+updated: 2026-11-23T12:09:29Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: "Andreas Hoffmann"
 design-extended: false
@@ -27,7 +27,7 @@ A `scheduler` object that omits `contextCapacity` loads with a default instead o
 
 `src/store.ts`: `applyConfig` returns `{ restartRequired: true }` as soon as the provider set differs, before applying any token, scheduler, subagent, or adaptive edit in the same save.
 
-The live task `plugin_rcq-provider-ceiling-and-dialog` also edits `applyConfig`, and its Approach now reads the post-change behaviour: the in-place edits apply first and only the provider-set change is deferred. That supersession is already recorded there, so this task does not edit that file. The live task [live config reporting](plugin_rcq-live-config-reporting.md) also edits `saveConfig`, `applyConfig`, and `TokenBudget`; its merge sits inside this task's post-change flow, and the two compose in either order.
+The live task `plugin_rcq-provider-ceiling-and-dialog` also edits `applyConfig`, and its Approach now reads the post-change behaviour: the in-place edits apply first and only the provider-set change is deferred. That supersession is already recorded there, so this task does not edit that file. The live task [live config reporting](../plugin_rcq-live-config-reporting.md) also edits `saveConfig`, `applyConfig`, and `TokenBudget`; its merge sits inside this task's post-change flow, and the two compose in either order.
 
 Verified by reading the code above. Baseline: `bun test` and `bunx tsc --noEmit` pass in the package.
 

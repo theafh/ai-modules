@@ -32,7 +32,7 @@ README's "Configuring from the window" section states that adding or removing a 
 
 Verified by reading the code above and by a store reproduction: after `applyConfig` from `8` to `4`, `limit.maxConcurrency` is 8, `scheduler.maxConcurrency` is 4, `snapshotOf(...).ceiling` is 8, and `store.fingerprint` is `acme=8`. Baseline: `bun test` and `bunx tsc --noEmit` pass in the package.
 
-The live task [config validation and save](plugin_rcq-config-validation-and-save.md) changes `applyConfig` so in-place edits apply before a provider-set change reports `restartRequired`. That change supersedes the early return; this task builds on the post-change behaviour and must not restore it.
+The live task [config validation and save](archive/plugin_rcq-config-validation-and-save.md) changes `applyConfig` so in-place edits apply before a provider-set change reports `restartRequired`. That change supersedes the early return; this task builds on the post-change behaviour and must not restore it.
 
 The live task [live config reporting](plugin_rcq-live-config-reporting.md) also edits `src/gui.tsx`, `test/panel.test.ts`, and `configSnapshot`, and its Subagents-section extraction shares `ConfigForm`'s composition site with this task's loaded-form split. The two compose in either order.
 
