@@ -29,12 +29,14 @@ export class TransitionBuffer {
  * One provider's shared limit. Every plugin instance in the process, one per
  * open location, gates its requests through these same limiter objects.
  *
- * `maxConcurrency` is the configured ceiling; `limiter.maxConcurrency` is the
- * effective limit, which adaptive control lowers after a failure and raises
- * again after a run of successes. `successes` counts that run.
+ * `maxConcurrency` is the configured ceiling, which a save writes; the
+ * scheduler's `maxConcurrency` is the effective limit, which adaptive control
+ * lowers after a failure and raises again after a run of successes. `successes`
+ * counts that run.
  */
 export interface ProviderLimit {
-  readonly maxConcurrency: number
+  /** The configured ceiling; `applyConfig` writes a saved maximum here. */
+  maxConcurrency: number
   readonly scheduler: RequestScheduler
   successes: number
 }
@@ -72,7 +74,7 @@ export interface SchedulerConfig {
  */
 export interface Store {
   /** Canonical rendering of the configured provider set and maximums. */
-  readonly fingerprint: string
+  fingerprint: string
   readonly providers: Map<string, ProviderLimit>
   readonly subscribers: Set<() => void>
   /** Recent transitions shared by every location's status handler. */
@@ -165,6 +167,12 @@ export interface LiveConfig {
  * `restartRequired`; the file already holds it and the store adopts it on the
  * next launch. An existing token bucket keeps its current fill; only its limits
  * change.
+ *
+ * A saved maximum becomes the provider's configured ceiling, so the status
+ * snapshot, `config()`, the fingerprint, and adaptive recovery all agree with
+ * the value the file holds. The ceiling is written only after the scheduler
+ * accepted the new settings, and the fingerprint is recomputed from the
+ * providers this call actually applied, so a deferred provider never enters it.
  */
 export function applyConfig(store: Store, config: LiveConfig): { restartRequired: boolean } {
   const existing = [...store.providers.keys()].sort().join(",")
@@ -176,6 +184,11 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
     if (!limit) continue
     const budgetOptions = config.tokens.get(providerID)
     const current = limit.scheduler.budgetSnapshot
+    // Both are read before the reconfigure below writes the new width: the
+    // clamp compares the pre-save effective width against the ceiling it ran
+    // under, not the one this save installs.
+    const previousCeiling = limit.maxConcurrency
+    const effectiveBefore = limit.scheduler.maxConcurrency
 
     // A store created by an older build may hold a scheduler without the newer
     // in-place method, so fall back to replacing the bucket.
@@ -191,7 +204,7 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
     }
 
     limit.scheduler.reconfigure({
-      maxSlots: maxConcurrency,
+      maxSlots: savedMax(config.adaptive, effectiveBefore, previousCeiling, maxConcurrency),
       contextCapacity: config.scheduler?.contextCapacity,
       contextCeiling: config.scheduler?.contextCeiling,
       reserveShare: config.scheduler?.reserveShare,
@@ -200,6 +213,9 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
       queueDeadlineMs: config.scheduler?.queueDeadlineMs,
       breaker: config.scheduler?.breaker,
     })
+    // The ceiling follows only once the reconfigure returned: a throwing
+    // scheduler must leave the limit describing the configuration it still runs.
+    limit.maxConcurrency = maxConcurrency
   }
 
   if (config.subagents) {
@@ -214,9 +230,35 @@ export function applyConfig(store: Store, config: LiveConfig): { restartRequired
     store.subagents = undefined
   }
 
+  // Recompute from the store's own provider map, so the fingerprint records the
+  // values this process applied and not a provider the file added and the store
+  // deferred to a restart.
+  store.fingerprint = fingerprintOf(
+    new Map([...store.providers].map(([providerID, limit]) => [providerID, limit.maxConcurrency])),
+  )
   store.adaptive = config.adaptive
   publish(store)
   return { restartRequired }
+}
+
+/**
+ * The effective width one provider runs after a save.
+ *
+ * Adaptive control may have lowered the width below the ceiling it ran under.
+ * That lowering survives a save, so a raise cannot push a provider straight back
+ * to a width it had already backed away from; the width still never exceeds the
+ * new ceiling, so a lowering cannot leave it above the ceiling either. A save
+ * that turns adaptive off restores the configured ceiling, and an ordinary
+ * raise — the width sitting at its ceiling — applies at once.
+ */
+function savedMax(
+  adaptive: boolean,
+  effectiveBefore: number,
+  previousCeiling: number,
+  ceiling: number,
+): number {
+  if (!adaptive || effectiveBefore >= previousCeiling) return ceiling
+  return Math.min(ceiling, effectiveBefore)
 }
 
 /** Renders a provider set and its maximums in a stable, order-independent form. */

@@ -150,7 +150,75 @@ describe("configSnapshot", () => {
     ).toEqual({})
 
     const source = readFileSync(join(import.meta.dir, "..", "src", "index.ts"), "utf8")
-    expect(source).toContain("configSnapshot(store, currentFileConfig())")
+    expect(source).toContain("configSnapshot(store, currentFileConfig(), options)")
+  })
+})
+
+describe("configSnapshot's provider set", () => {
+  test("reports the saved maximum after a save and leaves it unchanged on a second save", () => {
+    const file = tempFile()
+    const store = storeWith(8)
+    try {
+      expect(saveConfig(store, validSnapshot({ providers: { acme: 4 } }), file.path).ok).toBe(true)
+
+      const snapshot = configSnapshot(store, loadConfigFile(file.path), {})
+      expect(snapshot.providers).toEqual({ acme: 4 })
+
+      const second = saveConfig(store, snapshot, file.path)
+      expect(second).toEqual({ ok: true, errors: [], restartRequired: false })
+
+      expect(configSnapshot(store, loadConfigFile(file.path), {}).providers).toEqual({ acme: 4 })
+      expect(JSON.parse(readFileSync(file.path, "utf8")).providers).toEqual({ acme: 4 })
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("reports the store's set when the options carry one, even when the file differs", () => {
+    const store = createStore(new Map([["acme", 4]]))
+
+    const snapshot = configSnapshot(store, { providers: { beta: 2 } }, { providers: { acme: 4 } })
+
+    expect(snapshot.providers).toEqual({ acme: 4 })
+  })
+
+  test("resolves a file provider list at the options' shared default", () => {
+    // The store runs 8; the file list and the options' default say 4, so the
+    // reported numbers can only come from the file branch.
+    const store = createStore(new Map([
+      ["acme", 8],
+      ["beta", 8],
+    ]))
+
+    const snapshot = configSnapshot(store, { providers: ["acme", "beta"] }, { maxConcurrency: 4 })
+
+    expect(snapshot.providers).toEqual({ acme: 4, beta: 4 })
+  })
+
+  test("reports a pending provider set from the file and keeps it across a second save", () => {
+    const file = tempFile()
+    const store = storeWith(8)
+    try {
+      // The store gates `acme` only; the save adds `beta`, which the store
+      // defers to a restart while the file already holds it.
+      const first = saveConfig(
+        store,
+        validSnapshot({ providers: { acme: 8, beta: 2 }, tokens: {} }),
+        file.path,
+      )
+      expect(first).toEqual({ ok: true, errors: [], restartRequired: true })
+      expect(store.providers.has("beta")).toBe(false)
+
+      const pending = configSnapshot(store, loadConfigFile(file.path), {})
+      expect(pending.providers).toEqual({ acme: 8, beta: 2 })
+
+      const second = saveConfig(store, pending, file.path)
+      expect(second.ok).toBe(true)
+      expect(second.restartRequired).toBe(true)
+      expect(JSON.parse(readFileSync(file.path, "utf8")).providers).toEqual({ acme: 8, beta: 2 })
+    } finally {
+      file.cleanup()
+    }
   })
 })
 
@@ -378,6 +446,51 @@ describe("saving the reported live settings", () => {
       expect(JSON.parse(readFileSync(file.path, "utf8")).tokens.other).toEqual({
         capacity: 1_234,
         refillPerMinute: 4_321,
+      })
+    } finally {
+      file.cleanup()
+    }
+  })
+
+  test("drops a removed provider's budget while keeping a dormant entry", () => {
+    const file = tempFile()
+    const store = createStore(new Map([
+      ["acme", 4],
+      ["beta", 2],
+    ]))
+    try {
+      // `beta` is in the file's provider set and this save removes it, so its
+      // budget must go with its maximum. `other` was never in that set — a
+      // dormant entry from a hand-edited file — and must survive.
+      writeFileSync(
+        file.path,
+        JSON.stringify({
+          providers: { acme: 4, beta: 2 },
+          tokens: {
+            acme: { capacity: 500_000, refillPerMinute: 500_000 },
+            beta: { capacity: 1_000, refillPerMinute: 1_000 },
+            other: { capacity: 1_234, refillPerMinute: 4_321 },
+          },
+        }),
+      )
+
+      const result = saveConfig(
+        store,
+        validSnapshot({
+          providers: { acme: 2 },
+          tokens: { acme: { capacity: 500_000, refillPerMinute: 500_000, safetyFactor: 1 } },
+        }),
+        file.path,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.restartRequired).toBe(true)
+
+      const written = JSON.parse(readFileSync(file.path, "utf8"))
+      expect(written.providers).toEqual({ acme: 2 })
+      expect(written.tokens).toEqual({
+        acme: { capacity: 500_000, refillPerMinute: 500_000, safetyFactor: 1 },
+        other: { capacity: 1_234, refillPerMinute: 4_321 },
       })
     } finally {
       file.cleanup()

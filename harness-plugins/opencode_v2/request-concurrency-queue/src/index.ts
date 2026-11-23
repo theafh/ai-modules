@@ -163,7 +163,7 @@ export default Plugin.define({
 
     const registration = await ctx.rpc.register(statusRpc, {
       status: async () => describeSessions(snapshotOf(store)),
-      config: async () => configSnapshot(store, currentFileConfig()),
+      config: async () => configSnapshot(store, currentFileConfig(), options),
       save: async (input) => saveConfig(store, input as ConfigSnapshot),
     })
     // A transition anywhere in the process must reach every location's event
@@ -722,19 +722,43 @@ export default Plugin.define({
 })
 
 /**
+ * The plugin options' provider setting, which decides whether the snapshot
+ * reads the provider set from the file or from the store.
+ */
+export interface ConfigSnapshotOptions {
+  /** The options' provider setting, when one is configured. */
+  providers?: string[] | Record<string, number>
+  /** The options' shared default maximum for a provider list. */
+  maxConcurrency?: number
+}
+
+/**
  * The effective settings, with defaults filled in for anything unset.
  *
  * Every live limit is read from the store, whichever source configured it:
- * plugin options, the environment, or the config file. `fileConfig` stays in the
- * signature for the provider-set work that reads it; the token, scheduler, and
- * `hostAware` reads come from the store.
+ * plugin options, the environment, or the config file. The provider set is the
+ * one exception: while a provider-set change waits for a restart the file holds
+ * the pending set, so the dialog must show that set and not the store's. The
+ * file speaks only when the plugin options carry no provider set of their own —
+ * the same `options.providers ?? fileConfig?.providers ?? envProviders()` order
+ * the store loaded with — and its value is resolved through
+ * `resolveProviderLimits` so a `string[]` becomes a `Record<string, number>` at
+ * the shared default the store used.
  */
 export function configSnapshot(
   store: Store,
   fileConfig?: RequestConcurrencyQueueFileConfig,
+  options: ConfigSnapshotOptions = {},
 ): ConfigSnapshot {
+  const fileProviders = options.providers === undefined ? fileConfig?.providers : undefined
   const providers: Record<string, number> = {}
-  for (const [providerID, limit] of store.providers) providers[providerID] = limit.maxConcurrency
+  if (fileProviders !== undefined && fileProviders !== null) {
+    for (const [providerID, maxConcurrency] of resolveProviderLimits(options, fileConfig)) {
+      providers[providerID] = maxConcurrency
+    }
+  } else {
+    for (const [providerID, limit] of store.providers) providers[providerID] = limit.maxConcurrency
+  }
 
   // A provider the store gates without a budget reports no entry, so the form
   // shows no fabricated default and an unchanged save leaves the file alone.
@@ -896,11 +920,19 @@ export function saveConfig(
   // instead of deleting it on an unchanged save. This map is what the file
   // keeps; `tokens` above is what the store applies, so a provider the store
   // gates without a bucket is never handed its dormant file entry on a save.
+  //
+  // A provider this save removes loses its budget with its maximum: carrying
+  // every uncovered entry over resurrected a removed provider's tokens on each
+  // save. An entry is carried only when the previous file did not list it among
+  // its providers — a dormant leftover from a hand-edited file — or when the
+  // saved set keeps that provider.
   const fileTokens: Record<string, TokenBudgetConfig> = { ...tokens }
   const existingTokens = existing.value?.tokens
+  const previousProviders = providerIDSet(existing.value?.providers)
   if (existingTokens && typeof existingTokens === "object" && !Array.isArray(existingTokens)) {
     for (const [providerID, entry] of Object.entries(existingTokens as Record<string, unknown>)) {
       if (providerID in fileTokens) continue
+      if (previousProviders.has(providerID) && !(providerID in input.providers)) continue
       fileTokens[providerID] = entry as TokenBudgetConfig
     }
   }
@@ -1024,6 +1056,18 @@ function isMissingFile(error: unknown): boolean {
     error !== null &&
     (error as { code?: unknown }).code === "ENOENT"
   )
+}
+
+/**
+ * The provider IDs a config file's `providers` value names, whether it holds a
+ * list or a per-provider number map. Anything else names no provider.
+ */
+function providerIDSet(providers: unknown): Set<string> {
+  if (Array.isArray(providers)) {
+    return new Set(providers.filter((providerID): providerID is string => typeof providerID === "string"))
+  }
+  if (providers && typeof providers === "object") return new Set(Object.keys(providers))
+  return new Set()
 }
 
 function errorMessage(error: unknown): string {

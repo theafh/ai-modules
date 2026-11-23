@@ -9,7 +9,10 @@ import { renderToString } from "solid-js/web"
 import { build, createServer, type ViteDevServer } from "vite"
 import gui, { STATUS_UNAVAILABLE, statusBodyState } from "../src/gui.tsx"
 import * as guiModule from "../src/gui.tsx"
-import type { ProviderStatus, StatusSnapshot, TransitionRecord } from "../src/rpc.js"
+import { configSnapshot, loadConfigFile, saveConfig } from "../src/index.js"
+import { CONFIG_STYLE } from "../src/panel-style.js"
+import type { ConfigSnapshot, ProviderStatus, StatusSnapshot, TransitionRecord } from "../src/rpc.js"
+import { createStore } from "../src/store.js"
 import {
   PANEL_TRANSITION_LIMIT,
   loadColor,
@@ -45,6 +48,25 @@ let panelModule: {
     current: { max: number; hostAware: boolean },
     edit: Partial<{ max: number; hostAware: boolean }>,
   ) => { max: number; hostAware: boolean }
+  ProvidersSection: (props: {
+    providers: Record<string, number>
+    onMaxChange: (providerID: string, max: number) => void
+    onRemove: (providerID: string) => void
+    onAdd: (providerID: string, max: number) => boolean
+    error?: string
+  }) => unknown
+  editedProviders: (
+    current: { providers: Record<string, number>; tokens: Record<string, TokenConfigShape> },
+    edit: { kind: "add"; providerID: string; max: number } | { kind: "remove"; providerID: string },
+  ) => { providers: Record<string, number>; tokens: Record<string, TokenConfigShape> }
+  saveDisabled: (result: { ok: boolean; errors: string[]; restartRequired: boolean } | null) => boolean
+}
+
+/** The token-budget fields a provider edit carries through unchanged. */
+interface TokenConfigShape {
+  capacity: number
+  refillPerMinute: number
+  safetyFactor: number
 }
 
 beforeAll(async () => {
@@ -470,3 +492,191 @@ describe("the settings form's Subagents section", () => {
   })
 })
 
+
+describe("the settings form's Providers section", () => {
+  /**
+   * The snapshot the dialog holds after a save that adds a provider: the set is
+   * pending a restart, so the form shows every provider the file carries.
+   */
+  function pendingSnapshot(): ConfigSnapshot {
+    return {
+      providers: { acme: 2, beta: 4 },
+      tokens: {},
+      scheduler: {
+        contextCapacity: 0,
+        contextCeiling: 0,
+        reserveShare: 0.25,
+        smallShare: 0.1,
+        agingMs: 30_000,
+        queueDeadlineMs: 0,
+        breaker: { threshold: 3, cooldownMs: 60_000, mode: "fail" },
+      },
+      subagents: { max: 0, hostAware: false },
+      adaptive: false,
+    }
+  }
+
+  function renderProviders(snapshot: ConfigSnapshot = pendingSnapshot()): string {
+    return renderToString(
+      () =>
+        panelModule.ProvidersSection({
+          providers: snapshot.providers,
+          onMaxChange: () => {},
+          onRemove: () => {},
+          onAdd: () => true,
+        }) as never,
+    )
+  }
+
+  test("renders one row per provider, a remove control per row, and an add row", () => {
+    const html = renderProviders()
+
+    expect(html.match(/request-concurrency-provider-row/g)).toHaveLength(2)
+    expect(html).toContain(">acme · max concurrent<")
+    expect(html).toContain(">beta · max concurrent<")
+    expect(html.match(/request-concurrency-provider-remove/g)).toHaveLength(2)
+    expect(html).toContain("Remove acme")
+    expect(html).toContain("Remove beta")
+    expect(html).toContain("request-concurrency-provider-add")
+    expect(html).toContain(">Add provider<")
+    expect(html).toContain("New provider ID")
+    expect(html).toContain("New provider maximum")
+  })
+
+  test("the pure helper appends only the maximum when adding a provider", () => {
+    const next = panelModule.editedProviders(
+      {
+        providers: { acme: 2 },
+        tokens: { acme: { capacity: 10, refillPerMinute: 5, safetyFactor: 1.1 } },
+      },
+      { kind: "add", providerID: "beta", max: 4 },
+    )
+
+    expect(next.providers).toEqual({ acme: 2, beta: 4 })
+    expect(next.tokens).toEqual({ acme: { capacity: 10, refillPerMinute: 5, safetyFactor: 1.1 } })
+    expect("beta" in next.tokens).toBe(false)
+  })
+
+  test("the pure helper drops a removed provider's maximum and token budget", () => {
+    const next = panelModule.editedProviders(
+      {
+        providers: { acme: 2, beta: 4 },
+        tokens: {
+          acme: { capacity: 10, refillPerMinute: 5, safetyFactor: 1 },
+          beta: { capacity: 20, refillPerMinute: 6, safetyFactor: 1 },
+        },
+      },
+      { kind: "remove", providerID: "beta" },
+    )
+
+    expect(next.providers).toEqual({ acme: 2 })
+    expect(next.tokens).toEqual({ acme: { capacity: 10, refillPerMinute: 5, safetyFactor: 1 } })
+  })
+
+  test("the pure helper refuses an empty or duplicate ID before a save", () => {
+    const current = { providers: { acme: 2 }, tokens: {} }
+
+    expect(() =>
+      panelModule.editedProviders(current, { kind: "add", providerID: "   ", max: 1 }),
+    ).toThrow(/provider ID/)
+    expect(() =>
+      panelModule.editedProviders(current, { kind: "add", providerID: "acme", max: 2 }),
+    ).toThrow(/already configured/)
+    expect(current).toEqual({ providers: { acme: 2 }, tokens: {} })
+  })
+
+  test("ConfigForm composes the section with the add and remove edit paths", () => {
+    const source = readFileSync(resolve(packageDir, "src", "gui.tsx"), "utf8")
+
+    expect(source).toContain("<ProvidersSection")
+    expect(source).toContain('editProviders({ kind: "remove", providerID })')
+    expect(source).toContain('editProviders({ kind: "add", providerID, max })')
+  })
+})
+
+describe("the save-disabled predicate", () => {
+  test("stays disabled after a provider-set save and is enabled otherwise", () => {
+    expect(panelModule.saveDisabled(null)).toBe(false)
+    expect(panelModule.saveDisabled({ ok: true, errors: [], restartRequired: false })).toBe(false)
+    expect(
+      panelModule.saveDisabled({
+        ok: false,
+        errors: ["providers.acme must be a positive integer"],
+        restartRequired: false,
+      }),
+    ).toBe(false)
+    expect(panelModule.saveDisabled({ ok: true, errors: [], restartRequired: true })).toBe(true)
+  })
+
+  test("ConfigForm binds the Save button's disabled state to it", () => {
+    const source = readFileSync(resolve(packageDir, "src", "gui.tsx"), "utf8")
+
+    expect(source).toContain("saveDisabled(lastResult())")
+  })
+})
+
+describe("adding a provider from the dialog", () => {
+  test("the save reports a restart and the file keeps the pending set", () => {
+    const dir = mkdtempSync(resolve(tmpdir(), "rcq-provider-add-"))
+    const filePath = resolve(dir, "request-concurrency-queue.json")
+    const store = createStore(new Map([["acme", 8]]))
+    try {
+      const before = configSnapshot(store, undefined, {})
+      const edited = panelModule.editedProviders(
+        { providers: before.providers, tokens: before.tokens },
+        { kind: "add", providerID: "beta", max: 2 },
+      )
+
+      const first = saveConfig(
+        store,
+        { ...before, providers: edited.providers, tokens: edited.tokens },
+        filePath,
+      )
+      expect(first).toEqual({ ok: true, errors: [], restartRequired: true })
+
+      // The dialog now reports the file's pending set, not the store's.
+      const pending = configSnapshot(store, loadConfigFile(filePath), {})
+      expect(pending.providers).toEqual({ acme: 8, beta: 2 })
+
+      const second = saveConfig(store, pending, filePath)
+      expect(second.ok).toBe(true)
+      expect(JSON.parse(readFileSync(filePath, "utf8")).providers).toEqual({ acme: 8, beta: 2 })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("the provider controls' styles", () => {
+  test("carry selectors for the row, the remove control, and the add row", () => {
+    for (const selector of [
+      ".request-concurrency-provider-row",
+      ".request-concurrency-provider-remove",
+      ".request-concurrency-provider-add",
+      ".request-concurrency-provider-add-id",
+      ".request-concurrency-provider-add-button",
+    ]) {
+      expect(CONFIG_STYLE).toContain(selector)
+    }
+  })
+})
+
+describe("the README's dialog paragraph", () => {
+  test("names the add and remove controls the form renders", () => {
+    const readme = readFileSync(resolve(packageDir, "README.md"), "utf8")
+    const html = renderToString(
+      () =>
+        panelModule.ProvidersSection({
+          providers: { acme: 2 },
+          onMaxChange: () => {},
+          onRemove: () => {},
+          onAdd: () => true,
+        }) as never,
+    )
+
+    expect(readme).toContain("**Remove** control")
+    expect(readme).toContain("add row takes a provider ID and a maximum")
+    expect(html).toContain(">Add provider<")
+    expect(html).toContain("Remove")
+  })
+})

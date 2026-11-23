@@ -111,14 +111,18 @@ request.
 
 Open the Concurrency dialog from the status bar to edit the settings in place:
 provider maximums, the token budget, the context cap and lanes, the circuit
-breaker, the subagent ceiling and its host-aware switch, and `adaptive`. Each
-field is checked on the server before anything is written; a rejected value
-returns an error list and leaves the file untouched. **Save** writes the config
-file atomically and applies the change to the running store, so in-flight
-requests and queued waiters survive it. Every in-place edit is applied and the
-new file is written; adding or removing a provider changes the set of
-schedulers those requests are already using, so that one edit is deferred in
-the store and reported with `restartRequired: true`.
+breaker, the subagent ceiling and its host-aware switch, and `adaptive`. The
+Providers section lists one maximum per provider with a **Remove** control, and
+its add row takes a provider ID and a maximum; adding a provider writes only its
+maximum, because a token budget stays optional per provider. Each field is
+checked on the server before anything is written; a rejected value returns an
+error list and leaves the file untouched. **Save** writes the config file
+atomically and applies the change to the running store, so in-flight requests
+and queued waiters survive it. Every in-place edit is applied and the new file is
+written; adding or removing a provider changes the set of schedulers those
+requests are already using, so that one edit is deferred in the store and
+reported with `restartRequired: true`. Save then stays disabled until the dialog
+is reopened, which reads the file's saved set back.
 
 ## Configuration
 

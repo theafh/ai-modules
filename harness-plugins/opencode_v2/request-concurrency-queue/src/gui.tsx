@@ -6,6 +6,7 @@ import {
   type ConfigSnapshot,
   type SaveResult,
   type StatusSnapshot,
+  type TokenConfig,
 } from "./rpc.js"
 import {
   providerRows,
@@ -335,13 +336,151 @@ export function SubagentsSection(props: {
   )
 }
 
+/** The two provider maps one provider add or remove edits. */
+export interface ProviderMaps {
+  providers: Record<string, number>
+  tokens: Record<string, TokenConfig>
+}
+
+/** One provider add or remove, as the Providers section requests it. */
+export type ProviderEdit =
+  | { kind: "add"; providerID: string; max: number }
+  | { kind: "remove"; providerID: string }
+
+/**
+ * Applies one provider add or remove to the form's maps.
+ *
+ * Adding appends only the maximum: a maximum must be a positive integer, while a
+ * token budget is optional per provider, so the add row never fabricates one.
+ * Removing drops the provider's maximum and its token budget together, so a
+ * removed provider cannot leave its budget behind.
+ *
+ * A refused edit throws instead of returning a half-edited pair: an empty or
+ * duplicate provider ID and a maximum that is not a positive integer are
+ * reported to the operator before a save is attempted.
+ */
+export function editedProviders(current: ProviderMaps, edit: ProviderEdit): ProviderMaps {
+  if (edit.kind === "add") {
+    const providerID = edit.providerID.trim()
+    if (providerID === "") throw new Error("A provider ID is required.")
+    if (providerID in current.providers) {
+      throw new Error(`Provider "${providerID}" is already configured.`)
+    }
+    if (!Number.isInteger(edit.max) || edit.max < 1) {
+      throw new Error("The maximum must be a positive integer.")
+    }
+    return {
+      providers: { ...current.providers, [providerID]: edit.max },
+      tokens: { ...current.tokens },
+    }
+  }
+  const providers = { ...current.providers }
+  const tokens = { ...current.tokens }
+  delete providers[edit.providerID]
+  delete tokens[edit.providerID]
+  return { providers, tokens }
+}
+
+/**
+ * Whether Save must stay disabled after the last save. A save that only wrote a
+ * provider-set change leaves the dialog showing a set the running server does
+ * not gate yet, so saving again would repeat the same deferred write; reopening
+ * the dialog reads the file's set back and clears the state.
+ */
+export function saveDisabled(result: SaveResult | null): boolean {
+  return result !== null && result.ok && result.restartRequired
+}
+
+/**
+ * The Providers section of the settings form: one maximum per provider with a
+ * remove control, and an add row taking a provider ID and a maximum.
+ *
+ * Exported as a pure component so the panel test can render it through
+ * `renderToString`: `ConfigForm` fills its snapshot in an async effect, which
+ * server rendering never runs.
+ */
+export function ProvidersSection(props: {
+  providers: Record<string, number>
+  onMaxChange: (providerID: string, max: number) => void
+  onRemove: (providerID: string) => void
+  /** Returns whether the provider was accepted, so a refused add keeps its input. */
+  onAdd: (providerID: string, max: number) => boolean
+  /** A refused add or remove, shown under the add row. */
+  error?: string
+}) {
+  const [newProviderID, setNewProviderID] = createSignal("")
+  const [newProviderMax, setNewProviderMax] = createSignal("1")
+  const add = () => {
+    if (!props.onAdd(newProviderID(), Number(newProviderMax()))) return
+    setNewProviderID("")
+    setNewProviderMax("1")
+  }
+  return (
+    <>
+      <div class="request-concurrency-config-title">Providers</div>
+      <p class="request-concurrency-config-help">
+        How many requests may be sent to each provider at the same time. Anything beyond
+        that waits in a queue rather than failing. Set this to the number of parallel
+        requests your plan allows; a higher number is not served by the provider.
+      </p>
+      <For each={Object.keys(props.providers)}>
+        {(providerID) => (
+          <div class="request-concurrency-provider-row">
+            <NumberField
+              label={`${providerID} · max concurrent`}
+              value={props.providers[providerID]}
+              onChange={(value) => props.onMaxChange(providerID, value)}
+            />
+            <button
+              type="button"
+              class="request-concurrency-provider-remove"
+              aria-label={`Remove ${providerID}`}
+              title={`Remove ${providerID}`}
+              on:click={() => props.onRemove(providerID)}
+            >
+              Remove
+            </button>
+          </div>
+        )}
+      </For>
+      <div class="request-concurrency-provider-add">
+        <input
+          class="request-concurrency-input request-concurrency-provider-add-id"
+          type="text"
+          placeholder="provider ID"
+          aria-label="New provider ID"
+          value={newProviderID()}
+          on:input={(event) => setNewProviderID((event.currentTarget as HTMLInputElement).value)}
+        />
+        <input
+          class="request-concurrency-input request-concurrency-provider-add-max"
+          type="number"
+          min="1"
+          step="1"
+          aria-label="New provider maximum"
+          value={newProviderMax()}
+          on:input={(event) => setNewProviderMax((event.currentTarget as HTMLInputElement).value)}
+        />
+        <button type="button" class="request-concurrency-provider-add-button" on:click={add}>
+          Add provider
+        </button>
+      </div>
+      <Show when={props.error}>
+        <div class="request-concurrency-config-error">{props.error}</div>
+      </Show>
+    </>
+  )
+}
+
 /** The editable settings, with server-side validation and a save action. */
 export function ConfigForm(props: { client: ConfigClient }) {
   const [form, setForm] = createSignal<ConfigSnapshot | null>(null)
   const [errors, setErrors] = createSignal<string[]>([])
   const [notice, setNotice] = createSignal("")
+  const [providerError, setProviderError] = createSignal("")
   const [saving, setSaving] = createSignal(false)
   const [loading, setLoading] = createSignal(true)
+  const [lastResult, setLastResult] = createSignal<SaveResult | null>(null)
 
   createEffect(() => {
     let cancelled = false
@@ -373,6 +512,28 @@ export function ConfigForm(props: { client: ConfigClient }) {
     setNotice("")
   }
 
+  /**
+   * Applies one provider add or remove. A refused edit leaves the form and the
+   * maps untouched and shows the reason instead of letting a save fail later.
+   */
+  const editProviders = (edit: ProviderEdit): boolean => {
+    const current = form()
+    if (!current) return false
+    try {
+      const next = editedProviders(
+        { providers: current.providers, tokens: current.tokens },
+        edit,
+      )
+      setForm({ ...current, providers: next.providers, tokens: next.tokens })
+      setProviderError("")
+      setNotice("")
+      return true
+    } catch (error: unknown) {
+      setProviderError(error instanceof Error ? error.message : String(error))
+      return false
+    }
+  }
+
   const save = async () => {
     const current = form()
     if (!current) return
@@ -381,16 +542,18 @@ export function ConfigForm(props: { client: ConfigClient }) {
     setNotice("")
     try {
       const result = await props.client.save(current)
+      setLastResult(result)
       if (result.ok) {
         setNotice(
           result.restartRequired
-            ? "Saved. Changing the provider set needs a restart."
+            ? "Saved. Changing the provider set needs a restart; reopen this dialog to edit the saved set."
             : "Saved and applied to the running server.",
         )
       } else {
         setErrors(result.errors)
       }
     } catch (error: unknown) {
+      setLastResult(null)
       setErrors([`The save request failed: ${error instanceof Error ? error.message : String(error)}`])
     } finally {
       setSaving(false)
@@ -415,21 +578,13 @@ export function ConfigForm(props: { client: ConfigClient }) {
               immediately. Only adding or removing a provider needs a restart.
             </p>
 
-            <div class="request-concurrency-config-title">Providers</div>
-            <p class="request-concurrency-config-help">
-              How many requests may be sent to each provider at the same time. Anything beyond
-              that waits in a queue rather than failing. Set this to the number of parallel
-              requests your plan allows; a higher number is not served by the provider.
-            </p>
-            <For each={Object.keys(current().providers)}>
-              {(providerID) => (
-                <NumberField
-                  label={`${providerID} · max concurrent`}
-                  value={current().providers[providerID]}
-                  onChange={(value) => set(["providers", providerID], value)}
-                />
-              )}
-            </For>
+            <ProvidersSection
+              providers={current().providers}
+              onMaxChange={(providerID, max) => set(["providers", providerID], max)}
+              onRemove={(providerID) => editProviders({ kind: "remove", providerID })}
+              onAdd={(providerID, max) => editProviders({ kind: "add", providerID, max })}
+              error={providerError()}
+            />
 
             <div class="request-concurrency-config-title">Token budget</div>
             <p class="request-concurrency-config-help">
@@ -558,7 +713,12 @@ export function ConfigForm(props: { client: ConfigClient }) {
             />
 
             <div class="request-concurrency-config-actions">
-              <button type="button" class="request-concurrency-save" disabled={saving()} on:click={save}>
+              <button
+                type="button"
+                class="request-concurrency-save"
+                disabled={saving() || saveDisabled(lastResult())}
+                on:click={save}
+              >
                 {saving() ? "Saving…" : "Save"}
               </button>
               <Show when={notice()}>

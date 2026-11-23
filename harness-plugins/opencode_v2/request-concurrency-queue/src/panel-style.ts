@@ -304,6 +304,45 @@ export const CONFIG_STYLE = `
   background: rgba(127, 127, 127, 0.06);
 }
 
+.request-concurrency-provider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px;
+}
+
+.request-concurrency-provider-remove,
+.request-concurrency-provider-add-button {
+  padding: 4px 10px;
+  border: 1px solid rgba(127, 127, 127, 0.4);
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.request-concurrency-provider-remove:hover,
+.request-concurrency-provider-add-button:hover {
+  background: rgba(127, 127, 127, 0.16);
+}
+
+.request-concurrency-provider-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6em auto;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.04);
+}
+
+.request-concurrency-provider-add-id {
+  text-align: left;
+}
+
 .request-concurrency-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 8em;

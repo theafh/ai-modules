@@ -401,4 +401,111 @@ describe("a provider-set change with in-place edits", () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  test("a deferred provider stays out of the fingerprint while shared maximums enter it", () => {
+    const store = createStore(
+      new Map([
+        ["acme", 8],
+        ["other", 2],
+      ]),
+    )
+
+    const result = applyConfig(store, {
+      providers: new Map([
+        ["acme", 4],
+        ["other", 2],
+        ["third", 1],
+      ]),
+      tokens: new Map(),
+      adaptive: false,
+    })
+
+    expect(result.restartRequired).toBe(true)
+    expect(store.providers.has("third")).toBe(false)
+    // A later reload compares its configured set against the applied values, so
+    // the mismatch the deferred provider causes is still visible.
+    expect(store.fingerprint).toBe("acme=4,other=2")
+    expect(fingerprintOf(new Map([["acme", 4], ["other", 2], ["third", 1]]))).not.toBe(store.fingerprint)
+  })
+})
+
+describe("a saved provider maximum is the new ceiling", () => {
+  function adaptiveStore(max: number) {
+    return createStore(new Map([["acme", max]]), new Map(), undefined, undefined, true)
+  }
+
+  function save(store: ReturnType<typeof createStore>, providers: Record<string, number>, adaptive: boolean) {
+    return applyConfig(store, {
+      providers: new Map(Object.entries(providers)),
+      tokens: new Map(),
+      adaptive,
+    })
+  }
+
+  test("lowering 8 → 4 writes the ceiling, the scheduler, the snapshot, and the fingerprint", () => {
+    const store = createStore(new Map([["acme", 8]]), new Map(), undefined, undefined, false)
+
+    const result = save(store, { acme: 4 }, false)
+
+    const limit = store.providers.get("acme")!
+    expect(result.restartRequired).toBe(false)
+    expect(limit.maxConcurrency).toBe(4)
+    expect(limit.scheduler.maxConcurrency).toBe(4)
+    expect(snapshotOf(store).providers[0].ceiling).toBe(4)
+    expect(snapshotOf(store).providers[0].max).toBe(4)
+    expect(store.fingerprint).toBe("acme=4")
+  })
+
+  test("a raise with adaptive off applies at once", () => {
+    const store = createStore(new Map([["acme", 2]]), new Map(), undefined, undefined, false)
+
+    save(store, { acme: 8 }, false)
+
+    expect(store.providers.get("acme")!.scheduler.maxConcurrency).toBe(8)
+    expect(snapshotOf(store).providers[0]).toMatchObject({ max: 8, ceiling: 8 })
+  })
+
+  test("a save keeps an adaptive-lowered width while raising the ceiling", () => {
+    const store = adaptiveStore(8)
+    const limit = store.providers.get("acme")!
+    // Adaptive control halved the width to 4 under the ceiling of 8.
+    limit.scheduler.setMax(4)
+
+    save(store, { acme: 12 }, true)
+
+    expect(limit.scheduler.maxConcurrency).toBe(4)
+    expect(snapshotOf(store).providers[0]).toMatchObject({ max: 4, ceiling: 12 })
+    expect(store.fingerprint).toBe("acme=12")
+  })
+
+  test("a save that turns adaptive off restores the configured ceiling", () => {
+    const store = adaptiveStore(8)
+    const limit = store.providers.get("acme")!
+    limit.scheduler.setMax(4)
+
+    save(store, { acme: 8 }, false)
+
+    expect(limit.scheduler.maxConcurrency).toBe(8)
+    expect(snapshotOf(store).providers[0]).toMatchObject({ max: 8, ceiling: 8 })
+  })
+
+  test("an ordinary raise with the width at its ceiling applies at once", () => {
+    const store = adaptiveStore(8)
+
+    save(store, { acme: 12 }, true)
+
+    expect(store.providers.get("acme")!.scheduler.maxConcurrency).toBe(12)
+    expect(snapshotOf(store).providers[0]).toMatchObject({ max: 12, ceiling: 12 })
+  })
+
+  test("a lowering cannot leave the width above the new ceiling", () => {
+    const store = adaptiveStore(8)
+    const limit = store.providers.get("acme")!
+    limit.scheduler.setMax(4)
+
+    save(store, { acme: 2 }, true)
+
+    expect(limit.scheduler.maxConcurrency).toBe(2)
+    expect(snapshotOf(store).providers[0]).toMatchObject({ max: 2, ceiling: 2 })
+  })
 })

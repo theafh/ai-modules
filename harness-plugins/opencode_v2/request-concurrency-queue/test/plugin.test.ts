@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import plugin, { loadConfigFile, resolveProviderLimits } from "../src/index.js"
+import plugin, { configSnapshot, loadConfigFile, resolveProviderLimits, saveConfig } from "../src/index.js"
 import type { StatusSnapshot } from "../src/rpc.js"
 import { clearGlobalStore, globalStore } from "../src/store.js"
 
@@ -2164,5 +2164,134 @@ describe("token cursor lifetime", () => {
     expect(afterFirst - afterSecond).toBe(100)
 
     await cleanup()
+  })
+})
+
+/** Runs `count` primary request/response pairs to completion, as recovery evidence. */
+async function cleanCompletions(
+  hooks: Map<string, Hook>,
+  count: number,
+  prefix: string,
+): Promise<void> {
+  for (let index = 0; index < count; index += 1) {
+    const ok = request(`https://example.test/${prefix}-${index}`)
+    await requestHook(hooks, "recovery", ok)
+    const response = await responseHook(hooks, "recovery", ok, "ok-body")
+    await response.text()
+  }
+}
+
+describe("adaptive recovery follows the saved ceiling", () => {
+  test("a recovery streak climbs back to a raised ceiling", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rcq-recovery-"))
+    const filePath = join(dir, "request-concurrency-queue.json")
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 8,
+      providers: ["acme"],
+      adaptive: true,
+    })
+    try {
+      // A capacity 429 halves the width to 4 under the ceiling of 8.
+      const fail = request("https://example.test/fail")
+      await requestHook(hooks, "recovery", fail)
+      const failed = await responseHookWith(
+        hooks,
+        "recovery",
+        fail,
+        { status: 429, headers: { "retry-after": "1" } },
+        "acme",
+        JSON.stringify({ error: { code: "concurrency_limit" } }),
+      )
+      await failed.text()
+      expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ max: 4, ceiling: 8 })
+
+      const store = globalStore()
+      if (!store) throw new Error("missing process-wide store")
+      const snapshot = configSnapshot(store, undefined, {})
+      snapshot.providers = { acme: 12 }
+      expect(saveConfig(store, snapshot, filePath)).toEqual({
+        ok: true,
+        errors: [],
+        restartRequired: false,
+      })
+      // The lowered width survives the raise; the ceiling is the saved value.
+      expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ max: 4, ceiling: 12 })
+
+      // Eight recovery steps of four clean completions climb 4 → 12.
+      await cleanCompletions(hooks, 32, "climb")
+      expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ max: 12, ceiling: 12 })
+    } finally {
+      await cleanup()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("a lowered ceiling caps recovery, and a raise lifts the cap", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rcq-recovery-"))
+    const filePath = join(dir, "request-concurrency-queue.json")
+    const { hooks, rpc, cleanup } = await setup({
+      maxConcurrency: 8,
+      providers: ["acme"],
+      adaptive: true,
+    })
+    try {
+      const store = globalStore()
+      if (!store) throw new Error("missing process-wide store")
+
+      const lowered = configSnapshot(store, undefined, {})
+      lowered.providers = { acme: 2 }
+      expect(saveConfig(store, lowered, filePath).ok).toBe(true)
+      expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ max: 2, ceiling: 2 })
+
+      // Four recovery steps' worth of clean completions cannot pass the ceiling.
+      await cleanCompletions(hooks, 16, "capped")
+      expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ max: 2, ceiling: 2 })
+
+      const raised = configSnapshot(store, undefined, {})
+      raised.providers = { acme: 8 }
+      expect(saveConfig(store, raised, filePath).ok).toBe(true)
+      expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ max: 8, ceiling: 8 })
+
+      // A further streak keeps the width at the new ceiling, never above it.
+      await cleanCompletions(hooks, 8, "raised")
+      expect((await statusSnapshot(rpc)).providers[0]).toMatchObject({ max: 8, ceiling: 8 })
+    } finally {
+      await cleanup()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("the config RPC reports the file's pending provider set", () => {
+  test("a saved provider addition shows up before the restart adopts it", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "rcq-config-"))
+    const filePath = join(dir, "request-concurrency-queue.json")
+    const previous = process.env.OPENCODE_REQUEST_CONCURRENCY_CONFIG
+    process.env.OPENCODE_REQUEST_CONCURRENCY_CONFIG = filePath
+    writeFileSync(filePath, JSON.stringify({ providers: { acme: 2 } }))
+    const { rpc, cleanup } = await setup({ maxConcurrency: 2 })
+    try {
+      const handlers = rpc.handlers()
+      const before = await handlers.config({})
+      // The options carry no provider set, so the file's set is what the store
+      // loaded and what the dialog shows.
+      expect(before.providers).toEqual({ acme: 2 })
+
+      const saved = await handlers.save({ ...before, providers: { acme: 2, beta: 1 } })
+      expect(saved.restartRequired).toBe(true)
+      expect((await handlers.config({})).providers).toEqual({ acme: 2, beta: 1 })
+
+      // A second save keeps the file's set instead of dropping the new provider.
+      expect((await handlers.save(await handlers.config({}))).ok).toBe(true)
+      expect(JSON.parse(require("node:fs").readFileSync(filePath, "utf8")).providers).toEqual({
+        acme: 2,
+        beta: 1,
+      })
+    } finally {
+      await cleanup()
+      if (previous === undefined) delete process.env.OPENCODE_REQUEST_CONCURRENCY_CONFIG
+      else process.env.OPENCODE_REQUEST_CONCURRENCY_CONFIG = previous
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
