@@ -1507,10 +1507,13 @@ describe("queued waiter cancellation", () => {
 
 describe("token budget gate", () => {
   test("waits for the bucket and reports the remaining budget", async () => {
+    // A tenth of a token per millisecond: slow enough that the bucket is still
+    // drained when the snapshot is read, so the assertions do not race the
+    // refill the way a one-token-per-millisecond rate did.
     const { hooks, rpc, cleanup } = await setup({
       maxConcurrency: 2,
       providers: ["acme"],
-      tokens: { acme: { capacity: 10, refillPerMinute: 60_000 } },
+      tokens: { acme: { capacity: 10, refillPerMinute: 6_000 } },
     })
 
     const before = (await statusSnapshot(rpc)).providers[0]
@@ -1520,12 +1523,12 @@ describe("token budget gate", () => {
     // 35 bytes at 3.5 bytes per token is 10 tokens: the whole bucket.
     const a = bodyRequest("https://example.test/a", 35)
     await requestHook(hooks, "a", a)
-    expect((await statusSnapshot(rpc)).providers[0].tokensAvailable).toBe(0)
+    expect((await statusSnapshot(rpc)).providers[0].tokensAvailable).toBeLessThan(1)
 
     // A second session must wait for the refill before it is dispatched.
     const b = bodyRequest("https://example.test/b", 35)
     await requestHook(hooks, "b", b)
-    expect((await statusSnapshot(rpc)).providers[0].tokensAvailable).toBeLessThan(10)
+    expect((await statusSnapshot(rpc)).providers[0].tokensAvailable).toBeLessThan(1)
 
     await cleanup()
   })

@@ -1,6 +1,6 @@
 {
   "name": "opencode-request-concurrency-queue",
-  "version": "0.15.20",
+  "version": "0.15.21",
   "description": "A process-wide admission scheduler for OpenCode 2 model requests.",
   "type": "module",
   "license": "MIT",
