@@ -344,6 +344,46 @@ describe("saving the reported live settings", () => {
     }
   })
 
+  test("does not attach the file budget to a provider the store gates without one", () => {
+    const file = tempFile()
+    // The plugin options carry `acme`'s budget, so `options.tokens` wins over
+    // the file at load and the store gates `other` with no bucket.
+    const store = createStore(
+      new Map([
+        ["acme", 4],
+        ["other", 2],
+      ]),
+      new Map([["acme", { capacity: 500_000, refillPerMinute: 500_000 }]]),
+    )
+    try {
+      writeFileSync(
+        file.path,
+        JSON.stringify({
+          providers: { acme: 4, other: 2 },
+          tokens: {
+            acme: { capacity: 500_000, refillPerMinute: 500_000 },
+            other: { capacity: 1_234, refillPerMinute: 4_321 },
+          },
+        }),
+      )
+
+      const before = store.providers.get("other")!.scheduler.budgetConfig
+      expect(before).toBeUndefined()
+
+      const snapshot = configSnapshot(store, undefined)
+      expect(saveConfig(store, snapshot, file.path).ok).toBe(true)
+
+      // The file entry stays where it is, and live admission is unchanged.
+      expect(store.providers.get("other")!.scheduler.budgetConfig).toBeUndefined()
+      expect(JSON.parse(readFileSync(file.path, "utf8")).tokens.other).toEqual({
+        capacity: 1_234,
+        refillPerMinute: 4_321,
+      })
+    } finally {
+      file.cleanup()
+    }
+  })
+
   test("saving hostAware off admits a launch the host probe held, and on holds it again", async () => {
     const file = tempFile()
     const store = createStore(new Map([["acme", 1]]), new Map(), undefined, {

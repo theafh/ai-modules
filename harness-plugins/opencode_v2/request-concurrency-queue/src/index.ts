@@ -893,19 +893,22 @@ export function saveConfig(
 
   // The snapshot covers only providers the store gates with a live budget, so a
   // provider outside that set has no entry. Keep the file's own budget for it
-  // instead of deleting it on an unchanged save.
+  // instead of deleting it on an unchanged save. This map is what the file
+  // keeps; `tokens` above is what the store applies, so a provider the store
+  // gates without a bucket is never handed its dormant file entry on a save.
+  const fileTokens: Record<string, TokenBudgetConfig> = { ...tokens }
   const existingTokens = existing.value?.tokens
   if (existingTokens && typeof existingTokens === "object" && !Array.isArray(existingTokens)) {
     for (const [providerID, entry] of Object.entries(existingTokens as Record<string, unknown>)) {
-      if (providerID in tokens) continue
-      tokens[providerID] = entry as TokenBudgetConfig
+      if (providerID in fileTokens) continue
+      fileTokens[providerID] = entry as TokenBudgetConfig
     }
   }
 
   const next: Record<string, unknown> = {
     ...existing.value,
     providers: input.providers,
-    tokens,
+    tokens: fileTokens,
     scheduler: {
       contextCapacity: scheduler.contextCapacity,
       contextCeiling: scheduler.contextCeiling,
