@@ -435,7 +435,11 @@ bun run build:gui
   that header alone and is not scanned.
 - An auxiliary request is charged its whole prompt to the token budget, which
   over-estimates the cached prefix a compaction shares with the conversation.
-  That is the safe side: the provider rejects a burst, not a pause.
+  That is the safe side: the provider rejects a burst, not a pause. A
+  compaction also resets the session's body cursor once it is admitted, so the
+  first primary request after it is charged its whole prompt rather than a
+  delta against the transcript the compaction replaced. A title or generate
+  request leaves the cursor alone.
 - The queue is in memory. A server restart clears it.
 - A primary request that never completes holds its slot until the user aborts
   the session or the session fails. This is intentional: the plugin has no
