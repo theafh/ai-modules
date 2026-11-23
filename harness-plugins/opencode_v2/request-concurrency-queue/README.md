@@ -82,7 +82,9 @@ request.
   Set `max` well above the provider maximum, or leave the section out. With
   `hostAware`, the effective ceiling also drops from the machine's one-minute
   load average and a critical-memory floor, so a loaded host queues fan-out
-  instead of accepting it.
+  instead of accepting it. While `hostAware` is set, a queued launch is
+  re-checked against host capacity at least every two seconds, so a launch whose
+  slot frees on the host starts without another permit being released.
 - A plugin reload keeps the shared store: the disposing instance stops admission
   and releases the in-flight entries it holds, cancelling each such session's
   queued waiter with it because that promise lives in the unloading instance's
