@@ -44,7 +44,7 @@ Cross-references:
 
 Related tasks:
 
-- [wiki_page-type-growth-and-anatomy.md](../wiki_page-type-growth-and-anatomy.md): this task owns dropping the body-routing wording; that task's matching step is verify-only.
+- [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md): this task owns dropping the body-routing wording; that task's matching step is verify-only.
 - [wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md): finished; its exit-criterion rewrite in `<relint_until_clean>` is already live. Step 1 here drops only the remaining body-routing phrase in that block. Do not re-derive the contested-warn carve-out.
 - [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md): once its per-finding acceptance bullet ships, that bullet becomes the structured home for the rationale this task routes to `SCHEMA.md`'s `## Lint` section; the never-the-page-body rule is unchanged by it.
 

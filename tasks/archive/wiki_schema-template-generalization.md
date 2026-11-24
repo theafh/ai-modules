@@ -60,7 +60,7 @@ Both halves have a settled answer the template must state, so implement these ra
 Four live tasks own passages in this same file, and this task leaves each alone:
 
 - [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) owns the capture rule and the channel boundary inside the **Provenance** block (which material lands in `raw/` versus `## Derived from`). This task owns only the placement contradiction in defect 1. Both edit the same two bullets, so whichever lands second rewrites over the first rather than appending a second statement.
-- [wiki_page-type-growth-and-anatomy.md](../wiki_page-type-growth-and-anatomy.md) owns the `**Split a page**` threshold bullet and the custom-type anatomy guidance.
+- [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) owns the `**Split a page**` threshold bullet and the custom-type anatomy guidance.
 - [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md) owns the accepted-finding mechanism.
 - [wiki_non-english-languages-ascii-slugs.md](../wiki_non-english-languages-ascii-slugs.md) rewrites the `File names:` bullet for ASCII slugs and already names its English-only example as part of its gap, so both the `no spaces` trim in defect 10 and that bullet's example belong to it. Defect 6 covers only the folder-layout, cross-link, and provenance-fence examples.
 
@@ -92,7 +92,7 @@ Rewrite each affected passage in place to its target form. The template stays on
 
 **Out of scope:**
 
-- The `**Split a page**` threshold and custom-type anatomy guidance, owned by [wiki_page-type-growth-and-anatomy.md](../wiki_page-type-growth-and-anatomy.md).
+- The `**Split a page**` threshold and custom-type anatomy guidance, owned by [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md).
 - The per-finding accepted-lint mechanism, owned by [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md).
 - The raw-capture trigger and the `raw/` versus `## Derived from` channel boundary, owned by [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md).
 - The `File names:` bullet, owned by [wiki_non-english-languages-ascii-slugs.md](../wiki_non-english-languages-ascii-slugs.md).
