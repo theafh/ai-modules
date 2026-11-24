@@ -2,8 +2,8 @@
 description: "State in task_audit that a missing design-extended on an implement-stamped task is a recording note, and only a signal that mismatches the built change is a gap blocking audited."
 scope: plugins/ai_dev/skills/task_audit
 created: 2026-11-15T06:30:39Z
-updated: 2026-11-24T06:52:10Z
-status: implemented
+updated: 2026-11-24T07:01:30Z
+status: finished
 reported-by: "Andreas Hoffmann"
 implemented-by: "Andreas Hoffmann"
 design-extended: false
@@ -102,7 +102,7 @@ same stamp on every vendor.
 
 - An eval for the gap side of the rule, a `false` signal on a change that
   extended the design: owned by
-  [tests_task-family-lifecycle-evals](tests_task-family-lifecycle-evals.md),
+  [tests_task-family-lifecycle-evals](../tests_task-family-lifecycle-evals.md),
   whose planned `audit_design_signal_mismatch` eval pins it.
 - How `task_implement` records the field; this task governs only how
   `task_audit` grades it.
