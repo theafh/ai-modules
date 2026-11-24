@@ -2,8 +2,8 @@
 description: "Make task_implement write the labeled Open decision into the task body, not only into its report, when it holds before crossing a declared Out of scope boundary."
 scope: plugins/ai_dev/skills/task_implement
 created: 2026-11-15T15:11:27Z
-updated: 2026-11-24T09:10:00Z
-status: implemented
+updated: 2026-11-24T09:44:09Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
