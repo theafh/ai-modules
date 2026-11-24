@@ -231,7 +231,7 @@ add it here first, then use it. This prevents tag sprawl.
 - **Skip page creation** for passing mentions, minor details, or things outside the domain
 - **Split a page** when it exceeds its growth threshold: a `fixed`-growth type
   (entity, concept, procedure) at ~200 lines, a growing type (backlog,
-  monotonic-append, or synthesis) at ~500 lines, where the action is to split
+  monotonic-append, or unbounded-synthesis) at ~500 lines, where the action is to split
   into sub-topics with cross-links or graduate entries to their own pages
 - **Archive a page** when its content is fully superseded, then move to `_archive/` and remove from index
 
