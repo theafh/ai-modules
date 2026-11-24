@@ -1595,3 +1595,12 @@ pre-existing, and the size infos stay advisory; the one on
 - Later the same day the review loop added that an options-owned set also
   discards a maximum edited in the dialog at the next start, so the page now
   says where a lasting maximum belongs.
+
+## [2026-11-24 10:15] update | Record Claude Code's persisted tool-output store
+
+- entities/anthropic-claude-code.md: a new **Oversized tool output** subsection
+  states that a tool output too large to show inline is written to a file under
+  the session's `tool-results/` directory, observed on 2026-11-15, and that a
+  workflow reading a large file in full pages it from its own path instead; the
+  `## Derived from` section carries that run's harness record as lineage.
+- index.md: the header date moves to 2026-11-24.

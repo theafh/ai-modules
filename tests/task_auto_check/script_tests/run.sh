@@ -490,6 +490,14 @@ s15_convergence_and_robust_returns() {
   # run's recursive searches skip the relay.
   assert_contains "gate requires an ignore-aware search" "$gate" "Reach it with an ignore-aware search that also covers hidden paths" || ok=false
   assert_contains "gate names a VCS-blind walker as a violation" "$gate" "A filesystem walker that ignores VCS ignore files, such as \`grep -r\`, \`find\`, or a plain recursive listing, is a contract violation" || ok=false
+  # A file too large for one tool output is read in pages from its own path,
+  # and the harness's persisted copy of that output stays an excluded store.
+  assert_contains "gate reads an oversized admitted file in sed pages" "$gate" \
+    "Read an admitted file too large for one tool output in consecutive pages from its own path with \`sed -n\` line ranges, one page per call, until every line is read in full and the pages together cover the file" || ok=false
+  assert_contains "gate excludes the persisted tool-output copy" "$gate" \
+    "the harness's persisted copy of an oversized tool output is one of the harness state stores this rule excludes" || ok=false
+  assert_contains "gate keeps the relay directory closed to discovery" "$gate" \
+    "Treat the relay directory as closed to discovery" || ok=false
   assert_contains "gate carries the search mechanisms line" "$gate" "- search mechanisms: <each mechanism used, with each non-ignore-aware one marked as a violation and its ignore-aware re-run named>" || ok=false
   assert_contains "gate writes the settled isolation placeholder" "$gate" "- isolation: <confirmed | out-of-bounds read: <artifact read> — via <mechanism>; one entry per read>" || ok=false
   assert_contains "gate sends the search audit to the mechanisms line" "$gate" "list each mechanism you used on the \`search mechanisms:\` line of \`## Evidence\`" || ok=false

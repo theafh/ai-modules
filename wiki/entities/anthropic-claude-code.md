@@ -1,7 +1,7 @@
 ---
 title: Anthropic Claude Code
 created: 2026-08-08
-updated: 2026-10-08
+updated: 2026-11-24
 type: entity
 tags: [claude, skill, agent, hook, plugin, output-style, frontmatter, discovery, verification-gap]
 sources: [raw/notes/delegation-probes-2026-10-04.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
@@ -145,6 +145,19 @@ such as `grep`, `cat`, or `tail` does not populate that state, so a workflow
 that intends to call `Edit` stages the target with `Read`; Bash can still locate
 an offset or narrow an oversized file before that `Read`.
 
+### Oversized tool output
+
+Observed on 15 November 2026 in a print-mode eval run: when a tool output is too
+large to show inline, Claude Code writes it to a file under the session's
+`tool-results/` directory and points the model at that file as the place to read
+the full output. That file is harness session state rather than project content,
+so a workflow that must read a large file in full pages it from that file's own
+path with `sed -n` line ranges instead. What a bounded-isolation check counts as
+an out-of-bounds read is on
+[verification surfaces](../concepts/verification-surfaces.md); the print-mode
+tool surfaces are on
+[Claude Code delegation surfaces](../concepts/claude-delegation-surfaces.md).
+
 ### Hooks
 
 Plugin hooks live at `hooks/hooks.json` in the plugin root or inline in the
@@ -204,3 +217,7 @@ history, and the settings file each remaining style route writes, are on
   `CLAUDE.md` walk past the repository root.
 - The `harness_portability` skill in this repository, before its August 2026
   split.
+- The 2026-11-15 row for `immediate_ready_citations_survive` in
+  `tests/task_auto_check/evals/README.md`, for the persisted copy Claude Code
+  writes an oversized tool output to under the session's `tool-results/`
+  directory.

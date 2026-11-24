@@ -2,9 +2,11 @@
 description: "Make auto_gate_task read an admitted file too large for one tool output in pages from its own path, so it never reads the harness's persisted copy and breaks isolation on Claude."
 scope: plugins/ai_dev/agents
 created: 2026-11-15T15:07:43Z
-updated: 2026-11-19T18:02:07Z
-status: ready
+updated: 2026-11-24T09:39:20Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Read large admitted files in pages so the gate keeps its isolation contract
