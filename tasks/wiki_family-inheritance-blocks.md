@@ -2,9 +2,11 @@
 description: "Give the wiki family one source of truth: a hub family block, an authority block per front end, cited rather than restated base rules, and one orientation log-read quantity."
 scope: plugins/knowledge_management
 created: 2026-08-11T16:49:52Z
-updated: 2026-11-11T17:17:51Z
-status: ready
+updated: 2026-11-24T11:31:26Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Give the wiki family one source of truth for its shared rules

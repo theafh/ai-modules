@@ -17,6 +17,7 @@ SHA256="$WIKI_SKILL/scripts/compute_sha256.py"
 AGENT_CONTRACT="$SCRIPT_DIR/agent_contract.py"
 FILE_ACCESS_CONTRACT="$SCRIPT_DIR/file_access_contract.py"
 HUB_OUTPUT_CONTRACT="$SCRIPT_DIR/hub_output_contract.py"
+FAMILY_INHERITANCE_CONTRACT="$SCRIPT_DIR/family_inheritance_contract.py"
 
 SCRATCH="$SCRIPT_DIR/scratch"
 FIXTURES="$SCRIPT_DIR/fixtures"
@@ -4503,6 +4504,10 @@ a3_wiki_hub_output_contract() {
     python3 "$HUB_OUTPUT_CONTRACT"
 }
 
+a4_wiki_family_inheritance_contract() {
+    python3 "$FAMILY_INHERITANCE_CONTRACT"
+}
+
 # c1: the hub's page-update and log-entry rules stay stated, the durable
 # behaviour the two retired wiki reproductions checked.
 c1_wiki_log_and_updated_contract() {
@@ -5003,6 +5008,7 @@ scenario l113 "new sanction vocabulary is caught per phrase"  l113_new_sanction_
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract
 scenario a3  "wiki hub output contract"                    a3_wiki_hub_output_contract
+scenario a4  "wiki family inheritance contract"            a4_wiki_family_inheritance_contract
 scenario c1  "wiki page-update and log-entry contract"      c1_wiki_log_and_updated_contract
 scenario c2  "auto_shaper rotation move contract"            c2_rotation_move_contract
 scenario c3  "auto_shaper citation report-only contract"     c3_citation_report_only_contract

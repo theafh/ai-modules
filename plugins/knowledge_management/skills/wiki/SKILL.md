@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.20
+version: 1.24.21
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 <wiki>
 
 <role>
-This LLM-Wiki is managed by the `wiki` skill created by Andreas F. Hoffmann from the `knowledge_management` plugin in [theafh AI-repo](https://github.com/theafh/ai-modules).
+This LLM-Wiki is managed by the `wiki` skill, created by Andreas F. Hoffmann.
 
 Unlike traditional RAG (which rediscovers knowledge from scratch per query),
 the wiki compiles knowledge once and keeps it current. Cross-references are
@@ -1134,5 +1134,13 @@ adoption report, which names the adopted path.
 </ambiguous_discovery_report>
 
 </output_contract>
+
+<family>
+This `wiki` skill is the hub of a `wiki_*` family and carries the shared rules every front end inherits. Focused front ends each cover one slice and cite the hub's blocks by tag rather than restating them:
+
+- `wiki_import`: bring one named external resource into the wiki through a propose-then-act triage step.
+- `wiki_wrapup`: mine the closing session for durable knowledge and triage it the same way.
+- `wiki_fix`: hand the audit-and-fix loop to the `auto_shaper_wiki` agent and surface its report.
+</family>
 
 </wiki>

@@ -58,8 +58,9 @@ scenario with its id and description. The prefixes group by surface:
   `Accepted finding:` grammars.
 - `a*` cover the prose-contract assertions a script can check in the
   `auto_shaper_wiki` agent and the hub `SKILL.md`, such as the hub's
-  file-access guidance and its `<output_contract>`. `s*` cover
-  `compute_sha256.py`.
+  file-access guidance, its `<output_contract>`, and the family inheritance
+  the hub's `<family>` block and each front end's `<authority>` block carry.
+  `s*` cover `compute_sha256.py`.
 
 The runner exits non-zero on any failure. Add a new scenario by
 appending a `scenario` invocation in `run.sh` plus a body function next
