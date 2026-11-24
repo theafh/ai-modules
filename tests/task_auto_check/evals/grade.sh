@@ -772,7 +772,14 @@ PY
     status_ready() { status_is "$f" ready; }
     goal_preserved() { grep -q 'Retry-After' "$f"; }
     approach_filled() { ! grep -q 'TBD' "$f"; }
-    acceptance_flippable() { ! grep -qi 'works properly' "$f" && grep -qiE '429|Retry-After|docs/api\.md|src/api/throttle\.py' "$f"; }
+    # Scoped to ## Acceptance: the fixture's description and Goal already name
+    # Retry-After, so a whole-file match is satisfied before any replacement.
+    acceptance_flippable() {
+      local acc
+      acc="$(sed -n '/^## Acceptance/,$p' "$f")"
+      ! grep -qi 'works properly' <<<"$acc" \
+        && grep -qiE '429|Retry-After|docs/api\.md|src/api/throttle\.py' <<<"$acc"
+    }
     check "task reaches status: ready" status_ready
     check "original Retry-After objective is preserved" goal_preserved
     check "placeholder approach is replaced" approach_filled
@@ -830,6 +837,16 @@ PY
     relay_root="$proj/.task_auto_check"
     relay="$relay_root/api_relay-by-path"
     status_ready() { status_is "$f" ready; }
+    # The frozen Acceptance line names no checkable result, so the fourth
+    # ordinary-path kind replaces it inside ## Acceptance; the fixture's
+    # description and Goal already carry the concrete tokens, so the check
+    # reads that section alone.
+    acceptance_replacement_concrete() {
+      local acc
+      acc="$(sed -n '/^## Acceptance/,$p' "$f")"
+      ! grep -Fq -- '- The retry behavior works properly.' <<<"$acc" \
+        && grep -qiE '429|Retry-After|docs/api\.md|src/api/throttle\.py' <<<"$acc"
+    }
     relay_ignored() {
       [[ -f "$relay_root/.gitignore" ]] \
         && [[ "$(tr -d '\r\n' < "$relay_root/.gitignore")" == "*" ]] \
@@ -913,6 +930,8 @@ PY
       delta_return_maps_diff "$relay" "$first"
     }
     check "task reaches status: ready" status_ready
+    check "the unverifiable Acceptance line is replaced by a concrete check" \
+      acceptance_replacement_concrete
     check ".task_auto_check is ignored with a one-line * rule" relay_ignored
     check "relay retains frozen intent and each helper surface" relay_layout_complete
     check "gate, reviewer, and verifier returns retain their source contracts" relay_returns_are_source_returns
@@ -1150,27 +1169,16 @@ PY
   fidelity_rejects_drift)
     f="$TASKS/api_rate-limit.md"
     per_user_goal() { grep -q 'each authenticated user' "$f"; }
-    acceptance_lines() {
-      body_text "$f" | awk '/^## Acceptance[[:space:]]*$/ { a=1; next } /^## / { a=0 } a'
-    }
-    # The frozen abuse line kept verbatim exactly once, with no other
-    # Acceptance line about abuse, is the routed outcome: the item promises
-    # more than the per-user Goal, so narrowing or deleting it is the user's
-    # decision and the last verifier return must route it.
-    frozen_abuse_line_once() {
-      local hits
-      hits="$(acceptance_lines | grep -i 'abus')"
-      hits="${hits%"${hits##*[![:space:]]}"}"
-      [[ "$(grep -c . <<<"$hits")" == 1 ]] \
-        && [[ "$hits" == '- The API is protected from abusive clients.' ]]
-    }
+    # The frozen abuse line promises more than the per-user Goal, so it stays
+    # the user's decision on every run: removing or narrowing it without a
+    # human_routed decision fails, and the last proposal-mode verifier return
+    # must route it with the frozen passage, the gate fix, and the options.
     no_broad_acceptance() {
-      ! sed -n '/^## Acceptance/,$p' "$f" | grep -qi 'abusive clients' && return 0
-      frozen_abuse_line_once && relay_check routed_abuse api_rate-limit
+      relay_check routed_abuse api_rate-limit
     }
     clarified() { sed -n '/^## Acceptance/,$p' "$f" | grep -qiE 'per-user|authenticated user|100|429|rate-limit'; }
     check "original per-user Goal is preserved" per_user_goal
-    check "broad abusive-client acceptance is removed, narrowed, or kept verbatim and routed to the user" \
+    check "broad abusive-client acceptance is routed to the user with a human_routed decision" \
       no_broad_acceptance
     check "applied edits clarify the same rate-limit objective" clarified
     check "task lints clean after fidelity-checked edit" task_lints
@@ -1273,7 +1281,14 @@ PY
     status_ready() { status_is "$f" ready; }
     one_task() { task_count_is 1; }
     placeholder_replaced() { ! grep -q 'TBD' "$f"; }
-    acceptance_flippable() { ! grep -qi 'works properly' "$f" && grep -qiE 'Idempotency-Key|docs/api\.md|src/api/writes\.py' "$f"; }
+    # Scoped to ## Acceptance: the fixture's description and Goal already name
+    # Idempotency-Key, so a whole-file match is satisfied before any replacement.
+    acceptance_flippable() {
+      local acc
+      acc="$(sed -n '/^## Acceptance/,$p' "$f")"
+      ! grep -qi 'works properly' <<<"$acc" \
+        && grep -qiE 'Idempotency-Key|docs/api\.md|src/api/writes\.py' <<<"$acc"
+    }
     check "task reaches status: ready (no false concurrent-modification stop)" status_ready
     check "approach placeholder is replaced by applied repairs" placeholder_replaced
     check "acceptance becomes concrete and flippable" acceptance_flippable

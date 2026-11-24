@@ -75,8 +75,33 @@ def accepted_gates(relay: pathlib.Path) -> list[pathlib.Path]:
 
 
 def section(text: str, name: str) -> str:
-    match = re.search(rf"(?ms)^## {re.escape(name)}\s*\n(.*?)(?=^## |\Z)", text)
-    return match.group(1) if match else ""
+    # Split on level-2 headings that sit outside a fenced block, so a fenced
+    # anchor, replacement, or affected_passages value that carries a `## `
+    # line stays inside its section instead of ending it.
+    found: dict[str, list[str]] = {}
+    current = None
+    fence = None
+    for line in text.splitlines():
+        if fence:
+            if re.match(rf"^\s*{re.escape(fence[0])}{{{len(fence)},}}\s*$", line):
+                fence = None
+            if current is not None:
+                found[current].append(line)
+            continue
+        opener = re.match(r"^\s*(`{3,}|~{3,})[^`~]*$", line)
+        if opener:
+            fence = opener.group(1)
+            if current is not None:
+                found[current].append(line)
+            continue
+        match = re.match(r"^## (.+?)\s*$", line)
+        if match:
+            current = match.group(1)
+            found.setdefault(current, [])
+            continue
+        if current is not None:
+            found[current].append(line)
+    return "\n".join(found[name]) if name in found else ""
 
 
 def records(text: str) -> list[str]:

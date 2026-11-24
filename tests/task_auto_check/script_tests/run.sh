@@ -532,6 +532,55 @@ s17_live_task_ordering_fork() {
   $ok
 }
 
+# The fourth ordinary-path kind, the route's stop scope, the routed-only-round
+# stop, the routed-issue exclusion in <plan_repairs>, and the routed-decision
+# branch in <output_contract>. Each pin asserts the new sentence and the
+# sentence it replaces, so a revert of either turns the pin red.
+s20_frozen_acceptance_replacement_and_route_scope() {
+  local ok=true verifier="$AGENTS_DIR/auto_verifier_task.md"
+  assert_contains "verification standard names four ordinary-path kinds" "$SKILL" \
+    "Keep four kinds of edit on the ordinary repair path" || ok=false
+  assert_not_contains_re "the three-kind sentence is gone from the skill" "$SKILL" \
+    "Keep three kinds of edit on the ordinary repair path" || ok=false
+  assert_contains "the fourth kind replaces an uncheckable frozen Acceptance item" "$SKILL" \
+    "the replacement of a frozen Acceptance item that names no checkable result by checks that prove the same promise" || ok=false
+  assert_contains "an item promising more than its replacement checks stays on the user route" "$SKILL" \
+    "An item that promises more than the Goal, or more than its replacement checks prove, stays on the user route above" || ok=false
+  assert_contains "frozen intent points at the fourth kind" "$SKILL" \
+    "make acceptance checks verifiable under the fourth ordinary-path kind in \`<verification_standard>\`" || ok=false
+  assert_contains "the skill states the deletion-class precedence" "$SKILL" \
+    "the fourth ordinary-path kind below governs a replacement whose \`reason:\` carries the written pairing" || ok=false
+  assert_contains "the verifier names four ordinary-path kinds" "$verifier" \
+    "keep four kinds of edit on the ordinary repair path" || ok=false
+  assert_not_contains_re "the three-kind sentence is gone from the verifier" "$verifier" \
+    "keep three kinds of edit on the ordinary repair path" || ok=false
+  assert_contains "the verifier states the deletion-class precedence" "$verifier" \
+    "the fourth ordinary-path kind below governs a replacement whose \`reason:\` carries the written pairing" || ok=false
+  assert_contains "an approved fourth-kind edit records its pairing in reason" "$verifier" \
+    "An approved fourth-kind edit records that pairing of each promise to its replacement check in its \`reason:\` field" || ok=false
+  assert_contains "a route stops only the repair it governs" "$SKILL" \
+    "A route stops only the repair it governs" || ok=false
+  assert_not_contains_re "the whole-run stuck wording is gone" "$SKILL" \
+    "Stop that repair, apply none of it, and report the run as stuck" || ok=false
+  assert_contains "the loop proposes no repair for a routed issue again" "$SKILL" \
+    "the loop proposes no repair for a routed issue again in this run" || ok=false
+  assert_contains "the gate verdict decides the routed run's end status" "$SKILL" \
+    "When the gate's verdict still counts the routed issue as blocking, the run ends at \`checked\`" || ok=false
+  assert_contains "verify_repairs gives the routed-only round the no-verified-fix stop" "$SKILL" \
+    "A routed repair counts as no surviving edit and never suppresses the round's other approved edits" || ok=false
+  assert_contains "the routed-only round never reaches the stall stop" "$SKILL" \
+    "counts no further round and never reaches the \`<convergence>\` stall stop" || ok=false
+  assert_contains "plan_repairs carries a routed issue from earlier verifier returns" "$SKILL" \
+    "an issue the run's earlier proposal-mode verifier returns recorded as \`human_routed\` is carried from that routed set rather than mapped to a stance" || ok=false
+  assert_not_contains_re "the bare reviewer-for-every-other-issue sentence is gone" "$SKILL" \
+    "For every other issue, invoke \`auto_reviewer_task\` for each applicable stance through the reviewer path set in \`<relay>\`\." || ok=false
+  assert_contains "output_contract points a ready routed task at its decision first" "$SKILL" \
+    "on a \`ready\` task carrying an open routed decision, the user's decision on that decision first" || ok=false
+  assert_not_contains_re "the bare task_implement-ready clause is gone" "$SKILL" \
+    "Close with the natural next step: \`task_implement\` when the task is \`ready\`;" || ok=false
+  $ok
+}
+
 scenario s1 "new skill and agents exist with aligned frontmatter" s1_files_and_frontmatter
 scenario s2 "task_check remains the single readiness gate" s2_gate_is_task_check
 scenario s3 "reviewer/verifier roles are separated and intent-safe" s3_reviewer_and_verifier_boundaries
@@ -591,6 +640,8 @@ s19_verifier_return_layout() {
 }
 
 scenario s19 "verifier return layout, fenced-value reading, and the shared contract helper are pinned" s19_verifier_return_layout
+
+scenario s20 "frozen-Acceptance replacement, route scope, and routed-only-round stop are pinned" s20_frozen_acceptance_replacement_and_route_scope
 
 log ""
 log "================================================================"

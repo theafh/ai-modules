@@ -668,6 +668,38 @@ None.
         self.write("r2-verifier-2.txt", self.abuse_route())
         self.assertTrue(checks.run("routed_abuse", self.proj, self.stem))
 
+    def test_fenced_route_passage_keeps_its_headings(self):
+        # A fenced affected_passages value may carry the task's own `## `
+        # headings verbatim. They stay inside the route record, so the section
+        # splitter never ends "Rejections and routes" at them.
+        body = f"""# auto_verifier_task decision
+approved_edit_count: 0
+human_routed_count: 1
+
+## Approved edits
+None.
+
+## Rejections and routes
+1. - issue: The abuse-protection Acceptance item is unverifiable
+   - source_stance: Acceptance-contract advocate
+   - decision: human_routed
+   - reason: Deleting a frozen Acceptance item is the user's decision.
+   - affected_passages:
+     ````text
+     ## Context
+
+     A context sentence.
+
+     ## Acceptance
+
+     {checks.RULES["abuse"]}
+     ````
+   - gate_fix: "delete the item."
+   - options: prove it; narrow it with an owned deferral; delete it
+"""
+        self.write("r1-verifier.txt", body)
+        self.assertTrue(checks.run("routed_abuse", self.proj, self.stem))
+
 
 if __name__ == "__main__":
     unittest.main()
