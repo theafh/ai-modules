@@ -2252,6 +2252,83 @@ p.write_text(p.read_text() + "\n" + "\n".join(f"Line {i}." for i in range(int(sy
 PY
 }
 
+# Add a custom page type to the fresh wiki's SCHEMA.md `type:` enum so the
+# linter derives its `<type>s/` page folder. Args: <wiki> <type>
+add_custom_type_to_schema() {
+    local wiki=$1 type=$2
+    python3 - "$wiki/SCHEMA.md" "$type" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+canonical = "type: entity | concept | comparison | query | summary | procedure"
+text = p.read_text()
+if canonical not in text:
+    raise SystemExit("fixture error: canonical type enum line not found")
+p.write_text(text.replace(canonical, canonical + " | " + sys.argv[2], 1))
+PY
+}
+
+# Append a live `- Growth patterns: <payload>` bullet to SCHEMA.md. The
+# template's `## Lint` section is its last section, so an appended bullet
+# stays inside it (the linter's scan stops at the next `##` heading).
+# Args: <wiki> <payload>
+add_growth_bullet() {
+    local wiki=$1 payload=$2
+    printf '\n- Growth patterns: %s\n' "$payload" >> "$wiki/SCHEMA.md"
+}
+
+# Append a custom type's `## <Heading> Pages` anatomy section to SCHEMA.md,
+# naming the label that type's entries use for session-derived sources.
+# Args: <wiki> <heading> <label>
+add_custom_type_section() {
+    local wiki=$1 heading=$2 label=$3
+    cat >> "$wiki/SCHEMA.md" <<EOF
+
+## $heading Pages
+
+Sections in order: Overview · $label · Open threads.
+
+The label its entries use for session-derived sources is verbatim \`$label\`,
+and attribution stays in the page's \`sources:\` frontmatter.
+EOF
+}
+
+# Write a minimally-valid page of a custom (non-canonical) type at
+# <dir>/<slug>.md. Args: <wiki> <type> <dir> <slug> [sources_line]
+write_custom_type_page() {
+    local wiki=$1 type=$2 dir=$3 slug=$4 sources_line=${5-}
+    mkdir -p "$wiki/$dir"
+    {
+        printf '%s\n' '---'
+        printf 'title: %s\n' "$slug"
+        printf '%s\n' 'created: 2026-05-01'
+        printf '%s\n' 'updated: 2026-05-01'
+        printf 'type: %s\n' "$type"
+        printf '%s\n' 'tags: [model]'
+        if [[ -n "$sources_line" ]]; then
+            printf '%s\n' "$sources_line"
+        fi
+        printf '%s\n' 'confidence: high'
+        printf '%s\n' '---'
+        printf '\n# %s\n\n' "$slug"
+        printf 'Placeholder for %s used by the growth-pattern harness.\n' "$slug"
+    } > "$wiki/$dir/$slug.md"
+}
+
+# Write a raw sidecar so a `sources:` entry pointing at it resolves on disk.
+# Args: <wiki> <rel_path>
+write_resolving_raw_source() {
+    local wiki=$1 rel=$2
+    mkdir -p "$(dirname "$wiki/$rel")"
+    cat > "$wiki/$rel" <<'EOF'
+---
+ingested: 2026-05-01
+sha256: placeholder
+---
+
+Recorded session excerpt.
+EOF
+}
+
 # Append <count> `## [date]` entries to log.md so `check_log_rotation` fires
 # (its threshold is 500 entries). The filler index continues from the entries
 # already in the file, so a second call adds fresh headings instead of repeating
@@ -4598,6 +4675,159 @@ c3_citation_report_only_contract() {
 }
 
 ###############################################################################
+# Growth-pattern and custom-type anatomy scenarios
+###############################################################################
+
+# l105 (Fixture A): a declared `todo=backlog` type defers the size finding at
+# 250 lines and carries no meta-prose; appending a META_PROSE_PHRASES sentence
+# proves the clean page's absence was a live check, not a vacuous pass.
+l105_todo_declared_backlog_defers_size() {
+    local wiki; wiki=$(stage_fresh_wiki l105)
+    add_custom_type_to_schema "$wiki" todo
+    add_growth_bullet "$wiki" todo=backlog
+    write_custom_type_page "$wiki" todo todos task-a
+    grow_page_past_soft_cap "$wiki/todos/task-a.md" 250
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    local ok=true
+    assert_no_finding_for_file "declared backlog defers size" "$out" size "todos/task-a.md" || ok=false
+    assert_no_lint_category "declared backlog page carries no meta-prose" "$out" meta-prose || ok=false
+    printf '\nThis page is sanctioned.\n' >> "$wiki/todos/task-a.md"
+    ret=$(run_lint "$wiki"); out=${ret#*|}
+    assert_finding_for_file "appended sanction phrase is caught" "$out" info meta-prose "todos/task-a.md" || ok=false
+    $ok
+}
+
+# l106 (Fixture B): the same declared backlog type past the 500-line deferral
+# draws one info size finding recommending split or graduate entries, and no
+# meta-prose sanction lands in the body.
+l106_todo_declared_backlog_past_deferral() {
+    local wiki; wiki=$(stage_fresh_wiki l106)
+    add_custom_type_to_schema "$wiki" todo
+    add_growth_bullet "$wiki" todo=backlog
+    write_custom_type_page "$wiki" todo todos task-b
+    grow_page_past_soft_cap "$wiki/todos/task-b.md" 700
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    local ok=true
+    assert_finding_for_file "past the deferral draws size" "$out" info size "todos/task-b.md" || ok=false
+    assert_live_message "size names split or graduate" "$out" "todos/task-b.md" "split or graduate" || ok=false
+    assert_no_lint_category "past the deferral carries no meta-prose" "$out" meta-prose || ok=false
+    $ok
+}
+
+# l107 (Fixture C): a 250-line summary page with no growth bullet stays clean,
+# because `summary` resolves to the canonical unbounded-synthesis default.
+l107_summary_default_growing() {
+    local wiki; wiki=$(stage_fresh_wiki l107)
+    write_typed_page "$wiki" summary topic
+    grow_page_past_soft_cap "$wiki/summaries/topic.md" 250
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    local ok=true
+    assert_no_lint_category "summary defers size by default" "$out" size || ok=false
+    $ok
+}
+
+# l108 (Fixture D): the fixture SCHEMA's custom-type section names its
+# session-derived-source label, and a todo page using that label with a
+# `sources:` entry under raw/meetings/ raises no broken-source finding.
+l108_custom_type_session_label() {
+    local wiki; wiki=$(stage_fresh_wiki l108)
+    local label="What the canon says"
+    add_custom_type_to_schema "$wiki" todo
+    add_custom_type_section "$wiki" Todo "$label"
+    write_resolving_raw_source "$wiki" raw/meetings/kickoff.md
+    write_custom_type_page "$wiki" todo todos kickoff "sources: [raw/meetings/kickoff.md]"
+    printf '\n## %s\n\nRecorded session entry.\n' "$label" >> "$wiki/todos/kickoff.md"
+    local ok=true
+    grep -Fq "$label" "$wiki/SCHEMA.md" \
+        || { log "    custom-type section does not name the label"; ok=false; }
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    assert_no_lint_category "session-sourced entry resolves" "$out" broken-source || ok=false
+    $ok
+}
+
+# l109 (Fixture E): a declared custom type with no growth bullet resolves to
+# fixed, so a 250-line todo page draws one info size finding.
+l109_undeclared_custom_type_is_fixed() {
+    local wiki; wiki=$(stage_fresh_wiki l109)
+    add_custom_type_to_schema "$wiki" todo
+    write_custom_type_page "$wiki" todo todos task-c
+    grow_page_past_soft_cap "$wiki/todos/task-c.md" 250
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    local ok=true
+    assert_lint_finding "undeclared custom type keeps the fixed soft cap" "$out" info "size" || ok=false
+    $ok
+}
+
+# l110 (Fixture F): a 250-line comparison page with no growth bullet stays
+# clean, proving `comparison` resolves to unbounded-synthesis rather than fixed.
+l110_comparison_default_growing() {
+    local wiki; wiki=$(stage_fresh_wiki l110)
+    write_typed_page "$wiki" comparison choice
+    grow_page_past_soft_cap "$wiki/comparisons/choice.md" 250
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    local ok=true
+    assert_no_lint_category "comparison defers size by default" "$out" size || ok=false
+    $ok
+}
+
+# l111: the custom-type anatomy rule ships in the template, not only a fixture.
+l111_shipped_template_custom_type_rule() {
+    local template="$WIKI_SKILL/references/template_schema.md"
+    grep -Fq 'label its entries use for session-derived sources' "$template" \
+        || { log "    shipped template lacks the custom-type anatomy rule"; return 1; }
+    return 0
+}
+
+# l112: the audit's detection and remediation both read a custom type's
+# anatomy from SCHEMA.md, not only the canonical "Page anatomy" table.
+l112_agent_custom_type_anatomy_consumers() {
+    local agent="$WIKI_SKILL/../../agents/auto_shaper_wiki.md"
+    [[ -f "$agent" ]] || { log "    missing agent: $agent"; return 1; }
+    local anchor='## <Type> Pages section of $WIKI/SCHEMA.md'
+    local ok=true tag block
+    for tag in anatomy_compliance section_order_or_gaps fix_section_order_or_gaps; do
+        block=$(awk -v open="<$tag>" -v endtag="</$tag>" \
+            'index($0, open){on=1} on{print} index($0, endtag){on=0}' "$agent")
+        if [[ -z "$block" ]]; then
+            log "    no <$tag> block in the agent"
+            ok=false
+            continue
+        fi
+        printf '%s' "$block" | grep -Fq "$anchor" \
+            || { log "    <$tag> lacks the custom-type anatomy anchor"; ok=false; }
+    done
+    $ok
+}
+
+# l113: each newly registered META_PROSE_PHRASES sanction phrase is caught on
+# its own, and removing both leaves the page clean, so neither passes vacuously.
+l113_new_sanction_vocabulary_meta_prose() {
+    local wiki; wiki=$(stage_fresh_wiki l113)
+    write_valid_concept_page "$wiki" widget
+    cat >> "$wiki/concepts/widget.md" <<'EOF'
+
+This page is past the 500-line deferral.
+Past the higher threshold the action is split or graduate entries.
+EOF
+    local ret; ret=$(run_lint "$wiki"); local out=${ret#*|}
+    local ok=true
+    assert_live_message "500-line phrase caught" "$out" "concepts/widget.md" "500-line" || ok=false
+    assert_live_message "split or graduate phrase caught" "$out" "concepts/widget.md" "split or graduate" || ok=false
+    python3 - "$wiki/concepts/widget.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+lines = [
+    line for line in p.read_text().splitlines()
+    if "500-line deferral" not in line and "split or graduate entries" not in line
+]
+p.write_text("\n".join(lines) + "\n")
+PY
+    ret=$(run_lint "$wiki"); out=${ret#*|}
+    assert_no_finding_for_file "clean page carries no meta-prose" "$out" meta-prose "concepts/widget.md" || ok=false
+    $ok
+}
+
+###############################################################################
 # Run all scenarios
 ###############################################################################
 
@@ -4760,6 +4990,15 @@ scenario l101 "index Total pages header matches page walk"    l101_lint_index_to
 scenario l102 "index Total pages drift is an info finding"    l102_lint_index_total_pages_mismatch
 scenario l103 "missing Total pages header is an info finding" l103_lint_index_total_pages_missing_header
 scenario l104 "an index entry mention is not the Total pages header" l104_lint_index_total_pages_entry_mention_not_header
+scenario l105 "declared backlog defers size at 250 lines"     l105_todo_declared_backlog_defers_size
+scenario l106 "declared backlog draws size past the deferral"  l106_todo_declared_backlog_past_deferral
+scenario l107 "summary defers size by canonical default"      l107_summary_default_growing
+scenario l108 "custom type names its session-source label"    l108_custom_type_session_label
+scenario l109 "undeclared custom type resolves to fixed"      l109_undeclared_custom_type_is_fixed
+scenario l110 "comparison defers size by canonical default"   l110_comparison_default_growing
+scenario l111 "shipped template carries custom-type rule"     l111_shipped_template_custom_type_rule
+scenario l112 "agent reads custom-type anatomy from SCHEMA"   l112_agent_custom_type_anatomy_consumers
+scenario l113 "new sanction vocabulary is caught per phrase"  l113_new_sanction_vocabulary_meta_prose
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

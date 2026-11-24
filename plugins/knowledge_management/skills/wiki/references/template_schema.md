@@ -229,7 +229,10 @@ add it here first, then use it. This prevents tag sprawl.
 - **Create a page** when an entity/concept appears in 2+ sources OR is central to one source
 - **Add to existing page** when a source mentions something already covered
 - **Skip page creation** for passing mentions, minor details, or things outside the domain
-- **Split a page** when it exceeds ~200 lines, then break into sub-topics with cross-links
+- **Split a page** when it exceeds its growth threshold: a `fixed`-growth type
+  (entity, concept, procedure) at ~200 lines, a growing type (backlog,
+  monotonic-append, or synthesis) at ~500 lines, where the action is to split
+  into sub-topics with cross-links or graduate entries to their own pages
 - **Archive a page** when its content is fully superseded, then move to `_archive/` and remove from index
 
 ## Page Types: Pick by Question
@@ -351,6 +354,24 @@ If commentary starts accumulating on a procedure page, hoist it. See the
 **Capture Procedure** protocol in `SKILL.md` for the strip-the-instance
 workflow and the three generality tests.
 
+## Custom Types
+
+A wiki that declares a page type beyond the six canonical ones in its
+`## Frontmatter` `type:` enum adds a `## <Type> Pages` section to this schema,
+beside the canonical per-type sections above, defining that type's section
+anatomy: its sections, in order, and what each one carries. The anatomy names
+the label its entries use for session-derived sources, so an entry drawn from a
+recorded session reads in the page's own vocabulary instead of redefining a
+canonical term. Attribution itself stays in frontmatter `sources:` pointing at
+the captured source (for example `raw/meetings/<slug>.md`), never in a
+parenthetical added to a heading.
+
+The per-type anatomy lives here, in `SCHEMA.md`, because the repair path sends
+per-type page-anatomy guidance here and the audit reads the declaration from the
+same place. The six built-in types keep the canonical anatomy in
+`wiki/SKILL.md`; a custom type resolves its anatomy from its own
+`## <Type> Pages` section here.
+
 ## Update Policy
 
 Run this workflow when new information conflicts with existing content. It is the
@@ -381,6 +402,23 @@ List the directory names directly under the wiki root, comma-separated, on one
 only pages. The default skips the two standard trees and nothing else. The
 linter reads this bullet only outside fenced code blocks, so the example above
 is documentation rather than a live setting.
+
+A page type's growth pattern decides when its `size` finding fires. The
+canonical defaults are `fixed` for `entity`, `concept`, and `procedure`, and
+`unbounded-synthesis` for `summary`, `query`, and `comparison`. A `fixed` page
+past ~200 lines draws the finding; a growing type (`backlog`,
+`monotonic-append`, `unbounded-synthesis`) defers to ~500 lines, and past that
+threshold the finding recommends splitting the page or graduating entries to
+their own pages. A wiki that declares its own page types names how each one
+grows on one bullet in this same section, additive over the defaults:
+
+```text
+- Growth patterns: todo=backlog, changelog=monotonic-append
+```
+
+An undeclared custom type resolves to `fixed`. The linter reads this bullet only
+outside fenced code blocks, so the example above is documentation rather than a
+live setting.
 
 An info-level finding you have reviewed and decided to keep goes on an
 `Accepted finding:` bullet in this same section. The next run drops it from the

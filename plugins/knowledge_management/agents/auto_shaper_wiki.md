@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.12
+version: 1.11.13
 model: inherit
 background: false
 effort: high
@@ -69,14 +69,20 @@ exists so the SCHEMA read is never skipped or deferred.
     clears it by rotating the log rather than by accepting it.
   </lint_clean>
   <anatomy_compliance>
-    Every page matches its declared type's anatomy (sections in the
-    order defined in `wiki/SKILL.md` "Page anatomy").
+    Every page matches its declared type's anatomy. A page of one of the six
+    canonical types follows the section order in `wiki/SKILL.md` "Page
+    anatomy"; a page of a custom type follows the
+    ## <Type> Pages section of $WIKI/SCHEMA.md that declares its anatomy.
   </anatomy_compliance>
   <topic_separation>
-    No page mixes topics that belong on separate pages, and no page
-    exceeds 200 lines unless its `size` finding is recorded as an
-    `- Accepted finding: …` bullet in `$WIKI/SCHEMA.md`'s `## Lint`
-    section.
+    No page mixes topics that belong on separate pages. A page type's growth
+    pattern sets its size threshold: a `fixed` type (entity, concept,
+    procedure, and any undeclared custom type) splits past ~200 lines, while a
+    growing type (a `backlog`, `monotonic-append`, or `unbounded-synthesis`
+    page) defers to ~500 lines, where the action is to split or graduate
+    entries. A page past its threshold stays a `size` finding unless it is
+    recorded as an `- Accepted finding: …` bullet in `$WIKI/SCHEMA.md`'s
+    `## Lint` section.
   </topic_separation>
   <procedure_evergreen>
     Procedure pages read as evergreen rules, with no proper nouns, dates,
@@ -402,10 +408,12 @@ the fix move.
   </type_anatomy_mismatch>
 
   <section_order_or_gaps>
-    The page's headings deviate from the order in the "Page anatomy"
-    table for its type, or are missing a required section (e.g., a
-    `comparison` page with no Verdict, an `entity` page with no
-    Relationships, a `procedure` page with no When/Trigger).
+    The page's headings deviate from the order its declared type defines, or
+    are missing a required section (e.g., a `comparison` page with no Verdict,
+    an `entity` page with no Relationships, a `procedure` page with no
+    When/Trigger). A canonical type's order is the "Page anatomy" table in
+    `wiki/SKILL.md`; a custom type's order is the
+    ## <Type> Pages section of $WIKI/SCHEMA.md that declares it.
   </section_order_or_gaps>
 
   <procedure_instance_leakage>
@@ -652,9 +660,10 @@ the fix move.
       - `template_schema.md`: the body of `## Domain`, the body of
         `## Tag Taxonomy`, the `Page-check exclusions` bullet, every
         `Accepted finding` bullet, every `Declared boilerplate` bullet,
-        and every `Declared source root:` bullet in the `## Lint`
-        section, declared custom frontmatter fields beyond the canonical
-        set, and user-added page types beyond the canonical enum.
+        every `Declared source root:` bullet, and every `Growth patterns:`
+        bullet in the `## Lint` section, declared custom frontmatter fields
+        beyond the canonical set, and user-added page types beyond the
+        canonical enum.
       - `template_index.md`: the header values (`Total pages: N`,
         `Last updated: <date>`) and the page entries inside each
         section.
@@ -975,8 +984,10 @@ affect the same file so each file is opened, read, and rewritten once.
     </fix_type_anatomy_mismatch>
 
     <fix_section_order_or_gaps>
-      Reorder existing sections to match the anatomy table for the
-      page's type, and add any missing required section with content
+      Reorder existing sections to match the anatomy its type declares — the
+      "Page anatomy" table in `wiki/SKILL.md` for a canonical type, the
+      ## <Type> Pages section of $WIKI/SCHEMA.md for a custom type — and add
+      any missing required section with content
       drawn from existing prose where possible. Leave a single-line
       placeholder only when the section truly has no content and
       mark `confidence: low` to surface the gap. Where a section

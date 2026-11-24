@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.18
+version: 1.24.19
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -596,7 +596,7 @@ difference between a growing wiki and a pile of duplicates.
   - **Create** a new page when an entity/concept appears in 2+ sources OR is central to one source.
   - **Add** to an existing page when content is already covered there.
   - **Skip** passing mentions, minor details, or material outside the domain.
-  - **Split** a page that exceeds ~200 lines into sub-topics with cross-links.
+  - **Split** a page that exceeds its growth threshold: a `fixed`-growth type (entity, concept, procedure) at ~200 lines, a growing type (backlog, monotonic-append, or synthesis) at ~500 lines, where the action is to split into sub-topics with cross-links or graduate entries to their own pages.
   - **Archive** a page whose content is fully superseded (see `<archive>`).
 - **Update Policy.** When new content conflicts with what's already on a page:
   1. Check the dates; newer sources generally supersede older ones.
@@ -1060,7 +1060,7 @@ Quick-scan reminders. See the named section for full guidance.
 </tags_from_taxonomy_only>
 
 <pages_stay_scannable>
-**Pages stay scannable.** Split at >200 lines; detailed treatments go to dedicated pages.
+**Pages stay scannable.** Split a `fixed`-growth page past ~200 lines and a growing page past ~500 lines, where the action is to split into sub-topics with cross-links or graduate entries to dedicated pages; detailed treatments go to dedicated pages.
 </pages_stay_scannable>
 
 <generalize_procedure_pages>

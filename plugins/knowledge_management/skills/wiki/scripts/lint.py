@@ -432,6 +432,16 @@ LINT_SOURCE_ROOT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A fifth ``## Lint`` bullet kind declares the growth pattern of a page type
+# beyond the canonical defaults: ``- Growth patterns: todo=backlog``.
+# Comma-separated ``<type>=<pattern>`` pairs, additive over the built-in
+# defaults in ``resolve_growth_pattern``. Same fence-safe scan and marker
+# tolerance as the sibling bullets.
+LINT_GROWTH_RE = re.compile(
+    r"^\s*[-*+]\s+growth patterns\s*:\s*(.+)$",
+    re.IGNORECASE,
+)
+
 # The field separator inside an ``Accepted finding:`` or ``Declared boilerplate:``
 # bullet: an em dash with a space on each side, so a path, message, or reason
 # may carry a bare hyphen.
@@ -449,8 +459,9 @@ def iter_lint_section_lines(wiki: Path) -> Iterator[str]:
 
     Every machine-read setting in that section — the ``Page-check exclusions:``
     walk exclusions, the ``Accepted finding:`` acceptance store, the
-    ``Declared boilerplate:`` locked-slot declarations, and the ``Declared
-    source root:`` source-root declarations — reads its bullets through here,
+    ``Declared boilerplate:`` locked-slot declarations, the ``Declared
+    source root:`` source-root declarations, and the ``Growth patterns:``
+    per-type growth declarations — reads its bullets through here,
     so one fence-safe scan serves them all. Fenced blocks are
     skipped, mirroring ``load_taxonomy`` and the body scanners, so a bullet
     shown inside a fenced example (in the canonical template, or where a vault
@@ -688,6 +699,31 @@ def load_declared_source_roots(wiki: Path) -> dict[str, str]:
         path, reason = parsed
         roots.setdefault(path, reason)
     return roots
+
+
+def load_growth_patterns(wiki: Path) -> dict[str, str]:
+    """Per-type growth patterns declared in SCHEMA.md's ``## Lint`` section.
+
+    A wiki whose own page types grow reads ``- Growth patterns: todo=backlog``
+    as one comma-separated bullet of ``<type>=<pattern>`` pairs. The mapping is
+    additive over the canonical defaults ``resolve_growth_pattern`` holds, so a
+    wiki that declares nothing keeps the built-in behaviour. A pair whose type
+    or pattern is empty, or whose pattern is not one of ``GROWTH_PATTERNS``, is
+    ignored rather than treated as live config. Reads through
+    ``iter_lint_section_lines``, so a fenced example stays documentation.
+    """
+    declared: dict[str, str] = {}
+    for line in iter_lint_section_lines(wiki):
+        m = LINT_GROWTH_RE.match(line)
+        if not m:
+            continue
+        for pair in m.group(1).split(","):
+            page_type, sep, pattern = pair.partition("=")
+            page_type = page_type.strip().strip("`*_'\"")
+            pattern = pattern.strip().strip("`*_'\"")
+            if sep and page_type and pattern in GROWTH_PATTERNS:
+                declared[page_type] = pattern
+    return declared
 
 
 def partition_accepted(
@@ -1404,17 +1440,59 @@ def check_unused_tags(wiki: Path, taxonomy: set[str]) -> list[Issue]:
     ]
 
 
-def check_page_size(wiki: Path) -> list[Issue]:
-    issues: list[Issue] = []
-    for page in iter_wiki_pages(wiki):
-        line_count = sum(1 for _ in page.read_text(encoding="utf-8").splitlines())
-        if line_count > 200:
-            issues.append(Issue(SEV_INFO, "size", page, f"{line_count} lines (consider splitting at >200)"))
-    return issues
-
-
 # Synthesis page types may carry organising prose; ordinary types may not.
 SYNTHESIS_TYPES = frozenset({"summary", "query", "comparison"})
+
+# How a page type is expected to grow over its lifetime:
+#
+# - ``fixed``: bounded by its subject, so a page past the soft cap wants
+#   splitting.
+# - ``backlog``: self-trimming entries (a todo list, an open-questions list),
+#   healthy while the entries churn.
+# - ``monotonic-append``: an append-only record, healthy as it lengthens.
+# - ``unbounded-synthesis``: an organising digest whose prose is its content.
+#
+# ``fixed`` keeps the historical ~200-line soft cap. Every growing pattern
+# defers to ``GROWTH_DEFER_LINES``, past which the finding recommends splitting
+# or graduating entries rather than sanctioning further growth.
+GROWTH_PATTERNS = ("fixed", "backlog", "monotonic-append", "unbounded-synthesis")
+FIXED_SOFT_CAP_LINES = 200
+GROWTH_DEFER_LINES = 500
+
+
+def resolve_growth_pattern(page_type: str | None, declared: dict[str, str]) -> str:
+    """Resolve one page's effective growth pattern.
+
+    A ``- Growth patterns:`` declaration wins, then the canonical default: the
+    synthesis types grow without bound and every other built-in type is fixed.
+    An undeclared custom type resolves to ``fixed``, so a wiki that adds a type
+    keeps the soft cap until it says how that type grows.
+    """
+    if isinstance(page_type, str) and page_type in declared:
+        return declared[page_type]
+    if page_type in SYNTHESIS_TYPES:
+        return "unbounded-synthesis"
+    return "fixed"
+
+
+def check_page_size(wiki: Path) -> list[Issue]:
+    issues: list[Issue] = []
+    declared = load_growth_patterns(wiki)
+    for page in iter_wiki_pages(wiki):
+        text = page.read_text(encoding="utf-8")
+        line_count = sum(1 for _ in text.splitlines())
+        fm, _ = parse_frontmatter(text)
+        pattern = resolve_growth_pattern((fm or {}).get("type"), declared)
+        if pattern == "fixed":
+            if line_count > FIXED_SOFT_CAP_LINES:
+                issues.append(Issue(SEV_INFO, "size", page, f"{line_count} lines (consider splitting at >200)"))
+        elif line_count > GROWTH_DEFER_LINES:
+            issues.append(Issue(
+                SEV_INFO, "size", page,
+                f"{line_count} lines (past the 500-line {pattern} deferral — split or graduate entries)",
+            ))
+    return issues
+
 
 # Phrases that mark page-convention or lint-sanction prose misplaced in a body.
 META_PROSE_PHRASES: tuple[str, ...] = (
@@ -1425,6 +1503,8 @@ META_PROSE_PHRASES: tuple[str, ...] = (
     "is self-trimming",
     "info-level finding",
     "200-line lint threshold",
+    "500-line",
+    "split or graduate",
     "graduate off",
 )
 
