@@ -2,8 +2,8 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T13:26:15Z
-updated: 2026-11-24T13:29:27Z
-status: implemented
+updated: 2026-11-24T13:55:57Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: "Andreas Hoffmann"
 design-extended: true
@@ -35,7 +35,7 @@ The fix applied manually in that session is the convention this task formalizes:
 
 ### Why this is mostly formalizing an existing convention
 
-Wikis already following the convention use content-language ASCII slugs (`steinbildhauerei`, `lebensziele`, …); the umlaut slug was the lone off-convention file. The current scaffold half-states the rule at [template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md), in the `## Conventions` "File names:" bullet. Extend that bullet to "pure ASCII; transliterate non-ASCII", with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here:
+Wikis already following the convention use content-language ASCII slugs (`steinbildhauerei`, `lebensziele`, …); the umlaut slug was the lone off-convention file. The current scaffold half-states the rule at [template_schema.md](../../plugins/knowledge_management/skills/wiki/references/template_schema.md), in the `## Conventions` "File names:" bullet. Extend that bullet to "pure ASCII; transliterate non-ASCII", with the German fold as the worked example. This scaffold is copied into every new wiki, so the convention lands per-wiki here:
 
 > File names: lowercase, hyphens, no spaces (e.g., `transformer-architecture.md`)
 
@@ -43,14 +43,14 @@ It says lowercase/hyphens/no-spaces but **never says "ASCII only"**, and every e
 
 ### Files involved
 
-- [SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md): the `<folder_layout>` section (slug shape) and the `<write_or_update_pages>` authoring bullets. Add the non-English-language guidance and the content-vs-slug split.
-- In [scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py), add the new check. Findings are `Issue(severity, category, path, message, line)`; severity constants `SEV_BLOCKING / SEV_WARN / SEV_INFO`; existing path-shape logic lives in `check_type_location`. Add a sibling `check_filename_ascii` (category `filename`) and register it in the run pipeline. Page filenames come from `iter_wiki_pages` and raw-sidecar filenames from `iter_raw_files`, so the check covers both iterators.
-- In [references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md), document the new check row in the matrix and add it to the **warn** bucket list.
-- [auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md): the `<remediate>` phase, beside the existing `<fix_wrong_directory_for_declared_type>` move and under the `<use_git_mv>` constraint. Add an ASCII-fold-rename remediation for the new warning.
+- [SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md): the `<folder_layout>` section (slug shape) and the `<write_or_update_pages>` authoring bullets. Add the non-English-language guidance and the content-vs-slug split.
+- In [scripts/lint.py](../../plugins/knowledge_management/skills/wiki/scripts/lint.py), add the new check. Findings are `Issue(severity, category, path, message, line)`; severity constants `SEV_BLOCKING / SEV_WARN / SEV_INFO`; existing path-shape logic lives in `check_type_location`. Add a sibling `check_filename_ascii` (category `filename`) and register it in the run pipeline. Page filenames come from `iter_wiki_pages` and raw-sidecar filenames from `iter_raw_files`, so the check covers both iterators.
+- In [references/lint_checks.md](../../plugins/knowledge_management/skills/wiki/references/lint_checks.md), document the new check row in the matrix and add it to the **warn** bucket list.
+- [auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md): the `<remediate>` phase, beside the existing `<fix_wrong_directory_for_declared_type>` move and under the `<use_git_mv>` constraint. Add an ASCII-fold-rename remediation for the new warning.
 
 ### Related task
 
-- [wiki_two-pass-normalisation.md](archive/wiki_two-pass-normalisation.md) shipped the displaced-semantics routing rule as `<two_pass_remediation>` in the same `auto_shaper_wiki.md` `<remediate>` phase. The new ASCII-fold rename slots in as a fix-group alongside that shipped rule.
+- [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) shipped the displaced-semantics routing rule as `<two_pass_remediation>` in the same `auto_shaper_wiki.md` `<remediate>` phase. The new ASCII-fold rename slots in as a fix-group alongside that shipped rule.
 
 The rename machinery to reuse already ships in the agent rather than arriving with that task: `<fix_wrong_directory_for_declared_type>` carries the `git mv`-then-repair-inbound-links-and-index pattern, and the `<use_git_mv>` fix constraint states the history-preserving rule every rename follows. Model the ASCII-fold remediation on those two rather than inventing a parallel mechanism.
 
@@ -85,7 +85,7 @@ The remediation lands as `<fix_non_ascii_filename>` in `<fix_moves>`, and the di
 ### Non-goals
 
 - Do **not** rely on setting `git config core.precomposeUnicode` as the fix, because it is machine-specific and brittle. ASCII-folding is robust regardless of git config; mention the pitfall only as root-cause context.
-- A ship-time migration sweep: implementing this task renames nothing in any existing wiki. Renames happen per wiki through the normal channel: the linter surfaces the `warn`, and that wiki's next `wiki_fix`/audit run applies the ASCII fold as an ordinary deterministic remediation under the agent's remediation contract (`git mv` plus re-pointed references; the readable title keeps its native characters). This differs deliberately from the log posture in [wiki_log-heading-uniqueness-and-repair.md](archive/wiki_log-heading-uniqueness-and-repair.md): log entries are append-only records, so their repair is info-level and on demand; page filenames are living structure, so the fold is warn-level and auto-applied.
+- A ship-time migration sweep: implementing this task renames nothing in any existing wiki. Renames happen per wiki through the normal channel: the linter surfaces the `warn`, and that wiki's next `wiki_fix`/audit run applies the ASCII fold as an ordinary deterministic remediation under the agent's remediation contract (`git mv` plus re-pointed references; the readable title keeps its native characters). This differs deliberately from the log posture in [wiki_log-heading-uniqueness-and-repair.md](wiki_log-heading-uniqueness-and-repair.md): log entries are append-only records, so their repair is info-level and on demand; page filenames are living structure, so the fold is warn-level and auto-applied.
 
 ## Acceptance
 

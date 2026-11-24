@@ -2,7 +2,7 @@
 description: "Add three authoring rules to the base skill's body: rules stated once with sections pointing, one labeled open decision at most, and examples that illustrate rather than carry."
 scope: plugins/ai_dev/skills/task
 created: 2026-06-09T10:34:16Z
-updated: 2026-06-10T18:50:09Z
+updated: 2026-11-24T13:55:57Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -35,7 +35,7 @@ content.
   applied to task bodies: a specific case codified as the rule had to be
   re-generalized later; the general statement carries, the case illustrates.
 - The backlog already practices the open-decision label organically:
-  `tasks/wiki_non-english-languages-ascii-slugs.md` marks its tag-folding
+  `tasks/archive/wiki_non-english-languages-ascii-slugs.md` marks its tag-folding
   choice as "the one genuine open decision". The rule makes that labeling the
   norm.
 - Base-only edit: the rules land in `task/SKILL.md` `<body>` beside the

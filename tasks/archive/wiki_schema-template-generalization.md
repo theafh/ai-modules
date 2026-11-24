@@ -2,7 +2,7 @@
 description: "Make the shipped wiki SCHEMA template domain-neutral and instruction-shaped: fix provenance, redundancy, and script paths; add freshness, fact-ownership, and decision/planned-work routing."
 scope: plugins/knowledge_management/skills/wiki/references
 created: 2026-08-09T12:02:01Z
-updated: 2026-10-16T20:53:04Z
+updated: 2026-11-24T13:55:57Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -62,7 +62,7 @@ Four live tasks own passages in this same file, and this task leaves each alone:
 - [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) owns the capture rule and the channel boundary inside the **Provenance** block (which material lands in `raw/` versus `## Derived from`). This task owns only the placement contradiction in defect 1. Both edit the same two bullets, so whichever lands second rewrites over the first rather than appending a second statement.
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) owns the `**Split a page**` threshold bullet and the custom-type anatomy guidance.
 - [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md) owns the accepted-finding mechanism.
-- [wiki_non-english-languages-ascii-slugs.md](../wiki_non-english-languages-ascii-slugs.md) rewrites the `File names:` bullet for ASCII slugs and already names its English-only example as part of its gap, so both the `no spaces` trim in defect 10 and that bullet's example belong to it. Defect 6 covers only the folder-layout, cross-link, and provenance-fence examples.
+- [wiki_non-english-languages-ascii-slugs.md](wiki_non-english-languages-ascii-slugs.md) rewrites the `File names:` bullet for ASCII slugs and already names its English-only example as part of its gap, so both the `no spaces` trim in defect 10 and that bullet's example belong to it. Defect 6 covers only the folder-layout, cross-link, and provenance-fence examples.
 
 Two soft companions share coordination surface but do not own template passages:
 
@@ -95,7 +95,7 @@ Rewrite each affected passage in place to its target form. The template stays on
 - The `**Split a page**` threshold and custom-type anatomy guidance, owned by [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md).
 - The per-finding accepted-lint mechanism, owned by [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md).
 - The raw-capture trigger and the `raw/` versus `## Derived from` channel boundary, owned by [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md).
-- The `File names:` bullet, owned by [wiki_non-english-languages-ascii-slugs.md](../wiki_non-english-languages-ascii-slugs.md).
+- The `File names:` bullet, owned by [wiki_non-english-languages-ascii-slugs.md](wiki_non-english-languages-ascii-slugs.md).
 - Rewriting the bare `python3 scripts/compute_sha256.py` prescriptions in `lint.py`, the `lint_checks.md` `drift` row, and `SKILL.md` `<capture_raw_source>` — this task proves the template rewrite only.
 - A new machine-read declaration bullet in the `## Lint` section, since two live tasks already add bullets there; the conventions here ship as prose and as an optional frontmatter field instead.
 - A lint check enforcing the fact-ownership rule, since detecting a restated fact across pages is a judgement the linter cannot make deterministically.
@@ -110,7 +110,7 @@ Rewrite each affected passage in place to its target form. The template stays on
 - Each per-type section from `## Entity Pages` through `## Procedure Pages` opens with its include-list, and the type question appears only in the `## Page Types: Pick by Question` table.
 - `## Update Policy` carries the contradiction workflow, and the frontmatter comment and the lint sentence point at it rather than restating the steps.
 - The tag-taxonomy placeholder bracket no longer carries the add-before-use rule, and the standing `Rule: every tag on a page must appear in this taxonomy.` bullet is its single statement.
-- Searching the template for `transformer`, `openai`, `Vaswani`, and `RNNs` returns only hits inside the `File names:` bullet that [wiki_non-english-languages-ascii-slugs.md](../wiki_non-english-languages-ascii-slugs.md) owns, and the template carries one instruction to localize remaining example identifiers during customization.
+- Searching the template for `transformer`, `openai`, `Vaswani`, and `RNNs` returns only hits inside the `File names:` bullet that [wiki_non-english-languages-ascii-slugs.md](wiki_non-english-languages-ascii-slugs.md) owns, and the template carries one instruction to localize remaining example identifiers during customization.
 - Searching the reworked template for `python3 scripts/compute_sha256.py` and for `` `scripts/lint.py` walks `` returns no bare wiki-root-relative form; both read as `$WIKI_SKILL/scripts/…` with resolution named by citing the base `wiki` skill's resolution block when [wiki_front-end-skill-dir-resolution.md](wiki_front-end-skill-dir-resolution.md) has landed, otherwise the agent's `<resolve_runtime_paths>` interim.
 - Every rule bullet in `## Conventions` except `File names:` opens with an action verb, and each changed bullet's requirement strength matches the passage it replaced, checked by quoting before and after side by side.
 - The Frontmatter custom-fields guidance no longer reads `Default to the canonical fields — invent custom ones sparingly`; it states a test naming the value set and the question no canonical field answers.
