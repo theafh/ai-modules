@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # audit_clean fixture: implementation present AND a passing test present —
-# every acceptance item is genuinely satisfiable. task_audit must confirm
-# full compliance with the exact success line and change nothing.
+# every acceptance item is genuinely satisfiable. The seeded task carries no
+# `design-extended` field, so its absence reads as `false` and matches a
+# change that extended no design: task_audit records that as a recording
+# note rather than a gap, confirms full compliance with the exact success
+# line, and stamps `audited`.
 
 set -euo pipefail
 THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

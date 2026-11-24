@@ -2,9 +2,11 @@
 description: "State in task_audit that a missing design-extended on an implement-stamped task is a recording note, and only a signal that mismatches the built change is a gap blocking audited."
 scope: plugins/ai_dev/skills/task_audit
 created: 2026-11-15T06:30:39Z
-updated: 2026-11-19T18:15:23Z
-status: ready
+updated: 2026-11-24T06:52:10Z
+status: implemented
 reported-by: "Andreas Hoffmann"
+implemented-by: "Andreas Hoffmann"
+design-extended: false
 ---
 
 # State the severity of a missing design-extended signal in task_audit

@@ -27,7 +27,7 @@ The bundled-script surface is covered separately by
 | `implement` | task_implement | builds a `ready` task: writes the code AND a test, passes the test suite its Acceptance names, stamps `implemented` + `implemented-by`, keeps the task live |
 | `implement_dep_gate` | task_implement | pre-flight dependency gate: a forward-reference to a block a live task creates is surfaced as a hard prerequisite; the gate lists it, asks, and stops with no code edit |
 | `audit_gaps` | task_audit | emits `Gaps:` for an acceptance-mandated test that is missing; leaves status `implemented` |
-| `audit_clean` | task_audit | emits `Success: full task compliance confirmed.` when code + test are present; stamps `audited` |
+| `audit_clean` | task_audit | emits `Success: full task compliance confirmed.` when code + test are present and the seeded task carries no `design-extended` field, whose absence reads as `false` and draws a recording note rather than a `Gaps:` list; stamps `audited` |
 | `audit_reopen` | task_audit | re-audit of an `audited` task whose acceptance-mandated test is missing: emits `Gaps:`, re-opens the task to `implemented` with a bumped `updated` and an unchanged body, routes the gap to `task_implement`, and files no new task |
 | `finish` | task_finish | status → `finished`, `git mv` to archive/, inbound links re-pointed from open AND archived tasks (both-directories scan) with each linker keeping its status, re-lints clean |
 | `finish_arch_extended` | task_finish | close-out consumes `design-extended: true` and refreshes the project's `ARCHITECTURE.md` in the same pass, superseding the stale design decision; reports the refreshed disposition with what changed; preserves the signal through the move |
@@ -195,7 +195,7 @@ judgements no check can decide.
 
 ### 2026-11-15: Cursor `auto` and Claude `opus` at `high` effort
 
-On current inputs every eval passes on both vendors except two, and each of those has an open task: `audit_clean` fails on Claude and `implement_boundary_cross` fails on Cursor.
+On current inputs every eval but two passes on both vendors: `implement_boundary_cross` fails on Cursor and has an open task named below, and `audit_clean`'s Claude result is unrecorded — its wording is fixed, but its Claude re-run is still owed and is the operator's to schedule.
 
 **Cursor.** The full suite, `../workspace/run-20261115-011731`, passed 47 of 47 on the inputs of that hour. The repairs that followed were checked again on Cursor:
 
@@ -207,7 +207,7 @@ On current inputs every eval passes on both vendors except two, and each of thos
 
 | Eval | Cause | Verdict of record |
 | --- | --- | --- |
-| `audit_clean` | `task_audit` never says whether a missing `design-extended` on a newly implemented task withholds `audited` | fails; [the audit-severity task](../../../tasks/ai-dev_task-audit-design-extended-severity.md) |
+| `audit_clean` | the skill left open whether a missing `design-extended` on a newly implemented task withholds `audited`; the wording now settles it as a recording note | wording fixed; Claude re-run owed (operator to schedule) |
 | `implement_boundary_cross` | the grader required a bold `Open decision:` lead-in, and it now accepts exactly one, plain or bold | passes on re-grade of `run-20261115-101941` |
 | `check_exclusion_waiver_control` | packaging fixture defect | passes in `run-20261115-120635` |
 | `create_regroup_owner_account` | the grader matched surface wording | passes in `run-20261115-101941` |

@@ -70,6 +70,26 @@ resp_has() {
   tr '\n' ' ' < "$RESPONSE_FILE" | tr -s ' ' | grep -qiE -- "$1"
 }
 
+# resp_line_is <literal> -> one line of the captured response is exactly the
+# given literal, so a verdict emitted with surrounding words or backticks
+# fails. Trailing whitespace and a CR from a CRLF capture are ignored, and an
+# unset RESPONSE_FILE skips the check like resp_has.
+resp_line_is() {
+  [[ -n "$RESPONSE_FILE" ]] || return 0
+  [[ -s "$RESPONSE_FILE" ]] || return 1
+  sed -e 's/[[:space:]]*$//' "$RESPONSE_FILE" | grep -qxF -- "$1"
+}
+
+# resp_no_gaps_list -> no line of the captured response opens a `Gaps:` list,
+# so a recording note filed as a gap fails. Leading whitespace, list markers,
+# and markdown emphasis are stripped before the match; an unset RESPONSE_FILE
+# skips the check.
+resp_no_gaps_list() {
+  [[ -n "$RESPONSE_FILE" ]] || return 0
+  [[ -s "$RESPONSE_FILE" ]] || return 1
+  ! sed -e 's/^[[:space:]#>*_`~-]*//' "$RESPONSE_FILE" | grep -qiE '^gaps:'
+}
+
 # --- helpers -----------------------------------------------------------------
 
 # fm_field <file> <field> -> the frontmatter value, quotes stripped.
@@ -622,9 +642,18 @@ case "$eval_id" in
   audit_clean)
     f="$TASKS/calc_add-function.md"
     status_audited() { [[ "$(fm_field "$f" status)" == "audited" ]]; }
+    # The audit's only permitted task edits are its status stamp and the
+    # `updated` bump, so a seeded task that carries no `design-extended` line
+    # must still carry none after the run. A missing field reads as `false`
+    # and draws a recording note, never a gap.
+    no_design_extended_line() { ! grep -qE '^[[:space:]]*design-extended:' "$f"; }
     check "status stamped audited after clean verdict" status_audited
     check "fixture sanity: the suite genuinely passes"   suite_passes
-    note_agent_attest "response is exactly 'Success: full task compliance confirmed.'"
+    check "the task file still carries no design-extended line" no_design_extended_line
+    check "the response has the exact full-compliance verdict line" \
+      resp_line_is 'Success: full task compliance confirmed.'
+    check "the response opens no Gaps: list for the absent field" resp_no_gaps_list
+    note_agent_attest "the response names the absent design-extended field as a recording note among the evidence, not as a gap"
     ;;
 
   finish_arch_extended|finish_arch_declined|finish_arch_absent)

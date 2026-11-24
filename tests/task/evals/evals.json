@@ -212,7 +212,7 @@
       "id": "audit_clean",
       "skill": "task_audit",
       "prompt": "Audit tasks/calc_add-function.md against the code — is it fully done?",
-      "expected_output": "Implementation and a passing test are both present. The audit confirms full compliance with the exact success line and stamps status audited plus updated.",
+      "expected_output": "Implementation and a passing test are both present, and the seeded task carries no `design-extended` field. That absence reads as `false` and matches a change that extended no design, so the audit names it as a recording note rather than a gap, confirms full compliance with the exact success line, and stamps status audited plus updated.",
       "files": [
         "evals/fixtures/audit_clean/setup.sh"
       ],
