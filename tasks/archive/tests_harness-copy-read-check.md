@@ -2,8 +2,8 @@
 description: "Fail an eval pass whose worker reads a copy of a test harness's evals tree anywhere outside its sandbox project, the way checkout_unread fails a read inside the checkout."
 scope: tests/lib
 created: 2026-11-15T10:49:59Z
-updated: 2026-11-24T00:26:15Z
-status: implemented
+updated: 2026-11-24T01:27:06Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
