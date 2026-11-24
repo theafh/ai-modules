@@ -53,7 +53,7 @@ Makefile                          # task entry point
 - `make update`: redeploy every scope the deployment log records, from this checkout, with its recorded targets, types, and artefacts. **Run only when the user asks for it.**
 - `make uninstall`: remove deployed artefacts via the deployment log. A scope flag limits it to that scope (pass `--global` or `--project-dir DIR` to the script); a scopeless run covers every scope.
 
-`CHANGELOG.md` is git-history-derived. Update it only through the `update_changelog` skill, run on demand. Don't hand-edit CHANGELOG entries as part of other work. Committing the skill's output is fine.
+`CHANGELOG.md` is owned by the `update_changelog` skill.
 
 This repo manages upcoming work and todos with the `task` skill (`/task`). Live items (`open`, `checked`, `ready`, `implemented`, `audited`) live in `tasks/`; terminal items (`finished`, `deferred`) move to `tasks/archive/`. Task files record `reported-by`, and implemented work records `implemented-by`.
 

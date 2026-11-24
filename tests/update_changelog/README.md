@@ -9,6 +9,11 @@ the documented date query reopens the newest recorded day, the bundled
 `prepare_changelog_day.sh` sees later same-day commits, older days stay out of an
 incremental run, and first-run date enumeration still covers the full history.
 
+`s1` also pins the provenance invariant the skill owns: the `<source_of_truth>`
+clause carries committed-history-only provenance, the working-tree exclusion, and
+the never-hand-author-or-hand-edit prohibition, while `<run_scope>` stays scoped
+to which days a run rebuilds and defers provenance to that clause.
+
 `s7` covers the repo-agnostic verification step: `<verify>` sits inside
 `<procedure>` after `<land_new_days>`, discovers the target repo's own lint
 tooling in priority order, states an outcome for each of the three branches

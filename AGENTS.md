@@ -61,7 +61,7 @@ Makefile                          # task entry point
 - **Escalate through the user when the approval state blocks the edit.** If the patch is rejected, times out, or cannot ask for usable escalation, stop and ask the user to change the approval/sandbox state and then tell you to retry. Do not spend turns on shell write workarounds while the harness blocks writes.
 - **Use a tightly scoped write after the user changes permissions.** Once the user switches to a state that allows the edit, retry the exact file update and verify with `make lint`.
 
-`CHANGELOG.md` is git-history-derived. Update it only through the `update_changelog` skill, run on demand. Don't hand-edit CHANGELOG entries as part of other work. Committing the skill's output is fine.
+`CHANGELOG.md` is owned by the `update_changelog` skill.
 
 This repo manages upcoming work and todos with the `task` skill (`/task`). Live items (`open`, `checked`, `ready`, `implemented`, `audited`) live in `tasks/`; terminal items (`finished`, `deferred`) move to `tasks/archive/`. Task files record `reported-by`, and implemented work records `implemented-by`.
 

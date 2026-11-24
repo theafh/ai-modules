@@ -1,7 +1,7 @@
 ---
 name: update_changelog
 description: Create or update a day-grouped, add-only CHANGELOG.md from git commit history. Use when asked to generate, refresh, or maintain a repository changelog. Produces newest-first day sections while keeping existing entries immutable and processes one day at a time to stay within context limits.
-version: 3.1.1
+version: 3.1.2
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -9,7 +9,7 @@ license: MIT
 # update_changelog
 
 <update_changelog_skill>
-  <objective>Create or update a `CHANGELOG.md` in the repository root: a human-readable, day-grouped, add-only history derived from git commits, newest day first. Record later committed changes as new entries or day sections while preserving existing entries as immutable historical facts.</objective>
+  <objective>Create or update a `CHANGELOG.md` in the repository root: a human-readable, day-grouped, add-only history whose sole source is committed git history, newest day first. Record later committed changes as new entries or day sections while preserving existing entries as immutable historical facts.</objective>
   <command_intent>build CHANGELOG.md, refresh changelog from git history, add the missing days to the changelog</command_intent>
   <tools>
     <prepare_changelog_day>Run `scripts/prepare_changelog_day.sh YYYY-MM-DD` from this skill when it is available. The script writes one structured context blob for a single calendar day to a file under the system tmp dir, with the day's commit subjects and bodies, the deduplicated repo-relative file list, per-file net diffs for the day, and generic placeholders for binary files. Its stdout prints exactly two lines: the context file's absolute path, then a one-line consumption directive. Exits 1 with `no commits on <date>` when the date has no commits, so skip that date silently.</prepare_changelog_day>
@@ -29,7 +29,8 @@ license: MIT
     <insertion_anchor>The header block, the H1 plus the immutability/grouping line beneath it, ends at a stable boundary, and the first `## YYYY-MM-DD` heading is the top of the day list. That boundary is the one anchor for every day-section insertion. Invariant: a new day section always lands in the seam immediately between the end of the header block and the current first `## YYYY-MM-DD` heading, never inside the header block, never below an existing day section. The invariant governs **new** day sections only; when a run reopens the most recent recorded day, that day's existing section is extended in place per `<last_recorded_day_reconciliation>`, not re-inserted.</insertion_anchor>
   </output_contract>
   <policy>
-    <run_scope>Build each run from committed git history only; ignore uncommitted and untracked working-tree state. On incremental runs, treat the most recent recorded day as provisionally complete because commits can share that calendar day after its section was first written. Reopen that day and every later committed date; days older than the most recent recorded day are settled for that run.</run_scope>
+    <run_scope>Build each run from the dates `<enumerate_dates>` selects, taking provenance from `<source_of_truth>`. On incremental runs, treat the most recent recorded day as provisionally complete because commits can share that calendar day after its section was first written. Reopen that day and every later committed date; days older than the most recent recorded day are settled for that run.</run_scope>
+    <source_of_truth>The changelog records committed git history only; ignore uncommitted and untracked working-tree state. Every entry is produced by running this skill over commits. The operator persists the changelog by committing the skill's output. Never hand-author or hand-edit `CHANGELOG.md`.</source_of_truth>
     <context_safety>Two things are released incrementally, on different schedules, so keep them distinct. The large per-day context blob from `<consume_context>` is what can overflow the context window on a long history, so consume and release it one day at a time on **both** paths, incremental and cold build alike. Flushing each composed day section to `CHANGELOG.md` before the next is the separate cold-build rule: a cold build walks the full history, so it writes each completed day section to disk and lets it fall out of working context before composing the next, keeping only one day's material live at a time. An incremental run touches only a few new days, so it composes their small sections together and lands them in one insert per `<newest_first>` with no per-day section flush. Only the composed-section batch size differs between the two paths; the one-day-at-a-time discipline for the context blob is identical on both.</context_safety>
     <newest_first>Maintain strict newest-first day ordering, and land every new day section against the single anchor defined in `<insertion_anchor>`: the seam between the header block and the current first `## YYYY-MM-DD` heading. Locate that seam with a bounded read of only the header block plus the first existing `##` heading, never a whole-file read. One anchor, two insertion shapes:
       <incremental_prepend>Incremental run (a few new days, the common case): compose all the run's new day sections into one block already ordered newest-first, then perform a single insert that splices that block into the seam, anchoring the edit on the first existing day heading. One edit, one seam, nothing below it reordered.</incremental_prepend>

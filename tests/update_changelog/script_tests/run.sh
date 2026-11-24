@@ -167,11 +167,18 @@ scenario() {
 }
 
 s1_skill_text_carries_boundary_rules() {
-    local text
+    local text sot run_scope
     text="$(cat "$SKILL_FILE")"
+    sot="$(sed -n 's/.*<source_of_truth>\(.*\)<\/source_of_truth>.*/\1/p' "$SKILL_FILE")"
+    run_scope="$(sed -n 's/.*<run_scope>\(.*\)<\/run_scope>.*/\1/p' "$SKILL_FILE")"
     local ok=true
     assert_contains "run scope tag" "$text" "<run_scope>" || ok=false
     assert_contains "committed scope" "$text" "committed git history only" || ok=false
+    assert_contains "source of truth tag" "$text" "<source_of_truth>" || ok=false
+    assert_contains "source of truth carries working-tree provenance" "$sot" "ignore uncommitted and untracked working-tree state" || ok=false
+    assert_contains "source of truth carries the never-hand-edit prohibition" "$sot" "Never hand-author or hand-edit \`CHANGELOG.md\`" || ok=false
+    assert_contains "run scope defers provenance to the canonical clause" "$run_scope" "taking provenance from \`<source_of_truth>\`" || ok=false
+    assert_not_contains "run scope does not restate working-tree provenance" "$run_scope" "ignore uncommitted and untracked working-tree state" || ok=false
     assert_contains "same-day reason" "$text" "same-day commits can land after its section was written" || ok=false
     assert_contains "last day query" "$text" "--since={D}T00:00:00" || ok=false
     assert_contains "reconciliation tag" "$text" "<last_recorded_day_reconciliation>" || ok=false
