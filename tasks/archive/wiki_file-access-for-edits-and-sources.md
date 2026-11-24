@@ -2,7 +2,7 @@
 description: "Add a file_handling_discipline rule to use Read (not Bash grep/cat/tail) when staging an Edit, and a note that sources: and raw source_path: values resolve against the wiki root when opened."
 scope: plugins/knowledge_management
 created: 2026-05-28T18:05:29Z
-updated: 2026-10-29T05:02:01Z
+updated: 2026-11-24T11:42:29Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -30,7 +30,7 @@ Files involved:
 - [plugins/knowledge_management/skills/wiki/SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md) — the `**Provenance**` / `sources:` description for the `sources:` opening note, and `<capture_raw_source>` for the `source_path:` opening note.
 - [plugins/knowledge_management/agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md) — mirror the `sources:` note in `<external_source_pointer>` and the `source_path:` note in `<fix_raw_source_frontmatter_missing>`.
 
-`wiki_import` currently restates hub `<file_handling_discipline>` siblings (`<too_large_to_read_in_one_shot>`, `<list_before_unfamiliar_path>`) rather than citing them; [wiki_family-inheritance-blocks.md](../wiki_family-inheritance-blocks.md) replaces those restated blocks with hub citations. This task authors the new read-to-stage-edits rule only in the hub `SKILL.md` and the auto-shaper mirror above.
+`wiki_import` currently restates hub `<file_handling_discipline>` siblings (`<too_large_to_read_in_one_shot>`, `<list_before_unfamiliar_path>`) rather than citing them; [wiki_family-inheritance-blocks.md](wiki_family-inheritance-blocks.md) replaces those restated blocks with hub citations. This task authors the new read-to-stage-edits rule only in the hub `SKILL.md` and the auto-shaper mirror above.
 
 ## Approach
 

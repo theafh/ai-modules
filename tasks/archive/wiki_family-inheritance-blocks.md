@@ -2,8 +2,8 @@
 description: "Give the wiki family one source of truth: a hub family block, an authority block per front end, cited rather than restated base rules, and one orientation log-read quantity."
 scope: plugins/knowledge_management
 created: 2026-08-11T16:49:52Z
-updated: 2026-11-24T11:31:26Z
-status: implemented
+updated: 2026-11-24T11:42:06Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -64,7 +64,7 @@ ends still restate "roughly the last 350 lines of `log.md`" at their sites:
 `wiki_import` at `<orient_first_top>`, `<orient_first>`, and its orientation
 step.
 
-[wiki_log-rotation-and-retrieval.md](archive/wiki_log-rotation-and-retrieval.md)
+[wiki_log-rotation-and-retrieval.md](wiki_log-rotation-and-retrieval.md)
 shipped the entry-anchor idiom and retired the hub's `tail -n 350` examples, so
 the hub statement this task cites is settled; the remaining work is to make the
 two front ends cite it.
@@ -114,9 +114,9 @@ two front ends cite it.
 **Out of scope:**
 
 - Defining how a front end resolves the hub's bundle path, owned by
-  [wiki_front-end-skill-dir-resolution.md](archive/wiki_front-end-skill-dir-resolution.md).
+  [wiki_front-end-skill-dir-resolution.md](wiki_front-end-skill-dir-resolution.md).
 - The hub's output contract, owned by
-  [wiki_base-skill-output-contract.md](archive/wiki_base-skill-output-contract.md).
+  [wiki_base-skill-output-contract.md](wiki_base-skill-output-contract.md).
 - Rewriting the hub `<searching>` block, owned by
   `tasks/archive/wiki_log-rotation-and-retrieval.md`.
 

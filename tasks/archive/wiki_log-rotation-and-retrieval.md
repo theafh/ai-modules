@@ -2,7 +2,7 @@
 description: Enforce log.md rotation (so it never reaches tens of thousands of tokens) and switch the prescribed log-read idiom from tail -n N to entry-aware bounded retrieval.
 scope: plugins/knowledge_management
 created: 2026-05-28T18:05:29Z
-updated: 2026-10-29T04:53:29Z
+updated: 2026-11-24T11:42:29Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -19,7 +19,7 @@ design-extended: true
 
 The wiki convention is "rotate `log.md` at 500 entries" (stated in [skills/wiki/references/template_log.md](../../plugins/knowledge_management/skills/wiki/references/template_log.md), whose rotation preamble this task rewrites, and the `<rotate_log_at_500>` rule in [skills/wiki/SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md)). But the linter's rotation check, `check_log_rotation` in `skills/wiki/scripts/lint.py`, emits the over-500 finding at **info** severity only. Info never blocks and is routinely accepted, so in practice the log is allowed to grow without bound, well past a thousand entries and tens of KB. Layer 1 `l45_lint_two_field_survives_volatile_message` in `tests/wiki/layer1/run.sh` accepts `log — log.md` beside `size` and `stale`; Accepted finding suppresses `SEV_INFO` only, so escalating rotation above info leaves that accept path unable to acknowledge a live rotation finding unless the scenario is rewritten.
 
-Co-edit ownership with [wiki_family-inheritance-blocks.md](../wiki_family-inheritance-blocks.md): that ready sibling owns stating the orientation quantity once in hub `<resuming_an_existing_wiki>` as the last 20 to 30 entries by entry boundary, and having `wiki_import` / `wiki_wrapup` (and pitfall `<orient_first>`) cite that tag. This task owns the entry-anchor + bounded-slice retrieval recipe (stated in that same `<resuming_an_existing_wiki>` block beside the sibling-settled quantity), rotation enforcement, the agent's `<read_recent_log>`, and rewriting other hub `tail -n 350` sites (including `<searching>`) into one-clause citations of `<resuming_an_existing_wiki>`, so quantity wording / front-end citations and the retrieval mechanism stay one coordinated rule without either task rewriting the other's owned surfaces. Hub `<searching>` citation of `<resuming_an_existing_wiki>` after retiring its `tail -n 350` example stays this task's edit.
+Co-edit ownership with [wiki_family-inheritance-blocks.md](wiki_family-inheritance-blocks.md): that ready sibling owns stating the orientation quantity once in hub `<resuming_an_existing_wiki>` as the last 20 to 30 entries by entry boundary, and having `wiki_import` / `wiki_wrapup` (and pitfall `<orient_first>`) cite that tag. This task owns the entry-anchor + bounded-slice retrieval recipe (stated in that same `<resuming_an_existing_wiki>` block beside the sibling-settled quantity), rotation enforcement, the agent's `<read_recent_log>`, and rewriting other hub `tail -n 350` sites (including `<searching>`) into one-clause citations of `<resuming_an_existing_wiki>`, so quantity wording / front-end citations and the retrieval mechanism stay one coordinated rule without either task rewriting the other's owned surfaces. Hub `<searching>` citation of `<resuming_an_existing_wiki>` after retiring its `tail -n 350` example stays this task's edit.
 
 Once the log is that large, the prescribed read idiom breaks:
 

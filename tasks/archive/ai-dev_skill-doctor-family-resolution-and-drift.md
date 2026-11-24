@@ -2,7 +2,7 @@
 description: Parse the real family block instead of the first tag mention, group the family set by owning plugin, and warn when a prefix family spans plugins or disagrees with the hub's block.
 scope: plugins/ai_dev/skills/skill_doctor
 created: 2026-08-13T16:02:27Z
-updated: 2026-08-14T17:04:43Z
+updated: 2026-11-24T11:42:29Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -168,7 +168,7 @@ resolved set.
   skill author to avoid naming their own tags would move the defect's cost rather
   than remove it.
 - The `<family>` block that
-  [wiki_family-inheritance-blocks.md](../wiki_family-inheritance-blocks.md) adds to
+  [wiki_family-inheritance-blocks.md](wiki_family-inheritance-blocks.md) adds to
   the wiki hub, which that task owns. This work is independent of whether that
   block exists.
 - A general markdown parser for skill bodies. The masking here serves this one
