@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.21
+version: 1.24.22
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -611,7 +611,7 @@ difference between a growing wiki and a pile of duplicates.
 - **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
 - **Page body content**: keep ordinary page bodies to load-bearing knowledge. Lead with one short sentence naming what the page is for, then the entries and facts. Put page-convention definitions, entry-anatomy explanations, canon-kind clauses, and lint-sanction prose in `SCHEMA.md` (page conventions and the `## Lint` acceptance store) or in the audit log — never in an ordinary page body. Carve-out: `SCHEMA.md`, `index.md`, and synthesis types (`summary`, `query`, `comparison`), whose organising prose is their load-bearing content. `SCHEMA.md`'s `## Conventions` bullet **Keep ordinary page bodies to load-bearing knowledge** is the canonical statement.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
-- **Freshness**: a page drawing on a moving external subject carries `checked: YYYY-MM-DD`, the date its claims were last checked against that subject. Stamp it when you verify the claims, leave it untouched otherwise, and read a page without it as a page to re-check.
+- **Freshness**: a page drawing on a moving external subject carries `checked: YYYY-MM-DD`, the date its claims were last checked against that subject. Set it only after reading the whole page and checking every claim on it against its source; a partial read, or a check of only some claims, leaves the date unchanged. Read a page without it as a page to re-check. `<record_only_full_reads>` in `<operational_discipline>` defines what a full read and a checked claim are.
 </write_or_update_pages>
 
 <update_navigation>
@@ -951,6 +951,28 @@ insert *before* it, producing inverted order. Avoid that:
   continuing.
 </appending_to_log>
 
+<record_only_full_reads>
+**Both records move only over pages read in full.** Two records claim what an
+audit checked: the `Audit baseline:` an audit writes to `log.md`, and a page's
+`checked:` date. Each moves forward only over the pages the same pass read in
+full. A page is read in full only when the pass read every line of it, in one
+read or in several reads in chunks that together cover the whole file; the
+`<too_large_to_read_in_one_shot>` locate-then-`Read` path reads a range, not
+the page. A claim on the page counts as checked only when the pass read the
+source that claim cites, as the page's `sources:` frontmatter lists it and its
+inline claim links cite it, so those source reads are the record. A source
+counts as checkable when it lies inside the wiki or under a `Declared source
+root:` the wiki declares, because the **Provenance** bullet in
+`<write_or_update_pages>` resolves a `sources:` value from the wiki root and
+lets a declared-root value point at a sibling of the wiki in the same
+repository; a claim whose source lies outside both locations, or that the pass
+read no source for, stays unchecked. A search hit, a context excerpt, and a
+partial line range read neither the page nor its claims. The stamp refreshes a
+`checked` date the page already carries and adds the field to no page, keeping
+`checked` the optional signal `references/template_schema.md` defines and
+matching the no-add rule in `<fix_frontmatter_missing_or_malformed>`.
+</record_only_full_reads>
+
 <file_handling_discipline>
 Four rules keep tool use stable on long wiki sessions. Each addresses a
 failure mode observed in real session traces.
@@ -1076,7 +1098,7 @@ Quick-scan reminders. See the named section for full guidance.
 </confirm_scope>
 
 <rotate_log_at_500>
-**Rotate the log at 500 entries**: rename `log.md` to `log-YYYY.md`, or to the first free `log-YYYY-N.md` when that name is taken, then start a fresh `log.md` from the canonical preamble in `references/template_log.md` and record the rotation as the new log's first entry. The next audit cold-walks once, because the prior audit baseline moved into the archive, and records a fresh baseline in the new log.
+**Rotate the log at 500 entries**: rename `log.md` to `log-YYYY.md`, or to the first free `log-YYYY-N.md` when that name is taken, then start a fresh `log.md` from the canonical preamble in `references/template_log.md` and record the rotation as the new log's first entry. The new log carries no baseline, so the next audit reads every page in the wiki in full and records a fresh baseline only when it does, otherwise writing `unavailable`.
 </rotate_log_at_500>
 
 <contradictions_are_explicit>

@@ -2496,7 +2496,7 @@
           "id": "A2_rotation_rule_present_at_template_text",
           "type": "glob_file_contains",
           "pattern": "HOME/proj/wiki/log.md",
-          "regex": "(?m)^> When this file exceeds 500 entries, rotate: rename to log-YYYY\\.md — or to the first free log-YYYY-N\\.md when that name is taken — start fresh; the next audit cold-walks once and records a fresh baseline in the new log\\.$"
+          "regex": "(?m)^> When this file exceeds 500 entries, rotate: rename to log-YYYY\\.md — or to the first free log-YYYY-N\\.md when that name is taken — start fresh; the new log carries no baseline, so the next audit reads every page in the wiki in full and records a fresh baseline only when it does, otherwise writing `unavailable`\\.$"
         },
         {
           "id": "A3_existing_entries_untouched",
@@ -3014,6 +3014,224 @@
         },
         {
           "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-23",
+      "name": "auto-shaper-holds-baseline-on-scoped-audit",
+      "description": "auto_shaper_wiki (via wiki_fix) audits a git-backed wiki with a narrower procedures/ scope. The prior audit entry records the first staging commit as its baseline; a second commit changes one concepts/ page and one procedures/ page. Because the changed concepts/ page stays unread, the new audit entry must repeat the previous baseline rather than advance to the new commit, and its `Cold page reads:` line must name no concepts/ page. The two changed pages carry different subjects and link no same-subject peer, so the contradiction-peer rule adds no full read between them. Graded against the baseline-hold rule over the top-level passes denominator (wiki_audit-baseline-after-full-reads, Acceptance 7).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-23",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end, but limit this run to the procedures/ directory. Fix every issue you can safely and deterministically fix there; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Limit the audit to the procedures/ directory.",
+        "Do not read or edit pages outside the procedures/ directory."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_baseline_held_at_previous_commit",
+          "type": "log_baseline_equals_file",
+          "path": "HOME/proj/wiki/log.md",
+          "file": "baseline/first-commit.sha"
+        },
+        {
+          "id": "A3_changed_concepts_page_absent_from_cold_reads",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "widget-caching"
+        },
+        {
+          "id": "A4_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A5_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A6_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-24",
+      "name": "auto-shaper-advances-baseline-on-full-read",
+      "description": "auto_shaper_wiki (via wiki_fix) runs a full audit over a git-backed wiki. A second commit changes one concepts/ page, one procedures/ page, and adds an entity page carrying `checked: 2026-01-01` whose every claim cites a source the run can read in full: a raw note inside the wiki and a document under a declared source root beside it. Every changed page is read in full, so the new audit entry advances the baseline to the second commit (compared against a sha sidecar outside the wiki tree), and the entity page's checked date moves off its staged value. Graded against the full-read stamp and baseline-advance rules over the top-level passes denominator (wiki_audit-baseline-after-full-reads, Acceptance 11).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-24",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and read every page in full during this run. Fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Read every page in the wiki in full during this audit.",
+        "A `sources:` entry resolving under the wiki's declared source root is readable in full."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_baseline_advanced_to_new_commit",
+          "type": "log_baseline_equals_file",
+          "path": "HOME/proj/wiki/log.md",
+          "file": "baseline/second-commit.sha"
+        },
+        {
+          "id": "A3_checked_date_moved",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/entities/widget-service.md",
+          "regex": "(?m)^checked: (?!2026-01-01$)\\d{4}-\\d{2}-\\d{2}$"
+        },
+        {
+          "id": "A4_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A5_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A6_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-25",
+      "name": "auto-shaper-holds-checked-on-partial-claim-check",
+      "description": "auto_shaper_wiki (via wiki_fix) checks one figure on an entity page against the raw note it cites and corrects the figure. The page also carries claims whose sources lie outside the sandbox, so only some claims are checked and its `checked: 2026-01-01` date must stay. A build that refreshes the date on any page it edits fails this scenario. Graded against the partial-claim hold over the top-level passes denominator (wiki_audit-baseline-after-full-reads, Acceptance 9).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-25",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Check the throughput ceiling figure on entities/widget-throughput.md against the note it cites, and correct the figure if the note disagrees. Leave the page's other claims unchecked. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Check only the throughput ceiling figure against its cited raw note.",
+        "Do not check the claims whose sources lie outside the wiki."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_figure_matches_note",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/entities/widget-throughput.md",
+          "regex": "150 units per minute"
+        },
+        {
+          "id": "A3_stale_figure_gone",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/entities/widget-throughput.md",
+          "regex": "200 units per minute"
+        },
+        {
+          "id": "A4_checked_date_held",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/entities/widget-throughput.md",
+          "regex": "(?m)^checked: 2026-01-01$"
+        },
+        {
+          "id": "A5_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A6_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A7_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-26",
+      "name": "auto-shaper-holds-checked-on-excerpt-only",
+      "description": "auto_shaper_wiki (via wiki_fix) repairs a broken cross-reference on concepts/release-cadence.md. Confirming the right target reaches concepts/widget-colour-defaults.md only through an ordinary content search, so the page is consulted as an excerpt and never read in full. That page carries `checked: 2026-01-01`, stays unchanged since the baseline, and must keep both its date and its bytes. The fix page and the excerpt page carry different subjects, so the contradiction-peer rule adds no full read. Graded against the excerpt-only hold over the top-level passes denominator (wiki_audit-baseline-after-full-reads, Acceptance 8).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-26",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki and fix the broken cross-reference on concepts/release-cadence.md. Before you fix it, confirm which page the reference should point at. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Confirm the cross-reference by searching the wiki before repairing it.",
+        "Do not open pages outside the audit working set for a full read."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_excerpt_page_bytes_unchanged",
+          "type": "file_matches_baseline",
+          "path": "HOME/proj/wiki/concepts/widget-colour-defaults.md",
+          "baseline": "baseline/widget-colour-defaults.md.sha256"
+        },
+        {
+          "id": "A3_checked_date_held",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-colour-defaults.md",
+          "regex": "(?m)^checked: 2026-01-01$"
+        },
+        {
+          "id": "A4_link_repaired",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/release-cadence.md",
+          "regex": "\\(widget-colour-defaults\\.md\\)"
+        },
+        {
+          "id": "A5_stale_target_gone",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/release-cadence.md",
+          "regex": "defaults-table\\.md"
+        },
+        {
+          "id": "A6_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A7_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A8_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
         }
       ]

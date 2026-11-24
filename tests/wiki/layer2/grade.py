@@ -133,6 +133,32 @@ def first_omitted_span(report: str, response: str, limit: int = 120) -> str:
     return span or report[:limit]
 
 
+def newest_audit_baseline(log_text: str) -> str | None:
+    """Return the `Audit baseline:` value of the newest `audit` entry.
+
+    Entries start at `## [YYYY-MM-DD HH:MM] action | subject`. The newest
+    audit entry is the last one in file order (the log is newest-at-bottom),
+    and its metadata lines sit in its body before the next heading. A value
+    may be wrapped in backticks or quotes; strip them so it compares as the
+    bare sha.
+    """
+
+    lines = log_text.splitlines()
+    starts = [
+        n for n, line in enumerate(lines)
+        if re.match(r"^## \[[^\]]+\] audit \|", line)
+    ]
+    if not starts:
+        return None
+    for line in lines[starts[-1] + 1:]:
+        if line.startswith("## ["):
+            break
+        match = re.match(r"^\s*-\s*Audit baseline:\s*(\S+)", line)
+        if match:
+            return match.group(1).strip().strip("`\"'")
+    return None
+
+
 def check(assertion: dict, ctx: dict) -> tuple[bool, str]:
     """Return (passed, evidence). evidence is a one-line explanation."""
 
@@ -212,6 +238,28 @@ def check(assertion: dict, ctx: dict) -> tuple[bool, str]:
         ok = actual == expected
         return ok, (f"{assertion['path']} byte-identical to staged baseline" if ok
                     else f"{assertion['path']} CHANGED: {actual[:12]} != staged {expected[:12]}")
+
+    if t == "log_baseline_equals_file":
+        # The newest `audit` entry's `Audit baseline:` value against a sha
+        # recorded at staging time in a sidecar outside the wiki tree. Proves
+        # the run advanced the baseline to a named commit (or held the prior
+        # one, when the sidecar holds that earlier sha) without hard-coding a
+        # commit hash in the fixture. No existing type can read two files:
+        # glob_file_contains applies one regex per file, and
+        # file_matches_baseline hashes one file against its own sha256.
+        target = sandbox / assertion["path"]
+        baseline_file = sandbox / assertion["file"]
+        if not target.is_file():
+            return False, f"{target} missing (cannot read the audit baseline)"
+        if not baseline_file.is_file():
+            return False, f"baseline {baseline_file} missing — restage the sandbox"
+        recorded = newest_audit_baseline(target.read_text())
+        if recorded is None:
+            return False, f"{assertion['path']} carries no audit entry with an Audit baseline line"
+        expected = baseline_file.read_text().split()[0].strip()
+        ok = recorded == expected
+        return ok, (f"newest audit baseline {recorded!r} matches {expected!r}" if ok
+                    else f"newest audit baseline {recorded!r} != expected {expected!r}")
 
     if t == "repo_relative_file_matches_baseline":
         # Byte-identity of a file outside the sandbox (e.g. a shipped skill

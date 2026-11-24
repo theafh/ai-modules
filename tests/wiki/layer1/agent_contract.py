@@ -31,6 +31,10 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def flat(s: str) -> str:
+    return re.sub(r"\s+", " ", s)
+
+
 def derive_cold_reads(
     pages: set[str],
     baseline: str | None,
@@ -38,7 +42,11 @@ def derive_cold_reads(
     grep_hits: set[str],
     contradiction_peers: dict[str, set[str]],
 ) -> set[str]:
-    """Mirror the prompt's working-set contract for a tiny fixture trace."""
+    """Mirror the prompt's working-set contract for a tiny fixture trace.
+
+    `grep_hits` carries leakage-prefilter hits only: an ordinary content
+    search for a cross-reference returns an excerpt, not a cold read.
+    """
     if baseline is None:
         return set(pages)
 
@@ -46,6 +54,25 @@ def derive_cold_reads(
     for page in list(reads):
         reads.update(contradiction_peers.get(page, set()))
     return reads & pages
+
+
+def derive_recorded_baseline(
+    previous_baseline: str | None,
+    changed_pages: set[str],
+    read_in_full: set[str],
+    current_commit: str,
+) -> str:
+    """Mirror the audit entry's baseline contract.
+
+    The baseline advances to `current_commit` only when every page that
+    changed since the previous baseline was read in full; otherwise the
+    entry repeats the previous baseline, or records `unavailable` when
+    there is none. On a first audit, `changed_pages` is every page in the
+    wiki.
+    """
+    if changed_pages <= read_in_full:
+        return current_commit
+    return previous_baseline or "unavailable"
 
 
 def main() -> int:
@@ -70,6 +97,10 @@ def main() -> int:
             "retired fixed-line log read idiom remains in the agent")
     require("without whole-file preloads" in read_canonical, "canonical orientation is not demand-loaded")
     require("by contiguous semantic block" in read_canonical, "wiki skill is not read by semantic block")
+    require("<record_only_full_reads>" in read_canonical,
+            "canonical read omits the full-read record rule")
+    require("**Freshness**" in read_canonical,
+            "canonical read omits the Freshness bullet")
     require("Defer the \"Page thresholds\" figure" in read_canonical, "threshold read is not deferred")
     require("as on-demand references" in read_canonical, "templates are not on-demand")
     require(re.search(r"read the relevant template section only when a\s+diff hunk needs interpretation", read_canonical),
@@ -99,12 +130,33 @@ def main() -> int:
         "git diff --name-status <baseline> -- \"$WIKI\"",
         "git status --short -- \"$WIKI\"",
         "unchanged since it last passed a cold walk stays out",
-        "A grep hit adds the page to the full-read set",
-        "a grep miss removes\n      nothing",
         "Read\n      both sides of the pair in full",
         "lint outcome\n    never gates page selection",
     ]:
         require(phrase in working_set, f"missing working-set contract phrase: {phrase}")
+
+    require("a grep miss removes nothing" in flat(working_set),
+            "leakage-prefilter sentence lost its no-removal half")
+
+    # The prefilter sentence carries its own scope: an ordinary content search
+    # for a cross-reference returns an excerpt, so only a leakage-prefilter hit
+    # adds a page to the cold-read set.
+    require(
+        "A grep hit from this leakage prefilter adds the page to the full-read set"
+        in flat(working_set),
+        "leakage-prefilter sentence lost its prefilter scope",
+    )
+
+    # A narrower request scope confines the changed-page part of the cold-read
+    # set, while the contradiction-peer carve-out still reads both sides of a
+    # same-subject pair in full. A build that drops the scope rule, or writes it
+    # as an unconditional restriction of the cold-read set, fails this pin.
+    require(
+        "restrict the changed-page part of the cold-read set to the pages under that "
+        "scope, leaving the **Contradiction peers** rule to read both sides of a "
+        "same-subject pair in full" in flat(working_set),
+        "narrower-scope rule is missing its contradiction-peer carve-out",
+    )
 
     require("read the page body in full" in page_first, "page-first walk no longer cold-reads pages")
     require("per-page subagents" in page_first, "optional page-boundary parallelism is not documented")
@@ -119,15 +171,31 @@ def main() -> int:
     # run/re-run, not here; this only pins the prose contract.)
     compile_list = section(text, "compile_issue_list")
 
-    def flat(s: str) -> str:
-        return re.sub(r"\s+", " ", s)
-
     require("append_audit_log_entry" in flat(compile_list),
             "clean-exit path no longer records the audit baseline before reporting clean")
     require("on every completed audit" in flat(audit_log),
             "audit log entry is not pinned to every audit; clean runs would skip the baseline")
     require("zero-change outcome entry" in flat(audit_log),
             "append_audit_log_entry does not sanction the clean-audit baseline record")
+
+    # The baseline moves only over a complete read; otherwise the entry repeats
+    # the previous baseline. This is the clause that keeps a partial run from
+    # making the next audit skip pages nobody read.
+    require("only when this run read in full every page that changed since the "
+            "previous usable baseline" in flat(audit_log),
+            "audit log no longer conditions the baseline on a complete read")
+    require("repeats the previous usable baseline unchanged" in flat(audit_log),
+            "audit log no longer holds the previous baseline on a partial read")
+    require("`Cold page reads:` lists only the pages this run read in full" in flat(audit_log),
+            "Cold page reads is not scoped to full reads")
+
+    advance_checked = section(text, "advance_checked_dates")
+    require("set `checked` to today's date in that page's frontmatter when the page "
+            "already carries the field" in flat(advance_checked),
+            "checked stamp sentence is missing from the write step")
+    require("`<confirm_large_bulk_changes>`, which gates fixes, does not apply to it"
+            in flat(advance_checked),
+            "checked stamp is not exempted from bulk-change confirmation")
 
     require("Run one cold full read for each page in that set" in iterate_policy,
             "page-first policy no longer requires cold full reads")
@@ -193,6 +261,24 @@ def main() -> int:
         ungreppable_procedure == {"procedures/widget-default-procedure.md"},
         f"ungreppable procedure read set wrong: {sorted(ungreppable_procedure)}",
     )
+
+    baseline_cases = [
+        ("abc123", {"concepts/a.md", "procedures/b.md"},
+         {"concepts/a.md", "procedures/b.md"}, "def456", "def456"),
+        ("abc123", {"concepts/a.md", "procedures/b.md"},
+         {"concepts/a.md"}, "def456", "abc123"),
+        (None, {"concepts/a.md", "procedures/b.md"},
+         {"concepts/a.md"}, "def456", "unavailable"),
+        (None, {"concepts/a.md", "procedures/b.md"},
+         {"concepts/a.md", "procedures/b.md"}, "def456", "def456"),
+    ]
+    for previous, changed, read_in_full, current, expected in baseline_cases:
+        actual = derive_recorded_baseline(previous, changed, read_in_full, current)
+        require(
+            actual == expected,
+            f"recorded baseline wrong for previous={previous!r}, "
+            f"read_in_full={sorted(read_in_full)}: {actual!r} != {expected!r}",
+        )
 
     semantic_flags = []
     if {"concepts/widget-default.md", "concepts/widget-policy.md"} <= second:

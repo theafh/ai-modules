@@ -1197,7 +1197,7 @@ stage_AS-16() {
     # declares no deviation for that slot. A label-only ensure pass would miss
     # it, so this pins the stem-matched half of the unit inventory.
     _assert_template_log_contains \
-        "> When this file exceeds 500 entries, rotate: rename to log-YYYY.md — or to the first free log-YYYY-N.md when that name is taken — start fresh; the next audit cold-walks once and records a fresh baseline in the new log."
+        "> When this file exceeds 500 entries, rotate: rename to log-YYYY.md — or to the first free log-YYYY-N.md when that name is taken — start fresh; the new log carries no baseline, so the next audit reads every page in the wiki in full and records a fresh baseline only when it does, otherwise writing \`unavailable\`."
     local sb
     sb=$(reset_sandbox AS-16)
     stage "$sb/HOME/proj"
@@ -1438,6 +1438,574 @@ p.write_text(text)
 PY
 }
 
+# --- full-read baseline / checked-date scenarios -----------------------------
+# Four scenarios share one shape: a git-backed wiki whose log.md carries one
+# earlier `audit` entry recording the first staging commit as its baseline, then
+# a second commit that changes one concepts/ page and one procedures/ page. The
+# agent's new audit entry must record the same baseline only when it read every
+# changed page in full, and a page's `checked` date moves only after its whole
+# body and every claim were checked.
+
+_as_git_commit() {
+    local repo=$1 msg=$2
+    git -C "$repo" add -A
+    git -C "$repo" -c user.name="Fixture Author" -c user.email="fixture@example.com" \
+        commit -qm "$msg"
+}
+
+# Append one prior `audit` entry recording <baseline>, so the audit has an
+# incremental baseline to compare against. Args: <wiki> <baseline>.
+_as_prior_audit_entry() {
+    local wiki=$1 baseline=$2
+    python3 - "$wiki/log.md" "$baseline" <<'PRIORAUDIT'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text().rstrip("\n")
+entry = (
+    "\n\n## [2026-06-17 09:14] audit | 0 blocking, 0 warn, 0 info; 0 pages updated, 0 pages split\n\n"
+    "- Audit baseline: " + sys.argv[2] + "\n"
+    "- Cold page reads: none\n"
+)
+p.write_text(text + entry)
+PRIORAUDIT
+}
+
+# Stage the shared wiki pages and index entries for the four scenarios. Every
+# page keeps two outbound links and at least two inbound links, and the two
+# changed pages (concepts/widget-caching.md, procedures/release-checklist.md)
+# carry different subjects and never link each other, so the contradiction-peer
+# rule adds no full read between them.
+# Args: <wiki>
+_as_baseline_wiki_pages() {
+    local wiki=$1
+    cat > "$wiki/concepts/widget-caching.md" <<'EOF'
+---
+title: widget caching
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+confidence: high
+---
+
+# widget caching
+
+## Definition / explanation
+
+The widget cache keeps rendered widget output between requests. An entry is
+keyed by widget identity and by the inputs that affect its rendering.
+
+## Current state of knowledge
+
+The cache is invalidated when a widget's source record changes. See
+[backup drill](../procedures/backup-drill.md) for the recovery procedure and
+[incident triage](../procedures/incident-triage.md) for the escalation path.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [backup drill](../procedures/backup-drill.md)
+- [incident triage](../procedures/incident-triage.md)
+EOF
+    cat > "$wiki/procedures/release-checklist.md" <<'EOF'
+---
+title: release checklist
+created: 2026-05-01
+updated: 2026-05-01
+type: procedure
+tags: [model]
+confidence: high
+---
+
+# release checklist
+
+Run this checklist before publishing a widget release.
+
+## When this applies
+
+Apply it to every release that changes a rendered widget.
+
+## The rule
+
+1. Confirm the widget cache is warm; see [widget caching](../concepts/widget-caching.md).
+2. Confirm the recovery path is current; see [backup drill](backup-drill.md).
+
+## Pitfalls / edge cases
+
+- Skip no step: a release that skips one step is not ready.
+
+## See Also
+
+- [backup drill](backup-drill.md)
+- [incident triage](incident-triage.md)
+EOF
+    cat > "$wiki/procedures/backup-drill.md" <<'EOF'
+---
+title: backup drill
+created: 2026-05-01
+updated: 2026-05-01
+type: procedure
+tags: [model]
+confidence: high
+---
+
+# backup drill
+
+Run the backup drill on a fixed schedule.
+
+## When this applies
+
+Apply it whenever the stored widget records must be proven recoverable.
+
+## The rule
+
+1. Restore the widget cache from the last stored snapshot; see
+   [widget caching](../concepts/widget-caching.md).
+2. Confirm the release path still holds; see
+   [release checklist](release-checklist.md).
+
+## See Also
+
+- [incident triage](incident-triage.md)
+- [widget caching](../concepts/widget-caching.md)
+EOF
+    cat > "$wiki/procedures/incident-triage.md" <<'EOF'
+---
+title: incident triage
+created: 2026-05-01
+updated: 2026-05-01
+type: procedure
+tags: [model]
+confidence: high
+---
+
+# incident triage
+
+Sort an incident by blast radius before acting.
+
+## When this applies
+
+Apply it when a rendered widget misbehaves in a live deployment.
+
+## The rule
+
+1. Confirm the recovery path; see [backup drill](backup-drill.md).
+2. Confirm the release gate; see [release checklist](release-checklist.md).
+
+## See Also
+
+- [widget caching](../concepts/widget-caching.md)
+- [release checklist](release-checklist.md)
+EOF
+    python3 - "$wiki/index.md" <<'BASELINEIDX'
+import sys, pathlib
+idx = pathlib.Path(sys.argv[1])
+text = idx.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n- [widget caching](concepts/widget-caching.md) — rendered output kept between requests\n",
+    1,
+)
+text = text.replace(
+    "## Procedures\n",
+    "## Procedures\n\n"
+    "- [backup drill](procedures/backup-drill.md) — prove stored records recoverable\n"
+    "- [incident triage](procedures/incident-triage.md) — sort an incident by blast radius\n"
+    "- [release checklist](procedures/release-checklist.md) — gate a widget release\n",
+    1,
+)
+text = text.replace("Total pages: 0", "Total pages: 4", 1)
+idx.write_text(text)
+BASELINEIDX
+}
+
+# Init the repo and wiki and write the shared baseline pages. The caller adds
+# any scenario-specific page that must exist before the first commit, then
+# calls `_as_first_commit`. Args: <sandbox-root>
+_as_baseline_repo() {
+    local sb=$1
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    python3 - "$sb/HOME/proj/wiki/SCHEMA.md" <<'TAXONOMY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace("## Tag Taxonomy\n", "## Tag Taxonomy\n\n- Domain: model\n", 1)
+p.write_text(text)
+TAXONOMY
+    _as_baseline_wiki_pages "$sb/HOME/proj/wiki"
+}
+
+# Commit the first staging state and append the prior audit entry that records
+# its sha as the baseline. Args: <sandbox-root>
+_as_first_commit() {
+    local sb=$1
+    _as_git_commit "$sb/HOME/proj" "first staging commit"
+    _as_prior_audit_entry "$sb/HOME/proj/wiki" "$(git -C "$sb/HOME/proj" rev-parse HEAD)"
+}
+
+# Write the second-commit page changes: insert one paragraph above the closing
+# section of each changed page. Args: <wiki> <concept-paragraph> <procedure-paragraph>
+_as_second_commit_changes() {
+    local wiki=$1 concept_extra=$2 procedure_extra=$3
+    python3 - "$wiki/concepts/widget-caching.md" "$wiki/procedures/release-checklist.md" \
+        "$concept_extra" "$procedure_extra" <<'SECONDCOMMIT'
+import sys, pathlib
+concept, procedure, concept_extra, procedure_extra = sys.argv[1:5]
+for path, extra, heading in (
+    (concept, concept_extra, "## Open questions or debates"),
+    (procedure, procedure_extra, "## Pitfalls / edge cases"),
+):
+    if not extra:
+        continue
+    p = pathlib.Path(path)
+    text = p.read_text()
+    p.write_text(text.replace(heading, extra + "\n\n" + heading, 1))
+SECONDCOMMIT
+}
+
+stage_AS-23() {
+    # AS-23 (wiki_audit-baseline-after-full-reads, Acceptance 7): the request
+    # limits the audit to procedures/. The changed concepts/ page stays unread,
+    # so the new audit entry must repeat the staged baseline and its Cold page
+    # reads line must name no concepts/ page.
+    local sb
+    sb=$(reset_sandbox AS-23)
+    _as_baseline_repo "$sb"
+    _as_first_commit "$sb"
+    _as_second_commit_changes "$sb/HOME/proj/wiki" \
+        "A cache entry also records the render inputs it was built from." \
+        "The release is recorded in the team log once both checks pass."
+    _as_git_commit "$sb/HOME/proj" "second staging commit"
+    mkdir -p "$sb/baseline"
+    git -C "$sb/HOME/proj" rev-parse HEAD~1 > "$sb/baseline/first-commit.sha"
+}
+
+stage_AS-24() {
+    # AS-24 (same task, Acceptance 11): a full audit. Every changed page is
+    # read in full, so the baseline advances to the second commit, and the
+    # entity page's checked date moves because every claim cites a source the
+    # run can read (a raw note inside the wiki, a document under a declared
+    # source root beside it).
+    local sb
+    sb=$(reset_sandbox AS-24)
+    _as_baseline_repo "$sb"
+    _as_first_commit "$sb"
+    local wiki="$sb/HOME/proj/wiki"
+    mkdir -p "$sb/HOME/proj/paper"
+    printf 'The widget service caps throughput at 150 units per minute.\n' \
+        > "$sb/HOME/proj/paper/spec.md"
+    python3 - "$wiki/SCHEMA.md" <<'DECLAREROOT'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "## Lint\n",
+    "## Lint\n\n- Declared source root: ../paper — the specification this wiki classifies\n",
+    1,
+)
+p.write_text(text)
+DECLAREROOT
+    mkdir -p "$wiki/raw/notes"
+    cat > "$wiki/raw/notes/throughput.md" <<'THROUGHPUT'
+---
+source_url: https://example.com/throughput-note
+ingested: 2026-06-18
+sha256: placeholder
+---
+
+The widget service caps throughput at 150 units per minute.
+THROUGHPUT
+    python3 "$WIKI_SKILL/scripts/compute_sha256.py" "$wiki/raw/notes/throughput.md" >/dev/null
+    cat > "$wiki/entities/widget-service.md" <<'ENTITY'
+---
+title: widget service
+created: 2026-05-01
+updated: 2026-05-01
+type: entity
+tags: [model]
+sources: [raw/notes/throughput.md, ../paper/spec.md]
+confidence: high
+checked: 2026-01-01
+---
+
+# widget service
+
+## Overview
+
+The widget service renders and serves widgets for every deployment.
+
+## Key facts and dates
+
+- The service caps throughput at 150 units per minute, as the
+  [throughput note](../raw/notes/throughput.md) records.
+- Its service boundary is defined in the specification listed in `sources:`.
+
+## Relationships to other entities
+
+Its rendered output feeds the [widget cache](../concepts/widget-caching.md) and
+the [release checklist](../procedures/release-checklist.md).
+ENTITY
+    python3 - "$wiki/concepts/widget-caching.md" "$wiki/procedures/release-checklist.md" <<'INBOUND'
+import sys, pathlib
+concept, procedure = sys.argv[1:3]
+p = pathlib.Path(concept)
+text = p.read_text().replace(
+    "## Open questions or debates",
+    "The service that renders these widgets is the\n"
+    "[widget service](../entities/widget-service.md).\n\n"
+    "## Open questions or debates",
+    1,
+)
+p.write_text(text)
+p = pathlib.Path(procedure)
+text = p.read_text().replace(
+    "## See Also\n",
+    "## See Also\n\n- [widget service](../entities/widget-service.md)\n",
+    1,
+)
+p.write_text(text)
+INBOUND
+    python3 - "$wiki/index.md" <<'ENTITYIDX'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "## Entities\n",
+    "## Entities\n\n- [widget service](entities/widget-service.md) — renders and serves widgets\n",
+    1,
+)
+text = text.replace("Total pages: 4", "Total pages: 5", 1)
+p.write_text(text)
+ENTITYIDX
+    _as_second_commit_changes "$wiki" \
+        "A cache entry also records the render inputs it was built from." \
+        "The release is recorded in the team log once both checks pass."
+    _as_git_commit "$sb/HOME/proj" "second staging commit"
+    mkdir -p "$sb/baseline"
+    git -C "$sb/HOME/proj" rev-parse HEAD > "$sb/baseline/second-commit.sha"
+}
+
+stage_AS-25() {
+    # AS-25 (same task, Acceptance 9): the request checks one figure against the
+    # raw note it cites. The page also carries claims whose sources lie outside
+    # the sandbox, so only some claims are checked and `checked` must stay.
+    local sb
+    sb=$(reset_sandbox AS-25)
+    _as_baseline_repo "$sb"
+    _as_first_commit "$sb"
+    local wiki="$sb/HOME/proj/wiki"
+    mkdir -p "$wiki/raw/notes"
+    cat > "$wiki/raw/notes/throughput.md" <<'THROUGHPUT'
+---
+source_url: https://example.com/throughput-note
+ingested: 2026-06-18
+sha256: placeholder
+---
+
+The widget service caps throughput at 150 units per minute.
+THROUGHPUT
+    python3 "$WIKI_SKILL/scripts/compute_sha256.py" "$wiki/raw/notes/throughput.md" >/dev/null
+    cat > "$wiki/entities/widget-throughput.md" <<'ENTITY'
+---
+title: widget throughput
+created: 2026-05-01
+updated: 2026-05-01
+type: entity
+tags: [model]
+sources: [raw/notes/throughput.md]
+confidence: high
+checked: 2026-01-01
+---
+
+# widget throughput
+
+## Overview
+
+The widget service renders and serves widgets for every deployment.
+
+## Key facts and dates
+
+- The documented ceiling is 200 units per minute, as the
+  [throughput note](../raw/notes/throughput.md) records.
+- A vendor benchmark reported 95 units per minute
+  ([vendor benchmark](https://example.com/vendor-benchmark)).
+- An independent report described 110 units per minute
+  ([independent report](https://example.com/independent-report)).
+
+## Relationships to other entities
+
+Its rendered output feeds the [widget cache](../concepts/widget-caching.md) and
+the [release checklist](../procedures/release-checklist.md).
+ENTITY
+    python3 - "$wiki/concepts/widget-caching.md" "$wiki/procedures/release-checklist.md" <<'INBOUND'
+import sys, pathlib
+concept, procedure = sys.argv[1:3]
+p = pathlib.Path(concept)
+text = p.read_text().replace(
+    "## Open questions or debates",
+    "The service that renders these widgets is the\n"
+    "[widget throughput](../entities/widget-throughput.md).\n\n"
+    "## Open questions or debates",
+    1,
+)
+p.write_text(text)
+p = pathlib.Path(procedure)
+text = p.read_text().replace(
+    "## See Also\n",
+    "## See Also\n\n- [widget throughput](../entities/widget-throughput.md)\n",
+    1,
+)
+p.write_text(text)
+INBOUND
+    python3 - "$wiki/index.md" <<'ENTITYIDX'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "## Entities\n",
+    "## Entities\n\n- [widget throughput](entities/widget-throughput.md) — throughput claims for the service\n",
+    1,
+)
+text = text.replace("Total pages: 4", "Total pages: 5", 1)
+p.write_text(text)
+ENTITYIDX
+    _as_second_commit_changes "$wiki" \
+        "A cache entry also records the render inputs it was built from." \
+        "The release is recorded in the team log once both checks pass."
+    _as_git_commit "$sb/HOME/proj" "second staging commit"
+}
+
+stage_AS-26() {
+    # AS-26 (same task, Acceptance 8): a page unchanged since the baseline is
+    # reached only as a search excerpt while the run fixes a broken
+    # cross-reference on another page. Its checked date and bytes must stay.
+    local sb
+    sb=$(reset_sandbox AS-26)
+    _as_baseline_repo "$sb"
+    local wiki="$sb/HOME/proj/wiki"
+    cat > "$wiki/concepts/widget-colour-defaults.md" <<'EXCERPT'
+---
+title: widget colour defaults
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+confidence: high
+checked: 2026-01-01
+---
+
+# widget colour defaults
+
+## Definition / explanation
+
+The defaults table lists the framework colour for each widget class. A widget
+keeps the framework colour unless something above the framework supplies one.
+
+## Current state of knowledge
+
+The framework colour is resolved before any deployment-level override. See
+[backup drill](../procedures/backup-drill.md) for the recovery procedure and
+[incident triage](../procedures/incident-triage.md) for escalation.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [backup drill](../procedures/backup-drill.md)
+- [incident triage](../procedures/incident-triage.md)
+EXCERPT
+    cat > "$wiki/concepts/release-cadence.md" <<'CADENCE'
+---
+title: release cadence
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+confidence: high
+---
+
+# release cadence
+
+## Definition / explanation
+
+The release cadence sets how often a widget release may ship. It is independent
+of any rendering choice.
+
+## Current state of knowledge
+
+The cadence follows the operational window in
+[backup drill](../procedures/backup-drill.md). See
+[incident triage](../procedures/incident-triage.md) for the operational paths.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [backup drill](../procedures/backup-drill.md)
+- [incident triage](../procedures/incident-triage.md)
+CADENCE
+    python3 - "$wiki/index.md" <<'EXCERPTIDX'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n"
+    "- [release cadence](concepts/release-cadence.md) — how often a widget release may ship\n"
+    "- [widget colour defaults](concepts/widget-colour-defaults.md) — framework colour per widget class\n",
+    1,
+)
+text = text.replace("Total pages: 4", "Total pages: 6", 1)
+p.write_text(text)
+EXCERPTIDX
+    python3 - "$wiki/procedures/backup-drill.md" "$wiki/procedures/incident-triage.md" <<'ANCHORLINKS'
+import sys, pathlib
+for path in sys.argv[1:3]:
+    p = pathlib.Path(path)
+    text = p.read_text().replace(
+        "## See Also\n",
+        "## See Also\n\n"
+        "- [release cadence](../concepts/release-cadence.md)\n"
+        "- [widget colour defaults](../concepts/widget-colour-defaults.md)\n",
+        1,
+    )
+    p.write_text(text)
+ANCHORLINKS
+    _as_first_commit "$sb"
+    # The second commit breaks the fix page's cross-reference, so the audit must
+    # search for the right target and confirm it before repairing the link.
+    python3 - "$wiki/concepts/release-cadence.md" <<'BREAKLINK'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "The cadence follows the operational window in\n"
+    "[backup drill](../procedures/backup-drill.md). See\n"
+    "[incident triage](../procedures/incident-triage.md) for the operational paths.",
+    "The cadence follows the defaults table ([the defaults table](defaults-table.md))\n"
+    "for the scheduling window. See\n"
+    "[incident triage](../procedures/incident-triage.md) for the operational paths.",
+    1,
+)
+p.write_text(text)
+BREAKLINK
+    _as_second_commit_changes "$wiki" \
+        "A cache entry also records the render inputs it was built from." \
+        "The release is recorded in the team log once both checks pass."
+    _as_git_commit "$sb/HOME/proj" "second staging commit"
+    _sha_baseline "$wiki/concepts/widget-colour-defaults.md" \
+        "$sb/baseline/widget-colour-defaults.md.sha256"
+}
+
 stage_MP-1() {
     # MP-1 (wiki_meta-prose-in-page-bodies): oversized custom `todo` page that
     # trips the page-size info finding. After wiki_fix the page body must
@@ -1533,7 +2101,7 @@ idx.write_text(text if text.endswith("\n") else text + "\n")
 PY
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 MP-1)
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 MP-1)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.13
+version: 1.11.14
 model: inherit
 background: false
 effort: high
@@ -296,11 +296,19 @@ have audited before, because the schema, taxonomy, or domain may have changed.
       current body is new or changed since that baseline. A page that is
       unchanged since it last passed a cold walk stays out of the
       cold-read set for this run.
+
+    When the request carries a narrower scope qualifier, restrict the
+    changed-page part of the cold-read set to the pages under that
+    scope, leaving the **Contradiction peers** rule to read both sides
+    of a same-subject pair in full; the baseline condition stays
+    wiki-wide, so a changed page outside the scope that stays unread
+    holds the previous baseline.
+
     - **Lexical leakage prefilter**: grep may add pages for the lexical
       subset of `procedure_instance_leakage` (dates, absolute or
       home-relative paths, obvious person names, command-output shapes).
-      A grep hit adds the page to the full-read set; a grep miss removes
-      nothing.
+      A grep hit from this leakage prefilter adds the page to the full-read
+      set; a grep miss removes nothing.
     - **Contradiction peers**: when a working-set page makes a claim
       about a subject also covered elsewhere, identify same-subject
       peers via the index, page titles, links, and targeted search. Read
@@ -319,8 +327,9 @@ have audited before, because the schema, taxonomy, or domain may have changed.
     Read `$WIKI_SKILL/SKILL.md` by contiguous semantic block: the folder
     layout, page-type material, "Page Types: Pick by Question", and
     "Page anatomy" table as one block; the "Capture Procedure" tests as
-    a second block. Defer the "Page thresholds" figure until a size
-    finding needs it.
+    a second block; the `<record_only_full_reads>` block and the
+    **Freshness** bullet in `<write_or_update_pages>` as a third block.
+    Defer the "Page thresholds" figure until a size finding needs it.
 
     Treat `$WIKI_SKILL/references/template_schema.md`,
     `$WIKI_SKILL/references/template_index.md`,
@@ -1473,6 +1482,22 @@ affect the same file so each file is opened, read, and rewritten once.
 
 <verify>
 
+  <advance_checked_dates>
+    After the fixes, refresh `checked` on every page this pass read in
+    full whose claims the wiki skill's `<record_only_full_reads>` block
+    counts as checked: set `checked` to today's date in that page's
+    frontmatter when the page already carries the field. A page read in
+    part, a page whose claims are not all checked, and a page that
+    carries no `checked` date keep the frontmatter they already have.
+    This is a per-page metadata refresh rather than a fix, so
+    `<confirm_large_bulk_changes>`, which gates fixes, does not apply to
+    it, and it leaves `updated` alone: a first audit of a 10+ page wiki
+    stamps every fully read page without asking for bulk confirmation.
+    Run it as a step in the ordinary pass, not as a fix move, because
+    `<fix_moves>` dispatches by issue category and a page read in full
+    that raises no issue enters no fix move.
+  </advance_checked_dates>
+
   <relint_until_clean>
     Re-run `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"`. Iterate
     the fix loop until the `<lint_clean>` criterion holds. When a
@@ -1511,9 +1536,15 @@ affect the same file so each file is opened, read, and rewritten once.
     - Cold page reads: <comma-separated relative page paths, or none>
     ```
 
-    Prefer `git rev-parse HEAD` for the baseline when the wiki lives in
-    a git worktree. When no usable baseline exists, write `unavailable`;
-    the next run will fall back to the full page inventory.
+    The baseline moves to the current commit only when this run read in
+    full every page that changed since the previous usable baseline and
+    still exists. On a first audit, which has no previous baseline, that
+    means every page in the wiki. Otherwise the new entry repeats the
+    previous usable baseline unchanged, or writes `unavailable` when
+    there is none. `Cold page reads:` lists only the pages this run read
+    in full. The wiki skill's `<record_only_full_reads>` block defines
+    what a full read is; a page read in part, seen as a search excerpt,
+    or left unread holds the previous baseline.
   </append_audit_log_entry>
 
   <report_changes>
@@ -1606,6 +1637,13 @@ affect the same file so each file is opened, read, and rewritten once.
     `wiki/SKILL.md` and `references/template_schema.md` rather than
     inventing a local convention.
   </wiki_skill_is_truth_for_authoring>
+
+  <checked_dates_follow_full_reads>
+    Set a new `checked` date only as the wiki skill's
+    `<record_only_full_reads>` block allows, and otherwise keep the date
+    the page already has. `<advance_checked_dates>` is the one step that
+    acts on that permission.
+  </checked_dates_follow_full_reads>
 
   <iterate_page_first_not_check_first>
     The assess phase's audit walk runs page by page over the derived
