@@ -39,8 +39,8 @@ ordinary suite automatically.
 `immediate_ready_citations_survive` ran on Claude with
 `python3 tests/task_auto_check/evals/run.py immediate_ready_citations_survive --vendor claude --force`
 after the gate gained the paged-read clause and the persisted-copy exclusion. The
-run fails 7 of 9 grader checks (`../workspace/run-20261124-101535-43514`), and the
-isolation fix holds inside that failure.
+run passes 7 of 9 grader checks and fails 2 (`../workspace/run-20261124-101535-43514`),
+and the isolation fix holds inside that failure.
 
 | Check | Result |
 | :--- | :--- |
@@ -54,15 +54,16 @@ targets: "The base skill was read from its own path in `sed -n` pages, and the
 persisted oversized-output copy was never opened." The run's only `tool-results`
 mention sits in the runner's transcript metadata, not in a gate return or prompt.
 
-The four refutations are a citation-strength gap rather than the isolation defect
-this run measures. Three are presence citations that quote one `## Acceptance`
-entry and so prove an existence fact the verifier will not accept for
-Contradictions, Acceptance coverage, or Append-framed artifact edits. The fourth
-is an absence citation over the full covered set, correctly refuted because
-`## Context` writes an exhaustive "only" snapshot of the response's headers. The
-absence-citation form itself shipped on 2026-11-22 and is exercised here; these
-refutations rest on how strong each quoted span is, so the record leaves them as
-the open cause. [The absence-citation task](../../../tasks/archive/task-family_gate-absence-citation-form.md)
+The four refutations are a citation-strength gap, not the archived
+absence-citation gap the acceptance permits: that form shipped on 2026-11-22 and
+is exercised here, so the residual cause is how strong each quoted span is. Two
+are presence citations that quote one `## Acceptance` entry, and the third quotes
+a `## Context` premise statement, so each proves an existence fact the verifier
+will not accept for Contradictions, Acceptance coverage, or Append-framed
+artifact edits. The fourth is an absence citation over the full covered set,
+correctly refuted because `## Context` writes an exhaustive "only" snapshot of
+the response's headers. The record leaves these as the open cause.
+[The absence-citation task](../../../tasks/archive/task-family_gate-absence-citation-form.md)
 owns the citation form and is finished, so this record keeps the residual cause
 visible rather than re-opening it.
 
