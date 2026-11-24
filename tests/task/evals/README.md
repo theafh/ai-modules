@@ -195,20 +195,20 @@ judgements no check can decide.
 
 ### 2026-11-15: Cursor `auto` and Claude `opus` at `high` effort
 
-On current inputs every eval but two passes on both vendors: `implement_boundary_cross` fails on Cursor and has an open task named below, and `audit_clean`'s Claude result is unrecorded — its wording is fixed, but its Claude re-run is still owed and is the operator's to schedule.
+On current inputs every eval but one passes on both vendors: `audit_clean`'s Claude result is unrecorded — its wording is fixed, but its Claude re-run is still owed and is the operator's to schedule.
 
 **Cursor.** The full suite, `../workspace/run-20261115-011731`, passed 47 of 47 on the inputs of that hour. The repairs that followed were checked again on Cursor:
 
 - The seven packaging evals pass 7 of 7 on their repaired fixtures in `run-20261115-102128`.
 - `fix_coherence_reconcile_escalated` failed its ordering check (a) in `run-20261115-075922`, and that run re-grades to 27 of 27 under the widened check.
-- `implement_boundary_cross` fails in `run-20261115-073331`. Cursor surfaced the open decision in its reply but left the task body unchanged, and the 011731 run, which predates the body-label check, did the same. [The boundary-decision task](../../../tasks/task-family_implement-writes-boundary-decision.md) covers it.
+- `implement_boundary_cross` passes in `run-20261124-095033`: the skill prose now writes the labeled `Open decision:` into the task body as well as surfacing it, so the body-label check passes. The baseline `run-20261115-073331` recorded the opposite: Cursor surfaced the open decision in its reply but left the task body unchanged, and the 011731 run, which predates the body-label check, did the same. [The boundary-decision task](../../../tasks/task-family_implement-writes-boundary-decision.md) delivered the fix.
 
 **Claude** (`--vendor claude`, Claude Code 2.1.289). The full suite, `run-20261115-011950` through `run-20261115-022756`, passed 42 of 47. `fix_coherence_reconcile_escalated` timed out at 1800 seconds on its first try and passed with `--timeout 3600` in `run-20261115-022756`. The five failures and where each stands:
 
 | Eval | Cause | Verdict of record |
 | --- | --- | --- |
 | `audit_clean` | the skill left open whether a missing `design-extended` on a newly implemented task withholds `audited`; the wording now settles it as a recording note | wording fixed; Claude re-run owed (operator to schedule) |
-| `implement_boundary_cross` | the grader required a bold `Open decision:` lead-in, and it now accepts exactly one, plain or bold | passes on re-grade of `run-20261115-101941` |
+| `implement_boundary_cross` | the grader required a bold `Open decision:` lead-in, and it now accepts exactly one, plain or bold | passes in `run-20261124-095556` |
 | `check_exclusion_waiver_control` | packaging fixture defect | passes in `run-20261115-120635` |
 | `create_regroup_owner_account` | the grader matched surface wording | passes in `run-20261115-101941` |
 | `fix_coherence` | fixture defect behind check (g) | passes in `run-20261115-101326` |

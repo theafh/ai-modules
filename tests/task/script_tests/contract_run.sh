@@ -150,6 +150,10 @@ assert_contains "$task_auto_check_skill" "the base **Decide or label** rule's ev
   "task_auto_check verifier clause cites the base rule's evidence base"
 assert_contains "$task_implement_skill" "apply the base skill's **Decide or label** reconciliation rule against its evidence base" \
   "task_implement cites the base reconciliation rule as the backstop"
+assert_contains "$task_implement_skill" 'write the labeled "Open decision:" into the task body with its options, a suggested default, and the why-open clause' \
+  "task_implement writes the labeled open decision into the task body on a boundary-crossing hold"
+assert_not_contains "$task_implement_skill" "quote the conflicting passages, apply the base skill's **Decide or label** reconcile-or-surface disposition, and hold" \
+  "task_implement names both halves of the boundary-crossing hold, not the surface-only disposition"
 assert_not_contains "$task_implement_skill" 'explicitly leaves a decision open, make the call' \
   "task_implement drops the unqualified make-the-call license"
 for sibling in "$task_check_skill" "$task_auto_check_skill" "$task_implement_skill" "$task_create_skill"; do
