@@ -29,8 +29,8 @@ background. See `tests/CLAUDE.md` and `tests/AGENTS.md` for the
 full matrix, auth, Claude-only rejects (`natural_language/`),
 and the per-pass micro-deployment rule (`tests/lib/micro_deploy.py`: workers
 load artefacts only from that deployment, deployed user copies stay out of
-view, and `artefacts_read_from_micro_deployment` plus `checkout_unread`
-enforce the read checks). Isolated-sandbox
+view, and `artefacts_read_from_micro_deployment`, `checkout_unread`, and
+`harness_copy_unread` enforce the read checks). Isolated-sandbox
 evals that use `tests/lib/eval_runner` default to 4 parallel workers
 (`DEFAULT_PARALLEL_WORKERS` in `tests/lib/vendor.py`); runners still on a
 private pool or kept sequential are named in `tests/CLAUDE.md` /

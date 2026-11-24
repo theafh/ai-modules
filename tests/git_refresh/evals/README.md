@@ -37,9 +37,9 @@ eval as a harness fault before any worker starts. Each eval leaves `response.txt
 `tests/git_refresh/workspace/run-<ts>-<pid>/<id>/`, and the run closes with a
 graded summary naming every eval and its verdict.
 
-An eval passes when its worker completed with a response, both read checks in
-`timing.json` (`artefacts_read_from_micro_deployment` and `checkout_unread`)
-passed, and `grade.sh` passed. The verdict cache in `evals/.eval_cache/`
+An eval passes when its worker completed with a response, all three read checks
+in `timing.json` (`artefacts_read_from_micro_deployment`, `checkout_unread`, and
+`harness_copy_unread`) passed, and `grade.sh` passed. The verdict cache in `evals/.eval_cache/`
 replays an eval whose inputs are unchanged without spawning a worker, and a run
 that replays every verdict also skips the auth probe. `--force` re-runs every
 eval and refreshes its stored verdict; `--no-cache` re-runs without reading or
