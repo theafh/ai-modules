@@ -18,7 +18,14 @@ rules below read in the vocabulary of the wiki they govern.
   both of which have explicit declared sets in this schema, and keep the folder
   tree to that single type axis. The linter blocks misfiled pages and warns when
   a declared type folder is missing on disk.
-- File names: lowercase, hyphens, no spaces (e.g., `transformer-architecture.md`)
+- **File names are pure ASCII.** Lowercase, hyphens, no spaces
+  (e.g., `transformer-architecture.md`), and transliterate every non-ASCII
+  character rather than embedding it: German folds `ä→ae`, `ö→oe`, `ü→ue`,
+  `ß→ss`, so the title `Künstliche Evolution` becomes
+  `kuenstliche-evolution.md`; other languages strip diacritics (`é→e`, `ñ→n`,
+  `å→a`). The readable `title:` and H1 keep their native characters, and page
+  content stays in its own language. The linter warns on a non-ASCII filename
+  and names the folded slug to rename to.
 - **Open every wiki page with YAML frontmatter** (see below).
 - **Cross-link with standard relative markdown links:**
   `[<slug>](../concepts/<slug>.md)` from a different folder,

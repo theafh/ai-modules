@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.22
+version: 1.24.23
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -93,6 +93,20 @@ when an expected type folder is missing on disk. Because the wiki's primary
 consumer is an LLM with tools that greps and follows links rather than
 browsing, visual folder shelving adds no real value and trades it for
 filing-drift risk.
+
+**The slug is pure ASCII; the content keeps its own language.** A wiki may be
+authored in any language. Page bodies, headings, and the `title:` frontmatter
+field use the language of the content, so `title: Künstliche Evolution` is
+correct. The slug stays pure ASCII, because the filename is the one path every
+clone and every tool compares byte-for-byte, and an NFC/NFD mismatch between
+machines turns one page into a delete-plus-add. Transliterate a
+content-language word into its ASCII form rather than embedding the character:
+German folds `ä→ae`, `ö→oe`, `ü→ue`, `ß→ss`, so the title
+`Künstliche Evolution` gets the slug `kuenstliche-evolution.md`; every other
+language strips diacritics (`é→e`, `ñ→n`, `å→a`). A naive Unicode→ASCII fold
+would wrongly produce `u`/`o`/`a` for the German umlauts, so apply the German
+map before stripping. The linter's `filename` check **warns** on any non-ASCII
+page or `raw/` sidecar filename and suggests the folded slug.
 </folder_layout>
 </architecture>
 
@@ -605,7 +619,8 @@ difference between a growing wiki and a pile of duplicates.
   4. Rely on lint to surface contested pages for user review; leave the resolution to the human.
 - **Updating existing pages**: always bump the `updated` date.
 - **Cross-reference**: every new/updated page links to ≥2 others.
-- **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page.
+- **Content language**: write the body, headings, and `title:` in the language of the content; keep the slug pure ASCII per `<folder_layout>`, so the readable title keeps its native characters while the filename is folded (`Künstliche Evolution` → `kuenstliche-evolution.md`).
+- **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page. A tag is a content-language topic word written ASCII-folded, because the linter byte-matches it against the taxonomy: a German wiki writes `koerper`, not `körper`.
 - **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. A live in-repo document that **is** the subject of classification (a paper, spec, or codebase the wiki exists to explain) is cited the same way under a root the wiki declares with a `Declared source root:` bullet in `SCHEMA.md`'s `## Lint` section, and it carries no sha256 drift detection, so its coherence relies on a review rule the wiki states. Both objects are listed in the page-level `sources:` frontmatter, the canonical inventory the page draws on, present on a page citing either object, absent from a page citing neither, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`; a declared-root value may resolve to a sibling of the wiki inside the same repository. Uncaptured lineage that is **not** the subject of classification takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
 - **External derivation**: when a page is distilled from material that is **not** itself the subject of classification (doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes), that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns or on a live in-repo document under a declared source root", and leave the field off entirely when the page cites neither. A page may have either, both, or neither.
 - **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
@@ -819,7 +834,9 @@ Findings come in three buckets:
   a `log.md` over 1000 entries. Exits 1; must fix.
 - **warn**: orphans, contested pages, source drift, off-taxonomy tags,
   invalid enum/date values, pages missing from the index, a `log.md` over 500
-  entries (rotate it to `log-YYYY.md`), and locked-slot
+  entries (rotate it to `log-YYYY.md`), a non-ASCII page or `raw/` sidecar
+  filename (`filename`, whose message names the ASCII-folded slug to rename
+  to), and locked-slot
   boilerplate mismatches that delete or replace canonical content (the
   log.md preamble under the classify-as-extension contract). Insert-only
   locked-slot additions are acknowledged-channel extensions, not live warns.

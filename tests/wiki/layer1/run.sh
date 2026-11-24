@@ -1109,6 +1109,22 @@ assert_no_finding_for_file() {
     return 0
 }
 
+# Assert a finding of <category> for <file> also carries <text>, so a message
+# that names a repair target (the suggested ASCII slug) is pinned. Args:
+# <label> <output> <category> <file> <text>
+assert_finding_for_file_contains() {
+    local label=$1 out=$2 cat=$3 file=$4 text=$5
+    if printf '%s\n' "$out" \
+        | grep -E "^[[:space:]]*\[[^]]+\][[:space:]]+${cat}[[:space:]]" \
+        | grep -F "$file" \
+        | grep -qF "$text"; then
+        return 0
+    fi
+    log "    [missing finding text: $label — expected $cat for $file naming $text]"
+    printf '%s\n' "$out" | indent
+    return 1
+}
+
 # Assert the raw-origin warn for <file> carries the computed rewrite suffix
 # `-> <rewrite>` — the linter resolved the file:///bare-path source_url against
 # the repo root and named the exact source_path to write. Args: <label> <output>
@@ -4832,6 +4848,83 @@ PY
     $ok
 }
 
+# l114: a non-ASCII page filename (NFC umlaut), an NFD-decomposed page filename,
+# and a non-ASCII raw sidecar filename each draw a warn/filename finding that
+# names the path and the ASCII slug to rename to; an ASCII page draws none.
+# The fixtures are created at run time from \u escapes, never committed with
+# non-ASCII names, because core.precomposeUnicode=true normalizes a checked-out
+# filename and would hide the NFD case.
+l114_lint_filename_non_ascii() {
+    local wiki; wiki=$(stage_fresh_wiki l114)
+    customize_taxonomy "$wiki" "model"
+    python3 - "$wiki" <<'PY'
+import sys, pathlib
+w = pathlib.Path(sys.argv[1])
+nfc = "k\u00fcnstliche-evolution.md"          # Künstliche Evolution
+nfd = "cafe\u0301-notes.md"                   # café notes, NFD-decomposed
+page = (
+    "---\ntitle: {title}\ncreated: 2026-05-01\nupdated: 2026-05-01\n"
+    "type: concept\ntags: [model]\nconfidence: medium\n---\n\n"
+    "# {title}\n\nEine Seite auf Deutsch.\n\n"
+    "Siehe [companion](companion.md).\n"
+)
+(w / "concepts" / nfc).write_text(
+    page.format(title="K\u00fcnstliche Evolution"), encoding="utf-8"
+)
+(w / "concepts" / nfd).write_text(
+    page.format(title="caf\u00e9 notes"), encoding="utf-8"
+)
+(w / "concepts" / "companion.md").write_text(
+    "---\ntitle: companion\ncreated: 2026-05-01\nupdated: 2026-05-01\n"
+    "type: concept\ntags: [model]\nconfidence: medium\n---\n\n"
+    "# companion\n\n"
+    f"Siehe [k\u00fcnstliche evolution]({nfc}) und "
+    f"[caf\u00e9 notes]({nfd}).\n",
+    encoding="utf-8",
+)
+(w / "raw" / "notes").mkdir(parents=True, exist_ok=True)
+(w / "raw" / "notes" / "\u00fcberblick.md").write_text(
+    "---\nsource_url: https://example.com/ueberblick\n"
+    "ingested: 2026-05-01\nsha256: placeholder\n---\n\nEin \u00dcberblick.\n",
+    encoding="utf-8",
+)
+idx = w / "index.md"
+text = idx.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n"
+    f"- [K\u00fcnstliche Evolution](concepts/{nfc}) \u2014 Evolutionsverfahren\n"
+    f"- [caf\u00e9 notes](concepts/{nfd}) \u2014 Notizen\n"
+    "- [companion](concepts/companion.md) \u2014 Begleitseite\n",
+    1,
+)
+text = text.replace("Total pages: 0", "Total pages: 3", 1)
+idx.write_text(text)
+PY
+    python3 "$SHA256" "$wiki/raw/notes/überblick.md" >/dev/null 2>&1
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit (warn only)" "$rc" "0" || ok=false
+    assert_finding_for_file "NFC umlaut page" "$out" warn "filename" \
+        "künstliche-evolution.md" || ok=false
+    assert_finding_for_file_contains "NFC umlaut suggests German fold" "$out" \
+        "filename" "künstliche-evolution.md" "kuenstliche-evolution.md" || ok=false
+    assert_finding_for_file "NFD-decomposed page" "$out" warn "filename" \
+        "concepts/cafe" || ok=false
+    assert_finding_for_file_contains "NFD page suggests stripped slug" "$out" \
+        "filename" "concepts/cafe" "cafe-notes.md" || ok=false
+    assert_finding_for_file_contains "NFD page is called out" "$out" \
+        "filename" "concepts/cafe" "NFD-decomposed" || ok=false
+    assert_finding_for_file "raw sidecar filename" "$out" warn "filename" \
+        "raw/notes/überblick.md" || ok=false
+    assert_finding_for_file_contains "raw sidecar suggests German fold" "$out" \
+        "filename" "raw/notes/überblick.md" "ueberblick.md" || ok=false
+    assert_no_finding_for_file "ASCII page draws no filename warn" "$out" \
+        "filename" "concepts/companion.md" || ok=false
+    $ok
+}
+
 ###############################################################################
 # Run all scenarios
 ###############################################################################
@@ -5004,6 +5097,7 @@ scenario l110 "comparison defers size by canonical default"   l110_comparison_de
 scenario l111 "shipped template carries custom-type rule"     l111_shipped_template_custom_type_rule
 scenario l112 "agent reads custom-type anatomy from SCHEMA"   l112_agent_custom_type_anatomy_consumers
 scenario l113 "new sanction vocabulary is caught per phrase"  l113_new_sanction_vocabulary_meta_prose
+scenario l114 "lint warns on non-ASCII page/sidecar filenames" l114_lint_filename_non_ascii
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract

@@ -3237,6 +3237,90 @@
       ]
     },
     {
+      "id": "AS-27",
+      "name": "auto-shaper-folds-non-ascii-page-filename",
+      "description": "auto_shaper_wiki (via wiki_fix) audits an otherwise-clean German wiki whose only live finding is a non-ASCII page filename (concepts/künstliche-evolution.md). It must apply the ASCII-fold rename remediation: git mv to the German-folded slug kuenstliche-evolution.md, re-point the three reference classes that can name a page (the index.md entry, a markdown link on the companion page, and a contradictions: frontmatter entry), keep the readable title in its native characters, and reach a clean lint. Graded out-of-band against the top-level passes denominator (wiki_non-english-languages-ascii-slugs, Acceptance 10).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-27",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is written in German and lives under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Keep every page's body, headings, and title in German.",
+        "Complete the audit and report the per-file changes it made."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_folded_slug_page_exists",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/concepts/kuenstliche-evolution.md"
+        },
+        {
+          "id": "A3_old_non_ascii_name_gone",
+          "type": "glob_absent",
+          "pattern": "HOME/proj/wiki/concepts/künstliche-evolution.md"
+        },
+        {
+          "id": "A4_index_entry_repointed",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/index.md",
+          "regex": "\\(concepts/kuenstliche-evolution\\.md\\)"
+        },
+        {
+          "id": "A5_index_old_name_gone",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/index.md",
+          "regex": "künstliche-evolution"
+        },
+        {
+          "id": "A6_markdown_link_repointed",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/genetische-algorithmen.md",
+          "regex": "\\(kuenstliche-evolution\\.md\\)"
+        },
+        {
+          "id": "A7_contradictions_repointed",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/genetische-algorithmen.md",
+          "regex": "(?m)^contradictions:\\s*\\[kuenstliche-evolution\\]"
+        },
+        {
+          "id": "A8_title_keeps_native_characters",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/kuenstliche-evolution.md",
+          "regex": "(?m)^title: Künstliche Evolution$"
+        },
+        {
+          "id": "A9_lint_clean_after_rename",
+          "type": "report_field_matches",
+          "field": "lint_findings",
+          "regex": "(?s)0\\s+blocking.*0\\s+warn"
+        },
+        {
+          "id": "A10_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A11_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A12_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
       "id": "MP-1",
       "name": "auto-shaper-no-meta-prose-on-oversized-todo",
       "description": "auto_shaper_wiki (via wiki_fix) handles an oversized custom todo page that trips the page-size info finding without inserting page-convention or lint-sanction prose into the page body. Any accepted-finding rationale appears only in SCHEMA.md's ## Lint section or the audit log. Graded out-of-band against the top-level passes denominator (wiki_meta-prose-in-page-bodies, Acceptance: MP-1).",

@@ -2,9 +2,11 @@
 description: Non-English-language wiki guidance (content in-language, slugs pure ASCII), a linter warning for non-ASCII filenames, and an auto_shaper ASCII-fold remediation.
 scope: plugins/knowledge_management
 created: 2026-06-09T13:26:15Z
-updated: 2026-11-17T10:06:07Z
-status: ready
+updated: 2026-11-24T13:29:27Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: "Andreas Hoffmann"
+design-extended: true
 ---
 
 # Non-English-language wikis: content in-language, slugs pure ASCII, linter warns on non-ASCII filenames
@@ -97,3 +99,12 @@ The remediation lands as `<fix_non_ascii_filename>` in `<fix_moves>`, and the di
 - The same scenario stages a `raw/<kind>/<slug>.md` sidecar whose filename carries a non-ASCII character and asserts the `filename` warn fires on that sidecar path. The report-only disposition that finding takes is bounded by `auto_shaper_wiki.md`'s `<lint_clean>` criterion, which carries a `raw/`-sidecar `filename` carve-out beside the contested-`quality` one, so a wiki whose only live warn is that finding reports it and still exits clean.
 - A `tests/wiki/layer2` `AS-*` scenario registered in `tests/wiki/layer2/evals.json` with its sandbox staged in `tests/wiki/layer2/setup_scenarios.sh` stages an otherwise-clean wiki whose only live finding is a non-ASCII page filename (no non-ASCII sidecar), plus the three reference classes that can name a page (`index.md`, a markdown link, a `contradictions:` entry), runs `auto_shaper_wiki`, and asserts the filename is pure ASCII, every reference resolves, and the linter is clean; it is run with `python3 tests/wiki/layer2/run.py --scenario AS-<n>`.
 - The wiki test suite (`tests/wiki/run_all.sh`) passes.
+
+## Implementation notes
+
+Implemented 2026-11-24.
+
+- **Scenario id.** The Layer 2 scenario ships as `AS-27`, because `AS-6` and `AS-7` are reserved by the ready task `wiki_metadata-in-headings.md` and `AS-23`..`AS-26` are taken. It is registered in `tests/wiki/layer2/evals.json` and staged by `stage_AS-27` in `tests/wiki/layer2/setup_scenarios.sh`, and runs as `python3 tests/wiki/layer2/run.py --scenario AS-27`.
+- **Layer 1 scenario.** A single scenario, `l114`, covers all three fixture filenames the Acceptance names: an NFC umlaut page, an NFD-decomposed page, and a non-ASCII `raw/notes/<slug>.md` sidecar. All three filenames are created at run time from `\u` escapes in the scenario, so no non-ASCII name is ever committed.
+- **`contradictions:` without `contested: true`.** The AS-27 companion page carries `contradictions: [künstliche-evolution]` and no `contested` field, because a `contested: true` page adds a second live `quality` warn and the Acceptance requires the non-ASCII filename to be the wiki's only live finding. The field is the reference channel under test; lint validates neither its target nor its pairing with `contested`.
+- **Design.** The work adds a `filename` lint category, a `<fix_non_ascii_filename>` fix move, and a two-axis language convention across `SKILL.md`, `template_schema.md`, `lint_checks.md`, and `auto_shaper_wiki.md`. `ARCHITECTURE.md` is absent from this repo, so the `design-extended: true` verdict has no doc to refresh at close-out.

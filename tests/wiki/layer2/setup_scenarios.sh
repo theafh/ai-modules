@@ -2006,6 +2006,94 @@ BREAKLINK
         "$sb/baseline/widget-colour-defaults.md.sha256"
 }
 
+stage_AS-27() {
+    # AS-27 (wiki_non-english-languages-ascii-slugs, Acceptance 10): a
+    # German-language wiki that is otherwise clean, whose only live finding is
+    # a non-ASCII page filename (`concepts/künstliche-evolution.md`, NFC). The
+    # three reference classes that can name a page all point at the old slug:
+    # the `index.md` entry, a markdown link on the companion page, and a
+    # `contradictions:` frontmatter entry. The audit must apply
+    # `<fix_non_ascii_filename>`: `git mv` to the German-folded slug
+    # `kuenstliche-evolution.md`, re-point all three, keep the readable
+    # `title:` in its native characters, and reach a clean lint. No raw sidecar
+    # is staged, so the `raw/` carve-out is not in play. The filenames are
+    # created at run time from \u escapes; a committed non-ASCII name would be
+    # normalized on checkout and could mask the case.
+    local sb
+    sb=$(reset_sandbox AS-27)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    python3 - "$wiki" <<'PY'
+import sys, pathlib
+w = pathlib.Path(sys.argv[1])
+nfc = "k\u00fcnstliche-evolution.md"  # Künstliche Evolution
+text = (w / "SCHEMA.md").read_text()
+text = text.replace("## Tag Taxonomy\n", "## Tag Taxonomy\n\n- Domain: model\n", 1)
+(w / "SCHEMA.md").write_text(text)
+(w / "concepts" / nfc).write_text(
+    "---\n"
+    "title: K\u00fcnstliche Evolution\n"
+    "created: 2026-05-01\n"
+    "updated: 2026-05-01\n"
+    "type: concept\n"
+    "tags: [model]\n"
+    "confidence: medium\n"
+    "---\n\n"
+    "# K\u00fcnstliche Evolution\n\n"
+    "## Definition / explanation\n\n"
+    "Evolution\u00e4re Verfahren bilden die nat\u00fcrliche Auslese mit einem\n"
+    "Fitnesma\u00df nach. Die verwandte Suchheuristik steht auf\n"
+    "[genetische Algorithmen](genetische-algorithmen.md).\n\n"
+    "## Current state of knowledge\n\n"
+    "Das Verfahren ist etabliert und wird breit eingesetzt.\n\n"
+    "## Open questions or debates\n\n"
+    "Keine offenen Fragen.\n\n"
+    "## Related concepts\n\n"
+    "- [genetische Algorithmen](genetische-algorithmen.md)\n",
+    encoding="utf-8",
+)
+(w / "concepts" / "genetische-algorithmen.md").write_text(
+    "---\n"
+    "title: Genetische Algorithmen\n"
+    "created: 2026-05-01\n"
+    "updated: 2026-05-01\n"
+    "type: concept\n"
+    "tags: [model]\n"
+    "confidence: medium\n"
+    "contradictions: [k\u00fcnstliche-evolution]\n"
+    "---\n\n"
+    "# Genetische Algorithmen\n\n"
+    "## Definition / explanation\n\n"
+    "Genetische Algorithmen optimieren eine Population von L\u00f6sungen. Sie\n"
+    "sind die konkrete Auspr\u00e4gung von\n"
+    "[k\u00fcnstliche Evolution](" + nfc + ").\n\n"
+    "## Current state of knowledge\n\n"
+    "Die Verfahren sind unver\u00e4ndert seit Jahren im Einsatz.\n\n"
+    "## Open questions or debates\n\n"
+    "Die Gewichtung der Fitnesfunktion bleibt umstritten.\n\n"
+    "## Related concepts\n\n"
+    "- [k\u00fcnstliche Evolution](" + nfc + ")\n",
+    encoding="utf-8",
+)
+idx = w / "index.md"
+text = idx.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n"
+    "- [Genetische Algorithmen](concepts/genetische-algorithmen.md) \u2014 "
+    "populationsbasierte Optimierung\n"
+    "- [K\u00fcnstliche Evolution](concepts/" + nfc + ") \u2014 "
+    "Auslese als Suchverfahren\n",
+    1,
+)
+text = text.replace("Total pages: 0", "Total pages: 2", 1)
+idx.write_text(text)
+PY
+    _as_git_commit "$sb/HOME/proj" "staging commit"
+}
+
 stage_MP-1() {
     # MP-1 (wiki_meta-prose-in-page-bodies): oversized custom `todo` page that
     # trips the page-size info finding. After wiki_fix the page body must
@@ -2101,7 +2189,7 @@ idx.write_text(text if text.endswith("\n") else text + "\n")
 PY
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 MP-1)
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 MP-1)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

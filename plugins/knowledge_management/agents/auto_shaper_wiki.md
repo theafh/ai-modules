@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.14
+version: 1.11.15
 model: inherit
 background: false
 effort: high
@@ -66,7 +66,13 @@ exists so the SCHEMA read is never skipped or deferred.
     one has reviewed yet. A `log` rotation finding is the one
     exception that never reaches that bucket: it is a warn past 500
     entries and blocking past 1000, and `<fix_log_rotation>`
-    clears it by rotating the log rather than by accepting it.
+    clears it by rotating the log rather than by accepting it. A live
+    `filename` warn on a `raw/` sidecar is the second carve-out:
+    `<raw_directory_read_only>` keeps `raw/` content and paths
+    untouched, so the agent reports that sidecar path and the warn
+    stays live while the audit still exits clean. The carve-out is
+    scoped to `raw/` sidecars; a page's `filename` warn stays live
+    until `<fix_non_ascii_filename>` renames the page.
   </lint_clean>
   <anatomy_compliance>
     Every page matches its declared type's anatomy. A page of one of the six
@@ -758,7 +764,8 @@ the fix move.
     carries `report only` in the `->` column: it is named in the final
     report and applies no body edit. An `index-count` finding carries
     the same `report only` value and applies no body edit. If the lint pass exits 0
-    and the page-first walk finds no semantic issues, the wiki is
+    and the page-first walk finds no semantic issues and no live
+    `filename` warn remains, the wiki is
     clean: skip the remediate phase, but still record this audit's
     baseline via `<append_audit_log_entry>` (a zero-change outcome
     entry) so the next run can scope incrementally, then report
@@ -871,7 +878,7 @@ affect the same file so each file is opened, read, and rewritten once.
     Apply the move whose name matches the issue category. A `log`
     rotation finding (warn past 500 entries, blocking past 1000) maps
     to `<fix_log_rotation>`, which rotates the log and leaves every
-    entry byte-identical. Three carve-outs keep a finding reported
+    entry byte-identical. The carve-outs below keep a finding reported
     without an automatic body edit. A `log-heading` finding never
     matches its move automatically: `<fix_log_heading_duplicate>` runs
     only when the operator explicitly asked to clean duplicate log
@@ -888,7 +895,14 @@ affect the same file so each file is opened, read, and rewritten once.
     the drift in the final report, print `report only` in the `->`
     column, and apply no body edit, because the header is
     hand-maintained and reconciling a count the page walk already
-    reports belongs to the owner's editorial call. The log
+    reports belongs to the owner's editorial call. A `filename`
+    finding on a page maps to `<fix_non_ascii_filename>`, which renames
+    it to the ASCII-folded slug. A `filename` finding on a
+    `raw/<kind>/<slug>.md` sidecar takes the report-only disposition:
+    name the sidecar path in the final report and apply no move,
+    because `<raw_directory_read_only>` keeps `raw/` content and paths
+    untouched, the way `log-scope` and `citation` are reported without
+    a body edit. The log
     is append-only in substance (`<configurable_zones>`), and trimming
     a historical entry whose subject was a file outside the wiki is an
     editorial decision the owner makes, not a sweep this agent
@@ -1009,6 +1023,35 @@ affect the same file so each file is opened, read, and rewritten once.
       type, then update every inbound link across the wiki and the
       entry in `index.md`.
     </fix_wrong_directory_for_declared_type>
+
+    <fix_non_ascii_filename>
+      Rename the page to its pure-ASCII slug and re-point every
+      reference that can name a page. Compute the slug by
+      transliterating the non-ASCII characters: apply the German map
+      first (`ä→ae`, `ö→oe`, `ü→ue`, `ß→ss`) and strip diacritics for
+      every other language (`é→e`, `ñ→n`, `å→a`), so
+      `künstliche-evolution.md` becomes `kuenstliche-evolution.md`.
+      Lint's `filename` message already names the folded slug, so use
+      it as the target and apply the German map before any generic
+      Unicode fold, which would wrongly produce `u`/`o`/`a`. Then:
+
+      1. `git mv` the page to the folded slug, so history is
+         preserved as a rename (`<use_git_mv>`), after listing the
+         parent directory (`<list_before_unfamiliar_path>`).
+      2. Re-point every inbound reference that can name a page: the
+         markdown links across the wiki, the entry in `index.md`, and
+         every `contradictions: [other-page-slug]` list entry that
+         names the old slug. `sources:` entries resolve only under
+         `raw/` or a declared source root, so none of them names a
+         page.
+      3. Leave the readable `title:` and H1 untouched; they keep
+         their native characters. Bump `updated` on every page
+         touched and record the rename in `log.md`.
+
+      A `filename` finding on a `raw/` sidecar applies no move: report
+      the sidecar path and leave it untouched under
+      `<raw_directory_read_only>`.
+    </fix_non_ascii_filename>
 
     <fix_procedure_instance_leakage>
       Rewrite to rule-form. Strip every proper noun, date, path,
@@ -1567,7 +1610,8 @@ affect the same file so each file is opened, read, and rewritten once.
   <assess_output>
     The issue list in the format above, severity-grouped. If the
     wiki is clean (lint passes and the page-first walk finds no
-    semantic issues), record this audit's baseline via
+    semantic issues and no live `filename` warn remains), record this
+    audit's baseline via
     `<append_audit_log_entry>`, then emit the line "wiki is clean"
     and stop.
   </assess_output>

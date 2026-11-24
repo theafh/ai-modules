@@ -48,6 +48,7 @@ import hashlib
 import os
 import re
 import sys
+import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -1338,6 +1339,71 @@ def check_type_location(
             f"page declares `type: {ptype}` but lives at {rel.as_posix()} — "
             f"move to {suggested} (flat `<type>s/<slug>.md` layout; thematic "
             f"scope belongs in `tags:` / `type:`, not folder names)",
+        ))
+    return issues
+
+
+# German folds an umlaut to its base vowel plus `e`, which a naive
+# Unicode->ASCII fold would not produce (`ü` would become `u`, not `ue`).
+# Every other language strips diacritics, which the NFKD pass below does.
+FILENAME_TRANSLITERATION = {
+    "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss",
+    "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
+}
+
+
+def ascii_fold_filename(name: str) -> str:
+    """Fold a filename to its ASCII slug.
+
+    Apply the German transliteration map first, then decompose (NFKD) and drop
+    the combining marks so a diacritic in any other language resolves to its
+    base letter (`é` -> `e`, `ñ` -> `n`, `å` -> `a`). A character with no ASCII
+    base survives, and the caller reports that it still needs a manual
+    transliteration.
+    """
+    folded = "".join(FILENAME_TRANSLITERATION.get(ch, ch) for ch in name)
+    folded = unicodedata.normalize("NFKD", folded)
+    return "".join(ch for ch in folded if not unicodedata.combining(ch))
+
+
+def check_filename_ascii(wiki: Path) -> list[Issue]:
+    """Warn on any page or ``raw/`` sidecar filename that is not pure ASCII.
+
+    The filename is the one path every clone and every tool compares, and a
+    non-ASCII character breaks that comparison two ways: an NFC/NFD mismatch
+    between machines makes git see a delete-plus-add rather than a stable
+    path, and the linter's own path matching drifts because the two
+    normalization forms are not byte-equal. The fix is to transliterate the
+    slug, which eliminates the whole bug class, so the finding is a WARN
+    naming the ASCII-folded slug to rename to. Warn rather than blocking keeps
+    the wiki linting and usable while the finding surfaces.
+
+    Both iterators are walked because a ``raw/<kind>/<slug>.md`` sidecar is a
+    filename too.
+    """
+    issues: list[Issue] = []
+    for path in [*iter_wiki_pages(wiki), *iter_raw_files(wiki)]:
+        name = path.name
+        if name.isascii():
+            continue
+        rel = rel_to_wiki(path, wiki)
+        folded = ascii_fold_filename(name)
+        nfd = unicodedata.normalize("NFC", name) != name
+        nfd_note = (
+            " (NFD-decomposed: a base character plus a combining mark, whose "
+            "bytes differ from its NFC form)"
+            if nfd else ""
+        )
+        if folded.isascii() and folded != name:
+            suggestion = f"rename to ASCII slug `{folded}`"
+        else:
+            suggestion = (
+                "rename to a pure-ASCII slug, transliterating the characters "
+                "the diacritic strip leaves in place"
+            )
+        issues.append(Issue(
+            SEV_WARN, "filename", path,
+            f"non-ASCII filename `{rel}`{nfd_note} — {suggestion}",
         ))
     return issues
 
@@ -2843,6 +2909,7 @@ def main() -> int:
     issues.extend(check_source_path_portable(wiki))
     issues.extend(check_raw_origin_form(wiki))
     issues.extend(check_raw_frontmatter(wiki))
+    issues.extend(check_filename_ascii(wiki))
 
     issues, accepted_ack = partition_accepted(
         wiki, issues, load_accepted_findings(wiki)
