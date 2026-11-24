@@ -2,7 +2,7 @@
 description: "Make task_implement write the labeled Open decision into the task body, not only into its report, when it holds before crossing a declared Out of scope boundary."
 scope: plugins/ai_dev/skills/task_implement
 created: 2026-11-15T15:11:27Z
-updated: 2026-11-24T08:57:28Z
+updated: 2026-11-24T09:10:00Z
 status: implemented
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -21,7 +21,7 @@ When `task_implement` holds because delivering the Goal or an `## Acceptance` it
 - **The base rule asks for both halves.** The base `task` skill's **Decide or label** rule says a qualifying decision "is handled twice over, and both halves are mandatory": the labeled "Open decision:" goes into the body with its options, a suggested default, and the why-open clause, and the decision is surfaced to the user.
 - **task_implement names only the disposition.** Its workflow step that opens "**Implement in order.**" says to "quote the conflicting passages, apply the base skill's **Decide or label** reconcile-or-surface disposition, and hold". It never says to write the label, so a model that acts on this sentence alone surfaces and holds without writing.
 - **The eval contract.** `implement_boundary_cross` in `tests/task/evals/evals.json` expects the label and the `updated` bump as the only file change, with the task staying `ready` and no code edit.
-- **Implementation state (2026-11-24).** Both vendors pass at their recorded runs: Cursor at `run-20261124-095033` and Claude at `run-20261124-095556`, each with 10 of 10 checks, so the body-label check that failed in `run-20261115-073331` now passes on both. The third Acceptance item paraphrases the `## Recorded results` headline the file carried; the edit leaves `audit_clean`'s unrecorded Claude result as the only outstanding exception, and the verdict-of-record row now reads the passing `run-20261124-095556`.
+- **Implementation state (2026-11-24).** Both vendors pass at their recorded runs: Cursor at `run-20261124-095033` and Claude at `run-20261124-100925`, each with 10 of 10 checks, so the body-label check that failed in `run-20261115-073331` now passes on both. The third Acceptance item paraphrases the `## Recorded results` headline the file carried; the edit leaves `audit_clean`'s unrecorded Claude result as the only outstanding exception, and the verdict-of-record row now reads the passing `run-20261124-100925`, re-run on the committed tree so the recorded result postdates the artifact.
 
 ## Approach
 

@@ -208,7 +208,7 @@ On current inputs every eval but one passes on both vendors: `audit_clean`'s Cla
 | Eval | Cause | Verdict of record |
 | --- | --- | --- |
 | `audit_clean` | the skill left open whether a missing `design-extended` on a newly implemented task withholds `audited`; the wording now settles it as a recording note | wording fixed; Claude re-run owed (operator to schedule) |
-| `implement_boundary_cross` | the grader required a bold `Open decision:` lead-in, and it now accepts exactly one, plain or bold | passes in `run-20261124-095556` |
+| `implement_boundary_cross` | the grader required a bold `Open decision:` lead-in, and it now accepts exactly one, plain or bold | passes in `run-20261124-100925` |
 | `check_exclusion_waiver_control` | packaging fixture defect | passes in `run-20261115-120635` |
 | `create_regroup_owner_account` | the grader matched surface wording | passes in `run-20261115-101941` |
 | `fix_coherence` | fixture defect behind check (g) | passes in `run-20261115-101326` |
