@@ -2,8 +2,8 @@
 description: "Make auto_gate_task read an admitted file too large for one tool output in pages from its own path, so it never reads the harness's persisted copy and breaks isolation on Claude."
 scope: plugins/ai_dev/agents
 created: 2026-11-15T15:07:43Z
-updated: 2026-11-24T09:39:20Z
-status: implemented
+updated: 2026-11-24T10:09:52Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -22,7 +22,7 @@ design-extended: false
 - **Why this file.** The base `task` SKILL.md is about 100 KB, more than one Bash or Read output holds on Claude, so a whole-file read of it always takes the persisted path there. Cursor has no such store, which is why Cursor runs never show the read.
 - **The dry-run agent's rule covers the copy, and the loop reads only the gate's isolation line.** `auto_dryrun_task.md`'s `<rule>Commands` counts content from "any store outside the project" as out of bounds, so a Claude dry run that receives the persisted copy names it in its own `isolation:` line. `task_auto_check` hands that return to the gate as an admitted input and inspects the gate's `isolation:` evidence, so the fix stays confined to `auto_gate_task.md`.
 
-[The return-layout task](archive/task-family_gate-verifier-return-layout.md) rewrites the audit sentence of the same gate rule, so whichever task lands second rewrites on top of the other's text.
+[The return-layout task](task-family_gate-verifier-return-layout.md) rewrites the audit sentence of the same gate rule, so whichever task lands second rewrites on top of the other's text.
 
 ## Approach
 
@@ -34,5 +34,5 @@ design-extended: false
 
 1. `auto_gate_task.md` carries the paged-read instruction for every admitted file and names the persisted tool-output copy as an excluded harness state store, and the two s15 sentences and the rule's relay-closure sentence (`Treat the relay directory as closed to discovery`) are unchanged. The paged-read instruction settles its mechanism on `sed -n` line ranges and requires every line read in full, and the s15 pins carry `assert_contains` for both `sed -n` line ranges and `until every line is read in full and the pages together cover the file`, so an instruction that drops either fails `run_all.sh`.
 2. `bash tests/task_auto_check/run_all.sh` passes, including the new pins.
-3. The paged read exercises a Claude-specific feature, the persisted tool-output store, so `immediate_ready_citations_survive` runs with `--vendor claude`, and no gate return in its relay directory names a read under `tool-results/`. Its verdict may still fail on the absence-citation gap that [the absence-citation task](archive/task-family_gate-absence-citation-form.md) covers, and the run's record in `tests/task_auto_check/evals/README.md` says so.
+3. The paged read exercises a Claude-specific feature, the persisted tool-output store, so `immediate_ready_citations_survive` runs with `--vendor claude`, and no gate return in its relay directory names a read under `tool-results/`. Its verdict may still fail on the absence-citation gap that [the absence-citation task](task-family_gate-absence-citation-form.md) covers, and the run's record in `tests/task_auto_check/evals/README.md` says so.
 4. `wiki/entities/anthropic-claude-code.md`'s `## Derived from` section carries the dated 2026-11-15 bullet, the `tests/task_auto_check/evals/README.md` path that bullet names exists on disk, that page's `sources:` still lists `raw/notes/delegation-probes-2026-10-04.md` and `raw/notes/micro-deployed-worker-home-probes-2026-10-08.md`, and the wiki lints clean.
