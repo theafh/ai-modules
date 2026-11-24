@@ -280,8 +280,8 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
             extra_args=worker_isolation.isolation_args(resolved.vendor),
         )
         rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
-        integrity_record, checkout_unread = micro_deploy.provenance_records(
-            worker
+        integrity_record, checkout_unread, harness_copy_unread = (
+            micro_deploy.provenance_records(worker)
         )
         # The scratch home goes away on exit; keep the measured SKILL.md in the
         # root so pass-<n>/sandbox/language_humanizer/SKILL.md records it.
@@ -303,6 +303,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
             "effort": worker_effort_label,
             "artefacts_read_from_micro_deployment": integrity_record,
             "checkout_unread": checkout_unread,
+            "harness_copy_unread": harness_copy_unread,
         },
         indent=2,
     ))
@@ -337,6 +338,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
     integrity = {k: v["passed"] for k, v in mech.get("integrity", {}).items()}
     integrity["artefacts_read_from_micro_deployment"] = integrity_record["passed"]
     integrity["checkout_unread"] = checkout_unread["passed"]
+    integrity["harness_copy_unread"] = harness_copy_unread["passed"]
 
     # A worker that answered but skipped the harness's save-to-delivered.md
     # step leaves nothing to measure, so every content assertion reads FAIL on
@@ -363,6 +365,7 @@ def run_isolated_pass(scenario: str, n: int, pass_dir: pathlib.Path,
         "judge_detail": qual,
         "artefacts_read_from_micro_deployment": integrity_record,
         "checkout_unread": checkout_unread,
+        "harness_copy_unread": harness_copy_unread,
     }
     (pass_dir / "verdict.json").write_text(json.dumps(verdict, indent=2))
 

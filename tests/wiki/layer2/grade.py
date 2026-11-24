@@ -408,6 +408,7 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
     worker_rc = None
     integrity = None
     checkout_unread = None
+    harness_copy_unread = None
     recorded_root = None
     if timing_file.is_file():
         try:
@@ -415,6 +416,7 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
             worker_rc = timing_data.get("claude_rc")
             integrity = timing_data.get("artefacts_read_from_micro_deployment")
             checkout_unread = timing_data.get("checkout_unread")
+            harness_copy_unread = timing_data.get("harness_copy_unread")
             raw_root = timing_data.get("sandbox_root")
             if raw_root:
                 recorded_root = pathlib.Path(raw_root)
@@ -444,12 +446,17 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
     # real_home_wiki_absent) would otherwise pass a no-op worker. This tightens the
     # final `passed` without touching per-assertion pass_rate, so the aggregate
     # regression baseline is unperturbed.
-    # A worker that read artefacts outside its micro-deployment, or any path
-    # inside the checkout, measured something other than the skill under test.
+    # A worker that read artefacts outside its micro-deployment, any path
+    # inside the checkout, or a harness evals copy outside the deployment
+    # measured something other than the skill under test.
     integrity_ok = not isinstance(integrity, dict) or bool(integrity.get("passed", True))
     checkout_ok = (
         not isinstance(checkout_unread, dict)
         or bool(checkout_unread.get("passed", True))
+    )
+    harness_copy_ok = (
+        not isinstance(harness_copy_unread, dict)
+        or bool(harness_copy_unread.get("passed", True))
     )
     worker_ok = worker_rc == 0 and bool(response_text.strip())
 
@@ -481,9 +488,16 @@ def grade_pass(pass_dir: pathlib.Path, scenario: dict) -> dict:
         "worker_rc": worker_rc,
         "artefacts_read_from_micro_deployment": integrity,
         "checkout_unread": checkout_unread,
+        "harness_copy_unread": harness_copy_unread,
         "expectations": expectations,
         "pass_rate": passed_count / len(scenario["assertions"]) if scenario["assertions"] else 0.0,
-        "passed": all_assertions_pass and worker_ok and integrity_ok and checkout_ok,
+        "passed": (
+            all_assertions_pass
+            and worker_ok
+            and integrity_ok
+            and checkout_ok
+            and harness_copy_ok
+        ),
     }
 
 
@@ -522,6 +536,10 @@ def grade_run(run_dir: pathlib.Path) -> int:
             if isinstance(checkout, dict) and not checkout.get("passed", True):
                 note += ("  [checkout_unread failed: "
                          f"{checkout.get('inside_checkout')}]")
+            harness_copy = result.get("harness_copy_unread")
+            if isinstance(harness_copy, dict) and not harness_copy.get("passed", True):
+                note += ("  [harness_copy_unread failed: "
+                         f"{harness_copy.get('harness_copies')}]")
             print(f"  [{mark}] {sid} {pass_dir.name}: {result['pass_rate']:.1%}{note}")
 
     (run_dir / "grading_summary.json").write_text(json.dumps(summary, indent=2))

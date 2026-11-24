@@ -131,9 +131,16 @@ colon cuts a shell fragment only where a new absolute or `~` path follows it,
 so a ledger label such as `find:alpha` inside a path keeps the path whole.
 Each pass also records `checkout_unread` beside that check: any
 read, glob, or named path that resolves inside the repository checkout fails
-the pass and lists the path under `inside_checkout`. Claude's stream carries a
-helper's tool calls, but Cursor keeps them out of the parent's stream, so on
-Cursor both checks also read the chat transcripts the CLI writes under the
+the pass and lists the path under `inside_checkout`. It records
+`harness_copy_unread` there too: a path that resolves outside the sandbox
+project, the scratch home, and the checkout, and whose segments carry
+`tests/<name>/evals` for a `<name>` directory under the checkout's `tests/`,
+is a leftover copy of a harness's answer key, so it fails the pass and lists
+the path under `harness_copies`. The sandbox project and the scratch home are
+exempt because a staged project may hold its own `tests/` tree, and a path
+inside the checkout stays with `checkout_unread` alone. Claude's stream carries
+a helper's tool calls, but Cursor keeps them out of the parent's stream, so on
+Cursor all three checks also read the chat transcripts the CLI writes under the
 scratch home. The checks expand shell paths against the worker's own
 environment, so `~` is the scratch home on Cursor but the real home on Claude,
 and they read each command left to right: a variable that an earlier statement
@@ -147,8 +154,9 @@ path. Text after that variable that carries a `..` segment climbs back out of
 the deployment, so that fragment fails closed too. A `plugins/` or `styles/`
 path behind such a variable stays unchecked for artefacts, because a sandbox
 fixture tree can share its shape; a path that still carries an unexpanded
-variable also stays unflagged for `checkout_unread`, because it cannot be
-placed. The worker also gets no pointer to the checkout to follow: the
+variable also stays unflagged for `checkout_unread` and
+`harness_copy_unread`, because it cannot be placed. The worker also gets no
+pointer to the checkout to follow: the
 micro-deployment removes the deploy script's log from the scratch home before
 any worker starts, because each log line names an artefact's source path inside
 the checkout, and the worker environment drops `OLDPWD` and sets `PWD` to the

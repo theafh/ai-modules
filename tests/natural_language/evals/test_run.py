@@ -91,7 +91,15 @@ def stubbed_pass(resolved, skip_judge: bool) -> tuple[dict, dict]:
         yield object()
 
     def fake_run_worker(*_args, **_kwargs):
-        return 0, "A short answer.\n", "", 1.0, {"passed": True}, {"passed": True}
+        return (
+            0,
+            "A short answer.\n",
+            "",
+            1.0,
+            {"passed": True},
+            {"passed": True},
+            {"passed": True},
+        )
 
     real_subprocess_run = subprocess.run
 
@@ -158,6 +166,12 @@ def check_settings() -> None:
     verdict, judged = stubbed_pass(resolved, skip_judge=False)
     check("run_pass writes the settings block into verdict.json",
           pick(verdict) == CLAUDE_DEFAULTS)
+    check(
+        "verdict.json carries harness_copy_unread beside checkout_unread",
+        verdict.get("harness_copy_unread") == {"passed": True}
+        and "checkout_unread" in verdict
+        and verdict["integrity"].get("harness_copy_unread") is True,
+    )
     check("the recorded judge settings are the ones the judge ran with",
           judged == {"judge_model": "opus", "judge_effort": "xhigh"})
     tuned = resolve(["--vendor", "claude", "--judge-effort", "medium"])

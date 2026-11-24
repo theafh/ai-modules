@@ -2033,7 +2033,7 @@ def test_run_worker_returns_checkout_reads() -> None:
                 "cursor helper checkout read reaches inside_checkout_paths",
                 str(checkout_file.resolve()) in result.inside_checkout_paths,
             )
-            integrity, checkout = micro_deploy.provenance_records(result)
+            integrity, checkout, harness_copy = micro_deploy.provenance_records(result)
             check(
                 "provenance_records checkout_unread fails for helper read",
                 checkout["passed"] is False
@@ -2041,7 +2041,9 @@ def test_run_worker_returns_checkout_reads() -> None:
             )
             check(
                 "read_checks_passed is false when checkout is flagged",
-                not micro_deploy.read_checks_passed(integrity, checkout),
+                not micro_deploy.read_checks_passed(
+                    integrity, checkout, harness_copy
+                ),
             )
         finally:
             cursor_handle.close()
@@ -2091,6 +2093,242 @@ def test_run_worker_returns_checkout_reads() -> None:
             )
         finally:
             claude_handle.close()
+
+
+def test_harness_copy_classifier() -> None:
+    """A harness evals copy outside the deployment fails; in-set shapes stay clean.
+
+    A leftover copy of a harness's ``evals/`` tree in a shared temp folder
+    carries the same answer key as the checkout's, so it fails the pass the way
+    a checkout read does.
+    """
+
+    with tempfile.TemporaryDirectory() as td:
+        sandbox_root = worker_isolation.create_sandbox_root("md_harness_copy_")
+        try:
+            proj = sandbox_root / "proj"
+            proj.mkdir()
+            scratch = pathlib.Path(td) / "scratch-home"
+            scratch.mkdir()
+
+            # A leftover checkout copy under a shared temp folder, the shape the
+            # 15 November 2026 Cursor runs read.
+            shared_temp = pathlib.Path(td) / "shared-temp"
+            leftover = shared_temp / "ai-modules-copy"
+            copy_evals = leftover / "tests/task_auto_check/evals/evals.json"
+            copy_fixture = (
+                leftover
+                / "tests/task_auto_check/evals/fixtures"
+                / "regroup_same_paragraph_ready"
+                / "setup.sh"
+            )
+            copy_fixture.parent.mkdir(parents=True)
+            copy_evals.write_text("{}\n")
+            copy_fixture.write_text("# expected outcome\n")
+
+            harness = REPO_ROOT / "tests" / "task_auto_check" / "evals"
+            checkout_evals = harness / "evals.json"
+            checkout_fixture = (
+                harness / "fixtures" / "regroup_same_paragraph_ready" / "setup.sh"
+            )
+
+            def flagged(path: str, cwd: pathlib.Path | None = None) -> list[str]:
+                return micro_deploy.classify_harness_copy(
+                    [path],
+                    scratch_home=scratch,
+                    sandbox_project=proj,
+                    cwd=cwd,
+                )
+
+            for label, path in (
+                ("a temp-folder evals.json copy", copy_evals),
+                ("a temp-folder fixture setup.sh copy", copy_fixture),
+            ):
+                check(
+                    f"harness-copy classifier flags {label}",
+                    flagged(str(path)) == [str(path.resolve())],
+                )
+            check(
+                "harness-copy classifier flags a glob over a temp-folder copy",
+                flagged(str(leftover / "tests/task_auto_check/evals/**/*"))
+                == [str((leftover / "tests/task_auto_check/evals/**/*").resolve())],
+            )
+
+            # The same shape inside the sandbox project or the scratch home is a
+            # fixture tree the worker may read.
+            for label, root in (
+                ("the sandbox project", proj),
+                ("the scratch home", scratch),
+            ):
+                staged = root / "tests/task_auto_check/evals/evals.json"
+                check(
+                    f"harness-copy classifier leaves that shape inside {label} alone",
+                    flagged(str(staged)) == [],
+                )
+            check(
+                "harness-copy classifier leaves a relative staged path in the sandbox alone",
+                flagged("tests/task_auto_check/evals/evals.json", cwd=proj) == [],
+            )
+
+            # A checkout read stays with checkout_unread, so it is never
+            # reported twice.
+            check(
+                "harness-copy classifier leaves a checkout path to checkout_unread",
+                flagged(str(checkout_evals)) == []
+                and micro_deploy.classify_inside_checkout(
+                    [str(checkout_evals)], cwd=proj
+                )
+                == [str(checkout_evals.resolve())],
+            )
+
+            # An ordinary project's own tests/<name>/evals tree, where <name> is
+            # no harness of this checkout, is not a harness copy.
+            other_project = pathlib.Path(td) / "other-project"
+            (other_project / "tests/unit/evals").mkdir(parents=True)
+            check(
+                "harness-copy classifier ignores a non-harness tests/<name>/evals tree",
+                flagged(str(other_project / "tests/unit/evals/case.json")) == [],
+            )
+            check(
+                "harness-copy classifier ignores a path that carries no evals tree",
+                flagged(str(shared_temp / "notes/evals.json")) == [],
+            )
+            check(
+                "harness-copy classifier leaves an unplaceable path unflagged",
+                flagged("$COPY/tests/task_auto_check/evals/evals.json") == [],
+            )
+
+            # A pass that visited a temp-folder copy before the checkout: the
+            # copy is flagged and the checkout paths are not.
+            ordered = [
+                str(copy_evals),
+                str(copy_fixture),
+                str(checkout_evals),
+                str(checkout_fixture),
+                str(REPO_ROOT / "tests" / "task_auto_check"),
+            ]
+            copies = micro_deploy.classify_harness_copy(
+                ordered,
+                scratch_home=scratch,
+                sandbox_project=proj,
+                cwd=proj,
+            )
+            check(
+                "harness-copy classifier flags the copy read before the checkout",
+                copies
+                == [str(copy_evals.resolve()), str(copy_fixture.resolve())],
+            )
+            check(
+                "harness-copy classifier leaves the later checkout reads unflagged",
+                not any(str(REPO_ROOT) in path for path in copies),
+            )
+
+            empty = micro_deploy.harness_copy_unread_record([])
+            check(
+                "harness_copy_unread empty list passes",
+                empty == {"passed": True, "harness_copies": []},
+            )
+            nonempty = micro_deploy.harness_copy_unread_record(copies)
+            check(
+                "harness_copy_unread non-empty list fails",
+                nonempty["passed"] is False and nonempty["harness_copies"] == copies,
+            )
+
+            passing = (
+                micro_deploy.integrity_record([], []),
+                micro_deploy.checkout_unread_record([]),
+            )
+            check(
+                "read_checks_passed is false when a harness copy is flagged",
+                not micro_deploy.read_checks_passed(
+                    *passing, micro_deploy.harness_copy_unread_record(copies)
+                ),
+            )
+            check(
+                "read_checks_passed is true when all three records pass",
+                micro_deploy.read_checks_passed(
+                    *passing, micro_deploy.harness_copy_unread_record([])
+                ),
+            )
+        finally:
+            shutil.rmtree(sandbox_root, ignore_errors=True)
+
+
+def test_run_worker_returns_harness_copy_reads() -> None:
+    """run_worker surfaces a harness-copy read from a Claude helper's stream."""
+
+    real_run = subprocess.run
+    with tempfile.TemporaryDirectory() as td:
+        sandbox = pathlib.Path(td) / "proj"
+        sandbox.mkdir()
+        copy_evals = (
+            pathlib.Path(td) / "shared-temp/ai-modules-copy"
+            / "tests/task_auto_check/evals/evals.json"
+        )
+        copy_evals.parent.mkdir(parents=True)
+        copy_evals.write_text("{}\n")
+
+        with micro_deploy.micro_deploy(
+            "claude", ["language_humanizer"], sandbox, preflight=False
+        ) as handle:
+            helper_event = json.dumps(
+                {
+                    "type": "assistant",
+                    "parent_tool_use_id": "toolu_helper",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Read",
+                                "input": {"file_path": str(copy_evals)},
+                            }
+                        ]
+                    },
+                }
+            )
+            stream = "\n".join(
+                [helper_event, json.dumps({"type": "result", "result": "ok"})]
+            )
+
+            def claude_run(cmd, **kwargs):
+                return fake_result(0, stream)
+
+            subprocess.run = claude_run  # type: ignore[assignment]
+            try:
+                result = micro_deploy.run_worker(
+                    vendor_name="claude",
+                    bin_name="claude",
+                    model="opus",
+                    effort="high",
+                    prompt="hi",
+                    deploy=handle,
+                    timeout=5,
+                )
+            finally:
+                subprocess.run = real_run  # type: ignore[assignment]
+
+            check(
+                "claude helper harness-copy read reaches harness_copy_paths",
+                result.harness_copy_paths == [str(copy_evals.resolve())],
+            )
+            check(
+                "a harness-copy read leaves inside_checkout_paths empty",
+                result.inside_checkout_paths == [],
+            )
+            integrity, checkout, harness_copy = micro_deploy.provenance_records(
+                result
+            )
+            check(
+                "provenance_records harness_copy_unread fails for a copy read",
+                harness_copy["passed"] is False
+                and harness_copy["harness_copies"] == [str(copy_evals.resolve())],
+            )
+            check(
+                "read_checks_passed is false for a harness-copy read",
+                not micro_deploy.read_checks_passed(
+                    integrity, checkout, harness_copy
+                ),
+            )
 
 
 def test_library_unlinked_before_removal() -> None:
@@ -2672,6 +2910,8 @@ def main() -> int:
     test_helper_reads_reach_provenance()
     test_checkout_classifier()
     test_run_worker_returns_checkout_reads()
+    test_harness_copy_classifier()
+    test_run_worker_returns_harness_copy_reads()
     test_auth_preflight_failure_surfaces_cli_message()
     test_library_unlinked_before_removal()
     test_sub_agent_report_extraction()

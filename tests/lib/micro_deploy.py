@@ -171,6 +171,7 @@ class WorkerRunResult:
     read_paths: list[str]
     out_of_set_paths: list[str]
     inside_checkout_paths: list[str] = field(default_factory=list)
+    harness_copy_paths: list[str] = field(default_factory=list)
     session_id: str | None = None
     tools: list[ToolRecord] = field(default_factory=list)
     stream_tools: list[ToolRecord] = field(default_factory=list)
@@ -1606,30 +1607,123 @@ def checkout_unread_record(inside_checkout_paths: list[str]) -> dict[str, Any]:
     }
 
 
-def provenance_records(worker: WorkerRunResult) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Both read-check records for a worker result, for ``timing.json``."""
+def _harness_names(checkout: pathlib.Path) -> set[str]:
+    """Every harness directory name under the checkout's ``tests/``."""
+
+    try:
+        return {path.name for path in (checkout / "tests").iterdir() if path.is_dir()}
+    except OSError:
+        return set()
+
+
+def _names_harness_evals_tree(
+    resolved: pathlib.Path, harness_names: set[str]
+) -> bool:
+    """Whether a resolved path carries a ``tests/<harness>/evals`` segment run.
+
+    ``<harness>`` must be one of the checkout's own ``tests/`` directories, so
+    an ordinary project's ``tests/unit/evals`` tree is not mistaken for a
+    harness copy.
+    """
+
+    parts = resolved.parts
+    return any(
+        parts[index] == "tests"
+        and parts[index + 1] in harness_names
+        and parts[index + 2] == "evals"
+        for index in range(len(parts) - 2)
+    )
+
+
+def classify_harness_copy(
+    paths: list[str],
+    *,
+    scratch_home: pathlib.Path,
+    sandbox_project: pathlib.Path,
+    cwd: pathlib.Path | str | None = None,
+    checkout: pathlib.Path | None = None,
+) -> list[str]:
+    """Return every read path that names a harness evals tree outside the deployment.
+
+    A harness's ``evals/`` tree carries its answer key: each eval's
+    ``expected_output``, the grader's checks, and the fixtures' comments. A
+    leftover copy in a shared temp folder hands a worker the same answer as the
+    checkout does, so it fails the pass the way ``checkout_unread`` fails a
+    checkout read.
+
+    A path is flagged when it resolves outside the sandbox project, outside the
+    scratch home, and outside the repository checkout, and its segments carry
+    ``tests/<name>/evals`` with ``<name>`` a directory under the checkout's
+    ``tests/``. The sandbox project and the scratch home are exempt because a
+    staged project may hold its own ``tests/`` tree, and a path inside the
+    checkout stays with ``checkout_unread`` alone, so a checkout read is never
+    reported twice. Relative paths resolve against the worker's ``cwd`` (the
+    sandbox project by default), and a path that still carries an unexpanded
+    ``$NAME`` or a leading ``~`` cannot be placed, so it stays unflagged.
+    """
+
+    root = (checkout or REPO_ROOT).resolve()
+    harness_names = _harness_names(root)
+    roots = [
+        pathlib.Path(scratch_home).resolve(),
+        pathlib.Path(sandbox_project).resolve(),
+    ]
+    base = pathlib.Path(cwd).resolve() if cwd else roots[1]
+    flagged: list[str] = []
+    for raw in paths:
+        if _is_unresolved(raw):
+            continue
+        resolved = _resolve_worker_path(raw, base)
+        if any(_is_under(resolved, allowed) for allowed in (*roots, root)):
+            continue
+        if _names_harness_evals_tree(resolved, harness_names):
+            flagged.append(str(resolved))
+    return flagged
+
+
+def harness_copy_unread_record(harness_copy_paths: list[str]) -> dict[str, Any]:
+    """Verdict fragment for ``harness_copy_unread``."""
+
+    return {
+        "passed": not harness_copy_paths,
+        "harness_copies": list(harness_copy_paths),
+    }
+
+
+def provenance_records(
+    worker: WorkerRunResult,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """All three read-check records for a worker result, for ``timing.json``."""
 
     return (
         integrity_record(worker.read_paths, worker.out_of_set_paths),
         checkout_unread_record(worker.inside_checkout_paths),
+        harness_copy_unread_record(worker.harness_copy_paths),
     )
 
 
 def read_checks_passed(
-    integrity: dict[str, Any], checkout_unread: dict[str, Any]
+    integrity: dict[str, Any],
+    checkout_unread: dict[str, Any],
+    harness_copy_unread: dict[str, Any],
 ) -> bool:
-    """Whether both read checks passed."""
+    """Whether all three read checks passed."""
 
-    return bool(integrity.get("passed")) and bool(checkout_unread.get("passed"))
+    return (
+        bool(integrity.get("passed"))
+        and bool(checkout_unread.get("passed"))
+        and bool(harness_copy_unread.get("passed"))
+    )
 
 
 def read_checks_fail_message(
     integrity: dict[str, Any],
     checkout_unread: dict[str, Any],
+    harness_copy_unread: dict[str, Any],
     *,
     vendor: str | None = None,
 ) -> str | None:
-    """One-line fail reason for a read-check failure, or None when both pass."""
+    """One-line fail reason for a read-check failure, or None when all pass."""
 
     if not integrity.get("passed"):
         return (
@@ -1640,6 +1734,10 @@ def read_checks_fail_message(
         paths = checkout_unread.get("inside_checkout")
         vendor_note = f" (vendor={vendor})" if vendor else ""
         return f"worker read paths inside the checkout{vendor_note}: {paths}"
+    if not harness_copy_unread.get("passed"):
+        paths = harness_copy_unread.get("harness_copies")
+        vendor_note = f" (vendor={vendor})" if vendor else ""
+        return f"worker read a harness evals copy outside the deployment{vendor_note}: {paths}"
     return None
 
 
@@ -1721,6 +1819,12 @@ def run_worker(
         cwd=workdir,
     )
     inside_checkout = classify_inside_checkout(read_paths, cwd=workdir)
+    harness_copies = classify_harness_copy(
+        read_paths,
+        scratch_home=deploy.scratch_home,
+        sandbox_project=deploy.sandbox_project,
+        cwd=workdir,
+    )
     return WorkerRunResult(
         returncode=rc,
         stdout=final,
@@ -1728,6 +1832,7 @@ def run_worker(
         read_paths=read_paths,
         out_of_set_paths=out_of_set,
         inside_checkout_paths=inside_checkout,
+        harness_copy_paths=harness_copies,
         session_id=parsed.session_id,
         tools=tools,
         stream_tools=stream_tools,

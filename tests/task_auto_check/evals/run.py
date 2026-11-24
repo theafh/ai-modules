@@ -278,7 +278,9 @@ def run_one(
             rc = worker.returncode
             stdout = worker.stdout
             stderr = worker.stderr
-            integrity, checkout_unread = micro_deploy.provenance_records(worker)
+            integrity, checkout_unread, harness_copy_unread = (
+                micro_deploy.provenance_records(worker)
+            )
         ended_at = time.time()
         duration_s = ended_at - started_at
 
@@ -294,6 +296,7 @@ def run_one(
             skill_name=staged["skill_name"],
             artefacts_read_from_micro_deployment=integrity,
             checkout_unread=checkout_unread,
+            harness_copy_unread=harness_copy_unread,
             started_at=started_at,
             ended_at=ended_at,
         )
@@ -311,7 +314,7 @@ def run_one(
         grade_passed = grade.returncode == 0
         completed = worker_completed(rc, stdout)
         passed = grade_passed and completed and micro_deploy.read_checks_passed(
-            integrity, checkout_unread
+            integrity, checkout_unread, harness_copy_unread
         )
 
         if not completed:
@@ -330,7 +333,10 @@ def run_one(
             )
         else:
             fail = micro_deploy.read_checks_fail_message(
-                integrity, checkout_unread, vendor=resolved.vendor
+                integrity,
+                checkout_unread,
+                harness_copy_unread,
+                vendor=resolved.vendor,
             )
             if fail:
                 print(f"  [{eval_id}] FAIL — {fail}", flush=True)

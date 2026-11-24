@@ -64,6 +64,7 @@ TIMING_KEYS = (
     "skill_name",
     "artefacts_read_from_micro_deployment",
     "checkout_unread",
+    "harness_copy_unread",
 )
 
 # A grade.sh call that reads the whole sandbox status: `git_tree_clean`, or a
@@ -198,9 +199,17 @@ def run_one_record() -> tuple[dict, bool]:
         (
             runner.micro_deploy,
             "provenance_records",
-            lambda _worker: ({"status": "PASS"}, {"status": "PASS"}),
+            lambda _worker: (
+                {"status": "PASS"},
+                {"status": "PASS"},
+                {"status": "PASS"},
+            ),
         ),
-        (runner.micro_deploy, "read_checks_passed", lambda _integrity, _unread: True),
+        (
+            runner.micro_deploy,
+            "read_checks_passed",
+            lambda _integrity, _unread, _harness_copy: True,
+        ),
     )
     saved = [
         (module, name, getattr(module, name))

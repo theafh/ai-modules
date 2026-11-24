@@ -133,7 +133,7 @@ def stubbed_pass(resolved, skip_judge: bool) -> tuple[dict, list]:
         return types.SimpleNamespace(returncode=0, stdout="Delivered.\n", stderr="")
 
     def fake_provenance(_worker):
-        return {"passed": True}, {"passed": True}
+        return {"passed": True}, {"passed": True}, {"passed": True}
 
     deploy = run_mod.micro_deploy
     saved = (run_mod.stage, deploy.micro_deploy, deploy.run_worker,

@@ -211,7 +211,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 timeout=timeout, cwd=pathlib.Path(workdir),
             )
             rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
-            integrity, checkout_unread = micro_deploy.provenance_records(worker)
+            integrity, checkout_unread, harness_copy_unread = (
+                micro_deploy.provenance_records(worker)
+            )
         ended_at = time.time()
         duration_s = ended_at - started_at
 
@@ -229,6 +231,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             fixture_overlay=fixture_overlay,
             artefacts_read_from_micro_deployment=integrity,
             checkout_unread=checkout_unread,
+            harness_copy_unread=harness_copy_unread,
         )
 
         # The grader runs under the job's environment, so its straggler scan
@@ -244,7 +247,9 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         completed = worker_completed(rc, stdout)
         passed = (
             grade_passed and completed
-            and micro_deploy.read_checks_passed(integrity, checkout_unread)
+            and micro_deploy.read_checks_passed(
+                integrity, checkout_unread, harness_copy_unread
+            )
         )
 
         if not completed:
@@ -257,7 +262,10 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                   flush=True)
         else:
             fail = micro_deploy.read_checks_fail_message(
-                integrity, checkout_unread, vendor=resolved.vendor
+                integrity,
+                checkout_unread,
+                harness_copy_unread,
+                vendor=resolved.vendor,
             )
             if fail:
                 print(f"  [{eval_id}] FAIL — {fail}", flush=True)

@@ -573,11 +573,12 @@ def write_tool_calls(eval_dir: pathlib.Path, turns: list[tuple[int, micro_deploy
 
 def combined_provenance(
     workers: list[micro_deploy.WorkerRunResult],
-) -> tuple[dict, dict]:
-    """Both read-check records across every turn of the eval."""
+) -> tuple[dict, dict, dict]:
+    """All three read-check records across every turn of the eval."""
     read_paths: list[str] = []
     out_of_set: list[str] = []
     inside: list[str] = []
+    harness_copies: list[str] = []
 
     def add(target: list[str], values: list[str]) -> None:
         for value in values:
@@ -588,9 +589,11 @@ def combined_provenance(
         add(read_paths, worker.read_paths)
         add(out_of_set, worker.out_of_set_paths)
         add(inside, worker.inside_checkout_paths)
+        add(harness_copies, worker.harness_copy_paths)
     return (
         micro_deploy.integrity_record(read_paths, out_of_set),
         micro_deploy.checkout_unread_record(inside),
+        micro_deploy.harness_copy_unread_record(harness_copies),
     )
 
 
@@ -865,7 +868,7 @@ def run_one(
                             "duration_s": round(time.time() - turn_start, 3),
                         })
 
-                integrity, checkout_unread = combined_provenance(turns)
+                integrity, checkout_unread, harness_copy_unread = combined_provenance(turns)
         except RuntimeError as exc:
             message = str(exc)
             (eval_dir / "stderr.txt").write_text(f"{message}\n")
@@ -902,6 +905,7 @@ def run_one(
             "turns": turn_timings,
             "artefacts_read_from_micro_deployment": integrity,
             "checkout_unread": checkout_unread,
+            "harness_copy_unread": harness_copy_unread,
         }, indent=2))
         if harness.get("tool_record"):
             write_tool_calls(
@@ -922,7 +926,9 @@ def run_one(
         completed = worker_completed(rc, stdout)
         passed = (
             grade_passed and completed
-            and micro_deploy.read_checks_passed(integrity, checkout_unread)
+            and micro_deploy.read_checks_passed(
+                integrity, checkout_unread, harness_copy_unread
+            )
         )
 
         outcome.completed = completed
@@ -948,7 +954,10 @@ def run_one(
             )
         else:
             fail = micro_deploy.read_checks_fail_message(
-                integrity, checkout_unread, vendor=resolved.vendor
+                integrity,
+                checkout_unread,
+                harness_copy_unread,
+                vendor=resolved.vendor,
             )
             if fail:
                 outcome.verdict_note = fail

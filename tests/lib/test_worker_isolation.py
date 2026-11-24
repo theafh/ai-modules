@@ -52,6 +52,7 @@ EXPLICIT_HELPER_TEST_PREFIXES = frozenset(
         "nl_judge_",
         "nl_iso_",
         "md_checkout_",
+        "md_harness_copy_",
     }
 )
 LAYER2_SANDBOX = re.compile(r"^(AS|L2|WI|WU|MP)-")

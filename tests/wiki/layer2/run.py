@@ -218,7 +218,9 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
                 timeout=timeout, cwd=workdir,
             )
             rc, stdout, stderr = worker.returncode, worker.stdout, worker.stderr
-            integrity, checkout_unread = micro_deploy.provenance_records(worker)
+            integrity, checkout_unread, harness_copy_unread = (
+                micro_deploy.provenance_records(worker)
+            )
             # Capture the helper's own report while the scratch home (and so
             # its Cursor transcripts) still exists. response.txt keeps holding
             # the worker's final assistant text, as its readers expect.
@@ -231,7 +233,10 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
             if sub_report:
                 (pass_dir / "sub_agent_report.md").write_text(sub_report)
         fail = micro_deploy.read_checks_fail_message(
-            integrity, checkout_unread, vendor=resolved.vendor
+            integrity,
+            checkout_unread,
+            harness_copy_unread,
+            vendor=resolved.vendor,
         )
         if fail:
             print(
@@ -259,6 +264,7 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
             "sandbox_root": str(sandbox_root),
             "artefacts_read_from_micro_deployment": integrity,
             "checkout_unread": checkout_unread,
+            "harness_copy_unread": harness_copy_unread,
         }
         (pass_dir / "timing.json").write_text(json.dumps(timing, indent=2))
 
