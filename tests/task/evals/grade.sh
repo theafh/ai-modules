@@ -74,10 +74,15 @@ resp_has() {
 # given literal, so a verdict emitted with surrounding words or backticks
 # fails. Trailing whitespace and a CR from a CRLF capture are ignored, and an
 # unset RESPONSE_FILE skips the check like resp_has.
+# Both response helpers below count matches instead of asking grep to quit at
+# the first one: under `set -o pipefail` a `grep -q` that exits early leaves
+# sed writing into a closed pipe, and its SIGPIPE status (141) would replace
+# the verdict, failing a correct response and — through the `!` below —
+# passing a response that does open a `Gaps:` list.
 resp_line_is() {
   [[ -n "$RESPONSE_FILE" ]] || return 0
   [[ -s "$RESPONSE_FILE" ]] || return 1
-  sed -e 's/[[:space:]]*$//' "$RESPONSE_FILE" | grep -qxF -- "$1"
+  sed -e 's/[[:space:]]*$//' "$RESPONSE_FILE" | grep -xcF -- "$1" >/dev/null
 }
 
 # resp_no_gaps_list -> no line of the captured response opens a `Gaps:` list,
@@ -87,7 +92,7 @@ resp_line_is() {
 resp_no_gaps_list() {
   [[ -n "$RESPONSE_FILE" ]] || return 0
   [[ -s "$RESPONSE_FILE" ]] || return 1
-  ! sed -e 's/^[[:space:]#>*_`~-]*//' "$RESPONSE_FILE" | grep -qiE '^gaps:'
+  ! sed -e 's/^[[:space:]#>*_`~-]*//' "$RESPONSE_FILE" | grep -ciE '^gaps:' >/dev/null
 }
 
 # --- helpers -----------------------------------------------------------------
