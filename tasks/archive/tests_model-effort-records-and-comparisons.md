@@ -2,8 +2,8 @@
 description: "Record vendor, worker and judge model and effort in the natural_language and language_humanizer run records, and refuse cross-setting comparisons in wiki layer 2 and the re-grade."
 scope: tests
 created: 2026-11-14T12:43:24Z
-updated: 2026-11-14T13:12:49Z
-status: implemented
+updated: 2026-11-24T08:40:44Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -17,14 +17,14 @@ The two judge harnesses, `natural_language` and `language_humanizer`, record the
 
 ## Context
 
-[The finished Opus-effort task](archive/tests_claude-worker-opus-effort.md) made effort a vendor setting and carried it into every command, the verdict cache key, every Pattern A run record, and the trigger-eval baseline check. The review of that change named the three gaps below as follow-ups.
+[The finished Opus-effort task](tests_claude-worker-opus-effort.md) made effort a vendor setting and carried it into every command, the verdict cache key, every Pattern A run record, and the trigger-eval baseline check. The review of that change named the three gaps below as follow-ups.
 
 - **The precedent.** `baseline_worker_mismatch` in `tests/trigger_evals/run.py` normalizes both sides before comparing: a missing `worker_effort` reads as the empty effort, and a missing `worker_model` reads as `unknown`, which matches no run. Its caller checks the vendor first, then the worker settings, writes `results.json` without `baseline_comparison`, prints a `WARNING:` naming both values, and returns 1.
 - **`natural_language`.** `tests/natural_language/evals/run.py` writes `summary.json` and `summary.md` into the run directory and copies both to `results/run-<ts>.{json,md}`; `run_pass` writes each pass's `verdict.json`. The console prints the CLI version, the run directory, and the style. None of these names a model or an effort, although `resolved` carries all four values. The harness is Claude-only.
 - **`language_humanizer` run.** `tests/language_humanizer/evals/run.py` writes the worker model and effort labels into each pass's `timing.json` and prints worker and judge settings in its `Worker vendor:` console line. `summary.json`, `results/run-<ts>.json`, and each pass's `verdict.json` (written by `run_isolated_pass`) carry neither the worker nor the judge settings.
 - **`language_humanizer` re-grade.** `tests/language_humanizer/evals/regrade.py` re-grades a captured run without re-running the worker, through `run_mod.summarize` and `run_mod.render`. It writes `verdict.regrade.json` per pass, `summary.regrade.{json,md}` in the run directory, and `results/<run>-regrade.{json,md}`, and it compares the re-graded rates with the original verdicts' rates through `summary["original_rates"]` and the `## As-run rates before the instrument fix` report section. Its judge settings reach only the `Judge vendor:` console line, and the comparison runs whatever judge produced the original verdicts.
 - **Wiki layer 2.** `tests/wiki/layer2/run.py` passes the newest `workspace/run-*/benchmark.json` (from `latest_previous_benchmark`) to `tests/wiki/layer2/aggregate.py` as `--previous`, and `aggregate.py` runs `detect_regressions` against it with no settings check. Each pass's `timing.json` carries the worker model and effort labels but no vendor, and `benchmark.json` carries no settings. The layer 1 scenario `g2_aggregate_names_baseline_and_warns_on_narrowing` in `tests/wiki/layer1/run.sh` builds its current run and both baselines without settings.
-- **Pool tasks on the same runners.** [The language_humanizer shared-pool task](tests_language-humanizer-shared-pool.md) and [the layer 2 runner dedup task](tests_wiki-layer2-runner-dedup.md) move these runners' pass loops onto `tests/lib/eval_runner.py`. They leave the records and comparisons alone, so neither orders this task, and whichever lands second carries the other's edit through the code as it then stands.
+- **Pool tasks on the same runners.** [The language_humanizer shared-pool task](../tests_language-humanizer-shared-pool.md) and [the layer 2 runner dedup task](../tests_wiki-layer2-runner-dedup.md) move these runners' pass loops onto `tests/lib/eval_runner.py`. They leave the records and comparisons alone, so neither orders this task, and whichever lands second carries the other's edit through the code as it then stands.
 - **Docs that describe the comparisons.** `tests/CLAUDE.md` (the paragraph opening "The aggregator compares against the most recent prior"), `tests/wiki/RUNBOOK.md` and `tests/wiki/README.md` (the same claim), `tests/language_humanizer/RUNBOOK.md` (`## Re-grading versus re-running`), `TESTING.md` (the trigger-baseline sentence opening "Pass a baseline recorded on the same vendor"), and `wiki/concepts/verification-surfaces.md` (the sentence ending "a trigger-eval baseline recorded on another model or effort is refused rather than compared").
 
 ## Approach
