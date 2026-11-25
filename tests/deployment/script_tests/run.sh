@@ -396,6 +396,78 @@ diff <(snapshot_tree "$PLUGIN_SRC") <(snapshot_tree "$PLUGIN_DEST") ||
 rm -rf "$PLUGIN_HARNESS_ROOT" "$PLUGIN_PROJECT_DIR"
 
 # ---------------------------------------------------------------------------
+# OpenCode hook bridge. OpenCode has no declarative hook config, so the
+# charter guardrail ships as a script beside a bridge plugin package: the hook
+# deploy copies only the `.sh` into `.opencode/hooks/`, the plugin deploy
+# copies the whole package into `.opencode/plugins/charter-guardrail/`, and the
+# package resolves the script at `../../hooks/charter_guardrail.sh`. Every JSON
+# hook config is skipped, no other target receives the package, and uninstall
+# removes both recorded artefacts.
+# ---------------------------------------------------------------------------
+OPENCODE_HOOK_PROJECT="${SCRATCH}/opencode-hook-project"
+OPENCODE_HOOK_LOG="${SCRATCH}/opencode-hook.log"
+mkdir -p "$OPENCODE_HOOK_PROJECT"
+
+HOOK_OUT="$(DEPLOYED_ARTIFACTS_LOG="$OPENCODE_HOOK_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$OPENCODE_HOOK_PROJECT" --target opencode --type hook)"
+
+HOOK_DEST="$OPENCODE_HOOK_PROJECT/.opencode/hooks/charter_guardrail.sh"
+assert_file "$HOOK_DEST"
+[[ -x "$HOOK_DEST" ]] || fail "opencode hook script should be executable: $HOOK_DEST"
+HOOK_JSON_COUNT="$(find "$OPENCODE_HOOK_PROJECT/.opencode/hooks" -type f -name '*.json' | wc -l | tr -d ' ')"
+[[ "$HOOK_JSON_COUNT" == "0" ]] ||
+  fail "opencode hook deploy wrote JSON hook configs, which OpenCode cannot load"
+for hook_config_path in "$REPO_ROOT"/plugins/*/hooks/*.json; do
+  [[ -f "$hook_config_path" ]] || continue
+  hook_config="$(basename "$hook_config_path")"
+  hook_config="${hook_config%.json}"
+  # A `*legacy*` file is filtered out by deployment.conf, so it never reaches
+  # the opencode arm and produces no skip line.
+  [[ "$hook_config" == *legacy* ]] && continue
+  HOOK_CONFIG_FOUND=true
+  printf '%s\n' "$HOOK_OUT" | grep -q "skip.*\[${hook_config}\] OpenCode has no declarative hook config" ||
+    fail "opencode hook deploy should skip the JSON hook config: $hook_config"
+done
+[[ "${HOOK_CONFIG_FOUND:-false}" == true ]] ||
+  fail "expected at least one JSON hook config to prove the opencode skip"
+
+PLUGIN_OUT="$(DEPLOYED_ARTIFACTS_LOG="$OPENCODE_HOOK_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$OPENCODE_HOOK_PROJECT" --target opencode --type plugin --only charter-guardrail)"
+[[ "$PLUGIN_OUT" == *"charter-guardrail"* ]] ||
+  fail "opencode plugin deploy should report the charter-guardrail package"
+
+GUARDRAIL_DEST="$OPENCODE_HOOK_PROJECT/.opencode/plugins/charter-guardrail"
+assert_dir "$GUARDRAIL_DEST"
+assert_file "$GUARDRAIL_DEST/package.json"
+assert_file "$GUARDRAIL_DEST/server.ts"
+assert_file "$GUARDRAIL_DEST/src/guardrail.ts"
+assert_file "$GUARDRAIL_DEST/README.md"
+grep -q 'hooks/charter_guardrail.sh' "$GUARDRAIL_DEST/README.md" ||
+  fail "charter-guardrail README should name the deployed script path the package resolves"
+[[ ! -e "$GUARDRAIL_DEST/node_modules" ]] ||
+  fail "charter-guardrail vendor tree was copied into the plugin discovery root"
+
+# Only OpenCode has a plugin directory, so every other target reports a skip and
+# writes no part of the package.
+OTHER_OUT="$(DEPLOYED_ARTIFACTS_LOG="$OPENCODE_HOOK_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$OPENCODE_HOOK_PROJECT" --target claude,codex,cursor,vscode --type plugin --only charter-guardrail)"
+for other_target in claude codex cursor vscode; do
+  printf '%s\n' "$OTHER_OUT" | grep -q "skip.*\[charter-guardrail\] plugin deployment not implemented for ${other_target}" ||
+    fail "charter-guardrail should report a plugin skip for target: $other_target"
+done
+LEAKED="$(find "$OPENCODE_HOOK_PROJECT" -name 'charter-guardrail' -not -path "$GUARDRAIL_DEST*" -print)"
+[[ -z "$LEAKED" ]] || fail "charter-guardrail leaked into a non-OpenCode target tree:"$'\n'"$LEAKED"
+
+# Uninstall removes both the deployed package and the deployed script that the
+# scratch log records.
+DEPLOYED_ARTIFACTS_LOG="$OPENCODE_HOOK_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --target opencode --project-dir "$OPENCODE_HOOK_PROJECT" >/dev/null
+[[ ! -e "$GUARDRAIL_DEST" ]] || fail "--uninstall left the deployed charter-guardrail package in place"
+[[ ! -e "$HOOK_DEST" ]] || fail "--uninstall left the deployed charter_guardrail.sh in place"
+
+rm -rf "$OPENCODE_HOOK_PROJECT"
+
+# ---------------------------------------------------------------------------
 # Backup copy skips sockets and FIFOs instead of aborting.
 # ---------------------------------------------------------------------------
 BACKUP_HOME="${SCRATCH}/backup-home"

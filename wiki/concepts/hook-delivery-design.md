@@ -37,15 +37,17 @@ equivalent is ready yet.
 
 ### What ships and where the deploy routes it
 
-The repository ships one shared policy script and three harnesses' worth of
-configuration. The script is a single shell file. The configurations are
-Claude's plugin-native `hooks.json`, a Codex pair splitting the plugin-manifest
-file from the config-layer file, and one Antigravity file.
+The repository ships one shared policy script, three harnesses' worth of
+configuration, and an OpenCode bridge plugin package. The script is a single
+shell file. The configurations are Claude's plugin-native `hooks.json`, a Codex
+pair splitting the plugin-manifest file from the config-layer file, and one
+Antigravity file. The bridge is the `charter-guardrail` package, which invokes
+the script from a permission hook.
 
 The deploy script routes them unevenly, and the unevenness is worth knowing
 before reading a deployed tree. It copies the shell script into the hook
-directory of Claude, Cursor, Codex, Antigravity, and Copilot, and marks it
-executable. It merges the Codex config-layer file into that harness's own hook
+directory of Claude, Cursor, Codex, Antigravity, Copilot, and OpenCode, and marks
+it executable. It merges the Codex config-layer file into that harness's own hook
 configuration entry by entry, so an entry ai-modules owns is added, updated at
 the position it holds, or removed while every foreign entry stays where it was,
 and it merges the Antigravity file under its own named-hook key. Claude and
@@ -53,7 +55,9 @@ Cursor each have a merge branch that matches on a
 harness-named configuration file the repository does not ship, so Claude's hook
 configuration reaches a machine through plugin install rather than through the
 deploy, and Cursor receives the script with nothing wired to call it. OpenCode
-has no branch at all.
+receives the script beside the `charter-guardrail` bridge package, which calls it
+from `permission.evaluate`; the deploy writes no hook configuration there
+because OpenCode has none.
 
 ### Copilot receives every file
 
@@ -104,10 +108,10 @@ is a task in the backlog.
 
 ## Open questions
 
-The coverage questions this delivery inherits stay on
-[hook surface portability](hook-surface-portability.md): whether an OpenCode
-bridge is worth its experimental dependency, and the Cursor hook contract that
-is still unworked.
+The coverage question this delivery inherits stays on
+[hook surface portability](hook-surface-portability.md): the Cursor hook contract
+that is still unworked. The OpenCode bridge is no longer open: `charter-guardrail`
+ships it, and its subagent reach stays unverified.
 
 ## Related concepts
 

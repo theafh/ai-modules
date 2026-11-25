@@ -2738,6 +2738,26 @@ install_for_app() {
             if ! $DRY_RUN; then chmod +x "$dest_file"; fi
           fi
           ;;
+        opencode)
+          # OpenCode has no declarative hook config: a hook is plugin code. The
+          # bridge plugin package invokes this script from its permission hook,
+          # resolving it beside the deployed package. Copy the script only and
+          # skip every JSON hook config, which OpenCode cannot load.
+          if [[ "$src_ext" == "json" ]]; then
+            info "skip" "[$name] OpenCode has no declarative hook config"
+            return 0
+          fi
+          local dest_dir="${app_dir}/hooks"
+          ensure_dir "$dest_dir"
+          local dest_file
+          dest_file="${dest_dir}/$(basename "$source_abs")"
+          if [[ ${#replacement_specs[@]} -gt 0 ]]; then
+            copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
+          else
+            copy_file "$source_abs" "$dest_file" "$app_id" "$type"
+          fi
+          if ! $DRY_RUN; then chmod +x "$dest_file"; fi
+          ;;
         *)
           info "skip" "[$name] Hook deployment not implemented for $app_id"
           ;;

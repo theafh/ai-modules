@@ -1,0 +1,26 @@
+{
+  "name": "opencode-charter-guardrail",
+  "version": "1.0.0",
+  "description": "Runs the repository's shared charter_guardrail.sh from an OpenCode 2 permission hook, so a CHARTER.md mutation is denied with the same policy the other harnesses run.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./server.ts"
+  },
+  "files": [
+    "server.ts",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode/plugin": "2.2.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.9.0"
+  }
+}

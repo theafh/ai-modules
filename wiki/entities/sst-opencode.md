@@ -254,10 +254,24 @@ guard that must see every attempt therefore starts from an `ask` or `allow` rule
 rather than a `deny`.
 
 Three limits carry over from V1 and are worth encoding. Tool names are lowercase,
-`edit`, `write`, `bash`, with no `apply_patch`. A before-hook guard remains
-bypassable by delegation wherever the host does not run hooks inside spawned
-subagents. And an `experimental`-named surface should be pinned to a tested
-version.
+`edit`, `write`, `bash`, with no `apply_patch`, while the permission vocabulary
+names the shell action `shell` rather than `bash` and lets `edit` gate `edit`,
+`write`, and `patch` alike. A before-hook guard remains bypassable by delegation
+wherever the host does not run hooks inside spawned subagents. And an
+`experimental`-named surface should be pinned to a tested version.
+
+The repository ships a V2 bridge package, `charter-guardrail`, that mounts the
+shared `charter_guardrail.sh` on `permission.evaluate` instead of reimplementing
+its policy. It maps the permission action and resources onto the script's
+`{tool_name, tool_input, cwd}` envelope and sets `effect = "deny"` when the
+script exits non-zero. On 2.2.5 a `shell` action's resources are the raw command
+text segments, not file paths, while an `edit` action's resources are file paths
+relative to the session directory and absolute only outside it; the plugin passes
+`location.directory` as `cwd`, which the script resolves a relative path
+against. Two limits make the resulting guarantee materially weaker than Claude or
+Codex: an explicit configured `deny` is final and never reaches the hook, and
+whether the hook fires inside a subagent is unverified, with the V1 report
+recording that `tool.execute.before` missed subagent tool calls.
 
 The trust proposition differs from a Markdown or JSON component in kind, not
 degree: a hook here is executable code with the plugin's full runtime reach.

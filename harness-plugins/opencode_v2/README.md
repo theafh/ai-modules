@@ -13,6 +13,7 @@ OpenCode loads it as a plugin directory.
 
 | Plugin | Purpose |
 | --- | --- |
+| [`charter-guardrail`](charter-guardrail/README.md) | Runs the shared `charter_guardrail.sh` from a permission hook, so a `CHARTER.md` mutation is denied with the same policy the other harnesses run. |
 | [`request-concurrency-queue`](request-concurrency-queue/README.md) | A process-wide admission scheduler for model requests, so OpenCode stays inside a provider's concurrency and new-token allowance. |
 | [`slash-skill-autocomplete`](slash-skill-autocomplete/README.md) | Registers every skill as a `/name` command on the server, restoring slash autocomplete for skills. |
 
@@ -43,7 +44,7 @@ bun run typecheck
 
 `harness-plugins/opencode_v2/package.json` is a private Bun workspace root, so
 `bun install` at this directory installs every plugin at once and
-`bun run test` / `bun run typecheck` run both packages. Nothing here is
+`bun run test` / `bun run typecheck` run every package. Nothing here is
 published to a registry: the deployer ships the packages.
 
 OpenCode supplies `@opencode/plugin` from its own runtime, so a deployed copy

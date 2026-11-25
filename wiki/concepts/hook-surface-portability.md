@@ -51,10 +51,11 @@ replaced V1's plugin contract outright, so a V1 plugin does not run there and a
 bridge has to target V2's setup-context hook domains.
 
 A plugin targeting those harnesses therefore ships one configuration per
-declarative schema over one shared script, and would reach OpenCode through a
-thin bridge plugin, still an open
-backlog task, that maps the event onto the script's stdin envelope and sets
-`effect` to `deny` on a non-zero exit.
+declarative schema over one shared script, and reaches OpenCode through a thin
+bridge plugin that maps the event onto the script's stdin envelope and sets
+`effect` to `deny` on a non-zero exit. The repository's `charter-guardrail`
+package is that bridge: it deploys beside the shared script, mounts
+`permission.evaluate`, and relays the script's exit as the hook effect.
 
 How this repository lays those files out, and where its deploy routes each one,
 is on [hook delivery design](hook-delivery-design.md).
@@ -107,7 +108,9 @@ explicit configured `deny` is final and never invokes the hook, so a guard that
 must observe every attempt starts from an `ask` or `allow` rule instead. A guard
 mounted on the tool or shell domain sees the call before execution but must reach
 the subagent case, which remains the weaker guarantee
-([SST OpenCode](../entities/sst-opencode.md)).
+([SST OpenCode](../entities/sst-opencode.md)). The shipped `charter-guardrail`
+bridge mounts `permission.evaluate`, so its subagent reach inherits that
+unverified case and stays weaker than the Claude or Codex hook.
 
 Where a harness offers a declarative permission model, that model can cover
 simple path protection without a hook at all, but it cannot express conditional
@@ -124,13 +127,13 @@ restart.
 
 ## Open questions
 
-Two coverage decisions are unsettled. Whether an OpenCode bridge is worth its
-dependency on V2's plugin contract is open work, and the V2 hook API is young
-enough that its own `experimental`-named surfaces should be pinned. And Cursor is
-now the only target whose hook contract is unworked here, which is what stops the
-shared script claiming a uniform guarantee across every tree it lands in; its
-deploy branch matches on a Cursor-named configuration file that nobody has been
-able to write.
+The OpenCode bridge is now shipped as `charter-guardrail`, which settles whether
+a bridge is worth its dependency on V2's plugin contract for the charter guard;
+the V2 hook API stays young enough that its own `experimental`-named surfaces
+should be pinned. One coverage decision remains: Cursor is the only target whose
+hook contract is unworked here, which is what stops the shared script claiming a
+uniform guarantee across every tree it lands in; its deploy branch matches on a
+Cursor-named configuration file that nobody has been able to write.
 
 One question the Copilot research raised is settled rather than open. Copilot in
 VS Code reads `~/.claude/settings.json` at user scope, so a Claude hook merged

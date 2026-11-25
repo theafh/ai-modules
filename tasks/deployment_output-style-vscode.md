@@ -2,7 +2,7 @@
 description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-25T12:00:55Z
+updated: 2026-11-25T12:02:48Z
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -49,4 +49,4 @@ Rewrite [Output style delivery design](../wiki/concepts/output-style-delivery-de
 - Uninstalling removes the deployed file and leaves any other instructions files in the same root untouched.
 - A global dry run reports a `chat.instructionsFilesLocations` merge setting `~/.claude/rules` to `false`, a real deploy under a scratch `HOME` records the key's prior value for uninstall, and an unrelated entry placed in that key beforehand survives the deploy. Uninstalling from that same `tests/deployment/script_tests/style_run.sh` case restores the key's prior value, and removes the key when the prior was `@absent`. The `deployment/README.md` VS Code row and the wiki's GitHub Copilot in VS Code page describe that merge as a `--global` Local-harness setting, and a search of both for `only route` and `route closed` finds neither.
 - `deployment/README.md`'s existing VS Code Copilot row stops reading `not yet` in its Styles cell, and that cell becomes the single canonical statement of the style destination: it names the instructions root, states that no activation key is needed, and states that this target appends rather than replaces, so adherence is weaker than on Claude.
-- `wiki/concepts/output-style-delivery-design.md`'s `### What the deploy writes per target` Copilot in VS Code row names both destinations, the settled `.instructions.md` filename, and the `--global` `chat.instructionsFilesLocations` write, and its built-rows paragraph beneath that table names Copilot in VS Code among the shipped rows, checked by reading those two passages beside the shipped arm's write path and generator call and finding no Copilot row left stated as `file only` or as a global path only.
+- `wiki/concepts/output-style-delivery-design.md`'s `### What the deploy writes per target` Copilot in VS Code row names both destinations, the settled `.instructions.md` filename, and the `--global` `chat.instructionsFilesLocations` write, and its built-rows paragraph beneath that table names Copilot in VS Code among the shipped rows, checked by reading those two passages beside the shipped arm's write path and generator call and finding no Copilot row whose Shape cell reads exactly `file only` and none whose Deploy-writes cell names only the global path.

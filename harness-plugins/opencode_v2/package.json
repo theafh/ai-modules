@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "workspaces": [
+    "charter-guardrail",
     "request-concurrency-queue",
     "slash-skill-autocomplete"
   ],
   "scripts": {
-    "test": "bun run --cwd request-concurrency-queue test && bun run --cwd slash-skill-autocomplete test",
-    "typecheck": "bun run --cwd request-concurrency-queue typecheck && bun run --cwd slash-skill-autocomplete typecheck"
+    "test": "bun run --cwd charter-guardrail test && bun run --cwd request-concurrency-queue test && bun run --cwd slash-skill-autocomplete test",
+    "typecheck": "bun run --cwd charter-guardrail typecheck && bun run --cwd request-concurrency-queue typecheck && bun run --cwd slash-skill-autocomplete typecheck"
   }
 }
