@@ -201,8 +201,8 @@ artefacts under the deployment roots: the plugin layout (`plugins/<plugin>/<asse
 `harness-plugins/<harness>/` for the `plugin` type (one self-contained package
 per directory), and repo-root `styles/` for the `style` type. A per-tool
 `style:<name>` line in the machine's `~/.ai_asset_deploy/config` names the active
-style; Claude deploy copies that file into `output-styles/` and merges
-`outputStyle` into settings. The repository ships the shared defaults as
+style; Claude deploy copies `styles/<name>.md` into `output-styles/` and
+merges `outputStyle` into settings. The repository ships the shared defaults as
 `deployment/ai_asset_deploy.conf.template`, which the script falls back to when
 the machine has no config of its own. Uninstall of
 a merged settings key restores the first-recorded prior value (or deletes the
