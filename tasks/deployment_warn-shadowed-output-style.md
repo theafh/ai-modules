@@ -2,8 +2,8 @@
 description: Warn on a style deploy when a settings file the run can read shadows the outputStyle just written, and state the override caveat on every global run for the repos it cannot read.
 scope: deployment
 created: 2026-08-10T09:56:32Z
-updated: 2026-11-17T10:15:03Z
-status: open
+updated: 2026-11-25T11:06:31Z
+status: checked
 reported-by: Andreas Hoffmann
 ---
 

@@ -2,7 +2,7 @@
 description: "Build the ghost_writer skill: rules for writing and especially editing strong prose, with one ruleset per genre — scientific, essays, blog posts, social media, case studies."
 scope: "ai_editorial plugin"
 created: 2026-06-01T21:31:06Z
-updated: 2026-11-12T08:32:23Z
+updated: 2026-11-25T11:03:19Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -16,15 +16,15 @@ Add the `ghost_writer` skill to the `ai_editorial` plugin. It carries the rules 
 ## Context
 
 - The plugin shell is built (`ai-editorial_plugin-scaffold.md`, archived). This skill lands in `plugins/ai_editorial/skills/ghost_writer/`.
-- **Rule content needs a source — prerequisite input.** The substance of this skill is the rulesets themselves. Before authoring, gather the source from the user — existing style guides, the user's own writing notes and preferences, or named references per genre. With no source provided, agree the rule content with the user rather than inventing five genre rulesets unprompted. This task is ready to *build* once that input exists; until then it is ready to *scaffold and outline*.
-- Pairs with [ai-editorial_slop-catch-skill.md](ai-editorial_slop-catch-skill.md): `slop_catch` flags AI tells; `ghost_writer` produces and edits prose that avoids them. Decide whether `ghost_writer` references `slop_catch`'s `references/structural_tells.md` to stay consistent (a deployment-agnostic, direct reference if so).
+- **Rule content needs a source — prerequisite input.** The substance of this skill is the rulesets themselves. Before authoring, gather the source from the user — existing style guides, the user's own writing notes and preferences, or named references per genre. With no source provided, agree the rule content with the user rather than inventing five genre rulesets unprompted. Building waits on that input; until it exists the task can be scaffolded and outlined, and it stays `open` until a readiness check has run.
+- Pairs with [ai-editorial_slop-catch-skill.md](ai-editorial_slop-catch-skill.md): `slop_catch` flags AI tells; `ghost_writer` produces and edits prose that avoids them. **Ordering:** `ghost_writer` ships whether or not that task has landed, and neither task waits on the other. `slop_catch`'s `references/structural_tells.md` exists only once that task is implemented, so reference it from `ghost_writer` when it is present at implementation time and omit the reference when it is not; the later-landing task adds the cross-reference, since `slop_catch` takes delivered text as its input and needs nothing from the writing skill's side. A reference, when written, is deployment-agnostic and direct.
 - Write the `description:` so it triggers on producing and editing prose written for people to read, keyed by genre, and so a router can tell it from [ai-editorial_language-humanizer-skill.md](archive/ai-editorial_language-humanizer-skill.md), the third prose skill in this plugin. That task shipped its side of the split: `language_humanizer` works toward comprehension and coherence for a named reader, on whatever material it is handed, while `ghost_writer` works toward a target genre's craft standard. This task owns the `ghost_writer` side of that wording.
 - **Authoring authorities.** Two registers meet here and stay separate. The `SKILL.md` and the genre rulesets this task writes are instructions an AI consumes, so they follow `ai_instruction_writing` for positive, action-oriented carriers and `ai_instruction_formatting` for structure — those two siblings own how to write for an AI reader and how to shape a skill file, and they guide this authoring rather than serving as a contrast case for the `description:`. The rules those files carry then govern something else: the prose `ghost_writer` produces, which people read. Neither register borrows the other's form, so a genre ruleset states its rules as instructions rather than demonstrating the genre in its own voice — the blog-post ruleset is not itself written as a blog post.
 - Follow the standing repo rules for skill authoring; this task supplies the `ghost_writer`-specific workflow, genre set, and source requirements.
 
 ## Approach
 
-1. `plugins/ai_editorial/skills/ghost_writer/SKILL.md` — frontmatter `name: ghost_writer`; body sections for role, when-to-activate, the write-and-edit workflow keyed by genre, and output contract. State that editing existing text is the primary mode.
+1. `plugins/ai_editorial/skills/ghost_writer/SKILL.md` — frontmatter carrying `name: ghost_writer`, `description:`, `version: 1.0.0` at the first commit, `author: Andreas F. Hoffmann`, and `license: MIT`, matching the sibling `language_humanizer`; a matching H1; body sections for role, when-to-activate, the write-and-edit workflow keyed by genre, and output contract. State that editing existing text is the primary mode.
 2. `plugins/ai_editorial/skills/ghost_writer/references/` — the shared prose-writing and editing rules, plus one ruleset per genre: scientific writing, essays, blog posts, social media, case studies. Each ruleset states what good looks like for that genre and how to edit toward it. Populate from the source gathered in Context.
 3. If the file set outgrows a single coherent unit — for instance if each genre ruleset becomes substantial — split the per-genre rulesets into a follow-up task rather than letting this one pass 300 lines.
 
@@ -33,7 +33,7 @@ Add the `ghost_writer` skill to the `ai_editorial` plugin. It carries the rules 
 - `plugins/ai_editorial/skills/ghost_writer/` holds `SKILL.md` and a `references/` set covering the shared prose/editing rules plus the five named genre rulesets.
 - Each genre ruleset traces to the agreed source from Context, not invented unprompted.
 - The `SKILL.md` and every genre ruleset state their rules as instructions to follow rather than demonstrating their genre in their own voice, and the `SKILL.md` passes `ai_instruction_formatting`'s bundled `scripts/lint_pseudo_xml.py`.
-- The skill `description:` triggers on genre-keyed writing and editing of prose written for people to read, and states the genre-craft axis that tells it apart from `language_humanizer`'s comprehension-and-coherence axis.
+- The skill `description:` serves both of its audiences: a precise compact summary for a user browsing skills, then the router-facing `Use when` trigger contexts, phrased to trigger on genre-keyed writing and editing of prose written for people to read. It states the genre-craft axis that tells it apart from `language_humanizer`'s comprehension-and-coherence axis.
 - `tests/ghost_writer/` ships a Pattern A harness with a deterministic entrypoint, scenario set, and `bash tests/ghost_writer/run_all.sh` exiting 0.
-- The skill is registered in `plugins/ai_editorial/README.md`, both plugin manifests, the root `README.md`, and both marketplace files; the plugin minor advances by one from its current version at implementation time, and `ghost_writer` ships at 1.0.0. The sibling slop-catch task adds a second skill to the same plugin, so whichever of the two lands second advances the plugin minor again.
+- The skill is registered in `plugins/ai_editorial/README.md`, both plugin manifests, the root `README.md`, and both marketplace files.
 - `./deployment/deployment.sh --global --dry-run` previews `ghost_writer` without error.

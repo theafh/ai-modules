@@ -1,8 +1,8 @@
 ---
-description: Deploy the output style to Antigravity as an always-on rule, at global scope as a marked block in the single rules file and at project scope as an ordinary workspace rule file.
+description: "Deploy the output style to Antigravity as an always-on rule file, at global scope under the modular user rules directory and at project scope under the workspace rules directory."
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-17T10:35:47Z
+updated: 2026-11-25T10:58:51Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -11,29 +11,33 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-Antigravity receives the repository's output style as an always-on rule, deployed by the same `style` artefact type the groundwork task adds, at whichever scope the run selects. The two scopes take different shapes because Antigravity stores them differently. Workspace rules live in a directory, so under `--project-dir` the deploy writes one ordinary rule file into that project's own rules directory. Global rules live in a single user-owned file, so under `--global` the deploy writes a delimited block into that file and removes exactly that block on uninstall, leaving the user's own rule content intact.
+Antigravity receives the repository's output style as an always-on rule, deployed by the same `style` artefact type the groundwork task adds, at whichever scope the run selects. Both scopes take the same shape, because current Antigravity reads rules from a `rules/` directory at each: under `--project-dir` the deploy writes one ordinary rule file into that project's `.agents/rules/`, and under `--global` it writes one ordinary rule file into the user-owned `~/.gemini/config/rules/`. Every rule file under a `rules/` directory carries `trigger: always_on` frontmatter, because Antigravity silently discards one that omits frontmatter or names an unrecognised trigger. Uninstall removes exactly the file the deploy wrote and leaves every other rule file byte-identical.
 
 ## Context
 
 This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which shipped the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. This task adds one target and no new machinery beyond the rule write described below.
 
-The wiki records the mechanism in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md), with the paths on its [Google Antigravity](../wiki/entities/google-antigravity.md) page. The essentials: Antigravity documents no tone, persona, output-format, or system-prompt-replacement feature at all, so the whole mapping runs through rules; workspace rules are Markdown files under `.agents/rules/`, while global rules live in a modular `~/.gemini/config/rules/` directory (or the single `~/.gemini/GEMINI.md`); each rule file is capped at 24,000 bytes; workspace rule files require `trigger: always_on` frontmatter; and Always On is the activation mode corresponding to a standing voice. Antigravity is append-only, so the deployed prose competes with default guidance rather than displacing it. The wiki's Google Antigravity page still records the older 12,000-character cap and the single global file, so update it through the wiki skill family as part of this task.
+The wiki records the mechanism in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md), with the paths on its [Google Antigravity](../wiki/entities/google-antigravity.md) page. The essentials, verified against `antigravity.google/docs` on 2026-11-25: the config-tree surfaces document no tone or output-format setting and no system-prompt-replacement feature, so the whole mapping runs through rules, while the Python SDK's `system_instructions` is a separate programmatic surface this deploy does not write. Rules are cumulative rather than replacement-based, so the deployed prose competes with default guidance instead of displacing it.
 
-The byte cap is the constraint that shapes this task. The style body is 14,628 bytes today, so it fits the 24,000-byte cap but not the older 12,000-character figure; the deploy checks the generated content against the live cap rather than assuming it fits, and fails with a clear message when it does not.
+Antigravity ships as the Antigravity App, the Antigravity CLI (`agy`), the Antigravity IDE, and editor extensions. The docs at verification time were App v2.35.1, CLI v1.5.16, and IDE v2.8.0, and the documented CLI install runs `curl -fsSL https://antigravity.google/cli/install.sh | bash` into `~/.local/bin/agy`. A machine can run older builds, so the deploy resolves the documented locations and proves itself on a scratch tree rather than depending on the installed version.
+
+Workspace rules are `<dir>/AGENTS.md`, `<dir>/GEMINI.md`, `<dir>/.agents/AGENTS.md`, `<dir>/.agents/GEMINI.md`, and `<dir>/.agents/rules/*.md`, read at the workspace folder and each parent folder up to the repository root, with the legacy `.agent/rules/*.md` still read. Global rules are the four standalone files `~/.gemini/AGENTS.md`, `~/.gemini/GEMINI.md`, `~/.gemini/config/AGENTS.md`, and `~/.gemini/config/GEMINI.md`, which need no frontmatter and stay always active, plus the modular `~/.gemini/config/rules/*.md`, where frontmatter is required. Antigravity scans each customization folder one level deep, so a rule file sits directly inside `rules/`; a nested file loads only when a `rules.json` manifest names it.
+
+Two limits shape this task. Antigravity truncates any single rule file larger than 24,000 bytes, measured after `@[label](path)` includes expand, and all active global and `always_on` rules share a 20,000-token aggregate budget, over which Antigravity demotes the largest files to pointers. The style body is 14,628 bytes today, so it fits the byte cap; the deploy still measures the generated content against the live cap rather than assuming it fits, and fails with a clear message when it does not.
 
 Antigravity is also the one non-Claude harness whose plugin bundle can carry rules, so a plugin-integrated route exists here beside the two config-tree scopes. This task takes the config-tree routes at both scopes and leaves the plugin bundle alone, since bundling ties the rule's reach to an installed plugin rather than to the tree the deploy writes.
 
 ## Approach
 
-Generate the Antigravity variant once and write it by whichever shape the scope requires, resolving the destination from the script's existing Antigravity directory variables rather than hardcoded paths.
+Generate the Antigravity variant once and write it by whichever shape the scope requires, resolving the destination from the script's existing Antigravity directory variables rather than hardcoded paths: `ANTIGRAVITY_DIR` is `<project>/.agents` under `--project-dir` and `~/.gemini/config` under `--global`, so the rule file lands at `"${ANTIGRAVITY_DIR}/rules/<name>.md"` in both modes.
 
-Under `--project-dir`, write it as one ordinary Markdown rule file in that project's `.agents/rules/` directory, carrying `trigger: always_on` frontmatter. This is the simpler of the two paths, since the file belongs to the deploy and uninstall removes it outright.
+Write one ordinary Markdown rule file per scope, carrying `trigger: always_on` frontmatter. The file belongs to the deploy, so redeploy replaces it and uninstall removes it outright. Leave every other rule file untouched, and write nothing into the four standalone `AGENTS.md` and `GEMINI.md` files: those belong to the user and carry no frontmatter, so a marked block there would need marker parsing that the modular directory makes unnecessary.
 
-Under `--global`, write it as one ordinary file into the modular `~/.gemini/config/rules/` directory, which takes ordinary rule files and needs no frontmatter. Leave every other rule file untouched, since that directory belongs to the user. If the installed build lacks the modular route, fall back to a delimited block in the single `~/.gemini/GEMINI.md` file, using begin and end markers that carry the artefact name so the block is found again on redeploy and on uninstall; record that fallback in the implementation notes.
+Check the generated content against the 24,000-byte per-file cap before writing, and fail with a message naming the actual size and the limit when it does not fit, rather than truncating or writing a file the harness will truncate. Report the generated size in the deploy output, because the file also competes for the shared 20,000-token `always_on` budget.
 
-Check the generated content against the 24,000-byte per-file cap before writing, and fail with a message naming the actual size and the limit when it does not fit, rather than truncating or writing a file the harness will reject.
+Generate rather than copy. Strip the Claude frontmatter and emit `trigger: always_on`; rewrite the `<engineering_behavior>` element that names Claude's `keep-coding-instructions` mechanism, following `generate_cursor_style_rule` in `deployment/deployment.sh`, which replaces that element wholesale. The style source carries no `$VAR$` token, so no `replace:` rule applies to it.
 
-Generate rather than copy. Strip the Claude frontmatter and emit `trigger: always_on` for the workspace rule; rewrite the `<engineering_behavior>` element that names Claude's `keep-coding-instructions` mechanism, following `generate_cursor_style_rule` in `deployment/deployment.sh`, which replaces that element wholesale. The style source carries no `$VAR$` token, so no `replace:` rule applies to it.
+Refresh the Antigravity page in the wiki through the wiki skill family, which names the modular global directory beside one standalone file where the docs now list four.
 
 **Out of scope:**
 
@@ -41,12 +45,14 @@ Generate rather than copy. Strip the Claude frontmatter and emit `trigger: alway
 
 ## Acceptance
 
-- A dry run under `--global` restricted to the style type and the Antigravity target reports one block write into the global rules file and no other file changes.
-- A dry run under `--project-dir` reports one ordinary rule-file write into that project's own rules directory, no block write, and no change under the home directory.
-- A real deploy under `--project-dir` produces a Markdown rule file in that project's `.agents/rules/` directory carrying `trigger: always_on`, and uninstalling removes that file outright.
+- A dry run under `--global` restricted to the style type and the Antigravity target reports one rule-file write into `~/.gemini/config/rules/` and no other file changes.
+- A dry run under `--project-dir` reports one rule-file write into that project's `.agents/rules/` and no change under the home directory.
+- A real deploy under `--project-dir` produces a Markdown rule file in that project's `.agents/rules/` carrying `trigger: always_on`, and uninstalling removes that file outright.
 - A real deploy against a scratch global rules directory that already contains unrelated user files leaves those files byte-identical and adds one ordinary style file.
 - Deploying twice in a row leaves exactly one style file.
 - Uninstalling removes the deployed style file and leaves the surrounding user content byte-identical to its state before the first deploy.
 - A deploy attempt with generated content exceeding 24,000 bytes fails with a message naming the actual size and the limit, and writes nothing.
-- The deployed workspace rule carries `trigger: always_on` and no Claude output-style frontmatter keys, verified by checking its frontmatter for `keep-coding-instructions` and `force-for-plugin`.
-- `deployment/README.md` gains an Antigravity row for the style type naming the global rules route, the `trigger: always_on` workspace key, the byte cap, and the fact that this target appends rather than replaces.
+- The deployed rule file carries `trigger: always_on` and no Claude output-style frontmatter keys, verified by checking its frontmatter for `keep-coding-instructions` and `force-for-plugin`.
+- A global deploy leaves the four standalone `~/.gemini/AGENTS.md`, `~/.gemini/GEMINI.md`, `~/.gemini/config/AGENTS.md`, and `~/.gemini/config/GEMINI.md` byte-identical, whether or not each exists.
+- The wiki's Google Antigravity page names all four standalone global rule files beside the modular `~/.gemini/config/rules/` directory.
+- `deployment/README.md` replaces the Antigravity Styles cell's `not yet` with the modular global rules route, the `trigger: always_on` requirement at both scopes, the 24,000-byte cap, and the fact that this target appends rather than replaces.
