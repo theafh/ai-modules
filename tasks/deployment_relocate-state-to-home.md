@@ -156,15 +156,6 @@ rm deployment/deployed_artefacts.log
 
 The first two copies retain the live config byte-for-byte and keep every already-deployed artifact uninstallable; the last two take the dead files out of the checkout. The migration and the uninstall behaviour are proven hermetically by the scratch-home scenarios in `tests/deployment/script_tests/run.sh` and `tests/lib/test_micro_deploy.py`.
 
-### Open decision: should one uninstall reach every artefact on the machine?
-
-`--uninstall` from any bundled copy of the script now cleans every artefact recorded in the shared manifest, across all repositories and scopes. The options:
-
-- **Machine-wide (suggested default).** Keep the single home manifest as shipped, and `deployment/README.md` documents the behaviour. One log means one machine, and a scopeless run already covers every scope today, so the blast radius is a widening of the same rule.
-- **Per-checkout manifests.** Restore a per-checkout log path so an uninstall reaches only what that checkout deployed. This gives up the cross-repo manifest the task exists to create and needs a new way to tell the copies apart.
-
-It stays open because the task asks for the user's confirmation rather than a silent choice: the behaviour changes what a single uninstall run reaches on the user's machine, and no evidence in the repository settles how wide that reach should be. The suggested default is the shipped behaviour, so confirming it needs no code change; choosing per-checkout manifests does.
-
 ### Explored but deferred alternatives
 
 Considered and set aside for this task; revisit only if asked:
