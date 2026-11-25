@@ -110,7 +110,7 @@ log-driven and continues to uninstall without a deployment scope.
 Non-goals: no change to what a global or project deploy does once a scope is
 chosen; no new flags; no change to the `--global` + `--project-dir` conflict rule.
 
-Coordinate with [deployment_relocate-state-to-home.md](../deployment_relocate-state-to-home.md):
+Coordinate with [deployment_relocate-state-to-home.md](deployment_relocate-state-to-home.md):
 it also edits `deployment/deployment.sh` (the state-path resolution and banner, a
 different region), so whichever lands second rebases the other's line references.
 This is a co-edited-file coordination link, not a relatedness note.

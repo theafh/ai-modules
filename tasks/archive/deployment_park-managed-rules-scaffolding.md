@@ -57,7 +57,7 @@ Background: the global-rules injection was used in another repo's copy of this
 script. Whether this repo ever uses it again is undecided — one likely direction
 is codifying global rules into skills instead — so the scaffolding is parked, not
 removed, pending that decision. This task is independent of
-[the conf/log relocation task](../deployment_relocate-state-to-home.md), which
+[the conf/log relocation task](deployment_relocate-state-to-home.md), which
 touches the live `DEPLOYED_ARTIFACTS_LOG` and `DEPLOYMENT_CONF` declarations
 but not the parked variables; whichever lands first, the other still applies
 cleanly.

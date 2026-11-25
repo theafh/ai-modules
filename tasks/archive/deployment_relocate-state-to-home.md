@@ -2,8 +2,8 @@
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
 created: 2026-06-02T16:58:04Z
-updated: 2026-11-25T19:32:23Z
-status: implemented
+updated: 2026-11-25T21:32:31Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
@@ -35,7 +35,7 @@ Relevant code in `deployment/deployment.sh`:
 - `uninstall_logged_artifacts` and `update_logged_artifacts`; both read the log, and uninstall also filters by scope since 2026-10-27.
 - The script's own prose about those paths, each rewritten in place rather than supplemented: the header comment that says per-tool configuration "is loaded from deployment.conf", that `--uninstall` removes artifacts "from deployed_artefacts.log", that `--update` redeploys "every scope deployed_artefacts.log records", and that the script "Logs deployed artifacts to deployed_artefacts.log" (in `deployment/deployment.sh`); the `print_usage` `Environment:` text that says an unset override writes `deployment/deployed_artefacts.log` (in the same file); the header comment's closing sentence that a test deployment can "write inside its own scratch tree and leave the repo log untouched"; the two user-facing messages that name the conf file, the style-skip warning "[$name] no style:<name> in deployment.conf for $app_id" and the disallow notice "[$name] excluded for $app_id (deployment.conf)"; and the `Config:` banner line that echoes the conf path. Each passage states the new `~/.ai_asset_deploy/` conf and log paths (and the template fallback for the conf), and no in-repo path, no bare `deployed_artefacts.log` basename, and no claim of a repo log survives beside it.
 
-The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) has shipped and rewrote the two associative arrays `parse_deployment_conf` fills into indexed arrays, so this task builds on that shipped shape rather than the one quoted here.
+The sibling task [bash 3.2 floor](deployment_bash-32-floor.md) has shipped and rewrote the two associative arrays `parse_deployment_conf` fills into indexed arrays, so this task builds on that shipped shape rather than the one quoted here.
 
 Current conf (`deployment/deployment.conf`) is **not purely machine state**. It carries shared defaults every checkout needs:
 
@@ -117,7 +117,7 @@ disallow:*legacy*
 
 The template is the generic starting point. Any per-tool rule a machine adds beyond these defaults is **that machine's local customization**, not a shared default, so it belongs in the home conf and not the template.
 
-**Ship order.** One live task consumes this conf and lands after this one: [the shadow-warning task](deployment_warn-shadowed-output-style.md) reads it through `merge_json_key "$DEPLOYMENT_CONF" …` in the Claude style arm.
+**Ship order.** One live task consumes this conf and lands after this one: [the shadow-warning task](../deployment_warn-shadowed-output-style.md) reads it through `merge_json_key "$DEPLOYMENT_CONF" …` in the Claude style arm.
 
 ### Validate the conf the script reads
 

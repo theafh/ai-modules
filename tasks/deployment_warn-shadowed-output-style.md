@@ -19,7 +19,7 @@ The split exists because silence has to stay meaningless: a run that inspected o
 
 ## Context
 
-The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise. This task lands after [the state-relocation task](deployment_relocate-state-to-home.md), so that call reads the relocated conf in `$HOME` rather than the in-repo `deployment.conf`.
+The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise. This task lands after [the state-relocation task](archive/deployment_relocate-state-to-home.md), so that call reads the relocated conf in `$HOME` rather than the in-repo `deployment.conf`.
 
 The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) has shipped and rewrote the same arm's `STYLE_MAP` lookup into an indexed-array read, so this task builds on that shipped shape rather than the one quoted here.
 
