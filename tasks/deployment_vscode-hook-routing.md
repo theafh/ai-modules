@@ -2,8 +2,8 @@
 description: Filter foreign configs out of the vscode hook route, ship a Copilot-schema hook config, and switch VS Code's Claude hook sources off so native delivery is the only route.
 scope: deployment
 created: 2026-08-09T18:07:35Z
-updated: 2026-11-12T08:32:23Z
-status: open
+updated: 2026-11-25T08:31:55Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -41,7 +41,7 @@ target's configuration root.
 A type-scoped dry run confirms the result: alongside the shared
 `charter_guardrail.sh`, Copilot receives `hooks.json`, `codex-plugin-hooks.json`,
 `codex-custom-deploy-hooks.json`, and `antigravity-hooks.json`. Every other target
-skips all four of the files not written for it.
+skips the configs not written for it.
 
 ### Why this matters, and why it is currently inert
 
@@ -97,9 +97,10 @@ structure.
 2. **Add `plugins/ai_dev/hooks/vscode-hooks.json`** in Copilot's schema: a
    top-level `hooks` key, `PreToolUse` mapping directly to an array of hook
    objects, each `{"type": "command", "command": ..., "timeout": ...}` with no
-   matcher-group wrapper. Cover the same mutation surface the sibling configs
-   cover, expressed through Copilot's own tool vocabulary rather than Claude's
-   matcher strings.
+   matcher-group wrapper. A single `PreToolUse` command hook covers every tool
+   call, and the guardrail script's own `tool_input` inspection narrows it to the
+   mutation surface the sibling configs match, so the file needs no per-tool
+   narrowing.
 
 3. **Rewrite the command path on the copy route.** The merge routes already
    rewrite a relative `./hooks/` command to an absolute path under the target's
@@ -109,10 +110,10 @@ structure.
    so extend that rewrite to the `vscode` copy path, keeping the committed file's
    command relative so no machine-specific path is ever committed.
 
-4. **Retract the four already-deployed strays** through the existing mechanism
-   rather than new cleanup code. The deployed-artefacts log records each of them,
-   so `./deployment/deployment.sh --uninstall --global` followed by a fresh global
-   deploy removes them. State that
+4. **Retract the already-deployed foreign hook configs** through the existing
+   mechanism rather than new cleanup code. The deployed-artefacts log records each
+   of them, so `./deployment/deployment.sh --uninstall --global` followed by a
+   fresh global deploy removes them. State that
    sequence in `deployment/README.md` beside the hook rows, since a plain redeploy
    leaves the strays in place and a hardcoded filename-removal list in the script
    would be exactly the machine-local assumption the standing repo rules keep out
@@ -173,10 +174,10 @@ have taken that trade in exchange for skipping one file.
 
 ## Acceptance
 
-1. A hook-scoped dry run of the deploy script at global scope reports a skip for
-   `hooks.json`, `codex-plugin-hooks.json`, `codex-custom-deploy-hooks.json`, and
-   `antigravity-hooks.json` on the `vscode` target, where it previously reported a
-   copy for each.
+1. A hook-scoped dry run of the deploy script at global scope reports a skip on
+   the `vscode` target for every `.json` hook config the discovery yields whose
+   basename does not match `vscode-hooks*`, where it previously reported a copy
+   for each.
 2. The same dry run still reports the `charter_guardrail.sh` copy into the Copilot
    hook directory, so the filter narrowed the JSON route without dropping the
    script.
@@ -203,3 +204,8 @@ have taken that trade in exchange for skipping one file.
 9. An unrelated entry placed in `chat.hookFilesLocations` before the deploy
    survives it, proving the nested entry merge narrowed to the two Claude paths
    rather than replacing the key.
+10. The command the deployed `vscode-hooks.json` carries blocks a CHARTER.md
+    mutation: piping a Copilot-shaped `PreToolUse` envelope, a stdin object with
+    `tool_name`, `tool_input.file_path` naming `CHARTER.md`, and a `cwd` inside a
+    repository whose root carries `CHARTER.md`, through that command exits 2,
+    while the same envelope naming an ordinary file exits 0.
