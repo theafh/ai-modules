@@ -38,7 +38,7 @@ Files involved:
 
 Related tasks:
 
-- [wiki_metadata-in-headings.md](../wiki_metadata-in-headings.md): the parenthetical-attribution failure this task partly causes by leaving the anatomy ambiguous.
+- [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md): the parenthetical-attribution failure this task partly causes by leaving the anatomy ambiguous.
 - [wiki_lint-accepted-info-suppression.md](wiki_lint-accepted-info-suppression.md) owns the instance-level accept mechanism and has shipped (`status: finished`, `implemented-by: Andreas Hoffmann`); the decided boundary stands: a declared growth pattern defers size findings type-wide, while the accept mechanism covers an individual reviewed finding. The shipped `<topic_separation>` statement already carries the `- Accepted finding: …` route in `auto_shaper_wiki.md`, so this task composes its per-pattern thresholds with that route in the one existing statement, and registers its growth bullet in the same `<configurable_zones>` entry beside the landed `Accepted finding` bullet.
 
 ## Approach

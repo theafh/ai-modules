@@ -2,8 +2,8 @@
 description: Keep wiki headings and bold-prefix labels structural, route displaced metadata (date, source, qualifier) to its proper channel, and lint both heading-label heuristics (length; ISO-date) at info.
 scope: plugins/knowledge_management
 created: 2026-05-28T17:24:35Z
-updated: 2026-11-25T03:58:46Z
-status: implemented
+updated: 2026-11-25T04:15:02Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -28,12 +28,12 @@ The user called this "overcompression beyond recognition": the label vocabulary 
 
 Files involved:
 
-- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md): `<remediate>` section.
-- [plugins/knowledge_management/skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md): `<write_or_update_pages>` and `<narrow_inline_checks>` severity summary.
-- [plugins/knowledge_management/skills/wiki/references/lint_checks.md](../plugins/knowledge_management/skills/wiki/references/lint_checks.md): lint check matrix and severity buckets.
-- [plugins/knowledge_management/skills/wiki/scripts/lint.py](../plugins/knowledge_management/skills/wiki/scripts/lint.py): heading/label lint.
+- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md): `<remediate>` section.
+- [plugins/knowledge_management/skills/wiki/SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md): `<write_or_update_pages>` and `<narrow_inline_checks>` severity summary.
+- [plugins/knowledge_management/skills/wiki/references/lint_checks.md](../../plugins/knowledge_management/skills/wiki/references/lint_checks.md): lint check matrix and severity buckets.
+- [plugins/knowledge_management/skills/wiki/scripts/lint.py](../../plugins/knowledge_management/skills/wiki/scripts/lint.py): heading/label lint.
 
-Related tasks: [wiki_two-pass-normalisation.md](archive/wiki_two-pass-normalisation.md) shipped the general "two-pass remediation" rule, which routes displaced semantics then normalises, as the family's single statement of it (`<two_pass_remediation>` in the agent). This task is the heading-specific surface that extends the shipped rule and adds `<fix_heading_label>` under `<fix_moves>`. [wiki_page-type-growth-and-anatomy.md](archive/wiki_page-type-growth-and-anatomy.md) owns clarifying how a custom page-type anatomy names its structural labels (Approach **Custom-type anatomy rule in `template_schema.md`**; Acceptance **Fixture D**); this task consumes that declaration shape for SCHEMA label vocabulary and does not re-author it. This task depended on that task shipping first: it has since shipped (`status: finished`), and the `## Custom Types` section of `template_schema.md` now exists, so the label-vocabulary shape has its anchor and this task's remaining work can land.
+Related tasks: [wiki_two-pass-normalisation.md](wiki_two-pass-normalisation.md) shipped the general "two-pass remediation" rule, which routes displaced semantics then normalises, as the family's single statement of it (`<two_pass_remediation>` in the agent). This task is the heading-specific surface that extends the shipped rule and adds `<fix_heading_label>` under `<fix_moves>`. [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) owns clarifying how a custom page-type anatomy names its structural labels (Approach **Custom-type anatomy rule in `template_schema.md`**; Acceptance **Fixture D**); this task consumes that declaration shape for SCHEMA label vocabulary and does not re-author it. This task depended on that task shipping first: it has since shipped (`status: finished`), and the `## Custom Types` section of `template_schema.md` now exists, so the label-vocabulary shape has its anchor and this task's remaining work can land.
 
 ## Approach
 
