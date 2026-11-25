@@ -2614,8 +2614,10 @@ generate_antigravity_style_rule() {
   content+="---"$'\n\n'
   content+="${body}"
 
+  # Measure the bytes the write below puts on disk, trailing newline included,
+  # so the cap bounds the file Antigravity reads rather than the string alone.
   local content_bytes
-  content_bytes="$(printf '%s' "$content" | wc -c | tr -d '[:space:]')"
+  content_bytes="$(printf '%s\n' "$content" | wc -c | tr -d '[:space:]')"
 
   if [[ "$content_bytes" -gt "$ANTIGRAVITY_STYLE_MAX_BYTES" ]]; then
     err "too-large" "antigravity rule is ${content_bytes} bytes, over the ${ANTIGRAVITY_STYLE_MAX_BYTES}-byte per-file cap: $dest"
