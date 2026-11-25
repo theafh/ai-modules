@@ -2,7 +2,7 @@
 description: "Build slop_catch in ai_editorial: a ported Python linter and a structural-tell ruleset that together list a draft's AI tells, score their weighted density, and state the reduction target, run as the humanizer's check pass."
 scope: "ai_editorial plugin"
 created: 2026-06-01T21:31:06Z
-updated: 2026-11-25T10:50:27Z
+updated: 2026-11-25T16:02:37Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -308,7 +308,7 @@ The output contract leads with the accumulation read and the reduction target â€
 
 **Out of scope:**
 
-- Rewriting the flagged prose. [ai-editorial_language-humanizer-skill.md](archive/ai-editorial_language-humanizer-skill.md) and [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md) produce and rewrite prose; this skill checks what they produced and returns replacements for them to apply. The handoff needs nothing on their side, since the skill takes delivered text as its input, so build this one to be invocable that way rather than reaching into either skill's workflow. Keep the structural-tell ruleset readable as a standalone reference, because `ghost_writer`'s task weighs referencing it directly to keep the two consistent.
+- Rewriting the flagged prose. [ai-editorial_language-humanizer-skill.md](archive/ai-editorial_language-humanizer-skill.md) and [ai-editorial_ghost-writer-skill.md](ai-editorial_ghost-writer-skill.md) produce and rewrite prose; this skill checks what they produced and returns replacements for them to apply. The handoff needs nothing on their side, since the skill takes delivered text as its input, so build this one to be invocable that way rather than reaching into either skill's workflow. Keep the structural-tell ruleset readable as a standalone reference, because `ghost_writer` references it directly when the file exists, to keep the two consistent.
 - Wiring this check into either writing skill's own workflow, which changes that skill's contract and belongs to its task; this task delivers `slop_catch` so it can be invoked that way.
 - Changing the source extension the term and pattern tables come from, which is read-only input to this port.
 - Scoring whether a text was machine-generated, whether by statistical means such as perplexity and burstiness or by watermark detection. The density score rates how heavily a draft carries known tells, for an author to act on, rather than issuing an authorship verdict.
@@ -337,5 +337,5 @@ The output contract leads with the accumulation read and the reduction target â€
   - a **sparse-hit fixture** of otherwise plain human prose of at least 400 words carrying exactly two slop-vocabulary terms and nothing else, asserting the accumulation read lands in the clean band, that both terms still appear in the replacement list with their swaps, that the report frames them as available reductions rather than as evidence the text is AI-written, that it states the density is a likelihood reading that falls when those terms are replaced, and that the reduction target reports zero points to clean;
   - a **false-positive fixture** of human-written prose that uses em-dashes and curly quotes throughout and carries one genuine `not X, but Y` contrast where the opposition is real, asserting the accumulation read lands in the clean band, that the typographic hits report as grouped weak counts contributing nothing to the score, that the negation candidate is dismissed rather than reported as a tell, that the reduction target reports zero points, and that the report never calls the text AI-written.
 - Each eval scenario is run over a fixed denominator of five passes, and the recorded per-scenario pass rate over that denominator is the deliverable. The bar is every assertion holding on all five passes; when a scenario misses it, the report carries the measured rate and the diverging assertions and hands the disposition to the user rather than re-running for a better draw.
-- The skill is registered in `plugins/ai_editorial/README.md`, both plugin manifests, the root `README.md`, and both marketplace files; the plugin minor advances by one from its current version at implementation time, and `slop_catch` ships at 1.0.0. The sibling ghost-writer task adds a second skill to the same plugin, so whichever of the two lands second advances the plugin minor again.
+- The skill is registered in `plugins/ai_editorial/README.md`, both plugin manifests, the root `README.md`, and both marketplace files.
 - `./deployment/deployment.sh --global --dry-run` previews `slop_catch` without error.
