@@ -2,7 +2,7 @@
 description: "Add a Pattern A behavioural harness for executive_summary: staged source documents, a deterministic length and shape grader, and a refute-biased fidelity judge."
 scope: tests
 created: 2026-11-25T06:13:24Z
-updated: 2026-11-25T07:00:02Z
+updated: 2026-11-25T08:42:36Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ Give `executive_summary` a running behavioural harness under `tests/executive_su
 
 ## Context
 
-`tests/README.md` `## Coverage decisions` records this skill's disposition as coverage owed, filed here because a full harness is unbounded backfill beyond the coverage-gap task `tasks/archive/tests_skill-test-coverage-gaps.md`. The output contract lives in `plugins/ai_dev/skills/executive_summary/SKILL.md` under `<executive_summary>`: `<length>` targets 10 to 15% of the input, `<prose_only>` forbids bullet points and numbered lists, and `<scope_boundary>` forbids content that is not in the input.
+`tests/README.md` `## Coverage decisions` records this skill's disposition as coverage owed, filed here because a full harness is unbounded backfill beyond the coverage-gap task `tasks/archive/tests_skill-test-coverage-gaps.md`. The output contract lives in `plugins/knowledge_management/skills/executive_summary/SKILL.md` under `<executive_summary>`: `<length>` targets 10 to 15% of the input, `<prose_only>` forbids bullet points and numbered lists, and `<scope_boundary>` forbids content that is not in the input.
 
 `tests/git_commit/` is the Pattern A reference, and `tests/README.md` `## Convention` gives the layout. Build on `tests/lib/eval_runner`, `tests/lib/vendor.py`, and `tests/lib/micro_deploy.py` the way the other Pattern A harnesses do.
 
