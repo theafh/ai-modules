@@ -2,8 +2,8 @@
 description: "Point every fence consumer in the wiki lint.py at the fence_delimiter/FENCE_OPEN_RE state machine so four-backtick and tilde fences hide their content, pinned by layer-1 scenarios."
 scope: plugins/knowledge_management/skills/wiki
 created: 2026-11-25T06:11:12Z
-updated: 2026-11-25T08:07:53Z
-status: implemented
+updated: 2026-11-25T08:17:26Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
