@@ -1604,3 +1604,35 @@ pre-existing, and the size infos stay advisory; the one on
   workflow reading a large file in full pages it from its own path instead; the
   `## Derived from` section carries that run's harness record as lineage.
 - index.md: the header date moves to 2026-11-24.
+
+## [2026-11-25 10:38] update | VS Code's hook location map does not close the Copilot route
+
+Re-read `code.visualstudio.com/docs/agent-customization/hooks` and recorded what
+it says about the settings switches: `chat.hookFilesLocations` is documented under
+"Existing Local hooks", "Local editor settings such as `chat.hookFilesLocations` do
+not configure Copilot discovery", the Copilot harness reads inline hook settings in
+`.github/copilot/settings.json`, `.github/copilot/settings.local.json`, and
+`~/.copilot/settings.json` plus the repository `.claude/settings.json` and
+`.claude/settings.local.json`; that section also deprecates the Local harness for
+February 2027 and says the location maps do not configure the shared Copilot
+runtime. The page records `chat.useHooks` as a repository-and-custom-agent switch
+rather than a global one, so it does not stop the harness loading a configuration.
+GitHub's hooks reference was re-read the same day for the `version` field, the
+PascalCase `PreToolUse` alias and its snake_case payload, and `timeout` as an
+alias for `timeoutSec`.
+
+- entities/github-copilot-vs-code.md: the adoption section replaces the
+  per-path switch-off claim with the three verified statements and their source
+  date, the hook roots gain the Copilot inline settings files, and `## Derived
+  from` carries the re-read.
+- concepts/foreign-directory-adoption.md: the isolation-switch section states that
+  VS Code's maps scope the Local harness only, and the standing position gains the
+  rule to read which harness a switch scopes before treating a path as closed.
+- concepts/hook-delivery-design.md: the native-delivery decision keeps the native
+  half and records that the switch-off half does not hold for the Copilot harness,
+  with the idempotent-deny trade stated.
+- procedures/isolating-vs-code-from-foreign-config.md: the rule scopes the maps to
+  the Local harness, states that no documented setting stops the Copilot harness
+  reading the repository `.claude` hook settings, and the two-harness pitfall now
+  recommends a native config over the location map.
+- index.md: the header date moves to 2026-11-25.

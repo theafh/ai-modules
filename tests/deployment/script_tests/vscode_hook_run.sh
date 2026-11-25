@@ -4,10 +4,13 @@
 # The vscode deploy target ships the charter guardrail to Copilot as a
 # Copilot-native hook config (vscode-hooks.json) and nothing else: a JSON hook
 # config whose basename is not vscode-hooks* is skipped rather than copied into
-# ~/.copilot/hooks, the shell script still lands beside it, the config's
-# relative ./hooks/ command is rewritten to the target's hook directory, and
-# the VS Code user settings switch the two Claude hook sources off. Uninstall
-# restores the settings key's recorded prior.
+# ~/.copilot/hooks, the shell script still lands beside it, and the config's
+# relative ./hooks/ command is rewritten to the target's hook directory. The
+# hook route writes no VS Code settings key, because chat.hookFilesLocations
+# configures the Local harness only and leaves the Copilot harness reading the
+# repository .claude/settings.json files. The settings-map merge helper is kept
+# for the sibling instructions route and is covered here directly, including
+# the JSON-with-comments settings file VS Code's editor writes.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,6 +36,14 @@ assert_eq() {
   [[ "$got" == "$want" ]] || fail "$msg (got='$got' want='$want')"
 }
 
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    sha256sum "$1" | awk '{print $1}'
+  fi
+}
+
 cleanup() {
   rm -rf "$SCRATCH"
 }
@@ -53,11 +64,13 @@ vscode_settings_file() {  # home
 }
 
 # ---------------------------------------------------------------------------
-# Item 3: the committed config is valid JSON in Copilot's schema — hook
-# objects directly under PreToolUse, each carrying command, with no matcher
-# group and no nested hooks array.
+# Item 3: the committed config is valid JSON in Copilot's schema — a top-level
+# version, hook objects directly under PreToolUse, each carrying command, with
+# no matcher group and no nested hooks array.
 # ---------------------------------------------------------------------------
 jq -e . "$VSCODE_HOOKS_SRC" >/dev/null || fail "vscode-hooks.json is not valid JSON"
+assert_eq "$(jq -r '.version' "$VSCODE_HOOKS_SRC")" "1" \
+  "vscode-hooks.json must carry the documented version key"
 assert_eq "$(jq -r '.hooks.PreToolUse | type' "$VSCODE_HOOKS_SRC")" "array" \
   "vscode-hooks.json must carry a PreToolUse array under hooks"
 assert_eq "$(jq '[.hooks.PreToolUse[] | select(type != "object")] | length' "$VSCODE_HOOKS_SRC")" "0" \
@@ -139,19 +152,21 @@ printf '%s\n' "$global_dry" | grep -F 'would-rewrite' | grep -Fq -- "-> ${GLOBAL
   fail "global dry run must rewrite ./hooks/ commands to the global Copilot hook dir"
 
 # ---------------------------------------------------------------------------
-# Item 7, dry-run half: the settings switch is reported for the vscode target,
-# which previously reported no settings write at all.
+# Item 7: the hook route writes no VS Code settings key. chat.hookFilesLocations
+# configures the Local harness only; the Copilot harness keeps reading the
+# repository .claude/settings.json files, so the switch would not close that
+# route and is not written.
 # ---------------------------------------------------------------------------
-printf '%s\n' "$global_dry" | grep -F 'would-merge' | grep -Fq "${SETTINGS_FILE} <- .chat.hookFilesLocations entries" ||
-  fail "global dry run must report the chat.hookFilesLocations merge"
-printf '%s\n' "$global_dry" | grep -Fq '".claude/settings.json":false' ||
-  fail "the reported merge must carry the workspace Claude settings path set to false"
-printf '%s\n' "$global_dry" | grep -Fq '"~/.claude/settings.json":false' ||
-  fail "the reported merge must carry the user Claude settings path set to false"
+if printf '%s\n' "$global_dry" | grep -Fq 'chat.hookFilesLocations'; then
+  fail "global dry run must not report a chat.hookFilesLocations merge"
+fi
+if printf '%s\n' "$global_dry" | grep -F 'would-merge' | grep -Fq "$SETTINGS_FILE"; then
+  fail "global dry run must not write the VS Code user settings file"
+fi
 
 # ---------------------------------------------------------------------------
 # Item 5: a project-dir run rewrites to the project-relative hook directory
-# rather than the global absolute path, and leaves the user settings alone.
+# rather than the global absolute path, and writes no settings file.
 # ---------------------------------------------------------------------------
 project_dry="$(deploy_project --dry-run)"
 printf '%s\n' "$project_dry" | grep -F 'would-rewrite' | grep -Fq -- '-> .github/hooks/' ||
@@ -159,35 +174,36 @@ printf '%s\n' "$project_dry" | grep -F 'would-rewrite' | grep -Fq -- '-> .github
 if printf '%s\n' "$project_dry" | grep -F 'would-rewrite' | grep -Fq "$GLOBAL_HOME"; then
   fail "project-dir dry run must not rewrite to the global hook directory"
 fi
-printf '%s\n' "$project_dry" | grep -Fq 'chat.hookFilesLocations is a user-level switch' ||
-  fail "project-dir dry run must report that the user settings switch is skipped"
+if printf '%s\n' "$project_dry" | grep -Fq 'would-merge'; then
+  fail "project-dir dry run must not merge a settings key"
+fi
 
 # ---------------------------------------------------------------------------
-# A real deploy into the scratch home. A foreign settings entry and an
-# unrelated key are planted first, so the entry merge is proven to narrow to
-# the two Claude paths (items 7 and 9).
+# A real deploy into the scratch home. A settings file planted beforehand with
+# a comment, a trailing comma, and an unrelated key must come through the run
+# untouched: the hook route does not read or write it.
 # ---------------------------------------------------------------------------
 mkdir -p "${SETTINGS_FILE%/*}"
-printf '%s\n' '{"chat.hookFilesLocations":{"/foreign/entry":true},"editor.fontSize":13}' > "$SETTINGS_FILE"
+cat > "$SETTINGS_FILE" <<'JSONC'
+{
+  // The VS Code editor keeps this comment.
+  "editor.fontSize": 13,
+}
+JSONC
+settings_before="$(sha256_of "$SETTINGS_FILE")"
 
 deploy_global >/dev/null
 
-assert_eq "$(jq -c '.["chat.hookFilesLocations"]' "$SETTINGS_FILE")" \
-  '{"/foreign/entry":true,".claude/settings.json":false,"~/.claude/settings.json":false}' \
-  "the deploy must add the two Claude paths and keep the foreign entry"
-assert_eq "$(jq -c '.["editor.fontSize"]' "$SETTINGS_FILE")" "13" \
-  "the deploy must leave every other settings key untouched"
-
-# The deploy log records the map's prior value for uninstall.
-assert_eq "$(awk -F'\t' '$1 ~ /settings\.json\[chat\.hookFilesLocations\]$/ {print $5}' "$GLOBAL_LOG")" \
-  '{"/foreign/entry":true}' \
-  "the deploy log must record the settings map's prior value"
+assert_eq "$(sha256_of "$SETTINGS_FILE")" "$settings_before" \
+  "a hook deploy must leave the VS Code user settings file byte-identical"
 
 # The deployed config carries the absolute Copilot hook path, and the foreign
 # configs never reached the hook directory.
 assert_eq "$(jq -r '.hooks.PreToolUse[0].command' "${GLOBAL_HOME}/.copilot/hooks/vscode-hooks.json")" \
   "${GLOBAL_HOME}/.copilot/hooks/charter_guardrail.sh" \
   "the deployed config must rewrite its command to the deployed script"
+assert_eq "$(jq -r '.version' "${GLOBAL_HOME}/.copilot/hooks/vscode-hooks.json")" "1" \
+  "the deployed config must keep the version key"
 deployed_hooks="$(cd "${GLOBAL_HOME}/.copilot/hooks" && printf '%s\n' * | LC_ALL=C sort | tr '\n' ' ')"
 assert_eq "$deployed_hooks" "charter_guardrail.sh vscode-hooks.json " \
   "the Copilot hook dir must hold only the guard script and the native config"
@@ -218,35 +234,122 @@ printf '%s' "$(envelope "$GUARD_REPO" notes.txt)" | "$deployed_command" >/dev/nu
 assert_eq "$ordinary_rc" "0" "an ordinary file envelope must exit 0"
 
 # ---------------------------------------------------------------------------
-# Item 8: uninstall restores the captured prior value.
+# Uninstall removes the native config and the script the deploy logged.
 # ---------------------------------------------------------------------------
 deploy_global --uninstall >/dev/null
-assert_eq "$(jq -c '.["chat.hookFilesLocations"]' "$SETTINGS_FILE")" '{"/foreign/entry":true}' \
+[[ ! -e "${GLOBAL_HOME}/.copilot/hooks/vscode-hooks.json" ]] ||
+  fail "uninstall must remove the deployed native hook config"
+[[ ! -e "${GLOBAL_HOME}/.copilot/hooks/charter_guardrail.sh" ]] ||
+  fail "uninstall must remove the deployed guard script"
+
+# ---------------------------------------------------------------------------
+# Items 8 and 9: the settings-map helper the sibling instructions route reuses,
+# exercised directly because the hook route has no caller for it. It merges at
+# entry grain, keeps every other entry and key, records the map's prior value,
+# and tolerates the comments and trailing commas VS Code's editor preserves.
+# ---------------------------------------------------------------------------
+HELPER_HOME="${SCRATCH}/helper-home"
+HELPER_LOG="${SCRATCH}/helper-deploy.log"
+mkdir -p "$HELPER_HOME"
+helper_settings="${HELPER_HOME}/settings.json"
+helper_out="${HELPER_HOME}/merge.out"
+: > "$HELPER_LOG"
+
+# The assignments below configure the sourced deployment.sh; shellcheck cannot
+# see their use through `source=/dev/null`, so the whole body is exempt.
+# shellcheck disable=SC2034
+helper_run() {
+  (
+    set -- --global
+    DEPLOYMENT_SH_SKIP_MAIN=1
+    # shellcheck source=/dev/null
+    source "$DEPLOY_SCRIPT"
+    DRY_RUN=false
+    SUMMARY_DEPLOY_ACTIONS=0
+    SUMMARY_UNINSTALL_ACTIONS=0
+    DEPLOYED_ARTIFACTS_LOG="$HELPER_LOG"
+    merge_settings_map_entries "$DEPLOYMENT_CONF" "$helper_settings" \
+      "chat.instructionsFilesLocations" vscode style '{"~/.claude/rules": false}'
+  )
+}
+
+cat > "$helper_settings" <<'JSONC'
+{
+  // VS Code keeps this comment, and the editor accepts the trailing comma.
+  "editor.fontSize": 13,
+  "docs.url": "https://example.com/a//b",
+  "chat.instructionsFilesLocations": {
+    "/foreign/entry": true,
+  },
+}
+JSONC
+
+helper_run >"$helper_out" 2>&1 ||
+  fail "a settings file carrying comments and trailing commas must not fail the merge"
+
+assert_eq "$(jq -c '.["chat.instructionsFilesLocations"]' "$helper_settings")" \
+  '{"/foreign/entry":true,"~/.claude/rules":false}' \
+  "the merge must add its own entry and keep the foreign entry"
+assert_eq "$(jq -c '.["editor.fontSize"]' "$helper_settings")" "13" \
+  "the merge must leave every other settings key untouched"
+assert_eq "$(jq -r '.["docs.url"]' "$helper_settings")" "https://example.com/a//b" \
+  "a // inside a string value must survive the comment strip"
+if grep -Fq 'VS Code keeps this comment' "$helper_settings"; then
+  fail "the rewritten settings file must be strict JSON, with comments dropped"
+fi
+grep -Fq 'normalize' "$helper_out" ||
+  fail "a rewritten settings file must be reported, got: $(cat "$helper_out")"
+
+# The deploy log records the map's prior value for uninstall.
+assert_eq "$(awk -F'\t' '$1 ~ /settings\.json\[chat\.instructionsFilesLocations\]$/ {print $5}' "$HELPER_LOG")" \
+  '{"/foreign/entry":true}' \
+  "the merge must record the settings map's prior value"
+
+# A file that is not JSON at all is left as it is and the run continues, so one
+# unreadable settings file never aborts a deploy.
+printf '%s\n' 'not json at all' > "$helper_settings"
+broken_before="$(sha256_of "$helper_settings")"
+helper_rc=0
+helper_run >"$helper_out" 2>&1 || helper_rc=$?
+assert_eq "$helper_rc" "0" "an unparseable settings file must not fail the run"
+assert_eq "$(sha256_of "$helper_settings")" "$broken_before" \
+  "an unparseable settings file must be left as it is"
+grep -Fq 'not parseable JSON' "$helper_out" ||
+  fail "an unparseable settings file must be reported as a skip, got: $(cat "$helper_out")"
+
+# ---------------------------------------------------------------------------
+# Items 8 and 9, uninstall half: restore_json_key and strip_json_key address a
+# dotted top-level key, so the recorded map prior restores and an @absent prior
+# removes the key.
+# ---------------------------------------------------------------------------
+# shellcheck disable=SC2034
+helper_uninstall() {  # prior
+  local prior="$1"
+  (
+    set -- --global
+    DEPLOYMENT_SH_SKIP_MAIN=1
+    # shellcheck source=/dev/null
+    source "$DEPLOY_SCRIPT"
+    DRY_RUN=false
+    SUMMARY_UNINSTALL_ACTIONS=0
+    DEPLOYED_ARTIFACTS_LOG="$HELPER_LOG"
+    restore_json_key "$helper_settings" "chat.instructionsFilesLocations" "$prior"
+  )
+}
+
+printf '%s\n' '{"editor.fontSize":13,"chat.instructionsFilesLocations":{"/foreign/entry":true,"~/.claude/rules":false}}' \
+  > "$helper_settings"
+helper_uninstall '{"/foreign/entry":true}' >/dev/null ||
+  fail "restoring the recorded prior must succeed"
+assert_eq "$(jq -c '.["chat.instructionsFilesLocations"]' "$helper_settings")" '{"/foreign/entry":true}' \
   "uninstall must restore the settings map's recorded prior"
-assert_eq "$(jq -c '.["editor.fontSize"]' "$SETTINGS_FILE")" "13" \
+assert_eq "$(jq -c '.["editor.fontSize"]' "$helper_settings")" "13" \
   "uninstall must leave every other settings key untouched"
 
-# ---------------------------------------------------------------------------
-# Item 8, absent-prior half: a key the deploy created is removed outright on
-# uninstall, and the settings file stays valid JSON.
-# ---------------------------------------------------------------------------
-ABSENT_HOME="${SCRATCH}/absent-home"
-ABSENT_LOG="${SCRATCH}/absent-deploy.log"
-mkdir -p "$ABSENT_HOME"
-HOME="$ABSENT_HOME" DEPLOYED_ARTIFACTS_LOG="$ABSENT_LOG" \
-  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type hook --target vscode >/dev/null
-ABSENT_SETTINGS="$(vscode_settings_file "$ABSENT_HOME")"
-assert_eq "$(jq -c '.["chat.hookFilesLocations"]' "$ABSENT_SETTINGS")" \
-  '{".claude/settings.json":false,"~/.claude/settings.json":false}' \
-  "a deploy with no prior key must create the settings map"
-assert_eq "$(awk -F'\t' '$1 ~ /settings\.json\[chat\.hookFilesLocations\]$/ {print $5}' "$ABSENT_LOG")" \
-  "@absent" \
-  "a first write must record the absent marker as the prior"
-
-HOME="$ABSENT_HOME" DEPLOYED_ARTIFACTS_LOG="$ABSENT_LOG" \
-  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --global >/dev/null
-assert_eq "$(jq -r 'has("chat.hookFilesLocations")' "$ABSENT_SETTINGS")" "false" \
+helper_uninstall '@absent' >/dev/null ||
+  fail "removing a key whose prior was absent must succeed"
+assert_eq "$(jq -r 'has("chat.instructionsFilesLocations")' "$helper_settings")" "false" \
   "uninstall must remove a key whose recorded prior was the absent marker"
-jq -e . "$ABSENT_SETTINGS" >/dev/null || fail "the settings file must stay valid JSON after uninstall"
+jq -e . "$helper_settings" >/dev/null || fail "the settings file must stay valid JSON after uninstall"
 
 printf 'VS Code Copilot hook routing regression passed\n'

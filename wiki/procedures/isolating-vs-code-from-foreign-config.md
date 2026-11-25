@@ -1,7 +1,7 @@
 ---
 title: Isolating VS Code from foreign harness config
 created: 2026-08-09
-updated: 2026-11-21
+updated: 2026-11-25
 type: procedure
 tags: [copilot, claude, codex, discovery, portability, hook]
 sources: []
@@ -10,11 +10,12 @@ confidence: high
 
 # Isolating VS Code from foreign harness config
 
-VS Code is the only harness in this set that switches foreign consumption off one
-path at a time, through `settings.json` keys a deploy step can write. Disable the
-Claude file locations you do not want read, turn off the third-party agent
-integration, and treat the aggregated session list as a separate problem with its
-own switch.
+VS Code is the only harness in this set that documents per-path location maps for
+foreign consumption, through `settings.json` keys a deploy step can write. Those
+maps scope the editor's **Local** harness; the Copilot harness reads the
+repository `.claude` settings files directly whatever they say. Turn off the
+third-party agent integration, and treat the aggregated session list as a
+separate problem with its own switch.
 
 ## When this applies
 
@@ -31,9 +32,9 @@ reads hooks from `.claude/settings.json`, `.claude/settings.local.json`, and
 
 Handle the two problems separately, because they have different switches.
 
-**For configuration files**, use the two location maps. Each maps a path to a
-boolean, and a path set to `false` is disabled even when it is a documented
-default, so the Claude sources come off individually while your own stay on.
+**For the Local harness's discovery**, use the two location maps. Each maps a path
+to a boolean, and a path set to `false` is disabled even when it is a documented
+default, so the Local harness stops reading a path while your own entries stay on.
 
 ```jsonc
 "chat.hookFilesLocations": {
@@ -49,6 +50,19 @@ default, so the Claude sources come off individually while your own stay on.
 Write only the paths being disabled, so entries the user set survive the edit.
 Because these are ordinary settings keys, a deploy step can merge them, unlike
 the Cursor equivalent.
+
+**These maps do not scope the Copilot harness.** The hooks page, re-read on
+25 November 2026, documents `chat.hookFilesLocations` under "Existing Local
+hooks" and states "Local editor settings such as `chat.hookFilesLocations` do not
+configure Copilot discovery". It also states that the Copilot harness reads
+inline hook settings in `.github/copilot/settings.json`,
+`.github/copilot/settings.local.json`, and `~/.copilot/settings.json`, plus
+repository `.claude/settings.json` and `.claude/settings.local.json`. A Claude
+hook therefore cannot be switched off for the Copilot harness from editor
+settings: ship a Copilot-native hook config instead and accept the possible
+duplicate run, which is harmless for a guard that denies idempotently. Whether
+`chat.instructionsFilesLocations` reaches the Copilot harness the same way is
+unverified; the documented statement names the hooks key.
 
 **For third-party agent integration**, set
 `"github.copilot.chat.claudeAgent.enabled": false`. That removes the Claude
@@ -78,13 +92,15 @@ none of it. Per-session right-click actions are the only finer control.
 **Keep the agent switch and the file switches apart.**
 `github.copilot.chat.claudeAgent.enabled` governs running Claude as a harness
 inside VS Code. It does not stop VS Code reading Claude's files, which is what
-the two location maps do. Setting one and expecting the other's effect is the
-easy mistake here.
+the two location maps do for the Local harness. Setting one and expecting the
+other's effect is the easy mistake here.
 
 **A hook merged into `~/.claude/settings.json` is a two-harness deploy.** Both
 Copilot products read that file for hooks and run every matching hook from every
-source, so a guard installed for Claude also fires in VS Code until the hook
-location is switched off.
+source, so a guard installed for Claude also fires in VS Code. No documented
+setting stops the Copilot harness from reading it, so deliver a Copilot-native
+config and let the guard deny idempotently rather than expecting the hook
+location map to close the route.
 
 ## See Also
 

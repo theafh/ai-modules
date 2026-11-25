@@ -49,8 +49,10 @@ set -euo pipefail
 #   log records the owned set as an @entries: manifest, and uninstall removes
 #   exactly those entries. Scalar settings keys keep merge_json_key's whole-key
 #   write and its recorded prior, while a settings-map key such as VS Code's
-#   chat.hookFilesLocations merges entry by entry and keeps the map's whole
-#   prior value for uninstall.
+#   chat.instructionsFilesLocations merges entry by entry and keeps the map's
+#   whole prior value for uninstall. Such a settings file may carry comments or
+#   trailing commas, so a map merge normalizes that syntax and skips a file it
+#   still cannot parse rather than aborting the run.
 #   Backups land in $HOME as <name>_<timestamp>, where <name> defaults to
 #   basename(target_dir). The caller can override <name> when the basename
 #   isn't tool-distinctive — e.g. VS Code's user-prompts dir on macOS and
@@ -282,7 +284,6 @@ if [[ -n "$PROJECT_DIR" ]]; then
   CODEX_SKILLS_DIR="${PROJECT_DIR}/.agents/skills"
   VSCODE_COPILOT_DIR="${PROJECT_DIR}/.github"
   VSCODE_PROMPTS_DIR="${PROJECT_DIR}/.github/prompts"
-  VSCODE_SETTINGS_FILE="${PROJECT_DIR}/.vscode/settings.json"
   OPENCODE_DIR="${PROJECT_DIR}/.opencode"
   # Antigravity's native project-level convention is the workspace .agents/ tree.
   ANTIGRAVITY_TREE_DIR="${PROJECT_DIR}/.agents"
@@ -303,10 +304,6 @@ else
   else
     VSCODE_PROMPTS_DIR="${HOME_DIR}/.config/Code/User/prompts"
   fi
-  # The user settings file beside the prompts root. The vscode arm writes its
-  # settings-map entries here and only at global scope, because a settings map
-  # key such as chat.hookFilesLocations is a user-level switch.
-  VSCODE_SETTINGS_FILE="${VSCODE_PROMPTS_DIR%/*}/settings.json"
 fi
 
 # Dormant managed-global-rules feature, parked to keep its exact strings and
@@ -1148,15 +1145,89 @@ rewrite_hook_command_paths() {
 }
 
 # ---------------------------------------------------------------------------
+# Strip JSON-with-comments syntax from stdin.
+#
+# VS Code's settings editor accepts and preserves // line comments, /* */ block
+# comments, and a trailing comma before a closing brace or bracket, none of
+# which jq parses. This reduces such a document to strict JSON by dropping
+# comments and trailing commas outside string literals, so a value that holds
+# "//" (a URL, for example) reaches the parser intact.
+# ---------------------------------------------------------------------------
+strip_jsonc() {
+  awk '
+    { doc = doc $0 "\n" }
+    END {
+      n = length(doc)
+      out = ""
+      in_str = 0
+      esc = 0
+      for (i = 1; i <= n; i++) {
+        c = substr(doc, i, 1)
+        if (in_str) {
+          out = out c
+          if (esc) esc = 0
+          else if (c == "\\") esc = 1
+          else if (c == "\"") in_str = 0
+          continue
+        }
+        if (c == "\"") { in_str = 1; out = out c; continue }
+        if (c == "/" && substr(doc, i + 1, 1) == "/") {
+          i += 2
+          while (i <= n && substr(doc, i, 1) != "\n") i++
+          continue
+        }
+        if (c == "/" && substr(doc, i + 1, 1) == "*") {
+          i += 2
+          while (i <= n && !(substr(doc, i, 1) == "*" && substr(doc, i + 1, 1) == "/")) i++
+          i++
+          continue
+        }
+        if (c == ",") {
+          j = i + 1
+          while (j <= n) {
+            d = substr(doc, j, 1)
+            if (d == " " || d == "\t" || d == "\n" || d == "\r") { j++; continue }
+            if (d == "/" && substr(doc, j + 1, 1) == "/") {
+              j += 2
+              while (j <= n && substr(doc, j, 1) != "\n") j++
+              continue
+            }
+            if (d == "/" && substr(doc, j + 1, 1) == "*") {
+              j += 2
+              while (j <= n && !(substr(doc, j, 1) == "*" && substr(doc, j + 1, 1) == "/")) j++
+              j++
+              continue
+            }
+            break
+          }
+          if (j <= n) {
+            d = substr(doc, j, 1)
+            if (d == "}" || d == "]") continue
+          }
+        }
+        out = out c
+      }
+      printf "%s", out
+    }'
+}
+
+# ---------------------------------------------------------------------------
 # Merge entries into a top-level JSON key that holds a settings map.
 #
-# VS Code's chat.hookFilesLocations and chat.instructionsFilesLocations each
-# map a path to a boolean. merge_json_key writes the whole key, which would
-# drop every entry the user set beside the ones ai-modules owns, so this
-# helper works at entry grain: it adds or updates exactly the entries passed
-# in and leaves every other entry of the map where it was. A key that holds
-# something other than an object is content ai-modules did not write, so it
-# stays as it is rather than being replaced.
+# VS Code's chat.instructionsFilesLocations maps a path to a boolean.
+# merge_json_key writes the whole key, which would drop every entry the user
+# set beside the ones ai-modules owns, so this helper works at entry grain: it
+# adds or updates exactly the entries passed in and leaves every other entry of
+# the map where it was. A key that holds something other than an object is
+# content ai-modules did not write, so it stays as it is rather than being
+# replaced.
+#
+# A target that does not parse as strict JSON gets one strip_jsonc pass,
+# because VS Code's settings editor accepts comments and trailing commas. The
+# merged write that follows is strict JSON, so the comment loss is reported
+# rather than silent. A target that still does not parse is left as it is and
+# the merge reports a skip, because one unreadable settings file must not abort
+# a whole deploy run.
 #
 # The deploy log keeps merge_json_key's path[key] shape and records the map's
 # whole prior value on first write, so uninstall restores that value through
@@ -1183,8 +1254,15 @@ merge_settings_map_entries() {
   fi
 
   if ! printf '%s' "$existing" | jq -e 'type == "object"' >/dev/null 2>&1; then
-    err "failed" "not a JSON object: ${target}"
-    return 1
+    local relaxed
+    relaxed="$(printf '%s' "$existing" | strip_jsonc)"
+    if printf '%s' "$relaxed" | jq -e 'type == "object"' >/dev/null 2>&1; then
+      existing="$relaxed"
+      warn "normalize" "${target} carries comments or trailing commas; the merge rewrites it as strict JSON"
+    else
+      warn "skip" "${target} is not parseable JSON; .${key} left as it is"
+      return 0
+    fi
   fi
 
   if printf '%s' "$existing" | jq -e --arg k "$key" 'has($k) and ((.[$k] | type) != "object")' >/dev/null 2>&1; then
@@ -2538,6 +2616,14 @@ install_for_app() {
             # ./hooks/ command is rewritten here to the same target the merge
             # routes compute: absolute at global scope, project-relative under
             # --project-dir.
+            #
+            # No settings switch is written here. chat.hookFilesLocations
+            # configures the Local harness only, while the Copilot harness keeps
+            # reading the repository .claude/settings.json and
+            # .claude/settings.local.json files, so no documented setting closes
+            # that route. This native config is the route that works regardless
+            # of Local settings, and a second guard run from the Claude sources
+            # is harmless because the guard denies idempotently.
             local hooks_dir
             if [[ -n "$PROJECT_DIR" ]]; then
               hooks_dir=".github/hooks"
@@ -2545,15 +2631,6 @@ install_for_app() {
               hooks_dir="${app_dir}/hooks"
             fi
             rewrite_hook_command_paths "$dest_file" "$hooks_dir"
-            if [[ -n "$PROJECT_DIR" ]]; then
-              info "skip" "[$name] chat.hookFilesLocations is a user-level switch; project scope leaves the user settings alone"
-            else
-              # Close the Claude hook adoption path, so the Copilot-native file
-              # is the only route the guard arrives by in a VS Code session.
-              ensure_dir "${VSCODE_SETTINGS_FILE%/*}"
-              merge_settings_map_entries "$DEPLOYMENT_CONF" "$VSCODE_SETTINGS_FILE" "chat.hookFilesLocations" "$app_id" "$type" \
-                '{".claude/settings.json": false, "~/.claude/settings.json": false}'
-            fi
           fi
           if [[ "$src_ext" == "sh" && ! $DRY_RUN ]]; then chmod +x "$dest_file"; fi
           ;;

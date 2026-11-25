@@ -1,7 +1,7 @@
 ---
 title: GitHub Copilot in VS Code
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-25
 type: entity
 tags: [copilot, agent, skill, plugin, hook, discovery]
 sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]
@@ -22,7 +22,9 @@ custom-chat-modes, overview) and
 `code.visualstudio.com/docs/agent-customization/agent-plugins`, and on
 9 August 2026 against `code.visualstudio.com/docs/agent-customization/hooks`
 plus GitHub's own `docs.github.com/en/copilot/reference/hooks-reference` and
-`/concepts/agents/hooks`. The plugin and hook surfaces are both documented as
+`/concepts/agents/hooks`. The hook-loading contract and the settings switches
+were re-verified on 25 November 2026 against the same hooks page and against
+GitHub's hooks reference. The plugin and hook surfaces are both documented as
 preview and the mode file was renamed from `*.chatmode.md` to `*.agent.md`, so
 re-verify before relying on any of it.
 
@@ -63,14 +65,25 @@ VS Code reads hooks from these places. At workspace scope it reads `.github/hook
 `.claude/settings.json`, and `.claude/settings.local.json`. At user scope it reads
 `~/.copilot/hooks` and `~/.claude/settings.json`. The scope table names the user
 directory without stating the filename pattern inside it, which the CLI reference
-settles as `*.json`.
+settles as `*.json`. The Copilot harness adds inline hook settings in
+`.github/copilot/settings.json`, `.github/copilot/settings.local.json`, and
+`~/.copilot/settings.json`, and it reads the repository `.claude/settings.json`
+and `.claude/settings.local.json` directly (verified 25 November 2026).
 
-The schema puts hook objects directly under the event name:
+The schema puts hook objects directly under the event name, and every documented
+example carries a top-level `"version": 1`:
 
 ```json
-{"hooks": {"PreToolUse": [{"type": "command", "command": "./guard.sh",
+{"version": 1, "hooks": {"PreToolUse": [{"type": "command", "command": "./guard.sh",
   "timeout": 30, "cwd": "", "env": {}, "osx": "", "linux": "", "windows": ""}]}}
 ```
+
+The event name also selects the payload shape (confirmed 25 November 2026 in
+GitHub's hooks reference). A camelCase event such as `preToolUse` receives
+`toolName` and `toolArgs`; the PascalCase alias `PreToolUse` receives the
+snake_case `tool_name` and `tool_input` fields, which is the Claude-shaped
+envelope a ported guard script already reads. `timeout` is a documented alias for
+`timeoutSec`, and `timeoutSec` wins when both are present.
 
 That shape is the trap for anything ported from Claude or Codex. Those two put
 **matcher groups** in the event array, each group carrying its own nested `hooks`
@@ -122,12 +135,39 @@ That last one has a consequence worth stating plainly: a hook merged into
 `~/.claude/settings.json` for Claude fires in VS Code as well, whether or not
 anyone intended a second harness to run it.
 
-Unlike every other adopter here, VS Code lets each of those paths be switched off
-individually. `chat.hookFilesLocations` and `chat.instructionsFilesLocations` each
-map a path to a boolean, and setting one to `false` disables it even when it is a
-documented default, so `.claude/settings.json`, `~/.claude/settings.json`, and
-`~/.claude/rules` come off one at a time. Keep
-`github.copilot.chat.claudeAgent.enabled` separate in your head: it governs
+Unlike every other adopter here, VS Code offers per-path switches for its
+**Local** harness. `chat.hookFilesLocations` and `chat.instructionsFilesLocations`
+each map a path to a boolean, and setting one to `false` disables it even when it
+is a documented default. Those switches configure the Local harness only.
+
+The hooks page, re-read on 25 November 2026, states three things that decide what
+a deploy can promise:
+
+- `chat.hookFilesLocations` is documented under **"Existing Local hooks"**, and
+  "Local editor settings such as `chat.hookFilesLocations` do not configure
+  Copilot discovery." The same section says `chat.hookFilesLocations` and
+  `chat.useClaudeHooks` "do not configure the shared Copilot runtime", and that
+  the Local harness is deprecated and will be removed in February 2027.
+- "The Copilot harness reads inline hook settings in
+  `.github/copilot/settings.json`, `.github/copilot/settings.local.json`, and
+  `~/.copilot/settings.json`. It also reads repository `.claude/settings.json`
+  and `.claude/settings.local.json`."
+- `chat.useHooks` is not a global hook switch. The page states that it turns off
+  repository and custom-agent hooks for a Copilot session and that "user hooks,
+  policy hooks, and hooks that the runtime loads from installed plugin folders
+  still run", so it does not stop the Copilot harness loading a configuration.
+
+So no documented setting closes the Copilot harness's read of the repository
+`.claude/settings.json` files. A hook shipped into `.claude/settings.json` for
+Claude still fires in a VS Code session, and a deploy that ships its own Copilot
+hook config leaves that route open as well. The overlap is tolerable only because
+the guardrail denies idempotently: the same mutation is refused twice, not allowed
+once. The statement above names `chat.hookFilesLocations`; whether
+`chat.instructionsFilesLocations` reaches Copilot discovery the same way is
+**not verified** — the page's "Local editor settings such as …" wording suggests
+the class, but only the named key is documented.
+
+Keep `github.copilot.chat.claudeAgent.enabled` separate in your head: it governs
 running Claude as a harness inside VS Code, not reading Claude's files.
 
 Those are adoption paths rather than deploy targets. Writing to `~/.claude/rules`
@@ -177,8 +217,18 @@ when the model judges it relevant. Neither is standing.
 
 - `code.visualstudio.com/docs/copilot/customization`,
   `/docs/agent-customization/agent-plugins`, and
-  `/docs/agent-customization/hooks`.
+  `/docs/agent-customization/hooks`. The hooks page was re-read on 25 November
+  2026 for the settings-switch contract: `chat.hookFilesLocations` sits under
+  "Existing Local hooks", "Local editor settings such as
+  `chat.hookFilesLocations` do not configure Copilot discovery", the Copilot
+  harness reads inline hook settings in `.github/copilot/settings.json`,
+  `.github/copilot/settings.local.json`, and `~/.copilot/settings.json` plus the
+  repository `.claude/settings.json` and `.claude/settings.local.json`, and
+  `chat.useHooks` is a repository-and-custom-agent switch rather than a global one
+  ("This setting is not a global hook switch").
 - `docs.github.com/en/copilot/reference/hooks-reference` and
   `/en/copilot/concepts/agents/hooks` for the CLI superset and the loading rules.
+  Re-read on 25 November 2026 for the `version` field, the PascalCase `PreToolUse`
+  alias and its snake_case payload, and `timeout` as an alias for `timeoutSec`.
 - The `harness_portability` skill in this repository, before its August 2026
   split.

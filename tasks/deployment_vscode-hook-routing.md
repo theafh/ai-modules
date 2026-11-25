@@ -1,8 +1,8 @@
 ---
-description: Filter foreign configs out of the vscode hook route, ship a Copilot-schema hook config, and switch VS Code's Claude hook sources off so native delivery is the only route.
+description: Filter foreign configs out of the vscode hook route and ship a Copilot-schema hook config, leaving the Claude hook sources readable because no documented setting closes them for the Copilot harness.
 scope: deployment
 created: 2026-08-09T18:07:35Z
-updated: 2026-11-25T09:05:13Z
+updated: 2026-11-25T09:29:53Z
 status: implemented
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -14,10 +14,13 @@ design-extended: true
 ## Goal
 
 The `vscode` deploy target delivers the CHARTER.md guardrail hook to GitHub
-Copilot in a configuration file Copilot can actually load, it stops copying the
-other harnesses' hook configurations into Copilot's hook root, and it switches off
-the Claude hook sources VS Code would otherwise read, so the native file is the
-one route the guard arrives by.
+Copilot in a configuration file Copilot can actually load, and it stops copying
+the other harnesses' hook configurations into Copilot's hook root. The native
+`vscode-hooks.json` is the route that works regardless of the editor's
+Local-harness settings. Copilot also reads the repository's `.claude/settings.json`
+and `.claude/settings.local.json` directly, and no documented setting closes that
+read, so the guard can run from more than one source; that duplication is
+harmless because the guard denies idempotently.
 
 Today every hook artefact reaches Copilot, because the `vscode` branch of the
 deploy script's hook case is the only per-target branch with no filename filter.
@@ -128,17 +131,22 @@ structure.
    and add the design-table row that names the new file's target the way the
    Cursor, Codex, and Antigravity rows name theirs.
 
-6. **Switch the Claude hook sources off for VS Code**, so the native file is the
-   only route the guard arrives by. VS Code's `chat.hookFilesLocations` maps a path
-   to a boolean and a `false` disables it even when it is a documented default, so
-   merge `{".claude/settings.json": false, "~/.claude/settings.json": false}` into
-   the user's VS Code settings through a nested settings-map entry merge shared
-   with the sibling that lands first; `merge_json_key` supplies only the prior
-   capture and restore log shape, since it writes the whole key. That path
-   captures the prior value on first write and restores it on uninstall, so the
-   switch is reversible by the mechanism the repository established for the
-   `outputStyle` key. Narrow the merge to exactly the Claude hook paths, leaving
-   every other entry the user set untouched.
+6. **Write no Claude hook-source switch.** An earlier version of this step merged
+   `{".claude/settings.json": false, "~/.claude/settings.json": false}` into
+   `chat.hookFilesLocations`. The live page
+   (`code.visualstudio.com/docs/agent-customization/hooks`, read 25 November 2026)
+   shows that switch cannot do the job: `chat.hookFilesLocations` is documented
+   under "Existing Local hooks" and "Local editor settings such as
+   `chat.hookFilesLocations` do not configure Copilot discovery". The Copilot
+   harness reads inline hook settings in `.github/copilot/settings.json`,
+   `.github/copilot/settings.local.json`, and `~/.copilot/settings.json`, and it
+   reads repository `.claude/settings.json` and `.claude/settings.local.json`
+   directly; "Local settings such as `chat.useHooks` do not prevent the Copilot
+   harness from loading a configuration", and no documented setting disables that
+   read. The route is therefore the native file alone, with no settings write, and
+   the record of the verified contract lives on the wiki entity page. The
+   settings-map merge helper stays in the script for the instructions sibling,
+   which merges `chat.instructionsFilesLocations` through it.
 
 **Out of scope:**
 
@@ -158,13 +166,15 @@ structure.
 
 ### The delivery route, decided
 
-Copilot reads hooks from both its own `~/.copilot/hooks` and from
-`~/.claude/settings.json`, and its documented loading rule runs every matching
-hook from every source, so a Claude settings merge plus a Copilot-native file
-would fire the guard twice in one VS Code session. The route is **Copilot's own
-file only**: ship `vscode-hooks.json` per steps 1 to 3, close the adoption path
-per step 6, and leave Claude's hook configuration to plugin install rather than
-merging it into `~/.claude/settings.json`.
+Copilot reads hooks from both its own `~/.copilot/hooks` and the repository
+`.claude/settings.json` files, and its documented loading rule runs every matching
+hook from every source, so a Claude settings merge plus a Copilot-native file would
+fire the guard twice in one VS Code session. The route is **Copilot's own file
+only**: ship `vscode-hooks.json` per steps 1 to 3, write no settings switch per
+step 6, and leave Claude's hook configuration to plugin install rather than
+merging it into `~/.claude/settings.json`. The Claude sources stay readable by the
+Copilot harness, and the duplicate guard run is harmless because the guard denies
+idempotently.
 
 Two reasons carry it. Native delivery keeps the deploy in control of what each
 harness receives, in the schema that harness actually implements. And a harness
@@ -183,9 +193,10 @@ have taken that trade in exchange for skipping one file.
 2. The same dry run still reports the `charter_guardrail.sh` copy into the Copilot
    hook directory, so the filter narrowed the JSON route without dropping the
    script.
-3. `plugins/ai_dev/hooks/vscode-hooks.json` exists, is valid JSON, and its
-   `PreToolUse` array holds hook objects carrying `command` directly, with no
-   entry containing a nested `hooks` array or a `matcher` key.
+3. `plugins/ai_dev/hooks/vscode-hooks.json` exists, is valid JSON, carries the
+   documented top-level `"version": 1`, and its `PreToolUse` array holds hook
+   objects carrying `command` directly, with no entry containing a nested `hooks`
+   array or a `matcher` key.
 4. The committed `vscode-hooks.json` carries a relative `./hooks/` command, and a
    global dry run reports the path rewrite to the Copilot hook directory for that
    file, matching the rewrite the Codex and Antigravity merge rows already report.
@@ -195,17 +206,19 @@ have taken that trade in exchange for skipping one file.
    filter, its design table carries a row for the new file, and the stray-retraction
    sequence is stated once beside those rows; the previous unqualified copy wording
    is gone rather than sitting beside the new text.
-7. A global dry run reports a `chat.hookFilesLocations` merge into the VS Code
-   user settings file carrying `.claude/settings.json` and `~/.claude/settings.json`
-   set to `false`, where it previously reported no settings write for the
-   `vscode` target at all; a real deploy records the key's prior value for
-   uninstall.
-8. Running the uninstall path against a deploy log holding that merge restores the
-   captured prior value, and removes the key outright when the recorded prior was
-   the absent marker.
-9. An unrelated entry placed in `chat.hookFilesLocations` before the deploy
-   survives it, proving the nested entry merge narrowed to the two Claude paths
-   rather than replacing the key.
+7. A global dry run reports no `chat.hookFilesLocations` merge and no write to the
+   VS Code user settings file for the `vscode` target, and a real hook deploy
+   leaves a settings file planted beforehand byte-identical, because that key
+   configures only the Local harness and leaves the Copilot harness reading the
+   repository `.claude/settings.json` files.
+8. The settings-map merge helper kept for the sibling instructions route tolerates
+   a settings file carrying `//` comments and trailing commas, preserves a `//`
+   inside a string value, reports the normalization, and warns a skip instead of
+   failing the run when the file still does not parse.
+9. The same helper merges at entry grain: an unrelated entry placed in the key
+   beforehand survives, every other settings key is untouched, the map's prior
+   value is recorded in the deploy log, and uninstall restores it or removes the
+   key when the recorded prior was the absent marker.
 10. The command the deployed `vscode-hooks.json` carries blocks a CHARTER.md
     mutation: piping a Copilot-shaped `PreToolUse` envelope, a stdin object with
     `tool_name`, `tool_input.file_path` naming `CHARTER.md`, and a `cwd` inside a
@@ -214,35 +227,47 @@ have taken that trade in exchange for skipping one file.
 
 ## Implementation notes
 
-Implemented 2026-11-25.
+Implemented 2026-11-25. Corrected the same day after audit: the settings switch
+this task first shipped does not close the Copilot harness's Claude hook route.
 
 - `deployment/deployment.sh`: the `vscode` hook arm skips every `.json` hook
   config whose basename does not match `vscode-hooks*` and keeps the shell-script
   copy. `rewrite_hook_command_paths` is the copy-route counterpart of the merge
   routes' rewrite: it points the copied config's `./hooks/` commands at
   `${app_dir}/hooks` at global scope and at `.github/hooks` under
-  `--project-dir`. `merge_settings_map_entries` merges
-  `chat.hookFilesLocations` into the VS Code user settings entry by entry and
-  records the map's whole prior value, and it is the helper the VS Code
-  output-style task reuses for `chat.instructionsFilesLocations`.
+  `--project-dir`. The arm writes no VS Code settings key. `chat.hookFilesLocations`
+  is a Local-harness setting that does not configure Copilot discovery, and no
+  documented setting stops the Copilot harness reading the repository
+  `.claude/settings.json` files, so the native config is the route that works and
+  the possible second guard run is harmless because the guard denies idempotently.
+- `merge_settings_map_entries` stays for the sibling
+  [deployment_output-style-vscode.md](deployment_output-style-vscode.md), which
+  merges `chat.instructionsFilesLocations` through it. It merges at entry grain,
+  records the map's whole prior value, and now normalizes a settings file that
+  carries `//` comments or trailing commas through `strip_jsonc` before the jq
+  pass. A file that still does not parse is reported as a skip and the run
+  continues, so one editor-authored settings file cannot abort a whole deploy.
 - The deploy log's `path[key]` notation accepts a dotted top-level key, and
   `restore_json_key` / `strip_json_key` address the key with `--arg k` rather
-  than a jq path, so `chat.hookFilesLocations` restores and strips correctly.
-  `path_exists` reads key presence with `has($k)`, so a key whose value is
-  `false` still counts as present.
-- `plugins/ai_dev/hooks/vscode-hooks.json`: one `PreToolUse` command hook with
-  no `matcher`, running `./hooks/charter_guardrail.sh` with a 30-second timeout.
-- `tests/deployment/script_tests/vscode_hook_run.sh` covers the Acceptance
-  items: the dry-run skips and rewrites, the committed schema, the settings entry
-  merge with a foreign entry and an unrelated key preserved, the recorded prior,
-  the restore and `@absent` removal, and the guardrail envelope run.
-- Project scope leaves the user settings alone and reports a skip, because
-  `chat.hookFilesLocations` is a user-level switch; a project deploy still ships
-  the config and the script into `.github/hooks`.
+  than a jq path. `path_exists` reads key presence with `has($k)`, so a key whose
+  value is `false` still counts as present.
+- `plugins/ai_dev/hooks/vscode-hooks.json`: a top-level `"version": 1`, and one
+  `PreToolUse` command hook with no `matcher`, running
+  `./hooks/charter_guardrail.sh` with a 30-second timeout.
+- `tests/deployment/script_tests/vscode_hook_run.sh` covers the Acceptance items:
+  the dry-run skips and rewrites, the committed schema and version, the absence of
+  any settings write, a planted settings file left byte-identical by a real
+  deploy, and the guardrail envelope run. It exercises the settings-map helper
+  directly through the script's `DEPLOYMENT_SH_SKIP_MAIN` sourcing path: the JSONC
+  normalization, the entry merge with a foreign entry and an unrelated key
+  preserved, the recorded prior, the restore and `@absent` removal, and the
+  unparseable-file skip.
+- Project scope leaves the user settings alone and writes no settings key; a
+  project deploy ships the config and the script into `.github/hooks`.
 
-The already-deployed strays are not retracted by this change. The operator runs
-this pair, which removes what the log records for the global scope and deploys
-again from this checkout:
+The operator's retraction command for the already-deployed strays is unchanged.
+It removes what the log records for the global scope and deploys again from this
+checkout:
 
 ```bash
 ./deployment/deployment.sh --uninstall --global

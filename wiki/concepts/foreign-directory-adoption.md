@@ -1,7 +1,7 @@
 ---
 title: Foreign directory adoption
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-25
 type: concept
 tags: [discovery, portability, claude, opencode, copilot, cursor, antigravity, verification-gap]
 sources: []
@@ -23,6 +23,14 @@ written into that harness's own native root, and where the reading harness
 documents a switch, the deploy turns the adoption off rather than leaving it to
 compete. Relying on adoption is defensible only as a deliberate, stated fallback
 for a harness with no native root for that artefact class.
+
+A documented switch can be narrower than its name suggests. VS Code's
+`chat.hookFilesLocations` looks like a Copilot setting but scopes only the
+editor's Local harness, so the Copilot harness keeps reading the repository
+`.claude/settings.json` files (verified 25 November 2026; see
+[Isolating VS Code from foreign harness config](../procedures/isolating-vs-code-from-foreign-config.md)).
+Read which harness a switch scopes before treating it as a closed path, and
+where none exists, ship the native variant and accept an idempotent duplicate.
 
 The reason is delivery quality rather than tidiness. A harness that reads
 another's artefacts never implements them fully: it takes the file, ignores the
@@ -96,16 +104,23 @@ Claude Code compatibility and also stops `.agents/skills` discovery, which is a
 materially different trade for an operator who also runs Antigravity, because it
 scopes away that harness's native workspace skills in the same stroke.
 
-VS Code's are settings keys, and they are the finest-grained control in the set.
+VS Code's are settings keys, and they scope the editor's **Local** harness only.
 `chat.hookFilesLocations` and `chat.instructionsFilesLocations` each map a path to
 a boolean, and a path set to `false` is disabled **including a documented
-default**, so the Claude sources come off one at a time rather than as a block:
-`.claude/settings.json` and `~/.claude/settings.json` for hooks,
-`~/.claude/rules` for instructions. Because the granularity is per path, turning
-off Claude adoption there costs nothing else, unlike OpenCode's broad switch. A
-third key, `github.copilot.chat.claudeAgent.enabled`, is a different mechanism
-worth not confusing with these: it governs running Claude as a harness inside VS
-Code rather than reading Claude's files.
+default**. That is the finest-grained control in the set and it costs nothing
+else, unlike OpenCode's broad switch, but it does not reach the Copilot harness:
+the hooks page, re-read on 25 November 2026, documents
+`chat.hookFilesLocations` under "Existing Local hooks" and states that "Local
+editor settings such as `chat.hookFilesLocations` do not configure Copilot
+discovery". The Copilot harness reads inline hook settings in
+`.github/copilot/settings.json`, `.github/copilot/settings.local.json`, and
+`~/.copilot/settings.json`, and it reads repository `.claude/settings.json` and
+`.claude/settings.local.json` directly, so those two hook paths cannot be closed
+from editor settings at all. Whether `chat.instructionsFilesLocations` reaches
+Copilot's instruction discovery the same way is **not verified**. A third key,
+`github.copilot.chat.claudeAgent.enabled`, is a different mechanism worth not
+confusing with these: it governs running Claude as a harness inside VS Code rather
+than reading Claude's files.
 
 Cursor documents no equivalent switch, though a settings toggle
 drops foreign config along with `CLAUDE.md`, and Antigravity documents neither a

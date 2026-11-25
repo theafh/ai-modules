@@ -1,7 +1,7 @@
 ---
 title: Hook delivery design
 created: 2026-10-01
-updated: 2026-11-21
+updated: 2026-11-25
 checked: 2026-08-09
 type: concept
 tags: [hook, deployment, portability, plugin, claude, codex, antigravity, copilot, cursor, opencode]
@@ -90,12 +90,17 @@ groups, and an absolute command path.
 Copilot in VS Code reads `~/.claude/settings.json` for hooks, as
 [hook surface portability](hook-surface-portability.md) records, so a merged
 Claude hook and a Copilot-native file would run the same guard twice in one
-session. The decision, taken on 9 August 2026, is to deliver natively and close
-the adoption path: Copilot gets its own configuration in its own schema, the
-deploy switches the Claude hook sources off through `chat.hookFilesLocations`,
-and Claude's hook configuration stays out of `~/.claude/settings.json` entirely.
-The reasoning is on [foreign directory adoption](foreign-directory-adoption.md),
-and the delivery work is a task in the backlog.
+session. The decision, taken on 9 August 2026, is to deliver natively: Copilot
+gets its own configuration in its own schema, and Claude's hook configuration
+stays out of `~/.claude/settings.json` entirely. The original decision also
+expected `chat.hookFilesLocations` to switch the Claude hook sources off. A
+re-read of the hooks page on 25 November 2026 shows that switch scopes only the
+editor's Local harness and leaves the Copilot harness reading the repository
+`.claude/settings.json` files, so the guard can still run twice. That overlap is
+harmless for a guard that denies idempotently, and no documented setting closes
+it. The reasoning is on
+[foreign directory adoption](foreign-directory-adoption.md), and the delivery work
+is a task in the backlog.
 
 ## Open questions
 
