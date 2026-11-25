@@ -2,7 +2,7 @@
 description: "Add a Pattern A behavioural harness for spr: staged source documents, a deterministic bullet-per-paragraph and shape grader, and a refute-biased reconstructability judge."
 scope: tests
 created: 2026-11-25T06:13:24Z
-updated: 2026-11-25T06:13:24Z
+updated: 2026-11-25T07:00:02Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ Give `spr` a running behavioural harness under `tests/spr/`, so its output contr
 
 ## Context
 
-`tests/README.md` `## Coverage decisions` records this skill's disposition as coverage owed, filed here because a full harness is unbounded backfill beyond the coverage-gap task `tests_skill-test-coverage-gaps.md`. The output contract lives in `plugins/ai_dev/skills/spr/SKILL.md` under `<output_contract>`: markdown bullets, no numbered lists, no trailing punctuation on a bullet, at least one bullet per source paragraph, and a final integer rating from 1 to 10.
+`tests/README.md` `## Coverage decisions` records this skill's disposition as coverage owed, filed here because a full harness is unbounded backfill beyond the coverage-gap task `tasks/archive/tests_skill-test-coverage-gaps.md`. The output contract lives in `plugins/ai_dev/skills/spr/SKILL.md` under `<output_contract>`: markdown bullets, no numbered lists, no trailing punctuation on a bullet, at least one bullet per source paragraph, and a final integer rating from 1 to 10.
 
 `tests/git_commit/` is the Pattern A reference, and `tests/README.md` `## Convention` gives the layout. Build on `tests/lib/eval_runner`, `tests/lib/vendor.py`, and `tests/lib/micro_deploy.py` the way the other Pattern A harnesses do.
 

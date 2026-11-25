@@ -404,10 +404,10 @@ files.
 
 ## Coverage decisions
 
-`TESTING.md` `## Coverage Expectations` and the standing repo rules on
-regression harnesses require a skill that bundles scripts to have a
-script-test surface somewhere in the repo, and a behaviour-only skill to have
-eval or trigger coverage or a documented reason it carries none. This section
+The `skill_doctor` skill's `SKILL.md` test-coverage step, and the standing
+repo rules on regression harnesses, require a skill that bundles scripts to
+have a script-test surface somewhere in the repo, and a behaviour-only skill
+to have eval or trigger coverage or a documented reason it carries none. This section
 records the disposition for every behaviour-only skill the selector below
 returns, so a later skill_doctor test-coverage pass reads the reason instead
 of re-flagging the gap.
