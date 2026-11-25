@@ -2,8 +2,8 @@
 description: "Declare the repository's load-bearing tool floor in one file and make `make install` report it, freeing the name from the deploy alias."
 scope: "repo toolchain"
 created: 2026-09-18T11:48:56Z
-updated: 2026-11-25T03:30:17Z
-status: implemented
+updated: 2026-11-25T03:38:56Z
+status: finished
 implemented-by: "Andreas Hoffmann"
 design-extended: false
 reported-by: Andreas Hoffmann

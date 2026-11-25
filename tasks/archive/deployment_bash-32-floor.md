@@ -60,7 +60,7 @@ Rewrite the shell-requirement passage of `deployment/README.md` in place so it s
 - Declaring a bash 4 floor and failing fast instead of rewriting. Every other tool the script needs already resolves to a stock macOS binary, so a declared floor would leave the script unusable in exactly the shells that motivated this task while the rewrite removes the dependency outright.
 - Re-executing the script under a newer bash discovered elsewhere on the machine. This keeps the bash-4 constructs alive behind interpreter-discovery logic and still fails where no newer bash is installed.
 - Encoding the shell floor as a rule inside the portability skill, which the sibling task [shell version floor rule](ai-dev_shell-version-floor-rule.md) owns.
-- A `make` target that installs missing tooling, which the sibling task [make install dependency floor](../toolchain_make-install-dependency-floor.md) owns.
+- A `make` target that installs missing tooling, which the sibling task [make install dependency floor](toolchain_make-install-dependency-floor.md) owns.
 
 ## Acceptance
 

@@ -76,7 +76,7 @@ A prototype of the subset in Approach, run over the tree on the same date,
 rejected exactly the 35 files above and accepted every other one; a current run
 rejects the agent definitions whose plain `description:` contains a colon followed by a space, and no task file.
 
-The [toolchain floor task](../toolchain_make-install-dependency-floor.md) declares
+The [toolchain floor task](toolchain_make-install-dependency-floor.md) declares
 the tools `make lint` needs and rewrites the README sentence this task also edits,
 so whichever of the two lands second adapts that passage.
 

@@ -25,7 +25,7 @@ The user-visible outcome is that a live global deploy completes through homes th
 
 Live harness homes routinely contain Unix sockets and sqlite sidecar files that appear and vanish while the harness is running. Those nodes are not the backup's payload. Ordinary files, directories, and symlinks are.
 
-`jq` and `perl` are already required by the script body. `rsync` becomes required once backups use it. There is no check at startup today: a missing extra fails at the first invocation. The live task [make install dependency floor](../toolchain_make-install-dependency-floor.md) still owns declaring a tool floor and turning `make install` into environment preparation. That task currently claims a stock machine already satisfies the runtime extras and does not list `rsync`. This task records the runtime extras as `jq`, `perl`, and `rsync` in that file and leaves the install target itself there.
+`jq` and `perl` are already required by the script body. `rsync` becomes required once backups use it. There is no check at startup today: a missing extra fails at the first invocation. The live task [make install dependency floor](toolchain_make-install-dependency-floor.md) still owns declaring a tool floor and turning `make install` into environment preparation. That task currently claims a stock machine already satisfies the runtime extras and does not list `rsync`. This task records the runtime extras as `jq`, `perl`, and `rsync` in that file and leaves the install target itself there.
 
 The standing repo rule that keeps the toolchain to Make, shell, and Markdown, with jq, git, and Python 3 as accepted standing dependencies, still governs: this change adds `rsync` as a runtime extra the deploy script requires on PATH, the same class as `jq` and `perl`, rather than as a new language or package-manager stack.
 
@@ -46,7 +46,7 @@ Rewrite the runtime-floor passages of that live make-install task so they list `
 
 **Out of scope:**
 
-- Turning `make install` into environment preparation, declaring a versioned manifest, or detaching the `install: deploy` alias, which [make install dependency floor](../toolchain_make-install-dependency-floor.md) owns.
+- Turning `make install` into environment preparation, declaring a versioned manifest, or detaching the `install: deploy` alias, which [make install dependency floor](toolchain_make-install-dependency-floor.md) owns.
 - Narrowing backups to artefact directories only.
 - A Python copy helper inside the shell script.
 - A per-file `find` plus `cp` backup walk.
