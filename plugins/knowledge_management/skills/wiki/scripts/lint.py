@@ -3,8 +3,9 @@
 
 Audits frontmatter validity, link integrity, markdown style (matching
 the format_markdown skill), tag taxonomy compliance, stale content,
-oversized pages, source drift, and log rotation. Findings are grouped
-by severity so the caller knows what to fix first.
+oversized pages, heading and label structure, source drift, and log
+rotation. Findings are grouped by severity so the caller knows what to
+fix first.
 
 Four sources leave the live blocking, warn, and info totals for a trailing
 context-only ``ACKNOWLEDGED`` section: an info finding the wiki owner has
@@ -1656,6 +1657,122 @@ def check_meta_prose(wiki: Path) -> list[Issue]:
     return issues
 
 
+# ---------------------------------------------------------------------------
+# Heading / bold-label checks
+#
+# A heading or a bold-prefix label names its section's own subject. Metadata —
+# a date, a source, a session ID, a qualifier — belongs in its own channel
+# (frontmatter, an inline link, a `sources:` entry, or the audit log), not
+# jammed into the structural label. Two info-level heuristics surface the
+# common cases; the fuller refusal lives in the agent and the hub skill.
+# ---------------------------------------------------------------------------
+
+HEADING_LABEL_LENGTH_LIMIT = 60
+
+# A bold-prefix label line: the whole line is one bold span, and the span forms
+# a label — its content ends with `:` (`**What the canon says:**`) or the line
+# ends with `**:` (`**What the canon says**:`). A whole-line emphasised prose
+# sentence whose bold content closes on sentence punctuation is body prose.
+LABEL_LINE_RE = re.compile(r"^\*\*(.+?)\*\*(:?)\s*$")
+
+# A parenthesised ISO-date suffix on a heading or label, e.g.
+# `(2026-01-15 triage session)`.
+HEADING_LABEL_DATE_RE = re.compile(r"\([0-9]{4}-[0-9]{2}-[0-9]{2}.*?\)")
+
+HEADING_LABEL_LENGTH_MESSAGE = (
+    "structural text is {length} characters — keep headings and bold labels "
+    "under 60 and route the detail to its channel"
+)
+HEADING_LABEL_DATE_MESSAGE = (
+    "parenthesised ISO-date attribution in a heading or bold label — route the "
+    "date to frontmatter, a source, or the audit log and keep the label structural"
+)
+
+
+def label_structural_text(line: str) -> str | None:
+    """Return the structural text of a bold-prefix label line, or None.
+
+    The whole line must be one bold span whose content ends with `:`, or whose
+    closing `**` is followed by `:`. The returned text is the visible label
+    after the bold wrappers and the trailing colon come off, so the raw
+    line's decoration never counts toward the length heuristic.
+    """
+    match = LABEL_LINE_RE.match(line.strip())
+    if not match:
+        return None
+    content, trailing = match.group(1), match.group(2)
+    if content.endswith(":"):
+        return content[:-1].rstrip()
+    if trailing == ":":
+        return content.strip()
+    return None
+
+
+def check_heading_label(wiki: Path) -> list[Issue]:
+    """Flag metadata stuffed into headings and bold-prefix labels.
+
+    Two info-level heuristics, both on the page walk ``iter_wiki_pages``
+    yields, so `SCHEMA.md`, `index.md`, and the append-only `log.md` stay
+    outside them:
+
+    - A heading at H2 or deeper, or a bold-label line, whose structural text
+      runs past 60 characters. H1 is exempt: a page title follows its type
+      anatomy, and a `query` page carries its question verbatim as the title.
+    - A heading at any level, or a bold-label line, carrying a parenthesised
+      ISO-date suffix. The H1 hit is reported here and left for review; the
+      agent's heading move rewrites only H2-or-deeper headings and labels.
+    """
+    issues: list[Issue] = []
+    for page in iter_wiki_pages(wiki):
+        text = page.read_text(encoding="utf-8")
+        _, body = parse_frontmatter(text)
+        fm_offset = text[: text.find(body)].count("\n") if body else 0
+
+        in_fence = False
+        for idx, line in enumerate(body.splitlines()):
+            if FENCE_RE.match(line.strip()):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+
+            abs_line = fm_offset + idx + 1
+            heading = HEADER_RE.match(line)
+            if heading:
+                level = len(heading.group(1))
+                structural = heading.group(2)
+                if level >= 2 and len(structural) > HEADING_LABEL_LENGTH_LIMIT:
+                    issues.append(Issue(
+                        SEV_INFO, "heading-label", page,
+                        HEADING_LABEL_LENGTH_MESSAGE.format(length=len(structural)),
+                        line=abs_line,
+                    ))
+                if HEADING_LABEL_DATE_RE.search(structural):
+                    issues.append(Issue(
+                        SEV_INFO, "heading-label", page,
+                        HEADING_LABEL_DATE_MESSAGE,
+                        line=abs_line,
+                    ))
+                continue
+
+            structural = label_structural_text(line)
+            if structural is None:
+                continue
+            if len(structural) > HEADING_LABEL_LENGTH_LIMIT:
+                issues.append(Issue(
+                    SEV_INFO, "heading-label", page,
+                    HEADING_LABEL_LENGTH_MESSAGE.format(length=len(structural)),
+                    line=abs_line,
+                ))
+            if HEADING_LABEL_DATE_RE.search(structural):
+                issues.append(Issue(
+                    SEV_INFO, "heading-label", page,
+                    HEADING_LABEL_DATE_MESSAGE,
+                    line=abs_line,
+                ))
+    return issues
+
+
 def check_log_rotation(wiki: Path) -> list[Issue]:
     """Surface a `log.md` that has outgrown its rotation threshold.
 
@@ -2889,6 +3006,7 @@ def main() -> int:
         if taxonomy:
             issues.extend(check_unused_tags(wiki, taxonomy))
         issues.extend(check_page_size(wiki))
+        issues.extend(check_heading_label(wiki))
         issues.extend(check_meta_prose(wiki))
         issues.extend(check_stale_content(wiki))
         issues.extend(check_quality_signals(wiki))

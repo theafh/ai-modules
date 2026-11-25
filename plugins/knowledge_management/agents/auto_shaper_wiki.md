@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.17
+version: 1.11.18
 model: inherit
 background: false
 effort: high
@@ -936,6 +936,34 @@ affect the same file so each file is opened, read, and rewritten once.
        structure, so the corrected element carries no leftover
        semantic baggage.
 
+    **Heading and label vocabulary.** A heading or a bold-prefix label
+    is structural: it names the section's own subject, and displaced
+    metadata (a date, source, session ID, audience, qualifier, mandate
+    level, or scope tag) routes away before the label is normalised.
+    Take the label vocabulary from the target wiki's `SCHEMA.md` where
+    it declares one rather than inventing terms. **SCHEMA label
+    vocabulary:** a wiki declares a label vocabulary when its SCHEMA
+    page-type anatomy sections name the structural labels entries must
+    use (bold-prefix or section label strings), not merely describe
+    section content. The shipped `template_schema.md` declarative-type
+    anatomies describe content rather than fixing verbatim labels; the
+    `procedure` anatomy does fix its bold labels, so treat those
+    scaffold labels as a default vocabulary only where a wiki's SCHEMA
+    adopts them. **Adopts:** a wiki adopts the scaffold procedure
+    labels when its `## Frontmatter` `type:` enum still lists
+    `procedure` and its SCHEMA retains the `## Procedure Pages`
+    section; a wiki whose enum omits `procedure` or whose SCHEMA drops
+    that section declares no label vocabulary. **Vocabulary binding:**
+    a declared vocabulary binds only the labels on pages of the type
+    whose anatomy declares it — the scaffold procedure vocabulary binds
+    `procedure` pages — and every other page type receives metadata
+    routing alone: its labels keep that page type's own anatomy wording
+    and are never rewritten to the procedure vocabulary. Read that
+    named-label shape as the vocabulary signal; do not invent a
+    separate SCHEMA `## Label Vocabulary` channel. Without a declared
+    vocabulary, leave the label wording alone and route only the
+    displaced metadata.
+
     Both halves of the fix (the structural normalisation and the
     routing that preceded it) are named in the live remediation
     summary and in the per-file change report, which carry that
@@ -974,7 +1002,9 @@ affect the same file so each file is opened, read, and rewritten once.
     name the sidecar path in the final report and apply no move,
     because `<raw_directory_read_only>` keeps `raw/` content and paths
     untouched, the way `log-scope` and `citation` are reported without
-    a body edit. The log
+    a body edit. A `heading-label` finding maps to `<fix_heading_label>`,
+    whose H1 branch is review-only and whose length-only branch may stand
+    as accepted info. The log
     is append-only in substance (`<configurable_zones>`), and trimming
     a historical entry whose subject was a file outside the wiki is an
     editorial decision the owner makes, not a sweep this agent
@@ -1089,6 +1119,37 @@ affect the same file so each file is opened, read, and rewritten once.
       heading carries metadata the anatomy's label has no room for,
       apply "two-pass remediation" before renaming it.
     </fix_section_order_or_gaps>
+
+    <fix_heading_label>
+      Applies to lint's `heading-label` category. A heading or bold-prefix
+      label is structural, and a parenthesised attribution suffix on one is
+      displaced metadata: route the attribution to its channel first, then
+      normalise the label. Cite "two-pass remediation" by that verbatim name
+      and apply the heading vocabulary rule it states, including its
+      **SCHEMA label vocabulary** and **Vocabulary binding** halves.
+
+      - **H2-or-deeper heading or bold label.** A parenthesised or
+        ISO-date-suffix finding here is remediative. Route the date, source,
+        session, or qualifier to frontmatter, a `sources:` entry naming an
+        existing `raw/<kind>/<slug>.md` sidecar, an inline link, or the
+        audit log, then write the label to the vocabulary the page type's
+        anatomy declares. A page type with no declared vocabulary keeps its
+        own anatomy wording.
+      - **H1.** An H1 date-suffix finding is review-only: surface it as an
+        info finding and leave the title unchanged. An H1 follows its
+        page-type anatomy rather than a label vocabulary — a `query` page
+        carries its question verbatim as the title — so this move performs
+        no rewrite of an H1.
+      - **Length-only findings.** A `heading-label` finding whose only
+        problem is structural text past 60 characters is acceptable info:
+        leave it standing, and record it with an `- Accepted finding:`
+        bullet only when the owner asks to accept it.
+
+      Every `heading-label` finding carries its heading's line number, so
+      the accepted-info store's four-field form
+      (`- Accepted finding: heading-label — <path> — <line> — <message>`)
+      pins one finding out of several sharing a path.
+    </fix_heading_label>
 
     <fix_wrong_directory_for_declared_type>
       Move with `git mv` to the directory matching the declared

@@ -4524,6 +4524,13 @@ a4_wiki_family_inheritance_contract() {
     python3 "$FAMILY_INHERITANCE_CONTRACT"
 }
 
+# a5: the agent's <fix_heading_label> move carries the decided H1 disposition
+# (review-only, no title rewrite), the prompt surface the l* lint scenarios
+# cannot observe.
+a5_heading_label_h1_review_only() {
+    python3 "$AGENT_CONTRACT" --only heading_label_h1_review_only
+}
+
 # c1: the hub's page-update and log-entry rules stay stated, the durable
 # behaviour the two retired wiki reproductions checked.
 c1_wiki_log_and_updated_contract() {
@@ -4926,6 +4933,248 @@ PY
 }
 
 ###############################################################################
+# Heading / bold-label checks (`heading-label`)
+###############################################################################
+
+# Replace a page's body (everything after the frontmatter) with <body>, leaving
+# the frontmatter intact. Args: <page> <body>
+replace_page_body() {
+    python3 - "$1" "$2" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+end = text.find("\n---\n", 4)
+if end == -1:
+    raise SystemExit("fixture error: page has no closing frontmatter fence")
+p.write_text(text[:end + 5] + "\n" + sys.argv[2].strip("\n") + "\n")
+PY
+}
+
+# Count findings of <category> in lint output.
+count_lint_category() {
+    local out=$1 cat=$2
+    printf '%s\n' "$out" \
+        | grep -Ec "^[[:space:]]*\[[^]]+\][[:space:]]+${cat}[[:space:]]" || true
+}
+
+# Assert a finding of <category> for <file> is reported at <line>.
+# Args: <label> <output> <category> <file> <line>
+assert_finding_line_for_file() {
+    local label=$1 out=$2 cat=$3 file=$4 line=$5
+    if printf '%s\n' "$out" \
+        | grep -E "^[[:space:]]*\[[^]]+\][[:space:]]+${cat}[[:space:]]" \
+        | grep -qF "$file:$line"; then
+        return 0
+    fi
+    log "    [missing finding at line: $label — expected $cat for $file:$line]"
+    printf '%s\n' "$out" | indent
+    return 1
+}
+
+# L115: a `query` page's verbatim-question H1 past 60 characters draws no
+# heading-label length finding, while a long H2 on the same page does.
+l115_lint_heading_label_h1_length_exempt() {
+    local wiki; wiki=$(stage_fresh_wiki l115)
+    customize_taxonomy "$wiki"
+    local slug="what-is-the-widget-default-and-how-does-it-behave"
+    write_typed_page "$wiki" query "$slug"
+    local page="$wiki/queries/$slug.md"
+    replace_page_body "$page" '
+# What is the widget default and how does it behave when a tenant disables it
+
+## Synthesized answer with cross-links and a very long heading name indeed
+
+The default is on.
+
+## Short heading
+
+More detail.
+'
+    add_index_entry_for "$wiki" queries "$slug"
+    set_index_total_pages "$wiki" 1
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local h2_line
+    h2_line=$(grep -n '^## Synthesized answer' "$page" | cut -d: -f1)
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_eq "only the long H2 draws a heading-label finding" \
+        "$(count_lint_category "$out" heading-label)" "1" || ok=false
+    assert_finding_line_for_file "long H2 finding carries its line" "$out" \
+        "heading-label" "queries/$slug.md" "$h2_line" || ok=false
+    assert_finding_for_file_contains "length finding names structural text" "$out" \
+        "heading-label" "queries/$slug.md" "structural text is" || ok=false
+    $ok
+}
+
+# L116: a bold-label line whose structural text is longer than 60 characters
+# draws an info heading-label length finding; a short label draws none.
+l116_lint_heading_label_bold_label_length() {
+    local wiki; wiki=$(stage_fresh_wiki l116)
+    customize_taxonomy "$wiki"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local page="$wiki/concepts/widget.md"
+    printf '\n**A bold label whose structural text runs well past the sixty character limit for labels:**\n\nDetail.\n\n**Short label:**\n\nMore detail.\n' >> "$page"
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local label_line
+    label_line=$(grep -n '^\*\*A bold label' "$page" | cut -d: -f1)
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_eq "one long bold label draws one finding" \
+        "$(count_lint_category "$out" heading-label)" "1" || ok=false
+    assert_finding_line_for_file "bold-label finding carries its line" "$out" \
+        "heading-label" "concepts/widget.md" "$label_line" || ok=false
+    assert_finding_for_file_contains "bold-label finding names structural text" "$out" \
+        "heading-label" "concepts/widget.md" "structural text is" || ok=false
+    assert_lint_finding "length finding is info" "$out" info "heading-label" || ok=false
+    $ok
+}
+
+# L117: `log.md` entry headings past 60 characters draw no heading-label
+# finding, proving both heuristics walk `iter_wiki_pages` only.
+l117_lint_heading_label_log_outside_walk() {
+    local wiki; wiki=$(stage_fresh_wiki l117)
+    customize_taxonomy "$wiki"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    printf '\n## [2026-01-15 10:00] audit | a very long log entry heading that runs well past sixty characters\n\n- concepts/widget.md\n' \
+        >> "$wiki/log.md"
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "log.md headings stay outside the page walk" \
+        "$out" "heading-label" || ok=false
+    $ok
+}
+
+# L118: an H1, an H2-or-deeper heading, and a bold-label line each carrying a
+# parenthesised ISO-date suffix draw the info heading-label date finding.
+l118_lint_heading_label_date_suffix() {
+    local wiki; wiki=$(stage_fresh_wiki l118)
+    customize_taxonomy "$wiki"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local page="$wiki/concepts/widget.md"
+    replace_page_body "$page" '
+# widget (2026-01-15 triage session)
+
+## Current state of knowledge (2026-01-16 review)
+
+The default is on.
+
+**Open questions or debates (2026-01-17 audit):**
+
+None recorded.
+'
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    local h1_line h2_line label_line
+    h1_line=$(grep -n '^# widget (' "$page" | cut -d: -f1)
+    h2_line=$(grep -n '^## Current state' "$page" | cut -d: -f1)
+    label_line=$(grep -n '^\*\*Open questions' "$page" | cut -d: -f1)
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_eq "H1, H2, and bold label each draw a date finding" \
+        "$(count_lint_category "$out" heading-label)" "3" || ok=false
+    assert_finding_line_for_file "H1 date finding carries its line" "$out" \
+        "heading-label" "concepts/widget.md" "$h1_line" || ok=false
+    assert_finding_line_for_file "H2 date finding carries its line" "$out" \
+        "heading-label" "concepts/widget.md" "$h2_line" || ok=false
+    assert_finding_line_for_file "bold-label date finding carries its line" "$out" \
+        "heading-label" "concepts/widget.md" "$label_line" || ok=false
+    assert_finding_for_file_contains "date finding names the attribution" "$out" \
+        "heading-label" "concepts/widget.md" "ISO-date attribution" || ok=false
+    $ok
+}
+
+# L119: a whole-line emphasised prose sentence whose bold content closes on
+# sentence punctuation is body prose, not a label — it draws no finding, even
+# with a parenthesised ISO-date suffix.
+l119_lint_heading_label_prose_sentence_exempt() {
+    local wiki; wiki=$(stage_fresh_wiki l119)
+    customize_taxonomy "$wiki"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local page="$wiki/concepts/widget.md"
+    printf '\n**Two variables circulate that nothing authoritative supports (2026-01-15 triage session).**\n\nThe default is on.\n' \
+        >> "$page"
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_lint_category "emphasised prose sentence draws no heading-label finding" \
+        "$out" "heading-label" || ok=false
+    $ok
+}
+
+# L120: a wiki whose only finding is an info heading-label hit still exits 0.
+l120_lint_heading_label_info_exit_zero() {
+    local wiki; wiki=$(stage_fresh_wiki l120)
+    customize_taxonomy "$wiki" "model"
+    write_valid_concept_page "$wiki" widget
+    write_valid_concept_page "$wiki" gadget
+    add_index_entry_concept "$wiki" widget
+    add_index_entry_concept "$wiki" gadget
+    set_index_total_pages "$wiki" 2
+    printf '\nSee [gadget](gadget.md).\n' >> "$wiki/concepts/widget.md"
+    printf '\nSee [widget](widget.md).\n' >> "$wiki/concepts/gadget.md"
+    printf '\n## A section heading whose structural text runs well past sixty characters\n\nBody.\n' \
+        >> "$wiki/concepts/widget.md"
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit with only an info heading-label hit" "$rc" "0" || ok=false
+    assert_lint_finding "heading-label finding present" "$out" info "heading-label" || ok=false
+    if ! printf '%s\n' "$out" | grep -Eq 'total: [0-9]+  \(0 blocking, 0 warn, 1 info\)'; then
+        log "    [expected the heading-label hit to be the only finding]"
+        printf '%s\n' "$out" | indent
+        ok=false
+    fi
+    $ok
+}
+
+# L121: an info heading-label finding is accepted by the four-field bullet, and
+# the bullet pins one finding out of several sharing a path.
+l121_lint_heading_label_accepted_four_field() {
+    local wiki; wiki=$(stage_fresh_wiki l121)
+    customize_taxonomy "$wiki"
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local page="$wiki/concepts/widget.md"
+    replace_page_body "$page" '
+# widget
+
+## Current state of knowledge (2026-01-16 review)
+
+The default is on.
+
+**Open questions or debates (2026-01-17 audit):**
+
+None recorded.
+'
+    local msg="parenthesised ISO-date attribution in a heading or bold label — route the date to frontmatter, a source, or the audit log and keep the label structural"
+    local h2_line label_line
+    h2_line=$(grep -n '^## Current state' "$page" | cut -d: -f1)
+    label_line=$(grep -n '^\*\*Open questions' "$page" | cut -d: -f1)
+    local ok=true
+
+    set_accept_bullets "$wiki" "heading-label — concepts/widget.md — $h2_line — $msg"
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_live_message "four-field accepts its own H2 finding" "$out" \
+        "concepts/widget.md:$h2_line" "$msg" || ok=false
+    assert_live_message "sibling bold-label finding stays live" "$out" \
+        "concepts/widget.md:$label_line" "$msg" || ok=false
+    assert_acknowledged "accepted heading-label finding moves to acknowledged" "$out" \
+        "heading-label" "concepts/widget.md" || ok=false
+    $ok
+}
+
+###############################################################################
 # Run all scenarios
 ###############################################################################
 
@@ -5098,11 +5347,19 @@ scenario l111 "shipped template carries custom-type rule"     l111_shipped_templ
 scenario l112 "agent reads custom-type anatomy from SCHEMA"   l112_agent_custom_type_anatomy_consumers
 scenario l113 "new sanction vocabulary is caught per phrase"  l113_new_sanction_vocabulary_meta_prose
 scenario l114 "lint warns on non-ASCII page/sidecar filenames" l114_lint_filename_non_ascii
+scenario l115 "heading-label exempts a long query H1, flags H2"  l115_lint_heading_label_h1_length_exempt
+scenario l116 "heading-label flags a long bold label"           l116_lint_heading_label_bold_label_length
+scenario l117 "heading-label skips log.md entry headings"       l117_lint_heading_label_log_outside_walk
+scenario l118 "heading-label flags ISO-date suffixes"           l118_lint_heading_label_date_suffix
+scenario l119 "heading-label skips emphasised prose sentences"  l119_lint_heading_label_prose_sentence_exempt
+scenario l120 "heading-label info finding still exits 0"        l120_lint_heading_label_info_exit_zero
+scenario l121 "heading-label four-field acceptance pins a line" l121_lint_heading_label_accepted_four_field
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract
 scenario a3  "wiki hub output contract"                    a3_wiki_hub_output_contract
 scenario a4  "wiki family inheritance contract"            a4_wiki_family_inheritance_contract
+scenario a5  "heading-label H1 disposition stays review-only" a5_heading_label_h1_review_only
 scenario c1  "wiki page-update and log-entry contract"      c1_wiki_log_and_updated_contract
 scenario c2  "auto_shaper rotation move contract"            c2_rotation_move_contract
 scenario c3  "auto_shaper citation report-only contract"     c3_citation_report_only_contract

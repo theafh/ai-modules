@@ -75,8 +75,47 @@ def derive_recorded_baseline(
     return previous_baseline or "unavailable"
 
 
+def check_heading_label_h1_review_only(text: str) -> None:
+    """Pin the heading-label move's H1 disposition on the prompt surface.
+
+    The `l*` lint scenarios can observe the two heuristics the script emits,
+    but not what the agent does with an H1 hit. This check holds the
+    `<fix_heading_label>` block to the disposition the task decided: an H1
+    date-suffix finding is review-only, and the move rewrites no H1 title.
+    """
+
+    block = section(text, "fix_heading_label")
+    collapsed = flat(block)
+    require("heading-label" in block,
+            "heading-label move no longer names lint's heading-label category")
+    require("H1 date-suffix finding is review-only" in collapsed,
+            "heading-label move lost the H1 review-only disposition")
+    require("leave the title unchanged" in collapsed,
+            "heading-label move no longer leaves the H1 title unchanged")
+    require("performs no rewrite of an H1" in collapsed,
+            "heading-label move no longer states it rewrites no H1")
+
+
 def main() -> int:
     text = AGENT.read_text(encoding="utf-8")
+
+    if "--only" in sys.argv:
+        checks = {
+            "heading_label_h1_review_only":
+                lambda: check_heading_label_h1_review_only(text),
+        }
+        index = sys.argv.index("--only")
+        name = sys.argv[index + 1] if index + 1 < len(sys.argv) else ""
+        if name not in checks:
+            print(
+                f"FAIL: unknown check {name!r}; known: {', '.join(sorted(checks))}",
+                file=sys.stderr,
+            )
+            return 1
+        checks[name]()
+        print(f"agent contract check: {name} — passed")
+        return 0
+
     read_canonical = section(text, "read_canonical_references")
     working_set = section(text, "derive_page_audit_working_set")
     page_first = section(text, "page_first_iteration")
@@ -293,6 +332,8 @@ def main() -> int:
         ],
         f"fixture semantic flags wrong: {semantic_flags}",
     )
+
+    check_heading_label_h1_review_only(text)
 
     print("auto_shaper_wiki contract trace:")
     print(f"  first audit cold reads: {', '.join(sorted(first))}")

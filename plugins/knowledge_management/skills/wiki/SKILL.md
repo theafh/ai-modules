@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.23
+version: 1.24.24
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -625,6 +625,7 @@ difference between a growing wiki and a pile of duplicates.
 - **External derivation**: when a page is distilled from material that is **not** itself the subject of classification (doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes), that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns or on a live in-repo document under a declared source root", and leave the field off entirely when the page cites neither. A page may have either, both, or neither.
 - **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
 - **Page body content**: keep ordinary page bodies to load-bearing knowledge. Lead with one short sentence naming what the page is for, then the entries and facts. Put page-convention definitions, entry-anatomy explanations, canon-kind clauses, and lint-sanction prose in `SCHEMA.md` (page conventions and the `## Lint` acceptance store) or in the audit log — never in an ordinary page body. Carve-out: `SCHEMA.md`, `index.md`, and synthesis types (`summary`, `query`, `comparison`), whose organising prose is their load-bearing content. `SCHEMA.md`'s `## Conventions` bullet **Keep ordinary page bodies to load-bearing knowledge** is the canonical statement.
+- **Structural headings and labels**: a heading or a bold-prefix label names its section's own subject, so it carries no parenthesised metadata — a date, source, session ID, audience, qualifier, mandate level, or scope tag. Route that metadata to its own channel: a frontmatter field, an inline link beside the claim it supports, a `sources:` entry naming the captured sidecar, or the audit log. Match the label vocabulary the wiki's `SCHEMA.md` declares where it declares one, and leave the label wording alone where it declares none. A page title (H1) follows its type anatomy rather than a label vocabulary, so a `query` page carries its question verbatim.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
 - **Freshness**: a page drawing on a moving external subject carries `checked: YYYY-MM-DD`, the date its claims were last checked against that subject. Set it only after reading the whole page and checking every claim on it against its source; a partial read, or a check of only some claims, leaves the date unchanged. Read a page without it as a page to re-check. `<record_only_full_reads>` in `<operational_discipline>` defines what a full read and a checked claim are.
 </write_or_update_pages>
@@ -840,7 +841,11 @@ Findings come in three buckets:
   boilerplate mismatches that delete or replace canonical content (the
   log.md preamble under the classify-as-extension contract). Insert-only
   locked-slot additions are acknowledged-channel extensions, not live warns.
-- **info**: markdown style nits, oversized pages, low-confidence
+- **info**: markdown style nits, oversized pages, metadata in headings and
+  bold labels (`heading-label`: an H2-or-deeper heading or bold-label
+  structural text past 60 characters, and a parenthesised ISO-date suffix on a
+  heading at any level or a bold label; H1 is exempt from the length rule),
+  low-confidence
   single-source pages, unused taxonomy tags, duplicate
   `log.md` entry headings (`log-heading`), `log.md` entry bullets whose
   subject is a path outside the wiki (`log-scope`), `index.md`'s

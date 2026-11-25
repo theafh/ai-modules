@@ -768,6 +768,224 @@ idx.write_text(text)
 PY
 }
 
+stage_AS-6() {
+    # AS-6 (wiki_metadata-in-headings, Approach "Harness placement"): the wiki
+    # keeps the scaffold `procedure` type and `## Procedure Pages` section, so
+    # its SCHEMA declares the scaffold label vocabulary. A procedure page and a
+    # concept page each carry mixed-source entries with parenthesised
+    # attribution jammed into their labels. After wiki_fix the procedure page's
+    # labels match the vocabulary verbatim, the concept page keeps its own
+    # anatomy labels, both route the displaced dates to `sources:`, and the
+    # report names the routing in its per-file change list.
+    local sb
+    sb=$(reset_sandbox AS-6)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    python3 - "$wiki/SCHEMA.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace("## Tag Taxonomy\n", "## Tag Taxonomy\n\n- Domain: model\n", 1)
+p.write_text(text)
+PY
+    # Two captured sessions so the displaced dates have a `sources:` target.
+    _as_raw "$wiki" "sessions/triage-2026-01-15.md" \
+        "source_url: https://example.com/triage-2026-01-15"$'\n'"ingested: 2026-01-15" \
+        "Triage session, 2026-01-15: the release checklist and the widget default were reviewed."
+    _as_raw "$wiki" "sessions/design-review-2026-02-02.md" \
+        "source_url: https://example.com/design-review-2026-02-02"$'\n'"ingested: 2026-02-02" \
+        "Design review, 2026-02-02: the release rule was restated for the current programme."
+    python3 "$WIKI_SKILL/scripts/compute_sha256.py" \
+        "$wiki/raw/sessions/triage-2026-01-15.md" \
+        "$wiki/raw/sessions/design-review-2026-02-02.md" >/dev/null
+    cat > "$wiki/procedures/release-checklist.md" <<'EOF'
+---
+title: release checklist
+created: 2026-01-10
+updated: 2026-01-10
+type: procedure
+tags: [model]
+confidence: high
+---
+
+# release checklist
+
+Run the release checklist before every tagged build.
+
+**When this applies (2026-01-15 triage session):**
+A release is about to be tagged and the changelog has no owner.
+
+**The rule (2026-02-02 design review session):**
+Tag only after the full checklist passes.
+
+**See Also:**
+- [widget default](../concepts/widget-default.md)
+EOF
+    cat > "$wiki/concepts/widget-default.md" <<'EOF'
+---
+title: widget default
+created: 2026-01-10
+updated: 2026-01-10
+type: concept
+tags: [model]
+confidence: high
+---
+
+# widget default
+
+The widget default is the value a tenant inherits when it sets no override.
+
+## Definition / explanation (2026-01-15 triage session)
+
+The default is the value the framework applies when an instance sets no
+`color` attribute.
+
+## Current state of knowledge
+
+Unchanged since the last release. See also the
+[release checklist](../procedures/release-checklist.md).
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [release checklist](../procedures/release-checklist.md)
+EOF
+    python3 - "$wiki/index.md" <<'PY'
+import pathlib, sys
+idx = pathlib.Path(sys.argv[1])
+text = idx.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n- [widget default](concepts/widget-default.md) — inherited widget default\n",
+    1,
+)
+text = text.replace(
+    "## Procedures\n",
+    "## Procedures\n\n- [release checklist](procedures/release-checklist.md) — pre-release steps\n",
+    1,
+)
+text = text.replace("Total pages: 0", "Total pages: 2", 1)
+idx.write_text(text)
+PY
+}
+
+stage_AS-7() {
+    # AS-7 (wiki_metadata-in-headings, Approach "Harness placement"): the wiki's
+    # SCHEMA declares no label vocabulary — its `type:` enum omits `procedure`
+    # and it carries no `## Procedure Pages` section. Existing labels already
+    # match the concept anatomy, and one bold label carries a parenthesised
+    # session date. After wiki_fix the label wording is left alone, no scaffold
+    # vocabulary is invented, and only the displaced date is routed to
+    # `sources:`.
+    local sb
+    sb=$(reset_sandbox AS-7)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    python3 - "$wiki/SCHEMA.md" <<'PY'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace("## Tag Taxonomy\n", "## Tag Taxonomy\n\n- Domain: model\n", 1)
+text = text.replace(
+    "type: entity | concept | comparison | query | summary | procedure",
+    "type: entity | concept | comparison | query | summary",
+    1,
+)
+text = re.sub(r"## Procedure Pages\n.*?(?=\n## |\Z)", "", text, flags=re.DOTALL)
+text = re.sub(r"\n{3,}", "\n\n", text)
+p.write_text(text)
+PY
+    _as_raw "$wiki" "sessions/triage-2026-01-15.md" \
+        "source_url: https://example.com/triage-2026-01-15"$'\n'"ingested: 2026-01-15" \
+        "Triage session, 2026-01-15: the widget default was reviewed."
+    python3 "$WIKI_SKILL/scripts/compute_sha256.py" \
+        "$wiki/raw/sessions/triage-2026-01-15.md" >/dev/null
+    cat > "$wiki/concepts/widget-default.md" <<'EOF'
+---
+title: widget default
+created: 2026-01-10
+updated: 2026-01-10
+type: concept
+tags: [model]
+confidence: high
+---
+
+# widget default
+
+The widget default is the value a tenant inherits when it sets no override.
+
+## Definition / explanation
+
+The default is the value the framework applies when an instance sets no
+`color` attribute.
+
+## Current state of knowledge
+
+**What the canon says (2026-01-15 triage session):**
+The default has not moved since the framework shipped.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [widget colour defaults](widget-colour-defaults.md)
+EOF
+    cat > "$wiki/concepts/widget-colour-defaults.md" <<'EOF'
+---
+title: widget colour defaults
+created: 2026-01-10
+updated: 2026-01-10
+type: concept
+tags: [model]
+confidence: high
+---
+
+# widget colour defaults
+
+The colour default is on unless a tenant disables it.
+
+## Definition / explanation
+
+An instance inherits the framework colour unless it sets one.
+
+## Current state of knowledge
+
+Unchanged since the last release. See also
+[widget default](widget-default.md).
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [widget default](widget-default.md)
+EOF
+    python3 - "$wiki/index.md" <<'PY'
+import pathlib, sys
+idx = pathlib.Path(sys.argv[1])
+text = idx.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n"
+    "- [widget colour defaults](concepts/widget-colour-defaults.md) — inherited colour default\n"
+    "- [widget default](concepts/widget-default.md) — inherited widget default\n",
+    1,
+)
+text = text.replace("Total pages: 0", "Total pages: 2", 1)
+idx.write_text(text)
+PY
+}
+
 stage_AS-12() {
     # AS-12 (wiki_two-pass-normalisation, Approach "Harness placement"): a
     # declared custom field whose value embeds a displaceable qualifier
@@ -2486,7 +2704,7 @@ idx.write_text(text if text.endswith("\n") else text + "\n")
 PY
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 AS-28 MP-1)
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-6 AS-7 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 AS-28 MP-1)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

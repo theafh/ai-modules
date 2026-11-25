@@ -1810,6 +1810,191 @@
       ]
     },
     {
+      "id": "AS-6",
+      "name": "auto-shaper-heading-label-schema-vocabulary",
+      "description": "auto_shaper_wiki (via wiki_fix) audits a wiki whose SCHEMA keeps the scaffold `procedure` type and `## Procedure Pages` section, so it declares the scaffold label vocabulary. A procedure page and a concept page each carry parenthesised session attribution jammed into a heading or bold label. The procedure page's labels end at the vocabulary verbatim, the concept page keeps its own anatomy labels, both route the displaced dates into `sources:` naming the captured session sidecars, and the report names the routing in its per-file change list. Graded out-of-band against the top-level passes denominator (wiki_metadata-in-headings, Approach `<fix_heading_label>` / **SCHEMA label vocabulary**, Acceptance AS-6).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-6",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "A heading or bold-prefix label names its section's own subject. When it carries parenthesised metadata, route that metadata to its own channel before normalising the label, and match the label vocabulary the wiki's SCHEMA.md declares.",
+        "A date that names a captured session belongs in the page's `sources:` inventory, pointing at the sidecar under raw/.",
+        "Complete the audit and report the per-file changes it made."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "per_file_heading_routing: <verbatim final per-file change-report line(s) for the procedure and concept pages that name the label normalisation and the routing of the displaced date>",
+        "heading_label_move: <the fix move you applied to clear the parenthesised attribution, or none>"
+      ],
+      "extra_report_field_doc": "- `per_file_heading_routing`: paste the final per-file change report you emit for `procedures/release-checklist.md` and `concepts/widget-default.md` under the agent's `<report_changes>` / `<verify_output>` surfaces, verbatim. It must name the label normalisation and the routing of the displaced session date to `sources:`.\n- `heading_label_move`: name the `<fix_moves>` block you applied to clear the parenthesised attribution (for example `fix_heading_label`), or `none` if you applied no move.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_procedure_label_matches_vocabulary",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/procedures/release-checklist.md",
+          "regex": "(?m)^\\*\\*When this applies:\\*\\*[ \\t]*$"
+        },
+        {
+          "id": "A3_procedure_rule_label_matches_vocabulary",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/procedures/release-checklist.md",
+          "regex": "(?m)^\\*\\*The rule:\\*\\*[ \\t]*$"
+        },
+        {
+          "id": "A4_procedure_labels_carry_no_parenthetical",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/procedures/release-checklist.md",
+          "regex": "(?m)^\\*\\*(When this applies|The rule)[^\\n]*\\([0-9]{4}-[0-9]{2}-[0-9]{2}"
+        },
+        {
+          "id": "A5_procedure_date_routed_to_sources",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/procedures/release-checklist.md",
+          "regex": "(?m)^sources:"
+        },
+        {
+          "id": "A6_procedure_names_captured_session",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/procedures/release-checklist.md",
+          "regex": "raw/sessions/"
+        },
+        {
+          "id": "A7_concept_keeps_own_anatomy_label",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "(?m)^## Definition / explanation[ \\t]*$"
+        },
+        {
+          "id": "A8_concept_heading_carries_no_parenthetical",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "(?m)^#{1,6} [^\\n]*\\([0-9]{4}-[0-9]{2}-[0-9]{2}"
+        },
+        {
+          "id": "A9_concept_date_routed_to_sources",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "(?m)^sources:"
+        },
+        {
+          "id": "A10_concept_names_captured_session",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "raw/sessions/"
+        },
+        {
+          "id": "A11_per_file_report_names_routing",
+          "type": "report_field_matches",
+          "field": "per_file_heading_routing",
+          "regex": "(?s)(?=.*(label|heading))(?=.*(rout|moved|relocat|carried|migrat))"
+        },
+        {
+          "id": "A12_heading_label_move_named",
+          "type": "report_field_matches",
+          "field": "heading_label_move",
+          "regex": "fix_heading_label"
+        },
+        {
+          "id": "A13_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A14_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A15_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-7",
+      "name": "auto-shaper-heading-label-no-schema-vocabulary",
+      "description": "auto_shaper_wiki (via wiki_fix) audits a wiki whose SCHEMA declares no label vocabulary: its `type:` enum omits `procedure` and it carries no `## Procedure Pages` section. Existing labels already match the concept anatomy, and one bold label carries a parenthesised session date. The label wording stays as written, no scaffold vocabulary is invented, and only the displaced date is routed to `sources:` naming the captured session sidecar. Graded on the page surface: the run may separately restore the canonical SCHEMA scaffold through its scaffold moves, which is outside this task's label contract and so is not graded here. Graded out-of-band against the top-level passes denominator (wiki_metadata-in-headings, Approach **Adopts** / **Vocabulary binding**, Acceptance AS-7).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-7",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "A heading or bold-prefix label names its section's own subject. When it carries parenthesised metadata, route that metadata to its own channel and leave the label wording alone unless the page type's anatomy fixes it.",
+        "A date that names a captured session belongs in the page's `sources:` inventory, pointing at the sidecar under raw/.",
+        "Complete the audit and report the per-file changes it made."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_concept_anatomy_label_preserved",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "(?m)^## Definition / explanation[ \\t]*$"
+        },
+        {
+          "id": "A3_label_wording_preserved",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "(?m)^\\*\\*What the canon says:\\*\\*[ \\t]*$"
+        },
+        {
+          "id": "A4_no_scaffold_vocabulary_invented",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "(?m)^\\*\\*(When this applies|The rule)\\*\\*"
+        },
+        {
+          "id": "A5_parenthetical_attribution_cleared",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "(?m)^\\*\\*What the canon says[^\\n]*\\([0-9]{4}-[0-9]{2}-[0-9]{2}"
+        },
+        {
+          "id": "A6_date_routed_to_sources",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "(?m)^sources:"
+        },
+        {
+          "id": "A7_names_captured_session",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-default.md",
+          "regex": "raw/sessions/"
+        },
+        {
+          "id": "A8_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A9_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A10_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
       "id": "AS-8",
       "name": "auto-shaper-log-preamble-carries-timestamp-and-repair-carveout",
       "description": "auto_shaper_wiki (via wiki_fix) propagates the log.md preamble change to an existing wiki through the boilerplate-drift channel. The fixture preamble predates this change (date-only `> Format:` line, no repair carve-out) and SCHEMA.md declares no deviation for that slot, so lint's boilerplate warn is real and <fix_log_preamble_drift> must restore the canonical preamble. Graded out-of-band against the top-level passes denominator (wiki_log-heading-uniqueness-and-repair, Acceptance: preamble reaches existing wikis with no per-wiki migration).",
