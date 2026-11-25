@@ -2,7 +2,7 @@
 description: Warn on a style deploy when a settings file the run can read shadows the outputStyle just written, and state the override caveat on every global run for the repos it cannot read.
 scope: deployment
 created: 2026-08-10T09:56:32Z
-updated: 2026-11-25T13:02:41Z
+updated: 2026-11-25T13:19:14Z
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -50,7 +50,7 @@ Emit both forms under `--dry-run` as well as on a real deploy. The shadowing con
 
 Rewrite the style-deploy passages of `deployment/README.md` in place — the `style:<name>` directive line that presents the Claude arm as the one target that acts on it by merging `outputStyle`, the clause reading "a style deploy activates that tracked style" in the second sentence of the `deployment.conf` paragraph, and the style rows beneath them — so they state the three-file precedence chain, the exact per-project check, the single-checkout reach of the global check, and the caveat, replacing the current description of the merge as unconditional activation rather than adding a second paragraph beside it. Naming the reach in the documentation is what stops a reader from mistaking the global check for full coverage.
 
-Refresh the two wiki passages that repeat the activation framing this task corrects, through the wiki skill family: the `style:<name>` description in `wiki/concepts/deployment-model.md` that says the line names "which style that tool activates", and the Claude row of the per-target table in `wiki/concepts/output-style-delivery-design.md`, whose `Activation` column reads "merge `outputStyle` into the settings file". Each states the three-file precedence chain and that a project-level key can shadow the merge, so the documentation matches the diagnostic the script now emits.
+This task's wiki edit sites are the `style:<name>` description in `wiki/concepts/deployment-model.md` that says the line names "which style that tool activates", the Claude row of the per-target table in `wiki/concepts/output-style-delivery-design.md`, whose `Activation` column reads "merge `outputStyle` into the settings file", and the Claude row of `### What a global deploy has to write` in `wiki/comparisons/system-prompt-substitution-across-harnesses.md`, whose `Activation` cell reads "`outputStyle` key in `~/.claude/settings.json`" with no shadow caveat. Refresh each through the wiki skill family so it states the three-file precedence chain and the project-level override, and the documentation matches the diagnostic the script now emits.
 
 **Out of scope:**
 
@@ -73,4 +73,4 @@ Every deploy item below runs under the isolation pattern the style harness alrea
 - A `--dry-run` in each scope prints the same shadow-warning and unconditional-caveat lines as the real run in that scope, compared on those diagnostic lines alone; the mode-labelled copy, merge, and backup lines the existing helpers emit (`would-copy`/`would-merge`/`would-bak` under `$DRY_RUN` against `copied`/`merged`/`backup` otherwise) stay outside the comparison, since this task changes neither them nor their labels.
 - `tests/deployment/script_tests/style_run.sh` carries the scenarios above and passes.
 - The style-deploy passages of `deployment/README.md`, including the `style:<name>` directive line, the `deployment.conf` paragraph, and the rows beneath them, state the three-file precedence chain, the exact per-project check, the single-checkout reach of the global check, and the caveat; no remaining `style` passage in that file describes the `outputStyle` merge as activation that always takes effect, and the directive line and the paragraph both name the project-level override.
-- `wiki/concepts/deployment-model.md` no longer describes `style:<name>` as naming "which style that tool activates", and the Claude row of the per-target table in `wiki/concepts/output-style-delivery-design.md` no longer presents the `outputStyle` merge as activation; each states the three-file precedence chain and the project-level override.
+- `wiki/concepts/deployment-model.md` no longer describes `style:<name>` as naming "which style that tool activates", the Claude row of the per-target table in `wiki/concepts/output-style-delivery-design.md` no longer presents the `outputStyle` merge as activation, and the Claude row of `### What a global deploy has to write` in `wiki/comparisons/system-prompt-substitution-across-harnesses.md` names the user-level key and the project-level override in its `Activation` cell, checked by searching that row; each states the three-file precedence chain and the project-level override.

@@ -148,7 +148,7 @@ Considered and set aside for this task; revisit only if asked:
 
 - **Two loose dotfiles** (`~/.ai_asset_deploy.conf` + `~/.ai_asset_deploy.log`). Workable; the single dot-dir groups the state more cleanly.
 - **XDG base dirs** (`$XDG_CONFIG_HOME` / `$XDG_STATE_HOME`). Stronger on Linux, but heavier and split across two trees; the single dot-dir stays simpler.
-- **Further flag / env-var overrides** (`--config PATH` / `--log PATH`, a conf override variable). The log already has one, `DEPLOYED_ARTIFACTS_LOG`, which the eval micro-deployment brought in on 9 October 2026. A conf override stays deferred, because a scratch `HOME` already gives a test run its own home conf.
+- **Further flag / env-var overrides** (`--config PATH` / `--log PATH`, a conf override variable). The log already has one, `DEPLOYED_ARTIFACTS_LOG`, which the eval micro-deployment brought in on 10 October 2026. A conf override stays deferred, because a scratch `HOME` already gives a test run its own home conf.
 - **Template + home-override layering.** Merge a committed base conf with home overrides. Defer in favor of the simpler "home replaces repo" model.
 
 ## Acceptance

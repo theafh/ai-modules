@@ -2,8 +2,8 @@
 description: "Deploy the output style to Antigravity as an always-on rule file, at global scope under the modular user rules directory and at project scope under the workspace rules directory."
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-25T13:05:04Z
-status: checked
+updated: 2026-11-25T13:12:07Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
