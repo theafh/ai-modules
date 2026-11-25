@@ -2,8 +2,8 @@
 description: "Let task_auto_check replace a frozen Acceptance item that names no checkable result with checks proving the same promise, and say that a user route stops only the repair it governs."
 scope: plugins/ai_dev/skills/task_auto_check
 created: 2026-11-15T06:22:10Z
-updated: 2026-11-25T00:25:30Z
-status: implemented
+updated: 2026-11-25T00:44:57Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -18,7 +18,7 @@ When a frozen Acceptance item names no checkable result, such as "The retry beha
 ## Context
 
 - **Two rules disagree.** `<frozen_intent>` in `plugins/ai_dev/skills/task_auto_check/SKILL.md` lets the loop "make acceptance checks verifiable". `<verification_standard>` sends to the user "any edit, at any size, that deletes a requirement, rule, constraint, promise, or Acceptance item carried by `frozen-task.txt`, or narrows it so the task promises less", and keeps three kinds of edit on the ordinary path: a refresh of a detail the code moved, an interaction-scan supersession, and a change to text an earlier round added. The routing rule in `plugins/ai_dev/agents/auto_verifier_task.md` says the same, starting "For that readiness-loop path, keep three kinds of edit on the ordinary repair path". Replacing an unverifiable item deletes it, so the verifier has to pick one rule.
-- **Why the route exists.** [The commitment-routing task](archive/task-family_readiness-loop-deletion-and-regate.md) introduced the route so that the minimum-change preference cannot silently trade a commitment for a smaller proof set. The written pairing keeps that protection: a replacement that drops part of the item's promise is still a narrowing, and it still goes to the user.
+- **Why the route exists.** [The commitment-routing task](task-family_readiness-loop-deletion-and-regate.md) introduced the route so that the minimum-change preference cannot silently trade a commitment for a smaller proof set. The written pairing keeps that protection: a replacement that drops part of the item's promise is still a narrowing, and it still goes to the user.
 - **What happened.** Fixtures whose Acceptance item names no checkable result include `repair_to_ready`, `relay_by_path`, `stray_hunk_reverted`, and `guard_rebaseline_after_gate` under `tests/task_auto_check/evals/fixtures/`, plus `verifier_failure_user_stop`. Across the eight 2026-11-15 runs of `repair_to_ready`, `relay_by_path`, `stray_hunk_reverted`, and `guard_rebaseline_after_gate`, the verifier split three ways:
   - In five runs it replaced the item as a clarification.
   - In Claude's `repair_to_ready` run it kept the item, added proofs beside it, and routed the deletion to the user. The second gate then stamped `ready` with that decision still open.
@@ -32,7 +32,7 @@ When a frozen Acceptance item names no checkable result, such as "The retry beha
 - **The fourth kind.** The fourth ordinary-path kind follows from `<frozen_intent>`'s own "make acceptance checks verifiable" and from the repo's graders, which expect the replacement.
 - **The stop scope.** A route stops only the repair it governs, because `<structural_split_boundary>`, the channel the route reports through, stops "the auto-edit path for that issue".
 
-Land this task after [the return-layout task](archive/task-family_gate-verifier-return-layout.md). That task adds the approved edit's `reason:` field, which carries the pairing here, and it edits the same verifier template.
+Land this task after [the return-layout task](task-family_gate-verifier-return-layout.md). That task adds the approved edit's `reason:` field, which carries the pairing here, and it edits the same verifier template.
 
 ## Approach
 
