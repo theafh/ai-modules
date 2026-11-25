@@ -142,9 +142,9 @@ Seed each scratch home before a run reads a conf from it: write `<scratch home>/
 - Keep the toolchain to Make + shell, per the repo rules' authoring convention.
 - Keep the conf a single flat robots.txt-style file: home replaces repo, bootstrapped from the template. (Template-base + home-override *layering* stays a deferred option; see below.)
 
-### Operator migration, recorded not run
+### Operator migration, completed
 
-The implementer delivered the code change without touching this machine's live state: `~/.ai_asset_deploy/` does not exist here, and the in-repo `deployment/deployment.conf` and `deployment/deployed_artefacts.log` stay on disk unchanged. Run this once, in order, to complete the one-time migration on an installation that still carries in-repo state:
+The migration ran on this machine on 2026-11-25, in order:
 
 ```bash
 mkdir -p ~/.ai_asset_deploy
@@ -154,7 +154,7 @@ git rm deployment/deployment.conf
 rm deployment/deployed_artefacts.log
 ```
 
-The first two copies retain the live config byte-for-byte and keep every already-deployed artifact uninstallable; the last two take the dead files out of the checkout. The migration and the uninstall behaviour are proven hermetically by the scratch-home scenarios in `tests/deployment/script_tests/run.sh` and `tests/lib/test_micro_deploy.py`.
+Both copies are byte-identical to the files they replaced (`sha256 0574dbc6…` for the conf, `be708741…` for the 539-entry log), so the live config kept its `style:natural-language` line and every already-deployed artefact stays uninstallable. A `--global --dry-run` afterwards reads `~/.ai_asset_deploy/config`, merges `.outputStyle = "natural-language"`, and `--uninstall --dry-run` counts 539 actions from the home manifest. The same migration on another installation runs the same five commands before any deploy.
 
 ### Explored but deferred alternatives
 
