@@ -2,8 +2,8 @@
 description: "Declare the repository's load-bearing tool floor in one file and make `make install` report it, freeing the name from the deploy alias."
 scope: "repo toolchain"
 created: 2026-09-18T11:48:56Z
-updated: 2026-11-24T05:56:40Z
-status: checked
+updated: 2026-11-25T02:24:25Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -22,7 +22,7 @@ The floor is a minimum, not a lock: a newer tool satisfies it, and the list grow
 ## Context
 
 - The deploy script aborts at startup when `jq`, `perl`, or `rsync` is missing from `PATH` (`deployment/deployment.sh`). That gate is a fail-loud PATH lookup; this task owns the declared floor, the report, and freeing the `install` name.
-- The floor covers what the repository's own targets and shipped scripts need: `jq` for the deploy and lint paths, `markdownlint`, `shellcheck`, and `python3` for `make lint` (the frontmatter gate runs `python3 scripts/lint_frontmatter.py`), and `python3` for `make test`. A tool that ships at a sufficient version on every supported machine stays out of the manifest.
+- The floor covers what the repository's own targets and shipped scripts need beyond the base Make, shell, Markdown, and Python 3 surface: `jq` for the deploy and lint paths, and `markdownlint` and `shellcheck` for `make lint`. Python 3 is an accepted standing dependency that ships at a sufficient version on every supported machine, so the floor leaves it out along with every other tool a standard machine already provides.
 - `perl` and `rsync` ship on macOS and typical Linux; `jq` is often absent on Linux and old on older macOS. `markdownlint` and `shellcheck` are never stock.
 - The name collision is recorded in the Makefile's `install: deploy` alias, the alias sentence in each standing repo instruction file that carries it, the README's target listing comment, the README layout-tree line for the Makefile, and the Makefile header comment. Those are the edit sites; find the instruction files by the sentence they carry rather than by a count.
 - The repository's toolchain is Make, shell, and Markdown, with jq, git, and Python 3 as standing dependencies. The manifest is plain text a `while IFS= read -r` loop can read, so no parser and no new dependency enters the repository.
@@ -31,11 +31,11 @@ The floor is a minimum, not a lock: a newer tool satisfies it, and the list grow
 
 1. Add the manifest as a plain-text file the Makefile reads, one record per tool: name, detection command, minimum version (empty when no version matters), and the macOS and Linux install commands. Keep it readable by a plain shell read loop.
 2. Pin a minimum only where the version matters: `markdownlint`, `shellcheck`, and `jq` carry one; a record whose version has never mattered leaves the field empty. Choose a minimum at or below the version this repository runs today, so a working machine stays green.
-3. Name one install command per platform per record, using Homebrew on macOS and one named package command on Linux; leave the field empty where the tool is stock on that platform, so a present stock tool reports satisfied and an absent one is named for the operator. Report the package manager itself when a command needs one that is absent.
+3. Name one install command per platform per record, using Homebrew on macOS and one named package command on Linux; leave the field empty where no install command applies on that platform, so a present tool reports satisfied and an absent one is named for the operator. Report the package manager itself when a command needs one that is absent.
 4. Replace the `install: deploy` alias with an `install` recipe that walks the manifest, prints one status line per tool, prints the install command for anything missing or below its minimum, and exits non-zero while a required tool is missing or below its minimum. Detect the platform with `uname` and treat an unknown platform as the no-install-command case.
 5. Read each minimum-bearing tool's version from its own `--version` output, taking the first dotted number, and compare it with `sort -V`; report a below-minimum tool as its own status carrying the version found and the version required.
 6. Keep `global` as the deploy alias. Rewrite the alias sentence in every standing repo instruction file that carries it, the README target listing, the README passage that tells the reader to install the lint tools by hand, the README layout-tree line for the Makefile, and the Makefile header comment, so each names the new `install` meaning.
-7. Add `make install` to the instruction files' Common tasks list, replacing the alias bullet.
+7. Add `make install` to the instruction files' Common tasks list as its own bullet beside the `make deploy` bullet.
 
 **Out of scope:**
 
@@ -52,7 +52,7 @@ The floor is a minimum, not a lock: a newer tool satisfies it, and the list grow
 
 1. A manifest exists in the repository, one record per tool, carrying name, detection command, minimum, and per-platform install commands; the Makefile recipe reads it rather than restating the tool list.
 2. `make install` on a machine with every declared tool present prints one status line per tool, reports every tool satisfied, prints no install command, and exits 0.
-3. With `jq` made unresolvable through a scratch `PATH`, `make install` reports `jq` missing, prints its install command without running it, and exits non-zero, while `perl` and `rsync` still report satisfied.
+3. With `jq` made unresolvable through a scratch `PATH`, `make install` reports `jq` missing, prints its install command without running it, and exits non-zero, while `markdownlint` and `shellcheck` still report satisfied.
 4. With a minimum-bearing tool stubbed to report a version below its declared minimum, `make install` reports it under a distinct status naming the version found and the version required, prints its install command, and exits non-zero.
 5. Each minimum-bearing tool's extracted version equals the first dotted number in that tool's own `--version` output, checked for every minimum-bearing record.
 6. A record with no install command for the current platform is reported with what the operator should do, and no command is run.
@@ -60,3 +60,4 @@ The floor is a minimum, not a lock: a newer tool satisfies it, and the list grow
 8. `make help` lists `install` with its environment-preparation description, and the Makefile header comment matches.
 9. No standing repo instruction file, README target listing, or README layout-tree line presents `install` as an alias of `make deploy`, and each lists `make install` as the environment-preparation target.
 10. The README passage that today tells the reader to install the lint tools by hand points at `make install`, and no remaining README passage instructs a manual install of a tool the manifest declares.
+11. When the package manager a printed install command needs is itself absent, `make install` names that package manager rather than printing a command that cannot run.
