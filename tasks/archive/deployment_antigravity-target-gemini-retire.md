@@ -2,7 +2,7 @@
 description: Retire the Gemini CLI deploy target in deployment.sh and expand the Antigravity target so one run reaches 2.0, the IDE, and the CLI with skills, agents, and hooks.
 scope: deployment
 created: 2026-07-24T10:54:02Z
-updated: 2026-07-26T20:07:01Z
+updated: 2026-11-25T16:26:13Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -42,7 +42,7 @@ Correcting an earlier premise of this task: `~/.gemini/antigravity` is **not** p
 
 Two tool-name corrections carried over from `harness_portability`'s own verification, because getting either wrong fails silently. The documented vocabulary is `view_file`, `grep_search`, `run_command` and the fuller hook-matcher list — **not** `read_file` or `edit_file`, which circulate widely but appear on no official page — and no canonical tool list is published anywhere in the docs. **The unmappable-tool rule:** the generator emits every source tool name it can map to a name copied verbatim from a documented list, and drops only the individual entry it cannot map, leaving the mapped names in the array. The repo's own agents are the worked case — `tools: Read, Grep, Glob` generates `tools: [view_file, grep_search]`, and `Bash` adds `run_command` where an agent carries it. `Read` and `Grep` pair with documented names, while `Glob` drops by decision rather than for want of a candidate: `harness_portability`'s `<tool_name_namespaces>` publishes `find_by_name` among the hook-matcher names it treats as one vocabulary with the allowlist, yet no page states what that tool matches, so pairing the two would ship an inferred equivalence into the read-only agents whose `tools` array is half the lever `<readonly_agent_enforcement>` defines — where `view_file` and `grep_search` are the read-only pair it names. Add the mapping once a documented source states the match; until then the entry drops. An unmapped or misspelled tool name makes the subagent **hang at runtime** rather than fail at load, so a wrong mapping is worse than a missing entry. Likewise `flash_lite` is not a real tier: it appears in neither the subagents frontmatter table nor the model list, so emitting it risks the same silent failure.
 
-**Hooks — the documented contract.** Antigravity hooks are declarative, closer to the Claude/Codex JSON-config arms the script already has than to OpenCode's code bridge in [deployment_opencode-hook-bridge.md](../deployment_opencode-hook-bridge.md).
+**Hooks — the documented contract.** Antigravity hooks are declarative, closer to the Claude/Codex JSON-config arms the script already has than to OpenCode's code bridge in [deployment_opencode-hook-bridge.md](deployment_opencode-hook-bridge.md).
 
 The config file keys by a **named hook first, then the event** — unlike Claude and Codex, which nest events under a top-level `hooks` key:
 
@@ -91,7 +91,7 @@ Remove `gemini` from `VALID_TARGETS`; drop the `gemini|Gemini CLI|…` row from 
 **Out of scope:**
 
 - Editing the `harness_portability` skill stays outside this task, which changes only the deployment surface. [ai-dev_harness-portability-antigravity-gemini-retire.md](ai-dev_harness-portability-antigravity-gemini-retire.md) authored that skill's Antigravity/Gemini documentation and is finished, so its link here is provenance for the facts `## Context` restates rather than an owner of further work.
-- OpenCode's target and hook bridge stay owned by [deployment_opencode-target.md](deployment_opencode-target.md) and [deployment_opencode-hook-bridge.md](../deployment_opencode-hook-bridge.md).
+- OpenCode's target and hook bridge stay owned by [deployment_opencode-target.md](deployment_opencode-target.md) and [deployment_opencode-hook-bridge.md](deployment_opencode-hook-bridge.md).
 - Relocating the deploy conf/log into `$HOME` stays owned by [deployment_relocate-state-to-home.md](../deployment_relocate-state-to-home.md).
 - Antigravity `plugin.json` bundles are not a deploy artefact here: this repo's plugin concept is its Claude/Codex marketplace packaging, and the components an operator needs — skills, agents, hooks — reach Antigravity through its own skill, agent, and hook roots directly. The documented split between `~/.gemini/config/plugins/` and `~/.gemini/antigravity-cli/plugins/` therefore does not apply to this target, and packaging the repo as an Antigravity plugin would be its own task.
 - Antigravity MCP config and sidecars stay out: the repo ships neither an `mcp_config.json` nor a `sidecar.json`, so their single `~/.gemini/config/` roots matter here only as directories a backup of that tree will sweep in.

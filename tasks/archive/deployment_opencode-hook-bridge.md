@@ -2,8 +2,8 @@
 description: Deploy the charter_guardrail hook to OpenCode via a TS bridge plugin that registers a V2 permission.evaluate or tool.execute.before hook and calls the shared bash script; OpenCode has no hook config.
 scope: deployment
 created: 2026-07-23T17:48:14Z
-updated: 2026-11-25T10:58:17Z
-status: implemented
+updated: 2026-11-25T16:26:13Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
@@ -23,7 +23,7 @@ The user-visible outcome is that on OpenCode, an attempt to mutate CHARTER.md th
 
 ## Context
 
-This task builds on the `opencode` deploy target created by [deployment_opencode-target.md](archive/deployment_opencode-target.md): it consumes that target's `OPENCODE_DIR`, its `opencode` entry in `VALID_TARGETS`/`ALL_APP_TARGETS`, and the `opencode` arms already added to `install_for_app()`. It must follow that task.
+This task builds on the `opencode` deploy target created by [deployment_opencode-target.md](deployment_opencode-target.md): it consumes that target's `OPENCODE_DIR`, its `opencode` entry in `VALID_TARGETS`/`ALL_APP_TARGETS`, and the `opencode` arms already added to `install_for_app()`. It must follow that task.
 
 **Why OpenCode needs a different mechanism.** The script deploys hooks to the other harnesses through plugin delivery where the harness supports it and entry-level merges where it does not: the `claude`, `codex`, `cursor`, `antigravity`, and `vscode` arms merge or copy their own hook config through `merge_hook_entries` with an `@entries:` manifest, and each copies the `.sh` into the tool's `hooks/` dir. Project scope uses a relative `.claude/hooks` path for portability, while Codex uses an absolute path in both scopes. None of the shipped arms names a `claude-code-hooks*.json` or `cursor-hooks*.json` file. OpenCode has **no equivalent**: no `settings.json` hooks key and no `hooks.json`. Its hooks are code: a plugin, loaded from `~/.config/opencode/plugins/` (or project `.opencode/plugins/`) at startup and executed by OpenCode's embedded Bun runtime, so a local `.ts` file needs no npm publish and no build step. This is confirmed by OpenCode's official plugin and permissions docs (opencode.ai/docs/plugins, /permissions); the `harness_portability` skill carries the general knowledge as background.
 
@@ -48,7 +48,7 @@ Add an `opencode)` arm to the `hook)` case in `install_for_app()` that copies a 
 
 Record the package in the workspace and its docs, as the standing repo rules require: add `charter-guardrail` to `harness-plugins/opencode_v2/package.json`'s `workspaces`, `scripts.test`, and `scripts.typecheck`, refresh `harness-plugins/opencode_v2/bun.lock` with a plain `bun install` in that directory, because `make plugin-test` installs with `--frozen-lockfile` and fails on a workspace the lockfile does not yet carry, and add its row to the `## Plugins` table in `harness-plugins/opencode_v2/README.md` with a link to the package's own `README.md`.
 
-Document the OpenCode hook mechanism in `deployment/README.md` as its own row, a bridge plugin package plus the shared script distinct from the entry-merge targets, including the subagent-bypass limitation, and record the same caveats on the wiki's [SST OpenCode](../wiki/entities/sst-opencode.md) and [hook surface portability](../wiki/concepts/hook-surface-portability.md) pages so future hook work accounts for them.
+Document the OpenCode hook mechanism in `deployment/README.md` as its own row, a bridge plugin package plus the shared script distinct from the entry-merge targets, including the subagent-bypass limitation, and record the same caveats on the wiki's [SST OpenCode](../../wiki/entities/sst-opencode.md) and [hook surface portability](../../wiki/concepts/hook-surface-portability.md) pages so future hook work accounts for them.
 
 **Out of scope:**
 

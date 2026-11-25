@@ -98,10 +98,10 @@ for the unit tests and `tsc --noEmit` for type checking. That toolchain stays
 inside the plugin packages rather than joining the repository's floor, so
 `make test` keeps running on Make, shell, and Python alone and a machine
 without Bun still reaches a clean gate. `make plugin-test` is the one entry
-point: it installs from the committed lockfile, runs both packages' unit tests,
-and type-checks both. Run it when a change touches a plugin package, and treat
-the deployment-side behaviour (discovery, the copy, the log entry, uninstall)
-as covered by `tests/deployment/`, which needs no Bun at all.
+point: it installs from the committed lockfile, runs the packages' unit tests,
+and type-checks every package. Run it when a change touches a plugin package,
+and treat the deployment-side behaviour (discovery, the copy, the log entry,
+uninstall) as covered by `tests/deployment/`, which needs no Bun at all.
 
 ## Coverage Expectations
 

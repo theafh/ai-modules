@@ -2,7 +2,7 @@
 description: Make the deploy script add or update only ai-modules' own hook entries in Codex, Claude Code and Cursor hook files, keep every foreign entry in place, and uninstall only its own.
 scope: deployment
 created: 2026-10-16T22:45:44Z
-updated: 2026-10-29T19:12:25Z
+updated: 2026-11-25T16:26:13Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -169,7 +169,7 @@ Related tasks:
   entry.
 - Copilot's hook delivery, owned by the VS Code hook routing task.
 - OpenCode's hook delivery, owned by
-  [the OpenCode hook bridge](../deployment_opencode-hook-bridge.md).
+  [the OpenCode hook bridge](deployment_opencode-hook-bridge.md).
 - Shipping a `cursor-hooks*.json` or `claude-code-hooks*.json`, since this task
   makes those routes safe without adding a config to either.
 

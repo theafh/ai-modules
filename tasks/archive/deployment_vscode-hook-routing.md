@@ -2,7 +2,7 @@
 description: Filter foreign configs out of the vscode hook route and ship a Copilot-schema hook config, leaving the Claude hook sources readable because no documented setting closes them for the Copilot harness.
 scope: deployment
 created: 2026-08-09T18:07:35Z
-updated: 2026-11-25T10:39:07Z
+updated: 2026-11-25T16:26:13Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -86,7 +86,7 @@ its place beside the other four. The three facts this task builds on:
 
 ### Related work
 
-[deployment_opencode-hook-bridge.md](../deployment_opencode-hook-bridge.md) extends
+[deployment_opencode-hook-bridge.md](deployment_opencode-hook-bridge.md) extends
 the same per-target hook dispatch for OpenCode, so the two tasks edit one region
 of `deployment.sh` and whichever lands second rebases onto the other's branch
 structure.
