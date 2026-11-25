@@ -2,9 +2,11 @@
 description: "Let task_auto_check replace a frozen Acceptance item that names no checkable result with checks proving the same promise, and say that a user route stops only the repair it governs."
 scope: plugins/ai_dev/skills/task_auto_check
 created: 2026-11-15T06:22:10Z
-updated: 2026-11-19T18:21:38Z
-status: ready
+updated: 2026-11-25T00:25:30Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Let task_auto_check replace a frozen Acceptance item that cannot be checked

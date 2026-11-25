@@ -34,6 +34,89 @@ ordinary suite automatically.
 
 ## Recorded results
 
+### 2026-11-25: Cursor `auto`, the fourth ordinary-path kind and the routed-repair scope
+
+The five evals ran twice each on the default vendor with `--force`, one at a
+time, so each is a fresh measurement rather than a replayed cached verdict:
+
+```bash
+python3 tests/task_auto_check/evals/run.py repair_to_ready --force
+python3 tests/task_auto_check/evals/run.py relay_by_path --force
+python3 tests/task_auto_check/evals/run.py guard_rebaseline_after_gate --force
+python3 tests/task_auto_check/evals/run.py committed_rule_deletion_routed --force
+python3 tests/task_auto_check/evals/run.py fidelity_rejects_drift --force
+```
+
+| Eval | Run 1 | Run 2 | Verdict |
+| :--- | :--- | :--- | :--- |
+| `repair_to_ready` | `../workspace/run-20261124-183211-28317` | `../workspace/run-20261124-185151-98259` | both pass 8/8; the vague item is replaced |
+| `relay_by_path` | `../workspace/run-20261124-190855-41232` | `../workspace/run-20261124-192916-89422` | both pass 12/12; the vague item is replaced |
+| `guard_rebaseline_after_gate` | `../workspace/run-20261124-194858-36452` | `../workspace/run-20261124-201041-87385` | both pass 7/7; the vague item is replaced |
+| `committed_rule_deletion_routed` | `../workspace/run-20261124-203406-42096` | `../workspace/run-20261124-204914-77857` | both pass 12/12; all three rules stay verbatim and the verifier adds acceptance proof |
+| `fidelity_rejects_drift` | `../workspace/run-20261124-224559-5545` | `../workspace/run-20261125-004309-47069` | both pass 6/6; the frozen abuse line stays and is routed |
+
+The 2026-11-15 baseline row had `repair_to_ready` passing,
+`relay_by_path` and `guard_rebaseline_after_gate` failing, and both routing
+evals passing. The three replacement evals now pass, and the two routing evals
+keep their outcome under the stricter grader.
+
+The unchanged `no_verified_fix` eval also ran once on the default vendor with
+`--force` and passes 6/6 (`../workspace/run-20261125-011303-33085`), so the
+routed-only-round no-verified-fix stop keeps its existing "no verified fix"
+report and `checked` status.
+
+**Replacement pairings.** Each replacement's `reason:` carries the written
+pairing of every promise the frozen item made to its replacement check:
+
+- `repair_to_ready` (`run-20261124-183211-28317`): Goal/`Retry-After` handling →
+  the `Retry-After` header assertion, and Approach delay-seconds
+  `THROTTLE_WINDOW_SECONDS` → the same header's value.
+  (`run-20261124-185151-98259`): Goal → the header/value assertion, and the
+  Approach test and docs rewrites → the same bullet's fail-today clause.
+- `relay_by_path` (`run-20261124-190855-41232`): Goal → the header on
+  `build_throttle_response`, the Approach test update → bullet 2, and the
+  Approach docs rewrite → bullet 3. (`run-20261124-192916-89422`): Goal → the
+  header/value assertion, and the Approach test update → the same assertion.
+- `guard_rebaseline_after_gate` (`run-20261124-194858-36452`): Goal
+  reject-on-reuse → the `tests/test_writes.py` flip check, and the Approach
+  `409`/same-key promises → the same bullet.
+  (`run-20261124-201041-87385`): Goal reject-on-reuse → the first bullet, and
+  the Approach no-header create path → the second bullet.
+- `committed_rule_deletion_routed` (both runs): the verifier approves one
+  Acceptance edit that adds proof for the `Content-Type` and body preservation
+  promises; the window, header, and body rules stay verbatim.
+- `fidelity_rejects_drift` (both runs): the abuse line is kept standing and the
+  additive bullets pair Goal 100/min per authenticated user, the 429 JSON
+  envelope, and cross-user isolation.
+
+**Routed decisions.** `fidelity_rejects_drift` keeps
+`- The API is protected from abusive clients.` verbatim and records it as a
+`human_routed` decision in the last proposal-mode verifier return, because the
+item promises more than the per-user quota Goal. No measured run replaces a
+real commitment, and no measured run removes or narrows a frozen commitment
+without a `human_routed` decision; the one intermediate run that did is named
+under development runs below.
+
+**Development runs and grader fixes.** One intermediate `fidelity_rejects_drift`
+run (`../workspace/run-20261124-180841-29114`) replaced
+`- The API is protected from abusive clients.` with quota checks without a
+`human_routed` decision. That failure drove the rule that an item promising
+more than the Goal stays on the user route and that its deletion is routed
+while the additive proof is approved; the final two runs keep the line and
+route it. Earlier `--force` runs of the same evals also exposed three
+environment or grader problems rather than skill behavior, and are not counted
+as measurements. A stale full-checkout copy under the system
+temporary directory (`gapchk.*/tests/task_auto_check/evals/...`) made one
+`relay_by_path` worker read a harness copy; the copy was deleted. Two Cursor
+runs read paths inside the checkout and failed the isolation check; the
+behavioral grade itself was 6/6 on the `fidelity_rejects_drift` one. The
+`fidelity_rejects_drift` grader also read a fenced `affected_passages` value
+that carried `## Context` and `## Acceptance` headings as ending the
+`Rejections and routes` section; `relay_checks.section()` now skips fenced
+blocks, a script test pins the shape, and
+`run-20261124-224559-5545` was re-graded with the fixed grader to the 6/6
+verdict recorded above.
+
 ### 2026-11-24: Claude `opus` at `high` effort, the gate pages an oversized skill read and keeps isolation
 
 `immediate_ready_citations_survive` ran on Claude with
