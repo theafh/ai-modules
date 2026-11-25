@@ -2,7 +2,7 @@
 description: "Add task-family evals for refused backward and not-ready moves, premise and charter gates, verify-first and deferred finishes, ready updates, prior art, design-extended, and decision holds."
 scope: tests/task
 created: 2026-11-15T00:41:49Z
-updated: 2026-11-15T00:41:49Z
+updated: 2026-11-25T12:57:43Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -20,7 +20,7 @@ A read-only coverage audit of the task family's tests (2026-11-15) found that th
 The harness pieces these evals build on:
 
 - New evals follow the Pattern A conventions in `tests/CLAUDE.md`: a `tests/task/evals/stage.sh` case, a fixture `setup.sh` under `evals/fixtures/<id>/`, an `evals.json` entry, and a `grade.sh` arm. `tests/task/evals/grade.sh` already carries the helpers these graders need, among them `git_tree_clean`, `body_unchanged`, `file_unchanged`, `ends_status`, `fm_field`, `resp_has`, and `lint_no_blocking`.
-- An eval that varies only the prompt reuses its sibling's fixture through its own `stage.sh` case, as `update` and `update_contract` already share one fixture.
+- An eval that varies only the prompt reuses its sibling's fixture through its own `stage.sh` case, as `finish_arch_extended` and `finish_arch_declined` already share `fixtures/finish_arch_present/setup.sh` and differ only in their prompt.
 - The scenario labelled "inert worker: no eval grades PASS on an empty response", in both `tests/task/script_tests/run.sh` and `tests/task_auto_check/script_tests/run.sh`, stages every eval in its harness's `evals.json`, grades an empty response, and fails when any eval passes. Neither harness has a per-eval grade-case runner for `grade.sh` arms.
 - `python3 tests/task/evals/run.py <ids>` with no `--vendor` runs the default vendor. The standing repo rules govern vendor choice and how an incomplete run is read.
 

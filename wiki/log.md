@@ -1636,3 +1636,23 @@ alias for `timeoutSec`.
   reading the repository `.claude` hook settings, and the two-harness pitfall now
   recommends a native config over the location map.
 - index.md: the header date moves to 2026-11-25.
+
+## [2026-11-25 13:56] update | Ship the OpenCode guardrail bridge and retire the Copilot deposit
+
+Two passes landed after the 10:38 entry. The first shipped the OpenCode bridge
+and the native VS Code Copilot hook file; the second retired the Copilot deposit
+section as a state this repository no longer creates.
+
+- entities/sst-opencode.md: records the `charter-guardrail` bridge package, its
+  `permission.evaluate` hook, and the V2 `resources` shapes the envelope mapping
+  reads (a shell action carries command text, an edit action carries a path
+  relative to the session directory).
+- concepts/hook-surface-portability.md: the bridge is recorded as shipped, the
+  subagent reach stays unverified, and the OpenCode question is closed.
+- concepts/hook-delivery-design.md: the ships paragraph names each configuration
+  file including VS Code Copilot's `vscode-hooks.json` and the bridge package
+  instead of a frozen harness count, and the `### Copilot receives every file`
+  section is rewritten as retired state under `### Copilot takes only its own
+  file`, closing with the filename filter, the copy-route rewrite, and the
+  log-based retraction for a tree deployed before the filter.
+- index.md: the header date stays 2026-11-25.
