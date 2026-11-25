@@ -51,9 +51,24 @@ several turns does not earn several bumps, and a task file or plan that
 schedules a version bump as a step is writing down something the commit already
 handles.
 
-Small maintenance edits take a patch increment. Adding a skill or an agent to an
-existing plugin advances that plugin's minor component while the new artefact
-itself still ships at 1.0.0.
+Adding a skill or an agent to an existing plugin advances that plugin's minor
+component while the new artefact itself still ships at 1.0.0.
+
+The three components are chosen by what a caller sees, not by how large the diff
+looks. A **major** bump covers a change that breaks something already depending
+on the artefact: a renamed or removed skill, agent, command, plugin, or package;
+a changed skill `name`, command invocation name, plugin directory name,
+marketplace id, harness package plugin id, or `exports` entry path; a dropped
+harness target, invocation mode, or configuration key. A **minor** bump covers a
+change that only adds — a new skill, agent, command, hook, plugin, or package, a
+new harness target, a new option or configuration key, a new capability existing
+usage can ignore. A **patch** bump covers everything that keeps every contract
+and improves the shipped content: a fix, a wording or README change, a test, a
+performance change, or a refactor with an unchanged interface. The history of
+these packages shows why the distinction needs writing down: when only the patch
+component is ever exercised, the minor and major components stay at the number
+the artefact shipped with, and a version that never leaves `0.15.x` cannot tell a
+reader that an interface changed.
 
 Plugin metadata moves in lockstep. When any skill or agent version rises, or a
 new one is added, both `plugin.json` files and both marketplace registrations
@@ -64,10 +79,10 @@ package under `harness-plugins/<harness>/<name>/` carries its `version` in its o
 `package.json`, and that field is the only place the number exists: no manifest
 and no marketplace registration repeats it, so the lockstep rule has no partner
 to keep in agreement. A new package ships at 1.0.0, and every commit that edits
-the package raises it, patch for maintenance and minor for a new capability or
-surface. The deployer discovers a package by the presence of that `package.json`
-and copies the directory whole, so the number an installed tree carries is the
-one the source package held at deploy time.
+the package raises it by the increment the ladder above selects. The deployer
+discovers a package by the presence of that `package.json` and copies the
+directory whole, so the number an installed tree carries is the one the source
+package held at deploy time.
 
 A published `ai_dev` or `knowledge_management` version updates the local
 marketplace registrations in that same commit as the plugin manifests, so the

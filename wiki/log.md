@@ -1668,3 +1668,15 @@ concurrency queue has been patch-bumped on nearly every commit that touched it.
   has no partner; a new package ships at 1.0.0 and every editing commit raises
   it. The page's `updated` date moves and `opencode` joins its tags.
 - index.md: the page's summary names the self-versioned harness packages.
+
+## [2026-11-25 17:02] update | Write the major/minor/patch ladder into the versioning contract
+
+The contract stated that maintenance takes a patch and that a new skill advances
+a plugin's minor, which left major undefined and made patch the only increment an
+agent ever had a reason to choose.
+
+- concepts/plugin-packaging-and-versioning.md: `### The versioning contract`
+  gains the caller-facing ladder — major for a broken reference, deployment, or
+  caller; minor for a pure addition; patch for unchanged contracts — with the
+  `0.15.x` history named as the case the distinction exists for. The harness
+  package paragraph defers to that ladder instead of naming its own increments.

@@ -17,6 +17,7 @@ plugins/<plugin>/
   README.md                       # plugin overview + skill list
   skills/<skill>/SKILL.md         # skill definition with YAML frontmatter
 styles/                           # tracked output styles (repo-root; not a plugin component)
+harness-plugins/<harness>/        # harness plugin packages (one self-contained package per directory)
 deployment/                       # deploy script + per-tool config
 tests/                            # regression harnesses (authored files tracked; run output gitignored)
 scripts/                          # repo-wide tooling (strict frontmatter gate)
@@ -39,11 +40,14 @@ Makefile                          # task entry point
 
 ## Versioning
 
-- **Ship a new skill, agent, or plugin at 1.0.0.** In the commit that first introduces it, leave the version at 1.0.0 and add no bump.
-- **Bump once per commit, with the change, and only at commit time.** When a commit edits an existing skill, agent, or plugin, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
-- **Use patch increments for minor maintenance changes.** For a small follow-up, wording fix, or environment-specific hint, advance only the patch component.
-- **Advance the plugin minor when adding a skill or agent.** Adding a skill or agent to an existing plugin advances the plugin's minor component (`x.Y.0`); the new skill or agent itself still ships at 1.0.0. Patch stays for maintenance-only edits of already-shipped surfaces.
-- **Bump the harness plugin package with every commit that edits it.** A package under `harness-plugins/<harness>/<name>/` carries its own `version` in its `package.json`, and that number is the only version the deployed copy reports. Raise it in the same commit as any edit to that package's files — source, tests, README, or `tsconfig.json` — advancing the patch component for maintenance and the minor component for a new capability or surface. A new harness plugin package ships at 1.0.0 with no bump, and no lockstep partner exists because no marketplace registers it: its own `package.json` is the one file to raise.
+- **Ship a new skill, agent, plugin, or harness plugin package at 1.0.0.** In the commit that first introduces it, leave the version at 1.0.0 and add no bump.
+- **Bump once per commit, with the change, and only at commit time.** When a commit edits an existing skill, agent, plugin, or harness plugin package, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
+- **Pick the increment from what the change does to a caller.** Read the change the way a consumer of the artefact would, then advance exactly one component:
+  - **Major** when the change breaks something that already depends on it: a renamed or removed skill, agent, command, plugin, or harness plugin package; a changed skill `name`, command invocation name, plugin directory name, marketplace id, harness package plugin id, or `exports` entry path; a dropped harness target, invocation mode, or configuration key. Anything that makes an existing reference, deployment, or caller stop working is major, however small the diff.
+  - **Minor** when the change only adds: a new skill, agent, command, hook, plugin, or harness plugin package; a new harness target; a new option, configuration key, or artefact surface; a new capability that existing usage can ignore.
+  - **Patch** when the change keeps every contract and improves the shipped content: a fix, a wording or README change, a test, a performance change, or a refactor whose interface is unchanged.
+- **Raise the carrying plugin by the same kind of change.** Adding a skill or agent to an existing plugin advances that plugin's minor component (`x.Y.0`); removing or renaming one advances its major component; a patch-level edit of a component advances the plugin's patch component. The component itself still ships at 1.0.0.
+- **Bump the harness plugin package in its own `package.json`.** A package under `harness-plugins/<harness>/<name>/` carries its own `version`, and that number is the only version the deployed copy reports. Raise it in the same commit as any edit to that package's files — source, tests, README, or `tsconfig.json` — using the increment the ladder above selects, and mirror the new number in the harness workspace's `bun.lock` entry for that package, which records the version beside the manifest. No lockstep partner exists because no marketplace registers it, so those two files are the pair to keep in agreement.
 - **Plugin meta stays lockstep.** When a skill or agent `version:` rises, or a skill or agent is added to an existing plugin, raise the matching plugin's `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and both marketplace registrations (`.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) to the same new plugin version in the same commit.
 
 ## Common tasks
@@ -82,6 +86,49 @@ Task files stay agent-harness agnostic. When a task needs standing repo instruct
 1. Create `plugins/<new_plugin>/` with `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` (set `"skills": "./skills/"`), `README.md`, and a `skills/` directory.
 2. Register the plugin in the marketplace files under `plugins[]`.
 3. Update the root `README.md` layout tree and **Plugins** bullet list.
+
+A **harness plugin package** is a different artefact with a different layout:
+it lives at `harness-plugins/<harness>/<name>/` as one self-contained package
+with its own `package.json`, entry file, `src/`, `test/`, and README, and it is
+not registered in any marketplace. Follow **Harness plugin packages** below, add
+it to the harness workspace's `workspaces` list, and add a row to the harness
+README's plugin table. The deployer discovers it from its `package.json` and
+installs the package whole.
+
+## Harness plugin packages
+
+`harness-plugins/<harness>/` holds self-contained packages a harness loads as a
+plugin, separate from the `plugins/<plugin>/` asset layout above.
+
+- **Target the harness plugin API.** An OpenCode 2 plugin targets
+  `@opencode/plugin` and default-exports a server part built with
+  `Plugin.define({ id, setup })`.
+- **Keep the plugin ID identical to the package directory name.** The
+  directory name is the ID the harness resolves and the name the deploy log
+  records.
+- **Export the server part from the package root.** Every client reads the
+  server's command list, so the server part is the one surface that reaches
+  the terminal UI, the desktop app, and a headless run alike. Add a `./tui` or
+  `./gui-experimental` part only for something a single client alone can do.
+- **Keep the package root's `exports` pointing at the entry file**, so a
+  deployed directory resolves without the harness reading a subpath it cannot
+  find.
+- **Keep domain logic in its own module, apart from the hook wiring**, so it
+  tests as a data transform without the harness runtime.
+- **Use TypeScript in strict mode**, `bun test` for unit tests, and
+  `tsc --noEmit` for type checking.
+- **Keep Bun inside the plugin packages.** Bun is the plugin packages' own
+  runner and does not join the repository's toolchain floor: `make plugin-test`
+  runs the packages' tests and type checks, and `make test` stays on Make,
+  shell, and Python alone.
+- **Never log prompts, message content, API keys, or tool arguments.** Log
+  identifiers and counts, never the payload they describe.
+- **The request concurrency queue never times out.** A request waits until a
+  slot is released or the request is aborted.
+- **Release every acquired slot exactly once**, on response completion,
+  failure, retry, session idle, session deletion, or plugin disposal. A slot
+  released twice corrupts the count; a slot released never stalls the queue
+  behind it.
 
 ## Regression test harnesses
 

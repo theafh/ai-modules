@@ -40,11 +40,14 @@ Makefile                          # task entry point
 
 ## Versioning
 
-- **Ship a new skill, agent, or plugin at 1.0.0.** In the commit that first introduces it, leave the version at 1.0.0 and add no bump.
-- **Bump once per commit, with the change, and only at commit time.** When a commit edits an existing skill, agent, or plugin, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
-- **Use patch increments for minor maintenance changes.** For a small follow-up, wording fix, or environment-specific hint, advance only the patch component.
-- **Advance the plugin minor when adding a skill or agent.** Adding a skill or agent to an existing plugin advances the plugin's minor component (`x.Y.0`); the new skill or agent itself still ships at 1.0.0. Patch stays for maintenance-only edits of already-shipped surfaces.
-- **Bump the harness plugin package with every commit that edits it.** A package under `harness-plugins/<harness>/<name>/` carries its own `version` in its `package.json`, and that number is the only version the deployed copy reports. Raise it in the same commit as any edit to that package's files — source, tests, README, or `tsconfig.json` — advancing the patch component for maintenance and the minor component for a new capability or surface. A new harness plugin package ships at 1.0.0 with no bump, and no lockstep partner exists because no marketplace registers it: its own `package.json` is the one file to raise.
+- **Ship a new skill, agent, plugin, or harness plugin package at 1.0.0.** In the commit that first introduces it, leave the version at 1.0.0 and add no bump.
+- **Bump once per commit, with the change, and only at commit time.** When a commit edits an existing skill, agent, plugin, or harness plugin package, raise its `version` in that commit. Do not bump while iterating, and do not add version-bump steps to task files, plans, or pre-commit notes.
+- **Pick the increment from what the change does to a caller.** Read the change the way a consumer of the artefact would, then advance exactly one component:
+  - **Major** when the change breaks something that already depends on it: a renamed or removed skill, agent, command, plugin, or harness plugin package; a changed skill `name`, command invocation name, plugin directory name, marketplace id, harness package plugin id, or `exports` entry path; a dropped harness target, invocation mode, or configuration key. Anything that makes an existing reference, deployment, or caller stop working is major, however small the diff.
+  - **Minor** when the change only adds: a new skill, agent, command, hook, plugin, or harness plugin package; a new harness target; a new option, configuration key, or artefact surface; a new capability that existing usage can ignore.
+  - **Patch** when the change keeps every contract and improves the shipped content: a fix, a wording or README change, a test, a performance change, or a refactor whose interface is unchanged.
+- **Raise the carrying plugin by the same kind of change.** Adding a skill or agent to an existing plugin advances that plugin's minor component (`x.Y.0`); removing or renaming one advances its major component; a patch-level edit of a component advances the plugin's patch component. The component itself still ships at 1.0.0.
+- **Bump the harness plugin package in its own `package.json`.** A package under `harness-plugins/<harness>/<name>/` carries its own `version`, and that number is the only version the deployed copy reports. Raise it in the same commit as any edit to that package's files — source, tests, README, or `tsconfig.json` — using the increment the ladder above selects, and mirror the new number in the harness workspace's `bun.lock` entry for that package, which records the version beside the manifest. No lockstep partner exists because no marketplace registers it, so those two files are the pair to keep in agreement.
 - **Plugin meta stays lockstep.** When a skill or agent `version:` rises, or a skill or agent is added to an existing plugin, raise the matching plugin's `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and both marketplace registrations (`.agents/plugins/marketplace.json`, `.claude-plugin/marketplace.json`) to the same new plugin version in the same commit.
 - **Local marketplaces stay current for `ai_dev` and `knowledge_management`.** When a commit publishes a new version of either plugin, update the local marketplace registrations in the same commit as the plugin manifests. When opening this repo for plugin maintenance or after updating either marketplace registration, compare the installed cached skill versions against the repo source and tell the user to restart Codex or open a new thread so the refreshed plugin cache is loaded.
 
@@ -123,7 +126,7 @@ plugin, separate from the `plugins/<plugin>/` asset layout above.
   `tsc --noEmit` for type checking.
 - **Keep Bun inside the plugin packages.** Bun is the plugin packages' own
   runner and does not join the repository's toolchain floor: `make plugin-test`
-  runs both packages' tests and type checks, and `make test` stays on Make,
+  runs the packages' tests and type checks, and `make test` stays on Make,
   shell, and Python alone.
 - **Never log prompts, message content, API keys, or tool arguments.** Log
   identifiers and counts, never the payload they describe.
