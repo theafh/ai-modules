@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.18
+version: 1.11.19
 model: inherit
 background: false
 effort: high
@@ -458,9 +458,10 @@ the fix move.
     `procedure_instance_leakage` and
     `procedure_vs_concept_misclassification`; concept pages get
     `topic_mixing`, `type_anatomy_mismatch`, `section_order_or_gaps`,
-    and so on; raw files get `provenance_violation` and source-drift
-    only. Skip a check on a given page only when the check
-    definition declares it inapplicable.
+    and so on; every page body gets `narrated_uncaptured_provenance`
+    beside `provenance_violation`; raw files get `provenance_violation`
+    and source-drift only. Skip a check on a given page only when the
+    check definition declares it inapplicable.
 
     Optional parallelism is allowed only at the page boundary: assign
     independent full-page cold reads to per-page subagents, have each
@@ -554,6 +555,23 @@ the fix move.
     keeps attribution next to the claim it supports and uses page-level
     `sources:` frontmatter as the canonical source inventory.
   </provenance_violation>
+
+  <narrated_uncaptured_provenance>
+    A page body narrates the provenance of a mid-conversation source (a
+    session, paste, meeting note, transcript, screenshot OCR, voice memo,
+    or internal scratch) and that source resolves under neither
+    `raw/<kind>/<slug>.md` nor a declared source root. The narration is a
+    sentence that describes where the content came from ("during an
+    authoring session, the user enforced…", "per the paste", "from our
+    chat") rather than what the page's subject is. A source already
+    captured under `raw/` or under a declared root stays with
+    `provenance_violation`'s inline-link branch. List the page as an issue
+    so remediation opens it; the fix move `<fix_provenance_violation>`
+    routes it and never writes a sidecar. A mid-conversation artifact the
+    wiki must re-read is not `## Derived from` material either, so the
+    `wiki` skill's `<non_canonical_raw_artifact_ingestion>` boundary sends
+    it to `wiki_import` rather than to a derivation pointer.
+  </narrated_uncaptured_provenance>
 
   <external_source_pointer>
     A page carries attribution to material that resolves under neither the
@@ -931,7 +949,13 @@ affect the same file so each file is opened, read, and rewritten once.
        the structural fix. When the fitting channel is a **new** `raw/`
        sidecar, surface the need for `wiki_import` and leave `raw/`
        content untouched (`<raw_directory_read_only>`,
-       `<fix_external_source_pointer>`).
+       `<fix_external_source_pointer>`). A body that narrates a source
+       resolving under neither `raw/` nor a declared root halts here:
+       re-point the attribution at the sidecar or declared-root file when
+       the source already resolves under one, and surface a source that
+       resolves under neither for `wiki_import` routing in the per-file
+       change report instead of writing provenance prose or creating a
+       sidecar.
     3. **Then normalise.** Apply the structural fix to the vacated
        structure, so the corrected element carries no leftover
        semantic baggage.
@@ -1241,7 +1265,13 @@ affect the same file so each file is opened, read, and rewritten once.
       claims drawn from each source, pointing at the matching
       `raw/<kind>/<slug>.md` files or at files under a declared root.
       Keep page-level `sources:` frontmatter as the source inventory,
-      and keep claim-level attribution beside the claim it supports.
+      and keep claim-level attribution beside the claim it supports. A
+      narrated source that resolves under neither channel takes the
+      halt-and-surface branch instead: add no link and no provenance
+      prose, create no sidecar, and surface the artifact for
+      `wiki_import` routing in the per-file change report. Never
+      fabricate a path, because lint reports one as blocking
+      `broken-source`.
     </fix_provenance_violation>
 
     <fix_external_source_pointer>
@@ -1299,7 +1329,11 @@ affect the same file so each file is opened, read, and rewritten once.
       does not own. Do not invent a frontmatter mirror of it. Do not
       capture the external file into `raw/<kind>/<slug>.md` as part of
       this fix. That is `wiki_import`'s triage-first protocol and is
-      out of scope for an audit pass.
+      out of scope for an audit pass. A page body that narrates a
+      mid-conversation source with no sidecar is the same routing case:
+      this move adds no provenance prose and creates no sidecar, and it
+      surfaces the artifact for `wiki_import` in the per-file change
+      report.
 
       Bump `updated` on every page touched. Surface the migration in
       the per-file change report under "external attribution migrated
@@ -1352,7 +1386,13 @@ affect the same file so each file is opened, read, and rewritten once.
       Fix in place per the `format_markdown` skill rules: bullets as
       `-` only, fenced code blocks declare a language, no
       consecutive blank lines, no trailing punctuation in headers,
-      header levels do not skip, single trailing newline.
+      header levels do not skip, single trailing newline. When quoting
+      raw text that may carry markdown-sensitive characters (HTML-like
+      tags, backticks, headings), write it as a fenced text block with a
+      dynamically sized fence rather than a blockquote: pick the smallest
+      backtick fence count of three or more that is longer than any
+      backtick run already inside the content, so a four-backtick example
+      takes a five-backtick fence and the tokens stay unparsed.
     </fix_markdown_style>
 
     <fix_scaffold_section_missing>
@@ -1738,7 +1778,10 @@ affect the same file so each file is opened, read, and rewritten once.
     every approved entry with its disposition (fixed, refuted with the
     refuting span, or surfaced for the user's decision), and its
     *findings left unfixed* list names every pre-existing lint finding
-    the run leaves alone and every off-list defect it notices.
+    the run leaves alone and every off-list defect it notices. A page
+    whose body narrates an uncaptured source is named in its entry as
+    routed to `wiki_import`, with the artifact surfaced there, so the
+    routing reaches the user either way.
   </report_changes>
 
 </verify>

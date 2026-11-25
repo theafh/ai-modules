@@ -76,6 +76,18 @@ rules below read in the vocabulary of the wiki they govern.
   markdown viewers, hide their targets from the broken-link check, and
   easily drift into dangling references.
 
+  An artifact that arrives mid-conversation and informs a page, a paste, a
+  session transcript, a meeting note, screenshot OCR, a voice memo, or
+  internal scratch, is captured the same way before the page uses it: write
+  it to `raw/<kind>/<slug>.md` under the raw-frontmatter contract below, add
+  its path to the page's `sources:`, carry enough excerpted content in the
+  sidecar to stand alone, and keep that provenance out of the page's body
+  prose. The page reads through `sources:`, and a claim grounded in the
+  sidecar carries an inline link to it beside the claim. The next bullet
+  decides the channel: an artifact whose content informs a page and that the
+  wiki must re-read takes `raw/`; durable external material that is not
+  itself being classified takes `## Derived from`.
+
 - **Record uncaptured external lineage under `## Derived from`.** Some pages
   exist because external material exists, such as a doctrine file in another
   repo, a codebase the page distills, or a notebook the analysis was extracted
@@ -172,6 +184,12 @@ its content into the sidecar body to stand on its own, and note its locality in 
 "Local file on the author's workstation; relevant content excerpted below." A machine-local
 absolute path would only add a pointer that breaks everywhere else, so the excerpt is the
 authoritative copy and the sidecar carries neither `source_url:` nor `source_path:`.
+
+Excerpt that content as a fenced text block whose fence is the smallest backtick run of three or
+more that is longer than any backtick run already inside the content: a source carrying a
+four-backtick example takes a five-backtick fence. A blockquote breaks on inline HTML-like tokens
+and trips `markdownlint MD033`, while a fenced block declares the text as raw content that is not
+rendered.
 
 **Reconciling a mislabeled or legacy sidecar.** A sidecar written before the two-field split, or
 one that mis-filed its origin, reconciles onto this contract by a single test: *is the corrected

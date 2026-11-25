@@ -479,6 +479,88 @@ User: Great, save this to my notes.
 EOF
 }
 
+stage_WI-5() {
+    # WI-5 (wiki_provenance-via-raw-and-sources, Acceptance 4): a page-writing
+    # request that hands over a pasted meeting note mid-conversation, not an
+    # explicit import. wiki_import must take its implicit branch: capture the
+    # paste as a raw sidecar with the raw-frontmatter contract, add it to the
+    # consuming page's `sources:`, keep the provenance out of the body prose,
+    # and complete the page write in the same turn with no three-H2 proposal.
+    # The paste carries a four-backtick run and an HTML-like token, so the
+    # emitted fence must be five backticks or longer and the token stays
+    # unparsed (no MD033 downstream).
+    local sb
+    sb=$(reset_sandbox WI-5)
+    stage "$sb/HOME/proj"
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    python3 - "$wiki" <<'PY'
+import sys, pathlib
+w = pathlib.Path(sys.argv[1])
+text = (w / "SCHEMA.md").read_text()
+(w / "SCHEMA.md").write_text(
+    text.replace("## Tag Taxonomy\n", "## Tag Taxonomy\n\n- Domain: model\n", 1)
+)
+(w / "concepts" / "widget-caching.md").write_text(
+    "---\n"
+    "title: widget caching\n"
+    "created: 2026-05-01\n"
+    "updated: 2026-05-01\n"
+    "type: concept\n"
+    "tags: [model]\n"
+    "confidence: medium\n"
+    "---\n\n"
+    "# widget caching\n\n"
+    "The widget cache keeps rendered widget output between requests.\n\n"
+    "## Definition / explanation\n\n"
+    "An entry is keyed by widget identity and by the inputs that affect its\n"
+    "rendering. See [widget defaults](widget-defaults.md) for the values an\n"
+    "entry resolves.\n\n"
+    "## Current state of knowledge\n\n"
+    "The cache is invalidated when a widget's source record changes.\n\n"
+    "## Open questions or debates\n\n"
+    "None recorded.\n\n"
+    "## Related concepts\n\n"
+    "- [widget defaults](widget-defaults.md)\n",
+    encoding="utf-8",
+)
+(w / "concepts" / "widget-defaults.md").write_text(
+    "---\n"
+    "title: widget defaults\n"
+    "created: 2026-05-01\n"
+    "updated: 2026-05-01\n"
+    "type: concept\n"
+    "tags: [model]\n"
+    "confidence: medium\n"
+    "---\n\n"
+    "# widget defaults\n\n"
+    "The defaults table lists the framework colour for each widget class.\n\n"
+    "## Definition / explanation\n\n"
+    "A widget keeps the framework colour unless something above the framework\n"
+    "supplies one. See [widget caching](widget-caching.md) for where the\n"
+    "resolved value is stored.\n\n"
+    "## Current state of knowledge\n\n"
+    "The framework colour is resolved before any deployment-level override.\n\n"
+    "## Open questions or debates\n\n"
+    "None recorded.\n\n"
+    "## Related concepts\n\n"
+    "- [widget caching](widget-caching.md)\n",
+    encoding="utf-8",
+)
+idx = w / "index.md"
+text = idx.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n"
+    "- [widget caching](concepts/widget-caching.md) — rendered output kept between requests\n"
+    "- [widget defaults](concepts/widget-defaults.md) — framework colour per widget class\n",
+    1,
+)
+text = text.replace("Total pages: 0", "Total pages: 2", 1)
+idx.write_text(text)
+PY
+}
+
 stage_WU-1() {
     # WU-1: existing wiki + synthetic transcript embedded in the user prompt.
     # wiki_wrapup must emit a proposal without writing any wiki page.
@@ -2609,6 +2691,119 @@ SECONDCOMMIT
         "$sb/baseline/widget-colour.md.sha256"
 }
 
+stage_AS-29() {
+    # AS-29 (wiki_provenance-via-raw-and-sources, Acceptance 5): a git-backed
+    # wiki whose only defect is a page body narrating a mid-conversation
+    # source ("during an authoring session, the user enforced…"). The source
+    # resolves under neither raw/ nor a declared root, so the assess pass must
+    # list the page and remediation must halt: add no provenance prose, create
+    # no sidecar, and surface the artifact for wiki_import in the per-file
+    # report. No raw sidecar is staged, so the raw/ carve-out is not in play.
+    local sb
+    sb=$(reset_sandbox AS-29)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    python3 - "$wiki" <<'PY'
+import sys, pathlib
+w = pathlib.Path(sys.argv[1])
+text = (w / "SCHEMA.md").read_text()
+(w / "SCHEMA.md").write_text(
+    text.replace("## Tag Taxonomy\n", "## Tag Taxonomy\n\n- Domain: model\n", 1)
+)
+(w / "concepts" / "rollout-cadence.md").write_text(
+    "---\n"
+    "title: rollout cadence\n"
+    "created: 2026-05-01\n"
+    "updated: 2026-05-01\n"
+    "type: concept\n"
+    "tags: [model]\n"
+    "confidence: medium\n"
+    "---\n\n"
+    "# rollout cadence\n\n"
+    "The widget rollout ships every second Tuesday.\n\n"
+    "## Definition / explanation\n\n"
+    "The cadence is a fixed two-week release window. During an authoring\n"
+    "session, the user enforced that the window stays fixed so downstream\n"
+    "teams can plan. See [widget caching](widget-caching.md) for what a\n"
+    "release changes.\n\n"
+    "## Current state of knowledge\n\n"
+    "The window is announced a week ahead. See\n"
+    "[widget defaults](widget-defaults.md) for the colour a release resolves.\n\n"
+    "## Open questions or debates\n\n"
+    "None recorded.\n\n"
+    "## Related concepts\n\n"
+    "- [widget caching](widget-caching.md)\n"
+    "- [widget defaults](widget-defaults.md)\n",
+    encoding="utf-8",
+)
+(w / "concepts" / "widget-caching.md").write_text(
+    "---\n"
+    "title: widget caching\n"
+    "created: 2026-05-01\n"
+    "updated: 2026-05-01\n"
+    "type: concept\n"
+    "tags: [model]\n"
+    "confidence: medium\n"
+    "---\n\n"
+    "# widget caching\n\n"
+    "The widget cache keeps rendered widget output between requests.\n\n"
+    "## Definition / explanation\n\n"
+    "An entry is keyed by widget identity and by the inputs that affect its\n"
+    "rendering. See [widget defaults](widget-defaults.md) for the values an\n"
+    "entry resolves.\n\n"
+    "## Current state of knowledge\n\n"
+    "The cache is invalidated when a widget's source record changes. See\n"
+    "[rollout cadence](rollout-cadence.md) for when a release ships.\n\n"
+    "## Open questions or debates\n\n"
+    "None recorded.\n\n"
+    "## Related concepts\n\n"
+    "- [widget defaults](widget-defaults.md)\n"
+    "- [rollout cadence](rollout-cadence.md)\n",
+    encoding="utf-8",
+)
+(w / "concepts" / "widget-defaults.md").write_text(
+    "---\n"
+    "title: widget defaults\n"
+    "created: 2026-05-01\n"
+    "updated: 2026-05-01\n"
+    "type: concept\n"
+    "tags: [model]\n"
+    "confidence: medium\n"
+    "---\n\n"
+    "# widget defaults\n\n"
+    "The defaults table lists the framework colour for each widget class.\n\n"
+    "## Definition / explanation\n\n"
+    "A widget keeps the framework colour unless something above the framework\n"
+    "supplies one. See [widget caching](widget-caching.md) for where the\n"
+    "resolved value is stored.\n\n"
+    "## Current state of knowledge\n\n"
+    "The framework colour is resolved before any deployment-level override.\n"
+    "See [rollout cadence](rollout-cadence.md) for when a release ships.\n\n"
+    "## Open questions or debates\n\n"
+    "None recorded.\n\n"
+    "## Related concepts\n\n"
+    "- [widget caching](widget-caching.md)\n"
+    "- [rollout cadence](rollout-cadence.md)\n",
+    encoding="utf-8",
+)
+idx = w / "index.md"
+text = idx.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n"
+    "- [rollout cadence](concepts/rollout-cadence.md) — when the widget rollout ships\n"
+    "- [widget caching](concepts/widget-caching.md) — rendered output kept between requests\n"
+    "- [widget defaults](concepts/widget-defaults.md) — framework colour per widget class\n",
+    1,
+)
+text = text.replace("Total pages: 0", "Total pages: 3", 1)
+idx.write_text(text)
+PY
+    _as_git_commit "$sb/HOME/proj" "staging commit"
+}
+
 stage_MP-1() {
     # MP-1 (wiki_meta-prose-in-page-bodies): oversized custom `todo` page that
     # trips the page-size info finding. After wiki_fix the page body must
@@ -2704,7 +2899,7 @@ idx.write_text(text if text.endswith("\n") else text + "\n")
 PY
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-6 AS-7 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 AS-28 MP-1)
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WI-5 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-6 AS-7 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 AS-28 AS-29 MP-1)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

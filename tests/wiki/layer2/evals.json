@@ -1194,6 +1194,143 @@
       ]
     },
     {
+      "id": "WI-5",
+      "name": "wiki-import-mid-conversation-paste-capture",
+      "description": "wiki_import's implicit branch: a page-writing request that hands over a pasted meeting note mid-conversation captures it as a raw/ sidecar with the raw-frontmatter contract, adds it to the consuming page's sources:, keeps the provenance out of the body prose, and completes the page write in the same turn with no three-H2 proposal. The paste carries a four-backtick run and an HTML-like token, so the emitted fence is five backticks or longer and the token stays unparsed. Graded out-of-band against wiki_provenance-via-raw-and-sources Acceptance 4.",
+      "skill_name": "wiki_import",
+      "sandbox_path": "WI-5",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Add the rollout cadence to my wiki's widget caching page. Base the new section on this note from our planning meeting and write it in this turn:\n\n--- NOTE START ---\nNotes from the widget rollout planning meeting (2026-05-02).\n\nPriya: We need a fixed cadence so downstream teams can plan.\n\nMarco: Two weeks between releases works for the card renderer.\n\nPriya: Agreed — ship every second Tuesday, and announce the date in advance.\n\nMarco: The card markup we showed looked like this:\n\n````html\n<widget-card data-theme=\"dark\">\n  <span class=\"label\">Widget</span>\n</widget-card>\n````\n\nPriya: That markup ships unchanged in release 4.2.\n--- NOTE END ---\n\nAdd what the note establishes to the page.",
+      "extra_constraints": [
+        "This is a page edit, not an import request: capture the note and write the page in one turn, with no three-H2 proposal and no approval pause.",
+        "Classify the note's kind and slug per references/raw_taxonomy.md; its speaker turns make it a meeting transcript.",
+        "Give the sidecar the raw-frontmatter contract: ingested:, a body-only sha256 from compute_sha256.py, and neither source_url nor source_path because the paste has no published or in-repo origin.",
+        "Reference the sidecar from the consuming page's sources: frontmatter, and keep the provenance out of the body prose.",
+        "The note carries a four-backtick run and HTML-like tags; excerpt it as a fenced text block whose fence is longer than that run."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "proposal_sections_emitted: <comma-separated H2 names emitted, or none>",
+        "page_write_completed_in_turn: yes|no"
+      ],
+      "extra_report_field_doc": "- `proposal_sections_emitted`: list the exact H2 headings you emitted, or `none`. An implicit mid-conversation capture emits no proposal.\n- `page_write_completed_in_turn`: `yes` if the consuming page write landed in this turn without waiting for approval; `no` otherwise.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_discovery_produced_usable_path",
+          "type": "report_field_in",
+          "field": "discovery_exit",
+          "expected": [
+            "0",
+            "2"
+          ]
+        },
+        {
+          "id": "A3_resolved_to_proj_wiki",
+          "type": "report_field_endswith",
+          "field": "discovery_resolved_path",
+          "suffix": "HOME/proj/wiki"
+        },
+        {
+          "id": "A4_no_init",
+          "type": "report_field_eq",
+          "field": "init_invoked",
+          "expected": "no"
+        },
+        {
+          "id": "A5_raw_sidecar_captured",
+          "type": "glob_exists",
+          "pattern": "HOME/proj/wiki/raw/*/*.md"
+        },
+        {
+          "id": "A6_sidecar_carries_ingested",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/*/*.md",
+          "regex": "(?m)^ingested:\\s*\\d{4}-\\d{2}-\\d{2}$"
+        },
+        {
+          "id": "A7_sidecar_carries_sha256",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/*/*.md",
+          "regex": "(?m)^sha256:\\s*[0-9a-f]{64}$"
+        },
+        {
+          "id": "A8_sidecar_has_no_machine_local_path",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/raw/*/*.md",
+          "regex": "(?m)^source_path:\\s*[/~]"
+        },
+        {
+          "id": "A9_sidecar_fence_exceeds_inner_run",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/*/*.md",
+          "regex": "(?m)^`{5,}"
+        },
+        {
+          "id": "A10_sidecar_keeps_inner_four_backtick_run",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/*/*.md",
+          "regex": "(?m)^`{4}html"
+        },
+        {
+          "id": "A11_sidecar_keeps_html_token",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/raw/*/*.md",
+          "regex": "<widget-card"
+        },
+        {
+          "id": "A12_page_sources_reference_sidecar",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-caching.md",
+          "regex": "(?s)\\A---.*?\\nsources:.*?raw/.*?\\n---"
+        },
+        {
+          "id": "A13_page_body_carries_new_content",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-caching.md",
+          "regex": "(?i)(rollout cadence|second Tuesday)"
+        },
+        {
+          "id": "A14_no_body_provenance_narration",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/widget-caching.md",
+          "regex": "(?i)(authoring session|the user (said|provided|shared|told)|this (paste|transcript|note)|our (paste|transcript|chat))"
+        },
+        {
+          "id": "A15_no_three_h2_proposal",
+          "type": "report_field_does_not_contain",
+          "field": "proposal_sections_emitted",
+          "needle": "New pages"
+        },
+        {
+          "id": "A16_no_contradictions_section",
+          "type": "report_field_does_not_contain",
+          "field": "proposal_sections_emitted",
+          "needle": "Contradictions to reconcile"
+        },
+        {
+          "id": "A17_page_write_completed_in_turn",
+          "type": "report_field_eq",
+          "field": "page_write_completed_in_turn",
+          "expected": "yes"
+        },
+        {
+          "id": "A18_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A19_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
       "id": "WU-1",
       "name": "wiki-wrapup-proposal-only",
       "description": "wiki_wrapup with a synthetic session: mine the dialogue, emit 3-section proposal, STOP before any wiki page write. Workflow plumbing — discovery delegated to wiki skill, propose-then-act respected.",
@@ -3603,6 +3740,90 @@
         },
         {
           "id": "A14_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-29",
+      "name": "auto-shaper-routes-narrated-uncaptured-source",
+      "description": "auto_shaper_wiki (via wiki_fix) audits a git-backed wiki whose only defect is a page body narrating a mid-conversation source that resolves under neither raw/ nor a declared root. The assess pass lists the page, and remediation halts: it adds no provenance prose, creates no sidecar, and surfaces the artifact for wiki_import in the per-file report. Graded out-of-band against wiki_provenance-via-raw-and-sources Acceptance 5.",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-29",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Report the per-file changes and everything you surface for the user's decision.",
+        "The audit never captures a source into raw/ itself; an uncaptured source is routed to wiki_import."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "narrated_provenance_page: <wiki-relative page path, one per line, or none>",
+        "narrated_provenance_routing: wiki_import — <artifact> — <where the per-file report names it>, or none"
+      ],
+      "extra_report_field_doc": "- `narrated_provenance_page`: the wiki-relative path of each page the assess pass listed for narrating a mid-conversation source with no sidecar, one per line, or `none`.\n- `narrated_provenance_routing`: start with `wiki_import — `, then the uncaptured artifact you surfaced and where the per-file change report names it; write `none` when nothing was surfaced.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_narrated_page_listed",
+          "type": "report_field_matches",
+          "field": "narrated_provenance_page",
+          "regex": "concepts/rollout-cadence\\.md"
+        },
+        {
+          "id": "A3_no_sidecar_created",
+          "type": "glob_absent",
+          "pattern": "HOME/proj/wiki/raw/*/*.md"
+        },
+        {
+          "id": "A4_narration_still_present",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/rollout-cadence.md",
+          "regex": "During an authoring"
+        },
+        {
+          "id": "A5_no_fabricated_raw_link",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/rollout-cadence.md",
+          "regex": "(?i)raw/"
+        },
+        {
+          "id": "A6_no_sources_frontmatter_added",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/rollout-cadence.md",
+          "regex": "(?m)^sources:"
+        },
+        {
+          "id": "A7_no_derived_from_section",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/concepts/rollout-cadence.md",
+          "regex": "(?m)^## Derived from"
+        },
+        {
+          "id": "A8_routed_to_wiki_import",
+          "type": "report_field_matches",
+          "field": "narrated_provenance_routing",
+          "regex": "wiki_import"
+        },
+        {
+          "id": "A9_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A10_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A11_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
         }
       ]

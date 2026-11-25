@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.24
+version: 1.24.25
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -590,7 +590,46 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   content (originals cite by URL, not by ingester-picked slugs).
   File the cross-reference on the wiki page that cites both sources
   instead.
+- **Excerpt raw text in a fenced block sized to its content.** When the
+  captured body quotes text that may carry markdown-sensitive characters
+  (HTML-like tags, backticks, headings), write it as a fenced text block,
+  never a blockquote: a blockquote breaks on inline HTML and trips
+  `markdownlint MD033`, while a fence declares the text as raw content that
+  is not rendered. Pick the smallest backtick fence count of three or more
+  that is longer than any backtick run already inside the content, so a
+  source carrying a four-backtick example takes a five-backtick fence.
 </capture_raw_source>
+
+<non_canonical_raw_artifact_ingestion>
+**Capture a non-canonical artifact before a page draws on it.** A session
+transcript, paste, meeting note, screenshot OCR, voice memo, or internal
+scratch that informs a wiki page is raw material the wiki must be able to
+re-read, so it enters the wiki before the page that uses it:
+
+- Capture it as `raw/<kind>/<slug>.md`, with kind and slug classified per
+  `references/raw_taxonomy.md` and the frontmatter contract in
+  `### raw/ Frontmatter` of `references/template_schema.md`: `source_url:`
+  for a published origin, a wiki-root-relative `source_path:` for an in-repo
+  source, neither field for an out-of-repo machine-local artifact, plus
+  `ingested:` and a body-only `sha256:` written by
+  `python3 "$WIKI_SKILL/scripts/compute_sha256.py"`.
+- Reference the sidecar from the consuming page's `sources:` frontmatter with
+  its wiki-root-relative path.
+- Carry enough excerpted content in the sidecar body to be useful without the
+  original artifact, as the fenced text block `<capture_raw_source>` defines.
+- Keep that provenance out of the consuming page's body prose: the reader
+  routes through `sources:`, and per-claim attribution is an inline link to
+  the same sidecar beside the claim.
+
+This channel and `## Derived from` divide the work. An artifact whose content
+informs a page and that the wiki must re-read, whether ephemeral or
+machine-local, takes the `raw/` channel. Durable external material the wiki
+points at but does not own or classify, such as a doctrine file in another
+repo, a codebase, or a notebook, stays where it lives and is recorded as a
+`## Derived from` pointer, never captured into `raw/` and never listed in
+`sources:`. The `wiki_import` skill's `<capture_raw_mid_conversation>` block
+carries the capture protocol for an artifact that arrives mid-conversation.
+</non_canonical_raw_artifact_ingestion>
 
 <discuss_takeaways>
 **Discuss takeaways** with the user: what's interesting, what matters
@@ -621,7 +660,7 @@ difference between a growing wiki and a pile of duplicates.
 - **Cross-reference**: every new/updated page links to ≥2 others.
 - **Content language**: write the body, headings, and `title:` in the language of the content; keep the slug pure ASCII per `<folder_layout>`, so the readable title keeps its native characters while the filename is folded (`Künstliche Evolution` → `kuenstliche-evolution.md`).
 - **Tags**: only from `SCHEMA.md`'s taxonomy. Add new tags to `SCHEMA.md` *before* using them on a page. A tag is a content-language topic word written ASCII-folded, because the linter byte-matches it against the taxonomy: a German wiki writes `koerper`, not `körper`.
-- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. A live in-repo document that **is** the subject of classification (a paper, spec, or codebase the wiki exists to explain) is cited the same way under a root the wiki declares with a `Declared source root:` bullet in `SCHEMA.md`'s `## Lint` section, and it carries no sha256 drift detection, so its coherence relies on a review rule the wiki states. Both objects are listed in the page-level `sources:` frontmatter, the canonical inventory the page draws on, present on a page citing either object, absent from a page citing neither, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`; a declared-root value may resolve to a sibling of the wiki inside the same repository. Uncaptured lineage that is **not** the subject of classification takes the other channel, the `## Derived from` section in the next bullet. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
+- **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. A live in-repo document that **is** the subject of classification (a paper, spec, or codebase the wiki exists to explain) is cited the same way under a root the wiki declares with a `Declared source root:` bullet in `SCHEMA.md`'s `## Lint` section, and it carries no sha256 drift detection, so its coherence relies on a review rule the wiki states. Both objects are listed in the page-level `sources:` frontmatter, the canonical inventory the page draws on, present on a page citing either object, absent from a page citing neither, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`; a declared-root value may resolve to a sibling of the wiki inside the same repository. Uncaptured lineage that is **not** the subject of classification takes the other channel, the `## Derived from` section in the next bullet. A non-canonical artifact that arrives mid-conversation and informs the page is captured through `<non_canonical_raw_artifact_ingestion>` before the page cites it, and that provenance stays out of the body prose. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
 - **External derivation**: when a page is distilled from material that is **not** itself the subject of classification (doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes), that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns or on a live in-repo document under a declared source root", and leave the field off entirely when the page cites neither. A page may have either, both, or neither.
 - **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
 - **Page body content**: keep ordinary page bodies to load-bearing knowledge. Lead with one short sentence naming what the page is for, then the entries and facts. Put page-convention definitions, entry-anatomy explanations, canon-kind clauses, and lint-sanction prose in `SCHEMA.md` (page conventions and the `## Lint` acceptance store) or in the audit log — never in an ordinary page body. Carve-out: `SCHEMA.md`, `index.md`, and synthesis types (`summary`, `query`, `comparison`), whose organising prose is their load-bearing content. `SCHEMA.md`'s `## Conventions` bullet **Keep ordinary page bodies to load-bearing knowledge** is the canonical statement.
