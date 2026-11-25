@@ -1195,7 +1195,7 @@ strip_jsonc() {
             if (d == "/" && substr(doc, j + 1, 1) == "*") {
               j += 2
               while (j <= n && !(substr(doc, j, 1) == "*" && substr(doc, j + 1, 1) == "/")) j++
-              j++
+              j += 2
               continue
             }
             break
@@ -3041,8 +3041,10 @@ logged_path_scope() {
   fi
 
   # The OS branch picks the VS Code prompts root; the settings directory that
-  # holds it is the prompts root's parent, which is where the vscode settings
-  # merges write their path[key] entries.
+  # holds it is the prompts root's parent. That root is a forward provision:
+  # no vscode merge writes a path[key] entry there today, and the output-style
+  # route's chat.instructionsFilesLocations merge is the one that will write
+  # one into that same user settings file.
   local vscode_prompts_root=""
   if [[ "$OSTYPE" == darwin* ]]; then
     vscode_prompts_root="${HOME_DIR}/Library/Application Support/Code/User/prompts"

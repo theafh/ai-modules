@@ -2,7 +2,7 @@
 description: Deploy the output style to GitHub Copilot in VS Code as an instructions file at global and project scope, each in its own configuration root, with no activation key required.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-25T12:07:34Z
+updated: 2026-11-25T12:10:58Z
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -17,7 +17,7 @@ GitHub Copilot in VS Code receives the repository's output style as a generated 
 
 This builds on [the Claude groundwork task](archive/deployment_output-style-claude-groundwork.md), which shipped the repo-root source directory, the `style` artefact type, and the deploy-log restore behaviour. This task adds one target.
 
-The wiki records the mechanism in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md). The essentials: instructions files combine rather than compete, the user-profile instructions root applies across every workspace and sits above repository and organization instructions in the documented precedence, and nothing has to be switched on for a file placed there to take effect. VS Code is append-only, so the deployed prose competes with default guidance rather than displacing it, which the docs should say plainly.
+The wiki records the mechanism in [system prompt substitution across harnesses](../wiki/comparisons/system-prompt-substitution-across-harnesses.md). The essentials: instructions files combine rather than compete, the user-profile instructions root applies across every workspace and adds to repository and organization guidance, since Copilot combines applicable user and repository instructions without a general precedence order between instruction files (VS Code's custom instructions reference), and nothing has to be switched on for a file placed there to take effect. VS Code is append-only, so the deployed prose competes with default guidance rather than displacing it, which the docs should say plainly.
 
 One trap belongs in the implementation. Copilot also reads a rules folder and a `CLAUDE.md` from the Claude configuration tree, and the documentation presents that path alongside its own. Those are adoption roots, and the standing rule in the harness portability skill's policy is to deliver a per-harness variant into the target's own native root and treat adoption as contamination. Writing the variant into the Claude tree would put one file in front of two harnesses and hand VS Code a Claude-shaped artefact, so the deploy writes only into Copilot's own instructions root.
 
