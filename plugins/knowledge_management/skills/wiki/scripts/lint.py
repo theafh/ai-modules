@@ -481,12 +481,12 @@ def iter_lint_section_lines(wiki: Path) -> Iterator[str]:
     )
     if not section:
         return
-    in_fence = False
+    in_fence: tuple[str, int] | None = None
     for line in section.group(1).splitlines():
-        if FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
+        in_fence, is_delimiter = fence_delimiter(line, in_fence)
+        if is_delimiter:
             continue
-        if in_fence:
+        if in_fence is not None:
             continue
         yield line
 
@@ -963,16 +963,16 @@ def check_taxonomy_style(wiki: Path) -> list[Issue]:
 
     issues: list[Issue] = []
     in_bullet = False
-    in_fence = False
+    in_fence: tuple[str, int] | None = None
     bullet_start_line = 0
     for offset, raw_line in enumerate(match.group(1).splitlines()):
         line_no = section_start_line + offset
         stripped = raw_line.lstrip()
-        if FENCE_RE.match(raw_line.strip()):
-            in_fence = not in_fence
+        in_fence, is_delimiter = fence_delimiter(raw_line, in_fence)
+        if is_delimiter:
             in_bullet = False
             continue
-        if in_fence:
+        if in_fence is not None:
             continue
         if not stripped:
             in_bullet = False
@@ -2403,7 +2403,6 @@ def check_raw_frontmatter(wiki: Path) -> list[Issue]:
 
 BAD_BULLET_RE = re.compile(r"^\s*[\*\+]\s")
 HEADER_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
-FENCE_RE = re.compile(r"^```(\w*)\s*$")
 LIST_MARKER_RE = re.compile(r"^(\s*-)([^\s])")
 BARE_URL_RE = re.compile(r"(?<![<\(\"\[/])(https?://\S+)")
 WIKILINK_RE = re.compile(r"\[\[([^\[\]\n]+)\]\]")
@@ -2413,17 +2412,21 @@ INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 def strip_fenced_blocks(text: str) -> str:
     """Return `text` with fenced code blocks dropped, inline code left intact.
 
-    Used where a scanner must ignore ``` fenced examples but still read
+    Used where a scanner must ignore fenced examples but still read
     inline-code content on live lines (the taxonomy loader keeps `` `model` ``
-    inside a live bullet). Mirrors the fence handling in the body scanners.
+    inside a live bullet). Drives the shared ``fence_delimiter`` state machine,
+    so this text-level stripper and every per-line body scanner agree on where
+    a fence opens and closes: three or more backticks or tildes with any info
+    string open a block, and only the same character at an equal or longer run
+    closes it.
     """
     out: list[str] = []
-    in_fence = False
+    in_fence: tuple[str, int] | None = None
     for line in text.splitlines():
-        if FENCE_RE.match(line.strip()):
-            in_fence = not in_fence
+        in_fence, is_delimiter = fence_delimiter(line, in_fence)
+        if is_delimiter:
             continue
-        if not in_fence:
+        if in_fence is None:
             out.append(line)
     return "\n".join(out)
 
@@ -2463,22 +2466,24 @@ def check_markdown_style(wiki: Path) -> list[Issue]:
             issues.append(Issue(SEV_INFO, "md-style", page, "file ends with multiple blank lines"))
 
         blank_run = 0
-        in_fence = False
+        in_fence: tuple[str, int] | None = None
         last_header_level = 0
         for i, line in enumerate(lines, start=1):
             stripped = line.strip()
-            fence = FENCE_RE.match(stripped)
-            if fence:
-                if not in_fence and not fence.group(1):
-                    issues.append(Issue(
-                        SEV_INFO, "md-style", page,
-                        "fenced code block missing language identifier", line=i,
-                    ))
-                in_fence = not in_fence
+            was_fenced = in_fence is not None
+            in_fence, is_delimiter = fence_delimiter(line, in_fence)
+            if is_delimiter:
+                if not was_fenced:
+                    opener = FENCE_OPEN_RE.match(stripped)
+                    if opener is not None and not opener.group("info").strip():
+                        issues.append(Issue(
+                            SEV_INFO, "md-style", page,
+                            "fenced code block missing language identifier", line=i,
+                        ))
                 blank_run = 0
                 continue
 
-            if in_fence:
+            if in_fence is not None:
                 continue
 
             if stripped == "":
@@ -2731,12 +2736,12 @@ def check_sources_section(wiki: Path) -> list[Issue]:
             _, body = parse_frontmatter(text)
         else:
             body = text
-        in_fence = False
+        in_fence: tuple[str, int] | None = None
         for i, line in enumerate(body.splitlines(), start=1):
-            if FENCE_RE.match(line.strip()):
-                in_fence = not in_fence
+            in_fence, is_delimiter = fence_delimiter(line, in_fence)
+            if is_delimiter:
                 continue
-            if in_fence:
+            if in_fence is not None:
                 continue
             if SOURCES_HEADER_RE.match(line):
                 issues.append(Issue(
@@ -2843,12 +2848,12 @@ def check_footnote_syntax(wiki: Path) -> list[Issue]:
             _, body = parse_frontmatter(text)
         else:
             body = text
-        in_fence = False
+        in_fence: tuple[str, int] | None = None
         for i, line in enumerate(body.splitlines(), start=1):
-            if FENCE_RE.match(line.strip()):
-                in_fence = not in_fence
+            in_fence, is_delimiter = fence_delimiter(line, in_fence)
+            if is_delimiter:
                 continue
-            if in_fence:
+            if in_fence is not None:
                 continue
             scrubbed = INLINE_CODE_RE.sub("", line)
             is_def = bool(FOOTNOTE_DEF_RE.match(scrubbed))
@@ -2887,12 +2892,12 @@ def check_wikilink_syntax(wiki: Path) -> list[Issue]:
             _, body = parse_frontmatter(text)
         else:
             body = text
-        in_fence = False
+        in_fence: tuple[str, int] | None = None
         for i, line in enumerate(body.splitlines(), start=1):
-            if FENCE_RE.match(line.strip()):
-                in_fence = not in_fence
+            in_fence, is_delimiter = fence_delimiter(line, in_fence)
+            if is_delimiter:
                 continue
-            if in_fence:
+            if in_fence is not None:
                 continue
             scrubbed = INLINE_CODE_RE.sub("", line)
             for match in WIKILINK_RE.finditer(scrubbed):

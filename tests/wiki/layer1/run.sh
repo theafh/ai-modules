@@ -5174,6 +5174,275 @@ None recorded.
     $ok
 }
 
+# L122: a four-backtick `markdown` example holding a deprecated body Sources
+# heading, a wikilink, a footnote, and two consecutive blank lines is
+# documentation. None of sources-section, wikilink, footnote, or md-style may
+# fire against the page that carries it.
+l122_lint_four_backtick_example_is_documentation() {
+    local wiki; wiki=$(stage_fresh_wiki l122)
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    cat >> "$wiki/concepts/widget.md" <<'EOF'
+
+````markdown
+## Sources
+[[wiki link]]
+[^fn]
+
+
+````
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_finding_for_file "fenced Sources heading is documentation" "$out" \
+        sources-section "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "fenced wikilink is documentation" "$out" \
+        wikilink "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "fenced footnote is documentation" "$out" \
+        footnote "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "fenced blank run is documentation" "$out" \
+        md-style "concepts/widget.md" || ok=false
+    $ok
+}
+
+# L123: the same three lines outside any fence still draw their findings, so the
+# L122 suppression is fence-scoped rather than global.
+l123_lint_unfenced_example_still_flagged() {
+    local wiki; wiki=$(stage_fresh_wiki l123)
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    cat >> "$wiki/concepts/widget.md" <<'EOF'
+
+## Sources
+[[wiki link]]
+[^fn]
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_finding_for_file "unfenced Sources heading is flagged" "$out" \
+        info sources-section "concepts/widget.md" || ok=false
+    assert_finding_for_file "unfenced wikilink is flagged" "$out" \
+        warn wikilink "concepts/widget.md" || ok=false
+    assert_finding_for_file "unfenced footnote is flagged" "$out" \
+        warn footnote "concepts/widget.md" || ok=false
+    $ok
+}
+
+# L124: a tilde fence and a five-backtick fence open blocks just as a
+# three-backtick fence does, so their content draws no findings.
+l124_lint_tilde_and_five_backtick_examples() {
+    local wiki; wiki=$(stage_fresh_wiki l124)
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    cat >> "$wiki/concepts/widget.md" <<'EOF'
+
+~~~markdown
+## Sources
+[[wiki link]]
+[^fn]
+
+
+~~~
+
+`````markdown
+## Sources
+[[wiki link]]
+[^fn]
+
+
+`````
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_finding_for_file "tilde fence Sources heading is documentation" "$out" \
+        sources-section "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "tilde and five-backtick fences hide wikilinks" "$out" \
+        wikilink "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "tilde and five-backtick fences hide footnotes" "$out" \
+        footnote "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "tilde and five-backtick fences hide blank runs" "$out" \
+        md-style "concepts/widget.md" || ok=false
+    $ok
+}
+
+# L125: a triple-backtick run nested inside a four-backtick fence stays content
+# rather than closing the block, and the four-backtick closer does end it.
+l125_lint_nested_triple_backtick_stays_content() {
+    local wiki; wiki=$(stage_fresh_wiki l125)
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    cat >> "$wiki/concepts/widget.md" <<'EOF'
+
+````markdown
+## Sources
+[[wiki link]]
+
+```bash
+nested example
+```
+
+[^fn]
+````
+
+[[outside link]]
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_finding_for_file "nested triple-backtick keeps content fenced" "$out" \
+        sources-section "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "content after a nested run stays fenced" "$out" \
+        footnote "concepts/widget.md" || ok=false
+    assert_finding_for_file_contains "content after the closer is read again" "$out" \
+        wikilink "concepts/widget.md" "outside link" || ok=false
+    if printf '%s' "$out" | grep -qF "wiki link"; then
+        log "    [wikilink inside the four-backtick fence was read as live]"
+        printf '%s\n' "$out" | indent
+        ok=false
+    fi
+    $ok
+}
+
+# L126: an opener whose info string carries non-word characters (`c++`,
+# `objective-c`) opens a block, and a bare opener still draws the
+# missing-language md-style finding.
+l126_lint_non_word_info_string_fence() {
+    local wiki; wiki=$(stage_fresh_wiki l126)
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    write_valid_concept_page "$wiki" bare
+    add_index_entry_concept "$wiki" bare
+    cat >> "$wiki/concepts/widget.md" <<'EOF'
+
+```c++
+## Sources
+[[wiki link]]
+[^fn]
+```
+
+```objective-c
+## Sources
+[[wiki link]]
+[^fn]
+```
+EOF
+    cat >> "$wiki/concepts/bare.md" <<'EOF'
+
+```
+
+no language identifier
+
+```
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_finding_for_file "c++ and objective-c fences hide their content" "$out" \
+        sources-section "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "c++ and objective-c fences hide wikilinks" "$out" \
+        wikilink "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "c++ and objective-c fences hide footnotes" "$out" \
+        footnote "concepts/widget.md" || ok=false
+    assert_no_finding_for_file "non-word info string needs no language finding" "$out" \
+        md-style "concepts/widget.md" || ok=false
+    assert_finding_for_file "bare opener still draws missing-language" "$out" \
+        info md-style "concepts/bare.md" || ok=false
+    $ok
+}
+
+# L127: the `## Lint` section scan treats a four-backtick and a tilde fenced
+# acceptance bullet as documentation, so neither suppresses the size finding.
+l127_lint_fenced_lint_section_bullet_is_documentation() {
+    local wiki; wiki=$(stage_fresh_wiki l127)
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    grow_page_past_soft_cap "$wiki/concepts/widget.md"
+    cat >> "$wiki/SCHEMA.md" <<'EOF'
+
+````text
+- Accepted finding: size — concepts/widget.md
+````
+
+~~~text
+- Accepted finding: size — concepts/widget.md
+~~~
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local out=${ret#*|}
+    local ok=true
+    assert_finding_for_file "fenced acceptance suppresses nothing" "$out" \
+        info size "concepts/widget.md" || ok=false
+    assert_no_acknowledged_section "no acknowledgement from a fenced bullet" "$out" || ok=false
+    $ok
+}
+
+# L128: `check_taxonomy_style` reads a four-backtick fenced block in the Tag
+# Taxonomy section as documentation, so a non-canonical bullet inside it draws
+# no taxonomy-style finding.
+l128_lint_fenced_taxonomy_block_is_documentation() {
+    local wiki; wiki=$(stage_fresh_wiki l128)
+    python3 - "$wiki/SCHEMA.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+marker = "## Tag Taxonomy\n"
+block = "\n````markdown\n* Domain: ghost\n````\n"
+p.write_text(text.replace(marker, marker + block, 1))
+PY
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "0" || ok=false
+    assert_no_finding_for_file "fenced taxonomy bullet is documentation" "$out" \
+        taxonomy-style "SCHEMA.md" || ok=false
+    $ok
+}
+
+# L129: `strip_fenced_blocks` drives `strip_code`, so a markdown link inside a
+# four-backtick example is never read as a broken link or as an inbound link.
+l129_lint_four_backtick_link_example_is_stripped() {
+    local wiki; wiki=$(stage_fresh_wiki l129)
+    write_valid_concept_page "$wiki" widget
+    add_index_entry_concept "$wiki" widget
+    write_valid_concept_page "$wiki" target
+    add_index_entry_concept "$wiki" target
+    printf '\nSee [widget](widget.md).\n' >> "$wiki/concepts/target.md"
+    cat >> "$wiki/concepts/widget.md" <<'EOF'
+
+````markdown
+See [fenced example](concepts/does-not-exist-fenced.md) and [target](target.md).
+````
+
+A genuinely [broken link](concepts/does-not-exist-real.md) outside code.
+EOF
+    local ret; ret=$(run_lint "$wiki")
+    local rc=${ret%%|*} out=${ret#*|}
+    local ok=true
+    assert_eq "exit" "$rc" "1" || ok=false
+    assert_lint_finding "real broken link blocks" "$out" blocking "broken-link" || ok=false
+    if printf '%s' "$out" | grep -qE "does-not-exist-fenced"; then
+        log "    [four-backtick example link wrongly flagged as broken]"
+        printf '%s\n' "$out" | indent
+        ok=false
+    fi
+    if ! printf '%s' "$out" | grep -E "\borphan\b" | grep -q "concepts/target.md"; then
+        log "    [target not reported as orphan — fenced inbound link wrongly counted?]"
+        printf '%s\n' "$out" | indent
+        ok=false
+    fi
+    $ok
+}
+
 ###############################################################################
 # Run all scenarios
 ###############################################################################
@@ -5354,6 +5623,14 @@ scenario l118 "heading-label flags ISO-date suffixes"           l118_lint_headin
 scenario l119 "heading-label skips emphasised prose sentences"  l119_lint_heading_label_prose_sentence_exempt
 scenario l120 "heading-label info finding still exits 0"        l120_lint_heading_label_info_exit_zero
 scenario l121 "heading-label four-field acceptance pins a line" l121_lint_heading_label_accepted_four_field
+scenario l122 "lint ignores a four-backtick example body"      l122_lint_four_backtick_example_is_documentation
+scenario l123 "lint flags the same lines when unfenced"        l123_lint_unfenced_example_still_flagged
+scenario l124 "lint ignores tilde and five-backtick examples"  l124_lint_tilde_and_five_backtick_examples
+scenario l125 "nested triple-backtick stays fenced content"    l125_lint_nested_triple_backtick_stays_content
+scenario l126 "lint reads non-word info-string fences"         l126_lint_non_word_info_string_fence
+scenario l127 "fenced Lint-section bullet is documentation"    l127_lint_fenced_lint_section_bullet_is_documentation
+scenario l128 "fenced taxonomy block is documentation"         l128_lint_fenced_taxonomy_block_is_documentation
+scenario l129 "four-backtick link example is stripped"         l129_lint_four_backtick_link_example_is_stripped
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract
