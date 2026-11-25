@@ -1708,6 +1708,37 @@ def label_structural_text(line: str) -> str | None:
     return None
 
 
+FENCE_OPEN_RE = re.compile(r"^(?P<run>`{3,}|~{3,})(?P<info>.*)$")
+
+
+def fence_delimiter(
+    line: str, fence: tuple[str, int] | None
+) -> tuple[tuple[str, int] | None, bool]:
+    """Advance a fenced-block state machine by one line.
+
+    Returns the fence state after ``line`` and whether ``line`` is itself a
+    fence delimiter. A fence opens on three or more backticks or tildes with
+    an optional info string, and closes only on the same character repeated at
+    least as many times, so a shorter run of the other kind stays content.
+    Tracking the opener's character and run length keeps fenced text — a
+    four-backtick block, a tilde block, or a triple-backtick example nested
+    inside a longer fence — out of the heading and label heuristics.
+    """
+    stripped = line.strip()
+    if fence is None:
+        match = FENCE_OPEN_RE.match(stripped)
+        if not match:
+            return None, False
+        run = match.group("run")
+        if run[0] == "`" and "`" in match.group("info"):
+            return None, False
+        return (run[0], len(run)), True
+    char, length = fence
+    if len(stripped) >= length and set(stripped) == {char}:
+        return None, True
+    return fence, False
+
+
 def check_heading_label(wiki: Path) -> list[Issue]:
     """Flag metadata stuffed into headings and bold-prefix labels.
 
@@ -1728,12 +1759,12 @@ def check_heading_label(wiki: Path) -> list[Issue]:
         _, body = parse_frontmatter(text)
         fm_offset = text[: text.find(body)].count("\n") if body else 0
 
-        in_fence = False
+        in_fence: tuple[str, int] | None = None
         for idx, line in enumerate(body.splitlines()):
-            if FENCE_RE.match(line.strip()):
-                in_fence = not in_fence
+            in_fence, is_delimiter = fence_delimiter(line, in_fence)
+            if is_delimiter:
                 continue
-            if in_fence:
+            if in_fence is not None:
                 continue
 
             abs_line = fm_offset + idx + 1

@@ -1978,13 +1978,13 @@
           "id": "A2_procedure_label_matches_vocabulary",
           "type": "glob_file_contains",
           "pattern": "HOME/proj/wiki/procedures/release-checklist.md",
-          "regex": "(?m)^\\*\\*When this applies:\\*\\*[ \\t]*$"
+          "regex": "(?m)^\\*\\*When this applies(?::\\*\\*|\\*\\*:)[ \\t]*$"
         },
         {
           "id": "A3_procedure_rule_label_matches_vocabulary",
           "type": "glob_file_contains",
           "pattern": "HOME/proj/wiki/procedures/release-checklist.md",
-          "regex": "(?m)^\\*\\*The rule:\\*\\*[ \\t]*$"
+          "regex": "(?m)^\\*\\*The rule(?::\\*\\*|\\*\\*:)[ \\t]*$"
         },
         {
           "id": "A4_procedure_labels_carry_no_parenthetical",
@@ -2089,7 +2089,7 @@
           "id": "A3_label_wording_preserved",
           "type": "glob_file_contains",
           "pattern": "HOME/proj/wiki/concepts/widget-default.md",
-          "regex": "(?m)^\\*\\*What the canon says:\\*\\*[ \\t]*$"
+          "regex": "(?m)^\\*\\*What the canon says(?::\\*\\*|\\*\\*:)[ \\t]*$"
         },
         {
           "id": "A4_no_scaffold_vocabulary_invented",
