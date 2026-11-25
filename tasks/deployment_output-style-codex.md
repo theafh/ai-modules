@@ -2,8 +2,8 @@
 description: Deploy the output style to Codex by re-deriving its per-model base instructions at deploy time, swapping the personality and formatting sections, and pointing the instructions-file key at the result.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-04T10:49:57Z
-status: open
+updated: 2026-11-25T11:13:17Z
+status: checked
 reported-by: Andreas Hoffmann
 ---
 

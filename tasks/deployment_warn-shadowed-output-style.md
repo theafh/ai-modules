@@ -2,7 +2,7 @@
 description: Warn on a style deploy when a settings file the run can read shadows the outputStyle just written, and state the override caveat on every global run for the repos it cannot read.
 scope: deployment
 created: 2026-08-10T09:56:32Z
-updated: 2026-11-25T11:06:31Z
+updated: 2026-11-25T11:16:23Z
 status: checked
 reported-by: Andreas Hoffmann
 ---
@@ -66,7 +66,8 @@ Every deploy item below runs under the isolation pattern the style harness alrea
 - The same scratch project with `.claude/settings.local.json` absent produces no shadow warning, and with that file present but carrying no `outputStyle` key it produces none either.
 - A `--project-dir` deploy produces no unconditional user-level caveat line, which belongs to the global scope alone.
 - A `--global` deploy of the style type prints the unconditional caveat line naming user-level activation, project-level override, and `.claude/settings.local.json`, both when the checkout's own settings carry no divergent key and when they do.
-- A `--global` deploy run with a divergent `outputStyle` staged in this checkout's own `.claude/settings.local.json` (backed aside and restored on exit, in the pattern the harness already applies to the deploy log) additionally produces one warning naming that file and identifying it as the deploy's own repository; with the staged key removed, that warning is absent while the caveat line remains.
-- A `--dry-run` in each scope prints the same lines as the real run in that scope.
+- A `--global` deploy run with a divergent `outputStyle` staged in this checkout's own `.claude/settings.local.json` (backed aside and restored on exit, in the pattern the harness already applies to the deploy log) additionally produces one warning carrying the shadowing file path, the shadowing value, the deployed value, and the remedy, and identifying that file as the deploy's own repository; with the staged key removed, that warning is absent while the caveat line remains.
+- A `--global` deploy run with a divergent `outputStyle` staged in this checkout's `.claude/settings.json` (created when absent and removed on exit, or backed aside and restored when present, in the pattern the harness already applies to the deploy log) additionally produces one warning carrying that file's path, the shadowing value, the deployed value, and the remedy, identifying it as the deploy's own repository; with that staged value removed, the warning is absent while the caveat line remains.
+- A `--dry-run` in each scope prints the same shadow-warning and unconditional-caveat lines as the real run in that scope, compared on those diagnostic lines alone; the mode-labelled copy, merge, and backup lines the existing helpers emit (`would-copy`/`would-merge`/`would-bak` under `$DRY_RUN` against `copied`/`merged`/`backup` otherwise) stay outside the comparison, since this task changes neither them nor their labels.
 - `tests/deployment/script_tests/style_run.sh` carries the scenarios above and passes.
 - The style-deploy passage of `deployment/README.md`, including the rows beneath it, states the three-file precedence chain, the exact per-project check, the single-checkout reach of the global check, and the unconditional caveat; no remaining `style` passage in that file describes the `outputStyle` merge as activation that always takes effect.
