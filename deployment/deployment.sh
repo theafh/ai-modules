@@ -13,8 +13,9 @@ set -euo pipefail
 # top-level *.md file). Hidden files and README files are always
 # excluded from discovery.
 #
-# Per-tool deployment configuration is loaded from deployment.conf
-# (robots.txt-style). Current directives:
+# Per-tool deployment configuration is loaded from ~/.ai_asset_deploy/config,
+# falling back to the bundled deployment/ai_asset_deploy.conf.template when the
+# home file is absent (robots.txt-style). Current directives:
 #   #tool                     Section heading
 #   disallow:path             Relative path to exclude for that tool
 #   replace:path VAR=value    Replace $VAR$ in matching deployed copies
@@ -32,16 +33,18 @@ set -euo pipefail
 #                    rejects the flag.
 #   --project-dir D  Deploy into a project directory instead of global config dirs
 #   --dry-run        Preview changes without applying them
-#   --uninstall      Remove previously deployed artifacts from deployed_artefacts.log.
+#   --uninstall      Remove previously deployed artifacts from the deploy log
+#                    (~/.ai_asset_deploy/deployed.log).
 #                    A scope flag limits removal to that scope; without one it covers every scope.
-#   --update         Redeploy every scope deployed_artefacts.log records, from this
+#   --update         Redeploy every scope the deploy log records, from this
 #                    checkout, limited to each scope's recorded targets, types, and
 #                    artefacts. A scope flag narrows it to that scope; --target and
 #                    --type narrow the replay. --dry-run previews the whole replay.
 #   --clear-backups  Remove old selected backups before creating new ones
-#   Logs deployed artifacts to deployed_artefacts.log with target/source metadata.
-#   Override the log path with DEPLOYED_ARTIFACTS_LOG so a test deployment can
-#   write inside its own scratch tree and leave the repo log untouched.
+#   Logs deployed artifacts to ~/.ai_asset_deploy/deployed.log with
+#   target/source metadata. Override the log path with DEPLOYED_ARTIFACTS_LOG
+#   so a test deployment can write its own scratch log and leave the
+#   machine-wide log untouched.
 #   Backs up only activated targets (disabled in project-dir mode).
 #   Hook configuration merges entry by entry into each harness's shared hook
 #   file, so an entry ai-modules owns is added, updated at the position it
@@ -136,7 +139,12 @@ Options:
 
 Environment:
   DEPLOYED_ARTIFACTS_LOG  Override the deployed-artefacts log path. When unset,
-                          the script writes deployment/deployed_artefacts.log.
+                          the script writes ~/.ai_asset_deploy/deployed.log.
+
+Configuration:
+  Per-tool rules are read from ~/.ai_asset_deploy/config. When that file is
+  absent the script reads the bundled ai_asset_deploy.conf.template from this
+  checkout, so a fresh checkout deploys the shared defaults.
 
 Examples:
   ./deployment/deployment.sh
@@ -316,8 +324,13 @@ fi
 # ANTIGRAVITY_RULES_MD="${ANTIGRAVITY_TREE_DIR}/GEMINI.md"
 # MARKER_BEGIN="<!-- BEGIN GLOBAL RULES -->"
 # MARKER_END="<!-- END GLOBAL RULES -->"
-DEPLOYED_ARTIFACTS_LOG="${DEPLOYED_ARTIFACTS_LOG:-${SCRIPT_DIR}/deployed_artefacts.log}"
-DEPLOYMENT_CONF="${SCRIPT_DIR}/deployment.conf"
+# Per-machine state lives in $HOME, so every bundled copy of this script reads
+# one config and writes one uninstall manifest. A checkout carries only the
+# committed template of the shared defaults.
+AI_ASSET_DEPLOY_STATE_DIR="${HOME_DIR}/.ai_asset_deploy"
+DEPLOYED_ARTIFACTS_LOG="${DEPLOYED_ARTIFACTS_LOG:-${AI_ASSET_DEPLOY_STATE_DIR}/deployed.log}"
+DEPLOYMENT_CONF="${AI_ASSET_DEPLOY_STATE_DIR}/config"
+DEPLOYMENT_CONF_TEMPLATE="${SCRIPT_DIR}/ai_asset_deploy.conf.template"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -372,6 +385,11 @@ append_deployed_artifact_log() {
   local prior_value="${5:-}"
   $DRY_RUN && return 0
   [[ -n "$deployed_path" && -n "$target_id" && -n "$artifact_type" && -n "$source_path" ]] || return 0
+  # The state directory is created on the first write, so a fresh machine and
+  # an explicit DEPLOYED_ARTIFACTS_LOG path both work without a seeding step.
+  local log_dir
+  log_dir="$(dirname "$DEPLOYED_ARTIFACTS_LOG")"
+  [[ -d "$log_dir" ]] || mkdir -p "$log_dir"
   if [[ -n "$prior_value" ]]; then
     printf '%s\t%s\t%s\t%s\t%s\n' "$deployed_path" "$target_id" "$artifact_type" "$source_path" "$prior_value" >> "$DEPLOYED_ARTIFACTS_LOG"
   else
@@ -443,7 +461,7 @@ matches_filter() {
 }
 
 # ---------------------------------------------------------------------------
-# deployment.conf parser
+# Per-tool deploy config parser
 #
 # Parses per-tool deployment configuration and populates:
 #   DISALLOW_MAP entries are "tool|pattern" (indexed set)
@@ -475,7 +493,12 @@ path_matches_pattern() {
 }
 
 parse_deployment_conf() {
-  [[ -f "$DEPLOYMENT_CONF" ]] || return 0
+  # Read the home config, or the bundled template when the machine has none.
+  local conf_file="$DEPLOYMENT_CONF"
+  if [[ ! -f "$conf_file" ]]; then
+    conf_file="$DEPLOYMENT_CONF_TEMPLATE"
+  fi
+  [[ -f "$conf_file" ]] || return 0
 
   local current_tool=""
   while IFS= read -r line || [[ -n "$line" ]]; do
@@ -483,9 +506,7 @@ parse_deployment_conf() {
     line="${line#"${line%%[![:space:]]*}"}"
     line="${line%"${line##*[![:space:]]}"}"
 
-    # Skip empty lines and comments (but not section headings)
     [[ -z "$line" ]] && continue
-    [[ "$line" == \#\#* ]] && continue  # skip ## double-hash comments
 
     # Section heading: #tool
     if [[ "$line" =~ ^#([a-zA-Z_][a-zA-Z0-9_-]*)$ ]]; then
@@ -493,8 +514,30 @@ parse_deployment_conf() {
       continue
     fi
 
+    # Every other comment line is documentation and stays silent, so the
+    # file's own usage header raises nothing.
+    if [[ "$line" == \#* ]]; then
+      continue
+    fi
+
+    # A recognised directive needs a #tool section to belong to. One that sits
+    # above the first heading has no owner, so it is reported rather than
+    # silently dropped.
+    if [[ "$line" =~ ^(disallow|replace|style): ]]; then
+      if [[ -z "$current_tool" ]]; then
+        warn "skip" "config line above the first #tool section, no tool owns it: ${line}"
+        continue
+      fi
+    else
+      # A line that is neither a heading, a comment, nor a directive is
+      # reported, so a misspelled directive cannot silently deploy what it
+      # meant to skip.
+      warn "skip" "unrecognised config line: ${line}"
+      continue
+    fi
+
     # Disallow directive
-    if [[ -n "$current_tool" && "$line" =~ ^disallow:(.+)$ ]]; then
+    if [[ "$line" =~ ^disallow:(.+)$ ]]; then
       local disallowed="${BASH_REMATCH[1]}"
       # Strip leading/trailing whitespace
       disallowed="${disallowed#"${disallowed%%[![:space:]]*}"}"
@@ -527,7 +570,10 @@ parse_deployment_conf() {
       [[ -n "$style_name" ]] && STYLE_MAP+=("${current_tool}|${style_name}")
       continue
     fi
-  done < "$DEPLOYMENT_CONF"
+
+    # A recognised directive with no usable value reaches here.
+    warn "skip" "config directive with no usable value: ${line}"
+  done < "$conf_file"
 }
 
 # Bash 3.2 indexed-array helpers. Callers check the array length before
@@ -2908,12 +2954,12 @@ install_for_app() {
             active_style="$(table_get "$app_id" "${STYLE_MAP[@]}" || true)"
           fi
           if [[ -z "$active_style" ]]; then
-            warn "skip" "[$name] no style:<name> in deployment.conf for $app_id; file copied, outputStyle not set"
+            warn "skip" "[$name] no style:<name> in the deploy config for $app_id; file copied, outputStyle not set"
           elif [[ "$active_style" != "$name" ]]; then
             info "skip" "[$name] active style for $app_id is '${active_style}'; file copied only"
           else
             # Conf-sourced scalar: empty hooks_dir, scalar as 7th arg.
-            # source for the log column is deployment.conf (no JSON file read).
+            # source for the log column is the deploy config (no JSON file read).
             merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle" "$app_id" "$type" "" "$active_style"
           fi
           ;;
@@ -3516,7 +3562,7 @@ logged_source_artifact_name() {
 # is replayed only when at least one of its sources lies in this checkout, and
 # each (scope, target) pair is replayed by re-invoking this script once with the
 # scope flag, target, recorded types, and recorded artefact names, so discovery,
-# deployment.conf rules, generated formats, and backups behave as on a manual
+# the deploy config's rules, generated formats, and backups behave as on a manual
 # deploy. Project scopes whose directory no longer exists are dropped from the
 # log before the first replay; orphaned entries and entries deployed from
 # another checkout stay in the log untouched.
@@ -3866,10 +3912,14 @@ $CLEAR_BACKUPS && echo "Clear backups: enabled"
 [[ -n "$TYPE_FILTER" ]] && echo "Types:         $TYPE_FILTER"
 [[ -n "$TARGET_FILTER" ]] && echo "Targets:       $TARGET_FILTER"
 [[ -n "$ONLY_FILTER" ]] && echo "Only:          $ONLY_FILTER"
-[[ -f "$DEPLOYMENT_CONF" ]] && echo "Config:        $DEPLOYMENT_CONF"
+echo "Config:        $DEPLOYMENT_CONF"
+echo "Deploy log:    $DEPLOYED_ARTIFACTS_LOG"
+if [[ ! -f "$DEPLOYMENT_CONF" && -f "$DEPLOYMENT_CONF_TEMPLATE" ]]; then
+  echo "Config source: $DEPLOYMENT_CONF_TEMPLATE (bundled defaults; no home config yet)"
+fi
 echo ""
 
-# Parse deployment.conf
+# Parse the per-tool deploy config
 parse_deployment_conf
 
 # ---------------------------------------------------------------------------
@@ -4007,9 +4057,9 @@ for entry in "${ARTIFACTS[@]}"; do
   for target in "${APP_TARGETS[@]}"; do
     IFS='|' read -r app_id _ base_dir <<< "$target"
 
-    # Check deployment.conf disallow rules
+    # Check the deploy config's disallow rules
     if is_disallowed "$app_id" "$rel_path"; then
-      info "disallow" "[$name] excluded for $app_id (deployment.conf)"
+      info "disallow" "[$name] excluded for $app_id (deploy config)"
       continue
     fi
 

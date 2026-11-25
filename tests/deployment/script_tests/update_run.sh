@@ -15,11 +15,10 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 DEPLOY_SCRIPT="${REPO_ROOT}/deployment/deployment.sh"
 # Invoke the deploy script on the stock bash the floor targets.
 DEPLOY_BASH="/bin/bash"
-DEPLOY_LOG="${REPO_ROOT}/deployment/deployed_artefacts.log"
 SCRATCH="$(mktemp -d)"
-LOG_BACKUP="${SCRATCH}/deployed_artefacts.log.backup"
-LOG_HAD_FILE=false
 HOME_DIR="${SCRATCH}/home"
+# Every deploy here writes a scratch log, never the machine-wide manifest.
+DEPLOY_LOG="${SCRATCH}/deployed.log"
 PROJECT_DIR="${SCRATCH}/project"
 SKILL_ONE="task_create"
 SKILL_TWO="spr"
@@ -82,22 +81,16 @@ snapshot_tree() {
 }
 
 cleanup() {
-  if [[ "$LOG_HAD_FILE" == true ]]; then
-    mv "$LOG_BACKUP" "$DEPLOY_LOG"
-  else
-    rm -f "$DEPLOY_LOG"
-  fi
   rm -rf "$SCRATCH"
 }
 trap cleanup EXIT
 
 cd "$REPO_ROOT"
 
-if [[ -f "$DEPLOY_LOG" ]]; then
-  LOG_HAD_FILE=true
-  cp "$DEPLOY_LOG" "$LOG_BACKUP"
-fi
-rm -f "$DEPLOY_LOG"
+# The scratch home makes the home config the only config this run can read,
+# and the exported log path keeps every write out of the machine-wide manifest.
+export HOME="$HOME_DIR"
+export DEPLOYED_ARTIFACTS_LOG="$DEPLOY_LOG"
 
 deploy() {
   HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" "$@"

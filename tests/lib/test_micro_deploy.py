@@ -23,8 +23,8 @@ import worker_isolation  # noqa: E402
 PASS = 0
 FAIL = 0
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-DEPLOY_LOG = REPO_ROOT / "deployment" / "deployed_artefacts.log"
 REAL_HOME = pathlib.Path.home()
+DEPLOY_LOG = REAL_HOME / ".ai_asset_deploy" / "deployed.log"
 REAL_KEYCHAINS = REAL_HOME / "Library" / "Keychains"
 
 # The literal top-level ``Library`` entry set the helper's permanent shape
@@ -235,7 +235,7 @@ def test_layouts_and_path_map() -> None:
 
     log_after = DEPLOY_LOG.read_bytes() if DEPLOY_LOG.is_file() else None
     check(
-        "repo deploy log byte-identical after micro-deploy",
+        "machine deploy log byte-identical after micro-deploy",
         log_before == log_after,
     )
 
@@ -283,7 +283,10 @@ def test_only_limits_and_log_override() -> None:
         )
         check("override log written", log_path.is_file() and log_path.stat().st_size > 0)
     log_after = DEPLOY_LOG.read_bytes() if DEPLOY_LOG.is_file() else None
-    check("DEPLOYED_ARTIFACTS_LOG override leaves repo log identical", log_before == log_after)
+    check(
+        "DEPLOYED_ARTIFACTS_LOG override leaves the machine log identical",
+        log_before == log_after,
+    )
 
 
 def test_overlay_fixture_edits() -> None:
@@ -2849,7 +2852,7 @@ def test_no_checkout_path_reaches_worker() -> None:
                 ) as md:
                     check(
                         f"{vendor_name} deploy log is gone before the worker",
-                        not (md.scratch_home / "deployed_artefacts.log").exists(),
+                        not (md.scratch_home / ".ai_asset_deploy" / "deployed.log").exists(),
                     )
                     hits = files_naming_checkout(md.scratch_home, md.sandbox_project)
                     check(
@@ -2875,7 +2878,7 @@ def test_no_checkout_path_reaches_worker() -> None:
             # checkout, so a clean result above is not a scan that sees nothing.
             planted = pathlib.Path(td) / "planted"
             planted.mkdir()
-            (planted / "deployed_artefacts.log").write_text(
+            (planted / "deployed.log").write_text(
                 f"x\tclaude\tskill\t{REPO_ROOT}/plugins/x/SKILL.md\n"
             )
             (planted / "link").symlink_to(REPO_ROOT / "tests")

@@ -1,0 +1,30 @@
+# ai_asset_deploy config — per-tool deployment configuration
+#
+#   #tool                  Section heading — tool identifier (vscode, cursor, claude, codex, antigravity, opencode)
+#   disallow:path          Local repo path relative to repo root (e.g. agents/check_spec_codex.md)
+#                         Glob patterns supported (* matches within a segment, ** matches across segments)
+#   replace:path VAR=value Replace $VAR$ inside matching deployed copies. A trailing slash
+#                         applies to a whole subtree.
+#   style:<name>           Active output-style name for that tool (read by the Claude arm only, which merges it as settings outputStyle)
+#
+# Assets not listed under a tool section are deployed to that tool.
+# Assets listed under disallow: are skipped for that tool.
+# Multiple replace: lines can apply to the same path.
+
+#cursor
+disallow:*legacy*
+
+#vscode
+disallow:*legacy*
+
+#claude
+disallow:*legacy*
+
+#codex
+disallow:*legacy*
+
+#antigravity
+disallow:*legacy*
+
+#opencode
+disallow:*legacy*

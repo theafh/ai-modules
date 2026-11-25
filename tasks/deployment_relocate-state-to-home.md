@@ -2,9 +2,11 @@
 description: Move deployment.sh per-machine state (deploy log + user conf) out of the repo into $HOME, shipping shared defaults as a committed .template.
 scope: deployment
 created: 2026-06-02T16:58:04Z
-updated: 2026-11-25T13:05:00Z
-status: ready
+updated: 2026-11-25T19:32:23Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Relocate deployment.sh per-machine state (conf + log) to $HOME
@@ -140,7 +142,28 @@ Seed each scratch home before a run reads a conf from it: write `<scratch home>/
 - Keep the toolchain to Make + shell, per the repo rules' authoring convention.
 - Keep the conf a single flat robots.txt-style file: home replaces repo, bootstrapped from the template. (Template-base + home-override *layering* stays a deferred option; see below.)
 
-When implementing, confirm with the user that the machine-wide log is the intended behavior: `--uninstall` from any bundled copy of the script will clean every artifact recorded in the shared manifest across all repos. This is the natural consequence of one home-level log and is almost certainly what is wanted; document it in `deployment/README.md` as the expected behavior.
+### Operator migration, recorded not run
+
+The implementer delivered the code change without touching this machine's live state: `~/.ai_asset_deploy/` does not exist here, and the in-repo `deployment/deployment.conf` and `deployment/deployed_artefacts.log` stay on disk unchanged. Run this once, in order, to complete the one-time migration on an installation that still carries in-repo state:
+
+```bash
+mkdir -p ~/.ai_asset_deploy
+cp deployment/deployment.conf ~/.ai_asset_deploy/config
+cp deployment/deployed_artefacts.log ~/.ai_asset_deploy/deployed.log
+git rm deployment/deployment.conf
+rm deployment/deployed_artefacts.log
+```
+
+The first two copies retain the live config byte-for-byte and keep every already-deployed artifact uninstallable; the last two take the dead files out of the checkout. The migration and the uninstall behaviour are proven hermetically by the scratch-home scenarios in `tests/deployment/script_tests/run.sh` and `tests/lib/test_micro_deploy.py`.
+
+### Open decision: should one uninstall reach every artefact on the machine?
+
+`--uninstall` from any bundled copy of the script now cleans every artefact recorded in the shared manifest, across all repositories and scopes. The options:
+
+- **Machine-wide (suggested default).** Keep the single home manifest as shipped, and `deployment/README.md` documents the behaviour. One log means one machine, and a scopeless run already covers every scope today, so the blast radius is a widening of the same rule.
+- **Per-checkout manifests.** Restore a per-checkout log path so an uninstall reaches only what that checkout deployed. This gives up the cross-repo manifest the task exists to create and needs a new way to tell the copies apart.
+
+It stays open because the task asks for the user's confirmation rather than a silent choice: the behaviour changes what a single uninstall run reaches on the user's machine, and no evidence in the repository settles how wide that reach should be. The suggested default is the shipped behaviour, so confirming it needs no code change; choosing per-checkout manifests does.
 
 ### Explored but deferred alternatives
 

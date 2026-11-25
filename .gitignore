@@ -1,4 +1,3 @@
-deployment/deployed_artefacts.log
 deployment/.deploy-backup-*/
 .DS_Store
 /*[Tt][Oo][Dd][Oo]*.md

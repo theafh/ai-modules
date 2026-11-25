@@ -96,7 +96,7 @@ ai-modules/
 │   └── opencode_v2/         # OpenCode 2 plugins (deployed as plugin directories)
 ├── deployment/              # deployment script for installing artefacts globally or per-project
 │   ├── deployment.sh
-│   ├── deployment.conf
+│   ├── ai_asset_deploy.conf.template
 │   └── README.md
 ├── scripts/                 # repo-wide tooling (strict frontmatter gate)
 ├── tasks/                   # this repo's own backlog, kept with the shipped task skill
@@ -200,9 +200,11 @@ Antigravity, OpenCode); copy it into a single repo's local config with
 artefacts under the deployment roots: the plugin layout (`plugins/<plugin>/<asset-folder>/`),
 `harness-plugins/<harness>/` for the `plugin` type (one self-contained package
 per directory), and repo-root `styles/` for the `style` type. A per-tool
-`style:<name>` line in
-`deployment/deployment.conf` names the active style; Claude deploy copies that
-file into `output-styles/` and merges `outputStyle` into settings. Uninstall of
+`style:<name>` line in the machine's `~/.ai_asset_deploy/config` names the active
+style; Claude deploy copies that file into `output-styles/` and merges
+`outputStyle` into settings. The repository ships the shared defaults as
+`deployment/ai_asset_deploy.conf.template`, which the script falls back to when
+the machine has no config of its own. Uninstall of
 a merged settings key restores the first-recorded prior value (or deletes the
 key when it was absent before the first deploy).
 

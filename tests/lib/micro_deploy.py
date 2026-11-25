@@ -28,6 +28,9 @@ from worker_io import as_text
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 DEPLOY_SCRIPT = REPO_ROOT / "deployment" / "deployment.sh"
+DEPLOY_CONF_TEMPLATE = (
+    REPO_ROOT / "deployment" / "ai_asset_deploy.conf.template"
+)
 DEPLOY_BASH = "/bin/bash"
 PLUGINS_ROOT = REPO_ROOT / "plugins"
 STYLES_ROOT = REPO_ROOT / "styles"
@@ -255,6 +258,26 @@ def source_roots_for(names: list[str]) -> list[pathlib.Path]:
     return roots
 
 
+def _seed_home_conf(scratch_home: pathlib.Path, style_names: list[str]) -> None:
+    """Write the scratch home's per-tool config from the committed template.
+
+    The Claude style arm reads a ``style:<name>`` line to set ``outputStyle``,
+    so a pass that deploys a style names it here. Without this seeding the
+    scratch home would fall back to the template, which carries no style rule,
+    and the style would deploy without ``outputStyle``.
+    """
+
+    state_dir = scratch_home / ".ai_asset_deploy"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    conf = state_dir / "config"
+    conf.write_text(DEPLOY_CONF_TEMPLATE.read_text())
+    if style_names:
+        with conf.open("a") as handle:
+            handle.write("\n#claude\n")
+            for style_name in style_names:
+                handle.write(f"style:{style_name}\n")
+
+
 def _run_deploy(
     *,
     args: list[str],
@@ -451,11 +474,13 @@ def micro_deploy(
     scratch_home = pathlib.Path(
         tempfile.mkdtemp(prefix=f"micro_deploy_{chosen.name}_")
     )
-    log_path = scratch_home / "deployed_artefacts.log"
+    log_path = scratch_home / ".ai_asset_deploy" / "deployed.log"
+    style_names = [name for name, art_type, _source in typed if art_type == "style"]
     try:
         if chosen.name == "cursor":
             _link_keychains(scratch_home)
             _write_login_profiles(scratch_home)
+        _seed_home_conf(scratch_home, style_names)
 
         path_map: dict[str, pathlib.Path] = {}
         if names:

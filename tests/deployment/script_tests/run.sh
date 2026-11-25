@@ -6,15 +6,16 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 DEPLOY_SCRIPT="${REPO_ROOT}/deployment/deployment.sh"
 # Invoke the deploy script on the stock bash the floor targets.
 DEPLOY_BASH="/bin/bash"
-DEPLOY_LOG="${REPO_ROOT}/deployment/deployed_artefacts.log"
 FIXTURE_PLUGIN="${REPO_ROOT}/plugins/__opencode_deploy_test"
 BYTECODE_PLUGIN="${REPO_ROOT}/plugins/__bytecode_deploy_test"
+DISALLOW_PLUGIN="${REPO_ROOT}/plugins/__disallow_deploy_test"
 SCRATCH="$(mktemp -d)"
 PROJECT_DIR="${SCRATCH}/project"
 BYTECODE_PROJECT_DIR="${SCRATCH}/bytecode-project"
 HOME_DIR="${SCRATCH}/home"
-LOG_BACKUP="${SCRATCH}/deployed_artefacts.log.backup"
-LOG_HAD_FILE=false
+# Every deploy in this harness writes a scratch log, never the machine-wide
+# manifest at ~/.ai_asset_deploy/deployed.log.
+DEPLOY_LOG="${SCRATCH}/deployed.log"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -72,24 +73,17 @@ assert_no_bytecode() {
 }
 
 cleanup() {
-  if [[ "$LOG_HAD_FILE" == true ]]; then
-    mv "$LOG_BACKUP" "$DEPLOY_LOG"
-  else
-    rm -f "$DEPLOY_LOG"
-  fi
-  rm -rf "$SCRATCH" "$FIXTURE_PLUGIN" "$BYTECODE_PLUGIN"
+  rm -rf "$SCRATCH" "$FIXTURE_PLUGIN" "$BYTECODE_PLUGIN" "$DISALLOW_PLUGIN"
 }
 trap cleanup EXIT
 
 cd "$REPO_ROOT"
 
-if [[ -f "$DEPLOY_LOG" ]]; then
-  LOG_HAD_FILE=true
-  cp "$DEPLOY_LOG" "$LOG_BACKUP"
-fi
-rm -f "$DEPLOY_LOG"
-
+# A scratch HOME makes the home config the only config this run can read, and
+# the exported log path keeps every write out of the machine-wide manifest.
 mkdir -p "$PROJECT_DIR" "$HOME_DIR/.config/opencode" "$HOME_DIR/.gemini/config" "$FIXTURE_PLUGIN/commands"
+export HOME="$HOME_DIR"
+export DEPLOYED_ARTIFACTS_LOG="$DEPLOY_LOG"
 cat > "$FIXTURE_PLUGIN/commands/opencode_fixture_command.md" <<'COMMAND'
 # OpenCode Fixture Command
 
@@ -421,7 +415,7 @@ for hook_config_path in "$REPO_ROOT"/plugins/*/hooks/*.json; do
   [[ -f "$hook_config_path" ]] || continue
   hook_config="$(basename "$hook_config_path")"
   hook_config="${hook_config%.json}"
-  # A `*legacy*` file is filtered out by deployment.conf, so it never reaches
+  # A `*legacy*` file is filtered out by the deploy config, so it never reaches
   # the opencode arm and produces no skip line.
   [[ "$hook_config" == *legacy* ]] && continue
   HOOK_CONFIG_FOUND=true
@@ -559,9 +553,9 @@ DENIED_HOME="${SCRATCH}/denied-home"
 denied_rc=0
 denied_out="$(run_stub_backup_deploy openrsync-denied "$DENIED_HOME" 2>&1)" || denied_rc=$?
 [[ "$denied_rc" -ne 0 ]] || fail "permission-shaped openrsync 23 succeeded"
-printf '%s\n' "$denied_out" | grep -Fq 'backup-copy' ||
+grep -Fq 'backup-copy' <<< "$denied_out" ||
   fail "permission-shaped openrsync 23 did not print backup-copy in: $denied_out"
-printf '%s\n' "$denied_out" | grep -Fq 'rsync exited 23' ||
+grep -Fq 'rsync exited 23' <<< "$denied_out" ||
   fail "permission-shaped openrsync 23 did not name exit 23 in: $denied_out"
 
 # ---------------------------------------------------------------------------
@@ -584,7 +578,7 @@ assert_startup_requires() {
   done
   out="$(PATH="$tool_dir" HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --dry-run 2>&1)" || rc=$?
   [[ "$rc" -ne 0 ]] || fail "deploy dry-run succeeded without $missing"
-  printf '%s\n' "$out" | grep -Fq "$missing is required for deployment" ||
+  grep -Fq "$missing is required for deployment" <<< "$out" ||
     fail "missing $missing did not name $missing in: $out"
 }
 
@@ -604,7 +598,7 @@ cleanup_out="$(
 )" || cleanup_rc=$?
 [[ "$cleanup_rc" -eq 0 ]] || fail "clear-backups without jq, perl, and rsync failed: $cleanup_out"
 for gated in jq perl rsync; do
-  if printf '%s\n' "$cleanup_out" | grep -Fq "$gated is required for deployment"; then
+  if grep -Fq "$gated is required for deployment" <<< "$cleanup_out"; then
     fail "clear-backups still required $gated in: $cleanup_out"
   fi
 done
@@ -626,10 +620,9 @@ printf '%s\n' "$header_text" | grep -Fq -- 'DEPLOYED_ARTIFACTS_LOG' ||
 printf '%s\n' "$header_text" | grep -Fq -- '--only' ||
   fail "header comment should name --only"
 
-log_before_sha=""
-if [[ -f "$DEPLOY_LOG" ]]; then
-  log_before_sha="$(sha256_of "$DEPLOY_LOG")"
-fi
+default_log="$only_home/.ai_asset_deploy/deployed.log"
+[[ ! -e "$default_log" ]] ||
+  fail "the scratch home already holds a default log before the override run"
 # No --type: --only alone must narrow every artefact type to the named set.
 HOME="$only_home" DEPLOYED_ARTIFACTS_LOG="$only_log" \
   "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude \
@@ -643,12 +636,8 @@ only_expected="./.claude ./.claude/skills ./.claude/skills/format_markdown ./.cl
 [[ "$only_listing" == "$only_expected" ]] ||
   fail "--only should deploy exactly the named skills, got: $only_listing"
 assert_file "$only_log"
-if [[ -n "$log_before_sha" ]]; then
-  [[ "$(sha256_of "$DEPLOY_LOG")" == "$log_before_sha" ]] ||
-    fail "DEPLOYED_ARTIFACTS_LOG override changed deployment/deployed_artefacts.log"
-elif [[ -f "$DEPLOY_LOG" ]]; then
-  fail "DEPLOYED_ARTIFACTS_LOG override created deployment/deployed_artefacts.log"
-fi
+[[ ! -e "$default_log" ]] ||
+  fail "DEPLOYED_ARTIFACTS_LOG override still wrote the home default log"
 
 # Uninstall reads the log and never --only, so the pair must abort before it
 # removes anything rather than uninstall every logged artefact.
@@ -786,7 +775,7 @@ scope_uninstall_dry() {
 
 assert_scope_reported() {
   local output="$1" path="$2"
-  printf '%s\n' "$output" | grep -Fq "out-of-scope for this uninstall: $path" ||
+  grep -Fq "out-of-scope for this uninstall: $path" <<< "$output" ||
     fail "expected out-of-scope report for $path, got: $output"
 }
 
@@ -940,7 +929,7 @@ retired_global_out="$(
   HOME="$SCOPE_HOME" DEPLOYED_ARTIFACTS_LOG="$SCOPE_LOG" \
     "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type skill --uninstall
 )"
-printf '%s\n' "$retired_global_out" | grep -Fq "targets removed app 'retiredtool'" ||
+grep -Fq "targets removed app 'retiredtool'" <<< "$retired_global_out" ||
   fail "retired-target global run should print the stale line, got: $retired_global_out"
 assert_scope_reported "$retired_global_out" "$SCOPE_RETIRED"
 [[ -e "$SCOPE_RETIRED" ]] || fail "a retired-target neither-form path should stay under --global"
@@ -1082,6 +1071,121 @@ scope_helper_assert "HOME as project dir" global "$SCOPE_HOME/.claude" claude --
 scope_helper_assert "repeated suffix" "$SCOPE_P1/.claude" \
   "$SCOPE_P1/.claude/.claude/skills/$SCOPE_SKILL" claude --project-dir "$SCOPE_P1/.claude"
 
+# ---------------------------------------------------------------------------
+# Per-machine state lives in $HOME: the deploy log and the per-tool config.
+#
+# The scenarios below prove the default state paths, the template fallback a
+# fresh checkout deploys from, the home config the script reads verbatim (the
+# shape a one-time migration leaves behind), the warning an unusable config
+# line draws, and that a pre-existing log entry stays uninstallable from the
+# home manifest.
+# ---------------------------------------------------------------------------
+STATE_HOME="${SCRATCH}/state-home"
+mkdir -p "$STATE_HOME"
+
+# The banner names both state paths, and the absent home config falls back to
+# the committed template.
+state_banner="$(env -u DEPLOYED_ARTIFACTS_LOG HOME="$STATE_HOME" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --dry-run)"
+grep -Fq "Config:        ${STATE_HOME}/.ai_asset_deploy/config" <<< "$state_banner" ||
+  fail "banner does not name the home config path"
+grep -Fq "Deploy log:    ${STATE_HOME}/.ai_asset_deploy/deployed.log" <<< "$state_banner" ||
+  fail "banner does not name the home deploy log path"
+grep -Fq "Config source: ${REPO_ROOT}/deployment/ai_asset_deploy.conf.template" <<< "$state_banner" ||
+  fail "banner does not report the bundled template as the config source"
+grep -Fq 'config line above the first #tool section' <<< "$state_banner" &&
+  fail "the bundled template's own header raised a config warning"
+
+# A fresh checkout deploys the generic defaults: `*legacy*` is skipped for
+# every target, and Claude carries no style rule of its own.
+rm -rf "$DISALLOW_PLUGIN"
+mkdir -p "$DISALLOW_PLUGIN/commands"
+printf '%s\n' '# Legacy fixture command' > "$DISALLOW_PLUGIN/commands/legacy_fixture.md"
+printf '%s\n' '# Plain fixture command' > "$DISALLOW_PLUGIN/commands/plain_fixture.md"
+template_dry="$(HOME="$STATE_HOME" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --dry-run)"
+for legacy_target in vscode cursor claude codex antigravity opencode; do
+  grep -Fq "excluded for ${legacy_target} (deploy config)" <<< "$template_dry" ||
+    fail "template fallback did not skip *legacy* for $legacy_target"
+done
+grep -Fq 'would-copy' <<< "$template_dry" ||
+  fail "template fallback deployed nothing for the non-legacy artefacts"
+style_fallback="$(HOME="$STATE_HOME" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target claude --dry-run)"
+grep -Fq 'no style:<name> in the deploy config for claude' <<< "$style_fallback" ||
+  fail "the template must carry no Claude-specific style rule"
+if grep -Eq 'would-merge.*outputStyle' <<< "$style_fallback"; then
+  fail "the template fallback merged outputStyle, so it carries a Claude rule"
+fi
+
+# A home config is read verbatim, byte for byte: the migration's copy is the
+# config the script reads, and its extra per-tool rule and active style both
+# take effect.
+MIGRATED_HOME="${SCRATCH}/migrated-home"
+MIGRATED_CONF="${SCRATCH}/migrated-live.conf"
+mkdir -p "$MIGRATED_HOME/.ai_asset_deploy"
+cp "$REPO_ROOT/deployment/ai_asset_deploy.conf.template" "$MIGRATED_CONF"
+printf '\n#claude\nstyle:natural-language\n' >> "$MIGRATED_CONF"
+printf '\n#codex\ndisallow:plugins/__disallow_deploy_test/commands/plain_fixture.md\n' >> "$MIGRATED_CONF"
+cp "$MIGRATED_CONF" "$MIGRATED_HOME/.ai_asset_deploy/config"
+cmp -s "$MIGRATED_CONF" "$MIGRATED_HOME/.ai_asset_deploy/config" ||
+  fail "the migrated home config is not byte-identical to the live config it came from"
+migrated_dry="$(HOME="$MIGRATED_HOME" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --dry-run)"
+grep -Fq "Config:        ${MIGRATED_HOME}/.ai_asset_deploy/config" <<< "$migrated_dry" ||
+  fail "the migrated run did not read the home config"
+grep -Fq '[plain_fixture] excluded for codex (deploy config)' <<< "$migrated_dry" ||
+  fail "the home config's extra codex disallow rule did not take effect"
+grep -Fq '[plain_fixture] excluded for claude (deploy config)' <<< "$migrated_dry" &&
+  fail "the home config's codex-only rule reached claude"
+HOME="$MIGRATED_HOME" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target claude >/dev/null
+jq -e '.outputStyle == "natural-language"' "$MIGRATED_HOME/.claude/settings.json" >/dev/null ||
+  fail "the home config's active style did not reach the Claude deploy"
+
+# An unusable config line draws a warning naming it, and the run continues.
+# The file's own comment header raises nothing.
+WARN_HOME="${SCRATCH}/warn-home"
+mkdir -p "$WARN_HOME/.ai_asset_deploy"
+{
+  printf '%s\n' '# usage header, silent'
+  printf '%s\n' '## double-hash comment, silent'
+  printf '%s\n' 'style:orphan-style'
+  printf '%s\n' '#claude'
+  printf '%s\n' 'disalow:*legacy*'
+  printf '%s\n' 'disallow:*legacy*'
+} > "$WARN_HOME/.ai_asset_deploy/config"
+warn_out="$(HOME="$WARN_HOME" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude --type style --dry-run)"
+grep -Fq 'no tool owns it: style:orphan-style' <<< "$warn_out" ||
+  fail "a directive above the first #tool section drew no warning naming the line"
+grep -Fq 'unrecognised config line: disalow:*legacy*' <<< "$warn_out" ||
+  fail "a misspelled directive drew no warning naming the line"
+[[ "$(printf '%s\n' "$warn_out" | grep -c 'skip.*usage header\|skip.*double-hash' || true)" == "0" ]] ||
+  fail "the config's comment header raised a warning"
+grep -Fq 'would-copy' <<< "$warn_out" ||
+  fail "the run stopped instead of continuing past the unusable config lines"
+
+# The home log is the uninstall manifest: a deploy writes it, a pre-existing
+# entry in it stays uninstallable, and uninstall removes both.
+RETENTION_HOME="${SCRATCH}/retention-home"
+RETENTION_LOG="${RETENTION_HOME}/.ai_asset_deploy/deployed.log"
+mkdir -p "$RETENTION_HOME"
+env -u DEPLOYED_ARTIFACTS_LOG HOME="$RETENTION_HOME" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --target claude --type skill --only language_humanizer >/dev/null
+assert_file "$RETENTION_LOG"
+grep -Fq "${RETENTION_HOME}/.claude/skills/language_humanizer"$'\t' "$RETENTION_LOG" ||
+  fail "the default deploy log is not the home manifest"
+PREEXISTING_DEST="${RETENTION_HOME}/.claude/skills/format_markdown"
+mkdir -p "$PREEXISTING_DEST"
+printf '%s\n' 'pre-existing copy' > "$PREEXISTING_DEST/SKILL.md"
+printf '%s\t%s\t%s\t%s\n' "$PREEXISTING_DEST" claude skill \
+  "${REPO_ROOT}/plugins/ai_dev/skills/format_markdown" >> "$RETENTION_LOG"
+env -u DEPLOYED_ARTIFACTS_LOG HOME="$RETENTION_HOME" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --target claude >/dev/null
+[[ ! -e "$RETENTION_HOME/.claude/skills/language_humanizer" ]] ||
+  fail "uninstall from the home manifest left the deployed skill"
+[[ ! -e "$PREEXISTING_DEST" ]] ||
+  fail "uninstall from the home manifest left a pre-existing logged artefact"
+grep -Fq "$PREEXISTING_DEST" "$RETENTION_LOG" &&
+  fail "uninstall left the pre-existing entry in the home manifest"
+
+rm -rf "$DISALLOW_PLUGIN"
+
 printf 'OpenCode deployment regression passed\n'
 printf 'Antigravity deployment regression passed\n'
 printf 'Python bytecode exclusion regression passed\n'
@@ -1096,3 +1200,5 @@ printf 'Empty --only value abort regression passed\n'
 printf 'Cleanup-only --clear-backups with --only stops for a missing scope regression passed\n'
 printf 'Scoped --uninstall limits removal to the scope it names regression passed\n'
 printf 'logged_path_scope derives a logged entry scope regression passed\n'
+printf 'Home state paths, template fallback, and home config regression passed\n'
+printf 'Unusable config line warning and home log uninstall regression passed\n'

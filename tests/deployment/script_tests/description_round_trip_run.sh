@@ -19,9 +19,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 DEPLOY_SCRIPT="${REPO_ROOT}/deployment/deployment.sh"
 LINT_FM="${REPO_ROOT}/scripts/lint_frontmatter.py"
-REAL_LOG="${REPO_ROOT}/deployment/deployed_artefacts.log"
+REAL_LOG="${HOME}/.ai_asset_deploy/deployed.log"
 SCRATCH="$(mktemp -d)"
-TEST_LOG="${SCRATCH}/deployed_artefacts.log"
+TEST_LOG="${SCRATCH}/deployed.log"
 FIXTURES="${SCRATCH}/fixtures"
 OUT="${SCRATCH}/out"
 mkdir -p "$FIXTURES" "$OUT"
@@ -48,10 +48,10 @@ if ! python3 -c 'import tomllib' >/dev/null 2>&1; then
   exit 2
 fi
 
-# The developer's deploy log must survive the run untouched. Keep a copy to
+# The machine-wide deploy log must survive the run untouched. Keep a copy to
 # compare against, and note whether it existed at all.
 REAL_LOG_HAD_FILE=false
-REAL_LOG_BACKUP="${SCRATCH}/real-deployed_artefacts.log"
+REAL_LOG_BACKUP="${SCRATCH}/real-deployed.log"
 if [[ -f "$REAL_LOG" ]]; then
   REAL_LOG_HAD_FILE=true
   cp "$REAL_LOG" "$REAL_LOG_BACKUP"

@@ -2,7 +2,7 @@
 
 `deployment/deployment.sh` deploys repo artifacts into config directories for VS Code GitHub Copilot, Cursor, Claude Code, OpenAI Codex, Google Antigravity, and OpenCode. It can deploy to global config dirs or into a single project directory.
 
-It autodiscovers artifacts by plugin layout, backs up only the selected targets (global mode only), records deployed paths in `deployment/deployed_artefacts.log`, and can update or uninstall previously deployed artifacts from that log.
+It autodiscovers artifacts by plugin layout, backs up only the selected targets (global mode only), records deployed paths in `~/.ai_asset_deploy/deployed.log`, and can update or uninstall previously deployed artifacts from that log.
 
 ## Run It
 
@@ -56,7 +56,7 @@ Hidden files and `README*` files are skipped. The deployed name is the file base
 
 Those rules select *which* artifacts get deployed. A separate rule governs what travels *inside* one: a directory artifact is copied wholesale, and the deploy then strips Python bytecode from the destination, so a deployed skill carries the artifact's own files with no `__pycache__` directory and no `.pyc` file whatever bytecode the working tree holds at deploy time. A deploy from a tree that has run bundled skill scripts therefore produces the same destination as one from a clean checkout.
 
-Repo-relative paths for plugin artifacts (e.g. for `deployment.conf` rules and the deploy log) take the form `plugins/<plugin>/<asset-folder>/<artifact>`.
+Repo-relative paths for plugin artifacts (e.g. for config rules and the deploy log) take the form `plugins/<plugin>/<asset-folder>/<artifact>`.
 
 ### Repo-root styles
 
@@ -68,9 +68,27 @@ The `plugin` type is discovered from `harness-plugins/<harness>/`: each immediat
 
 The script walks up from its own location until it finds a directory containing a `plugins/` folder, so it works regardless of where it lives in the tree.
 
-## Per-Tool Configuration (`deployment.conf`)
+## Per-Machine State
 
-`deployment/deployment.conf` controls what gets deployed where, in robots.txt-style sections:
+Per-machine state lives outside the repository, in `~/.ai_asset_deploy/`:
+
+| Path | Holds |
+| --- | --- |
+| `~/.ai_asset_deploy/config` | The machine's per-tool configuration. |
+| `~/.ai_asset_deploy/deployed.log` | The machine-wide uninstall manifest. |
+
+Both are per-machine state, so they never dirty a checkout. The repository carries only `deployment/ai_asset_deploy.conf.template`, the committed defaults every checkout needs.
+
+Resolution precedence:
+
+- **Config**: the script reads `~/.ai_asset_deploy/config` when it exists, and otherwise falls back to the bundled `deployment/ai_asset_deploy.conf.template`, so a fresh checkout deploys the shared defaults.
+- **Log**: the script reads and writes the path `DEPLOYED_ARTIFACTS_LOG` names when that variable is set, and `~/.ai_asset_deploy/deployed.log` otherwise. `--update` and `--uninstall` both read this log. A test deployment sets the variable to keep its log in its own scratch tree. The log's directory is created on the first write.
+
+Because one log serves the whole machine, `--uninstall` from any bundled copy of this script reaches every artifact recorded on the machine, across every checkout and every scope. That is the intended behaviour: the log is the machine's manifest, not one repository's.
+
+## Per-Tool Configuration (`~/.ai_asset_deploy/config`)
+
+`~/.ai_asset_deploy/config` controls what gets deployed where, in robots.txt-style sections:
 
 ```text
 #tool                     Section heading: vscode, cursor, claude, codex, antigravity, opencode
@@ -79,7 +97,9 @@ replace:path VAR=value    Substitute $VAR$ in matching deployed copies.
 style:<name>              Active output-style name for this tool. Only the Claude arm acts on it, merging settings `outputStyle`; every other target deploys a style file without consulting this line.
 ```
 
-The current config disallows any path matching `*legacy*` for every target, so any plugin or artifact tagged as legacy is kept in the repo but never deployed. Claude also sets `style:natural-language` so a style deploy activates that tracked style.
+A line the script cannot use draws a `skip` warning that names the line, and the run continues with that line ignored: a non-blank line that is neither a `#tool` heading, a comment, nor a recognised directive, such as a misspelled `disalow:`, and a recognised directive placed above the first `#tool` section, where no tool owns it. Comment lines and section headings stay silent, so the file's own usage header raises nothing.
+
+The committed template disallows any path matching `*legacy*` for every target, so any plugin or artifact tagged as legacy is kept in the repo but never deployed. It carries no Claude-specific rule: a machine that activates a style adds its own `style:<name>` line under `#claude`.
 
 ## Target Layout
 
@@ -89,7 +109,7 @@ The table below shows global-mode paths. Project-dir mode replaces `~` with `<pr
 | --- | --- | --- | --- | --- | --- | --- |
 | VS Code Copilot | `~/Library/Application Support/Code/User/prompts/<name>.prompt.md` (macOS) or `~/.config/Code/User/prompts/<name>.prompt.md` (Linux), copied | `~/.copilot/skills/<name>` copied | `~/.copilot/agents/<name>.agent.md`, frontmatter rewritten | `~/.copilot/hooks/<file>` for shell scripts; `vscode-hooks*.json` copied to `~/.copilot/hooks/<file>` with its `./hooks/` command rewritten, and no VS Code settings key written | not yet | not deployed |
 | Cursor | `~/.cursor/commands/<name>.md` copied | `~/.cursor/skills/<name>` copied | `~/.cursor/agents/<name>.md`, frontmatter rewritten | `~/.cursor/hooks.json` entry merge (from `cursor-hooks*.json`) and `~/.cursor/hooks/<file>` for shell scripts | project `.cursor/rules/<name>.mdc` with `alwaysApply: true`; `--global` has no injecting file write | not deployed |
-| Claude Code | `~/.claude/commands/<name>.md` copied | `~/.claude/skills/<name>` copied | `~/.claude/agents/<name>.md`, frontmatter rewritten | `hooks` entries merged one by one into `~/.claude/settings.json` (from `claude-code-hooks*.json`); shell scripts copied to `~/.claude/hooks/<file>` | file copied to `~/.claude/output-styles/<name>.md`; `outputStyle` merged from `style:<name>` in `deployment.conf` | not deployed |
+| Claude Code | `~/.claude/commands/<name>.md` copied | `~/.claude/skills/<name>` copied | `~/.claude/agents/<name>.md`, frontmatter rewritten | `hooks` entries merged one by one into `~/.claude/settings.json` (from `claude-code-hooks*.json`); shell scripts copied to `~/.claude/hooks/<file>` | file copied to `~/.claude/output-styles/<name>.md`; `outputStyle` merged from `style:<name>` in the deploy config | not deployed |
 | OpenAI Codex | `~/.codex/prompts/<name>.md` copied | `~/.codex/skills/<name>` copied (project-dir uses `<project>/.agents/skills/<name>`) | `~/.codex/agents/<name>.toml` generated from agent source | `hooks` entries merged one by one into `~/.codex/hooks.json` (from `codex-custom-deploy-hooks.json`); shell scripts copied to `~/.codex/hooks/<file>` | not yet | not deployed |
 | Antigravity | not deployed, since the repo ships no commands | fan-out copied to `~/.gemini/config/skills/<name>`, `~/.gemini/antigravity/skills/<name>`, and `~/.gemini/antigravity-cli/skills/<name>` | `~/.gemini/config/agents/<name>.md` generated with Antigravity frontmatter and tool-name mapping | `charter_guardrail` key merged into `~/.gemini/config/hooks.json`; shell scripts copied to `~/.gemini/config/hooks/<file>` | generated rule file at `~/.gemini/config/rules/<name>.md` (global) or `<project>/.agents/rules/<name>.md` (project), carrying `trigger: always_on`; 24,000-byte per-file cap; appends rather than replaces | not deployed |
 | OpenCode | `~/.config/opencode/commands/<name>.md` copied | `~/.config/opencode/skills/<name>` copied | `~/.config/opencode/agents/<name>.md` generated with OpenCode frontmatter and permission mapping | `~/.config/opencode/hooks/<file>` for shell scripts, invoked by the `charter-guardrail` bridge plugin's `permission.evaluate` hook; JSON hook configs are skipped because OpenCode has no declarative hook config | not yet | `~/.config/opencode/plugins/<name>` copied whole |
@@ -121,11 +141,11 @@ Several targets do not consume the repo source files directly:
 | hook (`hooks/cursor-hooks*.json`) | Cursor | `hooks` entries merged one by one into `~/.cursor/hooks.json`, so an entry ai-modules owns is added, updated in place, or removed and every foreign entry, event, and the top-level `version` stay |
 | hook (`hooks/vscode-hooks*.json`) | VS Code Copilot | copied to `~/.copilot/hooks/<file>` in Copilot's schema, with a top-level `version` and hook objects directly under `PreToolUse` and no matcher groups; relative `./hooks/` command paths are rewritten to absolute (global) or `.github/hooks/` (project-dir) so the config stays portable; no VS Code settings key is written, because the Copilot harness keeps reading the repository `.claude/settings.json` files whatever `chat.hookFilesLocations` says |
 | hook (`hooks/charter_guardrail.sh`) | OpenCode | copied to `~/.config/opencode/hooks/<file>` or `<project>/.opencode/hooks/<file>`, and invoked by the `charter-guardrail` bridge plugin, which maps permission events onto the script's stdin envelope and sets `effect = "deny"` on a non-zero exit |
-| style (`styles/*.md`) | Claude Code | copied to `~/.claude/output-styles/<name>.md`; `outputStyle` set from `style:<name>` in `deployment.conf` |
+| style (`styles/*.md`) | Claude Code | copied to `~/.claude/output-styles/<name>.md`; `outputStyle` set from `style:<name>` in the deploy config |
 | style (`styles/*.md`) | Cursor | generated `.mdc` under `<project>/.cursor/rules/` with `alwaysApply: true`; Cursor appends rather than replaces, so adherence is weaker than on Claude |
 | style (`styles/*.md`) | Antigravity | generated Markdown rule file at `~/.gemini/config/rules/<name>.md` or `<project>/.agents/rules/<name>.md`, carrying `trigger: always_on` and the style's description, with `<engineering_behavior>` rewritten for Antigravity's defaults; the deploy refuses content over Antigravity's 24,000-byte per-file cap and reports the generated size, because the rule also competes for the shared always-on token budget |
 
-`replace:path VAR=value` rules in `deployment.conf` substitute `$VAR$` in matching deployed copies.
+`replace:path VAR=value` rules in the deploy config substitute `$VAR$` in matching deployed copies.
 
 Every deployed artifact is a copy rather than a live link to the repo. Run `make update` after editing a source artefact to refresh its deployed copy in every scope the deploy log records.
 
@@ -146,7 +166,7 @@ Backups land in `$HOME` as `<name>_YYYYMMDD_HHMMSS`, e.g. `~/.cursor_YYYYMMDD_HH
 
 ## Deploy Log, Update, and Uninstall
 
-Every real deploy appends one line per deployed artifact to `deployment/deployed_artefacts.log` (tab-separated). Setting `DEPLOYED_ARTIFACTS_LOG` in the environment points the script at another log, which is how a test deployment keeps its log inside its own scratch tree:
+Every real deploy appends one line per deployed artifact to `~/.ai_asset_deploy/deployed.log` (tab-separated). Setting `DEPLOYED_ARTIFACTS_LOG` in the environment points the script at another log, which is how a test deployment keeps its log inside its own scratch tree:
 
 1. deployed path (or `path[key]` for JSON-merge entries)
 2. target id

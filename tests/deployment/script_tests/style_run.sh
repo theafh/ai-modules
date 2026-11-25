@@ -16,11 +16,11 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 DEPLOY_SCRIPT="${REPO_ROOT}/deployment/deployment.sh"
 # Invoke the deploy script on the stock bash the floor targets.
 DEPLOY_BASH="/bin/bash"
-DEPLOY_LOG="${REPO_ROOT}/deployment/deployed_artefacts.log"
 STYLE_SRC="${REPO_ROOT}/styles/natural-language.md"
 SCRATCH="$(mktemp -d)"
-LOG_BACKUP="${SCRATCH}/deployed_artefacts.log.backup"
-LOG_HAD_FILE=false
+# Every deploy here writes a scratch log, never the machine-wide manifest.
+DEPLOY_LOG="${SCRATCH}/deployed.log"
+CONF_TEMPLATE="${REPO_ROOT}/deployment/ai_asset_deploy.conf.template"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -37,22 +37,11 @@ assert_eq() {
 }
 
 cleanup() {
-  if [[ "$LOG_HAD_FILE" == true ]]; then
-    mv "$LOG_BACKUP" "$DEPLOY_LOG"
-  else
-    rm -f "$DEPLOY_LOG"
-  fi
   rm -rf "$SCRATCH"
 }
 trap cleanup EXIT
 
 cd "$REPO_ROOT"
-
-if [[ -f "$DEPLOY_LOG" ]]; then
-  LOG_HAD_FILE=true
-  cp "$DEPLOY_LOG" "$LOG_BACKUP"
-fi
-rm -f "$DEPLOY_LOG"
 
 # --- Static acceptance checks ---
 assert_file "$STYLE_SRC"
@@ -92,6 +81,15 @@ mkdir -p "$HOME_DIR" "$PROJECT_DIR"
 # Pre-seed a home settings value that project-dir deploy must not touch
 mkdir -p "$HOME_DIR/.claude"
 printf '%s\n' '{"outputStyle":"home-prior"}' > "$HOME_DIR/.claude/settings.json"
+# Seed the scratch home's per-tool config: the committed template plus the
+# style this run deploys. The scratch HOME makes that file the config the
+# script reads, so the style deploy still sets outputStyle without depending
+# on the host's live config.
+mkdir -p "$HOME_DIR/.ai_asset_deploy"
+cp "$CONF_TEMPLATE" "$HOME_DIR/.ai_asset_deploy/config"
+printf '\n#claude\nstyle:natural-language\n' >> "$HOME_DIR/.ai_asset_deploy/config"
+export HOME="$HOME_DIR"
+export DEPLOYED_ARTIFACTS_LOG="$DEPLOY_LOG"
 
 # --- Global dry-run: two actions, resolved under scratch HOME ---
 global_dry="$(HOME="$HOME_DIR" "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target claude --dry-run)"
@@ -314,20 +312,28 @@ assert_eq "$restored_block" "$original_block" "nested object/array prior did not
 jq -e '.keep == true' "$nested_target" >/dev/null ||
   fail "nested restore clobbered unrelated keys"
 
-# parse_deployment_conf recognizes style: via STYLE_MAP
+# parse_deployment_conf recognizes style: via STYLE_MAP. The block runs under
+# its own scratch home, seeded with a distinct style name, so it proves the
+# script reads the seeded config rather than the host's live one.
 # The assignments below configure the sourced deployment.sh; shellcheck
 # cannot see their use through `source=/dev/null`.
 # shellcheck disable=SC2034
 (
   set -- --uninstall
   DEPLOYMENT_SH_SKIP_MAIN=1
+  PARSE_HOME="${SCRATCH}/parse-home"
+  mkdir -p "$PARSE_HOME/.ai_asset_deploy"
+  cp "$CONF_TEMPLATE" "$PARSE_HOME/.ai_asset_deploy/config"
+  printf '\n#claude\nstyle:scratch-only\n' >> "$PARSE_HOME/.ai_asset_deploy/config"
+  HOME="$PARSE_HOME"
+  export HOME
   # shellcheck source=/dev/null
   source "$DEPLOY_SCRIPT"
   parse_deployment_conf
   style_for_claude="$(table_get "claude" "${STYLE_MAP[@]}")" ||
-    fail "table_get on STYLE_MAP should yield natural-language for claude"
-  [[ "$style_for_claude" == "natural-language" ]] ||
-    fail "table_get on STYLE_MAP should yield natural-language for claude"
+    fail "table_get on STYLE_MAP should yield the seeded style for claude"
+  [[ "$style_for_claude" == "scratch-only" ]] ||
+    fail "table_get on STYLE_MAP should yield the seeded style for claude"
 )
 
 # --- Antigravity: one generated always-on rule per scope ---
@@ -355,7 +361,7 @@ printf '%s\n' "$ag_project_dry" | grep -q "${PROJECT_DIR}/.agents/rules/natural-
   fail "antigravity project dry-run missing rule write"
 ag_project_gen="$(printf '%s\n' "$ag_project_dry" | grep -c 'would-gen' || true)"
 assert_eq "$ag_project_gen" "1" "antigravity project dry-run should report one generated rule"
-if printf '%s\n' "$ag_project_dry" | grep -q "${HOME_DIR}/"; then
+if printf '%s\n' "$ag_project_dry" | grep -vE '^(Config|Deploy log|Config source):' | grep -q "${HOME_DIR}/"; then
   fail "antigravity project dry-run must not resolve paths under HOME"
 fi
 

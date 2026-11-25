@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-25
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -17,10 +17,16 @@ configuration trees of six harnesses: VS Code Copilot, Cursor, Claude Code,
 OpenAI Codex, Google Antigravity, and OpenCode. It runs in one of two scopes.
 Global mode writes into the user configuration directories, and project mode
 writes into a single project's own local configuration instead. The script
-records every path it wrote into `deployment/deployed_artefacts.log`, and
+records every path it wrote into `~/.ai_asset_deploy/deployed.log`, and
 update and uninstall replay that log: update redeploys what it records,
 uninstall removes it, and a scope flag limits either mode to the scope it
 names while a scopeless run covers every scope.
+
+The log is per-machine state rather than per-checkout state, and so is the
+per-tool configuration in `~/.ai_asset_deploy/config`. Keeping both in `$HOME`
+leaves a checkout's working tree clean and gives every bundled copy of the
+script one manifest to read, which is why an uninstall run from any checkout
+reaches every artefact the machine records.
 
 The script exists because a marketplace install cannot reach everything. A
 plugin manifest delivers components, but it never writes a settings key and it
@@ -70,13 +76,16 @@ source sits outside `plugins/` at all is on
 
 ### Per-tool configuration
 
-`deployment/deployment.conf` is parsed in robots.txt style: a `#tool` section
+`~/.ai_asset_deploy/config` is parsed in robots.txt style: a `#tool` section
 heading, then `disallow:` lines that skip a repo-relative path for that tool,
 `replace:` lines that substitute a variable inside deployed copies, and a
-`style:<name>` line naming which style that tool activates. Today every target
-disallows any path matching `*legacy*`, which keeps a legacy artefact in the
-repository while ensuring it reaches nobody, and Claude carries
-`style:natural-language`.
+`style:<name>` line naming which style that tool activates. When the machine has
+no config, the script reads the committed
+`deployment/ai_asset_deploy.conf.template` instead, so a fresh checkout deploys
+the shared defaults. That template disallows any path matching `*legacy*` for
+every target, which keeps a legacy artefact in the repository while ensuring it
+reaches nobody, and it carries no `style:` line: activating a style is a
+machine's own choice, recorded in its home config.
 
 The style directive lives here rather than in the style file, and
 [output style delivery design](output-style-delivery-design.md) records why.
@@ -223,7 +232,7 @@ the settled kind, empty in every target's cell because the source is.
 
 ## Derived from
 
-- `deployment/README.md`, `deployment/deployment.conf`, and
+- `deployment/README.md`, `deployment/ai_asset_deploy.conf.template`, and
   `deployment/deployment.sh`.
 - `CHARTER.md` at this repository root for the command deprecation, and the
   repo-root instruction files for the definition of the term.
