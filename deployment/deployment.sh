@@ -48,7 +48,9 @@ set -euo pipefail
 #   holds, or removed while every foreign entry stays where it was. The deploy
 #   log records the owned set as an @entries: manifest, and uninstall removes
 #   exactly those entries. Scalar settings keys keep merge_json_key's whole-key
-#   write and its recorded prior.
+#   write and its recorded prior, while a settings-map key such as VS Code's
+#   chat.hookFilesLocations merges entry by entry and keeps the map's whole
+#   prior value for uninstall.
 #   Backups land in $HOME as <name>_<timestamp>, where <name> defaults to
 #   basename(target_dir). The caller can override <name> when the basename
 #   isn't tool-distinctive — e.g. VS Code's user-prompts dir on macOS and
@@ -280,6 +282,7 @@ if [[ -n "$PROJECT_DIR" ]]; then
   CODEX_SKILLS_DIR="${PROJECT_DIR}/.agents/skills"
   VSCODE_COPILOT_DIR="${PROJECT_DIR}/.github"
   VSCODE_PROMPTS_DIR="${PROJECT_DIR}/.github/prompts"
+  VSCODE_SETTINGS_FILE="${PROJECT_DIR}/.vscode/settings.json"
   OPENCODE_DIR="${PROJECT_DIR}/.opencode"
   # Antigravity's native project-level convention is the workspace .agents/ tree.
   ANTIGRAVITY_TREE_DIR="${PROJECT_DIR}/.agents"
@@ -300,6 +303,10 @@ else
   else
     VSCODE_PROMPTS_DIR="${HOME_DIR}/.config/Code/User/prompts"
   fi
+  # The user settings file beside the prompts root. The vscode arm writes its
+  # settings-map entries here and only at global scope, because a settings map
+  # key such as chat.hookFilesLocations is a user-level switch.
+  VSCODE_SETTINGS_FILE="${VSCODE_PROMPTS_DIR%/*}/settings.json"
 fi
 
 # Dormant managed-global-rules feature, parked to keep its exact strings and
@@ -408,10 +415,10 @@ path_exists() {
   local path="$1"
 
   # Handle path[key] notation — check the JSON file exists and contains the key
-  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
+  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ ]]; then
     local json_file="${BASH_REMATCH[1]}"
     local json_key="${BASH_REMATCH[2]}"
-    [[ -f "$json_file" ]] && jq -e ".${json_key}" "$json_file" &>/dev/null
+    [[ -f "$json_file" ]] && jq -e --arg k "$json_key" 'has($k)' "$json_file" &>/dev/null
     return $?
   fi
 
@@ -1112,6 +1119,111 @@ merge_json_key() {
 }
 
 # ---------------------------------------------------------------------------
+# Rewrite relative ./hooks/ command paths inside a copied hook config.
+#
+# A hook config the copy route writes (VS Code Copilot's vscode-hooks*.json)
+# keeps its command relative in the repository so no machine-specific path is
+# ever committed. This rewrites each command that starts with ./hooks/ to the
+# target's hook directory, the same walk merge_json_key and merge_hook_entries
+# apply to a merged config.
+# ---------------------------------------------------------------------------
+rewrite_hook_command_paths() {
+  local target="$1"
+  local hooks_dir="$2"
+
+  if $DRY_RUN; then
+    info "would-rewrite" "./hooks/ command paths -> ${hooks_dir}/"
+    return 0
+  fi
+
+  [[ -f "$target" ]] || return 0
+
+  local rewritten
+  rewritten="$(jq --arg dir "$hooks_dir" '
+    walk(if type == "object" and .command and (.command | startswith("./hooks/"))
+         then .command = ($dir + "/" + (.command | ltrimstr("./hooks/")))
+         else . end)' "$target")"
+  printf '%s\n' "$rewritten" > "$target"
+  ok "rewritten" "${target} (./hooks/ command paths)"
+}
+
+# ---------------------------------------------------------------------------
+# Merge entries into a top-level JSON key that holds a settings map.
+#
+# VS Code's chat.hookFilesLocations and chat.instructionsFilesLocations each
+# map a path to a boolean. merge_json_key writes the whole key, which would
+# drop every entry the user set beside the ones ai-modules owns, so this
+# helper works at entry grain: it adds or updates exactly the entries passed
+# in and leaves every other entry of the map where it was. A key that holds
+# something other than an object is content ai-modules did not write, so it
+# stays as it is rather than being replaced.
+#
+# The deploy log keeps merge_json_key's path[key] shape and records the map's
+# whole prior value on first write, so uninstall restores that value through
+# restore_json_key and removes the key when the prior was @absent.
+#
+# Args: source_label target key target_id artifact_type entries_json
+# ---------------------------------------------------------------------------
+merge_settings_map_entries() {
+  local source="$1"
+  local target="$2"
+  local key="$3"
+  local target_id="$4"
+  local artifact_type="$5"
+  local entries_json="$6"
+
+  if ! printf '%s' "$entries_json" | jq -e 'type == "object"' >/dev/null 2>&1; then
+    err "failed" "settings-map entries for ${key} are not a JSON object"
+    return 1
+  fi
+
+  local existing="{}"
+  if [[ -f "$target" ]]; then
+    existing="$(cat "$target")"
+  fi
+
+  if ! printf '%s' "$existing" | jq -e 'type == "object"' >/dev/null 2>&1; then
+    err "failed" "not a JSON object: ${target}"
+    return 1
+  fi
+
+  if printf '%s' "$existing" | jq -e --arg k "$key" 'has($k) and ((.[$k] | type) != "object")' >/dev/null 2>&1; then
+    warn "skip" "${target} .${key} is not a settings map; left as it is"
+    return 0
+  fi
+
+  local log_path="${target}[${key}]"
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    info "would-merge" "${target} <- .${key} entries $(printf '%s' "$entries_json" | jq -c .)"
+    return 0
+  fi
+
+  # First-write prior: reuse a logged prior when present; otherwise sample.
+  local prior_value=""
+  if prior_value="$(lookup_logged_prior "$log_path")"; then
+    :
+  else
+    if printf '%s' "$existing" | jq -e --arg k "$key" 'has($k)' >/dev/null 2>&1; then
+      prior_value="$(printf '%s' "$existing" | jq -c --arg k "$key" '.[$k]')"
+    else
+      prior_value="@absent"
+    fi
+  fi
+
+  local merged
+  merged="$(printf '%s' "$existing" | jq --arg k "$key" --argjson entries "$entries_json" '
+    (if (.[$k] | type) == "object" then .[$k] else {} end) as $map
+    | .[$k] = ($map + $entries)')"
+
+  printf '%s\n' "$merged" > "$target"
+  ok "merged" "${target} <- .${key} entries"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+  append_deployed_artifact_log "$log_path" "$target_id" "$artifact_type" "$source" "$prior_value"
+}
+
+# ---------------------------------------------------------------------------
 # Merge hook configuration into a harness's shared hook file, entry by entry.
 #
 # Codex's ~/.codex/hooks.json, Claude Code's ~/.claude/settings.json, and
@@ -1468,7 +1580,7 @@ restore_json_key() {
   local existing
   existing="$(cat "$target")"
   local restored
-  restored="$(printf '%s' "$existing" | jq --argjson patch "$prior_value" ".${key} = \$patch")"
+  restored="$(printf '%s' "$existing" | jq --argjson patch "$prior_value" --arg k "$key" '.[$k] = $patch')"
   printf '%s\n' "$restored" > "$target"
   ok "restored" "${target} .${key}"
   SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
@@ -1493,7 +1605,7 @@ strip_json_key() {
   fi
 
   local stripped
-  stripped="$(jq "del(.${key})" "$target")"
+  stripped="$(jq --arg k "$key" 'del(.[$k])' "$target")"
   printf '%s\n' "$stripped" > "$target"
   ok "stripped" "${target} .${key}"
   SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
@@ -2405,14 +2517,43 @@ install_for_app() {
       esac
       case "$app_id" in
         vscode)
+          local source_file
+          source_file="$(basename "$source_abs")"
+          if [[ "$src_ext" == "json" ]]; then
+            # Only deploy the Copilot-native config; skip every other harness's
+            # JSON config, which Copilot cannot load.
+            [[ "$source_file" == vscode-hooks* ]] || { info "skip" "[$name] not a VS Code Copilot hook config"; return 0; }
+          fi
           local dest_dir="${app_dir}/hooks"
           ensure_dir "$dest_dir"
           local dest_file
-          dest_file="${dest_dir}/$(basename "$source_abs")"
+          dest_file="${dest_dir}/${source_file}"
           if [[ ${#replacement_specs[@]} -gt 0 ]]; then
             copy_path_with_replacements "$source_abs" "$dest_file" "$app_id" "$type" ${replacement_specs[@]+"${replacement_specs[@]}"}
           else
             copy_file "$source_abs" "$dest_file" "$app_id" "$type"
+          fi
+          if [[ "$src_ext" == "json" ]]; then
+            # The config is copied rather than merged, so its relative
+            # ./hooks/ command is rewritten here to the same target the merge
+            # routes compute: absolute at global scope, project-relative under
+            # --project-dir.
+            local hooks_dir
+            if [[ -n "$PROJECT_DIR" ]]; then
+              hooks_dir=".github/hooks"
+            else
+              hooks_dir="${app_dir}/hooks"
+            fi
+            rewrite_hook_command_paths "$dest_file" "$hooks_dir"
+            if [[ -n "$PROJECT_DIR" ]]; then
+              info "skip" "[$name] chat.hookFilesLocations is a user-level switch; project scope leaves the user settings alone"
+            else
+              # Close the Claude hook adoption path, so the Copilot-native file
+              # is the only route the guard arrives by in a VS Code session.
+              ensure_dir "${VSCODE_SETTINGS_FILE%/*}"
+              merge_settings_map_entries "$DEPLOYMENT_CONF" "$VSCODE_SETTINGS_FILE" "chat.hookFilesLocations" "$app_id" "$type" \
+                '{".claude/settings.json": false, "~/.claude/settings.json": false}'
+            fi
           fi
           if [[ "$src_ext" == "sh" && ! $DRY_RUN ]]; then chmod +x "$dest_file"; fi
           ;;
@@ -2793,7 +2934,7 @@ logged_path_scope() {
   local target_id="${2:-}"
 
   local path="$raw_path"
-  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
+  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ ]]; then
     path="${BASH_REMATCH[1]}"
   fi
 
@@ -2803,9 +2944,8 @@ logged_path_scope() {
   fi
 
   # The OS branch picks the VS Code prompts root; the settings directory that
-  # holds it is the prompts root's parent. That root is a forward provision:
-  # no vscode merge writes a path[key] entry today, and the settings merges
-  # that will write one land in that same user settings file.
+  # holds it is the prompts root's parent, which is where the vscode settings
+  # merges write their path[key] entries.
   local vscode_prompts_root=""
   if [[ "$OSTYPE" == darwin* ]]; then
     vscode_prompts_root="${HOME_DIR}/Library/Application Support/Code/User/prompts"
@@ -2883,7 +3023,7 @@ remove_logged_path() {
   local prior_value="${2:-}"
 
   # Handle path[key] notation — restore recorded prior or strip the key
-  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
+  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ ]]; then
     local json_file="${BASH_REMATCH[1]}"
     local json_key="${BASH_REMATCH[2]}"
     if [[ -n "$prior_value" ]]; then
@@ -2918,7 +3058,7 @@ json_key_uninstall_succeeded() {
   local path="$1"
   local prior_value="${2:-}"
 
-  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
+  if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ ]]; then
     local json_file="${BASH_REMATCH[1]}"
     local json_key="${BASH_REMATCH[2]}"
 
@@ -3000,7 +3140,7 @@ uninstall_logged_artifacts() {
 
     if $DRY_RUN; then
       SUMMARY_UNINSTALL_ACTIONS=$((SUMMARY_UNINSTALL_ACTIONS + 1))
-      if [[ "$logged_path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ ]]; then
+      if [[ "$logged_path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ ]]; then
         if [[ "$logged_prior" == "@entries:"* ]]; then
           info "would-restore" "$logged_path (owned hook entries)"
         elif [[ -n "$logged_prior" && "$logged_prior" != "@absent" ]]; then
@@ -3018,7 +3158,7 @@ uninstall_logged_artifacts() {
     # A path[key] line carrying an @entries: manifest removes exactly the
     # entries ai-modules owns and branches ahead of the shared restore
     # dispatch, which would otherwise write a whole-key prior back.
-    if [[ "$logged_path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_]*)\]$ && "$logged_prior" == "@entries:"* ]]; then
+    if [[ "$logged_path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ && "$logged_prior" == "@entries:"* ]]; then
       local manifest_file="${BASH_REMATCH[1]}"
       local manifest_key="${BASH_REMATCH[2]}"
       local manifest_json="${logged_prior#@entries:}"

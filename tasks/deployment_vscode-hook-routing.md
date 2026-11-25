@@ -2,9 +2,11 @@
 description: Filter foreign configs out of the vscode hook route, ship a Copilot-schema hook config, and switch VS Code's Claude hook sources off so native delivery is the only route.
 scope: deployment
 created: 2026-08-09T18:07:35Z
-updated: 2026-11-25T08:31:55Z
-status: ready
+updated: 2026-11-25T09:05:13Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Deliver hooks to VS Code Copilot natively and close the foreign-config paths
@@ -209,3 +211,43 @@ have taken that trade in exchange for skipping one file.
     `tool_name`, `tool_input.file_path` naming `CHARTER.md`, and a `cwd` inside a
     repository whose root carries `CHARTER.md`, through that command exits 2,
     while the same envelope naming an ordinary file exits 0.
+
+## Implementation notes
+
+Implemented 2026-11-25.
+
+- `deployment/deployment.sh`: the `vscode` hook arm skips every `.json` hook
+  config whose basename does not match `vscode-hooks*` and keeps the shell-script
+  copy. `rewrite_hook_command_paths` is the copy-route counterpart of the merge
+  routes' rewrite: it points the copied config's `./hooks/` commands at
+  `${app_dir}/hooks` at global scope and at `.github/hooks` under
+  `--project-dir`. `merge_settings_map_entries` merges
+  `chat.hookFilesLocations` into the VS Code user settings entry by entry and
+  records the map's whole prior value, and it is the helper the VS Code
+  output-style task reuses for `chat.instructionsFilesLocations`.
+- The deploy log's `path[key]` notation accepts a dotted top-level key, and
+  `restore_json_key` / `strip_json_key` address the key with `--arg k` rather
+  than a jq path, so `chat.hookFilesLocations` restores and strips correctly.
+  `path_exists` reads key presence with `has($k)`, so a key whose value is
+  `false` still counts as present.
+- `plugins/ai_dev/hooks/vscode-hooks.json`: one `PreToolUse` command hook with
+  no `matcher`, running `./hooks/charter_guardrail.sh` with a 30-second timeout.
+- `tests/deployment/script_tests/vscode_hook_run.sh` covers the Acceptance
+  items: the dry-run skips and rewrites, the committed schema, the settings entry
+  merge with a foreign entry and an unrelated key preserved, the recorded prior,
+  the restore and `@absent` removal, and the guardrail envelope run.
+- Project scope leaves the user settings alone and reports a skip, because
+  `chat.hookFilesLocations` is a user-level switch; a project deploy still ships
+  the config and the script into `.github/hooks`.
+
+The already-deployed strays are not retracted by this change. The operator runs
+this pair, which removes what the log records for the global scope and deploys
+again from this checkout:
+
+```bash
+./deployment/deployment.sh --uninstall --global
+./deployment/deployment.sh --global
+```
+
+That clears `~/.copilot/hooks` of every logged hook config whose basename is not
+`vscode-hooks*`, which is the set the `vscode` filter now skips.
