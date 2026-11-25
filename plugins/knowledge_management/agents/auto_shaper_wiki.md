@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.16
+version: 1.11.17
 model: inherit
 background: false
 effort: high
@@ -211,7 +211,11 @@ have audited before, because the schema, taxonomy, or domain may have changed.
       stands. A fix move is the repair the applicable check prescribes for that
       kind of defect. A surfaced entry applies no edit at all: the run neither
       marks the page `contested:` nor bumps its `updated` date, and the page's
-      bytes stay as they were.
+      bytes stay as they were. Surfacing is the one case where the run reports
+      the contradiction instead of performing the hub's
+      `<contradictions_are_explicit>` frontmatter mark in `$WIKI_SKILL/SKILL.md`,
+      because the approved list is the whole fix set and a surfaced entry is not
+      an approved fix.
     - **The approved list is the whole fix set.** A defect the run notices outside
       the list joins the *findings left unfixed* list and stays unfixed.
     - **Lint gate.** Compare the final lint run with the run taken at the start of
@@ -219,7 +223,9 @@ have audited before, because the schema, taxonomy, or domain may have changed.
       report pre-existing findings unfixed. The full-wiki criterion's existing
       exceptions survive the scoped run: the contested-page warns, the
       acknowledged insert-only locked-slot extensions, the `log` rotation finding
-      that `<fix_log_rotation>` clears, and the report-only `citation` findings.
+      that `<fix_log_rotation>` clears, the report-only `citation` findings, and
+      the report-only `raw/`-sidecar `filename` carve-out that
+      `<raw_directory_read_only>` keeps live.
     - **Findings left unfixed.** One report list, named *findings left unfixed*,
       carries both the pre-existing lint findings the run leaves alone and any
       defect the run notices outside the approved list; neither kind is fixed.
