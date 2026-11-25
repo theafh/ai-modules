@@ -1655,4 +1655,3 @@ section as a state this repository no longer creates.
   section is rewritten as retired state under `### Copilot takes only its own
   file`, closing with the filename filter, the copy-route rewrite, and the
   log-based retraction for a tree deployed before the filter.
-- index.md: the header date stays 2026-11-25.

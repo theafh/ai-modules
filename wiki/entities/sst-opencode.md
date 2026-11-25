@@ -1,7 +1,7 @@
 ---
 title: SST OpenCode
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-25
 type: entity
 tags: [opencode, skill, agent, hook, system-prompt, frontmatter, discovery]
 sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]

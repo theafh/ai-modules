@@ -1,7 +1,7 @@
 ---
 title: Hook surface portability
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-25
 type: concept
 tags: [hook, portability, claude, codex, opencode, antigravity, copilot, plugin]
 sources: []
